@@ -141,6 +141,8 @@ export default function App() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportViewType, setReportViewType] = useState('pdf'); // 'pdf' or 'image'
   const [pdfjsLoaded, setPdfjsLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const firstMatchRef = useRef(null);
 
   // Success Notification banner
   const [notification, setNotification] = useState(null);
@@ -204,6 +206,14 @@ export default function App() {
       document.head.appendChild(script);
     }
   }, [showFullReport, reportViewType, pdfjsLoaded]);
+
+  // Auto-scroll and focus on the first search match in grid tracker
+  useEffect(() => {
+    if (searchQuery && firstMatchRef.current) {
+      firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      firstMatchRef.current.focus();
+    }
+  }, [searchQuery]);
 
   // Form Submit (Uses the UI referenceDate as baseDate to maintain perfect study session alignment)
   const handleRegisterTopic = async (e) => {
@@ -776,9 +786,35 @@ export default function App() {
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
           <section className="glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
-            <div className="flex items-center gap-2 mb-6">
-              <List size={20} className="text-brand-400" />
-              <h2 className="text-lg font-bold text-white">등록한 모든 토픽 스케줄링 테이블</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <List size={20} className="text-brand-400" />
+                <h2 className="text-lg font-bold text-white">등록한 모든 토픽 스케줄링 테이블</h2>
+              </div>
+              
+              {/* Search bar inside allTopics view */}
+              <div className="relative w-full md:w-80">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="토픽 제목 또는 키워드 검색..."
+                  className="w-full bg-slateCustom-900 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl pl-10 pr-12 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
+                />
+                <div className="absolute left-3 top-3 text-slate-500">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                </div>
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-2 text-slate-400 hover:text-white text-[10px] font-bold bg-slate-800 hover:bg-slate-700 rounded-lg px-2 py-1 transition-colors"
+                  >
+                    지우기
+                  </button>
+                )}
+              </div>
             </div>
 
             {loadingTopics ? (
@@ -790,104 +826,136 @@ export default function App() {
               <div className="py-12 text-center">
                 <p className="text-sm text-slate-400">아직 등록된 학습 토픽이 없습니다. 첫 번째 토픽을 등록해 복습 스케줄을 확인해 보세요!</p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
-                      <th className="py-4 px-4">토픽 정보 (클릭 시 퀴즈)</th>
-                      <th className="py-4 px-2 text-center">1회차 복습 (1일 뒤)</th>
-                      <th className="py-4 px-2 text-center">2회차 복습 (4일 뒤)</th>
-                      <th className="py-4 px-2 text-center">3회차 복습 (7일 뒤)</th>
-                      <th className="py-4 px-2 text-center">4회차 복습 (14일 뒤)</th>
-                      <th className="py-4 px-2 text-center">도구</th>
-                      <th className="py-4 px-4 text-right">등록 일시</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 text-sm">
-                    {allTopics.map((topic) => (
-                      <tr key={topic.id} className="hover:bg-slateCustom-900/40 transition-colors">
-                        <td className="py-4 px-4 max-w-xs">
-                          <div className="space-y-1">
-                            <h4 
-                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
-                              className="font-bold text-white text-sm truncate hover:text-brand-400 cursor-pointer transition-colors"
-                              title="클릭 시 복습 주기에 상관없이 자율 인출 기출 퀴즈를 풉니다."
-                            >
-                              {topic.title}
-                            </h4>
-                            {topic.pdf_name ? (
-                              <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                                {topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
-                                {topic.pdf_name}
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-slate-600">직접 수기 등록</p>
-                            )}
-                          </div>
-                        </td>
-                        
-                        {/* 4 spaced rounds status grid */}
-                        {[1, 2, 3, 4].map((round) => {
-                          const sched = topic.schedules?.find(s => s.review_round === round);
-                          return (
-                            <td key={round} className="py-4 px-2 text-center">
-                              {sched ? (
-                                <div className="flex flex-col items-center">
-                                  {sched.status === 'completed' ? (
-                                    <span className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">
-                                      완료
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
-                                      대기
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] text-slate-500 mt-1 block font-mono">{sched.planned_date}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-600">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-
-                        {/* Instant Quiz & Delete Buttons */}
-                        <td className="py-4 px-2 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                              title="복습 주기에 관계없이 언제든 실전 기출 퀴즈를 풉니다."
-                            >
-                              <Sparkles size={12} />
-                              즉시 퀴즈
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTopic(topic.id, topic.title)}
-                              className="p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                              title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="py-4 px-4 text-right text-xs text-slate-500 font-mono">
-                          {new Date(topic.created_at).toLocaleString('ko-KR', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </td>
+            ) : (() => {
+              const filteredTopics = allTopics.filter(topic => 
+                topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
+              );
+              
+              if (filteredTopics.length === 0) {
+                return (
+                  <div className="py-12 text-center">
+                    <p className="text-sm text-slate-400">검색 조건에 부합하는 토픽이 없습니다.</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
+                        <th className="py-4 px-4">토픽 정보 (클릭 시 퀴즈)</th>
+                        <th className="py-4 px-2 text-center">1회차 복습 (1일 뒤)</th>
+                        <th className="py-4 px-2 text-center">2회차 복습 (4일 뒤)</th>
+                        <th className="py-4 px-2 text-center">3회차 복습 (7일 뒤)</th>
+                        <th className="py-4 px-2 text-center">4회차 복습 (14일 뒤)</th>
+                        <th className="py-4 px-2 text-center">도구</th>
+                        <th className="py-4 px-4 text-right">등록 일시</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-sm">
+                      {filteredTopics.map((topic, idx) => {
+                        const isFirstMatch = searchQuery && idx === 0;
+                        return (
+                          <tr 
+                            key={topic.id} 
+                            className={`transition-all duration-300 ${
+                              isFirstMatch 
+                                ? 'bg-brand-950/20 border-l-4 border-l-brand-500 scale-[1.005] shadow-md shadow-brand-500/10' 
+                                : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
+                            }`}
+                          >
+                            <td className="py-4 px-4 max-w-xs">
+                              <div className="space-y-1">
+                                <h4 
+                                  ref={isFirstMatch ? firstMatchRef : null}
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name);
+                                    }
+                                  }}
+                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
+                                  className="font-bold text-white text-sm truncate hover:text-brand-400 cursor-pointer transition-colors focus:text-brand-400 focus:outline-none"
+                                  title="클릭 시 복습 주기에 상관없이 자율 인출 기출 퀴즈를 풉니다."
+                                >
+                                  {topic.title}
+                                </h4>
+                                {topic.pdf_name ? (
+                                  <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                                    {topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
+                                    {topic.pdf_name}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-slate-600">직접 수기 등록</p>
+                                )}
+                              </div>
+                            </td>
+                            
+                            {/* 4 spaced rounds status grid */}
+                            {[1, 2, 3, 4].map((round) => {
+                              const sched = topic.schedules?.find(s => s.review_round === round);
+                              return (
+                                <td key={round} className="py-4 px-2 text-center">
+                                  {sched ? (
+                                    <div className="flex flex-col items-center">
+                                      {sched.status === 'completed' ? (
+                                        <span className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">
+                                          완료
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
+                                          대기
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-slate-500 mt-1 block font-mono">{sched.planned_date}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-slate-600">-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+
+                            {/* Instant Quiz & Delete Buttons */}
+                            <td className="py-4 px-2 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                                  title="복습 주기에 관계없이 언제든 실전 기출 퀴즈를 풉니다."
+                                >
+                                  <Sparkles size={12} />
+                                  즉시 퀴즈
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTopic(topic.id, topic.title)}
+                                  className="p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                                  title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 text-right text-xs text-slate-500 font-mono">
+                              {new Date(topic.created_at).toLocaleString('ko-KR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </section>
         )}
       </main>
