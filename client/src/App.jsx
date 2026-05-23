@@ -30,12 +30,14 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [numPages, setNumPages] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let active = true;
     const renderPages = async () => {
       if (!window.pdfjsLib) return;
       setLoading(true);
+      setHasError(false);
       try {
         const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
         const pdf = await loadingTask.promise;
@@ -68,7 +70,10 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
           container.appendChild(canvas);
         }
       } catch (err) {
-        console.error('Error rendering PDF as image:', err);
+        console.error('Error rendering PDF as image, falling back to native iframe:', err);
+        if (active) {
+          setHasError(true);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -79,6 +84,18 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
       active = false;
     };
   }, [pdfUrl, pdfjsLoaded]);
+
+  if (hasError) {
+    return (
+      <div className="w-full flex-grow flex flex-col items-center bg-white rounded-2xl overflow-hidden h-[55vh] border border-slate-800">
+        <iframe
+          src={pdfUrl}
+          className="w-full h-full border-0"
+          title="Document Fallback HTML Viewer"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-850">
