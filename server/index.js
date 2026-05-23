@@ -333,6 +333,7 @@ function extractFeaturesFromText(fileText) {
   const result = {
     keySentences: [],
     extractedKeywords: [],
+    extractedFormulas: [],
     summaryParagraph: ''
   };
 
@@ -353,7 +354,9 @@ function extractFeaturesFromText(fileText) {
       s.endsWith('다.') || s.endsWith('음.') || s.endsWith('함.') || s.endsWith('임.') ||
       s.endsWith('다') || s.endsWith('음') || s.endsWith('함') || s.endsWith('임') ||
       s.includes('형') || s.includes('기반') || s.includes('구조') || s.includes('특징') ||
-      s.includes('공법') || s.includes('방식') || s.includes('수행') || s.includes('설계')
+      s.includes('공법') || s.includes('방식') || s.includes('수행') || s.includes('설계') ||
+      s.includes('압밀') || s.includes('점토') || s.includes('파괴') || s.includes('시험') ||
+      s.includes('응력') || s.includes('지반') || s.includes('강도')
     );
   });
 
@@ -362,6 +365,17 @@ function extractFeaturesFromText(fileText) {
   if (result.keySentences.length === 0) {
     result.keySentences = sentences.slice(0, 3).filter(s => s.trim().length > 10);
   }
+
+  // Extract candidate formulas or equations from sentences dynamically
+  const formulaCandidates = sentences.filter(s => {
+    const sTrim = s.trim();
+    // Formula indicators: contains math symbols, equals sign, acronyms like F.S, OCR, or explicit formula/relation keywords
+    return (sTrim.includes('=') || sTrim.includes(' + ') || sTrim.includes(' - ') || sTrim.includes(' × ') || sTrim.includes(' * ') ||
+            sTrim.includes('공식') || sTrim.includes('수식') || sTrim.includes('관계식') || sTrim.includes('계산식') || sTrim.includes('방정식') ||
+            sTrim.includes(' F.S ') || sTrim.includes('OCR') || sTrim.includes('선행압밀') || sTrim.includes('과압밀') || sTrim.includes('파괴 규준선'));
+  }).map(s => s.trim()).filter(s => s.length > 15 && s.length < 200);
+
+  result.extractedFormulas = Array.from(new Set(formulaCandidates)).slice(0, 3);
 
   // Parse distinct keywords based on noun-like occurrences
   const words = cleanText.match(/[a-zA-Z가-힣0-9]{3,10}/g) || [];
@@ -470,11 +484,10 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
 
   const s0 = features.keySentences[0] || `[${title}]은/는 현대 기술 실무에서 핵심적인 의의와 고유한 엔지니어링 설계를 포함합니다.`;
   const s1 = features.keySentences[1] || `핵심 구성 요소인 ${mergedKw.slice(0, 3).join(', ')}의 상호 메커니즘을 규명하고 최적화하는 것이 성공 요인입니다.`;
-  const s2 = features.keySentences[2] || `구축 및 실무 현장 도입 과정의 예상 리스크를 선제 통제하고 거버넌스 설계 지침을 정립해야 합니다.`;
-  const s3 = features.keySentences[3] || `정량적 효율 평가 공식과 개념도 배치를 설계 표준에 준하여 작성해야 합니다.`;
+  const s2 = features.keySentences[2] || `구축 및 실무 현장 도입 과정의 예상 리스크를 선제 통제하고 설계 안전성 가이드를 정립해야 합니다.`;
+  const s3 = features.keySentences[3] || `정량적 물리/수학적 모델식과 개념도 배치를 설계 표준에 준하여 작성해야 합니다.`;
 
   // Dynamic Concepts (Answers)
-  const concept1 = `교재 본문 정의: "${s0}"\n\n[정의 및 의의] [${title}]은/는 ${keywordDisplay} 등 핵심 기술 요소를 적용하여 시스템의 성능 효율을 극대화하고 동작 안전성을 확보하기 위한 핵심 공학 기술 및 설계 공법입니다.`;
 
   const concept2 = `교재 본문 요약: "${s1}"\n\n[필요성 분석] 기존 전통 구조의 비효율 및 구조적 한계를 통제하고, 고안전/고효율 프로세스를 확보하기 위해 [${title}]의 도입이 실무적으로 강력하게 요구됩니다.`;
 
