@@ -488,24 +488,40 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   const s3 = features.keySentences[3] || `정량적 물리/수학적 모델식과 개념도 배치를 설계 표준에 준하여 작성해야 합니다.`;
 
   // Dynamic Concepts (Answers)
+  const concept1 = `교재 본문 정의: "${s0}"\n\n[정의 및 의의] [${title}]은/는 ${keywordDisplay} 등 핵심 공학적 요소를 기반으로 설계 안전성을 확보하고 성능 신뢰성을 극대화하기 위한 핵심 엔지니어링 기술입니다.`;
 
-  const concept2 = `교재 본문 요약: "${s1}"\n\n[필요성 분석] 기존 전통 구조의 비효율 및 구조적 한계를 통제하고, 고안전/고효율 프로세스를 확보하기 위해 [${title}]의 도입이 실무적으로 강력하게 요구됩니다.`;
+  const concept2 = `교재 본문 요약: "${s1}"\n\n[필요성 분석] 기존 기술/방법론의 한계점을 극복하고, 고도의 정밀 제어 및 품질을 확보하기 위해 [${title}]의 상세 설계 기준이 핵심적으로 활용됩니다.`;
 
-  const concept3 = `교재 본문 핵심 진술: "${s2}"\n\n[장애 극복 방안] 본문 진술에 기초하여 구축 초기 취약점 및 임계 리스크(Bottleneck) 요인을 사전에 모니터링하고, 가동 신뢰성을 유지하기 위해 거버넌스를 최적화하는 설계 방안입니다.`;
+  const concept3 = `교재 본문 핵심 진술: "${s2}"\n\n[엔지니어링 리스크 관리] 실무 운용 및 시공 시 발생 가능한 예기치 못한 물리적/환경적 취약 요인(Bottleneck)을 선제적으로 예방하고 설계 안전율을 유지하기 위한 거동 통제 방안입니다.`;
 
   // Dynamic Formula & Diagram lists (Answers)
-  const formula1 = `[개념도 구성 요소]\n수험생은 답안지에 아래 핵심 인자 간의 연동 흐름과 부하 분산/응력 재분배 메커니즘을 반영한 개념도를 도식화해야 합니다:\n- 흐름 경로: ${mergedKw.slice(0, 4).join(' ➔ ')}\n- 설계 구성 요소: ${keywordDisplay}`;
+  // Question 1: Conceptual Diagram
+  const formula1 = `[개념도 구성 요소]\n수험생은 답안지에 아래 핵심 인자 간의 상호 작용 및 거동 흐름을 반영한 개념도를 필히 도식화해야 합니다:\n- 상호 작용 경로: ${mergedKw.slice(0, 4).join(' ➔ ')}\n- 필수 도해 요소: ${keywordDisplay}`;
 
-  const formula2 = `[정량적 효율 평가 공식]\n- 정량적 효율 평가식: η = [ (개선 후 측정치 - 개선 전 측정치) / 개선 전 측정치 ] × 100 (%)\n- 핵심 물리/기술적 메커니즘: ${mergedKw.slice(0, 3).join(', ')} 등의 연동 제어 및 성능 계수 최적화 공식 정립.`;
+  // Question 2: Mathematical formulas (Try to extract from source text first!)
+  let formula2 = '';
+  if (features.extractedFormulas && features.extractedFormulas.length > 0) {
+    formula2 = `[교재 본문 추출 핵심 공식/관계식]\n- ${features.extractedFormulas.join('\n- ')}`;
+  } else {
+    formula2 = `[핵심 영향 인자 및 상관관계식]\n- 주요 공학적 변수: ${mergedKw.slice(0, 3).join(', ')}\n- 수험생은 이 변수들 간의 비례/반비례 공학적 메커니즘을 규명하는 관계 법칙(예: f(${mergedKw.slice(0, 2).join(', ')}) 대비 안전율 영향)을 연계 서술해야 합니다.`;
+  }
 
-  const formula3 = `[신뢰성 및 안전성 평가지표]\n- 설비 가동 신뢰도 공식: Availability = MTBF / (MTBF + MTTR)\n- 장애 복구 메커니즘: 임계 취약 요인 극복을 위한 단위 독립적 예비(Redundancy) 설계 및 차단 도식 필수.`;
+  // Question 3: Engineering Risk control formulas / safety indicators
+  let formula3 = '';
+  if (features.extractedFormulas && features.extractedFormulas.length > 1) {
+    formula3 = `[교재 본문 추출 설계/평가식]\n- ${features.extractedFormulas.slice(1).join('\n- ')}`;
+  } else if (features.extractedFormulas && features.extractedFormulas.length > 0) {
+    formula3 = `[설계/시공 단계별 품질/안전성 확보 공식]\n- 주요 설계 기준식: ${features.extractedFormulas[0]}\n- 추가 반영 요소: 수험생은 본문의 취약 요인 극복을 위해 저항력과 구동력 간의 정량적 안전율(F.S) 확보 수식을 연계해야 합니다.`;
+  } else {
+    formula3 = `[설계/시공 단계별 품질/안전성 확보 공식]\n- 주요 정량 지표: ${mergedKw.slice(3, 6).join(', ') || '설계 안전율(F.S)'}\n- 설계 기준 공식: F.S = (저항력 / 구동력) >= [대상 기준 안전율] 규준을 본문의 핵심 취약 요인과 연계하여 수식으로 표현하십시오.`;
+  }
 
   // Dynamic Questions that use the extracted sentences directly!
   const question1 = `기술사적 관점에서 [${title}]의 핵심 정의 및 개념 구조도를 제시하고, 본문 진술 "${s0.substring(0, 60)}${s0.length > 60 ? '...' : ''}"에 기초하여 이의 공학적 특징을 3단락 표 형식으로 간략히 서술하시오.`;
 
-  const question2 = `실무 도입 환경에서 [${title}]의 적용 필요성을 설명하고, 본문 요약 "${s1.substring(0, 60)}${s1.length > 60 ? '...' : ''}"을/를 반영하여 기존 전통 기술 방식 대비 기술적 차별성 및 실무 시공/설계 시 주요 고려사항을 논하시오.`;
+  const question2 = `실무 적용 환경에서 [${title}]의 도입 필요성을 설명하고, 본문 요약 "${s1.substring(0, 60)}${s1.length > 60 ? '...' : ''}"을/를 반영하여 기존 공법/설계 방식 대비 기술적 차별성 및 시공/설계 시 주요 고려사항을 논하시오.`;
 
-  const question3 = `[${title}]의 실무 적용 시 발생할 수 있는 주요 장애 및 취약성 요인(Bottleneck)을 다차원적으로 분석하고, 본문의 "${s2.substring(0, 60)}${s2.length > 60 ? '...' : ''}" 진술에 근거한 엔지니어링 신뢰성 확보 방안과 발전 방향을 서술하시오.`;
+  const question3 = `[${title}]의 실무 적용 시 발생할 수 있는 주요 장애 및 취약성 요인(Bottleneck)을 다차원적으로 분석하고, 본문의 "${s2.substring(0, 60)}${s2.length > 60 ? '...' : ''}" 진술에 근거한 설계/시공 신뢰성 확보 방안과 발전 방향을 서술하시오.`;
 
   return [
     {
@@ -513,21 +529,21 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
       question: question1,
       concept: concept1,
       formula: formula1,
-      structure: `1단락: ${title}의 기술적 정의 및 도입 필요성 (Need)\n2단락: ${title}의 상세 메커니즘 분석 및 핵심 구성 요소별 역할 (유사 기술과의 차별점 비교표 포함)\n3단락: 실무 시공/설계 시 예상 Bottleneck 요인 및 기술사로서의 공학적 극복 방안 제언`
+      structure: `1단락: ${title}의 학술적/엔지니어링 정의 및 도입 필요성 (Need)\n2단락: ${title}의 핵심 작동 메커니즘 및 상세 구성 요소별 역할 (핵심 차별점 비교표 포함)\n3단락: 실무 적용 시 예상 장애(Bottleneck) 요인 및 공학적 극복 방안 제언`
     },
     {
       type: '서술형 (25점)',
       question: question2,
       concept: concept2,
       formula: formula2,
-      structure: `1단락: 기술 트렌드 변화에 따른 ${title} 도입의 당위성 및 실무 관점의 엔지니어링 가치\n2단락: ${title}의 아키텍처/작동 프로세스 상세 메커니즘 분석 및 기존 전통 방식 대비 차별화 성능 (비교 항목 4개 이상)\n3단락: 실무 적용 단계별 정량적 품질/안전 관리 기준 및 기술사적 거버넌스 제언`
+      structure: `1단락: 최신 기술 기준에 따른 ${title} 설계 기준의 도입 당위성 및 엔지니어링 가치\n2단락: ${title}의 거동 특성 및 상세 메커니즘 분석 (기존 공법 대비 성능/안전성 차별성)\n3단락: 실무 적용 단계별 정량적 품질/안전 관리 기준 및 계측/모니터링 신뢰성 확보 제언`
     },
     {
       type: '서술형 (25점)',
       question: question3,
       concept: concept3,
       formula: formula3,
-      structure: `1단락: ${title} 실무 운용 시 부하 집중 또는 구조적 임계 장애 요인의 다차원적 분석\n2단락: 본문의 핵심 취약성 극복 가이드에 기초한 공정 신뢰성(Reliability) 및 고가용성 확보 방안\n3단락: 지속 가능한 설비 운용을 위한 표준 거버넌스 수립 및 미래 융합 신기술 발전 방향 제언`
+      structure: `1단락: ${title} 실무 운용/시공 시 발생하는 부하 집중 또는 구조적 취약 요인의 다차원적 분석\n2단락: 본문의 핵심 취약성 극복 가이드에 기초한 설계/공정 신뢰성(Reliability) 및 안전성 확보 방안\n3단락: 지속 가능한 안정성 유지를 위한 유지관리 표준 가이드라인 및 관련 기술 발전 방향 제언`
     }
   ];
 }
