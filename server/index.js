@@ -73,6 +73,58 @@ function mergeVerticalText(text) {
   return mergedLines.join('\n\n');
 }
 
+// Self-healing CP1252-to-CP949 custom reverse mapping table for double-encoded Korean mojibake bytes in U+0080 - U+009F range
+const cp1252CustomMap = {
+  '\u20AC': 0x80, // €
+  '\u201A': 0x82, // ‚
+  '\u0192': 0x83, // ƒ
+  '\u201E': 0x84, // „
+  '\u2026': 0x85, // …
+  '\u2020': 0x86, // †
+  '\u2021': 0x87, // ‡
+  '\u02C6': 0x88, // ˆ
+  '\u2030': 0x89, // ‰
+  '\u0160': 0x8A, // Š
+  '\u2039': 0x8B, // ‹
+  '\u0152': 0x8C, // Œ
+  '\u017D': 0x8E, // Ž
+  '\u2018': 0x91, // ‘
+  '\u2019': 0x92, // ’
+  '\u201C': 0x93, // “
+  '\u201D': 0x94, // ”
+  '\u2022': 0x95, // •
+  '\u2013': 0x96, // –
+  '\u2014': 0x97, // —
+  '\u02DC': 0x98, // ˜
+  '\u2122': 0x99, // ™
+  '\u0161': 0x9A, // š
+  '\u203A': 0x9B, // ›
+  '\u0153': 0x9C, // œ
+  '\u017E': 0x9E, // ž
+  '\u0178': 0x9F  // Ÿ
+};
+
+const cp1252ReverseLookup = new Map();
+for (const [char, byteVal] of Object.entries(cp1252CustomMap)) {
+  cp1252ReverseLookup.set(char.charCodeAt(0), byteVal);
+}
+
+// Convert a double-decoded Unicode string back into a 100% loss-free CP1252 byte buffer
+function stringToCp1252Buffer(str) {
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (cp1252ReverseLookup.has(code)) {
+      bytes.push(cp1252ReverseLookup.get(code));
+    } else if (code <= 0xFF) {
+      bytes.push(code);
+    } else {
+      bytes.push(code & 0xFF);
+    }
+  }
+  return Buffer.from(bytes);
+}
+
 // Helper: Decode HTML Buffer into UTF-8 string automatically supporting EUC-KR/CP949 fallback and double-encoded Mojibake restoration
 function decodeHtmlBuffer(buffer) {
   if (!buffer) return '';
@@ -109,15 +161,15 @@ function decodeHtmlBuffer(buffer) {
     }
   }
 
-  // 3. Self-healing logic for CP949 bytes double-encoded as Latin-1 (mojibake)
+  // 3. Self-healing logic for CP949 bytes double-encoded as CP1252/Latin-1 (mojibake)
   // If UTF-8 succeeded but there are no Korean characters and it looks like mojibake,
-  // convert it back to Latin-1 bytes and decode as EUC-KR.
+  // convert it back to original 8-bit bytes using loss-free CP1252 map and decode as EUC-KR.
   if (utf8Success && !/[가-힣]/.test(decodedText)) {
     try {
-      const latin1Bytes = Buffer.from(decodedText, 'latin1');
-      const restoredText = new TextDecoder('euc-kr').decode(latin1Bytes);
+      const restoredBytes = stringToCp1252Buffer(decodedText);
+      const restoredText = new TextDecoder('euc-kr').decode(restoredBytes);
       if (/[가-힣]/.test(restoredText)) {
-        console.log('Double-encoded EUC-KR (mojibake) successfully detected and restored!');
+        console.log('Double-encoded EUC-KR (mojibake) successfully detected and restored with CP1252 map!');
         return restoredText;
       }
     } catch (restoreErr) {
