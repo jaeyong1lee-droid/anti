@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+  
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
   
@@ -77,7 +79,7 @@ export default function App() {
   const fetchTodayReviews = async (dateStr) => {
     setLoadingReviews(true);
     try {
-      const res = await fetch(`/api/dashboard?date=${dateStr}`);
+      const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
       if (res.ok) {
         setTodayReviews(data.reviews || []);
@@ -95,7 +97,7 @@ export default function App() {
   const fetchAllTopics = async () => {
     setLoadingTopics(true);
     try {
-      const res = await fetch('/api/topics');
+      const res = await fetch(`${API_BASE}/api/topics`);
       const data = await res.json();
       if (res.ok) {
         setAllTopics(data || []);
@@ -134,7 +136,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/topics', {
+      const res = await fetch(`${API_BASE}/api/topics`, {
         method: 'POST',
         body: formData,
       });
@@ -164,7 +166,7 @@ export default function App() {
   // Mark specific schedule round as complete
   const handleCompleteReview = async (scheduleId, topicTitle, round) => {
     try {
-      const res = await fetch(`/api/schedules/${scheduleId}/complete`, {
+      const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/complete`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -189,7 +191,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(`/api/topics/${topicId}`, {
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -219,7 +221,7 @@ export default function App() {
     setReportText('');
 
     try {
-      const res = await fetch(`/api/topics/${topicId}/ai-questions`, {
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -243,7 +245,7 @@ export default function App() {
     setLoadingReport(true);
     setShowFullReport(true);
     try {
-      const res = await fetch(`/api/topics/${topicId}/text`);
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}/text`);
       const data = await res.json();
       if (res.ok) {
         setReportText(data.text || '보고서 내용이 비어 있습니다.');
