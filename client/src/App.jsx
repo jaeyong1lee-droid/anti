@@ -847,18 +847,12 @@ export default function App() {
                 <p className="text-sm text-slate-400">아직 등록된 학습 토픽이 없습니다. 첫 번째 토픽을 등록해 복습 스케줄을 확인해 보세요!</p>
               </div>
             ) : (() => {
-              const filteredTopics = allTopics.filter(topic => 
-                topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
-              );
-              
-              if (filteredTopics.length === 0) {
-                return (
-                  <div className="py-12 text-center">
-                    <p className="text-sm text-slate-400">검색 조건에 부합하는 토픽이 없습니다.</p>
-                  </div>
-                );
-              }
+              const matchedIndex = searchQuery 
+                ? allTopics.findIndex(topic => 
+                    topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )
+                : -1;
               
               return (
                 <div className="overflow-x-auto">
@@ -875,8 +869,8 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
-                      {filteredTopics.map((topic, idx) => {
-                        const isFirstMatch = searchQuery && idx === 0;
+                      {allTopics.map((topic, idx) => {
+                        const isFirstMatch = searchQuery && idx === matchedIndex;
                         return (
                           <tr 
                             key={topic.id} 
