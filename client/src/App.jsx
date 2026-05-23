@@ -401,9 +401,9 @@ export default function App() {
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
-      const isHtml = file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm');
+      const fileNameLower = file.name.toLowerCase();
+      const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+      const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
       if (isPdf || isHtml) {
         setPdfFile(file);
         // Auto-populate title with filename without extension
@@ -612,7 +612,102 @@ export default function App() {
           /* DASHBOARD VIEW (Two Column) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* LEFT: Today's study registration form */}
+            {/* LEFT: Today's review items list */}
+            <section className="lg:col-span-7 space-y-5">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Clock size={20} className="text-brand-400" />
+                  <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
+                </div>
+                <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
+                  총 {todayReviews.length}개 대기 중
+                </span>
+              </div>
+
+              {loadingReviews ? (
+                <div className="glass-panel rounded-3xl p-12 border border-slate-800 flex flex-col items-center justify-center gap-4">
+                  <RefreshCw className="animate-spin text-brand-500" size={32} />
+                  <p className="text-sm font-medium text-slate-400">데이터를 불러오는 중입니다...</p>
+                </div>
+              ) : todayReviews.length === 0 ? (
+                /* Empty state */
+                <div className="glass-panel rounded-3xl p-12 border border-slate-800 text-center flex flex-col items-center justify-center">
+                  <div className="p-4 bg-emerald-950/30 text-emerald-400 rounded-full mb-4 animate-pulse-slow">
+                    <CheckCircle size={36} />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">오늘 예정된 복습이 모두 완료되었습니다!</h3>
+                  <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
+                    에빙하우스 망각곡선 필터 기준, 복습 대상인 토픽이 없습니다. 새로운 학습 토픽을 등록하거나 복습 기준일을 미래 날짜로 변경하여 테스트해 보세요.
+                  </p>
+                </div>
+              ) : (
+                /* Card List */
+                <div className="space-y-4">
+                  {todayReviews.map((item) => (
+                    <div 
+                      key={item.schedule_id}
+                      className="glass-panel rounded-2xl p-5 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-purple-hover"
+                    >
+                      <div className="space-y-2.5 flex-grow">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${getRoundBadgeStyle(item.review_round)}`}>
+                            {item.review_round}회차 복습
+                          </span>
+                          {item.planned_date < referenceDate && (
+                            <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold px-2 py-0.5 rounded-full">
+                              미뤄진 복습
+                            </span>
+                          )}
+                          {item.pdf_name && (
+                            <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              {item.pdf_name.toLowerCase().endsWith('.html') || item.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
+                              {item.pdf_name.toLowerCase().endsWith('.html') || item.pdf_name.toLowerCase().endsWith('.htm') ? 'HTML 첨부' : 'PDF 첨부'}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight">
+                          {item.title}
+                        </h3>
+
+                        {/* Keyword list */}
+                        {item.keywords && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {item.keywords.split(/[,#\s]+/).filter(Boolean).map((kw, i) => (
+                              <span key={i} className="text-xs bg-slateCustom-900 text-slate-400 border border-slate-800/80 px-2 py-0.5 rounded-md font-medium">
+                                #{kw}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2.5 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end">
+                        <button
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name)}
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
+                        >
+                          <Sparkles size={14} />
+                          복습하기 (AI 기출)
+                        </button>
+                        
+                        <button
+                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                          title="복습 완료"
+                        >
+                          <Check size={14} />
+                          복습 완료
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* RIGHT: Today's study registration form */}
             <section className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
@@ -680,7 +775,7 @@ export default function App() {
                     {pdfFile ? (
                       <div className="w-full flex flex-col items-center">
                         <div className="p-3 bg-emerald-950/50 text-emerald-400 rounded-full mb-3">
-                          {pdfFile.name.endsWith('.html') || pdfFile.name.endsWith('.htm') ? (
+                          {pdfFile.name.toLowerCase().endsWith('.html') || pdfFile.name.toLowerCase().endsWith('.htm') ? (
                             <FileCode size={28} />
                           ) : (
                             <FileText size={28} />
@@ -733,101 +828,6 @@ export default function App() {
                   )}
                 </button>
               </form>
-            </section>
-
-            {/* RIGHT: Today's review items list */}
-            <section className="lg:col-span-7 space-y-5">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Clock size={20} className="text-brand-400" />
-                  <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
-                </div>
-                <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
-                  총 {todayReviews.length}개 대기 중
-                </span>
-              </div>
-
-              {loadingReviews ? (
-                <div className="glass-panel rounded-3xl p-12 border border-slate-800 flex flex-col items-center justify-center gap-4">
-                  <RefreshCw className="animate-spin text-brand-500" size={32} />
-                  <p className="text-sm font-medium text-slate-400">데이터를 불러오는 중입니다...</p>
-                </div>
-              ) : todayReviews.length === 0 ? (
-                /* Empty state */
-                <div className="glass-panel rounded-3xl p-12 border border-slate-800 text-center flex flex-col items-center justify-center">
-                  <div className="p-4 bg-emerald-950/30 text-emerald-400 rounded-full mb-4 animate-pulse-slow">
-                    <CheckCircle size={36} />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2">오늘 예정된 복습이 모두 완료되었습니다!</h3>
-                  <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-                    에빙하우스 망각곡선 필터 기준, 복습 대상인 토픽이 없습니다. 새로운 학습 토픽을 등록하거나 복습 기준일을 미래 날짜로 변경하여 테스트해 보세요.
-                  </p>
-                </div>
-              ) : (
-                /* Card List */
-                <div className="space-y-4">
-                  {todayReviews.map((item) => (
-                    <div 
-                      key={item.schedule_id}
-                      className="glass-panel rounded-2xl p-5 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-purple-hover"
-                    >
-                      <div className="space-y-2.5 flex-grow">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${getRoundBadgeStyle(item.review_round)}`}>
-                            {item.review_round}회차 복습
-                          </span>
-                          {item.planned_date < referenceDate && (
-                            <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold px-2 py-0.5 rounded-full">
-                              미뤄진 복습
-                            </span>
-                          )}
-                          {item.pdf_name && (
-                            <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                              {item.pdf_name.endsWith('.html') || item.pdf_name.endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
-                              {item.pdf_name.endsWith('.html') || item.pdf_name.endsWith('.htm') ? 'HTML 첨부' : 'PDF 첨부'}
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight">
-                          {item.title}
-                        </h3>
-
-                        {/* Keyword list */}
-                        {item.keywords && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {item.keywords.split(/[,#\s]+/).filter(Boolean).map((kw, i) => (
-                              <span key={i} className="text-xs bg-slateCustom-900 text-slate-400 border border-slate-800/80 px-2 py-0.5 rounded-md font-medium">
-                                #{kw}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2.5 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end">
-                        <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
-                        >
-                          <Sparkles size={14} />
-                          복습하기 (AI 기출)
-                        </button>
-                        
-                        <button
-                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                          title="복습 완료"
-                        >
-                          <Check size={14} />
-                          복습 완료
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </section>
           </div>
         ) : (
@@ -944,7 +944,7 @@ export default function App() {
                                 </h4>
                                 {topic.pdf_name ? (
                                   <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                                    {topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
+                                    {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
                                     {topic.pdf_name}
                                   </p>
                                 ) : (
@@ -1090,7 +1090,7 @@ export default function App() {
                             <FileText className="text-brand-400" size={18} />
                             {selectedTopic.title} - 원본 파일 보기
                           </h4>
-                          {!selectedTopic.pdf_name?.endsWith('.html') && !selectedTopic.pdf_name?.endsWith('.htm') ? (
+                          {!selectedTopic.pdf_name?.toLowerCase().endsWith('.html') && !selectedTopic.pdf_name?.toLowerCase().endsWith('.htm') ? (
                             <div className="flex mt-1.5 p-0.5 bg-slateCustom-950 border border-slate-800/80 rounded-lg max-w-max">
                               <button
                                 onClick={() => setReportViewType('pdf')}
@@ -1139,7 +1139,7 @@ export default function App() {
                         </div>
                       </div>
                       {selectedTopic.pdf_name ? (
-                        selectedTopic.pdf_name.endsWith('.html') || selectedTopic.pdf_name.endsWith('.htm') ? (
+                        selectedTopic.pdf_name.toLowerCase().endsWith('.html') || selectedTopic.pdf_name.toLowerCase().endsWith('.htm') ? (
                           <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-white h-[55vh]">
                             <iframe
                               src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}

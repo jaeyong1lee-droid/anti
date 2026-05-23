@@ -130,6 +130,25 @@ function stringToCp1252Buffer(str) {
   return Buffer.from(bytes);
 }
 
+// Helper: Check if a buffer contains HTML content by inspecting its beginning bytes
+function isBufferHtml(buffer) {
+  if (!buffer || buffer.length < 4) return false;
+  // Check if it starts with PDF magic bytes %PDF- (0x25 0x50 0x44 0x46 0x2d)
+  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 && buffer[4] === 0x2d) {
+    return false;
+  }
+  const prefix = buffer.toString('utf-8', 0, Math.min(1000, buffer.length)).trim().toLowerCase();
+  return prefix.includes('<!doctype html') || 
+         prefix.includes('<html') || 
+         prefix.includes('<head') || 
+         prefix.includes('<body') || 
+         prefix.includes('<div') || 
+         prefix.includes('<p') || 
+         prefix.includes('<script') ||
+         prefix.includes('</html>') ||
+         prefix.includes('<style');
+}
+
 // Helper: Decode HTML Buffer into UTF-8 string automatically supporting EUC-KR/CP949 fallback and double-encoded Mojibake restoration
 function decodeHtmlBuffer(buffer) {
   if (!buffer) return '';
@@ -528,10 +547,14 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
 
     // Keep raw HTML files intact to preserve layouts, formatting, and inline images
     if (req.file) {
-      const isHtml = req.file.originalname.endsWith('.html') || 
-                     req.file.originalname.endsWith('.htm') || 
+      const fileOrigNameLower = req.file.originalname.toLowerCase();
+      const pdfNameLower = pdfName ? pdfName.toLowerCase() : '';
+      const isHtml = fileOrigNameLower.endsWith('.html') || 
+                     fileOrigNameLower.endsWith('.htm') || 
                      req.file.mimetype === 'text/html' || 
-                     (pdfName && (pdfName.endsWith('.html') || pdfName.endsWith('.htm')));
+                     pdfNameLower.endsWith('.html') || 
+                     pdfNameLower.endsWith('.htm') ||
+                     isBufferHtml(req.file.buffer);
       if (isHtml) {
         console.log(`HTML file upload detected: ${pdfName}. Keeping raw HTML content to preserve rich diagrams and styles.`);
         pdfData = req.file.buffer; // Store original HTML buffer directly!
@@ -739,7 +762,11 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     let fileText = '';
     if (topic.pdf_data) {
-      const isHtml = topic.pdf_name && (topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm'));
+      const isHtml = topic.pdf_name && (
+        topic.pdf_name.toLowerCase().endsWith('.html') || 
+        topic.pdf_name.toLowerCase().endsWith('.htm') || 
+        isBufferHtml(topic.pdf_data)
+      );
       if (isHtml) {
         try {
           const rawHtml = topic.pdf_data.toString('utf-8');
@@ -839,7 +866,11 @@ app.get('/api/topics/:id/text', async (req, res) => {
 
     let fileText = '';
     if (topic.pdf_data) {
-      const isHtml = topic.pdf_name && (topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm'));
+      const isHtml = topic.pdf_name && (
+        topic.pdf_name.toLowerCase().endsWith('.html') || 
+        topic.pdf_name.toLowerCase().endsWith('.htm') || 
+        isBufferHtml(topic.pdf_data)
+      );
       if (isHtml) {
         try {
           const rawHtml = topic.pdf_data.toString('utf-8');
@@ -885,7 +916,11 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
     }
 
-    const isHtml = topic.pdf_name && (topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm'));
+    const isHtml = topic.pdf_name && (
+      topic.pdf_name.toLowerCase().endsWith('.html') || 
+      topic.pdf_name.toLowerCase().endsWith('.htm') || 
+      isBufferHtml(topic.pdf_data)
+    );
     if (isHtml) {
       // Decode HTML buffer cleanly and stream it natively with UTF-8 encoding
       const htmlContent = decodeHtmlBuffer(topic.pdf_data);
