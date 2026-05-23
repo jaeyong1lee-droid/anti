@@ -788,6 +788,27 @@ app.get('/api/topics/:id/text', async (req, res) => {
   }
 });
 
+// 8. Stream Raw PDF File directly for native browser viewing
+app.get('/api/topics/:id/pdf', async (req, res) => {
+  const topicId = req.params.id;
+
+  try {
+    const topicSql = `SELECT pdf_name, pdf_data FROM topics WHERE id = ?`;
+    const topic = await dbQuery.get(topicSql, [topicId]);
+
+    if (!topic || !topic.pdf_data) {
+      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.pdf_name)}"`);
+    res.send(topic.pdf_data);
+  } catch (error) {
+    console.error('Error streaming PDF file:', error);
+    res.status(500).send('서버 오류로 PDF 파일을 스트리밍하지 못했습니다.');
+  }
+});
+
 // SERVER INLINE STARTUP
 async function startServer() {
   try {
