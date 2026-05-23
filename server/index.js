@@ -73,6 +73,38 @@ function mergeVerticalText(text) {
   return mergedLines.join('\n\n');
 }
 
+// Helper: Decode HTML Buffer into UTF-8 string automatically supporting EUC-KR/CP949 fallback
+function decodeHtmlBuffer(buffer) {
+  if (!buffer) return '';
+  
+  const asciiText = buffer.toString('ascii').toLowerCase();
+  const hasEucKrTag = asciiText.includes('charset=euc-kr') || 
+                      asciiText.includes('charset="euc-kr"') || 
+                      asciiText.includes('charset=cp949') || 
+                      asciiText.includes('charset="cp949"');
+  
+  if (hasEucKrTag) {
+    console.log('EUC-KR / CP949 meta charset tag detected. Decoding as EUC-KR.');
+    try {
+      return new TextDecoder('euc-kr').decode(buffer);
+    } catch (e) {
+      console.warn('TextDecoder euc-kr failed, falling back to standard string:', e);
+    }
+  }
+
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch (e) {
+    console.log('UTF-8 decoding failed (fatal: true). Falling back to EUC-KR.');
+    try {
+      return new TextDecoder('euc-kr').decode(buffer);
+    } catch (e2) {
+      console.error('EUC-KR decoding failed as well, returning raw utf-8 string:', e2);
+      return buffer.toString('utf-8');
+    }
+  }
+}
+
 // Helper: Extract clean plain text from HTML
 function htmlToPlainText(html) {
   if (!html) return '';
@@ -406,7 +438,7 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
       if (isHtml) {
         try {
           console.log(`HTML file upload detected: ${pdfName}. Converting to PDF automatically.`);
-          const htmlContent = req.file.buffer.toString('utf-8');
+          const htmlContent = decodeHtmlBuffer(req.file.buffer);
           const plainText = htmlToPlainText(htmlContent);
           const pdfBuffer = await convertTextToPdfBuffer(plainText, title);
           
