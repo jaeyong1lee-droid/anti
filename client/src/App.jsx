@@ -211,8 +211,8 @@ export default function App() {
   };
 
   // Trigger Gemini AI custom questions Modal
-  const handleOpenAIQuestions = async (topicId, title, keywords) => {
-    setSelectedTopic({ id: topicId, title, keywords });
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName) => {
+    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
@@ -663,7 +663,7 @@ export default function App() {
                       {/* Actions */}
                       <div className="flex items-center gap-2.5 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end">
                         <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords)}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name)}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
                         >
                           <Sparkles size={14} />
@@ -722,7 +722,7 @@ export default function App() {
                         <td className="py-4 px-4 max-w-xs">
                           <div className="space-y-1">
                             <h4 
-                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords)}
+                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
                               className="font-bold text-white text-sm truncate hover:text-brand-400 cursor-pointer transition-colors"
                               title="클릭 시 복습 주기에 상관없이 자율 인출 기출 퀴즈를 풉니다."
                             >
@@ -768,7 +768,7 @@ export default function App() {
                         <td className="py-4 px-2 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
-                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords)}
+                              onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
                               title="복습 주기에 관계없이 언제든 실전 기출 퀴즈를 풉니다."
                             >
@@ -850,7 +850,7 @@ export default function App() {
                     <div className="flex items-center gap-3">
                       {selectedTopic && selectedTopic.id && (
                         <button
-                          onClick={() => showFullReport ? setShowFullReport(false) : handleViewFullReport(selectedTopic.id)}
+                          onClick={() => setShowFullReport(!showFullReport)}
                           className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/20 text-xs font-bold transition-all duration-200"
                         >
                           {showFullReport ? "✍️ 기출문제 풀기로 가기" : "📄 보고서 전문 보기"}
@@ -866,28 +866,49 @@ export default function App() {
                   </div>
 
                   {showFullReport ? (
-                    /* Beautiful Glassmorphic Full Report Text Reader */
-                    <div className="bg-slateCustom-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4 max-h-[60vh] overflow-y-auto animate-fade-in">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                        <h4 className="font-extrabold text-white text-base flex items-center gap-2">
-                          <FileText className="text-brand-400" size={18} />
-                          {selectedTopic.title} - 보고서 전문
-                        </h4>
-                        <button
-                          onClick={() => setShowFullReport(false)}
-                          className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition-colors font-bold"
-                        >
-                          시험지로 돌아가기
-                        </button>
+                    /* Beautiful Glassmorphic Full Report Native PDF Viewer */
+                    <div className="bg-slateCustom-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4 max-h-[80vh] flex flex-col animate-fade-in">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+                        <div>
+                          <h4 className="font-extrabold text-white text-base flex items-center gap-2">
+                            <FileText className="text-brand-400" size={18} />
+                            {selectedTopic.title} - 원본 파일 보기
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            그림, 표, 공식이 포함된 오리지널 레이아웃 PDF 뷰어입니다.
+                          </p>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          {selectedTopic.pdf_name && (
+                            <a
+                              href={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-grow sm:flex-grow-0 text-center text-xs bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/20 px-3.5 py-2 rounded-xl transition-all duration-200 font-bold"
+                            >
+                              ↗️ 새 창에서 원본 열기
+                            </a>
+                          )}
+                          <button
+                            onClick={() => setShowFullReport(false)}
+                            className="flex-grow sm:flex-grow-0 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl transition-all duration-200 font-bold"
+                          >
+                            시험지로 돌아가기
+                          </button>
+                        </div>
                       </div>
-                      {loadingReport ? (
-                        <div className="py-20 flex flex-col items-center justify-center gap-3">
-                          <RefreshCw className="animate-spin text-brand-500" size={24} />
-                          <p className="text-xs text-slate-400">보고서를 불러오고 있습니다...</p>
+                      {selectedTopic.pdf_name ? (
+                        <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-slateCustom-950 h-[55vh]">
+                          <iframe
+                            src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
+                            className="w-full h-full border-0"
+                            title="Original Document PDF Viewer"
+                          />
                         </div>
                       ) : (
-                        <div className="text-sm text-slate-300 whitespace-pre-line leading-relaxed font-sans px-2 max-w-none">
-                          {reportText}
+                        <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
+                          <Info size={32} className="text-slate-500" />
+                          <p className="text-sm text-slate-400">수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.</p>
                         </div>
                       )}
                     </div>
