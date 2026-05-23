@@ -401,6 +401,7 @@ export default function App() {
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
       const fileNameLower = file.name.toLowerCase();
       const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
       const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
