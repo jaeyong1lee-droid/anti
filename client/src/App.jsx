@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
-function PdfImageRenderer({ pdfUrl }) {
+function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [numPages, setNumPages] = useState(0);
@@ -78,7 +78,7 @@ function PdfImageRenderer({ pdfUrl }) {
     return () => {
       active = false;
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, pdfjsLoaded]);
 
   return (
     <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-850">
@@ -1014,7 +1014,7 @@ export default function App() {
                             />
                           </div>
                         ) : (
-                          <PdfImageRenderer pdfUrl={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`} />
+                          <PdfImageRenderer pdfUrl={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`} pdfjsLoaded={pdfjsLoaded} />
                         )
                       ) : (
                         <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
