@@ -141,6 +141,7 @@ export default function App() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportViewType, setReportViewType] = useState('pdf'); // 'pdf' or 'image'
   const [pdfjsLoaded, setPdfjsLoaded] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const firstMatchRef = useRef(null);
 
@@ -793,25 +794,44 @@ export default function App() {
               </div>
               
               {/* Search bar inside allTopics view */}
-              <div className="relative w-full md:w-80">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="토픽 제목 또는 키워드 검색..."
-                  className="w-full bg-slateCustom-900 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl pl-10 pr-12 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
-                />
-                <div className="absolute left-3 top-3 text-slate-500">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                  </svg>
+              <div className="relative w-full md:w-80 flex gap-2">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setSearchQuery(searchInput);
+                      }
+                    }}
+                    placeholder="토픽 제목 또는 키워드 검색..."
+                    className="w-full bg-slateCustom-900 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
+                  />
+                  <div className="absolute left-3 top-3 text-slate-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
                 </div>
-                {searchQuery && (
+                
+                {/* Dynamically toggle between Search and Clear button */}
+                {searchQuery && searchQuery === searchInput ? (
                   <button 
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-2 text-slate-400 hover:text-white text-[10px] font-bold bg-slate-800 hover:bg-slate-700 rounded-lg px-2 py-1 transition-colors"
+                    onClick={() => {
+                      setSearchInput('');
+                      setSearchQuery('');
+                    }}
+                    className="flex-shrink-0 text-slate-400 hover:text-white text-xs font-bold bg-slate-800 hover:bg-slate-700 rounded-xl px-4 py-2.5 transition-colors border border-slate-700"
                   >
                     지우기
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setSearchQuery(searchInput)}
+                    className="flex-shrink-0 text-brand-300 hover:text-white text-xs font-bold bg-brand-950/60 hover:bg-brand-900/60 border border-brand-500/30 rounded-xl px-4 py-2.5 transition-colors"
+                  >
+                    검색
                   </button>
                 )}
               </div>
