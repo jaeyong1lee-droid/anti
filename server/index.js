@@ -6,7 +6,12 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initDatabase, dbQuery } from './database.js';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -160,16 +165,20 @@ function decodeHtmlBuffer(buffer) {
       return buffer.toString('utf-8');
     }
   }
-
   // 3. Self-healing logic for CP949 bytes double-encoded as CP1252/Latin-1 (mojibake)
-  // If UTF-8 succeeded but there are no Korean characters and it looks like mojibake,
-  // convert it back to original 8-bit bytes using loss-free CP1252 map and decode as EUC-KR.
-  if (utf8Success && !/[가-힣]/.test(decodedText)) {
+  // If UTF-8 succeeded, compare the density of valid Korean characters in the restored CP949 text
+  // versus the raw decoded text. If the restored text yields MORE valid Korean characters,
+  // we heal the content. This prevents template/boilerplates from blocking the restoration of the whole file.
+  if (utf8Success) {
     try {
       const restoredBytes = stringToCp1252Buffer(decodedText);
       const restoredText = new TextDecoder('euc-kr').decode(restoredBytes);
-      if (/[가-힣]/.test(restoredText)) {
-        console.log('Double-encoded EUC-KR (mojibake) successfully detected and restored with CP1252 map!');
+      
+      const originalKoreanCount = (decodedText.match(/[가-힣]/g) || []).length;
+      const restoredKoreanCount = (restoredText.match(/[가-힣]/g) || []).length;
+      
+      if (restoredKoreanCount > originalKoreanCount) {
+        console.log(`Double-encoded EUC-KR (mojibake) successfully detected! (Healed Korean chars: ${originalKoreanCount} -> ${restoredKoreanCount})`);
         return restoredText;
       }
     } catch (restoreErr) {
@@ -235,20 +244,33 @@ function convertTextToPdfBuffer(text, title) {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
 
-      // Try to load standard Windows Korean font, fallback to standard Helvetica
+      // 1st Priority: Load bundled NanumGothic.ttf font (ensures cross-platform/Vercel support)
       let fontLoaded = false;
-      const fontPath = 'C:\\Windows\\Fonts\\malgun.ttf'; // Malgun Gothic (Standard Windows Korean Font)
-      if (fs.existsSync(fontPath)) {
+      const localFontPath = path.resolve(__dirname, 'NanumGothic.ttf');
+      if (fs.existsSync(localFontPath)) {
         try {
-          doc.font(fontPath);
+          doc.font(localFontPath);
           fontLoaded = true;
         } catch (e) {
-          console.warn('Failed to load Malgun Gothic font, falling back to default:', e);
+          console.warn('Failed to load local NanumGothic font:', e);
         }
       }
 
+      // 2nd Priority: Fallback to standard Windows Malgun Gothic
       if (!fontLoaded) {
-        // Fallback: If on another OS or missing Malgun Gothic, check other system fonts
+        const fontPath = 'C:\\Windows\\Fonts\\malgun.ttf';
+        if (fs.existsSync(fontPath)) {
+          try {
+            doc.font(fontPath);
+            fontLoaded = true;
+          } catch (e) {
+            console.warn('Failed to load Malgun Gothic font, falling back to default:', e);
+          }
+        }
+      }
+
+      // 3rd Priority: Fallback to other system fonts
+      if (!fontLoaded) {
         const fallbackFonts = [
           'C:\\Windows\\Fonts\\batang.ttc',
           'C:\\Windows\\Fonts\\gulim.ttc'

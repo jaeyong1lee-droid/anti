@@ -479,7 +479,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex bg-slateCustom-900/60 p-1 border border-slate-800/80 rounded-xl">
+          <div className="flex md:hidden bg-slateCustom-900/60 p-1 border border-slate-800/80 rounded-xl">
             <button
               onClick={() => setViewMode('dashboard')}
               className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
@@ -506,8 +506,37 @@ export default function App() {
         </div>
       </header>
 
+      {/* Floating Vertical Navigation - Left Center (Desktop Only) */}
+      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-40 rounded-2xl glow-purple animate-fade-in">
+        <button
+          onClick={() => setViewMode('dashboard')}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            viewMode === 'dashboard'
+              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+          }`}
+          title="오늘의 복습"
+        >
+          <Calendar size={20} />
+          <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
+        </button>
+        <button
+          onClick={() => setViewMode('all_topics')}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            viewMode === 'all_topics'
+              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+          }`}
+          title={`토픽 진행현황 (${allTopics.length})`}
+        >
+          <List size={20} />
+          <span className="text-[10px] font-bold tracking-tight">진행현황</span>
+          <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
+        </button>
+      </div>
+
       {/* Main Content Area */}
-      <main className="max-w-7xl w-full mx-auto px-6 md:px-12 mt-8 flex-grow">
+      <main className="max-w-7xl w-full mx-auto px-6 md:px-12 md:pl-28 mt-8 flex-grow">
         
         {/* Statistics Dashboard Banner */}
         <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
