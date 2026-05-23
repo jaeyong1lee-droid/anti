@@ -73,10 +73,11 @@ function mergeVerticalText(text) {
   return mergedLines.join('\n\n');
 }
 
-// Helper: Decode HTML Buffer into UTF-8 string automatically supporting EUC-KR/CP949 fallback
+// Helper: Decode HTML Buffer into UTF-8 string automatically supporting EUC-KR/CP949 fallback and double-encoded Mojibake restoration
 function decodeHtmlBuffer(buffer) {
   if (!buffer) return '';
   
+  // 1. First, check for explicit EUC-KR/CP949 meta tags in ASCII header
   const asciiText = buffer.toString('ascii').toLowerCase();
   const hasEucKrTag = asciiText.includes('charset=euc-kr') || 
                       asciiText.includes('charset="euc-kr"') || 
@@ -88,21 +89,43 @@ function decodeHtmlBuffer(buffer) {
     try {
       return new TextDecoder('euc-kr').decode(buffer);
     } catch (e) {
-      console.warn('TextDecoder euc-kr failed, falling back to standard string:', e);
+      console.warn('TextDecoder euc-kr failed, falling back to standard flow:', e);
     }
   }
 
+  // 2. Try standard UTF-8 decoding
+  let decodedText = '';
+  let utf8Success = false;
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    decodedText = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    utf8Success = true;
   } catch (e) {
-    console.log('UTF-8 decoding failed (fatal: true). Falling back to EUC-KR.');
+    console.log('UTF-8 decoding failed (fatal: true). Falling back to direct EUC-KR.');
     try {
       return new TextDecoder('euc-kr').decode(buffer);
     } catch (e2) {
-      console.error('EUC-KR decoding failed as well, returning raw utf-8 string:', e2);
+      console.error('EUC-KR decoding failed as well, returning raw string:', e2);
       return buffer.toString('utf-8');
     }
   }
+
+  // 3. Self-healing logic for CP949 bytes double-encoded as Latin-1 (mojibake)
+  // If UTF-8 succeeded but there are no Korean characters and it looks like mojibake,
+  // convert it back to Latin-1 bytes and decode as EUC-KR.
+  if (utf8Success && !/[가-힣]/.test(decodedText)) {
+    try {
+      const latin1Bytes = Buffer.from(decodedText, 'latin1');
+      const restoredText = new TextDecoder('euc-kr').decode(latin1Bytes);
+      if (/[가-힣]/.test(restoredText)) {
+        console.log('Double-encoded EUC-KR (mojibake) successfully detected and restored!');
+        return restoredText;
+      }
+    } catch (restoreErr) {
+      console.warn('EUC-KR mojibake restoration check failed:', restoreErr);
+    }
+  }
+
+  return decodedText;
 }
 
 // Helper: Extract clean plain text from HTML
