@@ -25,6 +25,79 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 
+// Pure browser-side PDF-to-Image renderer using PDF.js CDN
+function PdfImageRenderer({ pdfUrl }) {
+  const containerRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [numPages, setNumPages] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const renderPages = async () => {
+      if (!window.pdfjsLib) return;
+      setLoading(true);
+      try {
+        const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        if (!active) return;
+        setNumPages(pdf.numPages);
+        
+        const container = containerRef.current;
+        if (!container) return;
+        container.innerHTML = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          if (!active) return;
+
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.className = 'w-full max-w-3xl my-4 rounded-xl shadow-lg bg-white border border-slate-800 animate-fade-in';
+          
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          await page.render(renderContext).promise;
+          if (!active) return;
+          
+          container.appendChild(canvas);
+        }
+      } catch (err) {
+        console.error('Error rendering PDF as image:', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    renderPages();
+    return () => {
+      active = false;
+    };
+  }, [pdfUrl]);
+
+  return (
+    <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-850">
+      {loading && (
+        <div className="py-20 flex flex-col items-center justify-center gap-3">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+          </div>
+          <p className="text-xs text-slate-400">PDF를 고해상도 그림으로 변환하여 렌더링 중입니다...</p>
+        </div>
+      )}
+      <div ref={containerRef} className="w-full flex flex-col items-center"></div>
+      {!loading && numPages > 0 && (
+        <p className="text-[10px] text-slate-500 my-2">총 {numPages}페이지가 이미지로 정상 변환되었습니다.</p>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
   
@@ -66,6 +139,8 @@ export default function App() {
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
   const [loadingReport, setLoadingReport] = useState(false);
+  const [reportViewType, setReportViewType] = useState('pdf'); // 'pdf' or 'image'
+  const [pdfjsLoaded, setPdfjsLoaded] = useState(false);
 
   // Success Notification banner
   const [notification, setNotification] = useState(null);
@@ -116,6 +191,19 @@ export default function App() {
     fetchTodayReviews(referenceDate);
     fetchAllTopics();
   }, [referenceDate]);
+
+  // Load PDF.js dynamically when switching to image view
+  useEffect(() => {
+    if (showFullReport && reportViewType === 'image' && !pdfjsLoaded) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+      script.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        setPdfjsLoaded(true);
+      };
+      document.head.appendChild(script);
+    }
+  }, [showFullReport, reportViewType, pdfjsLoaded]);
 
   // Form Submit (Uses the UI referenceDate as baseDate to maintain perfect study session alignment)
   const handleRegisterTopic = async (e) => {
@@ -874,9 +962,28 @@ export default function App() {
                             <FileText className="text-brand-400" size={18} />
                             {selectedTopic.title} - 원본 파일 보기
                           </h4>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            그림, 표, 공식이 포함된 오리지널 레이아웃 PDF 뷰어입니다.
-                          </p>
+                          <div className="flex mt-1.5 p-0.5 bg-slateCustom-950 border border-slate-800/80 rounded-lg max-w-max">
+                            <button
+                              onClick={() => setReportViewType('pdf')}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
+                                reportViewType === 'pdf'
+                                  ? 'bg-brand-600 text-white shadow-sm'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              📄 PDF 파일로 보기
+                            </button>
+                            <button
+                              onClick={() => setReportViewType('image')}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
+                                reportViewType === 'image'
+                                  ? 'bg-brand-600 text-white shadow-sm'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              🖼️ 그림(이미지)으로 보기
+                            </button>
+                          </div>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           {selectedTopic.pdf_name && (
@@ -898,13 +1005,17 @@ export default function App() {
                         </div>
                       </div>
                       {selectedTopic.pdf_name ? (
-                        <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-slateCustom-950 h-[55vh]">
-                          <iframe
-                            src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
-                            className="w-full h-full border-0"
-                            title="Original Document PDF Viewer"
-                          />
-                        </div>
+                        reportViewType === 'pdf' ? (
+                          <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-slateCustom-950 h-[55vh]">
+                            <iframe
+                              src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
+                              className="w-full h-full border-0"
+                              title="Original Document PDF Viewer"
+                            />
+                          </div>
+                        ) : (
+                          <PdfImageRenderer pdfUrl={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`} />
+                        )
                       ) : (
                         <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
                           <Info size={32} className="text-slate-500" />
