@@ -432,6 +432,7 @@ export default function App() {
       case 2: return 'bg-indigo-950/60 text-indigo-300 border border-indigo-500/30';
       case 3: return 'bg-blue-950/60 text-blue-300 border border-blue-500/30';
       case 4: return 'bg-amber-950/60 text-amber-300 border border-amber-500/30';
+      case 5: return 'bg-rose-950/60 text-rose-300 border border-rose-500/30';
       default: return 'bg-slate-900 text-slate-300';
     }
   };
@@ -604,7 +605,7 @@ export default function App() {
                 style={{ width: `${overallProgressPercent}%` }}
               ></div>
             </div>
-            <p className="text-[10px] text-slate-500 mt-2">각 토픽의 1일, 4일, 7일, 14일 복습 달성률</p>
+             <p className="text-[10px] text-slate-500 mt-2">각 토픽의 1일, 4일, 7일, 14일, 60일 복습 달성률</p>
           </div>
         </section>
 
@@ -910,6 +911,7 @@ export default function App() {
                         <th className="py-4 px-2 text-center">2회차 복습 (4일 뒤)</th>
                         <th className="py-4 px-2 text-center">3회차 복습 (7일 뒤)</th>
                         <th className="py-4 px-2 text-center">4회차 복습 (14일 뒤)</th>
+                        <th className="py-4 px-2 text-center">5회차 복습 (60일 뒤)</th>
                         <th className="py-4 px-2 text-center">도구</th>
                         <th className="py-4 px-4 text-right">등록 일시</th>
                       </tr>
@@ -953,8 +955,8 @@ export default function App() {
                               </div>
                             </td>
                             
-                            {/* 4 spaced rounds status grid */}
-                            {[1, 2, 3, 4].map((round) => {
+                            {/* 5 spaced rounds status grid */}
+                            {[1, 2, 3, 4, 5].map((round) => {
                               const sched = topic.schedules?.find(s => s.review_round === round);
                               return (
                                 <td key={round} className="py-4 px-2 text-center">

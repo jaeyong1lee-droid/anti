@@ -593,8 +593,8 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
 
     const topicId = topicResult.id;
 
-    // 망각주기 스케줄링 알고리즘: 등록일 기준 [+1일, +4일, +7일, +14일]
-    const intervals = [1, 4, 7, 14];
+    // 망각주기 스케줄링 알고리즘: 등록일 기준 [+1일, +4일, +7일, +14일, +60일]
+    const intervals = [1, 4, 7, 14, 60];
     
     const insertScheduleSql = `
       INSERT INTO schedules (topic_id, review_round, planned_date, status)
