@@ -259,7 +259,7 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok) {
-        showNotification('새로운 토픽 등록 및 4개 회차 복습 스케줄 생성이 완료되었습니다!');
+        showNotification('새로운 토픽 등록 및 6개 회차 복습 스케줄 생성이 완료되었습니다!');
         setTitle('');
         setKeywords('');
         setPdfFile(null);

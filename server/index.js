@@ -132,7 +132,7 @@ function stringToCp1252Buffer(str) {
 
 // Helper: Check if a buffer contains HTML content by inspecting its beginning bytes
 function isBufferHtml(buffer) {
-  if (!buffer || buffer.length < 4) return false;
+  if (!buffer || buffer.length < 5) return false;
   // Check if it starts with PDF magic bytes %PDF- (0x25 0x50 0x44 0x46 0x2d)
   if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 && buffer[4] === 0x2d) {
     return false;
