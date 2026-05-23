@@ -13,11 +13,6 @@
       "use": "@vercel/node"
     }
   ],
-  "functions": {
-    "server/index.js": {
-      "includeFiles": "server/NanumGothic.ttf"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
