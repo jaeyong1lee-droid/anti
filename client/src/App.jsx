@@ -1073,28 +1073,34 @@ export default function App() {
                             <FileText className="text-brand-400" size={18} />
                             {selectedTopic.title} - 원본 파일 보기
                           </h4>
-                          <div className="flex mt-1.5 p-0.5 bg-slateCustom-950 border border-slate-800/80 rounded-lg max-w-max">
-                            <button
-                              onClick={() => setReportViewType('pdf')}
-                              className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
-                                reportViewType === 'pdf'
-                                  ? 'bg-brand-600 text-white shadow-sm'
-                                  : 'text-slate-400 hover:text-white'
-                              }`}
-                            >
-                              📄 PDF 파일로 보기
-                            </button>
-                            <button
-                              onClick={() => setReportViewType('image')}
-                              className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
-                                reportViewType === 'image'
-                                  ? 'bg-brand-600 text-white shadow-sm'
-                                  : 'text-slate-400 hover:text-white'
-                              }`}
-                            >
-                              🖼️ 그림(이미지)으로 보기
-                            </button>
-                          </div>
+                          {!selectedTopic.pdf_name?.endsWith('.html') && !selectedTopic.pdf_name?.endsWith('.htm') ? (
+                            <div className="flex mt-1.5 p-0.5 bg-slateCustom-950 border border-slate-800/80 rounded-lg max-w-max">
+                              <button
+                                onClick={() => setReportViewType('pdf')}
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
+                                  reportViewType === 'pdf'
+                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                📄 PDF 파일로 보기
+                              </button>
+                              <button
+                                onClick={() => setReportViewType('image')}
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
+                                  reportViewType === 'image'
+                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                🖼️ 그림(이미지)으로 보기
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-black text-emerald-400 mt-2 block animate-pulse">
+                              🌐 HTML 보고서 원본 모드 (그림/도표 완벽 지원)
+                            </span>
+                          )}
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           {selectedTopic.pdf_name && (
@@ -1116,7 +1122,15 @@ export default function App() {
                         </div>
                       </div>
                       {selectedTopic.pdf_name ? (
-                        reportViewType === 'pdf' ? (
+                        selectedTopic.pdf_name.endsWith('.html') || selectedTopic.pdf_name.endsWith('.htm') ? (
+                          <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-white h-[55vh]">
+                            <iframe
+                              src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
+                              className="w-full h-full border-0"
+                              title="Original HTML Document Viewer"
+                            />
+                          </div>
+                        ) : reportViewType === 'pdf' ? (
                           <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-slateCustom-950 h-[55vh]">
                             <iframe
                               src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}

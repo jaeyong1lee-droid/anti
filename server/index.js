@@ -526,27 +526,15 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
       }
     }
 
-    // Check if uploaded file is HTML, convert to PDF buffer automatically
+    // Keep raw HTML files intact to preserve layouts, formatting, and inline images
     if (req.file) {
       const isHtml = req.file.originalname.endsWith('.html') || 
                      req.file.originalname.endsWith('.htm') || 
                      req.file.mimetype === 'text/html' || 
                      (pdfName && (pdfName.endsWith('.html') || pdfName.endsWith('.htm')));
       if (isHtml) {
-        try {
-          console.log(`HTML file upload detected: ${pdfName}. Converting to PDF automatically.`);
-          const htmlContent = decodeHtmlBuffer(req.file.buffer);
-          const plainText = htmlToPlainText(htmlContent);
-          const pdfBuffer = await convertTextToPdfBuffer(plainText, title);
-          
-          pdfData = pdfBuffer;
-          // Change the extension of the decoded name to .pdf
-          const baseName = pdfName.replace(/\.[^/.]+$/, "");
-          pdfName = `${baseName}.pdf`;
-          console.log(`HTML file successfully converted to PDF: ${pdfName}`);
-        } catch (convErr) {
-          console.error('Failed to convert HTML to PDF, falling back to raw html buffer:', convErr);
-        }
+        console.log(`HTML file upload detected: ${pdfName}. Keeping raw HTML content to preserve rich diagrams and styles.`);
+        pdfData = req.file.buffer; // Store original HTML buffer directly!
       }
     }
 
@@ -885,7 +873,7 @@ app.get('/api/topics/:id/text', async (req, res) => {
   }
 });
 
-// 8. Stream Raw PDF File directly for native browser viewing
+// 8. Stream Raw PDF/HTML File directly for native browser viewing
 app.get('/api/topics/:id/pdf', async (req, res) => {
   const topicId = req.params.id;
 
@@ -897,12 +885,20 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.pdf_name)}"`);
-    res.send(topic.pdf_data);
+    const isHtml = topic.pdf_name && (topic.pdf_name.endsWith('.html') || topic.pdf_name.endsWith('.htm'));
+    if (isHtml) {
+      // Decode HTML buffer cleanly and stream it natively with UTF-8 encoding
+      const htmlContent = decodeHtmlBuffer(topic.pdf_data);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(htmlContent);
+    } else {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.pdf_name)}"`);
+      res.send(topic.pdf_data);
+    }
   } catch (error) {
-    console.error('Error streaming PDF file:', error);
-    res.status(500).send('서버 오류로 PDF 파일을 스트리밍하지 못했습니다.');
+    console.error('Error streaming PDF/HTML file:', error);
+    res.status(500).send('서버 오류로 파일을 스트리밍하지 못했습니다.');
   }
 });
 
