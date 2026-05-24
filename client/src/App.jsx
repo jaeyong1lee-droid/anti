@@ -298,6 +298,53 @@ export default function App() {
     fetchAllTopics();
   }, [referenceDate]);
 
+  // ── Restore state from localStorage on mount (껐다 켜도 이어서 보기)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.viewMode) setViewMode(s.viewMode);
+        if (s.selectedTopic) setSelectedTopic(s.selectedTopic);
+        if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions);
+        if (s.revealedQuestions) setRevealedQuestions(s.revealedQuestions);
+        if (s.selectedAnswers) setSelectedAnswers(s.selectedAnswers);
+        if (s.openSections) setOpenSections(s.openSections);
+        if (s.isFallback !== undefined) setIsFallback(s.isFallback);
+        if (s.showExam) setShowExam(s.showExam);
+        if (s.examTopic) setExamTopic(s.examTopic);
+        if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
+        if (s.examRevealed) setExamRevealed(s.examRevealed);
+        if (s.examAnswers) setExamAnswers(s.examAnswers);
+      }
+    } catch (e) {
+      console.warn('localStorage 복원 실패:', e);
+    }
+  }, []); // mount 시 1회만
+
+  // ── Save state to localStorage whenever key state changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('anti_app_state', JSON.stringify({
+        viewMode,
+        selectedTopic,
+        aiQuestions,
+        revealedQuestions,
+        selectedAnswers,
+        openSections,
+        isFallback,
+        showExam,
+        examTopic,
+        examQuestions,
+        examRevealed,
+        examAnswers,
+      }));
+    } catch (e) {
+      console.warn('localStorage 저장 실패:', e);
+    }
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers]);
+
+
   // Load PDF.js dynamically when switching to image view
   useEffect(() => {
     if (showFullReport && reportViewType === 'image' && !pdfjsLoaded) {
