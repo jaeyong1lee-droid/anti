@@ -1058,10 +1058,10 @@ export default function App() {
                                   tabIndex={0}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                      handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name);
+                                      handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'local');
                                     }
                                   }}
-                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
+                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'local')}
                                   className="font-bold text-white text-sm truncate hover:text-brand-400 cursor-pointer transition-colors focus:text-brand-400 focus:outline-none"
                                   title="클릭 시 복습 주기에 상관없이 자율 인출 기출 퀴즈를 풉니다."
                                 >
@@ -1115,12 +1115,12 @@ export default function App() {
                             <td className="py-4 px-2 text-center">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button
-                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name)}
+                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai')}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  title="복습 주기에 관계없이 언제든 실전 기출 퀴즈를 풉니다."
+                                  title="소스 + Gemini AI로 고늨도 문제 생성"
                                 >
                                   <Sparkles size={12} />
-                                  즉시 퀴즈
+                                  소스+Gemini
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTopic(topic.id, topic.title)}
