@@ -20,8 +20,16 @@ if (isPostgres) {
       rejectUnauthorized: false // Required for hosted services like Supabase / Neon
     }
   });
-} else if (!isVercel) {
-  // Only load and initialize sqlite3 if we are not running on serverless Vercel
+}
+
+// Lazy loader for SQLite database to prevent top-level await syntax issues & Vercel EROFS crashes
+async function getSQLiteDb() {
+  if (db) return db;
+  
+  if (isVercel) {
+    throw new Error('SQLite database is disabled in serverless Vercel environment. Please configure DATABASE_URL for Postgres.');
+  }
+
   try {
     const sqlite3Module = await import('sqlite3');
     const sqlite3 = sqlite3Module.default;
@@ -31,21 +39,30 @@ if (isPostgres) {
       fs.mkdirSync(volumePath, { recursive: true });
     }
     const dbPath = path.resolve(volumePath, 'spaced_repetition.db');
-    db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('Error connecting to SQLite database:', err.message);
-      } else {
-        console.log('Connected to the SQLite database:', dbPath);
-      }
-    });
-    db.serialize(() => {
-      db.run('PRAGMA foreign_keys = ON;');
+    
+    return new Promise((resolve, reject) => {
+      const tempDb = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+          console.error('Error connecting to SQLite database:', err.message);
+          reject(err);
+        } else {
+          console.log('Connected to the SQLite database:', dbPath);
+          tempDb.serialize(() => {
+            tempDb.run('PRAGMA foreign_keys = ON;', (pragmaErr) => {
+              if (pragmaErr) reject(pragmaErr);
+              else {
+                db = tempDb;
+                resolve(db);
+              }
+            });
+          });
+        }
+      });
     });
   } catch (sqliteErr) {
     console.error('Failed to load sqlite3 module dynamically on non-Vercel environment:', sqliteErr.message);
+    throw sqliteErr;
   }
-} else {
-  console.warn('Running on Serverless Vercel and DATABASE_URL is not set. SQLite is bypassed to prevent EROFS/binary crashes.');
 }
 
 // Translate SQLite placeholder '?' to PostgreSQL parameter '$1, $2, ...'
@@ -60,8 +77,6 @@ export const dbQuery = {
     if (isPostgres) {
       if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       let translatedSql = translateSql(sql);
-      // SQLite uses AUTOINCREMENT and INSERT does not return ID by default. 
-      // PostgreSQL needs RETURNING id to get the last inserted ID.
       const isInsert = translatedSql.trim().toUpperCase().startsWith('INSERT');
       if (isInsert) {
         translatedSql += ' RETURNING id';
@@ -75,11 +90,9 @@ export const dbQuery = {
         throw err;
       }
     } else {
+      const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
-        if (!db) {
-          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
-        }
-        db.run(sql, params, function (err) {
+        localDb.run(sql, params, function (err) {
           if (err) reject(err);
           else resolve({ id: this.lastID, changes: this.changes });
         });
@@ -99,11 +112,9 @@ export const dbQuery = {
         throw err;
       }
     } else {
+      const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
-        if (!db) {
-          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
-        }
-        db.get(sql, params, (err, row) => {
+        localDb.get(sql, params, (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -123,11 +134,9 @@ export const dbQuery = {
         throw err;
       }
     } else {
+      const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
-        if (!db) {
-          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
-        }
-        db.all(sql, params, (err, rows) => {
+        localDb.all(sql, params, (err, rows) => {
           if (err) reject(err);
           else resolve(rows);
         });
@@ -165,7 +174,8 @@ export async function initDatabase() {
       `);
       console.log('Cloud PostgreSQL database tables initialized successfully.');
     } else {
-      // 1. topics table: stores studied topics and raw PDF data as a BLOB
+      // Initialize Local SQLite
+      const localDb = await getSQLiteDb();
       await dbQuery.run(`
         CREATE TABLE IF NOT EXISTS topics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,7 +187,6 @@ export async function initDatabase() {
         )
       `);
 
-      // 2. schedules table: maps spaced repetition intervals for each topic
       await dbQuery.run(`
         CREATE TABLE IF NOT EXISTS schedules (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,4 +213,5 @@ if (isPostgres) {
   });
 }
 
+// Export default loaded db reference or null
 export default db;
