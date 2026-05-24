@@ -1341,6 +1341,7 @@ export default function App() {
                                 {/* Round Header */}
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${
+                                    q.type.includes('구조 인출') ? 'bg-violet-700' :
                                     q.type.includes('개념') ? 'bg-indigo-700' : 
                                     q.type.includes('공식') ? 'bg-rose-700' : 
                                     'bg-emerald-700'
@@ -1441,10 +1442,14 @@ export default function App() {
                                         >
                                           <EyeOff size={24} className="text-stone-500 group-hover:text-brand-500 transition-colors animate-pulse" />
                                           <span className="text-sm font-black text-stone-900 tracking-tight group-hover:text-brand-600 transition-colors">
-                                            뇌에서 끄집어내기 완료! 정답(개념, 공식, 답안 구조) 확인하기
+                                            {q.type.includes('구조 인출')
+                                              ? '각 단락 내용을 머릿속으로 떠올린 뒤 → 정답 확인'
+                                              : '뇌에서 끄집어내기 완료! 정답(개념, 공식, 답안 구조) 확인하기'}
                                           </span>
                                           <span className="text-[11px] text-stone-500">
-                                            * 머릿속으로 아웃라인을 설계한 뒤 클릭해 정답을 맞추는 것이 암기 효율에 가장 좋습니다.
+                                            {q.type.includes('구조 인출')
+                                              ? '* 단락 제목만 보고 핵심 내용을 떠올린 뒤 클릭하면 암기 효율이 높아집니다.'
+                                              : '* 머릿속으로 아웃라인을 설계한 뒤 클릭해 정답을 맞추는 것이 암기 효율에 가장 좋습니다.'}
                                           </span>
                                         </button>
                                       ) : (
