@@ -1572,7 +1572,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+      const QUIZ_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
@@ -1659,31 +1659,56 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 ]
 `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const rawText = response.text().trim();
-
       let questions = null;
-      try {
-        let text = rawText;
-        if (text.startsWith('```')) {
-          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      let lastErr = null;
+
+      for (const modelName of QUIZ_MODELS) {
+        try {
+          console.log(`[단일토픽퀴즈] 모델 시도: ${modelName}`);
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
+          const rawText = response.text().trim();
+
+          try {
+            let text = rawText;
+            if (text.startsWith('```')) {
+              text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+            }
+            questions = JSON.parse(text);
+          } catch (parseErr) {
+            console.warn(`[단일토픽퀴즈] ${modelName} 파싱 재시도:`, parseErr);
+            questions = extractJsonArray(rawText);
+          }
+
+          if (!questions || !Array.isArray(questions)) {
+            throw new Error('Parsed result is not a valid JSON array or empty');
+          }
+
+          console.log(`[단일토픽퀴즈] 성공: ${modelName}, ${questions.length}문항`);
+          break; // 성공 시 루프 종료
+        } catch (modelErr) {
+          lastErr = modelErr;
+          const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
+          if (isQuota) {
+            console.warn(`[단일토픽퀴즈] ${modelName} Quota 초과, 다음 모델로 폴백`);
+            continue;
+          }
+          throw modelErr; // Quota 외 오류는 즉시 throw
         }
-        questions = JSON.parse(text);
-      } catch (parseErr) {
-        console.warn('Direct JSON parse failed, trying robust JSON array extractor:', parseErr);
-        questions = extractJsonArray(rawText);
       }
 
-      if (!questions || !Array.isArray(questions)) {
-        throw new Error('Parsed result is not a valid JSON array or empty');
+      if (!questions) {
+        throw lastErr || new Error('모든 제미나이 모델 호출 실패');
       }
 
       res.json({ questions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
+      const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate');
+      const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      res.json({ questions: fallbackQuestions, isFallback: true, error: aiError.message });
+      res.json({ questions: fallbackQuestions, isFallback: true, error: errorMsg });
     }
   } catch (error) {
     console.error('Error in AI question generation route:', error);
