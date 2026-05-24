@@ -440,7 +440,7 @@ function getSingleShellExpertQuestions(title, keywords) {
     type: '개념 문제 (10점)',
     question: `싱글쉘(Single Shell) 터널 공법의 정의 및 기존 NATM 공법(이중 쉘)과의 차별화된 구조적 메커니즘을 설명하시오.`,
     concept: `싱글쉘 터널 공법은 1차 지보재(쇼크리트, 락볼트)와 2차 라이닝을 통합하여 단일 영구 지보 구조(Single Shell)로 터널을 형성하는 공법입니다. 외부 지하수를 배수시키는 배수형과 수압을 직접 견디는 비배수형으로 분류됩니다.`,
-    formula: `[필수 개념도 구성 요소]\n1. 숏크리트 + 락볼트 + 방수재 일체화 단면도 도식 필수\n2. 숏크리트 응력분포곡선 (응력 재분배 메커니즘)\n3. 락볼트 축력 분배공식: T = P × r (T: 인장력, P: 내압, r: 터널 반경)`,
+    formula: `[필수 개념도 구성 요소]\n1. 숏크리트 + 락볼트 + 방수재 일체화 단면도 도식 필수\n2. 숏크리트 응력분포곡선 (응력 재분배 메커니즘)\n3. 락볼트 축력 분배공식: $T = P \\times r$ ( $T$ : 인장력, $P$ : 내압, $r$ : 터널 반경)`,
     structure: `1단락: 싱글쉘 터널 공법의 정의 및 등장 배경 (NATM 대비 공기단축/공사비 절감 요구)\n2단락: 싱글쉘 터널의 구조적 메커니즘 및 지반-지보재 거동 특성 (이중 쉘과의 비교표)\n3단락: 현장 적용 시 리스크(숏크리트 균열, 지하수 누수) 및 기술사로서의 시공 품질 확보 대책`
   };
 
@@ -448,7 +448,7 @@ function getSingleShellExpertQuestions(title, keywords) {
     type: '공식 문제 (25점)',
     question: `터널 공학 관점에서 싱글쉘 공법 적용 시 숏크리트와 지반의 일체화(Bonding) 거동 특성을 논하고, 장기 신뢰성(Reliability) 확보를 위한 방수 시트 간소화 공정 및 시공 시 고려사항을 기술하시오.`,
     concept: `숏크리트와 암반의 전단 접착 강도(Bonding Strength)를 극대화하여 지반 자체의 전단 저항력을 활용하고, 고성능 섬유보강 숏크리트(SFRC)를 통해 영구 지보재로서의 휨인장 인성을 확보하는 공법입니다.`,
-    formula: `[숏크리트 두께 산정 공식 (Rabcewicz 공식)]\n- t = (P - 2C·sinφ) / [ (γ·tanφ) + (2S / D) ]\n  (t: 두께, P: 지반압, C: 점착력, φ: 내부마찰각, S: 전단강도, D: 터널 직경)`,
+    formula: `[숏크리트 두께 산정 공식 (Rabcewicz 공식)]\n- $t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\n  ( $t$ : 두께, $P$ : 지반압, $C$ : 점착력, $\\varphi$ : 내부마찰각, $S$ : 전단강도, $D$ : 터널 직경)`,
     structure: `1단락: 영구 지보재로서 싱글쉘 숏크리트-지반 상호작용(Soil-Structure Interaction)의 의의\n2단락: 숏크리트 전단 접착 거동 특성 및 SFRC(섬유보강)에 의한 인성 증대 효과 메커니즘\n3단락: 방수/배수 일체화 시스템 시공 상세 및 영구 숏크리트 장기 열화(중성화, 황산염부식) 방지 대책`
   };
 
@@ -560,7 +560,7 @@ function getPrandtlExpertQuestions(title, keywords) {
     type: '개념 문제 (10점)',
     question: `얕은 기초의 극한 지지력 결정을 위한 프란틀(Prandtl)의 지지력 이론의 가정 조건 및 소성평형 영역(Failure Zone)의 구성 요소를 설명하시오.`,
     concept: `프란틀 지지력 이론은 기초 하부 지반을 강소성체(Rigid-Plastic)로 가정하고, 기초 극한 하중 시 소성 파괴 영역을 3개의 영역(탄성 대칭 쐐기, 대수나선 방사형 전단, 랭킨 수동 영역)으로 구분하여 지지력 공식을 유도한 고전 소성론 기반 지력 이론입니다.`,
-    formula: `[Failure Zone 구성]\nⅠ지역: 탄성 쐐기(Elastic Wedge)\nⅡ지역: 방사형 전단(Radial Shear Zone, 대수나선 경로)\nⅢ지역: 수동 랭킨 쐐기(Passive Rankine Zone)\n기본 공식: q_ult = c·N_c + q·N_q`,
+    formula: `[Failure Zone 구성]\nⅠ지역: 탄성 쐐기(Elastic Wedge)\nⅡ지역: 방사형 전단(Radial Shear Zone, 대수나선 경로)\nⅢ지역: 수동 랭킨 쐐기(Passive Rankine Zone)\n기본 공식: $q_{ult} = c N_c + q N_q$`,
     structure: `1단락: 프란틀 지지력 이론의 공학적 정의 및 의의 (지반 극한 소성 평형 이론의 기초)\n2단락: 소성파괴 영역도(Failure Zone Diagram) 도식화 및 영역별(Ⅰ, Ⅱ, Ⅲ) 거동 특성\n3단락: 프란틀 이론의 한계성 (지반 자중 γ의 무시) 및 테르자기(Terzaghi) 지지력 공식으로의 발전 과정`
   };
 
@@ -568,7 +568,7 @@ function getPrandtlExpertQuestions(title, keywords) {
     type: '공식 문제 (25점)',
     question: `지반공학에서 프란틀(Prandtl) 지지력 이론의 이론적 배경과 극한지지력 유도 과정을 상술하고, 지반의 자중(γ)을 고려한 테르자기(Terzaghi) 및 마이어호프(Meyerhof) 지지력 공식과의 차별성을 기초 형상 및 경사 하중 조건을 중심으로 논하시오.`,
     concept: `소성 역학의 슬립라인법(Slip Line Method)을 토질역학에 최초 적용한 이론으로, 프란틀 공식에 지반 자중 항(0.5·γ·B·N_γ)과 형상/깊이/경사 계수를 보완하여 실무 설계용 Terzaghi, Meyerhof, Vesic 공식이 완성되었습니다.`,
-    formula: `[Terzaghi 지지력 공식 (연속기초)]\n- q_ult = c·N_c + q·N_q + 0.5·γ·B·N_γ\n- 형상계수 고려 (정사각형 기초): q_ult = 1.3·c·N_c + q·N_q + 0.4·γ·B·N_γ\n(N_c, N_q, N_γ: 지지력 계수)`,
+    formula: `[Terzaghi 지지력 공식 (연속기초)]\n- $q_{ult} = c N_c + q N_q + 0.5 \gamma B N_{\gamma}$\n- 형상계수 고려 (정사각형 기초): $q_{ult} = 1.3 c N_c + q N_q + 0.4 \gamma B N_{\gamma}$\n( $N_c$ , $N_q$ , $N_{\gamma}$ : 지지력 계수)`,
     structure: `1단락: 극한 평형 상태와 지반 소성유동 법칙의 관계 및 프란틀 이론의 위상\n2단락: Prandtl 지지력 이론 and Terzaghi, Meyerhof 공식의 비교 분석 (지반 자중, 기초 조도, 형상, 지하수위 영향)\n3단락: 실무 설계 시 안전율(F.S=3.0) 산정 기준 및 상부 하중 편심/경사에 따른 지지력 감소 대책`
   };
 
@@ -745,14 +745,14 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
       type: '개념 문제 (10점)',
       question: `Darcy의 투수 공식에 기초하여 유출 속도(Discharge Velocity, v)와 실제 침투 속도(Seepage Velocity, vs)의 역학적 정의 및 차이점을 간극률(n) 관점에서 수식과 함께 설명하시오.`,
       concept: `유출 속도(v)는 흙의 전체 단면을 흐르는 가상의 속도인 반면, 실제 침투 속도(vs)는 흙 입자 사이의 실제 공극만을 흐르는 실제 속도이며 vs = v / n 공식으로 정의됩니다.`,
-      formula: `[Darcy의 법칙 및 침투속도 공식]\n- 유출속도(체적속도): v = k × i\n- 실제 침투속도: v_s = v / n = (k × i) / n (n: 간극률, k: 투수계수, i: 동수경사)`,
+      formula: `[Darcy의 법칙 및 침투속도 공식]\n- 유출속도(체적속도): $v = k \\times i$\n- 실제 침투속도: $v_s = \\frac{v}{n} = \\frac{k \\times i}{n}$ ( $n$ : 간극률, $k$ : 투수계수, $i$ : 동수경사)`,
       structure: `1단락: Darcy 법칙의 기본 개념 및 투수 흐름 유동의 특징\n2단락: 유출 속도(v)와 실제 침투 속도(v_s)의 수식적 유도 및 간극률에 따른 거동 대조\n3단락: 동수경사 증가에 따른 지반 내 Piping 방지 대책 및 실무적 투수 제어 방안`
     };
     q2 = {
       type: '공식 문제 (25점)',
       question: `지반 내 지하수 흐름 시 발생하는 침투력(Seepage Force)의 발생 메커니즘을 규명하고, 한계동수경사(Critical Hydraulic Gradient)의 공식 유도 과정 및 분사현상(Quick Sand) 방지를 위한 안전율(F.S) 설계 기준을 서술하시오.`,
       concept: `상향 침투력으로 인해 유효응력이 0이 되는 상태를 분사현상이라 하며, 이때의 동수경사인 한계동수경사(icr)와 실제 동수경사(i)의 비를 통해 침투 안전율을 평가합니다.`,
-      formula: `[한계동수경사 및 침투 안정성 공식]\n- 한계동수경사: i_cr = (G_s - 1) / (1 + e) (G_s: 흙 입자 비중, e: 간극비)\n- 침투압(단위체적당): j = i × γ_w (i: 동수경사, γ_w: 물의 단위중량)\n- 분사현상 안전율: F.S = i_cr / i >= 1.5 ~ 2.0`,
+      formula: `[한계동수경사 및 침투 안정성 공식]\n- 한계동수경사: $i_{cr} = \\frac{G_s - 1}{1 + e}$ ( $G_s$ : 흙 입자 비중, $e$ : 간극비)\n- 침투압(단위체적당): $j = i \\times \\gamma_w$ ( $i$ : 동수경사, $\\gamma_w$ : 물의 단위중량)\n- 분사현상 안전율: $F.S = \\frac{i_{cr}}{i} \\ge 1.5 \\sim 2.0$`,
       structure: `1단락: 지반 내 침투수의 상향 흐름 and 침투력(Seepage Force)의 물리적 메커니즘\n2단락: 한계동수경사(i_cr) 공식의 한계 소성 평형 상태 유도 과정 및 퀵샌드 현상 대책\n3단락: 차수벽 및 필터재 설치를 통한 동수경사 제어 기법 및 설계 안전성 확보 제언`
     };
     mcQuestions = [
@@ -859,14 +859,14 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
       type: '개념 문제 (10점)',
       question: `점성토 지반의 압밀(Consolidation) 메커니즘을 유효응력(Effective Stress) 원리를 적용하여 설명하고, 과압밀비(OCR)에 따른 점토의 분류(NC점토, OC점토) 및 응력 이력 특성을 설명하시오.`,
       concept: `외력에 의해 유발된 과잉간극수압이 소멸하면서 유효응력이 점차 증가하여 흙의 체적이 감소(압밀)하는 과정이며, 응력 이력에 따라 정규압밀(OCR=1)과 과압밀(OCR>1)로 대조 분류됩니다.`,
-      formula: `[과압밀비(OCR) 및 유효응력 공식]\n- 과압밀비: OCR = p_c / p_0\n- 유효응력 원리: σ' = σ - u\n(p_c: 선행압밀응력, p_0: 현재 유효토피압, σ: 전응력, u: 간극수압)`,
+      formula: `[과압밀비(OCR) 및 유효응력 공식]\n- 과압밀비: $OCR = \\frac{p_c}{p_0}$\n- 유효응력 원리: $\\sigma' = \\sigma - u$\n( $p_c$ : 선행압밀응력, $p_0$ : 현재 유효토피압, $\\sigma$ : 전응력, $u$ : 간극수압)`,
       structure: `1단락: 점성토 압밀의 공학적 정의 및 유효응력 증가와의 상관관계\n2단락: 과압밀비(OCR)의 수식 정의 및 점토 분류별(N.C, O.C) 전단 및 압축 거동 비교표\n3단락: 점토 응력 이력 판단의 중요성 및 1차/2차 압밀 침하량의 현장 거동 제어 방안`
     };
     q2 = {
       type: '공식 문제 (25점)',
       question: `지반공학적 설계 시 흙의 전단 파괴 포락선을 결정하는 Mohr-Coulomb 파괴 규준선을 설명하고, CD시험(압밀배수) 조건에서 정규압밀점토와 과압밀점토의 전단 강도 산정 공식 및 파괴 시 부피 변화 특성(Dilatancy)을 비교 기술하시오.`,
       concept: `Mohr-Coulomb 이론은 흙의 전단강도를 수직응력, 점착력, 내부마찰각의 관계로 정의하며, CD 시험 시 과압밀점토는 입자 재배열로 인해 부피가 팽창하는 딜레이턴시(Dilatancy) 현상이 일어납니다.`,
-      formula: `[Mohr-Coulomb 전단강도 공식]\n- 기본 파괴 포락선: s = c + σ × tanφ\n- N.C Clay CD 전단강도: s = σ' × tanφ' (c' = 0)\n- O.C Clay CD 전단강도: s = c' + σ' × tanφ' (c' > 0)`,
+      formula: `[Mohr-Coulomb 전단강도 공식]\n- 기본 파괴 포락선: $s = c + \\sigma \\tan\\varphi$\n- N.C Clay CD 전단강도: $s = \\sigma' \\tan\\varphi'$ ( $c' = 0$ )\n- O.C Clay CD 전단강도: $s = c' + \\sigma' \\tan\\varphi'$ ( $c' > 0$ )`,
       structure: `1단락: Mohr-Coulomb 전단 파괴 파라미터(c, φ)의 의의 및 지반 전단 저항 거동\n2단락: CD 시험 하의 NC/OC 점토의 전단 강도 수식화 및 변형률-체적 변화(Dilatancy) 메커니즘 분석\n3단락: 실무 설계 시 전단 강도정수 선정 유의사항 및 압밀 배수 조건이 지반 구조물에 미치는 영향`
     };
     mcQuestions = [
@@ -973,14 +973,14 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
       type: '개념 문제 (10점)',
       question: `터널 공학 관점에서 NATM 공법의 기본 지지 메커니즘(지반 자체 지지 효과) 및 1차 지보재(숏크리트, 락볼트)의 연동 작용 역할을 기술하시오.`,
       concept: `터널 굴착 후 지반 스스로 아칭 효과(Arching Effect)를 일으켜 하중을 지지하도록 하고, 숏크리트와 락볼트가 지반과 일체화되어 이완 영역을 보강하는 메커니즘입니다.`,
-      formula: `[지보 지반 상호작용 이론]\n- 지반 반응 곡선(Ground Reaction Curve) 설계\n- 락볼트 분배 공식: T = P × r (T: 인장력, P: 지반 내압, r: 터널 반경)`,
+      formula: `[지보 지반 상호작용 이론]\n- 지반 반응 곡선(Ground Reaction Curve) 설계\n- 락볼트 분배 공식: $T = P \\times r$ ( $T$ : 인장력, $P$ : 지반 내압, $r$ : 터널 반경)`,
       structure: `1단락: NATM 공법의 정의 및 강지보 대비 차별화된 지지 메커니즘\n2단락: 숏크리트(전단/휨 보강)와 락볼트(보강/봉합/지반아치 형성)의 유기적 상호 작용\n3단락: 터널 굴착 시 유의사항 및 지반 조사 기반 지보 패턴 결정 프로세스`
     };
     q2 = {
       type: '공식 문제 (25점)',
       question: `터널 굴착에 따른 지반-지보 상호작용(Ground-Support Interaction)의 응력 재분배 거동 특성을 상술하고, 지반 반응 곡선(GRC)과 지보 제한 곡선(LSC)의 관계식에 준하여 터널 지보재의 적정 설치 시기 결정 방안을 논하시오.`,
       concept: `터널 굴착에 의한 변위 수렴도와 지보재의 탄성/소성 변형 저항 한계를 GRC와 LSC 곡선의 상호 접점 분석을 통해 밝혀내어 적정 설치 시기(설치 창, Timing Window)를 설계하는 이론입니다.`,
-      formula: `[지반-지보 설계 한계 변위 조건]\n- 설계 허용 안전율 조건: P_i = P_g - P_s <= P_allow (P_g: 지반압, P_s: 지보 저항력)\n- 3차원 터널 거동 해석에 따른 숏크리트 파괴 방지 극한 한계 상태 변위량 설정`,
+      formula: `[지반-지보 설계 한계 변위 조건]\n- 설계 허용 안전율 조건: $P_i = P_g - P_s \\le P_{allow}$ ( $P_g$ : 지반압, $P_s$ : 지보 저항력)\n- 3차원 터널 거동 해석에 따른 숏크리트 파괴 방지 극한 한계 상태 변위량 설정`,
       structure: `1단락: 터널 굴착면 전방 아치(Fore-arching) 형성 및 지반-지보 상호작용의 공학적 의의\n2단락: 수치해석적 지반반응곡선(GRC) 및 지보특성곡선(LSC)의 작도와 최적의 설치 지점(Timing) 도출\n3단락: 초기 변위 발생에 따른 선지보(천단보강, 강관다단그라우팅) 기법 및 터널 안정성 확보 방안`
     };
     mcQuestions = [
@@ -1485,7 +1485,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
@@ -1514,6 +1514,9 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
      * "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
      * "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
      * "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
+
+5. 공식이나 수식을 보여줄 때는 반드시 LaTeX 문법 형식을 활용하여 기재하십시오. 인라인 수식은 \`$수식$\` 형태로, 블록 수식은 \`$$수식$$\` 형태로 감싸야 합니다.
+6. 중요: LaTeX 수식 기호(\`$\`, \`$$\`) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: \`$수식$\`은 올바르고, \`$ 수식 $\`과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
 
 4. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 '\`\`\`json' 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
 

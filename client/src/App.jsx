@@ -115,8 +115,83 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   );
 }
 
+// Dynamic KaTeX loader & Math text renderer
+function LatexRenderer({ text, katexLoaded, className = "" }) {
+  const [renderedHtml, setRenderedHtml] = useState(text);
+
+  useEffect(() => {
+    if (!text) {
+      setRenderedHtml('');
+      return;
+    }
+
+    if (!window.katex) {
+      setRenderedHtml(text);
+      return;
+    }
+
+    try {
+      let processedText = text;
+      
+      // 1. Process block math $$ ... $$
+      processedText = processedText.replace(/\$\$(.*?)\$\$/gs, (match, math) => {
+        try {
+          return `<div class="my-3 overflow-x-auto flex justify-center">${window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false })}</div>`;
+        } catch (e) {
+          return match;
+        }
+      });
+
+      // 2. Process inline math $ ... $
+      processedText = processedText.replace(/\$(.*?)\$/g, (match, math) => {
+        try {
+          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+        } catch (e) {
+          return match;
+        }
+      });
+
+      setRenderedHtml(processedText);
+    } catch (err) {
+      console.warn('KaTeX rendering error:', err);
+      setRenderedHtml(text);
+    }
+  }, [text, katexLoaded]);
+
+  return (
+    <div 
+      className={`${className} whitespace-pre-line leading-relaxed`}
+      dangerouslySetInnerHTML={{ __html: renderedHtml }}
+    />
+  );
+}
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
+
+  // Dynamic KaTeX Loader State
+  const [katexLoaded, setKatexLoaded] = useState(false);
+  useEffect(() => {
+    if (!document.getElementById('katex-css')) {
+      const link = document.createElement('link');
+      link.id = 'katex-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+      document.head.appendChild(link);
+    }
+
+    if (window.katex) {
+      setKatexLoaded(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
+    script.onload = () => {
+      setKatexLoaded(true);
+    };
+    document.head.appendChild(script);
+  }, []);
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
@@ -1260,9 +1335,10 @@ export default function App() {
                                 </div>
 
                                 {/* Question prompt */}
-                                <p className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left">
-                                  {idx + 1}. {q.question}
-                                </p>
+                                <div className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left flex gap-1">
+                                  <span>{idx + 1}.</span>
+                                  <LatexRenderer text={q.question} katexLoaded={katexLoaded} className="inline" />
+                                </div>
 
                                 {/* INTERACTIVE CARD */}
                                 <div className="mt-4">
@@ -1293,7 +1369,10 @@ export default function App() {
                                               onClick={() => setSelectedAnswers(prev => ({ ...prev, [idx]: opt }))}
                                               className={buttonClass}
                                             >
-                                              <span className="leading-snug pr-4 text-left">{oIdx + 1}. {opt}</span>
+                                              <span className="leading-snug pr-4 text-left flex gap-1">
+                                                <span>{oIdx + 1}.</span>
+                                                <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
+                                              </span>
                                               {hasAnsweredMC && isCorrect && (
                                                 <span className="bg-emerald-500 text-white rounded-full p-0.5 flex items-center justify-center flex-shrink-0 animate-scale-up">
                                                   <Check size={12} strokeWidth={3} />
@@ -1328,9 +1407,9 @@ export default function App() {
                                               <span className="text-[10px] bg-stone-200 px-1.5 py-0.5 rounded text-stone-700">체크된 정답</span> 
                                               <span className="text-emerald-700 underline">{q.answer}</span>
                                             </p>
-                                            <p className="leading-relaxed font-medium text-stone-700 whitespace-pre-line pt-1 text-[11px] border-t border-stone-200/40">
-                                              {q.explanation || '해당 문제의 상세 설명이 제공되지 않았습니다.'}
-                                            </p>
+                                            <div className="leading-relaxed font-medium text-stone-700 pt-1 text-[11px] border-t border-stone-200/40">
+                                              <LatexRenderer text={q.explanation || '해당 문제의 상세 설명이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
+                                            </div>
                                           </div>
                                         </div>
                                       )}
@@ -1376,9 +1455,9 @@ export default function App() {
                                               <Brain size={13} />
                                               [1] 핵심 개념 (Core Concept)
                                             </h5>
-                                            <p className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed whitespace-pre-line">
-                                              {q.concept || '개념 내용이 제공되지 않았습니다.'}
-                                            </p>
+                                            <div className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed">
+                                              <LatexRenderer text={q.concept || '개념 내용이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
+                                            </div>
                                           </div>
 
                                           {/* Formula / Diagram Section */}
@@ -1387,9 +1466,9 @@ export default function App() {
                                               <Award size={13} />
                                               [2] 필수 공식 및 개념도 구성요소 (Formula / Diagram)
                                             </h5>
-                                            <p className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed whitespace-pre-line">
-                                              {q.formula || '공식 또는 아키텍처 필수 구성요소가 제공되지 않았습니다.'}
-                                            </p>
+                                            <div className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed">
+                                              <LatexRenderer text={q.formula || '공식 또는 아키텍처 필수 구성요소가 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
+                                            </div>
                                           </div>
 
                                           {/* Structure Section */}
@@ -1398,8 +1477,8 @@ export default function App() {
                                               <LayoutTemplate size={13} />
                                               [3] 답안 작성 구조 방식 아웃라인 (3-Paragraph Structure Layout)
                                             </h5>
-                                            <div className="text-xs text-stone-850 font-semibold pl-4 leading-normal whitespace-pre-line space-y-1">
-                                              {q.structure ? q.structure : '답안지 1~3단락 가이드라인이 제공되지 않았습니다.'}
+                                            <div className="text-xs text-stone-850 font-semibold pl-4 leading-normal space-y-1">
+                                              <LatexRenderer text={q.structure || '답안지 1~3단락 가이드라인이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
                                             </div>
                                           </div>
 
