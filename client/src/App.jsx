@@ -247,6 +247,7 @@ export default function App() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const firstMatchRef = useRef(null);
+  const lastQuizTopicId = useRef(null); // 마지막으로 로드한 퀴즈 토픽 ID (닫기 후 재열 감지용)
 
   // Success Notification banner
   const [notification, setNotification] = useState(null);
@@ -485,7 +486,7 @@ export default function App() {
   // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai') => {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
-    if (selectedTopic?.id === topicId && aiQuestions.length > 0) {
+    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
       setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
       return;
     }
@@ -510,6 +511,7 @@ export default function App() {
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
+        lastQuizTopicId.current = topicId; // 로드 완료 후 기록
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
@@ -1276,7 +1278,7 @@ export default function App() {
                   닫기
                 </button>
                 <button 
-                  onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); }}
+                  onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
                   className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
                   title="문제 초기화 (재개 시 새 문제 생성)"
                 >
@@ -1733,7 +1735,7 @@ export default function App() {
                 닫기
               </button>
               <button
-                onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); }}
+                onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
                 className="px-4 py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-colors"
                 title="문제 초기화 (재개 시 새 문제 생성)"
               >
