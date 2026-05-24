@@ -336,6 +336,7 @@ export default function App() {
           if (data.examRevealed) setExamRevealed(data.examRevealed);
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
+          if (data.savedExamScroll) savedExamScroll.current = data.savedExamScroll;
         }
       })
       .catch(e => console.warn('서버 세션 복원 실패:', e));
@@ -574,6 +575,8 @@ export default function App() {
         if (d.examAnswers) setExamAnswers(d.examAnswers);
         if (d.examTopic) setExamTopic(d.examTopic);
         else setExamTopic({ title: '전체 토픽 통합 종합평가' });
+        if (d.savedExamScroll) savedExamScroll.current = d.savedExamScroll;
+        
         setLoadingExam(false);
         requestAnimationFrame(() => {
           if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
@@ -1872,7 +1875,13 @@ export default function App() {
                     const r = await fetch(`${API_BASE}/api/session/exam`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic }),
+                      body: JSON.stringify({ 
+                        examQuestions, 
+                        examRevealed, 
+                        examAnswers, 
+                        examTopic,
+                        savedExamScroll: savedExamScroll.current 
+                      }),
                     });
                     if (!r.ok) throw new Error('서버 응답 오류');
                   } catch (e) {

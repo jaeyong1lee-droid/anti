@@ -1958,8 +1958,8 @@ app.get('/api/session/exam', async (req, res) => {
 app.post('/api/session/exam', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { examQuestions, examRevealed, examAnswers, examTopic } = req.body;
-    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic });
+    const { examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll } = req.body;
+    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll });
     // DELETE + INSERT (모든 DB 호환 UPSERT)
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     await dbQuery.run(
