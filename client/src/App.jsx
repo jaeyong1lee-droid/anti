@@ -154,6 +154,7 @@ export default function App() {
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [isFallback, setIsFallback] = useState(false);
+  const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
   const [loadingReport, setLoadingReport] = useState(false);
@@ -298,6 +299,29 @@ export default function App() {
     } catch (err) {
       console.error('Review completion error:', err);
       showNotification('서버 오류로 완료 처리에 실패했습니다.', 'error');
+    }
+  };
+
+  // Reset completed schedule back to pending
+  const handleResetReview = async (scheduleId, topicTitle, round) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/reset`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showNotification(`[${topicTitle}] ${round}회차 복습이 대기 상태로 변경되었으며 오늘의 복습 목록에 다시 추가되었습니다.`);
+        fetchTodayReviews(referenceDate);
+        fetchAllTopics();
+      } else {
+        showNotification(data.error || '복습 상태 초기화에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Review reset error:', err);
+      showNotification('서버 오류로 초기화 처리에 실패했습니다.', 'error');
+    } finally {
+      setResetConfirmTarget(null);
     }
   };
 
@@ -968,9 +992,17 @@ export default function App() {
                                   {sched ? (
                                     <div className="flex flex-col items-center">
                                       {sched.status === 'completed' ? (
-                                        <span className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold">
+                                        <button
+                                          onClick={() => setResetConfirmTarget({
+                                            scheduleId: sched.id,
+                                            topicTitle: topic.title,
+                                            round: round
+                                          })}
+                                          className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none"
+                                          title="클릭 시 이 복습을 다시 대기 상태로 되돌리고 오늘 복습에 생성합니다."
+                                        >
                                           완료
-                                        </span>
+                                        </button>
                                       ) : (
                                         <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
                                           대기
@@ -1399,6 +1431,46 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 복습 초기화 확인 모달 (Reset Review Confirmation Modal) */}
+      {resetConfirmTarget && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+            
+            {/* Modal Icon and Title */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-4 bg-amber-500/10 text-amber-400 rounded-full">
+                <RefreshCw size={28} className="animate-spin-slow text-amber-500" />
+              </div>
+              <h3 className="text-lg font-extrabold text-white">복습을 다시 하겠습니까?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                [<span className="text-brand-400">{resetConfirmTarget.topicTitle}</span>]의 <strong>{resetConfirmTarget.round}회차 복습</strong>을 다시 수행하시겠습니까?
+              </p>
+              <div className="bg-slateCustom-950/60 p-3.5 border border-slate-800/80 rounded-2xl text-[11px] text-amber-300 font-bold leading-normal w-full">
+                ※ 완료 상태가 <span className="underline text-amber-400">대기</span>로 환원되며,<br/>
+                <strong>오늘의 복습 리스트</strong>에 해당 항목이 다시 생성됩니다!
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => handleResetReview(resetConfirmTarget.scheduleId, resetConfirmTarget.topicTitle, resetConfirmTarget.round)}
+                className="flex-1 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              >
+                예
+              </button>
+              <button
+                onClick={() => setResetConfirmTarget(null)}
+                className="flex-1 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                아니오
+              </button>
+            </div>
+            
           </div>
         </div>
       )}

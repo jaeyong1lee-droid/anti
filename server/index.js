@@ -1332,6 +1332,50 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
   }
 });
 
+// 3.5. Reset/Cancel Review Round Completion (Change back from completed to pending)
+app.post('/api/schedules/:id/reset', async (req, res) => {
+  const scheduleId = req.params.id;
+
+  try {
+    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    if (schedule.status !== 'completed') {
+      return res.status(400).json({ error: '완료 상태인 항목만 초기화할 수 있습니다.' });
+    }
+
+    const todayDateStr = getLocalDateString();
+    let newPlannedDate = schedule.planned_date;
+    
+    // If the planned date was in the future, bring it back to today so it immediately shows in Today's Review
+    if (schedule.planned_date > todayDateStr) {
+      newPlannedDate = todayDateStr;
+    }
+
+    const updateSql = `
+      UPDATE schedules 
+      SET status = 'pending', completed_at = NULL, planned_date = ?
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
+
+    res.json({
+      message: `${schedule.review_round}회차 복습이 대기 상태로 초기화되었습니다.`,
+      schedule_id: scheduleId,
+      status: 'pending',
+      planned_date: newPlannedDate,
+      completed_at: null
+    });
+  } catch (error) {
+    console.error('Error resetting review:', error);
+    res.status(500).json({ error: '서버 오류로 복습 상태 초기화에 실패했습니다.' });
+  }
+});
+
 // 4. Retrieve All Topics with Spaced Schedules
 app.get('/api/topics', async (req, res) => {
   try {
