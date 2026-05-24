@@ -1440,12 +1440,17 @@ app.get('/api/debug-env', (req, res) => {
                            process.env.POSTGRES_PRISMA_URL ||
                            process.env.SUPABASE_DATABASE_URL ||
                            '';
+  
+  // Extract all existing environment variable Key names safely (omitting sensitive values)
+  const envKeys = Object.keys(process.env).sort();
+
   res.json({
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
     keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     hasDbUrl: !!connectionString,
     dbUrlLength: connectionString.length,
     dbInitError: global.dbInitError || null,
+    envKeys: envKeys,
     nodeEnv: process.env.NODE_ENV || 'development',
     time: new Date().toISOString()
   });
