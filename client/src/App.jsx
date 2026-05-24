@@ -22,7 +22,9 @@ import {
   Eye,
   EyeOff,
   Flame,
-  LayoutTemplate
+  LayoutTemplate,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -239,6 +241,10 @@ export default function App() {
   const [examRevealed, setExamRevealed] = useState({});
   const [examAnswers, setExamAnswers] = useState({});
   const [detailedAnswers, setDetailedAnswers] = useState({});
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatBodyRef = useRef(null);
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -565,6 +571,37 @@ export default function App() {
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
+    }
+  };
+
+  // ── Gemini Sidebar Chat Handler ───────────────────────────────
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
+    setIsChatLoading(true);
+
+    requestAnimationFrame(() => {
+      if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: chatHistory, message: userMessage })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+    } finally {
+      setIsChatLoading(false);
+      requestAnimationFrame(() => {
+        if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+      });
     }
   };
 
@@ -1928,8 +1965,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Exam Body */}
-          <div ref={examBodyRef} className="flex-grow overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+          {/* Layout Split Container */}
+          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+            
+            {/* Left: Exam Body */}
+            <div ref={examBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -2106,6 +2146,77 @@ export default function App() {
                 )}
               </div>
             )}
+            </div>
+
+            {/* Right: Gemini Sidebar (Desktop Only) */}
+            <div className="hidden md:flex flex-col w-[350px] bg-slate-900 border-l border-slate-800">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <Brain size={16} className="text-amber-500" />
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터</span>
+              </div>
+              
+              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
+                        {msg.role === 'user' ? '나' : 'Gemini'}
+                      </div>
+                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-xs leading-relaxed ${
+                        msg.role === 'user' 
+                          ? 'bg-indigo-600 text-white rounded-br-sm' 
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-sm'
+                      }`}>
+                        {msg.role === 'user' ? (
+                          msg.text
+                        ) : (
+                          <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex flex-col items-start">
+                    <div className="text-[10px] mb-1 font-bold text-amber-400 ml-1">Gemini</div>
+                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }}
+                  className="relative"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="기술사 용어나 개념 질문..."
+                    disabled={isChatLoading}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-colors"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
+                </form>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

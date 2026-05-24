@@ -1919,6 +1919,65 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
   }
 });
 
+// 6-3. Freeform Chat Search
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { history, message } = req.body;
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const CHAT_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+
+    // Convert history to Gemini format
+    const contents = [];
+    if (history && Array.isArray(history)) {
+      for (const msg of history) {
+        contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] });
+      }
+    }
+    contents.push({ role: 'user', parts: [{ text: message }] });
+
+    let responseText = null;
+    let lastErr = null;
+
+    for (const modelName of CHAT_MODELS) {
+      try {
+        console.log(`[채팅검색] 모델 시도: ${modelName}`);
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          systemInstruction: "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요."
+        });
+        const result = await model.generateContent({ contents });
+        responseText = result.response.text().trim();
+        console.log(`[채팅검색] 성공: ${modelName}`);
+        break;
+      } catch (modelErr) {
+        lastErr = modelErr;
+        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
+        if (isQuota) {
+          console.warn(`[채팅검색] ${modelName} Quota 초과, 다음 모델로 폴백`);
+          continue;
+        }
+        throw modelErr;
+      }
+    }
+
+    if (!responseText) {
+      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+      if (isQuota) {
+        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
+      }
+      throw lastErr || new Error('답변 생성 실패');
+    }
+
+    res.json({ text: responseText });
+  } catch (err) {
+    console.error('Chat route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;
