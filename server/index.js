@@ -1572,7 +1572,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
@@ -1733,7 +1733,7 @@ app.post('/api/exam/all', async (req, res) => {
     const randomSeed = Math.floor(Math.random() * 10000);
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
