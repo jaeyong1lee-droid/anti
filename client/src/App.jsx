@@ -717,10 +717,10 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex md:hidden bg-slateCustom-900/60 p-1 border border-slate-800/80 rounded-xl">
+          <div className="flex md:hidden bg-slateCustom-900/60 p-1 border border-slate-800/80 rounded-xl overflow-x-auto hide-scrollbar w-full">
             <button
               onClick={() => setViewMode('dashboard')}
-              className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
+              className={`flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
                 viewMode === 'dashboard'
                   ? 'bg-brand-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
@@ -731,14 +731,21 @@ export default function App() {
             </button>
             <button
               onClick={() => setViewMode('all_topics')}
-              className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
+              className={`flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 ${
                 viewMode === 'all_topics'
                   ? 'bg-brand-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
               <List size={14} />
-              토픽 진행현황 ({allTopics.length})
+              진행현황 ({allTopics.length})
+            </button>
+            <button
+              onClick={handleOpenExam}
+              className="flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 text-amber-400 hover:text-amber-200 hover:bg-amber-950/40"
+            >
+              <Award size={14} />
+              종합평가
             </button>
           </div>
         </div>
