@@ -1555,14 +1555,18 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
+    const forceLocal = req.query.local === 'true';
 
-    if (!geminiApiKey) {
-      console.log('No GEMINI_API_KEY environment variable found. Generating high-quality local fallback questions.');
+    // Force local/source-based mode (no Gemini)
+    if (forceLocal || !geminiApiKey) {
+      const reason = forceLocal ? '소스 기반 모드로 요청됨' : 'GEMINI_API_KEY 없음';
+      console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       return res.json({ 
         questions: fallbackQuestions, 
         isFallback: true,
-        error: '백엔드 환경변수에 GEMINI_API_KEY가 존재하지 않습니다. Vercel 프로젝트 대시보드의 Environment Variables에 등록했는지 재확인하시고, 반드시 최신 배포본을 Redeploy(재배포)해 주십시오. (No GEMINI_API_KEY environment variable found.)'
+        mode: 'local',
+        error: forceLocal ? null : '백엔드 환경변수에 GEMINI_API_KEY가 존재하지 않습니다.'
       });
     }
 

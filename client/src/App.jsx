@@ -428,8 +428,8 @@ export default function App() {
     }
   };
 
-  // Trigger Gemini AI custom questions Modal
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName) => {
+  // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai') => {
     setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
     setLoadingAI(true);
     setAiQuestions([]);
@@ -441,18 +441,16 @@ export default function App() {
     setReportText('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`, {
-        method: 'POST',
-      });
+      const url = mode === 'local'
+        ? `${API_BASE}/api/topics/${topicId}/ai-questions?local=true`
+        : `${API_BASE}/api/topics/${topicId}/ai-questions`;
+      const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
 
       if (res.ok) {
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
-        if (data.isFallback) {
-          console.warn('AI Questions loaded in fallback mode. Reason/Error:', data.error);
-        }
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
@@ -463,6 +461,12 @@ export default function App() {
     } finally {
       setLoadingAI(false);
     }
+  };
+
+  // Open review quiz AND mark schedule as complete simultaneously
+  const handleReviewAndComplete = (scheduleId, topicId, title, keywords, pdfName, round, mode) => {
+    handleOpenAIQuestions(topicId, title, keywords, pdfName, mode);
+    handleCompleteReview(scheduleId, title, round);
   };
 
   // View full report text
@@ -795,22 +799,24 @@ export default function App() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2.5 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end">
+                      <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
+                        {/* 소스 기반 복습 */}
                         <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
+                          onClick={() => handleReviewAndComplete(item.schedule_id, item.topic_id, item.title, item.keywords, item.pdf_name, item.review_round, 'local')}
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/70 text-slate-200 border border-slate-500/30 text-xs font-bold transition-all duration-200"
+                          title="첨부 소스만 기반으로 문제 생성 (빠름)"
                         >
-                          <Sparkles size={14} />
-                          복습하기 (AI 기출)
+                          <BookOpen size={13} />
+                          소스 기반
                         </button>
-                        
+                        {/* 소스 + Gemini 복습 */}
                         <button
-                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                          title="skip"
+                          onClick={() => handleReviewAndComplete(item.schedule_id, item.topic_id, item.title, item.keywords, item.pdf_name, item.review_round, 'ai')}
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
+                          title="소스 + Gemini AI로 고는도 문제 생성"
                         >
-                          <Check size={14} />
-                          skip
+                          <Sparkles size={13} />
+                          소스+Gemini
                         </button>
                       </div>
                     </div>
