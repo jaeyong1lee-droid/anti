@@ -230,6 +230,7 @@ export default function App() {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -1334,14 +1335,29 @@ export default function App() {
                             const isRevealed = !!revealedQuestions[idx];
                             const isMultipleChoice = q.options && q.options.length > 0;
                             const hasAnsweredMC = selectedAnswers[idx] !== undefined;
+                            const isStructuredRecall = q.type && q.type.includes('구조 인출');
+
+                            // Parse section titles (lines starting with ①②③...) from question
+                            const parseSectionTitles = (text) => {
+                              if (!text) return [];
+                              return text.split('\n').filter(line => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(line.trim()));
+                            };
+                            // Parse section answers from structure field (split by ①②③ markers)
+                            const parseSectionAnswers = (text) => {
+                              if (!text) return [];
+                              const parts = text.split(/(?=\n?[①②③④⑤⑥⑦⑧⑨⑩])/);
+                              return parts.map(p => p.trim()).filter(Boolean);
+                            };
+                            const sectionTitles = isStructuredRecall ? parseSectionTitles(q.question) : [];
+                            const sectionAnswers = isStructuredRecall ? parseSectionAnswers(q.structure) : [];
 
                             return (
                               <div key={idx} className="border-b border-stone-300 pb-6 last:border-0 last:pb-0">
                                 
                                 {/* Round Header */}
-                                <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-2 mb-3">
                                   <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${
-                                    q.type.includes('구조 인출') ? 'bg-violet-700' :
+                                    isStructuredRecall ? 'bg-violet-700' :
                                     q.type.includes('개념') ? 'bg-indigo-700' : 
                                     q.type.includes('공식') ? 'bg-rose-700' : 
                                     'bg-emerald-700'
@@ -1351,14 +1367,40 @@ export default function App() {
                                   <span className="text-[10px] font-bold text-stone-500">질문 {idx + 1}</span>
                                 </div>
 
-                                {/* Question prompt */}
-                                <div className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left flex gap-1">
-                                  <span>{idx + 1}.</span>
-                                  <LatexRenderer text={q.question} katexLoaded={katexLoaded} className="inline" />
-                                </div>
+                                {/* For structured recall: show section accordion directly (no question text) */}
+                                {isStructuredRecall ? (
+                                  <div className="space-y-2 mb-4">
+                                    {sectionTitles.map((title, sIdx) => {
+                                      const secKey = `${idx}-${sIdx}`;
+                                      const isOpen = !!openSections[secKey];
+                                      return (
+                                        <div key={sIdx} className="rounded-xl border border-violet-200 overflow-hidden">
+                                          <button
+                                            onClick={() => setOpenSections(prev => ({ ...prev, [secKey]: !prev[secKey] }))}
+                                            className="w-full text-left px-4 py-3 bg-violet-50 hover:bg-violet-100 flex items-center justify-between gap-2 transition-colors"
+                                          >
+                                            <span className="text-sm font-black text-violet-900">{title}</span>
+                                            <span className="text-violet-500 flex-shrink-0 text-xs">{isOpen ? '▲' : '▼'}</span>
+                                          </button>
+                                          {isOpen && (
+                                            <div className="px-4 py-3 bg-amber-50 border-t border-violet-100 text-xs leading-relaxed text-stone-800">
+                                              <LatexRenderer text={sectionAnswers[sIdx] || '내용 없음'} katexLoaded={katexLoaded} />
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  /* Standard question prompt */
+                                  <div className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left flex gap-1">
+                                    <span>{idx + 1}.</span>
+                                    <LatexRenderer text={q.question} katexLoaded={katexLoaded} className="inline" />
+                                  </div>
+                                )}
 
                                 {/* INTERACTIVE CARD */}
-                                <div className="mt-4">
+                                <div className="mt-2">
                                   {isMultipleChoice ? (
                                     /* INTERACTIVE MULTIPLE CHOICE CARD */
                                     <div className="space-y-3">
