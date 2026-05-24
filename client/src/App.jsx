@@ -238,6 +238,7 @@ export default function App() {
   const [examTopic, setExamTopic] = useState(null);
   const [examRevealed, setExamRevealed] = useState({});
   const [examAnswers, setExamAnswers] = useState({});
+  const [detailedAnswers, setDetailedAnswers] = useState({});
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -549,6 +550,23 @@ export default function App() {
 
   // Open review quiz AND mark schedule as complete simultaneously
   // (removed - now handled by separate buttons)
+
+  // ── Request Detailed Answer for Exam Questions ────────────────────────
+  const handleRequestDetailedAnswer = async (idx, question, answer) => {
+    setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
+    try {
+      const res = await fetch(`${API_BASE}/api/exam/detailed-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, answer })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답안 전문을 가져오는 중 오류가 발생했습니다.');
+      setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
+    } catch (err) {
+      setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
+    }
+  };
 
   // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
   const handleOpenExam = async () => {
@@ -1988,6 +2006,32 @@ export default function App() {
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && <span className="ml-2">정답: <strong>{q.answer}</strong></span>}
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+                              
+                              {/* Detailed Answer Button & Content */}
+                              <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading ? (
+                                  <button
+                                    onClick={() => handleRequestDetailedAnswer(idx, q.question, q.explanation)}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                  >
+                                    ✨ 답안 전문보기 (AI 심층 해설)
+                                  </button>
+                                ) : detailedAnswers[idx]?.loading ? (
+                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse">
+                                    ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
+                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-sm">
+                                      <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
+                                    </div>
+                                    {detailedAnswers[idx].error && (
+                                      <div className="text-xs text-rose-400 mt-2">{detailedAnswers[idx].error}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -2014,6 +2058,32 @@ export default function App() {
                                 <span className="text-[10px] text-slate-300">{q.concept}</span>
                               </div>
                             )}
+
+                            {/* Detailed Answer Button & Content */}
+                            <div className="mt-3 pt-2 border-t border-slate-700/50">
+                              {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading ? (
+                                <button
+                                  onClick={() => handleRequestDetailedAnswer(idx, q.question, q.answer)}
+                                  className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                >
+                                  ✨ 답안 전문보기 (AI 심층 해설)
+                                </button>
+                              ) : detailedAnswers[idx]?.loading ? (
+                                <div className="text-[10px] text-indigo-400 font-bold animate-pulse">
+                                  ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
+                                </div>
+                              ) : (
+                                <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
+                                  <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                  <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-sm">
+                                    <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
+                                  </div>
+                                  {detailedAnswers[idx].error && (
+                                    <div className="text-xs text-rose-400 mt-2">{detailedAnswers[idx].error}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )
                       )}

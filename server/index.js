@@ -1858,6 +1858,67 @@ ${combinedText}
 });
 
 
+// 6-2. Comprehensive Exam: Generate Detailed Answer for a specific question
+app.post('/api/exam/detailed-answer', async (req, res) => {
+  try {
+    const { question, answer } = req.body;
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const EXAM_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+
+    const prompt = `
+당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
+수험생이 종합평가를 풀던 중 다음 문제에 대해 '답안 전문보기(심층 해설)'를 요청했습니다.
+
+[문제]: ${question}
+[기존 간략 정답/해설]: ${answer || '없음'}
+
+위 내용을 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
+다음 규칙을 엄격히 따르십시오:
+1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
+2. 수식이나 공식이 있다면 반드시 LaTeX 형식($수식$ 또는 $$수식$$)을 사용하십시오.
+3. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+`;
+
+    let responseText = null;
+    let lastErr = null;
+
+    for (const modelName of EXAM_MODELS) {
+      try {
+        console.log(`[답안전문보기] 모델 시도: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        responseText = result.response.text().trim();
+        console.log(`[답안전문보기] 성공: ${modelName}`);
+        break;
+      } catch (modelErr) {
+        lastErr = modelErr;
+        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
+        if (isQuota) {
+          console.warn(`[답안전문보기] ${modelName} Quota 초과, 다음 모델로 폴백`);
+          continue;
+        }
+        throw modelErr;
+      }
+    }
+
+    if (!responseText) {
+      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+      if (isQuota) {
+        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
+      }
+      throw lastErr || new Error('심층 해설 생성 실패');
+    }
+
+    res.json({ text: responseText });
+  } catch (err) {
+    console.error('Detailed answer route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;
