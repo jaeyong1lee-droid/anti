@@ -1691,47 +1691,59 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   }
 });
 
-// 6-1. Comprehensive Exam: Generate 70 questions via Gemini
-app.post('/api/topics/:id/exam', async (req, res) => {
-  const topicId = req.params.id;
+// 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini
+app.post('/api/exam/all', async (req, res) => {
   try {
-    const topic = await dbQuery.get(`SELECT * FROM topics WHERE id = ?`, [topicId]);
-    if (!topic) return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
-
-    let fileText = '';
-    if (topic.pdf_data) {
-      const isHtml = topic.pdf_name && (
-        topic.pdf_name.toLowerCase().endsWith('.html') ||
-        topic.pdf_name.toLowerCase().endsWith('.htm') ||
-        isBufferHtml(topic.pdf_data)
-      );
-      try {
-        if (isHtml) {
-          fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
-        } else {
-          const parsed = await pdfParse(topic.pdf_data);
-          fileText = parsed.text || '';
-        }
-      } catch (e) { console.warn('Exam file parse error:', e.message); }
-      fileText = mergeVerticalText(fileText);
-      if (fileText.length > 12000) fileText = fileText.substring(0, 12000) + '... [중략]';
-    }
-
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+
+    // Fetch all topics with pdf_data
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+    if (!topics || topics.length === 0) {
+      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+    }
+
+    // Extract text from each topic (limit per topic to avoid token overflow)
+    const topicTexts = [];
+    for (const topic of topics) {
+      let fileText = '';
+      if (topic.pdf_data) {
+        const isHtml = topic.pdf_name && (
+          topic.pdf_name.toLowerCase().endsWith('.html') ||
+          topic.pdf_name.toLowerCase().endsWith('.htm') ||
+          isBufferHtml(topic.pdf_data)
+        );
+        try {
+          if (isHtml) {
+            fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+          } else {
+            const parsed = await pdfParse(topic.pdf_data);
+            fileText = parsed.text || '';
+          }
+        } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
+        fileText = mergeVerticalText(fileText);
+        // Limit per topic: 2000 chars to avoid total overflow
+        if (fileText.length > 2000) fileText = fileText.substring(0, 2000) + '...[중략]';
+      }
+      topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || '소스 없음'}`);
+    }
+
+    const combinedText = topicTexts.join('\n\n---\n\n');
+    const topicTitles = topics.map(t => t.title).join(', ');
+    const randomSeed = Math.floor(Math.random() * 10000);
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const randomSeed = Math.floor(Math.random() * 10000);
     const prompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 소스 자료를 기반으로 정확히 70개의 종합평가 문제를 생성하십시오.
+아래 모든 토픽의 소스 자료를 통합하여 정확히 70개의 종합평가 문제를 생성하십시오.
 매번 문제 구성을 다르게 출제하십시오 (랜덤 시드: ${randomSeed}).
 
-[토픽 제목]: ${topic.title}
-[핵심 키워드]: ${topic.keywords || '없음'}
-[소스 텍스트]: ${fileText || '소스 없음'}
+[평가 범위 토픽 목록]: ${topicTitles}
+
+[통합 소스 텍스트]:
+${combinedText}
 
 [출제 규칙]:
 1. 총 70문제를 아래 비율로 구성:
@@ -1741,7 +1753,7 @@ app.post('/api/topics/:id/exam', async (req, res) => {
      * subtype "서술": 메커니즘·원리·비교 설명 (나머지)
    - 객관식 (type: "객관식"): 45문제 (4지선다)
 2. 개요·정의·공식을 묻는 문제는 반드시 주관식으로만 출제.
-3. 소스 텍스트의 모든 단락·항목에서 골고루 출제.
+3. 모든 토픽에서 골고루 출제 (각 토픽별 최소 1문제 이상).
 4. 전문용어, 수치, 공식을 정확히 사용.
 5. 객관식 오답은 그럴듯하게 구성.
 6. 공식·수식은 LaTeX 형식 사용 ($수식$).
@@ -1754,13 +1766,6 @@ app.post('/api/topics/:id/exam', async (req, res) => {
     "subtype": "개요",
     "question": "질문",
     "answer": "2~3줄 모범답안",
-    "concept": "핵심 개념 1줄"
-  },
-  {
-    "type": "주관식",
-    "subtype": "공식",
-    "question": "질문",
-    "answer": "공식 및 설명",
     "concept": "핵심 개념 1줄"
   },
   {
@@ -1788,7 +1793,7 @@ app.post('/api/topics/:id/exam', async (req, res) => {
       if (!questions || !Array.isArray(questions) || questions.length === 0) {
         throw new Error('70문항 파싱 실패');
       }
-      res.json({ questions, total: questions.length });
+      res.json({ questions, total: questions.length, topicCount: topics.length });
     } catch (aiErr) {
       console.error('Exam generation error:', aiErr);
       res.status(500).json({ error: '종합평가 문제 생성 실패: ' + aiErr.message });

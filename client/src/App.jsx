@@ -473,16 +473,16 @@ export default function App() {
   // Open review quiz AND mark schedule as complete simultaneously
   // (removed - now handled by separate buttons)
 
-  // Open Comprehensive Exam (70 questions via Gemini)
-  const handleOpenExam = async (topicId, title, keywords, pdfName) => {
-    setExamTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+  // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
+  const handleOpenExam = async () => {
+    setExamTopic({ title: '전체 토픽 통합 종합평가' });
     setLoadingExam(true);
     setExamQuestions([]);
     setExamRevealed({});
     setExamAnswers({});
     setShowExam(true);
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${topicId}/exam`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         setExamQuestions(data.questions || []);
@@ -693,6 +693,15 @@ export default function App() {
           <List size={20} />
           <span className="text-[10px] font-bold tracking-tight">진행현황</span>
           <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
+        </button>
+        {/* 종합평가 버튼 */}
+        <button
+          onClick={handleOpenExam}
+          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-amber-400 hover:text-amber-200 hover:bg-amber-950/40"
+          title="전체 소스 기반 70문항 종합평가"
+        >
+          <Award size={20} />
+          <span className="text-[10px] font-bold tracking-tight">종합평가</span>
         </button>
       </div>
 
@@ -1152,14 +1161,6 @@ export default function App() {
                                 >
                                   <Sparkles size={12} />
                                   소스+Gemini
-                                </button>
-                                <button
-                                  onClick={() => handleOpenExam(topic.id, topic.title, topic.keywords, topic.pdf_name)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/70 text-amber-300 border border-amber-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  title="Gemini AI로 70문항 종합평가 생성"
-                                >
-                                  <Award size={12} />
-                                  종합평가
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTopic(topic.id, topic.title)}
