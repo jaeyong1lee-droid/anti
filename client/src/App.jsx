@@ -955,7 +955,7 @@ export default function App() {
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="lg:col-span-5 glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
+            <section className="hidden md:block lg:col-span-5 glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
