@@ -152,6 +152,7 @@ export default function App() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiQuestions, setAiQuestions] = useState([]);
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
+  const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [isFallback, setIsFallback] = useState(false);
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -332,6 +333,7 @@ export default function App() {
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
+    setSelectedAnswers({}); // Reset MC selected answers
     setIsFallback(false);
     setShowFullReport(false);
     setReportText('');
@@ -1207,13 +1209,18 @@ export default function App() {
                         <div className="space-y-8">
                           {aiQuestions.map((q, idx) => {
                             const isRevealed = !!revealedQuestions[idx];
+                            const isMultipleChoice = q.options && q.options.length > 0;
+                            const hasAnsweredMC = selectedAnswers[idx] !== undefined;
+
                             return (
                               <div key={idx} className="border-b border-stone-300 pb-6 last:border-0 last:pb-0">
                                 
                                 {/* Round Header */}
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${
-                                    q.type.includes('10점') ? 'bg-indigo-700' : 'bg-emerald-700'
+                                    q.type.includes('개념') ? 'bg-indigo-700' : 
+                                    q.type.includes('공식') ? 'bg-rose-700' : 
+                                    'bg-emerald-700'
                                   }`}>
                                     {q.type}
                                   </span>
@@ -1221,78 +1228,152 @@ export default function App() {
                                 </div>
 
                                 {/* Question prompt */}
-                                <p className="text-base font-black text-stone-900 leading-relaxed mb-4">
+                                <p className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left">
                                   {idx + 1}. {q.question}
                                 </p>
 
-                                {/* ACTIVE RECALL INTERACTIVE CARD */}
+                                {/* INTERACTIVE CARD */}
                                 <div className="mt-4">
-                                  {!isRevealed ? (
-                                    /* Locked/Blurred Trigger Box */
-                                    <button
-                                      onClick={() => handleToggleReveal(idx)}
-                                      className="w-full p-6 bg-stone-200/70 hover:bg-stone-200 border-2 border-dashed border-stone-400 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-700 transition-all duration-300 group hover:shadow-lg"
-                                    >
-                                      <EyeOff size={24} className="text-stone-500 group-hover:text-brand-500 transition-colors animate-pulse" />
-                                      <span className="text-sm font-black text-stone-900 tracking-tight group-hover:text-brand-600 transition-colors">
-                                        뇌에서 끄집어내기 완료! 정답(개념, 공식, 답안 구조) 확인하기
-                                      </span>
-                                      <span className="text-[11px] text-stone-500">
-                                        * 머릿속으로 아웃라인을 설계한 뒤 클릭해 정답을 맞추는 것이 암기 효율에 가장 좋습니다.
-                                      </span>
-                                    </button>
+                                  {isMultipleChoice ? (
+                                    /* INTERACTIVE MULTIPLE CHOICE CARD */
+                                    <div className="space-y-3">
+                                      <div className="grid grid-cols-1 gap-2.5">
+                                        {q.options.map((opt, oIdx) => {
+                                          const isSelected = selectedAnswers[idx] === opt;
+                                          const isCorrect = q.answer === opt;
+                                          
+                                          let buttonClass = "w-full text-left p-3.5 bg-stone-100/50 hover:bg-stone-200/80 active:scale-[0.99] border border-stone-300 rounded-xl text-stone-850 text-xs font-bold tracking-tight transition-all duration-200 flex items-center justify-between shadow-sm cursor-pointer";
+                                          
+                                          if (hasAnsweredMC) {
+                                            if (isCorrect) {
+                                              buttonClass = "w-full text-left p-3.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-emerald-950 text-xs font-extrabold tracking-tight transition-all duration-200 flex items-center justify-between shadow-md";
+                                            } else if (isSelected) {
+                                              buttonClass = "w-full text-left p-3.5 bg-rose-50 border-2 border-rose-500 rounded-xl text-rose-950 text-xs font-extrabold tracking-tight transition-all duration-200 flex items-center justify-between shadow-md";
+                                            } else {
+                                              buttonClass = "w-full text-left p-3.5 bg-stone-50/50 border border-stone-200 rounded-xl text-stone-400 text-xs font-medium tracking-tight transition-all duration-200 flex items-center justify-between opacity-50 cursor-not-allowed";
+                                            }
+                                          }
+
+                                          return (
+                                            <button
+                                              key={oIdx}
+                                              disabled={hasAnsweredMC}
+                                              onClick={() => setSelectedAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                              className={buttonClass}
+                                            >
+                                              <span className="leading-snug pr-4 text-left">{oIdx + 1}. {opt}</span>
+                                              {hasAnsweredMC && isCorrect && (
+                                                <span className="bg-emerald-500 text-white rounded-full p-0.5 flex items-center justify-center flex-shrink-0 animate-scale-up">
+                                                  <Check size={12} strokeWidth={3} />
+                                                </span>
+                                              )}
+                                              {hasAnsweredMC && isSelected && !isCorrect && (
+                                                <span className="bg-rose-500 text-white rounded-full px-1 py-0.5 text-[8px] font-black flex items-center justify-center flex-shrink-0 animate-scale-up">
+                                                  X
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* Explanation Box */}
+                                      {hasAnsweredMC && (
+                                        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-3 shadow-sm animate-fade-in transition-all duration-300 mt-4 text-left">
+                                          <div className="flex items-center gap-1.5 border-b border-amber-200/60 pb-2">
+                                            <Sparkles size={14} className="text-amber-700 animate-pulse" />
+                                            <span className="text-xs font-black text-amber-950">
+                                              풀이 검증 및 상세 해설 (Explanation)
+                                            </span>
+                                            <span className={`ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${
+                                              selectedAnswers[idx] === q.answer ? 'bg-emerald-600 animate-bounce' : 'bg-rose-600'
+                                            }`}>
+                                              {selectedAnswers[idx] === q.answer ? '정답입니다!' : '오답입니다'}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs font-bold text-stone-850 space-y-2">
+                                            <p className="text-stone-900 font-extrabold flex items-center gap-1">
+                                              <span className="text-[10px] bg-stone-200 px-1.5 py-0.5 rounded text-stone-700">체크된 정답</span> 
+                                              <span className="text-emerald-700 underline">{q.answer}</span>
+                                            </p>
+                                            <p className="leading-relaxed font-medium text-stone-700 whitespace-pre-line pt-1 text-[11px] border-t border-stone-200/40">
+                                              {q.explanation || '해당 문제의 상세 설명이 제공되지 않았습니다.'}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : (
-                                    /* Answer Display Container */
-                                    <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm animate-fade-in transition-all duration-300">
-                                      
-                                      {/* Answer Reveal Header */}
-                                      <div className="flex justify-between items-center border-b border-amber-200/60 pb-2">
-                                        <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                                          <Flame size={14} className="text-amber-700" />
-                                          능동 인출 검증용 모범 답안 지침
-                                        </span>
+                                    /* ACTIVE RECALL INTERACTIVE CARD (For Question 1 & 2) */
+                                    <>
+                                      {!isRevealed ? (
+                                        /* Locked/Blurred Trigger Box */
                                         <button
                                           onClick={() => handleToggleReveal(idx)}
-                                          className="text-[10px] text-amber-800 hover:text-amber-950 border border-amber-300 px-2 py-0.5 rounded-md hover:bg-amber-100/50 font-bold transition-colors"
+                                          className="w-full p-6 bg-stone-200/70 hover:bg-stone-200 border-2 border-dashed border-stone-400 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-700 transition-all duration-300 group hover:shadow-lg cursor-pointer"
                                         >
-                                          다시 가리기
+                                          <EyeOff size={24} className="text-stone-500 group-hover:text-brand-500 transition-colors animate-pulse" />
+                                          <span className="text-sm font-black text-stone-900 tracking-tight group-hover:text-brand-600 transition-colors">
+                                            뇌에서 끄집어내기 완료! 정답(개념, 공식, 답안 구조) 확인하기
+                                          </span>
+                                          <span className="text-[11px] text-stone-500">
+                                            * 머릿속으로 아웃라인을 설계한 뒤 클릭해 정답을 맞추는 것이 암기 효율에 가장 좋습니다.
+                                          </span>
                                         </button>
-                                      </div>
+                                      ) : (
+                                        /* Answer Display Container */
+                                        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm animate-fade-in transition-all duration-300">
+                                          
+                                          {/* Answer Reveal Header */}
+                                          <div className="flex justify-between items-center border-b border-amber-200/60 pb-2">
+                                            <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                                              <Flame size={14} className="text-amber-700" />
+                                              능동 인출 검증용 모범 답안 지침
+                                            </span>
+                                            <button
+                                              onClick={() => handleToggleReveal(idx)}
+                                              className="text-[10px] text-amber-800 hover:text-amber-950 border border-amber-300 px-2 py-0.5 rounded-md hover:bg-amber-100/50 font-bold transition-colors cursor-pointer"
+                                            >
+                                              다시 가리기
+                                            </button>
+                                          </div>
 
-                                      {/* Concept Section */}
-                                      <div className="space-y-1">
-                                        <h5 className="text-xs font-black text-indigo-900 flex items-center gap-1">
-                                          <Brain size={13} />
-                                          [1] 핵심 개념 (Core Concept)
-                                        </h5>
-                                        <p className="text-xs text-stone-800 font-medium pl-4 leading-relaxed">
-                                          {q.concept || '개념 내용이 제공되지 않았습니다.'}
-                                        </p>
-                                      </div>
+                                          {/* Concept Section */}
+                                          <div className="space-y-1 text-left">
+                                            <h5 className="text-xs font-black text-indigo-900 flex items-center gap-1">
+                                              <Brain size={13} />
+                                              [1] 핵심 개념 (Core Concept)
+                                            </h5>
+                                            <p className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed whitespace-pre-line">
+                                              {q.concept || '개념 내용이 제공되지 않았습니다.'}
+                                            </p>
+                                          </div>
 
-                                      {/* Formula / Diagram Section */}
-                                      <div className="space-y-1">
-                                        <h5 className="text-xs font-black text-rose-900 flex items-center gap-1">
-                                          <Award size={13} />
-                                          [2] 필수 공식 및 개념도 구성요소 (Formula / Diagram)
-                                        </h5>
-                                        <p className="text-xs text-stone-800 font-medium pl-4 leading-relaxed">
-                                          {q.formula || '공식 또는 아키텍처 필수 구성요소가 제공되지 않았습니다.'}
-                                        </p>
-                                      </div>
+                                          {/* Formula / Diagram Section */}
+                                          <div className="space-y-1 text-left">
+                                            <h5 className="text-xs font-black text-rose-900 flex items-center gap-1">
+                                              <Award size={13} />
+                                              [2] 필수 공식 및 개념도 구성요소 (Formula / Diagram)
+                                            </h5>
+                                            <p className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed whitespace-pre-line">
+                                              {q.formula || '공식 또는 아키텍처 필수 구성요소가 제공되지 않았습니다.'}
+                                            </p>
+                                          </div>
 
-                                      {/* Structure Section */}
-                                      <div className="space-y-1.5">
-                                        <h5 className="text-xs font-black text-emerald-900 flex items-center gap-1">
-                                          <LayoutTemplate size={13} />
-                                          [3] 답안 작성 구조 방식 아웃라인 (3-Paragraph Structure Layout)
-                                        </h5>
-                                        <div className="text-xs text-stone-850 font-medium pl-4 leading-normal whitespace-pre-line space-y-1">
-                                          {q.structure ? q.structure : '답안지 1~3단락 가이드라인이 제공되지 않았습니다.'}
+                                          {/* Structure Section */}
+                                          <div className="space-y-1.5 text-left">
+                                            <h5 className="text-xs font-black text-emerald-900 flex items-center gap-1">
+                                              <LayoutTemplate size={13} />
+                                              [3] 답안 작성 구조 방식 아웃라인 (3-Paragraph Structure Layout)
+                                            </h5>
+                                            <div className="text-xs text-stone-850 font-semibold pl-4 leading-normal whitespace-pre-line space-y-1">
+                                              {q.structure ? q.structure : '답안지 1~3단락 가이드라인이 제공되지 않았습니다.'}
+                                            </div>
+                                          </div>
+
                                         </div>
-                                      </div>
-
-                                    </div>
+                                      )}
+                                    </>
                                   )}
                                 </div>
 
