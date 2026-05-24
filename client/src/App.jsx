@@ -229,6 +229,7 @@ export default function App() {
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [isFallback, setIsFallback] = useState(false);
+  const [aiError, setAiError] = useState('');
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -434,6 +435,7 @@ export default function App() {
     setRevealedQuestions({}); // Reset revealed answers
     setSelectedAnswers({}); // Reset MC selected answers
     setIsFallback(false);
+    setAiError('');
     setShowFullReport(false);
     setReportText('');
 
@@ -446,12 +448,17 @@ export default function App() {
       if (res.ok) {
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
+        setAiError(data.error || '');
+        if (data.isFallback) {
+          console.warn('AI Questions loaded in fallback mode. Reason/Error:', data.error);
+        }
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
       console.error('AI call error:', err);
       showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
+      setAiError(err.message || '서버 통신 오류');
     } finally {
       setLoadingAI(false);
     }
@@ -1282,13 +1289,22 @@ export default function App() {
                   ) : (
                     <>
                       {isFallback && (
-                        <div className="bg-amber-950/40 text-amber-200 border border-amber-500/30 rounded-2xl p-4 flex gap-3 text-xs leading-relaxed animate-fade-in">
-                          <div className="text-amber-400 font-extrabold flex-shrink-0 text-base">💡</div>
-                          <div>
-                            <strong className="font-bold text-amber-300 block mb-1">알림: Gemini API Key 미설정 (로컬 출제 모드)</strong>
-                            현재 백엔드에 Gemini API Key가 설정되지 않아, 파일 본문(PDF/HTML) 대신 등록하신 <strong>제목과 키워드 중심의 로컬 예상 기출문제</strong>가 출력되었습니다. 
-                            파일 본문의 구체적인 기술 명세를 학습 분석하여 고난도 실전 기출문제를 출제하고 싶다면, 백엔드의 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">server/.env</code> 파일에 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">GEMINI_API_KEY</code>를 등록하고 백엔드 서버를 재시작해 주세요.
+                        <div className="bg-amber-950/40 text-amber-200 border border-amber-500/30 rounded-2xl p-4 flex flex-col gap-3 text-xs leading-relaxed animate-fade-in mb-4">
+                          <div className="flex gap-3">
+                            <div className="text-amber-400 font-extrabold flex-shrink-0 text-base">💡</div>
+                            <div>
+                              <strong className="font-bold text-amber-300 block mb-1">알림: Gemini API Key 미설정 (로컬 출제 모드)</strong>
+                              현재 백엔드에 Gemini API Key가 설정되지 않아, 파일 본문(PDF/HTML) 대신 등록하신 <strong>제목과 키워드 중심의 로컬 예상 기출문제</strong>가 출력되었습니다. 
+                              파일 본문의 구체적인 기술 명세를 학습 분석하여 고난도 실전 기출문제를 출제하고 싶다면, 백엔드의 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">server/.env</code> 파일에 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">GEMINI_API_KEY</code>를 등록하고 백엔드 서버를 재시작해 주세요.
+                              <br /><span className="text-slate-400 block mt-1.5">(Vercel 배포 버전의 경우, Vercel 프로젝트 설정의 Environment Variables에 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">GEMINI_API_KEY</code>를 추가하고 <strong>반드시 Deployments 탭에서 Redeploy(재배포)</strong>를 해주어야 반영됩니다.)</span>
+                            </div>
                           </div>
+                          {aiError && (
+                            <div className="mt-1 pt-2 border-t border-amber-500/10 text-[11px] text-amber-400/90 font-mono bg-slate-950/40 p-2.5 rounded-lg break-all">
+                              <span className="font-extrabold text-amber-300 block mb-0.5">⚠️ 백엔드 API 에러 진단 상세:</span>
+                              {aiError}
+                            </div>
+                          )}
                         </div>
                       )}
 
