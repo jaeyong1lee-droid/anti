@@ -484,6 +484,11 @@ export default function App() {
 
   // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai') => {
+    // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
+    if (selectedTopic?.id === topicId && aiQuestions.length > 0) {
+      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+      return;
+    }
     setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
     setLoadingAI(true);
     setAiQuestions([]);
@@ -522,6 +527,11 @@ export default function App() {
 
   // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
   const handleOpenExam = async () => {
+    // 기존 문제가 있으면 (닫기 후 재열) → 바로 열기, 새로 생성 안 함
+    if (examQuestions.length > 0) {
+      setShowExam(true);
+      return;
+    }
     setExamTopic({ title: '전체 토픽 통합 종합평가' });
     setLoadingExam(true);
     setExamQuestions([]);
