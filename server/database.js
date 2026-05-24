@@ -116,12 +116,12 @@ export const dbQuery = {
       if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       let translatedSql = translateSql(sql);
       const isInsert = translatedSql.trim().toUpperCase().startsWith('INSERT');
-      if (isInsert) {
+      if (isInsert && !translatedSql.includes('app_session')) {
         translatedSql += ' RETURNING id';
       }
       try {
         const res = await pgPool.query(translatedSql, params);
-        const lastID = isInsert && res.rows[0] ? res.rows[0].id : null;
+        const lastID = isInsert && res.rows[0] && res.rows[0].id ? res.rows[0].id : null;
         return { id: lastID, changes: res.rowCount };
       } catch (err) {
         console.error('PostgreSQL query error (run):', err);
