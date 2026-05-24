@@ -18,14 +18,46 @@ const isVercel = !!process.env.VERCEL;
 let db = null;
 let pgPool = null;
 
+// Safely parse a PostgreSQL connection URL into individual config params.
+// This avoids pg library misinterpreting special characters (e.g. !!!!) in passwords.
+function parseDbUrl(rawUrl) {
+  try {
+    // Replace leading 'postgres://' with 'postgresql://' for URL parsing
+    const normalized = rawUrl.replace(/^postgres:\/\//, 'postgresql://');
+    const url = new URL(normalized);
+    return {
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      host: url.hostname,
+      port: url.port ? parseInt(url.port, 10) : 5432,
+      database: url.pathname.replace(/^\//, ''),
+    };
+  } catch (e) {
+    console.error('Failed to parse DATABASE_URL, falling back to raw connection string:', e.message);
+    return null;
+  }
+}
+
 if (isPostgres) {
   console.log('PostgreSQL database URL detected. Connecting to Cloud PostgreSQL database...');
-  pgPool = new pg.Pool({
-    connectionString: connectionString,
-    ssl: {
-      rejectUnauthorized: false // Required for hosted services like Supabase / Neon
-    }
-  });
+  const parsed = parseDbUrl(connectionString);
+  if (parsed) {
+    console.log(`Parsed DB config → host: ${parsed.host}, port: ${parsed.port}, user: ${parsed.user}, db: ${parsed.database}`);
+    pgPool = new pg.Pool({
+      user: parsed.user,
+      password: parsed.password,
+      host: parsed.host,
+      port: parsed.port,
+      database: parsed.database,
+      ssl: { rejectUnauthorized: false },
+    });
+  } else {
+    // Fallback: use connection string directly
+    pgPool = new pg.Pool({
+      connectionString: connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
 }
 
 // Lazy loader for SQLite database to prevent top-level await syntax issues & Vercel EROFS crashes
