@@ -1434,22 +1434,68 @@ app.delete('/api/topics/:id', async (req, res) => {
 });
 
 // Environment Debug Route
-app.get('/api/debug-env', (req, res) => {
+app.get('/api/debug-env', async (req, res) => {
   const connectionString = process.env.DATABASE_URL || 
                            process.env.POSTGRES_URL || 
                            process.env.POSTGRES_PRISMA_URL ||
                            process.env.SUPABASE_DATABASE_URL ||
                            '';
   
-  // Extract all existing environment variable Key names safely (omitting sensitive values)
   const envKeys = Object.keys(process.env).sort();
+
+  // Parse URL to show connection details (no password)
+  let parsedInfo = null;
+  if (connectionString) {
+    try {
+      const normalized = connectionString.replace(/^postgres:\/\//, 'postgresql://');
+      const url = new URL(normalized);
+      parsedInfo = {
+        host: url.hostname,
+        port: url.port,
+        user: decodeURIComponent(url.username),
+        database: url.pathname.replace(/^\//, ''),
+        passwordLength: url.password.length,
+      };
+    } catch(e) {
+      parsedInfo = { parseError: e.message };
+    }
+  }
+
+  // Live DB connection test
+  let dbLiveTest = 'not_attempted';
+  let dbLiveError = null;
+  if (connectionString) {
+    try {
+      const { default: pg } = await import('pg');
+      const normalized = connectionString.replace(/^postgres:\/\//, 'postgresql://');
+      const url = new URL(normalized);
+      const testPool = new pg.Pool({
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        host: url.hostname,
+        port: url.port ? parseInt(url.port, 10) : 5432,
+        database: url.pathname.replace(/^\//, ''),
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
+      });
+      await testPool.query('SELECT 1');
+      await testPool.end();
+      dbLiveTest = 'success';
+    } catch (e) {
+      dbLiveTest = 'failed';
+      dbLiveError = e.message;
+    }
+  }
 
   res.json({
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
     keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     hasDbUrl: !!connectionString,
     dbUrlLength: connectionString.length,
+    parsedDbInfo: parsedInfo,
     dbInitError: global.dbInitError || null,
+    dbLiveTest,
+    dbLiveError,
     envKeys: envKeys,
     nodeEnv: process.env.NODE_ENV || 'development',
     time: new Date().toISOString()
