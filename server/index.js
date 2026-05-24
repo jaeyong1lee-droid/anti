@@ -1732,9 +1732,6 @@ app.post('/api/exam/all', async (req, res) => {
     const topicTitles = topics.map(t => t.title).join(', ');
     const randomSeed = Math.floor(Math.random() * 10000);
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-
     const prompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
 아래 모든 토픽의 소스 자료를 통합하여 정확히 70개의 종합평가 문제를 생성하십시오.
@@ -1779,30 +1776,62 @@ ${combinedText}
 ]
 `;
 
-    try {
-      const result = await model.generateContent(prompt);
-      const rawText = result.response.text().trim();
-      let questions = null;
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+    // 모델 폴백 체인: gemini-3.5-flash → gemini-2.5-flash → gemini-2.0-flash
+    const EXAM_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+
+    let questions = null;
+    let lastErr = null;
+
+    for (const modelName of EXAM_MODELS) {
       try {
-        let text = rawText;
-        if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-        questions = JSON.parse(text);
-      } catch {
-        questions = extractJsonArray(rawText);
+        console.log(`[종합평가] 모델 시도: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const rawText = result.response.text().trim();
+        try {
+          let text = rawText;
+          if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+          questions = JSON.parse(text);
+        } catch {
+          questions = extractJsonArray(rawText);
+        }
+        if (!questions || !Array.isArray(questions) || questions.length === 0) {
+          throw new Error('70문항 파싱 실패');
+        }
+        console.log(`[종합평가] 성공: ${modelName}, ${questions.length}문항`);
+        break; // 성공 시 루프 종료
+      } catch (modelErr) {
+        lastErr = modelErr;
+        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
+        if (isQuota) {
+          console.warn(`[종합평가] ${modelName} Quota 초과, 다음 모델로 폴백`);
+          continue;
+        }
+        throw modelErr; // Quota 외 오류는 즉시 throw
       }
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
-        throw new Error('70문항 파싱 실패');
-      }
-      res.json({ questions, total: questions.length, topicCount: topics.length });
-    } catch (aiErr) {
-      console.error('Exam generation error:', aiErr);
-      res.status(500).json({ error: '종합평가 문제 생성 실패: ' + aiErr.message });
     }
+
+    if (!questions) {
+      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+      if (isQuota) {
+        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다. 내일 다시 시도하거나, 잠시 후 다시 눌러보세요.' });
+      }
+      throw lastErr || new Error('문제 생성 실패');
+    }
+
+    res.json({ questions, total: questions.length, topicCount: topics.length });
   } catch (err) {
     console.error('Exam route error:', err);
-    res.status(500).json({ error: '서버 오류: ' + err.message });
+    const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate');
+    if (isQuota) {
+      return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다. 내일 다시 시도하거나, 잠시 후 다시 눌러보세요.' });
+    }
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 });
+
 
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
