@@ -1433,6 +1433,16 @@ app.delete('/api/topics/:id', async (req, res) => {
   }
 });
 
+// Environment Debug Route
+app.get('/api/debug-env', (req, res) => {
+  res.json({
+    hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    time: new Date().toISOString()
+  });
+});
+
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = req.params.id;
@@ -1480,7 +1490,11 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (!geminiApiKey) {
       console.log('No GEMINI_API_KEY environment variable found. Generating high-quality local fallback questions.');
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      return res.json({ questions: fallbackQuestions, isFallback: true });
+      return res.json({ 
+        questions: fallbackQuestions, 
+        isFallback: true,
+        error: '백엔드 환경변수에 GEMINI_API_KEY가 존재하지 않습니다. Vercel 프로젝트 대시보드의 Environment Variables에 등록했는지 재확인하시고, 반드시 최신 배포본을 Redeploy(재배포)해 주십시오. (No GEMINI_API_KEY environment variable found.)'
+      });
     }
 
     try {
