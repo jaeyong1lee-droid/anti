@@ -6,7 +6,13 @@ import pg from 'pg';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isPostgres = !!process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || 
+                         process.env.POSTGRES_URL || 
+                         process.env.POSTGRES_PRISMA_URL ||
+                         process.env.SUPABASE_DATABASE_URL ||
+                         '';
+
+const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
 
 let db = null;
@@ -15,7 +21,7 @@ let pgPool = null;
 if (isPostgres) {
   console.log('PostgreSQL database URL detected. Connecting to Cloud PostgreSQL database...');
   pgPool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: connectionString,
     ssl: {
       rejectUnauthorized: false // Required for hosted services like Supabase / Neon
     }
