@@ -512,12 +512,34 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   const s2 = features.keySentences[2] || `구축 및 실무 현장 도입 과정의 예상 리스크를 선제 통제하고 설계 안전성 가이드를 정립해야 합니다.`;
   const s3 = features.keySentences[3] || `정량적 물리/수학적 모델식과 개념도 배치를 설계 표준에 준하여 작성해야 합니다.`;
 
-  // Domain Detection
-  const isHydraulics = cleanTitle.includes('seepage') || cleanTitle.includes('discharge') || cleanTitle.includes('velocity') || cleanTitle.includes('flow') || cleanTitle.includes('permeability') || cleanTitle.includes('투수') || cleanTitle.includes('침투') || cleanTitle.includes('유출') || cleanTitle.includes('수두') || cleanText.includes('seepage') || cleanText.includes('darcy') || cleanText.includes('투수계수');
-  const isSoil = cleanTitle.includes('압밀') || cleanTitle.includes('점토') || cleanTitle.includes('전단') || cleanTitle.includes('파괴') || cleanTitle.includes('지지력') || cleanTitle.includes('흙') || cleanTitle.includes('지반') || cleanTitle.includes('clay') || cleanTitle.includes('shear') || cleanTitle.includes('consolidation') || cleanTitle.includes('mohr') || cleanText.includes('압밀') || cleanText.includes('점토') || cleanText.includes('유효응력');
-  const isTunnel = cleanTitle.includes('터널') || cleanTitle.includes('tunnel') || cleanTitle.includes('natm') || cleanTitle.includes('암반') || cleanTitle.includes('지보') || cleanText.includes('터널') || cleanText.includes('지보재');
+  // Title-based classification (Highest priority)
+  const isTitleSoil = cleanTitle.includes('압밀') || cleanTitle.includes('점토') || cleanTitle.includes('전단') || cleanTitle.includes('파괴') || cleanTitle.includes('지지력') || cleanTitle.includes('흙') || cleanTitle.includes('지반') || cleanTitle.includes('clay') || cleanTitle.includes('shear') || cleanTitle.includes('consolidation') || cleanTitle.includes('mohr') || cleanTitle.includes('c-phi') || cleanTitle.includes('c - phi');
+  const isTitleHydraulics = cleanTitle.includes('seepage') || cleanTitle.includes('discharge') || cleanTitle.includes('velocity') || cleanTitle.includes('flow') || cleanTitle.includes('permeability') || cleanTitle.includes('투수') || cleanTitle.includes('침투') || cleanTitle.includes('유출') || cleanTitle.includes('수두') || cleanTitle.includes('darcy');
+  const isTitleTunnel = cleanTitle.includes('터널') || cleanTitle.includes('tunnel') || cleanTitle.includes('natm') || cleanTitle.includes('암반') || cleanTitle.includes('지보') || cleanTitle.includes('숏크리트') || cleanTitle.includes('락볼트') || cleanTitle.includes('라이닝');
 
-  if (isHydraulics) {
+  let domain = 'general';
+  if (isTitleSoil) {
+    domain = 'soil';
+  } else if (isTitleHydraulics) {
+    domain = 'hydraulics';
+  } else if (isTitleTunnel) {
+    domain = 'tunnel';
+  } else {
+    // Text-based classification fallback (If title is non-descriptive)
+    const hasSoilText = cleanText.includes('압밀') || cleanText.includes('점토') || cleanText.includes('유효응력') || cleanText.includes('전단강도') || cleanText.includes('선행압밀');
+    const hasHydraulicsText = cleanText.includes('seepage') || cleanText.includes('darcy') || cleanText.includes('투수계수') || cleanText.includes('동수경사') || cleanText.includes('피이핑') || cleanText.includes('piping');
+    const hasTunnelText = cleanText.includes('지보재') || cleanText.includes('락볼트') || cleanText.includes('숏크리트') || cleanText.includes('터널공');
+
+    if (hasSoilText) {
+      domain = 'soil';
+    } else if (hasHydraulicsText) {
+      domain = 'hydraulics';
+    } else if (hasTunnelText) {
+      domain = 'tunnel';
+    }
+  }
+
+  if (domain === 'hydraulics') {
     console.log("Generating tailored Hydraulics & Seepage local questions.");
     return [
       {
@@ -532,7 +554,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
         question: `지반 내 지하수 흐름 시 발생하는 침투력(Seepage Force)의 발생 메커니즘을 규명하고, 한계동수경사(Critical Hydraulic Gradient)의 공식 유도 과정 및 분사현상(Quick Sand) 방지를 위한 안전율(F.S) 설계 기준을 서술하시오.`,
         concept: `상향 침투력으로 인해 유효응력이 0이 되는 상태를 분사현상이라 하며, 이때의 동수경사인 한계동수경사(icr)와 실제 동수경사(i)의 비를 통해 침투 안전율을 평가합니다.`,
         formula: `[한계동수경사 및 침투 안정성 공식]\n- 한계동수경사: i_cr = (G_s - 1) / (1 + e) (G_s: 흙 입자 비중, e: 간극비)\n- 침투압(단위체적당): j = i × γ_w (i: 동수경사, γ_w: 물의 단위중량)\n- 분사현상 안전율: F.S = i_cr / i >= 1.5 ~ 2.0`,
-        structure: `1단락: 지반 내 침투수의 상향 흐름과 침투력(Seepage Force)의 물리적 메커니즘\n2단락: 한계동수경사(i_cr) 공식의 한계 소성 평형 상태 유도 과정 및 퀵샌드 현상 대책\n3단락: 차수벽 및 필터재 설치를 통한 동수경사 제어 기법 및 설계 안전성 확보 제언`
+        structure: `1단락: 지반 내 침투수의 상향 흐름 and 침투력(Seepage Force)의 물리적 메커니즘\n2단락: 한계동수경사(i_cr) 공식의 한계 소성 평형 상태 유도 과정 및 퀵샌드 현상 대책\n3단락: 차수벽 및 필터재 설치를 통한 동수경사 제어 기법 및 설계 안전성 확보 제언`
       },
       {
         type: '서술형 (25점)',
@@ -544,7 +566,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     ];
   }
 
-  if (isSoil) {
+  if (domain === 'soil') {
     console.log("Generating tailored Geotechnical & Clay local questions.");
     return [
       {
