@@ -231,6 +231,13 @@ export default function App() {
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
+  // Exam mode state
+  const [examQuestions, setExamQuestions] = useState([]);
+  const [loadingExam, setLoadingExam] = useState(false);
+  const [showExam, setShowExam] = useState(false);
+  const [examTopic, setExamTopic] = useState(null);
+  const [examRevealed, setExamRevealed] = useState({});
+  const [examAnswers, setExamAnswers] = useState({});
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -466,6 +473,30 @@ export default function App() {
   // Open review quiz AND mark schedule as complete simultaneously
   // (removed - now handled by separate buttons)
 
+  // Open Comprehensive Exam (70 questions via Gemini)
+  const handleOpenExam = async (topicId, title, keywords, pdfName) => {
+    setExamTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+    setLoadingExam(true);
+    setExamQuestions([]);
+    setExamRevealed({});
+    setExamAnswers({});
+    setShowExam(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}/exam`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setExamQuestions(data.questions || []);
+      } else {
+        showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
+        setShowExam(false);
+      }
+    } catch (err) {
+      showNotification('서버 통신 오류: ' + err.message, 'error');
+      setShowExam(false);
+    } finally {
+      setLoadingExam(false);
+    }
+  };
   // View full report text
   const handleViewFullReport = async (topicId) => {
     setLoadingReport(true);
@@ -1123,6 +1154,14 @@ export default function App() {
                                   소스+Gemini
                                 </button>
                                 <button
+                                  onClick={() => handleOpenExam(topic.id, topic.title, topic.keywords, topic.pdf_name)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/70 text-amber-300 border border-amber-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                                  title="Gemini AI로 70문항 종합평가 생성"
+                                >
+                                  <Award size={12} />
+                                  종합평가
+                                </button>
+                                <button
                                   onClick={() => handleDeleteTopic(topic.id, topic.title)}
                                   className="p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
                                   title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
@@ -1660,6 +1699,164 @@ export default function App() {
               </button>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
+      {showExam && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+          {/* Exam Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl">
+                <Award size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">종합평가 (Gemini AI)</span>
+                <h3 className="font-bold text-white text-sm">{examTopic?.title}</h3>
+              </div>
+              {!loadingExam && examQuestions.length > 0 && (
+                <span className="ml-2 text-[11px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-full font-bold">
+                  {examQuestions.length}문항 |
+                  객관식 정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowExam(false)}
+              className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+
+          {/* Exam Body */}
+          <div className="flex-grow overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+            {loadingExam ? (
+              <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
+                <div className="relative">
+                  <div className="p-6 bg-amber-950/80 text-amber-400 rounded-full animate-bounce-slow">
+                    <Brain size={40} />
+                  </div>
+                  <div className="absolute inset-0 bg-amber-500 rounded-full animate-ping opacity-20"></div>
+                </div>
+                <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 70문항을 출제하는 중...</h4>
+                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                  소스 자료를 분석하여 주관식(개요·공식)과 객관식을 혼용한 종합평가를 생성하고 있습니다. 약 30~60초 소요됩니다.
+                </p>
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto space-y-5">
+                {examQuestions.map((q, idx) => {
+                  const isMC = q.type === '객관식';
+                  const isSubj = !isMC;
+                  const answered = examAnswers[idx] !== undefined;
+                  const isCorrect = answered && examAnswers[idx] === q.answer;
+                  const isRevd = !!examRevealed[idx];
+
+                  const subtypeBadgeColor =
+                    q.subtype === '개요' ? 'bg-sky-700' :
+                    q.subtype === '공식' ? 'bg-rose-700' :
+                    q.subtype === '서술' ? 'bg-indigo-700' :
+                    'bg-emerald-700';
+
+                  return (
+                    <div key={idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                      {/* Q Header */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                          {isMC ? '객관식' : `주관식·${q.subtype || '서술'}`}
+                        </span>
+                      </div>
+
+                      {/* Question Text */}
+                      <div className="text-sm font-bold text-white leading-relaxed">
+                        <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                      </div>
+
+                      {/* MC Options */}
+                      {isMC && (
+                        <div className="space-y-2">
+                          {q.options?.map((opt, oIdx) => {
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ";
+                            if (!answered) {
+                              cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
+                            } else if (opt === q.answer) {
+                              cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold";
+                            } else if (opt === examAnswers[idx] && opt !== q.answer) {
+                              cls += "bg-rose-950/70 border-rose-500 text-rose-200";
+                            } else {
+                              cls += "bg-slate-800/30 border-slate-800 text-slate-500 opacity-60";
+                            }
+                            return (
+                              <button
+                                key={oIdx}
+                                disabled={answered}
+                                onClick={() => setExamAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                className={cls}
+                              >
+                                <span className="flex gap-2 items-start">
+                                  <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
+                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
+                                </span>
+                              </button>
+                            );
+                          })}
+                          {answered && (
+                            <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                              <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
+                              {!isCorrect && <span className="ml-2">정답: <strong>{q.answer}</strong></span>}
+                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Subjective Reveal */}
+                      {isSubj && (
+                        !isRevd ? (
+                          <button
+                            onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: true }))}
+                            className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-400 hover:text-amber-300 transition-all duration-200"
+                          >
+                            💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                          </button>
+                        ) : (
+                          <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                            <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                            <div className="text-xs text-slate-200 leading-relaxed">
+                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} />
+                            </div>
+                            {q.concept && (
+                              <div className="pt-2 border-t border-amber-500/10">
+                                <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                <span className="text-[10px] text-slate-300">{q.concept}</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+
+                {examQuestions.length > 0 && (
+                  <div className="text-center py-6">
+                    <div className="inline-flex items-center gap-3 bg-amber-950/60 border border-amber-500/20 rounded-2xl px-6 py-4">
+                      <Award size={20} className="text-amber-400" />
+                      <div className="text-left">
+                        <div className="text-xs text-amber-300 font-black">종합평가 완료</div>
+                        <div className="text-sm text-white font-extrabold">
+                          객관식 정답률: {Math.round(Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length / Math.max(examQuestions.filter(q => q.type === '객관식').length, 1) * 100)}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
