@@ -1865,14 +1865,20 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
+                onClick={async () => {
                   savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  // 서버에 현재 상태 저장 (기기 간 공유)
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  // 서버에 현재 상태 저장 (기기 간 공유) - 완료 확인 후 닫기
+                  try {
+                    const r = await fetch(`${API_BASE}/api/session/exam`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic }),
+                    });
+                    if (!r.ok) throw new Error('서버 응답 오류');
+                  } catch (e) {
+                    console.warn('세션 저장 실패:', e);
+                    showNotification('다른 기기와 동기화에 실패했습니다. 로컬에만 저장됩니다.', 'error');
+                  }
                   setShowExam(false);
                 }}
                 className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
