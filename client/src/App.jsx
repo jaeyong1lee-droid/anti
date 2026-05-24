@@ -1257,12 +1257,22 @@ export default function App() {
                 <Sparkles className="text-brand-400" size={18} />
                 <h3 className="font-bold text-white text-base">인출 중심 AI 복습 도우미</h3>
               </div>
-              <button 
-                onClick={() => setSelectedTopic(null)}
-                className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 p-1.5 rounded-lg text-sm transition-colors"
-              >
-                닫기
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setSelectedTopic(null)}
+                  className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                  title="화면만 숨김 (재개 시 문제 유지)"
+                >
+                  닫기
+                </button>
+                <button 
+                  onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); }}
+                  className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                  title="문제 초기화 (재개 시 새 문제 생성)"
+                >
+                  종료
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -1707,9 +1717,17 @@ export default function App() {
             <div className="px-6 py-4 bg-slateCustom-900 border-t border-slate-800 flex justify-end gap-3">
               <button
                 onClick={() => setSelectedTopic(null)}
-                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
+              </button>
+              <button
+                onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); }}
+                className="px-4 py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-colors"
+                title="문제 초기화 (재개 시 새 문제 생성)"
+              >
+                종료
               </button>
             </div>
 
@@ -1777,12 +1795,22 @@ export default function App() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setShowExam(false)}
-              className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-            >
-              닫기
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowExam(false)}
+                className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                title="화면만 숨김 (재개 시 문제 유지)"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => { setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); }}
+                className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                title="종합평가 종료 (재개 시 새 문제 생성)"
+              >
+                종료
+              </button>
+            </div>
           </div>
 
           {/* Exam Body */}
