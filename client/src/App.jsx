@@ -2149,10 +2149,10 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar (Desktop Only) */}
-            <div className="hidden md:flex flex-col w-[350px] bg-slate-900 border-l border-slate-800">
+            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터</span>
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 3.5)</span>
               </div>
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
