@@ -715,19 +715,19 @@ export default function App() {
                       <div className="flex items-center gap-2.5 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end">
                         <button
                           onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-stone-950 border border-amber-300/60 text-xs font-black transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
                         >
-                          <Sparkles size={14} />
+                          <Sparkles size={14} className="text-stone-950 animate-pulse" />
                           복습하기 (AI 기출)
                         </button>
                         
                         <button
                           onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                          title="복습 완료"
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 border border-slate-400/30 text-xs font-black transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                          title="skip"
                         >
-                          <Check size={14} />
-                          복습 완료
+                          <Check size={14} className="text-slate-900" />
+                          skip
                         </button>
                       </div>
                     </div>
