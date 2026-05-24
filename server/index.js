@@ -1435,9 +1435,17 @@ app.delete('/api/topics/:id', async (req, res) => {
 
 // Environment Debug Route
 app.get('/api/debug-env', (req, res) => {
+  const connectionString = process.env.DATABASE_URL || 
+                           process.env.POSTGRES_URL || 
+                           process.env.POSTGRES_PRISMA_URL ||
+                           process.env.SUPABASE_DATABASE_URL ||
+                           '';
   res.json({
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
     keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    hasDbUrl: !!connectionString,
+    dbUrlLength: connectionString.length,
+    dbInitError: global.dbInitError || null,
     nodeEnv: process.env.NODE_ENV || 'development',
     time: new Date().toISOString()
   });
@@ -1691,6 +1699,7 @@ async function startServer() {
     console.log('Database schema initialization completed.');
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
+    global.dbInitError = dbErr.message;
   }
 
   try {
