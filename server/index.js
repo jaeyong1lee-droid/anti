@@ -1433,6 +1433,16 @@ app.delete('/api/topics/:id', async (req, res) => {
   }
 });
 
+// Force DB table initialization route
+app.get('/api/init-db', async (req, res) => {
+  try {
+    await initDatabase();
+    res.json({ success: true, message: 'DB tables initialized successfully!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Environment Debug Route
 app.get('/api/debug-env', async (req, res) => {
   const connectionString = process.env.DATABASE_URL || 
