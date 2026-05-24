@@ -210,6 +210,14 @@ export async function initDatabase() {
           status TEXT DEFAULT 'pending'
         )
       `);
+      // 3. app_session table: cross-device state sync (key-value store)
+      await pgPool.query(`
+        CREATE TABLE IF NOT EXISTS app_session (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
       console.log('Cloud PostgreSQL database tables initialized successfully.');
     } else {
       if (isVercel) {
@@ -238,6 +246,13 @@ export async function initDatabase() {
           completed_at DATETIME,
           status TEXT DEFAULT 'pending',
           FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
+        )
+      `);
+      await dbQuery.run(`
+        CREATE TABLE IF NOT EXISTS app_session (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
       console.log('Local SQLite database tables initialized successfully.');

@@ -305,6 +305,7 @@ export default function App() {
 
   // ── Restore state from localStorage on mount (껐다 켜도 이어서 보기)
   useEffect(() => {
+    // 1) localStorage → 탭/뷰 모드 등 비-종합평가 상태 복원
     try {
       const saved = localStorage.getItem('anti_app_state');
       if (saved) {
@@ -316,7 +317,7 @@ export default function App() {
         if (s.selectedAnswers) setSelectedAnswers(s.selectedAnswers);
         if (s.openSections) setOpenSections(s.openSections);
         if (s.isFallback !== undefined) setIsFallback(s.isFallback);
-        if (s.showExam) setShowExam(s.showExam);
+        // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
         if (s.examRevealed) setExamRevealed(s.examRevealed);
@@ -325,6 +326,19 @@ export default function App() {
     } catch (e) {
       console.warn('localStorage 복원 실패:', e);
     }
+
+    // 2) 서버 → 종합평가 세션 복원 (기기 간 공유 우선)
+    fetch(`${API_BASE}/api/session/exam`)
+      .then(r => r.json())
+      .then(({ data }) => {
+        if (data?.examQuestions?.length) {
+          setExamQuestions(data.examQuestions);
+          if (data.examRevealed) setExamRevealed(data.examRevealed);
+          if (data.examAnswers) setExamAnswers(data.examAnswers);
+          if (data.examTopic) setExamTopic(data.examTopic);
+        }
+      })
+      .catch(e => console.warn('서버 세션 복원 실패:', e));
   }, []); // mount 시 1회만
 
   // ── Save state to localStorage whenever key state changes
@@ -1828,14 +1842,28 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { savedExamScroll.current = examBodyRef.current?.scrollTop || 0; setShowExam(false); }}
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  // 서버에 현재 상태 저장 (기기 간 공유)
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                }}
                 className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
               </button>
               <button
-                onClick={() => { setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); }}
+                onClick={() => {
+                  // 서버 세션 삭제 (종료 = 새로 시작)
+                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                    .catch(e => console.warn('세션 삭제 실패:', e));
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null);
+                }}
                 className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
               >

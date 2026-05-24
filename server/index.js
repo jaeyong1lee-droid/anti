@@ -1890,6 +1890,55 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
 });
 
 // SERVER INLINE STARTUP
+// ── Cross-device Session Sync API ─────────────────────────────────────────
+// GET /api/session/exam → 저장된 종합평가 상태 반환
+app.get('/api/session/exam', async (req, res) => {
+  try {
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['exam_session']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      res.json({ data: JSON.parse(rows[0].value) });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/session/exam → 종합평가 상태 저장 (닫기 시)
+app.post('/api/session/exam', async (req, res) => {
+  try {
+    const { examQuestions, examRevealed, examAnswers, examTopic } = req.body;
+    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic });
+    // UPSERT
+    await dbQuery.run(
+      `INSERT INTO app_session (key, value, updated_at)
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
+      ['exam_session', value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/session/exam → 종합평가 상태 초기화 (종료 시)
+app.delete('/api/session/exam', async (req, res) => {
+  try {
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/session/exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 async function startServer() {
   try {
     await initDatabase();
