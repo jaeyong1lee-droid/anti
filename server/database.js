@@ -1,4 +1,3 @@
-import sqlite3 from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -8,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isPostgres = !!process.env.DATABASE_URL;
+const isVercel = !!process.env.VERCEL;
 
 let db = null;
 let pgPool = null;
@@ -20,22 +20,32 @@ if (isPostgres) {
       rejectUnauthorized: false // Required for hosted services like Supabase / Neon
     }
   });
-} else {
-  const volumePath = path.resolve(__dirname, 'db_volume');
-  if (!fs.existsSync(volumePath)) {
-    fs.mkdirSync(volumePath, { recursive: true });
-  }
-  const dbPath = path.resolve(volumePath, 'spaced_repetition.db');
-  db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-      console.error('Error connecting to SQLite database:', err.message);
-    } else {
-      console.log('Connected to the SQLite database:', dbPath);
+} else if (!isVercel) {
+  // Only load and initialize sqlite3 if we are not running on serverless Vercel
+  try {
+    const sqlite3Module = await import('sqlite3');
+    const sqlite3 = sqlite3Module.default;
+
+    const volumePath = path.resolve(__dirname, 'db_volume');
+    if (!fs.existsSync(volumePath)) {
+      fs.mkdirSync(volumePath, { recursive: true });
     }
-  });
-  db.serialize(() => {
-    db.run('PRAGMA foreign_keys = ON;');
-  });
+    const dbPath = path.resolve(volumePath, 'spaced_repetition.db');
+    db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error('Error connecting to SQLite database:', err.message);
+      } else {
+        console.log('Connected to the SQLite database:', dbPath);
+      }
+    });
+    db.serialize(() => {
+      db.run('PRAGMA foreign_keys = ON;');
+    });
+  } catch (sqliteErr) {
+    console.error('Failed to load sqlite3 module dynamically on non-Vercel environment:', sqliteErr.message);
+  }
+} else {
+  console.warn('Running on Serverless Vercel and DATABASE_URL is not set. SQLite is bypassed to prevent EROFS/binary crashes.');
 }
 
 // Translate SQLite placeholder '?' to PostgreSQL parameter '$1, $2, ...'
@@ -48,6 +58,7 @@ function translateSql(sql) {
 export const dbQuery = {
   async run(sql, params = []) {
     if (isPostgres) {
+      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       let translatedSql = translateSql(sql);
       // SQLite uses AUTOINCREMENT and INSERT does not return ID by default. 
       // PostgreSQL needs RETURNING id to get the last inserted ID.
@@ -65,6 +76,9 @@ export const dbQuery = {
       }
     } else {
       return new Promise((resolve, reject) => {
+        if (!db) {
+          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
+        }
         db.run(sql, params, function (err) {
           if (err) reject(err);
           else resolve({ id: this.lastID, changes: this.changes });
@@ -75,6 +89,7 @@ export const dbQuery = {
 
   async get(sql, params = []) {
     if (isPostgres) {
+      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       const translatedSql = translateSql(sql);
       try {
         const res = await pgPool.query(translatedSql, params);
@@ -85,6 +100,9 @@ export const dbQuery = {
       }
     } else {
       return new Promise((resolve, reject) => {
+        if (!db) {
+          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
+        }
         db.get(sql, params, (err, row) => {
           if (err) reject(err);
           else resolve(row);
@@ -95,6 +113,7 @@ export const dbQuery = {
 
   async all(sql, params = []) {
     if (isPostgres) {
+      if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       const translatedSql = translateSql(sql);
       try {
         const res = await pgPool.query(translatedSql, params);
@@ -105,6 +124,9 @@ export const dbQuery = {
       }
     } else {
       return new Promise((resolve, reject) => {
+        if (!db) {
+          return reject(new Error('SQLite database is not initialized. Vercel deployment requires a DATABASE_URL for Postgres.'));
+        }
         db.all(sql, params, (err, rows) => {
           if (err) reject(err);
           else resolve(rows);
