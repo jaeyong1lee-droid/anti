@@ -464,10 +464,7 @@ export default function App() {
   };
 
   // Open review quiz AND mark schedule as complete simultaneously
-  const handleReviewAndComplete = (scheduleId, topicId, title, keywords, pdfName, round, mode) => {
-    handleOpenAIQuestions(topicId, title, keywords, pdfName, mode);
-    handleCompleteReview(scheduleId, title, round);
-  };
+  // (removed - now handled by separate buttons)
 
   // View full report text
   const handleViewFullReport = async (topicId) => {
@@ -802,7 +799,7 @@ export default function App() {
                       <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
                         {/* 소스 기반 복습 */}
                         <button
-                          onClick={() => handleReviewAndComplete(item.schedule_id, item.topic_id, item.title, item.keywords, item.pdf_name, item.review_round, 'local')}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'local')}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/70 text-slate-200 border border-slate-500/30 text-xs font-bold transition-all duration-200"
                           title="첨부 소스만 기반으로 문제 생성 (빠름)"
                         >
@@ -811,12 +808,20 @@ export default function App() {
                         </button>
                         {/* 소스 + Gemini 복습 */}
                         <button
-                          onClick={() => handleReviewAndComplete(item.schedule_id, item.topic_id, item.title, item.keywords, item.pdf_name, item.review_round, 'ai')}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai')}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
                           title="소스 + Gemini AI로 고는도 문제 생성"
                         >
                           <Sparkles size={13} />
                           소스+Gemini
+                        </button>
+                        {/* 복습 완료 */}
+                        <button
+                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
+                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
+                        >
+                          <Check size={13} />
+                          복습완료
                         </button>
                       </div>
                     </div>
