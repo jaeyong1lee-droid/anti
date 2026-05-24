@@ -1891,9 +1891,25 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
 
 // SERVER INLINE STARTUP
 // ── Cross-device Session Sync API ─────────────────────────────────────────
+// 테이블 자동 생성 헬퍼
+async function ensureSessionTable() {
+  try {
+    await dbQuery.run(`
+      CREATE TABLE IF NOT EXISTS app_session (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) {
+    console.warn('ensureSessionTable warning:', e.message);
+  }
+}
+
 // GET /api/session/exam → 저장된 종합평가 상태 반환
 app.get('/api/session/exam', async (req, res) => {
   try {
+    await ensureSessionTable();
     const rows = await dbQuery.all(
       'SELECT value FROM app_session WHERE key = ?',
       ['exam_session']
@@ -1905,20 +1921,20 @@ app.get('/api/session/exam', async (req, res) => {
     }
   } catch (err) {
     console.error('GET /api/session/exam error:', err);
-    res.status(500).json({ error: err.message });
+    res.json({ data: null }); // 오류 시에도 null 반환 (새로 생성하도록)
   }
 });
 
 // POST /api/session/exam → 종합평가 상태 저장 (닫기 시)
 app.post('/api/session/exam', async (req, res) => {
   try {
+    await ensureSessionTable();
     const { examQuestions, examRevealed, examAnswers, examTopic } = req.body;
     const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic });
-    // UPSERT
+    // DELETE + INSERT (모든 DB 호환 UPSERT)
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     await dbQuery.run(
-      `INSERT INTO app_session (key, value, updated_at)
-       VALUES (?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
       ['exam_session', value]
     );
     res.json({ ok: true });
@@ -1931,6 +1947,7 @@ app.post('/api/session/exam', async (req, res) => {
 // DELETE /api/session/exam → 종합평가 상태 초기화 (종료 시)
 app.delete('/api/session/exam', async (req, res) => {
   try {
+    await ensureSessionTable();
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     res.json({ ok: true });
   } catch (err) {

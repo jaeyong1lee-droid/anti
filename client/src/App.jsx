@@ -551,21 +551,44 @@ export default function App() {
 
   // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
   const handleOpenExam = async () => {
-    // 기존 문제가 있으면 (닫기 후 재열) → 바로 열기, 새로 생성 안 함
+    // 1) 이미 state에 문제가 있으면 바로 열기 (같은 기기, 이미 로드됨)
     if (examQuestions.length > 0) {
       setShowExam(true);
-      // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
         if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
       });
       return;
     }
-    setExamTopic({ title: '전체 토픽 통합 종합평가' });
+
+    // 2) 서버에서 저장된 세션 확인 (기기 간 공유 - 타이밍 이슈 없이 직접 조회)
     setLoadingExam(true);
+    setShowExam(true);
+    try {
+      const sessionRes = await fetch(`${API_BASE}/api/session/exam`);
+      const sessionData = await sessionRes.json();
+      if (sessionData?.data?.examQuestions?.length > 0) {
+        // 서버에 저장된 문제가 있음 → 그대로 복원
+        const d = sessionData.data;
+        setExamQuestions(d.examQuestions);
+        if (d.examRevealed) setExamRevealed(d.examRevealed);
+        if (d.examAnswers) setExamAnswers(d.examAnswers);
+        if (d.examTopic) setExamTopic(d.examTopic);
+        else setExamTopic({ title: '전체 토픽 통합 종합평가' });
+        setLoadingExam(false);
+        requestAnimationFrame(() => {
+          if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('서버 세션 확인 실패, 새로 생성합니다:', e);
+    }
+
+    // 3) 저장된 세션 없음 → 새로 생성
+    setExamTopic({ title: '전체 토픽 통합 종합평가' });
     setExamQuestions([]);
     setExamRevealed({});
     setExamAnswers({});
-    setShowExam(true);
     try {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
