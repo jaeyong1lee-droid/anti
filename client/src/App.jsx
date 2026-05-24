@@ -554,7 +554,7 @@ export default function App() {
     const completedForTopic = topic.schedules?.filter(s => s.status === 'completed').length || 0;
     return acc + completedForTopic;
   }, 0);
-  const totalScheduleCount = allTopics.length * 4;
+  const totalScheduleCount = allTopics.length * 6;
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
 
   return (
