@@ -248,6 +248,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const firstMatchRef = useRef(null);
   const lastQuizTopicId = useRef(null); // 마지막으로 로드한 퀴즈 토픽 ID (닫기 후 재열 감지용)
+  const quizBodyRef = useRef(null);     // 퀴즈 패널 스크롤 컨테이너
+  const savedQuizScroll = useRef(0);    // 퀴즈 패널 저장된 스크롤 위치
+  const examBodyRef = useRef(null);     // 종합평가 패널 스크롤 컨테이너
+  const savedExamScroll = useRef(0);    // 종합평가 패널 저장된 스크롤 위치
 
   // Success Notification banner
   const [notification, setNotification] = useState(null);
@@ -488,6 +492,10 @@ export default function App() {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
       setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+      // 이전 스크롤 위치 복원
+      requestAnimationFrame(() => {
+        if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
+      });
       return;
     }
     setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
@@ -532,6 +540,10 @@ export default function App() {
     // 기존 문제가 있으면 (닫기 후 재열) → 바로 열기, 새로 생성 안 함
     if (examQuestions.length > 0) {
       setShowExam(true);
+      // 이전 스크롤 위치 복원
+      requestAnimationFrame(() => {
+        if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
+      });
       return;
     }
     setExamTopic({ title: '전체 토픽 통합 종합평가' });
@@ -1271,7 +1283,7 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => setSelectedTopic(null)}
+                  onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
                   className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
                   title="화면만 숨김 (재개 시 문제 유지)"
                 >
@@ -1288,7 +1300,7 @@ export default function App() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-grow bg-slateCustom-900/30">
+            <div ref={quizBodyRef} className="p-6 overflow-y-auto flex-grow bg-slateCustom-900/30">
               {loadingAI ? (
                 /* Pulsing AI Thinking state */
                 <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
@@ -1728,7 +1740,7 @@ export default function App() {
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-slateCustom-900 border-t border-slate-800 flex justify-end gap-3">
               <button
-                onClick={() => setSelectedTopic(null)}
+                onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
@@ -1809,7 +1821,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowExam(false)}
+                onClick={() => { savedExamScroll.current = examBodyRef.current?.scrollTop || 0; setShowExam(false); }}
                 className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
@@ -1826,7 +1838,7 @@ export default function App() {
           </div>
 
           {/* Exam Body */}
-          <div className="flex-grow overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+          <div ref={examBodyRef} className="flex-grow overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
