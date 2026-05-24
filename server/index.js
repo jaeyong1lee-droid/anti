@@ -214,6 +214,31 @@ function decodeHtmlBuffer(buffer) {
   return decodedText;
 }
 
+// Helper: Extract JSON array from string robustly
+function extractJsonArray(str) {
+  if (!str) return null;
+  const startIdx = str.indexOf('[');
+  const endIdx = str.lastIndexOf(']');
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const jsonSub = str.substring(startIdx, endIdx + 1);
+    try {
+      return JSON.parse(jsonSub);
+    } catch (e) {
+      console.warn('Failed parsing extracted JSON substring, trying aggressive cleanup:', e);
+      const cleanSub = jsonSub
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .trim();
+      try {
+        return JSON.parse(cleanSub);
+      } catch (e2) {
+        console.error('Aggressive JSON cleanup failed:', e2);
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 // Helper: Extract clean plain text from HTML
 function htmlToPlainText(html) {
   if (!html) return '';
@@ -487,18 +512,96 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   const s2 = features.keySentences[2] || `구축 및 실무 현장 도입 과정의 예상 리스크를 선제 통제하고 설계 안전성 가이드를 정립해야 합니다.`;
   const s3 = features.keySentences[3] || `정량적 물리/수학적 모델식과 개념도 배치를 설계 표준에 준하여 작성해야 합니다.`;
 
-  // Dynamic Concepts (Answers)
-  const concept1 = `교재 본문 정의: "${s0}"\n\n[정의 및 의의] [${title}]은/는 ${keywordDisplay} 등 핵심 공학적 요소를 기반으로 설계 안전성을 확보하고 성능 신뢰성을 극대화하기 위한 핵심 엔지니어링 기술입니다.`;
+  // Domain Detection
+  const isHydraulics = cleanTitle.includes('seepage') || cleanTitle.includes('discharge') || cleanTitle.includes('velocity') || cleanTitle.includes('flow') || cleanTitle.includes('permeability') || cleanTitle.includes('투수') || cleanTitle.includes('침투') || cleanTitle.includes('유출') || cleanTitle.includes('수두') || cleanText.includes('seepage') || cleanText.includes('darcy') || cleanText.includes('투수계수');
+  const isSoil = cleanTitle.includes('압밀') || cleanTitle.includes('점토') || cleanTitle.includes('전단') || cleanTitle.includes('파괴') || cleanTitle.includes('지지력') || cleanTitle.includes('흙') || cleanTitle.includes('지반') || cleanTitle.includes('clay') || cleanTitle.includes('shear') || cleanTitle.includes('consolidation') || cleanTitle.includes('mohr') || cleanText.includes('압밀') || cleanText.includes('점토') || cleanText.includes('유효응력');
+  const isTunnel = cleanTitle.includes('터널') || cleanTitle.includes('tunnel') || cleanTitle.includes('natm') || cleanTitle.includes('암반') || cleanTitle.includes('지보') || cleanText.includes('터널') || cleanText.includes('지보재');
 
-  const concept2 = `교재 본문 요약: "${s1}"\n\n[필요성 분석] 기존 기술/방법론의 한계점을 극복하고, 고도의 정밀 제어 및 품질을 확보하기 위해 [${title}]의 상세 설계 기준이 핵심적으로 활용됩니다.`;
+  if (isHydraulics) {
+    console.log("Generating tailored Hydraulics & Seepage local questions.");
+    return [
+      {
+        type: '용어형 (10점)',
+        question: `Darcy의 투수 공식에 기초하여 유출 속도(Discharge Velocity, v)와 실제 침투 속도(Seepage Velocity, vs)의 역학적 정의 및 차이점을 간극률(n) 관점에서 수식과 함께 설명하시오.`,
+        concept: `유출 속도(v)는 흙의 전체 단면을 흐르는 가상의 속도인 반면, 실제 침투 속도(vs)는 흙 입자 사이의 실제 공극만을 흐르는 실제 속도이며 vs = v / n 공식으로 정의됩니다.`,
+        formula: `[Darcy의 법칙 및 침투속도 공식]\n- 유출속도(체적속도): v = k × i\n- 실제 침투속도: v_s = v / n = (k × i) / n (n: 간극률, k: 투수계수, i: 동수경사)`,
+        structure: `1단락: Darcy 법칙의 기본 개념 및 투수 흐름 유동의 특징\n2단락: 유출 속도(v)와 실제 침투 속도(v_s)의 수식적 유도 및 간극률에 따른 거동 대조\n3단락: 동수경사 증가에 따른 지반 내 Piping 방지 대책 및 실무적 투수 제어 방안`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `지반 내 지하수 흐름 시 발생하는 침투력(Seepage Force)의 발생 메커니즘을 규명하고, 한계동수경사(Critical Hydraulic Gradient)의 공식 유도 과정 및 분사현상(Quick Sand) 방지를 위한 안전율(F.S) 설계 기준을 서술하시오.`,
+        concept: `상향 침투력으로 인해 유효응력이 0이 되는 상태를 분사현상이라 하며, 이때의 동수경사인 한계동수경사(icr)와 실제 동수경사(i)의 비를 통해 침투 안전율을 평가합니다.`,
+        formula: `[한계동수경사 및 침투 안정성 공식]\n- 한계동수경사: i_cr = (G_s - 1) / (1 + e) (G_s: 흙 입자 비중, e: 간극비)\n- 침투압(단위체적당): j = i × γ_w (i: 동수경사, γ_w: 물의 단위중량)\n- 분사현상 안전율: F.S = i_cr / i >= 1.5 ~ 2.0`,
+        structure: `1단락: 지반 내 침투수의 상향 흐름과 침투력(Seepage Force)의 물리적 메커니즘\n2단락: 한계동수경사(i_cr) 공식의 한계 소성 평형 상태 유도 과정 및 퀵샌드 현상 대책\n3단락: 차수벽 및 필터재 설치를 통한 동수경사 제어 기법 및 설계 안전성 확보 제언`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `지반 내 투수/침투수 흐름에 따른 유선망(Flow Net)의 특징을 설명하고, 본문 진술 "${s2.substring(0, 50)}${s2.length > 50 ? '...' : ''}"에 근거하여 침투 유량(Q) 산정 공식 및 지반 구조물의 파이핑(Piping) 안정성 평가 방안을 서술하시오.`,
+        concept: `본문 흐름 관리를 반영한 안정성 검토로, 유선망을 통해 침투 유량(Q = k × h × Nf / Nd)을 계산하고 침투 속도와 압력을 제어하여 구조물의 파이핑 취약성을 차단하는 설계 기법입니다.`,
+        formula: `[유선망을 이용한 침투 유량 및 수압 공식]\n- 총 침투 유량: Q = k × h × (N_f / N_d) × L\n- 임의 점의 간극수압: u = (h - Δh × n_d) × γ_w\n(k: 투수계수, h: 총수두차, N_f: 유로 수, N_d: 등수두선 낙하수, L: 터널/댐 길이)`,
+        structure: `1단락: Laplace 방정식에 준한 지반 투수 유선망(Flow Net)의 기본 작도 법칙 및 수리적 성질\n2단락: 유선망을 이용한 침투 유량(Q) 및 수치해석적 침투 속도(Velocity) 변동 분석\n3단락: 본문 핵심 리스크 제어에 기초한 배수공 및 역필터(Reverse Filter) 최적 설계 기법 제언`
+      }
+    ];
+  }
 
-  const concept3 = `교재 본문 핵심 진술: "${s2}"\n\n[엔지니어링 리스크 관리] 실무 운용 및 시공 시 발생 가능한 예기치 못한 물리적/환경적 취약 요인(Bottleneck)을 선제적으로 예방하고 설계 안전율을 유지하기 위한 거동 통제 방안입니다.`;
+  if (isSoil) {
+    console.log("Generating tailored Geotechnical & Clay local questions.");
+    return [
+      {
+        type: '용어형 (10점)',
+        question: `점성토 지반의 압밀(Consolidation) 메커니즘을 유효응력(Effective Stress) 원리를 적용하여 설명하고, 과압밀비(OCR)에 따른 점토의 분류(NC점토, OC점토) 및 응력 이력 특성을 설명하시오.`,
+        concept: `외력에 의해 유발된 과잉간극수압이 소멸하면서 유효응력이 점차 증가하여 흙의 체적이 감소(압밀)하는 과정이며, 응력 이력에 따라 정규압밀(OCR=1)과 과압밀(OCR>1)로 대조 분류됩니다.`,
+        formula: `[과압밀비(OCR) 및 유효응력 공식]\n- 과압밀비: OCR = p_c / p_0\n- 유효응력 원리: σ' = σ - u\n(p_c: 선행압밀응력, p_0: 현재 유효토피압, σ: 전응력, u: 간극수압)`,
+        structure: `1단락: 점성토 압밀의 공학적 정의 및 유효응력 증가와의 상관관계\n2단락: 과압밀비(OCR)의 수식 정의 및 점토 분류별(N.C, O.C) 전단 및 압축 거동 비교표\n3단락: 점토 응력 이력 판단의 중요성 및 1차/2차 압밀 침하량의 현장 거동 제어 방안`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `지반공학적 설계 시 흙의 전단 파괴 포락선을 결정하는 Mohr-Coulomb 파괴 규준선을 설명하고, CD시험(압밀배수) 조건에서 정규압밀점토와 과압밀점토의 전단 강도 산정 공식 및 파괴 시 부피 변화 특성(Dilatancy)을 비교 기술하시오.`,
+        concept: `Mohr-Coulomb 이론은 흙의 전단강도를 수직응력, 점착력, 내부마찰각의 관계로 정의하며, CD 시험 시 과압밀점토는 입자 재배열로 인해 부피가 팽창하는 딜레이턴시(Dilatancy) 현상이 일어납니다.`,
+        formula: `[Mohr-Coulomb 전단강도 공식]\n- 기본 파괴 포락선: s = c + σ × tanφ\n- N.C Clay CD 전단강도: s = σ' × tanφ' (c' = 0)\n- O.C Clay CD 전단강도: s = c' + σ' × tanφ' (c' > 0)`,
+        structure: `1단락: Mohr-Coulomb 전단 파괴 파라미터(c, φ)의 의의 및 지반 전단 저항 거동\n2단락: CD 시험 하의 NC/OC 점토의 전단 강도 수식화 및 변형률-체적 변화(Dilatancy) 메커니즘 분석\n3단락: 실무 설계 시 전단 강도정수 선정 유의사항 및 압밀 배수 조건이 지반 구조물에 미치는 영향`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `점토 지반의 압밀 거동 특성에 따른 침하량(Settlement) 산정 메커니즘을 규명하고, 본문 진술 "${s2.substring(0, 50)}${s2.length > 50 ? '...' : ''}"에 기초하여 과압밀 점토의 압축지수(Cc)와 재압축지수(Cr)를 활용한 침하량 계산 공식 및 지반 신뢰성 확보 방안을 서술하시오.`,
+        concept: `본문 침하/압밀 거동 기준을 적용하여, 압밀 곡선(e-log p) 상의 압축지수(Cc)와 재압축지수(Cr)를 선행압밀응력(pc)과 현재 유효토피압(p0)의 관계에 대응시켜 최종 압밀 침하량을 계산하는 방법입니다.`,
+        formula: `[최종 압밀 침하량(S_c) 산정 공식]\n- NC 점토(p_0 + Δp > p_0): S_c = [ C_c / (1 + e_0) ] × H × log[ (p_0 + Δp) / p_0 ]\n- OC 점토(p_0 + Δp <= p_c): S_c = [ C_r / (1 + e_0) ] × H × log[ (p_0 + Δp) / p_0 ]\n(H: 점토층 두께, e_0: 초기 간극비, C_c: 압축지수, C_r: 재압축지수)`,
+        structure: `1단락: 점성토 압밀 침하의 시간 의존적 거동 및 Terzaghi 1차원 압밀 침하 기본 공식\n2단락: p-e 곡선 상의Cc, Cr 정량 설계법 및 OCR 응력 수준별 최종 침하량(Sc) 계산 공식 분석\n3단락: 본문 리스크 관리에 기초한 현장 압밀 침하 계측(지중경사계, 침하판) 및 연약지반 개량 공법 제언`
+      }
+    ];
+  }
 
-  // Dynamic Formula & Diagram lists (Answers)
-  // Question 1: Conceptual Diagram
-  const formula1 = `[개념도 구성 요소]\n수험생은 답안지에 아래 핵심 인자 간의 상호 작용 및 거동 흐름을 반영한 개념도를 필히 도식화해야 합니다:\n- 상호 작용 경로: ${mergedKw.slice(0, 4).join(' ➔ ')}\n- 필수 도해 요소: ${keywordDisplay}`;
+  if (isTunnel) {
+    console.log("Generating tailored Tunneling & Rock Mechanics local questions.");
+    return [
+      {
+        type: '용어형 (10점)',
+        question: `터널 공학 관점에서 NATM 공법의 기본 지지 메커니즘(지반 자체 지지 효과) 및 1차 지보재(숏크리트, 락볼트)의 연동 작용 역할을 기술하시오.`,
+        concept: `터널 굴착 후 지반 스스로 아칭 효과(Arching Effect)를 일으켜 하중을 지지하도록 하고, 숏크리트와 락볼트가 지반과 일체화되어 이완 영역을 보강하는 메커니즘입니다.`,
+        formula: `[지보 지반 상호작용 이론]\n- 지반 반응 곡선(Ground Reaction Curve) 설계\n- 락볼트 분배 공식: T = P × r (T: 인장력, P: 지반 내압, r: 터널 반경)`,
+        structure: `1단락: NATM 공법의 정의 및 강지보 대비 차별화된 지지 메커니즘\n2단락: 숏크리트(전단/휨 보강)와 락볼트(보강/봉합/지반아치 형성)의 유기적 상호 작용\n3단락: 터널 굴착 시 유의사항 및 지반 조사 기반 지보 패턴 결정 프로세스`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `터널 굴착에 따른 지반-지보 상호작용(Ground-Support Interaction)의 응력 재분배 거동 특성을 상술하고, 지반 반응 곡선(GRC)과 지보 제한 곡선(LSC)의 관계식에 준하여 터널 지보재의 적정 설치 시기 결정 방안을 논하시오.`,
+        concept: `터널 굴착에 의한 변위 수렴도와 지보재의 탄성/소성 변형 저항 한계를 GRC와 LSC 곡선의 상호 접점 분석을 통해 밝혀내어 적정 설치 시기(설치 창, Timing Window)를 설계하는 이론입니다.`,
+        formula: `[지반-지보 설계 한계 변위 조건]\n- 설계 허용 안전율 조건: P_i = P_g - P_s <= P_allow (P_g: 지반압, P_s: 지보 저항력)\n- 3차원 터널 거동 해석에 따른 숏크리트 파괴 방지 극한 한계 상태 변위량 설정`,
+        structure: `1단락: 터널 굴착면 전방 아치(Fore-arching) 형성 및 지반-지보 상호작용의 공학적 의의\n2단락: 수치해석적 지반반응곡선(GRC) 및 지보특성곡선(LSC)의 작도와 최적의 설치 지점(Timing) 도출\n3단락: 초기 변위 발생에 따른 선지보(천단보강, 강관다단그라우팅) 기법 및 터널 안정성 확보 방안`
+      },
+      {
+        type: '서술형 (25점)',
+        question: `터널 공정에서 숏크리트의 전단/휨인장 파괴 거동을 다차원적으로 분석하고, 본문 진술 "${s2.substring(0, 50)}${s2.length > 50 ? '...' : ''}"에 근거하여 터널 라이닝의 지반 상호 결합(Bonding) 품질 확보 및 휨 두께 계산 설계 방안을 서술하시오.`,
+        concept: `본문 지보 안전 지침을 적용하여, 숏크리트 배면의 전단 접착력을 확보하고 Rabcewicz 공식 등에 기초해 극한 영구 터널 쉘 단면 두께를 도출하여 터널 균열 및 임계 장애를 방지하는 설계 기법입니다.`,
+        formula: `[숏크리트 영구 휨/전단 두께 산정 공식 (Rabcewicz 공식)]\n- t = (P - 2C × sinφ) / [ (γ × tanφ) + (2S / D) ]\n(t: 라이닝 두께, P: 지반압, C: 암반 점착력, φ: 내부마찰각, S: 숏크리트 전단강도, D: 터널 직경)`,
+        structure: `1단락: 영구 숏크리트의 소성 유동 전단 저항 거동 및 암반-숏크리트 간 접착 전단강도의 중요성\n2단락: Rabcewicz 이론 공식의 유도 및 SFRC(강섬유보강)에 의한 인장/휨 지탱력 향상 수식\n3단락: 본문 품질 안전 기준에 따른 용수 대책, 숏크리트 리바운드(Rebound) 감소 및 현장 계측 관리 방안 제언`
+      }
+    ];
+  }
 
-  // Question 2: Mathematical formulas (Try to extract from source text first!)
+  // Pure General Fallback (For IT, General Science, etc.) - Generates incredibly high-quality, professional general questions!
+  console.log("Generating high-quality domain-agnostic local fallback questions.");
+  
+  // Question 2 formulas (Try to extract any math equations from text, else use general engineering balance)
   let formula2 = '';
   if (features.extractedFormulas && features.extractedFormulas.length > 0) {
     formula2 = `[교재 본문 추출 핵심 공식/관계식]\n- ${features.extractedFormulas.join('\n- ')}`;
@@ -506,7 +609,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     formula2 = `[핵심 영향 인자 및 상관관계식]\n- 주요 공학적 변수: ${mergedKw.slice(0, 3).join(', ')}\n- 수험생은 이 변수들 간의 비례/반비례 공학적 메커니즘을 규명하는 관계 법칙(예: f(${mergedKw.slice(0, 2).join(', ')}) 대비 안전율 영향)을 연계 서술해야 합니다.`;
   }
 
-  // Question 3: Engineering Risk control formulas / safety indicators
+  // Question 3 formulas
   let formula3 = '';
   if (features.extractedFormulas && features.extractedFormulas.length > 1) {
     formula3 = `[교재 본문 추출 설계/평가식]\n- ${features.extractedFormulas.slice(1).join('\n- ')}`;
@@ -516,11 +619,15 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     formula3 = `[설계/시공 단계별 품질/안전성 확보 공식]\n- 주요 정량 지표: ${mergedKw.slice(3, 6).join(', ') || '설계 안전율(F.S)'}\n- 설계 기준 공식: F.S = (저항력 / 구동력) >= [대상 기준 안전율] 규준을 본문의 핵심 취약 요인과 연계하여 수식으로 표현하십시오.`;
   }
 
-  // Dynamic Questions that use the extracted sentences directly!
+  // Dynamic Concepts (Answers)
+  const concept1 = `교재 본문 정의: "${s0}"\n\n[정의 및 의의] [${title}]은/는 ${keywordDisplay} 등 핵심 공학적 요소를 기반으로 설계 안전성을 확보하고 성능 신뢰성을 극대화하기 위한 핵심 엔지니어링 기술입니다.`;
+
+  const concept2 = `교재 본문 요약: "${s1}"\n\n[필요성 분석] 기존 기술/방법론의 한계점을 극복하고, 고도의 정밀 제어 및 품질을 확보하기 위해 [${title}]의 상세 설계 기준이 핵심적으로 활용됩니다.`;
+
+  const concept3 = `교재 본문 핵심 진술: "${s2}"\n\n[엔지니어링 리스크 관리] 실무 운용 및 시공 시 발생 가능한 예기치 못한 물리적/환경적 취약 요인(Bottleneck)을 선제적으로 예방하고 설계 안전율을 유지하기 위한 거동 통제 방안입니다.`;
+
   const question1 = `기술사적 관점에서 [${title}]의 핵심 정의 및 개념 구조도를 제시하고, 본문 진술 "${s0.substring(0, 60)}${s0.length > 60 ? '...' : ''}"에 기초하여 이의 공학적 특징을 3단락 표 형식으로 간략히 서술하시오.`;
-
   const question2 = `실무 적용 환경에서 [${title}]의 도입 필요성을 설명하고, 본문 요약 "${s1.substring(0, 60)}${s1.length > 60 ? '...' : ''}"을/를 반영하여 기존 공법/설계 방식 대비 기술적 차별성 및 시공/설계 시 주요 고려사항을 논하시오.`;
-
   const question3 = `[${title}]의 실무 적용 시 발생할 수 있는 주요 장애 및 취약성 요인(Bottleneck)을 다차원적으로 분석하고, 본문의 "${s2.substring(0, 60)}${s2.length > 60 ? '...' : ''}" 진술에 근거한 설계/시공 신뢰성 확보 방안과 발전 방향을 서술하시오.`;
 
   return [
@@ -868,13 +975,24 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      let text = response.text().trim();
+      const rawText = response.text().trim();
 
-      if (text.startsWith('```')) {
-        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      let questions = null;
+      try {
+        let text = rawText;
+        if (text.startsWith('```')) {
+          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        }
+        questions = JSON.parse(text);
+      } catch (parseErr) {
+        console.warn('Direct JSON parse failed, trying robust JSON array extractor:', parseErr);
+        questions = extractJsonArray(rawText);
       }
 
-      const questions = JSON.parse(text);
+      if (!questions || !Array.isArray(questions)) {
+        throw new Error('Parsed result is not a valid JSON array or empty');
+      }
+
       res.json({ questions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
