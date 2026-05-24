@@ -532,7 +532,13 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        setExamQuestions(data.questions || []);
+        const qs = data.questions || [];
+        // Fisher-Yates shuffle – 주관식/객관식 랜덤 혼합
+        for (let i = qs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [qs[i], qs[j]] = [qs[j], qs[i]];
+        }
+        setExamQuestions(qs);
       } else {
         showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
         setShowExam(false);
