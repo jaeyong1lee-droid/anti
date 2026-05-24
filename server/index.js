@@ -1688,15 +1688,20 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
 async function startServer() {
   try {
     await initDatabase();
+    console.log('Database schema initialization completed.');
+  } catch (dbErr) {
+    console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
+  }
+
+  try {
     app.listen(PORT, () => {
       console.log(`============================================`);
       console.log(`Spaced Repetition Backend is running!`);
       console.log(`Server Port: ${PORT}`);
-      console.log(`Database File: spaced_repetition.db`);
       console.log(`============================================`);
     });
   } catch (err) {
-    console.error('Failed to start application server:', err);
+    console.error('Failed to start application server listener:', err);
     process.exit(1);
   }
 }
