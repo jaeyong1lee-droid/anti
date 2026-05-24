@@ -1367,14 +1367,47 @@ export default function App() {
                                   <span className="text-[10px] font-bold text-stone-500">질문 {idx + 1}</span>
                                 </div>
 
-                                {/* For structured recall: show section accordion directly (no question text) */}
+                                {/* For structured recall: progressive reveal accordion */}
                                 {isStructuredRecall ? (
-                                  <div className="space-y-2 mb-4">
-                                    {sectionTitles.map((title, sIdx) => {
-                                      const secKey = `${idx}-${sIdx}`;
+                                  <div className="space-y-2 mb-2">
+                                    {/* Always show first section (개요) */}
+                                    {sectionTitles.length > 0 && (() => {
+                                      const firstKey = `${idx}-0`;
+                                      const isFirstOpen = !!openSections[firstKey];
+                                      return (
+                                        <div className="rounded-xl border border-violet-200 overflow-hidden">
+                                          <button
+                                            onClick={() => setOpenSections(prev => ({ ...prev, [firstKey]: !prev[firstKey] }))}
+                                            className="w-full text-left px-4 py-3 bg-violet-50 hover:bg-violet-100 flex items-center justify-between gap-2 transition-colors"
+                                          >
+                                            <span className="text-sm font-black text-violet-900">{sectionTitles[0]}</span>
+                                            <span className="text-violet-500 flex-shrink-0 text-xs">{isFirstOpen ? '▲' : '▼'}</span>
+                                          </button>
+                                          {isFirstOpen && (
+                                            <div className="px-4 py-3 bg-amber-50 border-t border-violet-100 text-xs leading-relaxed text-stone-800 space-y-3">
+                                              <LatexRenderer text={sectionAnswers[0] || '내용 없음'} katexLoaded={katexLoaded} />
+                                              {/* 핵심 개념 추가 */}
+                                              {q.concept && (
+                                                <div className="pt-2 border-t border-amber-200">
+                                                  <div className="text-[11px] font-black text-indigo-800 mb-1 flex items-center gap-1">
+                                                    <Brain size={11} /> 핵심 개념
+                                                  </div>
+                                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} />
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Remaining sections: only visible after first is opened */}
+                                    {!!openSections[`${idx}-0`] && sectionTitles.slice(1).map((title, sIdx) => {
+                                      const actualIdx = sIdx + 1;
+                                      const secKey = `${idx}-${actualIdx}`;
                                       const isOpen = !!openSections[secKey];
                                       return (
-                                        <div key={sIdx} className="rounded-xl border border-violet-200 overflow-hidden">
+                                        <div key={actualIdx} className="rounded-xl border border-violet-200 overflow-hidden">
                                           <button
                                             onClick={() => setOpenSections(prev => ({ ...prev, [secKey]: !prev[secKey] }))}
                                             className="w-full text-left px-4 py-3 bg-violet-50 hover:bg-violet-100 flex items-center justify-between gap-2 transition-colors"
@@ -1384,7 +1417,7 @@ export default function App() {
                                           </button>
                                           {isOpen && (
                                             <div className="px-4 py-3 bg-amber-50 border-t border-violet-100 text-xs leading-relaxed text-stone-800">
-                                              <LatexRenderer text={sectionAnswers[sIdx] || '내용 없음'} katexLoaded={katexLoaded} />
+                                              <LatexRenderer text={sectionAnswers[actualIdx] || '내용 없음'} katexLoaded={katexLoaded} />
                                             </div>
                                           )}
                                         </div>
@@ -1473,8 +1506,11 @@ export default function App() {
                                         </div>
                                       )}
                                     </div>
-                                  ) : (
-                                    /* ACTIVE RECALL INTERACTIVE CARD (For Question 1 & 2) */
+                                   ) : isStructuredRecall ? (
+                                     /* Structured recall: no yellow box needed (answers shown inline in accordion) */
+                                     null
+                                   ) : (
+                                    /* ACTIVE RECALL INTERACTIVE CARD (For Question 2: 공식 문제) */
                                     <>
                                       {!isRevealed ? (
                                         /* Locked/Blurred Trigger Box */
