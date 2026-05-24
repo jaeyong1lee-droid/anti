@@ -174,6 +174,10 @@ export async function initDatabase() {
       `);
       console.log('Cloud PostgreSQL database tables initialized successfully.');
     } else {
+      if (isVercel) {
+        console.warn('Running on Serverless Vercel and DATABASE_URL is not set. Bypassing local SQLite database initialization.');
+        return;
+      }
       // Initialize Local SQLite
       const localDb = await getSQLiteDb();
       await dbQuery.run(`
