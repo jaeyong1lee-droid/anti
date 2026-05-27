@@ -239,6 +239,153 @@ function extractJsonArray(str) {
   return null;
 }
 
+/**
+ * Multi-LLM 하이브리드 페일오버 실행 헬퍼
+ * 순서: 
+ * 1. Google Gemini Keys (각 키당 2.0-flash -> 1.5-flash 순회)
+ * 2. Anthropic Claude (Key 존재 시, claude-3-5-sonnet-20241022)
+ * 3. OpenAI GPT (Key 존재 시, gpt-4o-mini -> gpt-4o)
+ */
+async function callLLMWithFailover(systemInstruction, userPrompt) {
+  const googleKeys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_SECONDARY,
+    process.env.GEMINI_API_KEY_TERTIARY
+  ].filter(Boolean);
+
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+
+  const targets = [];
+
+  // 1. Google Gemini Targets
+  for (let i = 0; i < googleKeys.length; i++) {
+    targets.push({
+      provider: 'gemini',
+      key: googleKeys[i],
+      model: 'gemini-2.0-flash',
+      label: `Gemini Key #${i + 1} (2.0-flash)`
+    });
+    targets.push({
+      provider: 'gemini',
+      key: googleKeys[i],
+      model: 'gemini-1.5-flash',
+      label: `Gemini Key #${i + 1} (1.5-flash)`
+    });
+  }
+
+  // 2. Anthropic Claude Targets
+  if (claudeKey) {
+    targets.push({
+      provider: 'claude',
+      key: claudeKey,
+      model: 'claude-3-5-sonnet-20241022',
+      label: 'Claude 3.5 Sonnet'
+    });
+  }
+
+  // 3. OpenAI GPT Targets
+  if (openaiKey) {
+    targets.push({
+      provider: 'openai',
+      key: openaiKey,
+      model: 'gpt-4o-mini',
+      label: 'OpenAI GPT-4o-mini'
+    });
+    targets.push({
+      provider: 'openai',
+      key: openaiKey,
+      model: 'gpt-4o',
+      label: 'OpenAI GPT-4o'
+    });
+  }
+
+  if (targets.length === 0) {
+    throw new Error('사용 가능한 API 키가 없습니다. 환경 변수를 확인하십시오.');
+  }
+
+  let lastError = null;
+
+  for (const target of targets) {
+    try {
+      console.log(`[LLM시도] ${target.label} 호출 중...`);
+      let resultText = '';
+
+      if (target.provider === 'gemini') {
+        const genAI = new GoogleGenerativeAI(target.key);
+        const model = genAI.getGenerativeModel({ 
+          model: target.model,
+          systemInstruction: systemInstruction || undefined
+        });
+        const result = await model.generateContent(userPrompt);
+        resultText = result.response.text().trim();
+
+      } else if (target.provider === 'claude') {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': target.key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: target.model,
+            max_tokens: 4096,
+            system: systemInstruction || undefined,
+            messages: [{ role: 'user', content: userPrompt }]
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(`Claude API Error (${response.status}): ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        resultText = data.content?.[0]?.text?.trim() || '';
+
+      } else if (target.provider === 'openai') {
+        const messages = [];
+        if (systemInstruction) {
+          messages.push({ role: 'system', content: systemInstruction });
+        }
+        messages.push({ role: 'user', content: userPrompt });
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${target.key}`
+          },
+          body: JSON.stringify({
+            model: target.model,
+            messages: messages,
+            temperature: 0.3
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(`OpenAI API Error (${response.status}): ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        resultText = data.choices?.[0]?.message?.content?.trim() || '';
+      }
+
+      if (resultText) {
+        console.log(`[LLM성공] ${target.label} 호출 성공!`);
+        return resultText;
+      }
+    } catch (err) {
+      console.warn(`[LLM실패] ${target.label}: ${err.message}`);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('모든 LLM 모델 호출에 실패했습니다.');
+}
+
 // Helper: Shuffle array elements
 function shuffleArray(arr) {
   const result = [...arr];
@@ -1505,6 +1652,10 @@ app.get('/api/debug-env', async (req, res) => {
     secondaryKeyLength: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.length : 0,
     hasTertiaryGeminiKey: !!process.env.GEMINI_API_KEY_TERTIARY,
     tertiaryKeyLength: process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.length : 0,
+    hasClaudeKey: !!process.env.ANTHROPIC_API_KEY,
+    claudeKeyLength: process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.length : 0,
+    hasOpenaiKey: !!process.env.OPENAI_API_KEY,
+    openaiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
     hasDbUrl: !!connectionString,
     dbUrlLength: connectionString.length,
     parsedDbInfo: parsedInfo,
@@ -1559,30 +1710,29 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       }
     }
 
-    const keys = [];
-    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
-    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
-    const activeKeys = keys.filter(Boolean);
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
     const forceLocal = req.query.local === 'true';
 
-    // Force local/source-based mode (no Gemini)
-    if (forceLocal || activeKeys.length === 0) {
-      const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 제미나이 API 키 없음';
+    // Force local/source-based mode
+    if (forceLocal || !hasAnyAiKey) {
+      const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       return res.json({ 
         questions: fallbackQuestions, 
         isFallback: true,
         mode: 'local',
-        error: forceLocal ? null : '백엔드 환경변수에 제미나이 API 키가 존재하지 않습니다.'
+        error: forceLocal ? null : '백엔드 환경변수에 AI API 키가 존재하지 않습니다.'
       });
     }
 
-    try {
-      const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-
-      const prompt = `
+    const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 아래 제공되는 [토픽 제목], [핵심 키워드], 그리고 [첨부파일 본문 텍스트]를 심층 분석하여, 총 10개의 고난도 예상문제를 생성해 주십시오.
 
@@ -1669,60 +1819,32 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 `;
 
       let questions = null;
-      let lastErr = null;
-      let successful = false;
-
-      for (let k = 0; k < activeKeys.length; k++) {
-        const apiKey = activeKeys[k];
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        for (const modelName of QUIZ_MODELS) {
-          try {
-            console.log(`[단일토픽퀴즈] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
-            const model = genAI.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const rawText = response.text().trim();
-
-            try {
-              let text = rawText;
-              if (text.startsWith('```')) {
-                text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-              }
-              questions = JSON.parse(text);
-            } catch (parseErr) {
-              console.warn(`[단일토픽퀴즈] Key #${k+1} - ${modelName} 파싱 재시도:`, parseErr);
-              questions = extractJsonArray(rawText);
-            }
-
-            if (!questions || !Array.isArray(questions)) {
-              throw new Error('Parsed result is not a valid JSON array or empty');
-            }
-
-            console.log(`[단일토픽퀴즈] 성공: Key #${k+1}, 모델 ${modelName}, ${questions.length}문항`);
-            successful = true;
-            break; // Inner loop success
-          } catch (modelErr) {
-            lastErr = modelErr;
-            console.warn(`[단일토픽퀴즈] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
-            continue; // Try next model or next key
+      try {
+        const rawText = await callLLMWithFailover(null, prompt);
+        try {
+          let text = rawText;
+          if (text.startsWith('```')) {
+            text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
           }
+          questions = JSON.parse(text);
+        } catch (parseErr) {
+          console.warn(`[단일토픽퀴즈] 파싱 재시도:`, parseErr);
+          questions = extractJsonArray(rawText);
         }
-        if (successful) break; // Outer loop success
-      }
 
-      if (!questions) {
-        throw lastErr || new Error('모든 제미나이 키와 모델 호출 실패');
-      }
+        if (!questions || !Array.isArray(questions)) {
+          throw new Error('Parsed result is not a valid JSON array or empty');
+        }
 
-      res.json({ questions, isFallback: false });
-    } catch (aiError) {
-      console.error('Gemini API call failed, generating fallbacks:', aiError);
-      const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate');
-      const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
-      const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      res.json({ questions: fallbackQuestions, isFallback: true, error: errorMsg });
-    }
+        console.log(`[단일토픽퀴즈] 성공: ${questions.length}문항`);
+        res.json({ questions, isFallback: false });
+      } catch (aiError) {
+        console.error('Multi-LLM call failed, generating fallbacks:', aiError);
+        const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
+        const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
+        const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+        res.json({ questions: fallbackQuestions, isFallback: true, error: errorMsg });
+      }
   } catch (error) {
     console.error('Error in AI question generation route:', error);
     res.status(500).json({ error: '서버 오류로 AI 기출문제를 생성하지 못했습니다.' });
@@ -1732,12 +1854,14 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 // 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini
 app.post('/api/exam/all', async (req, res) => {
   try {
-    const keys = [];
-    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
-    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
-    const activeKeys = keys.filter(Boolean);
-    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
 
     // Fetch all topics with pdf_data
     const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
@@ -1818,59 +1942,30 @@ ${combinedText}
 ]
 `;
 
-    const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-
     let questions = null;
-    let lastErr = null;
-    let successful = false;
-
-    for (let k = 0; k < activeKeys.length; k++) {
-      const apiKey = activeKeys[k];
-      const genAI = new GoogleGenerativeAI(apiKey);
-
-      for (const modelName of EXAM_MODELS) {
-        try {
-          console.log(`[종합평가] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(prompt);
-          const rawText = result.response.text().trim();
-          try {
-            let text = rawText;
-            if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-            questions = JSON.parse(text);
-          } catch {
-            questions = extractJsonArray(rawText);
-          }
-          if (!questions || !Array.isArray(questions) || questions.length === 0) {
-            throw new Error('70문항 파싱 실패');
-          }
-          console.log(`[종합평가] 성공: Key #${k+1}, 모델 ${modelName}, ${questions.length}문항`);
-          successful = true;
-          break; // Inner loop success
-        } catch (modelErr) {
-          lastErr = modelErr;
-          console.warn(`[종합평가] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
-          continue; // Try next model or next key
-        }
+    try {
+      const rawText = await callLLMWithFailover(null, prompt);
+      try {
+        let text = rawText;
+        if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        questions = JSON.parse(text);
+      } catch {
+        questions = extractJsonArray(rawText);
       }
-      if (successful) break; // Outer loop success
-    }
-
-    if (!questions) {
-      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        throw new Error('70문항 파싱 실패');
+      }
+      res.json({ questions, total: questions.length, topicCount: topics.length });
+    } catch (err) {
+      console.error('Exam route error:', err);
+      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
       if (isQuota) {
         return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다. 내일 다시 시도하거나, 잠시 후 다시 눌러보세요.' });
       }
-      throw lastErr || new Error('문제 생성 실패');
+      res.status(500).json({ error: err.message || '문제 생성 실패' });
     }
-
-    res.json({ questions, total: questions.length, topicCount: topics.length });
   } catch (err) {
     console.error('Exam route error:', err);
-    const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate');
-    if (isQuota) {
-      return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다. 내일 다시 시도하거나, 잠시 후 다시 눌러보세요.' });
-    }
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 });
@@ -1880,14 +1975,14 @@ ${combinedText}
 app.post('/api/exam/detailed-answer', async (req, res) => {
   try {
     const { question, answer } = req.body;
-    const keys = [];
-    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
-    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
-    const activeKeys = keys.filter(Boolean);
-    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
-
-    const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
 
     const prompt = `
 당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
@@ -1903,41 +1998,17 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 3. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
 `;
 
-    let responseText = null;
-    let lastErr = null;
-    let successful = false;
-
-    for (let k = 0; k < activeKeys.length; k++) {
-      const apiKey = activeKeys[k];
-      const genAI = new GoogleGenerativeAI(apiKey);
-
-      for (const modelName of EXAM_MODELS) {
-        try {
-          console.log(`[답안전문보기] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(prompt);
-          responseText = result.response.text().trim();
-          console.log(`[답안전문보기] 성공: Key #${k+1}, 모델 ${modelName}`);
-          successful = true;
-          break; // Inner loop success
-        } catch (modelErr) {
-          lastErr = modelErr;
-          console.warn(`[답안전문보기] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
-          continue; // Try next model or next key
-        }
-      }
-      if (successful) break; // Outer loop success
-    }
-
-    if (!responseText) {
-      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+    try {
+      const responseText = await callLLMWithFailover(null, prompt);
+      res.json({ text: responseText });
+    } catch (err) {
+      console.error('Detailed answer route error:', err);
+      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
       if (isQuota) {
         return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
       }
-      throw lastErr || new Error('심층 해설 생성 실패');
+      res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
-
-    res.json({ text: responseText });
   } catch (err) {
     console.error('Detailed answer route error:', err);
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
@@ -1948,62 +2019,39 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { history, message } = req.body;
-    const keys = [];
-    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
-    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
-    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
-    const activeKeys = keys.filter(Boolean);
-    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
 
-    const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-
-    // Convert history to Gemini format
-    const contents = [];
-    if (history && Array.isArray(history)) {
+    // Format conversation history as a structured string prompt
+    let structuredPrompt = '';
+    if (history && Array.isArray(history) && history.length > 0) {
+      structuredPrompt += "이전 대화 기록:\n";
       for (const msg of history) {
-        contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] });
+        const sender = msg.role === 'user' ? '수험생' : '튜터';
+        structuredPrompt += `${sender}: ${msg.text}\n`;
       }
+      structuredPrompt += "\n현재 사용자 질문:\n";
     }
-    contents.push({ role: 'user', parts: [{ text: message }] });
+    structuredPrompt += message;
 
-    let responseText = null;
-    let lastErr = null;
-    let successful = false;
-
-    for (let k = 0; k < activeKeys.length; k++) {
-      const apiKey = activeKeys[k];
-      const genAI = new GoogleGenerativeAI(apiKey);
-
-      for (const modelName of CHAT_MODELS) {
-        try {
-          console.log(`[채팅검색] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
-          const model = genAI.getGenerativeModel({ 
-            model: modelName,
-            systemInstruction: "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요."
-          });
-          const result = await model.generateContent({ contents });
-          responseText = result.response.text().trim();
-          console.log(`[채팅검색] 성공: Key #${k+1}, 모델 ${modelName}`);
-          successful = true;
-          break; // Inner loop success
-        } catch (modelErr) {
-          lastErr = modelErr;
-          console.warn(`[채팅검색] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
-          continue; // Try next model or next key
-        }
-      }
-      if (successful) break; // Outer loop success
-    }
-
-    if (!responseText) {
-      const isQuota = lastErr?.message?.includes('Quota') || lastErr?.message?.includes('quota') || lastErr?.message?.includes('rate');
+    try {
+      const systemInstruction = "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요.";
+      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt);
+      res.json({ text: responseText });
+    } catch (err) {
+      console.error('Chat route error:', err);
+      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
       if (isQuota) {
         return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
       }
-      throw lastErr || new Error('답변 생성 실패');
+      res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
-
-    res.json({ text: responseText });
   } catch (err) {
     console.error('Chat route error:', err);
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
