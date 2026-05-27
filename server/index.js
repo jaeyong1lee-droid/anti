@@ -2152,4 +2152,17 @@ async function startServer() {
   }
 }
 
-startServer();
+// Vercel Serverless 환경 대응: Vercel이 아닌 로컬 구동 시에만 포트 리스너(app.listen)를 시작합니다.
+export default app;
+
+if (!process.env.VERCEL) {
+  startServer();
+} else {
+  // Vercel 서버리스 환경에서는 데이터베이스 연결 및 테이블 자동 생성을 비동기로 조용히 가동합니다.
+  initDatabase().then(() => {
+    console.log('Vercel serverless DB initialization completed.');
+  }).catch(dbErr => {
+    console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
+    global.dbInitError = dbErr.message;
+  });
+}
