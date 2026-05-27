@@ -274,12 +274,14 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
-      if (res.ok) {
-        setTodayReviews(data.reviews || []);
+      if (res.ok && data && Array.isArray(data.reviews)) {
+        setTodayReviews(data.reviews);
       } else {
-        console.error('Failed to load dashboard:', data.error);
+        setTodayReviews([]);
+        console.error('Failed to load dashboard or invalid data format:', data);
       }
     } catch (err) {
+      setTodayReviews([]);
       console.error('Error fetching dashboard:', err);
     } finally {
       setLoadingReviews(false);
@@ -292,12 +294,14 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/topics`);
       const data = await res.json();
-      if (res.ok) {
-        setAllTopics(data || []);
+      if (res.ok && Array.isArray(data)) {
+        setAllTopics(data);
       } else {
-        console.error('Failed to load topics:', data.error);
+        setAllTopics([]);
+        console.error('Failed to load topics or invalid format:', data);
       }
     } catch (err) {
+      setAllTopics([]);
       console.error('Error fetching topics:', err);
     } finally {
       setLoadingTopics(false);
@@ -753,11 +757,14 @@ export default function App() {
   };
 
   // Completion calculation for header stats
-  const totalCompletedCount = allTopics.reduce((acc, topic) => {
-    const completedForTopic = topic.schedules?.filter(s => s.status === 'completed').length || 0;
-    return acc + completedForTopic;
-  }, 0);
-  const totalScheduleCount = allTopics.length * 6;
+  const totalCompletedCount = Array.isArray(allTopics) 
+    ? allTopics.reduce((acc, topic) => {
+        if (!topic) return acc;
+        const completedForTopic = topic.schedules?.filter(s => s && s.status === 'completed').length || 0;
+        return acc + completedForTopic;
+      }, 0)
+    : 0;
+  const totalScheduleCount = Array.isArray(allTopics) ? allTopics.length * 6 : 0;
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
 
   return (
