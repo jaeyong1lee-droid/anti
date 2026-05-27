@@ -1500,6 +1500,10 @@ app.get('/api/debug-env', async (req, res) => {
   res.json({
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
     keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    hasSecondaryGeminiKey: !!process.env.GEMINI_API_KEY_SECONDARY,
+    secondaryKeyLength: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.length : 0,
+    hasTertiaryGeminiKey: !!process.env.GEMINI_API_KEY_TERTIARY,
+    tertiaryKeyLength: process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.length : 0,
     hasDbUrl: !!connectionString,
     dbUrlLength: connectionString.length,
     parsedDbInfo: parsedInfo,
@@ -1554,24 +1558,27 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       }
     }
 
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const keys = [];
+    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
+    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
+    const activeKeys = keys.filter(Boolean);
     const forceLocal = req.query.local === 'true';
 
     // Force local/source-based mode (no Gemini)
-    if (forceLocal || !geminiApiKey) {
-      const reason = forceLocal ? '소스 기반 모드로 요청됨' : 'GEMINI_API_KEY 없음';
+    if (forceLocal || activeKeys.length === 0) {
+      const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 제미나이 API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       return res.json({ 
         questions: fallbackQuestions, 
         isFallback: true,
         mode: 'local',
-        error: forceLocal ? null : '백엔드 환경변수에 GEMINI_API_KEY가 존재하지 않습니다.'
+        error: forceLocal ? null : '백엔드 환경변수에 제미나이 API 키가 존재하지 않습니다.'
       });
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
       const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
       const prompt = `
@@ -1661,41 +1668,49 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
       let questions = null;
       let lastErr = null;
+      let successful = false;
 
-      for (const modelName of QUIZ_MODELS) {
-        try {
-          console.log(`[단일토픽퀴즈] 모델 시도: ${modelName}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(prompt);
-          const response = await result.response;
-          const rawText = response.text().trim();
+      for (let k = 0; k < activeKeys.length; k++) {
+        const apiKey = activeKeys[k];
+        const genAI = new GoogleGenerativeAI(apiKey);
 
+        for (const modelName of QUIZ_MODELS) {
           try {
-            let text = rawText;
-            if (text.startsWith('```')) {
-              text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+            console.log(`[단일토픽퀴즈] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const rawText = response.text().trim();
+
+            try {
+              let text = rawText;
+              if (text.startsWith('```')) {
+                text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+              }
+              questions = JSON.parse(text);
+            } catch (parseErr) {
+              console.warn(`[단일토픽퀴즈] Key #${k+1} - ${modelName} 파싱 재시도:`, parseErr);
+              questions = extractJsonArray(rawText);
             }
-            questions = JSON.parse(text);
-          } catch (parseErr) {
-            console.warn(`[단일토픽퀴즈] ${modelName} 파싱 재시도:`, parseErr);
-            questions = extractJsonArray(rawText);
-          }
 
-          if (!questions || !Array.isArray(questions)) {
-            throw new Error('Parsed result is not a valid JSON array or empty');
-          }
+            if (!questions || !Array.isArray(questions)) {
+              throw new Error('Parsed result is not a valid JSON array or empty');
+            }
 
-          console.log(`[단일토픽퀴즈] 성공: ${modelName}, ${questions.length}문항`);
-          break; // 성공 시 루프 종료
-        } catch (modelErr) {
-          lastErr = modelErr;
-          console.warn(`[단일토픽퀴즈] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
-          continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
+            console.log(`[단일토픽퀴즈] 성공: Key #${k+1}, 모델 ${modelName}, ${questions.length}문항`);
+            successful = true;
+            break; // Inner loop success
+          } catch (modelErr) {
+            lastErr = modelErr;
+            console.warn(`[단일토픽퀴즈] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
+            continue; // Try next model or next key
+          }
         }
+        if (successful) break; // Outer loop success
       }
 
       if (!questions) {
-        throw lastErr || new Error('모든 제미나이 모델 호출 실패');
+        throw lastErr || new Error('모든 제미나이 키와 모델 호출 실패');
       }
 
       res.json({ questions, isFallback: false });
@@ -1715,8 +1730,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 // 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini
 app.post('/api/exam/all', async (req, res) => {
   try {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+    const keys = [];
+    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
+    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
+    const activeKeys = keys.filter(Boolean);
+    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
 
     // Fetch all topics with pdf_data
     const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
@@ -1797,37 +1816,42 @@ ${combinedText}
 ]
 `;
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-
-    // 모델 폴백 체인: gemini-3.5-flash → gemini-2.5-flash → gemini-2.0-flash
     const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     let questions = null;
     let lastErr = null;
+    let successful = false;
 
-    for (const modelName of EXAM_MODELS) {
-      try {
-        console.log(`[종합평가] 모델 시도: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const rawText = result.response.text().trim();
+    for (let k = 0; k < activeKeys.length; k++) {
+      const apiKey = activeKeys[k];
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      for (const modelName of EXAM_MODELS) {
         try {
-          let text = rawText;
-          if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-          questions = JSON.parse(text);
-        } catch {
-          questions = extractJsonArray(rawText);
+          console.log(`[종합평가] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          const rawText = result.response.text().trim();
+          try {
+            let text = rawText;
+            if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+            questions = JSON.parse(text);
+          } catch {
+            questions = extractJsonArray(rawText);
+          }
+          if (!questions || !Array.isArray(questions) || questions.length === 0) {
+            throw new Error('70문항 파싱 실패');
+          }
+          console.log(`[종합평가] 성공: Key #${k+1}, 모델 ${modelName}, ${questions.length}문항`);
+          successful = true;
+          break; // Inner loop success
+        } catch (modelErr) {
+          lastErr = modelErr;
+          console.warn(`[종합평가] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
+          continue; // Try next model or next key
         }
-        if (!questions || !Array.isArray(questions) || questions.length === 0) {
-          throw new Error('70문항 파싱 실패');
-        }
-        console.log(`[종합평가] 성공: ${modelName}, ${questions.length}문항`);
-        break; // 성공 시 루프 종료
-      } catch (modelErr) {
-        lastErr = modelErr;
-        console.warn(`[종합평가] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
-        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
       }
+      if (successful) break; // Outer loop success
     }
 
     if (!questions) {
@@ -1854,10 +1878,13 @@ ${combinedText}
 app.post('/api/exam/detailed-answer', async (req, res) => {
   try {
     const { question, answer } = req.body;
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+    const keys = [];
+    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
+    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
+    const activeKeys = keys.filter(Boolean);
+    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
     const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     const prompt = `
@@ -1876,20 +1903,28 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 
     let responseText = null;
     let lastErr = null;
+    let successful = false;
 
-    for (const modelName of EXAM_MODELS) {
-      try {
-        console.log(`[답안전문보기] 모델 시도: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        responseText = result.response.text().trim();
-        console.log(`[답안전문보기] 성공: ${modelName}`);
-        break;
-      } catch (modelErr) {
-        lastErr = modelErr;
-        console.warn(`[답안전문보기] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
-        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
+    for (let k = 0; k < activeKeys.length; k++) {
+      const apiKey = activeKeys[k];
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      for (const modelName of EXAM_MODELS) {
+        try {
+          console.log(`[답안전문보기] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          responseText = result.response.text().trim();
+          console.log(`[답안전문보기] 성공: Key #${k+1}, 모델 ${modelName}`);
+          successful = true;
+          break; // Inner loop success
+        } catch (modelErr) {
+          lastErr = modelErr;
+          console.warn(`[답안전문보기] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
+          continue; // Try next model or next key
+        }
       }
+      if (successful) break; // Outer loop success
     }
 
     if (!responseText) {
@@ -1911,10 +1946,13 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { history, message } = req.body;
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
+    const keys = [];
+    if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+    if (process.env.GEMINI_API_KEY_SECONDARY) keys.push(process.env.GEMINI_API_KEY_SECONDARY);
+    if (process.env.GEMINI_API_KEY_TERTIARY) keys.push(process.env.GEMINI_API_KEY_TERTIARY);
+    const activeKeys = keys.filter(Boolean);
+    if (activeKeys.length === 0) return res.status(400).json({ error: '등록된 제미나이 API 키가 존재하지 않습니다.' });
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
     const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     // Convert history to Gemini format
@@ -1928,23 +1966,31 @@ app.post('/api/chat', async (req, res) => {
 
     let responseText = null;
     let lastErr = null;
+    let successful = false;
 
-    for (const modelName of CHAT_MODELS) {
-      try {
-        console.log(`[채팅검색] 모델 시도: ${modelName}`);
-        const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          systemInstruction: "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요."
-        });
-        const result = await model.generateContent({ contents });
-        responseText = result.response.text().trim();
-        console.log(`[채팅검색] 성공: ${modelName}`);
-        break;
-      } catch (modelErr) {
-        lastErr = modelErr;
-        console.warn(`[채팅검색] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
-        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
+    for (let k = 0; k < activeKeys.length; k++) {
+      const apiKey = activeKeys[k];
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      for (const modelName of CHAT_MODELS) {
+        try {
+          console.log(`[채팅검색] Key #${k+1} (길이 ${apiKey.length}) - 모델 시도: ${modelName}`);
+          const model = genAI.getGenerativeModel({ 
+            model: modelName,
+            systemInstruction: "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요."
+          });
+          const result = await model.generateContent({ contents });
+          responseText = result.response.text().trim();
+          console.log(`[채팅검색] 성공: Key #${k+1}, 모델 ${modelName}`);
+          successful = true;
+          break; // Inner loop success
+        } catch (modelErr) {
+          lastErr = modelErr;
+          console.warn(`[채팅검색] Key #${k+1} - ${modelName} 호출 실패:`, modelErr.message || modelErr);
+          continue; // Try next model or next key
+        }
       }
+      if (successful) break; // Outer loop success
     }
 
     if (!responseText) {
