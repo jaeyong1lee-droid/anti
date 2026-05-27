@@ -1421,6 +1421,24 @@ export default function App() {
                 </div>
               ) : (
                 <div className="max-w-3xl mx-auto space-y-5">
+                  {isFallback && (
+                    <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/20 text-amber-200 flex items-start gap-3 animate-fade-in mb-6 shadow-xl">
+                      <div className="p-2.5 bg-amber-900/50 text-amber-400 rounded-xl">
+                        <Info size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 mb-0.5">로컬 오프라인 엔진 출제 완료</h4>
+                        <p className="text-xs text-amber-300/90 leading-relaxed">
+                          구글 Gemini API의 일일 사용 한도 초과(또는 일시적인 네트워크 제한)로 인해, 시스템에 내장된 <b>고품질 오프라인 백업 출제 엔진</b>이 소스 문서를 기반으로 기출문제를 대체 생성하였습니다. 중단 없이 복습을 계속 진행하실 수 있습니다!
+                        </p>
+                        {aiError && (
+                          <p className="text-[10px] text-amber-500/50 mt-1.5 font-mono">
+                            * 상세 오류: {aiError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {aiQuestions.map((q, idx) => {
                     const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
                     const isSubj = !isMC;
