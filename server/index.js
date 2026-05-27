@@ -1572,7 +1572,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const QUIZ_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
@@ -1800,7 +1800,7 @@ ${combinedText}
     const genAI = new GoogleGenerativeAI(geminiApiKey);
 
     // 모델 폴백 체인: gemini-3.5-flash → gemini-2.5-flash → gemini-2.0-flash
-    const EXAM_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     let questions = null;
     let lastErr = null;
@@ -1858,7 +1858,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
     if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const EXAM_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const EXAM_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     const prompt = `
 당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
@@ -1915,7 +1915,7 @@ app.post('/api/chat', async (req, res) => {
     if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const CHAT_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
     // Convert history to Gemini format
     const contents = [];
