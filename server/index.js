@@ -1689,12 +1689,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           break; // 성공 시 루프 종료
         } catch (modelErr) {
           lastErr = modelErr;
-          const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
-          if (isQuota) {
-            console.warn(`[단일토픽퀴즈] ${modelName} Quota 초과, 다음 모델로 폴백`);
-            continue;
-          }
-          throw modelErr; // Quota 외 오류는 즉시 throw
+          console.warn(`[단일토픽퀴즈] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
+          continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
         }
       }
 
@@ -1829,12 +1825,8 @@ ${combinedText}
         break; // 성공 시 루프 종료
       } catch (modelErr) {
         lastErr = modelErr;
-        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
-        if (isQuota) {
-          console.warn(`[종합평가] ${modelName} Quota 초과, 다음 모델로 폴백`);
-          continue;
-        }
-        throw modelErr; // Quota 외 오류는 즉시 throw
+        console.warn(`[종합평가] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
+        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
       }
     }
 
@@ -1895,12 +1887,8 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
         break;
       } catch (modelErr) {
         lastErr = modelErr;
-        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
-        if (isQuota) {
-          console.warn(`[답안전문보기] ${modelName} Quota 초과, 다음 모델로 폴백`);
-          continue;
-        }
-        throw modelErr;
+        console.warn(`[답안전문보기] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
+        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
       }
     }
 
@@ -1954,12 +1942,8 @@ app.post('/api/chat', async (req, res) => {
         break;
       } catch (modelErr) {
         lastErr = modelErr;
-        const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
-        if (isQuota) {
-          console.warn(`[채팅검색] ${modelName} Quota 초과, 다음 모델로 폴백`);
-          continue;
-        }
-        throw modelErr;
+        console.warn(`[채팅검색] ${modelName} 호출 실패(오류/용량초과), 다음 모델로 폴백합니다:`, modelErr.message || modelErr);
+        continue; // 모든 에러(용량 초과, 서버 바쁨, 오버로드 등) 발생 시 다음 모델로 즉시 폴백
       }
     }
 
