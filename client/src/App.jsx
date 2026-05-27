@@ -1367,33 +1367,42 @@ export default function App() {
       {selectedTopic && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Review Header */}
-          <div className="flex items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Brain size={20} />
               </div>
-              <div>
-                <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">토픽 복습 (Gemini AI · 10문항)</span>
-                <h3 className="font-bold text-white text-sm">{selectedTopic.title}</h3>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 10문항)</span>
+                  {!loadingAI && aiQuestions.length > 0 && (
+                    <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {aiQuestions.length}문항
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
+                  {selectedTopic.title}
+                </h3>
               </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
               {!loadingAI && aiQuestions.length > 0 && (
-                <span className="ml-2 text-[11px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2.5 py-1 rounded-full font-bold">
-                  {aiQuestions.length}문항 |
-                  객관식 정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
+                <span className="text-[10px] text-slate-400 mr-auto sm:hidden font-bold">
+                  정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
                 </span>
               )}
-            </div>
-            <div className="flex items-center gap-2">
               <button
                 onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
-                className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
               </button>
               <button
                 onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
-                className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="문제 초기화 (재개 시 새 문제 생성)"
               >
                 종료
@@ -1719,23 +1728,32 @@ export default function App() {
       {showExam && (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Exam Header */}
-          <div className="flex items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Award size={20} />
               </div>
-              <div>
-                <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">종합평가 (Gemini AI)</span>
-                <h3 className="font-bold text-white text-sm">{examTopic?.title}</h3>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider whitespace-nowrap">종합평가 (Gemini AI)</span>
+                  {!loadingExam && examQuestions.length > 0 && (
+                    <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {examQuestions.length}문항
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
+                  {examTopic?.title}
+                </h3>
               </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
               {!loadingExam && examQuestions.length > 0 && (
-                <span className="ml-2 text-[11px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-full font-bold">
-                  {examQuestions.length}문항 |
-                  객관식 정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
+                <span className="text-[10px] text-slate-400 mr-auto sm:hidden font-bold">
+                  정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
                 </span>
               )}
-            </div>
-            <div className="flex items-center gap-2">
               <button
                 onClick={async () => {
                   savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
@@ -1759,7 +1777,7 @@ export default function App() {
                   }
                   setShowExam(false);
                 }}
-                className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
@@ -1771,7 +1789,7 @@ export default function App() {
                     .catch(e => console.warn('세션 삭제 실패:', e));
                   setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null);
                 }}
-                className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
               >
                 종료
