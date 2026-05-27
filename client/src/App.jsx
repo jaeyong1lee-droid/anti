@@ -1512,7 +1512,15 @@ export default function App() {
                             </button>
                           ) : (
                             <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
-                              <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                              <div className="flex justify-between items-center">
+                                <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                                <button
+                                  onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                  className="text-[10px] text-slate-400 hover:text-white px-2 py-1 rounded-md bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
+                                >
+                                  답안 숨기기 ✕
+                                </button>
+                              </div>
                               {q.concept && (
                                 <div className="space-y-1">
                                   <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
@@ -1877,7 +1885,15 @@ export default function App() {
                           </button>
                         ) : (
                           <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
-                            <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                            <div className="flex justify-between items-center">
+                              <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                              <button
+                                onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                className="text-[10px] text-slate-400 hover:text-white px-2 py-1 rounded-md bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
+                              >
+                                답안 숨기기 ✕
+                              </button>
+                            </div>
                             <div className="text-xs text-slate-200 leading-relaxed">
                               <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} />
                             </div>
