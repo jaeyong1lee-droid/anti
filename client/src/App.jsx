@@ -1016,23 +1016,14 @@ export default function App() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
-                        {/* 소스 기반 복습 */}
-                        <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'local')}
-                          className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-600/70 text-slate-200 border border-slate-500/30 text-xs font-bold transition-all duration-200"
-                          title="첨부 소스만 기반으로 문제 생성 (빠름)"
-                        >
-                          <BookOpen size={13} />
-                          소스 기반
-                        </button>
                         {/* 소스 + Gemini 복습 */}
                         <button
                           onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai')}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
-                          title="소스 + Gemini AI로 고는도 문제 생성"
+                          title="소스 + Gemini AI로 고난도 문제 생성"
                         >
-                          <Sparkles size={13} />
-                          소스+Gemini
+                          <Brain size={13} />
+                          🧠 복습하기
                         </button>
                         {/* 복습 완료 */}
                         <button
@@ -1274,15 +1265,8 @@ export default function App() {
                               <div className="space-y-1">
                                 <h4 
                                   ref={isFirstMatch ? firstMatchRef : null}
-                                  tabIndex={0}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'local');
-                                    }
-                                  }}
-                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'local')}
-                                  className="font-bold text-white text-sm truncate hover:text-brand-400 cursor-pointer transition-colors focus:text-brand-400 focus:outline-none"
-                                  title="클릭 시 복습 주기에 상관없이 자율 인출 기출 퀴즈를 풉니다."
+                                  className="font-bold text-white text-sm truncate transition-colors"
+                                  title="제목"
                                 >
                                   {topic.title}
                                 </h4>
@@ -1336,10 +1320,10 @@ export default function App() {
                                 <button
                                   onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai')}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  title="소스 + Gemini AI로 고늨도 문제 생성"
+                                  title="소스 + Gemini AI로 고난도 문제 생성"
                                 >
-                                  <Sparkles size={12} />
-                                  소스+Gemini
+                                  <Brain size={12} />
+                                  🧠 복습하기
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTopic(topic.id, topic.title)}
@@ -1372,494 +1356,299 @@ export default function App() {
         )}
       </main>
 
-      {/* AI 복습 도우미 모달 (Korean PE Examination Theme - Active Recall Style) */}
+      {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-md transition-all duration-300">
-          <div className="w-full max-w-4xl glass-panel rounded-3xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col max-h-[90vh]">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-violet-950 to-slateCustom-900 border-b border-slate-800 flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="text-brand-400" size={18} />
-                <h3 className="font-bold text-white text-base">인출 중심 AI 복습 도우미</h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+          {/* Review Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl">
+                <Brain size={20} />
               </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
-                  className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                  title="화면만 숨김 (재개 시 문제 유지)"
-                >
-                  닫기
-                </button>
-                <button 
-                  onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
-                  className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                  title="문제 초기화 (재개 시 새 문제 생성)"
-                >
-                  종료
-                </button>
+              <div>
+                <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider">토픽 복습 (Gemini AI · 10문항)</span>
+                <h3 className="font-bold text-white text-sm">{selectedTopic.title}</h3>
               </div>
-            </div>
-
-            {/* Modal Body */}
-            <div ref={quizBodyRef} className="p-6 overflow-y-auto flex-grow bg-slateCustom-900/30">
-              {loadingAI ? (
-                /* Pulsing AI Thinking state */
-                <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
-                  <div className="relative">
-                    <div className="p-5 bg-brand-950/80 text-brand-400 rounded-full relative z-10 animate-bounce-slow">
-                      <Brain size={36} />
-                    </div>
-                    <div className="absolute inset-0 bg-brand-500 rounded-full animate-ping opacity-25"></div>
-                  </div>
-                  <h4 className="text-lg font-bold text-white mt-2">Gemini AI가 예상문제 및 답안 가이드라인 설계 중...</h4>
-                  <p className="text-xs text-slate-400 max-w-md leading-relaxed">
-                    본문 자료를 분석하여 기술사 합격 기준의 **예상 기출문제**와 **답안 구성 핵심(개념, 공식, 답안 구조)**을 생성하고 있습니다. 잠시만 기다려 주세요.
-                  </p>
-                </div>
-              ) : (
-                /* Styled Professional Engineer Examination Sheet */
-                <div className="space-y-6">
-                  <div className="p-4 bg-slateCustom-900 border border-slate-800 rounded-2xl flex flex-col sm:flex-row justify-between gap-3 items-start sm:items-center">
-                    <div>
-                      <span className="text-[10px] font-black uppercase text-brand-400 tracking-wider">복습 대상 토픽</span>
-                      <h3 className="text-base font-extrabold text-white mt-0.5">{selectedTopic.title}</h3>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {selectedTopic && selectedTopic.id && (
-                        <button
-                          onClick={() => setShowFullReport(!showFullReport)}
-                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/20 text-xs font-bold transition-all duration-200"
-                        >
-                          {showFullReport ? "✍️ 기출문제 풀기로 가기" : "📄 보고서 전문 보기"}
-                        </button>
-                      )}
-                      {isFallback && (
-                        <span className="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 font-bold">
-                          <Info size={12} />
-                          로컬 기출문제 출제기 가동됨
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {showFullReport ? (
-                    /* Beautiful Glassmorphic Full Report Native PDF Viewer */
-                    <div className="bg-slateCustom-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-4 max-h-[80vh] flex flex-col animate-fade-in">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
-                        <div>
-                          <h4 className="font-extrabold text-white text-base flex items-center gap-2">
-                            <FileText className="text-brand-400" size={18} />
-                            {selectedTopic.title} - 원본 파일 보기
-                          </h4>
-                          {!selectedTopic.pdf_name?.toLowerCase().endsWith('.html') && !selectedTopic.pdf_name?.toLowerCase().endsWith('.htm') ? (
-                            <div className="flex mt-1.5 p-0.5 bg-slateCustom-950 border border-slate-800/80 rounded-lg max-w-max">
-                              <button
-                                onClick={() => setReportViewType('pdf')}
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
-                                  reportViewType === 'pdf'
-                                    ? 'bg-brand-600 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-white'
-                                }`}
-                              >
-                                📄 PDF 파일로 보기
-                              </button>
-                              <button
-                                onClick={() => setReportViewType('image')}
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all duration-200 ${
-                                  reportViewType === 'image'
-                                    ? 'bg-brand-600 text-white shadow-sm'
-                                    : 'text-slate-400 hover:text-white'
-                                }`}
-                              >
-                                🖼️ 그림(이미지)으로 보기
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] font-black text-emerald-400 mt-2 block animate-pulse">
-                              🌐 HTML 보고서 원본 모드 (그림/도표 완벽 지원)
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          {selectedTopic.pdf_name && (
-                            <a
-                              href={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-grow sm:flex-grow-0 text-center text-xs bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-500/20 px-3.5 py-2 rounded-xl transition-all duration-200 font-bold"
-                            >
-                              ↗️ 새 창에서 원본 열기
-                            </a>
-                          )}
-                          <button
-                            onClick={() => setShowFullReport(false)}
-                            className="flex-grow sm:flex-grow-0 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl transition-all duration-200 font-bold"
-                          >
-                            시험지로 돌아가기
-                          </button>
-                        </div>
-                      </div>
-                      {selectedTopic.pdf_name ? (
-                        selectedTopic.pdf_name.toLowerCase().endsWith('.html') || selectedTopic.pdf_name.toLowerCase().endsWith('.htm') ? (
-                          <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-white h-[55vh]">
-                            <iframe
-                              src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
-                              className="w-full h-full border-0"
-                              title="Original HTML Document Viewer"
-                            />
-                          </div>
-                        ) : reportViewType === 'pdf' ? (
-                          <div className="flex-grow rounded-2xl overflow-hidden border border-slate-800 bg-slateCustom-950 h-[55vh]">
-                            <iframe
-                              src={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`}
-                              className="w-full h-full border-0"
-                              title="Original Document PDF Viewer"
-                            />
-                          </div>
-                        ) : (
-                          <PdfImageRenderer pdfUrl={`${API_BASE}/api/topics/${selectedTopic.id}/pdf`} pdfjsLoaded={pdfjsLoaded} />
-                        )
-                      ) : (
-                        <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-                          <Info size={32} className="text-slate-500" />
-                          <p className="text-sm text-slate-400">수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {isFallback && (
-                        <div className="bg-amber-950/40 text-amber-200 border border-amber-500/30 rounded-2xl p-4 flex flex-col gap-3 text-xs leading-relaxed animate-fade-in mb-4">
-                          <div className="flex gap-3">
-                            <div className="text-amber-400 font-extrabold flex-shrink-0 text-base">💡</div>
-                            <div>
-                              <strong className="font-bold text-amber-300 block mb-1">알림: Gemini API Key 미설정 (로컬 출제 모드)</strong>
-                              현재 백엔드에 Gemini API Key가 설정되지 않아, 파일 본문(PDF/HTML) 대신 등록하신 <strong>제목과 키워드 중심의 로컬 예상 기출문제</strong>가 출력되었습니다. 
-                              파일 본문의 구체적인 기술 명세를 학습 분석하여 고난도 실전 기출문제를 출제하고 싶다면, 백엔드의 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">server/.env</code> 파일에 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">GEMINI_API_KEY</code>를 등록하고 백엔드 서버를 재시작해 주세요.
-                              <br /><span className="text-slate-400 block mt-1.5">(Vercel 배포 버전의 경우, Vercel 프로젝트 설정의 Environment Variables에 <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-400 font-mono">GEMINI_API_KEY</code>를 추가하고 <strong>반드시 Deployments 탭에서 Redeploy(재배포)</strong>를 해주어야 반영됩니다.)</span>
-                            </div>
-                          </div>
-                          {aiError && (
-                            <div className="mt-1 pt-2 border-t border-amber-500/10 text-[11px] text-amber-400/90 font-mono bg-slate-950/40 p-2.5 rounded-lg break-all">
-                              <span className="font-extrabold text-amber-300 block mb-0.5">⚠️ 백엔드 API 에러 진단 상세:</span>
-                              {aiError}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* PE Traditional Exam Sheet */}
-                      <div className="exam-paper rounded-2xl p-6 md:p-8 font-sans">
-                        
-                        {/* Sheet Title */}
-                        <div className="border-4 double border-stone-800 text-center py-4 mb-6 relative">
-                          <div className="absolute left-4 top-3 text-[10px] font-black text-stone-500 tracking-tighter">기술사 모의시험</div>
-                          <h4 className="text-xl md:text-2xl font-black text-stone-900 tracking-widest">🧠 기 술 사 인 출 고 사</h4>
-                          <p className="text-xs font-bold text-stone-700 mt-1">에빙하우스 능동적 인출(Active Recall) 훈련</p>
-                        </div>
-
-                        {/* Technical Exam Instructions */}
-                        <div className="bg-stone-200/50 border border-stone-300 rounded-lg p-3 text-[11px] text-stone-800 space-y-1.5 leading-relaxed mb-6 font-semibold">
-                          <p className="font-extrabold text-stone-900">※ 수험생 유의사항:</p>
-                          <ul className="list-disc pl-4 space-y-0.5">
-                            <li>제시된 질문을 읽고, <strong>핵심 개념, 연산 공식(또는 개념도 형태), 답안 3단락 구성 방식</strong>을 머릿속으로 먼저 철저히 인출(Recall)하십시오.</li>
-                            <li>생각이 정리되었다면 아래의 **[인출 완료! 정답 확인하기]** 버튼을 클릭하여 실제 모범 답안 구조와 내 기억을 매핑하십시오.</li>
-                            <li>단순히 답안을 읽는 것은 복습 효과가 낮습니다. 반드시 머릿속에서 끄집어내는 과정을 거친 후 확인하는 습관을 들이십시오.</li>
-                          </ul>
-                        </div>
-
-                        {/* Question List */}
-                        <div className="space-y-8">
-                          {aiQuestions.map((q, idx) => {
-                            const isRevealed = !!revealedQuestions[idx];
-                            const isMultipleChoice = q.options && q.options.length > 0;
-                            const hasAnsweredMC = selectedAnswers[idx] !== undefined;
-                            const isStructuredRecall = q.type && q.type.includes('구조 인출');
-
-                            // Parse section titles (lines starting with ①②③...) from question
-                            const parseSectionTitles = (text) => {
-                              if (!text) return [];
-                              return text.split('\n').filter(line => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(line.trim()));
-                            };
-                            // Parse section answers from structure field (split by ①②③ markers)
-                            const parseSectionAnswers = (text) => {
-                              if (!text) return [];
-                              const parts = text.split(/(?=\n?[①②③④⑤⑥⑦⑧⑨⑩])/);
-                              return parts.map(p => p.trim()).filter(Boolean);
-                            };
-                            const sectionTitles = isStructuredRecall ? parseSectionTitles(q.question) : [];
-                            const sectionAnswers = isStructuredRecall ? parseSectionAnswers(q.structure) : [];
-
-                            return (
-                              <div key={idx} className="border-b border-stone-300 pb-6 last:border-0 last:pb-0">
-                                
-                                {/* Round Header */}
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${
-                                    isStructuredRecall ? 'bg-violet-700' :
-                                    q.type.includes('개념') ? 'bg-indigo-700' : 
-                                    q.type.includes('공식') ? 'bg-rose-700' : 
-                                    'bg-emerald-700'
-                                  }`}>
-                                    {q.type}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-stone-500">질문 {idx + 1}</span>
-                                </div>
-
-                                {/* For structured recall: progressive reveal accordion */}
-                                {isStructuredRecall ? (
-                                  <div className="space-y-2 mb-2">
-                                    {/* Always show first section (개요) */}
-                                    {sectionTitles.length > 0 && (() => {
-                                      const firstKey = `${idx}-0`;
-                                      const isFirstOpen = !!openSections[firstKey];
-                                      return (
-                                        <div className="rounded-xl border border-violet-200 overflow-hidden">
-                                          <button
-                                            onClick={() => setOpenSections(prev => ({ ...prev, [firstKey]: !prev[firstKey] }))}
-                                            className="w-full text-left px-4 py-3 bg-violet-50 hover:bg-violet-100 flex items-center justify-between gap-2 transition-colors"
-                                          >
-                                            <span className="text-sm font-black text-violet-900">{sectionTitles[0]}</span>
-                                            <span className="text-violet-500 flex-shrink-0 text-xs">{isFirstOpen ? '▲' : '▼'}</span>
-                                          </button>
-                                          {isFirstOpen && (
-                                            <div className="px-4 py-3 bg-amber-50 border-t border-violet-100 text-xs leading-relaxed text-stone-800 space-y-3">
-                                              <LatexRenderer text={sectionAnswers[0] || '내용 없음'} katexLoaded={katexLoaded} />
-                                              {/* 핵심 개념 추가 */}
-                                              {q.concept && (
-                                                <div className="pt-2 border-t border-amber-200">
-                                                  <div className="text-[11px] font-black text-indigo-800 mb-1 flex items-center gap-1">
-                                                    <Brain size={11} /> 핵심 개념
-                                                  </div>
-                                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} />
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-
-                                    {/* Remaining sections: only visible after first is opened */}
-                                    {!!openSections[`${idx}-0`] && sectionTitles.slice(1).map((title, sIdx) => {
-                                      const actualIdx = sIdx + 1;
-                                      const secKey = `${idx}-${actualIdx}`;
-                                      const isOpen = !!openSections[secKey];
-                                      return (
-                                        <div key={actualIdx} className="rounded-xl border border-violet-200 overflow-hidden">
-                                          <button
-                                            onClick={() => setOpenSections(prev => ({ ...prev, [secKey]: !prev[secKey] }))}
-                                            className="w-full text-left px-4 py-3 bg-violet-50 hover:bg-violet-100 flex items-center justify-between gap-2 transition-colors"
-                                          >
-                                            <span className="text-sm font-black text-violet-900">{title}</span>
-                                            <span className="text-violet-500 flex-shrink-0 text-xs">{isOpen ? '▲' : '▼'}</span>
-                                          </button>
-                                          {isOpen && (
-                                            <div className="px-4 py-3 bg-amber-50 border-t border-violet-100 text-xs leading-relaxed text-stone-800">
-                                              <LatexRenderer text={sectionAnswers[actualIdx] || '내용 없음'} katexLoaded={katexLoaded} />
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  /* Standard question prompt */
-                                  <div className="text-base font-black text-stone-900 leading-relaxed mb-4 text-left flex gap-1">
-                                    <span>{idx + 1}.</span>
-                                    <LatexRenderer text={q.question} katexLoaded={katexLoaded} className="inline" />
-                                  </div>
-                                )}
-
-                                {/* INTERACTIVE CARD */}
-                                <div className="mt-2">
-                                  {isMultipleChoice ? (
-                                    /* INTERACTIVE MULTIPLE CHOICE CARD */
-                                    <div className="space-y-3">
-                                      <div className="grid grid-cols-1 gap-2.5">
-                                        {q.options.map((opt, oIdx) => {
-                                          const isSelected = selectedAnswers[idx] === opt;
-                                          const isCorrect = q.answer === opt;
-                                          
-                                          let buttonClass = "w-full text-left p-3.5 bg-stone-100/50 hover:bg-stone-200/80 active:scale-[0.99] border border-stone-300 rounded-xl text-stone-850 text-xs font-bold tracking-tight transition-all duration-200 flex items-center justify-between shadow-sm cursor-pointer";
-                                          
-                                          if (hasAnsweredMC) {
-                                            if (isCorrect) {
-                                              buttonClass = "w-full text-left p-3.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl text-emerald-950 text-xs font-extrabold tracking-tight transition-all duration-200 flex items-center justify-between shadow-md";
-                                            } else if (isSelected) {
-                                              buttonClass = "w-full text-left p-3.5 bg-rose-50 border-2 border-rose-500 rounded-xl text-rose-950 text-xs font-extrabold tracking-tight transition-all duration-200 flex items-center justify-between shadow-md";
-                                            } else {
-                                              buttonClass = "w-full text-left p-3.5 bg-stone-50/50 border border-stone-200 rounded-xl text-stone-400 text-xs font-medium tracking-tight transition-all duration-200 flex items-center justify-between opacity-50 cursor-not-allowed";
-                                            }
-                                          }
-
-                                          return (
-                                            <button
-                                              key={oIdx}
-                                              disabled={hasAnsweredMC}
-                                              onClick={() => setSelectedAnswers(prev => ({ ...prev, [idx]: opt }))}
-                                              className={buttonClass}
-                                            >
-                                              <span className="leading-snug pr-4 text-left flex gap-1">
-                                                <span>{oIdx + 1}.</span>
-                                                <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
-                                              </span>
-                                              {hasAnsweredMC && isCorrect && (
-                                                <span className="bg-emerald-500 text-white rounded-full p-0.5 flex items-center justify-center flex-shrink-0 animate-scale-up">
-                                                  <Check size={12} strokeWidth={3} />
-                                                </span>
-                                              )}
-                                              {hasAnsweredMC && isSelected && !isCorrect && (
-                                                <span className="bg-rose-500 text-white rounded-full px-1 py-0.5 text-[8px] font-black flex items-center justify-center flex-shrink-0 animate-scale-up">
-                                                  X
-                                                </span>
-                                              )}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {/* Explanation Box */}
-                                      {hasAnsweredMC && (
-                                        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-3 shadow-sm animate-fade-in transition-all duration-300 mt-4 text-left">
-                                          <div className="flex items-center gap-1.5 border-b border-amber-200/60 pb-2">
-                                            <Sparkles size={14} className="text-amber-700 animate-pulse" />
-                                            <span className="text-xs font-black text-amber-950">
-                                              풀이 검증 및 상세 해설 (Explanation)
-                                            </span>
-                                            <span className={`ml-auto text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${
-                                              selectedAnswers[idx] === q.answer ? 'bg-emerald-600 animate-bounce' : 'bg-rose-600'
-                                            }`}>
-                                              {selectedAnswers[idx] === q.answer ? '정답입니다!' : '오답입니다'}
-                                            </span>
-                                          </div>
-                                          <div className="text-xs font-bold text-stone-850 space-y-2">
-                                            <p className="text-stone-900 font-extrabold flex items-center gap-1">
-                                              <span className="text-[10px] bg-stone-200 px-1.5 py-0.5 rounded text-stone-700">체크된 정답</span> 
-                                              <span className="text-emerald-700 underline">{q.answer}</span>
-                                            </p>
-                                            <div className="leading-relaxed font-medium text-stone-700 pt-1 text-[11px] border-t border-stone-200/40">
-                                              <LatexRenderer text={q.explanation || '해당 문제의 상세 설명이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                   ) : isStructuredRecall ? (
-                                     /* Structured recall: no yellow box needed (answers shown inline in accordion) */
-                                     null
-                                   ) : (
-                                    /* ACTIVE RECALL INTERACTIVE CARD (For Question 2: 공식 문제) */
-                                    <>
-                                      {!isRevealed ? (
-                                        /* Locked/Blurred Trigger Box */
-                                        <button
-                                          onClick={() => handleToggleReveal(idx)}
-                                          className="w-full p-6 bg-stone-200/70 hover:bg-stone-200 border-2 border-dashed border-stone-400 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-2 text-stone-700 transition-all duration-300 group hover:shadow-lg cursor-pointer"
-                                        >
-                                          <EyeOff size={24} className="text-stone-500 group-hover:text-brand-500 transition-colors animate-pulse" />
-                                          <span className="text-sm font-black text-stone-900 tracking-tight group-hover:text-brand-600 transition-colors">
-                                            {q.type.includes('구조 인출')
-                                              ? '각 단락 내용을 머릿속으로 떠올린 뒤 → 정답 확인'
-                                              : '뇌에서 끄집어내기 완료! 정답(개념, 공식, 답안 구조) 확인하기'}
-                                          </span>
-                                          <span className="text-[11px] text-stone-500">
-                                            {q.type.includes('구조 인출')
-                                              ? '* 단락 제목만 보고 핵심 내용을 떠올린 뒤 클릭하면 암기 효율이 높아집니다.'
-                                              : '* 머릿속으로 아웃라인을 설계한 뒤 클릭해 정답을 맞추는 것이 암기 효율에 가장 좋습니다.'}
-                                          </span>
-                                        </button>
-                                      ) : (
-                                        /* Answer Display Container */
-                                        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-sm animate-fade-in transition-all duration-300">
-                                          
-                                          {/* Answer Reveal Header */}
-                                          <div className="flex justify-between items-center border-b border-amber-200/60 pb-2">
-                                            <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                                              <Flame size={14} className="text-amber-700" />
-                                              능동 인출 검증용 모범 답안 지침
-                                            </span>
-                                            <button
-                                              onClick={() => handleToggleReveal(idx)}
-                                              className="text-[10px] text-amber-800 hover:text-amber-950 border border-amber-300 px-2 py-0.5 rounded-md hover:bg-amber-100/50 font-bold transition-colors cursor-pointer"
-                                            >
-                                              다시 가리기
-                                            </button>
-                                          </div>
-
-                                          {/* Concept Section */}
-                                          <div className="space-y-1 text-left">
-                                            <h5 className="text-xs font-black text-indigo-900 flex items-center gap-1">
-                                              <Brain size={13} />
-                                              [1] 핵심 개념 (Core Concept)
-                                            </h5>
-                                            <div className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed">
-                                              <LatexRenderer text={q.concept || '개념 내용이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
-                                            </div>
-                                          </div>
-
-                                          {/* Formula / Diagram Section */}
-                                          <div className="space-y-1 text-left">
-                                            <h5 className="text-xs font-black text-rose-900 flex items-center gap-1">
-                                              <Award size={13} />
-                                              [2] 필수 공식 및 개념도 구성요소 (Formula / Diagram)
-                                            </h5>
-                                            <div className="text-xs text-stone-800 font-semibold pl-4 leading-relaxed">
-                                              <LatexRenderer text={q.formula || '공식 또는 아키텍처 필수 구성요소가 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
-                                            </div>
-                                          </div>
-
-                                          {/* Structure Section */}
-                                          <div className="space-y-1.5 text-left">
-                                            <h5 className="text-xs font-black text-emerald-900 flex items-center gap-1">
-                                              <LayoutTemplate size={13} />
-                                              [3] 답안 작성 구조 방식 아웃라인 (3-Paragraph Structure Layout)
-                                            </h5>
-                                            <div className="text-xs text-stone-850 font-semibold pl-4 leading-normal space-y-1">
-                                              <LatexRenderer text={q.structure || '답안지 1~3단락 가이드라인이 제공되지 않았습니다.'} katexLoaded={katexLoaded} />
-                                            </div>
-                                          </div>
-
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                      </div>
-                    </>
-                  )}
-                </div>
+              {!loadingAI && aiQuestions.length > 0 && (
+                <span className="ml-2 text-[11px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2.5 py-1 rounded-full font-bold">
+                  {aiQuestions.length}문항 |
+                  객관식 정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
+                </span>
               )}
             </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-slateCustom-900 border-t border-slate-800 flex justify-end gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                className="text-slate-400 hover:text-white bg-slateCustom-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
               </button>
               <button
                 onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
-                className="px-4 py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-colors"
+                className="text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                 title="문제 초기화 (재개 시 새 문제 생성)"
               >
                 종료
               </button>
             </div>
+          </div>
+
+          {/* Layout Split Container */}
+          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+
+            {/* Left: Quiz Body */}
+            <div ref={quizBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+              {loadingAI ? (
+                <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
+                  <div className="relative">
+                    <div className="p-6 bg-violet-950/80 text-violet-400 rounded-full animate-bounce-slow">
+                      <Brain size={40} />
+                    </div>
+                    <div className="absolute inset-0 bg-violet-500 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 10문항을 출제하는 중...</h4>
+                  <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                    소스 자료를 분석하여 주관식(개요·공식)과 객관식을 혼용한 복습 문제를 생성하고 있습니다. 약 10~20초 소요됩니다.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-w-3xl mx-auto space-y-5">
+                  {aiQuestions.map((q, idx) => {
+                    const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
+                    const isSubj = !isMC;
+                    const answered = selectedAnswers[idx] !== undefined;
+                    const isCorrect = answered && selectedAnswers[idx] === q.answer;
+                    const isRevd = !!revealedQuestions[idx];
+
+                    const subtypeBadgeColor =
+                      q.type?.includes('개요') || q.type?.includes('인출') ? 'bg-sky-700' :
+                      q.type?.includes('공식') ? 'bg-rose-700' :
+                      q.type?.includes('서술') ? 'bg-indigo-700' :
+                      'bg-amber-700';
+
+                    return (
+                      <div key={idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                        {/* Q Header */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                            {isMC ? '객관식' : `주관식·${q.type?.replace('구조 인출 (단락별 리콜)', '개요') || '서술'}`}
+                          </span>
+                        </div>
+
+                        {/* Question Text */}
+                        <div className="text-sm font-bold text-white leading-relaxed">
+                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                        </div>
+
+                        {/* MC Options */}
+                        {isMC && (
+                          <div className="space-y-2">
+                            {q.options?.map((opt, oIdx) => {
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ";
+                              if (!answered) {
+                                cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
+                              } else if (opt === q.answer) {
+                                cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold";
+                              } else if (opt === selectedAnswers[idx] && opt !== q.answer) {
+                                cls += "bg-rose-950/70 border-rose-500 text-rose-200";
+                              } else {
+                                cls += "bg-slate-800/30 border-slate-800 text-slate-500 opacity-60";
+                              }
+                              return (
+                                <button
+                                  key={oIdx}
+                                  disabled={answered}
+                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                  className={cls}
+                                >
+                                  <span className="flex gap-2 items-start">
+                                    <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
+                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
+                                  </span>
+                                </button>
+                              );
+                            })}
+                            {answered && (
+                              <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                                <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
+                                {!isCorrect && <span className="ml-2">정답: <strong>{q.answer}</strong></span>}
+                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+
+                                {/* Detailed Answer Button */}
+                                <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                  {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading ? (
+                                    <button
+                                      onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.explanation)}
+                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                    >
+                                      ✨ 답안 전문보기 (AI 심층 해설)
+                                    </button>
+                                  ) : detailedAnswers[`r_${idx}`]?.loading ? (
+                                    <div className="text-[10px] text-indigo-400 font-bold animate-pulse">⏳ AI가 심층 해설 작성 중...</div>
+                                  ) : (
+                                    <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
+                                      <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                        <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Subjective Reveal */}
+                        {isSubj && (
+                          !isRevd ? (
+                            <button
+                              onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
+                              className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-violet-500 rounded-xl text-xs font-bold text-slate-400 hover:text-violet-300 transition-all duration-200"
+                            >
+                              💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                            </button>
+                          ) : (
+                            <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                              <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
+                              {q.concept && (
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                                </div>
+                              )}
+                              {q.formula && (
+                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                  <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
+                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                                </div>
+                              )}
+                              {q.structure && (
+                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                  <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
+                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
+                                </div>
+                              )}
+                              {!q.concept && !q.formula && !q.structure && (
+                                <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} /></div>
+                              )}
+
+                              {/* Detailed Answer Button */}
+                              <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading ? (
+                                  <button
+                                    onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.answer || q.concept)}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                  >
+                                    ✨ 답안 전문보기 (AI 심층 해설)
+                                  </button>
+                                ) : detailedAnswers[`r_${idx}`]?.loading ? (
+                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse">⏳ AI가 심층 해설 작성 중...</div>
+                                ) : (
+                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
+                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                      <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {aiQuestions.length > 0 && (
+                    <div className="text-center py-6">
+                      <div className="inline-flex items-center gap-3 bg-violet-950/60 border border-violet-500/20 rounded-2xl px-6 py-4">
+                        <Award size={20} className="text-violet-400" />
+                        <div className="text-left">
+                          <div className="text-xs text-violet-300 font-black">복습 완료</div>
+                          <div className="text-sm text-white font-extrabold">
+                            객관식 정답률: {Math.round(
+                              Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length /
+                              Math.max(aiQuestions.filter(q => q.options?.length > 0).length, 1) * 100
+                            )}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Gemini Chat Sidebar (Desktop Only) */}
+            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <Brain size={16} className="text-violet-500" />
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 3.5)</span>
+              </div>
+
+              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
+                        {msg.role === 'user' ? '나' : 'Gemini'}
+                      </div>
+                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-xs leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-br-sm'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'
+                      }`}>
+                        {msg.role === 'user' ? msg.text : <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex flex-col items-start">
+                    <div className="text-[10px] mb-1 font-bold text-violet-400 ml-1">Gemini</div>
+                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                <form onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} className="relative">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="기술사 용어나 개념 질문..."
+                    disabled={isChatLoading}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:hover:bg-violet-600 rounded-lg flex items-center justify-center transition-colors"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
+                </form>
+              </div>
+            </div>
 
           </div>
         </div>
       )}
+
+
 
       {/* 복습 초기화 확인 모달 (Reset Review Confirmation Modal) */}
       {resetConfirmTarget && (
