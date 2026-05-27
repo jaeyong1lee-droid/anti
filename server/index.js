@@ -1572,7 +1572,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     try {
       const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const QUIZ_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const QUIZ_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
       const prompt = `
 ?�신?� ?�?��?�?�??기술?�격 기술??Professional Engineer) ?�험 출제?�원?�니??
@@ -1804,7 +1804,7 @@ ${combinedText}
     const genAI = new GoogleGenerativeAI(geminiApiKey);
 
     // 모델 ?�백 체인: gemini-3.5-flash ??gemini-2.5-flash ??gemini-2.0-flash
-    const EXAM_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const EXAM_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
     let questions = null;
     let lastErr = null;
@@ -1866,7 +1866,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
     if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 ?�정?��? ?�았?�니??' });
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const EXAM_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const EXAM_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
     const prompt = `
 ?�신?� ?�?��?�?�??기술?�격 기술???�험 출제?�원 �?최고 권위?�입?�다.
@@ -1927,7 +1927,7 @@ app.post('/api/chat', async (req, res) => {
     if (!geminiApiKey) return res.status(400).json({ error: 'GEMINI_API_KEY가 ?�정?��? ?�았?�니??' });
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const CHAT_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const CHAT_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
     // Convert history to Gemini format
     const contents = [];
