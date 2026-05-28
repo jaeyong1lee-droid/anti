@@ -598,7 +598,7 @@ function getSoilNailingEarthAnchorExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
     question: `소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 역학적 거동 및 지지력 확보 방식의 핵심 차이점을 비교 설명하시오.`,
-    concept: `소일네일링은 네일과 흙 사이의 마찰력으로 전단 저항력을 높여 지반을 '일체화(유사 옹벽화)'하는 수동적(Passive) 보강 방식인 반면, 어스앵커는 정착장에 고인장 강선을 긴장시켜 지반에 선행 압축응력(Prestress)을 도입하는 능동적(Active) 지지 방식입니다.`,
+    concept: `• 역학적 거동: 소일네일링은 변위 발생 시 저항하는 수동적(Passive) 거동인 반면, 어스앵커는 선행 긴장력(Prestress)으로 변위를 사전에 능동적(Active)으로 제어합니다.\n• 지지력 확보 방식: 소일네일링은 네일 전면과 흙 사이의 마찰력으로 지반을 일체화(유사 옹벽화)하며, 어스앵커는 자유장을 지나 정착장 주변마찰 저항과 강선의 긴장력으로 하중을 심부 지반에 전달합니다.\n• 핵심 차이점: 변위를 허용하는 연성 지반 보강(수동) vs 지반 변위를 강력하게 억제하는 고정식 지보(능동) 구조입니다.`,
     formula: '',
     structure: ''
   };
