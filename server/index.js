@@ -475,19 +475,19 @@ function extractFeaturesFromText(fileText) {
 // Built-in Expert-Grade PE Questions for Single Shell Tunnel Method
 function getSingleShellExpertQuestions(title, keywords) {
   const q1 = {
-    type: '개념 문제 (10점)',
-    question: `싱글쉘(Single Shell) 터널 공법의 정의 및 기존 NATM 공법(이중 쉘)과의 차별화된 구조적 메커니즘을 설명하시오.`,
-    concept: `싱글쉘 터널 공법은 1차 지보재(쇼크리트, 락볼트)와 2차 라이닝을 통합하여 단일 영구 지보 구조(Single Shell)로 터널을 형성하는 공법입니다. 외부 지하수를 배수시키는 배수형과 수압을 직접 견디는 비배수형으로 분류됩니다.`,
-    formula: `[필수 개념도 구성 요소]\n1. 숏크리트 + 락볼트 + 방수재 일체화 단면도 도식 필수\n2. 숏크리트 응력분포곡선 (응력 재분배 메커니즘)\n3. 락볼트 축력 분배공식: $T = P \\times r$ ( $T$ : 인장력, $P$ : 내압, $r$ : 터널 반경)`,
-    structure: `1단락: 싱글쉘 터널 공법의 정의 및 등장 배경 (NATM 대비 공기단축/공사비 절감 요구)\n2단락: 싱글쉘 터널의 구조적 메커니즘 및 지반-지보재 거동 특성 (이중 쉘과의 비교표)\n3단락: 현장 적용 시 리스크(숏크리트 균열, 지하수 누수) 및 기술사로서의 시공 품질 확보 대책`
+    type: '주관식 (개요)',
+    question: `싱글쉘(Single Shell) 터널 공법의 정의 및 핵심 개념을 간략히 서술하시오.`,
+    concept: `싱글쉘 터널 공법은 1차 지보재(숏크리트, 락볼트)와 2차 라이닝을 하나로 통합하여 단일 영구 지보 구조로 터널을 형성하는 영구 지보 공법입니다.`,
+    formula: '',
+    structure: ''
   };
 
   const q2 = {
-    type: '공식 문제 (25점)',
-    question: `터널 공학 관점에서 싱글쉘 공법 적용 시 숏크리트와 지반의 일체화(Bonding) 거동 특성을 논하고, 장기 신뢰성(Reliability) 확보를 위한 방수 시트 간소화 공정 및 시공 시 고려사항을 기술하시오.`,
-    concept: `숏크리트와 암반의 전단 접착 강도(Bonding Strength)를 극대화하여 지반 자체의 전단 저항력을 활용하고, 고성능 섬유보강 숏크리트(SFRC)를 통해 영구 지보재로서의 휨인장 인성을 확보하는 공법입니다.`,
-    formula: `[숏크리트 두께 산정 공식 (Rabcewicz 공식)]\n- $t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\n  ( $t$ : 두께, $P$ : 지반압, $C$ : 점착력, $\\varphi$ : 내부마찰각, $S$ : 전단강도, $D$ : 터널 직경)`,
-    structure: `1단락: 영구 지보재로서 싱글쉘 숏크리트-지반 상호작용(Soil-Structure Interaction)의 의의\n2단락: 숏크리트 전단 접착 거동 특성 및 SFRC(섬유보강)에 의한 인성 증대 효과 메커니즘\n3단락: 방수/배수 일체화 시스템 시공 상세 및 영구 숏크리트 장기 열화(중성화, 황산염부식) 방지 대책`
+    type: '주관식 (공식)',
+    question: `싱글쉘 및 NATM 공법의 숏크리트 소요 두께를 설계하는 대표적인 Rabcewicz 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `지반압과 숏크리트 전단강도, 지반 물성을 고려하여 터널을 안정시키는 데 필요한 숏크리트 두께를 정량적으로 계산하는 조건 수식입니다.`,
+    formula: `$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\n- $t$: 숏크리트 두께\n- $P$: 지반압\n- $C$: 지반 점착력\n- $\\varphi$: 내부마찰각\n- $S$: 전단강도\n- $D$: 터널 직경`,
+    structure: ''
   };
 
   const mcQuestions = [
@@ -595,19 +595,19 @@ function getSingleShellExpertQuestions(title, keywords) {
 // Built-in Expert-Grade PE Questions for Prandtl's Bearing Capacity Theory
 function getPrandtlExpertQuestions(title, keywords) {
   const q1 = {
-    type: '개념 문제 (10점)',
-    question: `얕은 기초의 극한 지지력 결정을 위한 프란틀(Prandtl)의 지지력 이론의 가정 조건 및 소성평형 영역(Failure Zone)의 구성 요소를 설명하시오.`,
-    concept: `프란틀 지지력 이론은 기초 하부 지반을 강소성체(Rigid-Plastic)로 가정하고, 기초 극한 하중 시 소성 파괴 영역을 3개의 영역(탄성 대칭 쐐기, 대수나선 방사형 전단, 랭킨 수동 영역)으로 구분하여 지지력 공식을 유도한 고전 소성론 기반 지력 이론입니다.`,
-    formula: `[Failure Zone 구성]\nⅠ지역: 탄성 쐐기(Elastic Wedge)\nⅡ지역: 방사형 전단(Radial Shear Zone, 대수나선 경로)\nⅢ지역: 수동 랭킨 쐐기(Passive Rankine Zone)\n기본 공식: $q_{ult} = c N_c + q N_q$`,
-    structure: `1단락: 프란틀 지지력 이론의 공학적 정의 및 의의 (지반 극한 소성 평형 이론의 기초)\n2단락: 소성파괴 영역도(Failure Zone Diagram) 도식화 및 영역별(Ⅰ, Ⅱ, Ⅲ) 거동 특성\n3단락: 프란틀 이론의 한계성 (지반 자중 γ의 무시) 및 테르자기(Terzaghi) 지지력 공식으로의 발전 과정`
+    type: '주관식 (개요)',
+    question: `얕은 기초의 극한 지지력을 규명하는 프란틀(Prandtl) 지지력 이론의 기본 정의와 핵심 개념을 간략히 서술하시오.`,
+    concept: `프란틀 지지력 이론은 기초 하부 지반을 완전 강소성체로 가정하고 전단 파괴선 슬립라인법을 적용하여 지반 점착력과 상재하중에 의한 극한 지지력 공식($q_{ult} = c N_c + q N_q$)을 정립한 고전 소성 이론입니다.`,
+    formula: '',
+    structure: ''
   };
 
   const q2 = {
-    type: '공식 문제 (25점)',
-    question: `지반공학에서 프란틀(Prandtl) 지지력 이론의 이론적 배경과 극한지지력 유도 과정을 상술하고, 지반의 자중(γ)을 고려한 테르자기(Terzaghi) 및 마이어호프(Meyerhof) 지지력 공식과의 차별성을 기초 형상 및 경사 하중 조건을 중심으로 논하시오.`,
-    concept: `소성 역학의 슬립라인법(Slip Line Method)을 토질역학에 최초 적용한 이론으로, 프란틀 공식에 지반 자중 항(0.5·γ·B·N_γ)과 형상/깊이/경사 계수를 보완하여 실무 설계용 Terzaghi, Meyerhof, Vesic 공식이 완성되었습니다.`,
-    formula: `[Terzaghi 지지력 공식 (연속기초)]\n- $q_{ult} = c N_c + q N_q + 0.5 \gamma B N_{\gamma}$\n- 형상계수 고려 (정사각형 기초): $q_{ult} = 1.3 c N_c + q N_q + 0.4 \gamma B N_{\gamma}$\n( $N_c$ , $N_q$ , $N_{\gamma}$ : 지지력 계수)`,
-    structure: `1단락: 극한 평형 상태와 지반 소성유동 법칙의 관계 및 프란틀 이론의 위상\n2단락: Prandtl 지지력 이론 and Terzaghi, Meyerhof 공식의 비교 분석 (지반 자중, 기초 조도, 형상, 지하수위 영향)\n3단락: 실무 설계 시 안전율(F.S=3.0) 산정 기준 및 상부 하중 편심/경사에 따른 지지력 감소 대책`
+    type: '주관식 (공식)',
+    question: `프란틀 공식에 지반 자체의 자중(γ)을 더해 실무에서 가장 널리 쓰이는 테르자기(Terzaghi)의 극한 지지력 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `지반 점착력과 깊이 방향 상재하중, 그리고 지반 자체의 무게에 의한 영향을 모두 고려하여 연속기초의 극한 지지력을 평가하는 공학 수식입니다.`,
+    formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 극한 지지력\n- $c$: 지반 점착력\n- $q$: 기초 바닥면의 유효상재압\n- $\\gamma$: 흙의 단위중량\n- $B$: 기초의 폭 (너비)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
+    structure: ''
   };
 
   const mcQuestions = [
