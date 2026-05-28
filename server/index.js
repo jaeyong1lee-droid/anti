@@ -780,18 +780,18 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   if (domain === 'hydraulics') {
     console.log("Generating tailored Hydraulics & Seepage local questions.");
     q1 = {
-      type: '개념 문제 (10점)',
-      question: `Darcy의 투수 공식에 기초하여 유출 속도(Discharge Velocity, v)와 실제 침투 속도(Seepage Velocity, vs)의 역학적 정의 및 차이점을 간극률(n) 관점에서 수식과 함께 설명하시오.`,
-      concept: `유출 속도(v)는 흙의 전체 단면을 흐르는 가상의 속도인 반면, 실제 침투 속도(vs)는 흙 입자 사이의 실제 공극만을 흐르는 실제 속도이며 vs = v / n 공식으로 정의됩니다.`,
-      formula: `[Darcy의 법칙 및 침투속도 공식]\n- 유출속도(체적속도): $v = k \\times i$\n- 실제 침투속도: $v_s = \\frac{v}{n} = \\frac{k \\times i}{n}$ ( $n$ : 간극률, $k$ : 투수계수, $i$ : 동수경사)`,
-      structure: `1단락: Darcy 법칙의 기본 개념 및 투수 흐름 유동의 특징\n2단락: 유출 속도(v)와 실제 침투 속도(v_s)의 수식적 유도 및 간극률에 따른 거동 대조\n3단락: 동수경사 증가에 따른 지반 내 Piping 방지 대책 및 실무적 투수 제어 방안`
+      type: '주관식 (개요)',
+      question: `Darcy의 투수 공식의 기본 정의와 투수계수(k)의 공학적 개념을 간략히 서술하시오.`,
+      concept: `Darcy 법칙은 유체의 침투 흐름 속도가 동수경사에 직접 비례한다는 역학 법칙으로, 투수계수는 흙의 물 통과 용이성을 나타내는 물리적 지표입니다.`,
+      formula: '',
+      structure: ''
     };
     q2 = {
-      type: '공식 문제 (25점)',
-      question: `지반 내 지하수 흐름 시 발생하는 침투력(Seepage Force)의 발생 메커니즘을 규명하고, 한계동수경사(Critical Hydraulic Gradient)의 공식 유도 과정 및 분사현상(Quick Sand) 방지를 위한 안전율(F.S) 설계 기준을 서술하시오.`,
-      concept: `상향 침투력으로 인해 유효응력이 0이 되는 상태를 분사현상이라 하며, 이때의 동수경사인 한계동수경사(icr)와 실제 동수경사(i)의 비를 통해 침투 안전율을 평가합니다.`,
-      formula: `[한계동수경사 및 침투 안정성 공식]\n- 한계동수경사: $i_{cr} = \\frac{G_s - 1}{1 + e}$ ( $G_s$ : 흙 입자 비중, $e$ : 간극비)\n- 침투압(단위체적당): $j = i \\times \\gamma_w$ ( $i$ : 동수경사, $\\gamma_w$ : 물의 단위중량)\n- 분사현상 안전율: $F.S = \\frac{i_{cr}}{i} \\ge 1.5 \\sim 2.0$`,
-      structure: `1단락: 지반 내 침투수의 상향 흐름 and 침투력(Seepage Force)의 물리적 메커니즘\n2단락: 한계동수경사(i_cr) 공식의 한계 소성 평형 상태 유도 과정 및 퀵샌드 현상 대책\n3단락: 차수벽 및 필터재 설치를 통한 동수경사 제어 기법 및 설계 안전성 확보 제언`
+      type: '주관식 (공식)',
+      question: `상향 침투류 발생 시 퀵샌드 현상을 유발하는 한계동수경사(icr) 산정 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+      concept: `상향 침투력에 의해 지반의 유효응력이 0이 되는 한계 상태의 동수경사를 산정하는 공학적 수식입니다.`,
+      formula: `$i_{cr} = \\frac{G_s - 1}{1 + e}$\n- $i_{cr}$: 한계동수경사\n- $G_s$: 흙 입자 비중\n- $e$: 간극비`,
+      structure: ''
     };
     mcQuestions = [
       {
@@ -894,18 +894,18 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   } else if (domain === 'soil') {
     console.log("Generating tailored Geotechnical & Clay local questions.");
     q1 = {
-      type: '개념 문제 (10점)',
-      question: `점성토 지반의 압밀(Consolidation) 메커니즘을 유효응력(Effective Stress) 원리를 적용하여 설명하고, 과압밀비(OCR)에 따른 점토의 분류(NC점토, OC점토) 및 응력 이력 특성을 설명하시오.`,
-      concept: `외력에 의해 유발된 과잉간극수압이 소멸하면서 유효응력이 점차 증가하여 흙의 체적이 감소(압밀)하는 과정이며, 응력 이력에 따라 정규압밀(OCR=1)과 과압밀(OCR>1)로 대조 분류됩니다.`,
-      formula: `[과압밀비(OCR) 및 유효응력 공식]\n- 과압밀비: $OCR = \\frac{p_c}{p_0}$\n- 유효응력 원리: $\\sigma' = \\sigma - u$\n( $p_c$ : 선행압밀응력, $p_0$ : 현재 유효토피압, $\\sigma$ : 전응력, $u$ : 간극수압)`,
-      structure: `1단락: 점성토 압밀의 공학적 정의 및 유효응력 증가와의 상관관계\n2단락: 과압밀비(OCR)의 수식 정의 및 점토 분류별(N.C, O.C) 전단 및 압축 거동 비교표\n3단락: 점토 응력 이력 판단의 중요성 및 1차/2차 압밀 침하량의 현장 거동 제어 방안`
+      type: '주관식 (개요)',
+      question: `점성토 지반에서 발생하는 압밀(Consolidation) 현상의 기본 정의와 발생 원인을 간략히 서술하시오.`,
+      concept: `압밀은 외력에 의해 점성토 속의 물(과잉간극수압)이 빠져나가면서 흙 입자 사이의 간극이 좁아지고 지반이 압축되면서 다져지는 현상입니다.`,
+      formula: '',
+      structure: ''
     };
     q2 = {
-      type: '공식 문제 (25점)',
-      question: `지반공학적 설계 시 흙의 전단 파괴 포락선을 결정하는 Mohr-Coulomb 파괴 규준선을 설명하고, CD시험(압밀배수) 조건에서 정규압밀점토와 과압밀점토의 전단 강도 산정 공식 및 파괴 시 부피 변화 특성(Dilatancy)을 비교 기술하시오.`,
-      concept: `Mohr-Coulomb 이론은 흙의 전단강도를 수직응력, 점착력, 내부마찰각의 관계로 정의하며, CD 시험 시 과압밀점토는 입자 재배열로 인해 부피가 팽창하는 딜레이턴시(Dilatancy) 현상이 일어납니다.`,
-      formula: `[Mohr-Coulomb 전단강도 공식]\n- 기본 파괴 포락선: $s = c + \\sigma \\tan\\varphi$\n- N.C Clay CD 전단강도: $s = \\sigma' \\tan\\varphi'$ ( $c' = 0$ )\n- O.C Clay CD 전단강도: $s = c' + \\sigma' \\tan\\varphi'$ ( $c' > 0$ )`,
-      structure: `1단락: Mohr-Coulomb 전단 파괴 파라미터(c, φ)의 의의 및 지반 전단 저항 거동\n2단락: CD 시험 하의 NC/OC 점토의 전단 강도 수식화 및 변형률-체적 변화(Dilatancy) 메커니즘 분석\n3단락: 실무 설계 시 전단 강도정수 선정 유의사항 및 압밀 배수 조건이 지반 구조물에 미치는 영향`
+      type: '주관식 (공식)',
+      question: `흙의 전단 저항 한계를 결정하는 대표적인 Mohr-Coulomb 파괴 규준 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+      concept: `수직응력과 점착력, 내부마찰각의 수학적 관계로 흙의 전단 강도를 정량적으로 정의하는 기준 수식입니다.`,
+      formula: `$s = c + \\sigma \\tan\\varphi$\n- $s$: 전단강도\n- $c$: 흙의 점착력\n- $\\sigma$: 파괴면의 수직응력\n- $\\varphi$: 흙의 내부마찰각`,
+      structure: ''
     };
     mcQuestions = [
       {
@@ -1009,16 +1009,16 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     console.log("Generating tailored Tunneling & Rock Mechanics local questions.");
     q1 = {
       type: '주관식 (개요)',
-      question: `NATM 터널 공법의 기본 지지 메커니즘인 지반 자체 지지 효과(아칭 효과)와 1차 지보재(숏크리트, 락볼트)의 연동 작용 원리를 간략히 서술하시오.`,
-      concept: `터널 굴착 후 지반 자체가 가지는 고유의 전단 강도와 아칭 효과(Arching Effect)를 활용하여 지반이 스스로 지지하게 하고, 숏크리트와 락볼트가 지반과 완벽히 밀착해 지반 이완을 억제하며 단일 구조체로 거동하는 메커니즘입니다.`,
+      question: `NATM 터널 공법의 가장 핵심적인 기본 정의와 설계 개념을 간략히 서술하시오.`,
+      concept: `NATM 공법은 지반 고유의 지지력을 최대한 보존 및 활용하고, 굴착 후 발생하는 지반 변형을 허용하되 숏크리트와 락볼트로 밀착 보강하여 터널의 안정을 도모하는 공법입니다.`,
       formula: '',
       structure: ''
     };
     q2 = {
       type: '주관식 (공식)',
-      question: `터널 지반-지보 상호작용 이론에서 지반압과 지보 저항력의 한계 안전율 설계 공식을 쓰고, 각 항에 대해 설명하시오.`,
-      concept: `터널의 변위 수렴도를 안전 범위 이내로 제어하고 숏크리트 등의 구조적 지보재 파괴를 예방하기 위해, 지반압과 지보 저항력을 연계 설계하는 공학적 조건식입니다.`,
-      formula: `$P_i = P_g - P_s \\le P_{allow}$\n- $P_i$: 최종 불평형 내부 압력\n- $P_g$: 터널 굴착으로 인한 원지반 작용압\n- $P_s$: 지보재가 분담하는 저항력\n- $P_{allow}$: 설계 허용 내부 수렴 압력`,
+      question: `NATM 터널의 숏크리트 두께 설계에 적용하는 대표적인 숏크리트 소요 두께 산정 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+      concept: `터널 지반의 압력에 저항하고 전단 파괴를 방지하기 위해 필요한 숏크리트의 소요 두께를 정량적으로 도출하는 공학적 수식입니다.`,
+      formula: `$t = \\frac{P \\cdot D}{2 \\cdot \\tau_{allow}}$\n- $t$: 숏크리트 소요 두께\n- $P$: 터널 천단 지반압\n- $D$: 터널 직경\n- $\\tau_{allow}$: 숏크리트 허용 전단강도`,
       structure: ''
     };
     mcQuestions = [
@@ -1124,8 +1124,8 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     console.log("Generating high-quality domain-agnostic local fallback questions.");
     q1 = {
       type: '주관식 (개요)',
-      question: `[${title}]의 핵심 정의 및 공학적 필요성에 대해 간략히 서술하시오.`,
-      concept: `[${title}]은/는 ${keywordDisplay} 등 핵심 공학적 요소를 기반으로 설계 안전성을 확보하고 성능 신뢰성을 극대화하기 위한 현대적 엔지니어링 설계 기술입니다. (${s0})`,
+      question: `[${title}]의 핵심 정의와 기본 개념에 대해 간략히 서술하시오.`,
+      concept: `[${title}]은/는 ${keywordDisplay} 등 핵심 요소를 바탕으로 공학적 안전성과 원리를 규명하기 위한 핵심 공학 설계 개념이자 기준입니다.`,
       formula: '',
       structure: ''
     };
@@ -1134,15 +1134,15 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     if (features.extractedFormulas && features.extractedFormulas.length > 0) {
       // Clean and format any extracted formula
       const cleanFormulas = features.extractedFormulas.map(f => f.replace(/[\[\]]/g, '').trim());
-      formula2 = `${cleanFormulas[0]}\n- (교재 내용에서 추출된 관계식입니다. 각 항의 상세 의미는 교재 본문을 바탕으로 해석하여 서술하십시오.)`;
+      formula2 = `${cleanFormulas[0]}\n- (추출 공식의 기호 정의를 기재하십시오.)`;
     } else {
-      formula2 = `$F.S. = \\frac{R}{S} \\ge F.S._{req}$\n- $F.S.$: 안전율 (Factor of Safety)\n- $R$: 지반 또는 구조물의 역학적 저항력 (Resistance/Strength)\n- $S$: 구조물에 작용하는 설계 하중 또는 응력 (Sollicitation/Stress)\n- $F.S._{req}$: 관련 설계 기준에서 요구하는 허용 안전율`;
+      formula2 = `$F.S. = \\frac{R}{S} \\ge F.S._{req}$\n- $F.S.$: 안전율 (Factor of Safety)\n- $R$: 저항 강도 (Resistance)\n- $S$: 설계 응력 (Stress)\n- $F.S._{req}$: 요구 안전율`;
     }
 
     q2 = {
       type: '주관식 (공식)',
-      question: `[${title}]의 거동을 정량적으로 규명하거나 평가 시 적용하는 대표적인 한계상태 관계 공식을 제시하고, 각 항에 대해 설명하시오.`,
-      concept: `[${title}]의 공학적 리스크 요인을 통제하고 설계 안전율을 적정 수준으로 확보하기 위한 정량적 한계상태 설계 조건식입니다.`,
+      question: `[${title}]의 거동이나 평가 시 적용하는 가장 대표적인 허용 안전율 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+      concept: `[${title}]의 설계 안전성을 평가하기 위한 가장 기본적인 공학적 허용 한계상태 조건식입니다.`,
       formula: formula2,
       structure: ''
     };
@@ -1635,22 +1635,22 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 1. 반드시 총 10개의 문제를 다음과 같이 구성하여 출제하십시오:
 
    [1번 문제] 주관식 (개요):
-   - 목적: 토픽의 정의 및 전체적인 개념 개요(핵심 메커니즘/공학적 필요성 등)를 묻는 질문.
+   - 목적: 토픽의 핵심 정의(개요)만 명확하게 묻는 간결한 질문.
    - "type" 값: 반드시 "주관식 (개요)"
-   - "question": 토픽의 정의, 개요, 핵심 메커니즘을 묻는 완성형 질문. (예: "[토픽]의 핵심 정의 및 공학적 의미/필요성에 대해 간략히 서술하시오.")
-   - "concept": 질문에 대한 2~3줄 분량의 깔끔한 핵심 정의 및 요약 답변.
+   - "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
+   - "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
    - "formula": 반드시 빈 문자열 ""
    - "structure": 반드시 빈 문자열 ""
 
    [2번 문제] 주관식 (공식):
-   - 목적: 토픽의 분석/평가/설계에 활용되는 핵심 공식을 묻는 질문.
+   - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽에 적용되는 주요 수식 또는 정량적 설계/평가 공식을 제시하고, 공식의 각 항에 대해 설명하도록 요구하는 질문. (예: "[토픽]의 대표적인 설계 공식을 제시하고, 공식과 각 항에 대해 설명하시오.")
-   - "concept": 공식에 대한 1~2줄짜리 짧은 기술적/개념적 요약 설명.
-   - "formula": 대표 LaTeX 공식과 함께 공식의 각 항에 대한 직관적이고 쉬운 설명들을 줄바꿈(\\n)으로 구분하여 상세하게 작성.
+   - "question": 토픽을 대표하는 가장 핵심적인 설계/평가 공식을 제시하고, 각 기호의 정의를 서술하라는 질문. (예: "[토픽]의 대표적인 핵심 공식을 제시하고, 각 기호의 정의를 서술하시오.")
+   - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
+   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성.
      * 예시 형식:
-       $t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압\\n- $C$: 흙의 점착력\\n- $\\\\varphi$: 내부마찰각\\n- $\\\\gamma$: 지반의 단위중량\\n- $S$: 숏크리트의 전단강도\\n- $D$: 터널의 직경
-     * 공식과 공식의 각 항에 대한 직관적 설명이 반드시 포함되도록 하십시오.
+       $t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압\\n- $C$: 점착력\\n- $\\\\varphi$: 내부마찰각\\n- $\\\\gamma$: 단위중량\\n- $S$: 전단강도\\n- $D$: 터널직경
+     * 공식과 간단한 각 기호 정의 외에 불필요한 서술형 설명은 일절 배제하고 매우 컴팩트하게 작성하십시오.
    - "structure": 반드시 빈 문자열 ""
 
    [3번 ~ 10번 문제] 4지선다 객관식:
@@ -1662,13 +1662,13 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 3. 각 문제의 JSON 속성 요건:
    - 1번 문제 (주관식 (개요)):
      * "question": 완성형 질문.
-     * "concept": 2~3줄 핵심 답변.
+     * "concept": 1~2줄의 아주 깔끔하고 군더더기 없는 컴팩트한 핵심 정의 답변.
      * "formula": "" (빈 문자열).
      * "structure": "" (빈 문자열).
    - 2번 문제 (주관식 (공식)):
      * "question": 완성형 질문.
-     * "concept": 짧은 핵심 개념 요약.
-     * "formula": LaTeX 공식과 각 항에 대한 상세/직관적 설명 (\\n 구분).
+     * "concept": 아주 짧은 핵심 공식 요약 (1줄).
+     * "formula": LaTeX 공식과 각 기호에 대한 매우 간결하고 컴팩트한 설명 (\\n 구분).
      * "structure": "" (빈 문자열).
    - 3번 ~ 10번 문제 (객관식 4지선다):
      * "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
@@ -1676,26 +1676,31 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
      * "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
      * "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
 
+4. [주관식 답안 컴팩트화 원칙]:
+   - 주관식 1번과 2번의 답안(concept, formula)은 구구절절하고 장황한 설명조의 문장을 일절 배제하십시오.
+   - 1번 개요는 해당 토픽이 무엇인지를 명확하게 가리키는 1~2줄의 직관적 문장으로만 구성하십시오.
+   - 2번 공식은 공식 수식 자체와 각 기호의 직관적 물리 명칭만 아주 짧고 컴팩트하게 나열하여 기재하십시오.
+
 5. 공식이나 수식을 보여줄 때는 반드시 LaTeX 문법 형식을 활용하여 기재하십시오. 인라인 수식은 '$수식$' 형태로, 블록 수식은 '$$수식$$' 형태로 감싸야 합니다.
 6. 중요: LaTeX 수식 기호( $ 또는 $$ ) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: '$수식$'은 올바르고, '$ 수식 $'과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \\\\times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
 7. 중요: JSON 포맷 내에서 LaTeX 수식을 기재할 때, 모든 역슬래시(backslash, \\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프하여 출력하셔야 JSON 파싱 오류가 발생하지 않습니다. (예: "\\\\frac" 대신 "\\\\frac", "\\\\sin" 대신 "\\\\sin" 과 같이 모든 LaTeX 명령어 기호 앞의 역슬래시를 두 번씩 기재하십시오.)
 
-4. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 '\`\`\`json' 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+8. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 '\`\`\`json' 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
 
 [응답 JSON 포맷]:
 [
   {
     "type": "주관식 (개요)",
-    "question": "토픽의 정의와 핵심 메커니즘을 묻는 질문 내용",
-    "concept": "2~3줄 요약 답변",
+    "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
+    "concept": "1~2줄 컴팩트 요약 답변",
     "formula": "",
     "structure": ""
   },
   {
     "type": "주관식 (공식)",
-    "question": "토픽에 적용되는 주요 수식/공식 및 각 항의 의미를 묻는 질문 내용",
-    "concept": "공식 개념 요약",
-    "formula": "$LaTeX공식$\\n- $항1$: 직관적 설명\\n- $항2$: 직관적 설명",
+    "question": "토픽의 대표 공식과 각 기호의 정의를 서술하라는 질문 내용",
+    "concept": "공식에 대한 한 줄 요약",
+    "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
     "structure": ""
   },
   {
