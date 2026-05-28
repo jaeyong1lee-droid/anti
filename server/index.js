@@ -592,6 +592,127 @@ function getSingleShellExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Soil Nailing & Earth Anchor Comparison
+function getSoilNailingEarthAnchorExpertQuestions(title, keywords) {
+  console.log("Routing to Built-in Expert PE Content: Soil Nailing & Earth Anchor Comparison");
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 역학적 거동 및 지지력 확보 방식의 핵심 차이점을 비교 설명하시오.`,
+    concept: `소일네일링은 네일과 흙 사이의 마찰력으로 전단 저항력을 높여 지반을 '일체화(유사 옹벽화)'하는 수동적(Passive) 보강 방식인 반면, 어스앵커는 정착장에 고인장 강선을 긴장시켜 지반에 선행 압축응력(Prestress)을 도입하는 능동적(Active) 지지 방식입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `어스앵커 설계 시 극한 인장력을 산정하는 대표적인 기본 설계 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `어스앵커의 정착부 설계에서 정착 마찰 저항력에 의한 앵커의 극한 지지력을 결정하는 공학적 공식입니다.`,
+    formula: `$T_u = \\pi \\cdot d \\cdot L_a \\cdot \\tau_u$\n- $T_u$: 앵커의 극한 인장 지지력\n- $d$: 정착장 천공 직경\n- $L_a$: 앵커 정착장의 길이\n- $\\tau_u$: 지반과 그라우트 사이의 극한 주변마찰응력`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `소일네일링(Soil Nailing) 공법의 역학적 거동 특성에 대한 설명으로 가장 올바르지 않은 것은?`,
+      options: shuffleArray([
+        "네일은 지반 변위가 발생함에 따라 인장력이 유발되는 수동적(Passive) 보강재이다.",
+        "보강된 지반 전체가 하나의 유사 옹벽(Pseudo-retaining wall)처럼 일체 거동한다.",
+        "인장 강선에 큰 선행 인장력(Prestress)을 미리 도입하여 지반 변위를 원천 차단한다.",
+        "사면이나 옹벽 등 비교적 변위 허용폭이 넓은 지반 보강에 매우 유리하다."
+      ]),
+      answer: "인장 강선에 큰 선행 인장력(Prestress)을 미리 도입하여 지반 변위를 원천 차단한다.",
+      explanation: "소일네일링은 선행 긴장력을 가하지 않는 수동적(Passive) 시스템입니다. 큰 선행 하중(Prestress)을 가하여 변위를 강력히 억제하는 것은 어스앵커 공법의 대표적 특징입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `어스앵커(Earth Anchor) 공법의 가장 핵심적인 공학적 장점 및 역학적 특징으로 옳은 것은?`,
+      options: shuffleArray([
+        "지반 내부에 별도의 인장 강선을 설치하지 않아 경제적이다.",
+        "능동적(Active) 지지 시스템으로 선행 인장력을 인가하여 주변 지반 변위를 최소화한다.",
+        "정착 부위의 마찰력이 아닌 전면 판의 수동 토압에만 100% 의존한다.",
+        "천공 직경이 소일네일링보다 매우 작아 연약지반에서만 유일하게 시공이 가능하다."
+      ]),
+      answer: "능동적(Active) 지지 시스템으로 선행 인장력을 인가하여 주변 지반 변위를 최소화한다.",
+      explanation: "어스앵커는 강선에 인장력(Prestress)을 도입함으로써 흙막이벽이나 지반의 수평 변위를 강력하고 적극적으로 제어하는 능동적(Active) 지중 지보 시스템입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `어스앵커를 설계할 때 인장력 도입을 위해 정착부와 자유장으로 분할하여 시공하는데, 이때 '자유장(Free Length)'의 주된 역학적 역할로 올바른 것은?`,
+      options: shuffleArray([
+        "주변 흙과의 마찰력을 전면 차단하여 긴장력이 정착부까지 안전하게 도달하도록 돕는 구간이다.",
+        "그라우트를 채워 흙과 네일이 완전히 접착되도록 밀착 마찰력을 제공하는 구간이다.",
+        "전면 지압판을 지탱하기 위해 시멘트 풀로 완전히 보강된 단단한 지반 구간이다.",
+        "지하수의 유입을 원천적으로 차단하기 위해 실링 고무 패커만 설치하는 구간이다."
+      ]),
+      answer: "주변 흙과의 마찰력을 전면 차단하여 긴장력이 정착부까지 안전하게 도달하도록 돕는 구간이다.",
+      explanation: "어스앵커의 자유장(Free Length)은 긴장력을 가할 때 발생하는 하중이 정착부(Anchor Zone)에만 확실히 전달되도록 쉬스관 등을 씌워 지반과의 마찰 및 본딩을 의도적으로 차단하는 구간입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `소일네일링 배치 설계 시 네일 간의 간격과 천공 각도에 대한 설명 중 가장 적절한 것은?`,
+      options: shuffleArray([
+        "수평이나 수직 변위를 조절하기 위해 천공 각도는 90도 연직 방향이 표준이다.",
+        "그라우트 충전 가독성과 중력식 배출을 위해 아래로 10~20도 정도 경사지게 천공한다.",
+        "네일의 간격은 넓을수록 인장 전단 포락선 효과가 증대되어 안전하다.",
+        "천공 각도가 수평선 위쪽(상향)으로 경사질수록 그라우트 밀착도가 극대화된다."
+      ]),
+      answer: "그라우트 충전 가독성과 중력식 배출을 위해 아래로 10~20도 정도 경사지게 천공한다.",
+      explanation: "소일네일링 및 어스앵커의 천공은 시멘트 그라우트가 중력에 의해 조밀하게 주입 및 배치될 수 있도록 수평면 기준 아래 방향(하향)으로 10~20도 경사지게 시공하는 것이 표준 실무입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `어스앵커 인장 시험(Tensile Test) 중 앵커의 시공 품질, 크리프 안정성 및 적정 긴장력 유지 여부를 검증하기 위해 실제 현장 앵커 중 일부(통상 5% 내외)를 대상으로 정밀하게 수행하는 시험의 명칭은?`,
+      options: shuffleArray([
+        "확인 시험 (Acceptance Test / Proof Test)",
+        "인발 시험 (Pull-out Test)",
+        "인장 압축 탄성 계수 측정 시험",
+        "동적 타격 관입 시험 (SPT)"
+      ]),
+      answer: "확인 시험 (Acceptance Test / Proof Test)",
+      explanation: "어스앵커 시공 시 현장에 설치된 앵커가 설계 기준 조건에 완벽히 부합하고 설계 정착력을 유지하는지 확인하기 위해 일부 앵커에 대해 실시하는 정밀한 시험을 확인 시험(Acceptance Test 또는 Proof Test)이라고 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `소일네일링 공법의 주요 파괴 모드(Failure Mode) 중 '외적 파괴(External Failure)'에 해당하는 것은?`,
+      options: shuffleArray([
+        "네일 철근의 인장 파괴 (Tensile failure of nail steel bar)",
+        "네일과 그라우트 계면의 전단 부착 파괴 (Bond failure between nail and grout)",
+        "보강 토체 전체의 전면적 사면 슬라이딩 파괴 (Global slope sliding failure)",
+        "전면 지압판 및 지보 콘크리트의 휨 파괴"
+      ]),
+      answer: "보강 토체 전체의 전면적 사면 슬라이딩 파괴 (Global slope sliding failure)",
+      explanation: "소일네일링 파괴 모드 중 네일재 자체의 파괴나 흙-그라우트 부착 실패는 내적 파괴(Internal Failure)에 해당하며, 보강된 토체 전체가 사면 형태로 회전 붕괴하거나 활동하는 것은 외적 파괴(External Failure)입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `어스앵커의 정착방식 중 인장 하중을 정착 장 내에 있는 지압 장치를 통해 그라우트에 전면 압축 응력으로 직접 전달하는 압축형 앵커의 장점으로 가장 거리가 먼 것은?`,
+      options: shuffleArray([
+        "그라우트재의 단점인 인장 균열 발생을 근본적으로 차단할 수 있다.",
+        "인장형 앵커 대비 응력 집중 현상이 적어 내구성이 크게 향상된다.",
+        "시공 및 조립 과정이 인장형에 비해 매우 단순하여 공사비가 압도적으로 저렴하다.",
+        "그라우트체의 크리프 변형에 의한 프리스트레스 장기 손실량이 적다."
+      ]),
+      answer: "시공 및 조립 과정이 인장형에 비해 매우 단순하여 공사비가 압도적으로 저렴하다.",
+      explanation: "압축형 앵커는 내압판, 쉬스관, 이중 튜브 배치 등 특수 정착 장치가 다수 삽입되기 때문에 부품 구조가 복잡하여 인장형 앵커 대비 자재 비용 및 제작 공정이 더 비싸고 조립이 까다롭습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `어스앵커 또는 소일네일링 설치 현장에서 시멘트 그라우트 주입 시 가장 널리 배합되는 물-시멘트비(W/C)와 첨가제의 공학적 거동에 대한 설명 중 옳은 것은?`,
+      options: shuffleArray([
+        "물-시멘트비는 통상 40~45% 내외로 유지하며 무수축 팽창제를 혼합하여 부착력을 극대화한다.",
+        "물-시멘트비를 80% 이상으로 극대화하여 투수 계수를 높여야 정착 효율이 증가한다.",
+        "수축성을 조장하기 위해 알루미늄 파우더를 30% 이상 초과 배합한다.",
+        "모래가 90% 이상 섞인 일반 사질 시멘트 모르타르를 고압으로 주입하는 것이 원칙이다."
+      ]),
+      answer: "물-시멘트비는 통상 40~45% 내외로 유지하며 무수축 팽창제를 혼합하여 부착력을 극대화한다.",
+      explanation: "그라우트 페이스트는 고강도 및 고품질 접착력이 생명입니다. 통상 물-시멘트비(W/C)는 40~45% 범위의 묽기로 타설하며, 경화 중 수축으로 인한 틈새나 들뜸 방지를 위해 무수축 팽창제를 첨가합니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // Built-in Expert-Grade PE Questions for Prandtl's Bearing Capacity Theory
 function getPrandtlExpertQuestions(title, keywords) {
   const q1 = {
@@ -721,6 +842,15 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell') || cleanText.includes('싱글쉘') || cleanText.includes('single shell')) {
     console.log("Routing to Built-in Expert PE Content: Single Shell Tunnel Method");
     return getSingleShellExpertQuestions(title, keywords);
+  }
+
+  if (
+    cleanTitle.includes('소일내일링') || cleanTitle.includes('소일네일링') || cleanTitle.includes('soil nailing') || cleanTitle.includes('soilnailing') ||
+    cleanTitle.includes('어스앵커') || cleanTitle.includes('어스 앵커') || cleanTitle.includes('earth anchor') || cleanTitle.includes('earthanchor') ||
+    cleanTitle.includes('앵커') ||
+    cleanText.includes('소일내일링') || cleanText.includes('소일네일링') || cleanText.includes('soil nailing') || cleanText.includes('어스앵커') || cleanText.includes('어스 앵커')
+  ) {
+    return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
   }
 
   if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanText.includes('프란틀') || cleanText.includes('prandtl') || cleanText.includes('bearing_capacity')) {
