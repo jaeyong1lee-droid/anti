@@ -464,6 +464,45 @@ export default function App() {
     }
   };
 
+  // AI 복습 완료 버튼 클릭 시 처리
+  const handleQuizCompleteClick = async () => {
+    if (!selectedTopic) return;
+    
+    let sId = selectedTopic.schedule_id;
+    let sRound = selectedTopic.review_round;
+
+    // 만약 schedule_id가 없을 경우, 오늘 대기 중인 복습 일정 중에 매칭되는 것이 있는지 탐색
+    if (!sId && todayReviews.length > 0) {
+      const matchingReview = todayReviews.find(
+        (r) => r.topic_id === selectedTopic.id && r.status !== 'completed'
+      );
+      if (matchingReview) {
+        sId = matchingReview.schedule_id;
+        sRound = matchingReview.review_round;
+      }
+    }
+
+    if (sId) {
+      await handleCompleteReview(sId, selectedTopic.title, sRound);
+      // 모달 닫기
+      setSelectedTopic(null);
+      setAiQuestions([]);
+      setRevealedQuestions({});
+      setSelectedAnswers({});
+      setOpenSections({});
+      lastQuizTopicId.current = null;
+    } else {
+      showNotification('오늘 이 토픽의 예정된 복습 일정이 없습니다. 자유 복습이 완료되었습니다!', 'info');
+      // 모달 닫기
+      setSelectedTopic(null);
+      setAiQuestions([]);
+      setRevealedQuestions({});
+      setSelectedAnswers({});
+      setOpenSections({});
+      lastQuizTopicId.current = null;
+    }
+  };
+
   // Reset completed schedule back to pending
   const handleResetReview = async (scheduleId, topicTitle, round) => {
     try {
@@ -514,17 +553,17 @@ export default function App() {
   };
 
   // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai') => {
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null) => {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
-      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
       // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
         if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
       });
       return;
     }
-    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName });
+    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
@@ -1025,7 +1064,7 @@ export default function App() {
                       <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
                         {/* 소스 + Gemini 복습 */}
                         <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai')}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round)}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
                           title="소스 + Gemini AI로 고난도 문제 생성"
                         >
@@ -1598,10 +1637,14 @@ export default function App() {
 
                   {aiQuestions.length > 0 && (
                     <div className="text-center py-6">
-                      <div className="inline-flex items-center gap-3 bg-violet-950/60 border border-violet-500/20 rounded-2xl px-6 py-4">
-                        <Award size={20} className="text-violet-400" />
+                      <button
+                        onClick={handleQuizCompleteClick}
+                        className="inline-flex items-center gap-3 bg-violet-950 hover:bg-violet-900/90 border border-violet-500/40 hover:border-violet-400 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-950/50 hover:shadow-violet-900/30 group"
+                        title="복습 완료 처리 및 대시보드로 돌아가기"
+                      >
+                        <Award size={22} className="text-violet-400 group-hover:animate-bounce-slow" />
                         <div className="text-left">
-                          <div className="text-xs text-violet-300 font-black">복습 완료</div>
+                          <div className="text-xs text-violet-300 font-black">복습 완료하기</div>
                           <div className="text-sm text-white font-extrabold">
                             객관식 정답률: {Math.round(
                               Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length /
@@ -1609,7 +1652,7 @@ export default function App() {
                             )}%
                           </div>
                         </div>
-                      </div>
+                      </button>
                     </div>
                   )}
                 </div>
