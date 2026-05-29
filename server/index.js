@@ -240,41 +240,156 @@ function extractJsonArray(str) {
 }
 
 /**
- * Gemini API 호출 헬퍼 (단순하고 안정적인 방식)
- * 모델 순서: gemini-2.0-flash → gemini-2.0-flash-lite
- * (gemini-1.5-flash 는 2026년 5월 기준 API에서 삭제된 모델)
+ * Multi-LLM 하이브리드 페일오버 실행 헬퍼 (5월 25~26일 검증된 고안정성 방식 복원)
+ * 순서: 
+ * 1. Google Gemini Keys (각 키당 2.0-flash → 2.0-flash-lite → 1.5-flash 순회)
+ * 2. Anthropic Claude (Key 존재 시, claude-3-5-sonnet-20241022)
+ * 3. OpenAI GPT (Key 존재 시, gpt-4o-mini → gpt-4o)
  */
 async function callLLMWithFailover(systemInstruction, userPrompt) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
-    throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
+  const googleKeys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_SECONDARY,
+    process.env.GEMINI_API_KEY_TERTIARY
+  ].filter(Boolean);
+
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+
+  const targets = [];
+
+  // 1. Google Gemini Targets (3중 키 회전 및 2.0/1.5 플래시 모델 순회)
+  for (let i = 0; i < googleKeys.length; i++) {
+    targets.push({
+      provider: 'gemini',
+      key: googleKeys[i],
+      model: 'gemini-2.0-flash',
+      label: `Gemini Key #${i + 1} (2.0-flash)`
+    });
+    targets.push({
+      provider: 'gemini',
+      key: googleKeys[i],
+      model: 'gemini-2.0-flash-lite',
+      label: `Gemini Key #${i + 1} (2.0-flash-lite)`
+    });
+    targets.push({
+      provider: 'gemini',
+      key: googleKeys[i],
+      model: 'gemini-1.5-flash',
+      label: `Gemini Key #${i + 1} (1.5-flash)`
+    });
   }
 
-  const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'];
-  const genAI = new GoogleGenerativeAI(geminiApiKey);
+  // 2. Anthropic Claude Targets
+  if (claudeKey) {
+    targets.push({
+      provider: 'claude',
+      key: claudeKey,
+      model: 'claude-3-5-sonnet-20241022',
+      label: 'Claude 3.5 Sonnet'
+    });
+  }
+
+  // 3. OpenAI GPT Targets
+  if (openaiKey) {
+    targets.push({
+      provider: 'openai',
+      key: openaiKey,
+      model: 'gpt-4o-mini',
+      label: 'OpenAI GPT-4o-mini'
+    });
+    targets.push({
+      provider: 'openai',
+      key: openaiKey,
+      model: 'gpt-4o',
+      label: 'OpenAI GPT-4o'
+    });
+  }
+
+  if (targets.length === 0) {
+    throw new Error('사용 가능한 API 키가 없습니다. 환경 변수(GEMINI_API_KEY 등)를 확인하십시오.');
+  }
 
   let lastError = null;
 
-  for (const modelName of MODELS) {
+  for (const target of targets) {
     try {
-      console.log(`[Gemini 시도] 모델: ${modelName}`);
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemInstruction || undefined
-      });
-      const result = await model.generateContent(userPrompt);
-      const text = result.response.text().trim();
-      if (text) {
-        console.log(`[Gemini 성공] 모델: ${modelName}`);
-        return text;
+      console.log(`[LLM시도] ${target.label} 호출 중...`);
+      let resultText = '';
+
+      if (target.provider === 'gemini') {
+        const genAI = new GoogleGenerativeAI(target.key);
+        const model = genAI.getGenerativeModel({ 
+          model: target.model,
+          systemInstruction: systemInstruction || undefined
+        });
+        const result = await model.generateContent(userPrompt);
+        resultText = result.response.text().trim();
+
+      } else if (target.provider === 'claude') {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': target.key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: target.model,
+            max_tokens: 4096,
+            system: systemInstruction || undefined,
+            messages: [{ role: 'user', content: userPrompt }]
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(`Claude API Error (${response.status}): ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        resultText = data.content?.[0]?.text?.trim() || '';
+
+      } else if (target.provider === 'openai') {
+        const messages = [];
+        if (systemInstruction) {
+          messages.push({ role: 'system', content: systemInstruction });
+        }
+        messages.push({ role: 'user', content: userPrompt });
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${target.key}`
+          },
+          body: JSON.stringify({
+            model: target.model,
+            messages: messages,
+            temperature: 0.3
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(`OpenAI API Error (${response.status}): ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        resultText = data.choices?.[0]?.message?.content?.trim() || '';
+      }
+
+      if (resultText) {
+        console.log(`[LLM성공] ${target.label} 호출 성공!`);
+        return resultText;
       }
     } catch (err) {
-      console.warn(`[Gemini 실패] ${modelName}: ${err.message?.substring(0, 120)}`);
+      console.warn(`[LLM실패] ${target.label}: ${err.message?.substring(0, 120)}`);
       lastError = err;
     }
   }
 
-  throw lastError || new Error('모든 Gemini 모델 호출에 실패했습니다.');
+  throw lastError || new Error('모든 LLM 모델 호출에 실패했습니다.');
 }
 
 // Helper: Shuffle array elements
