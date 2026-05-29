@@ -233,6 +233,22 @@ export default function App() {
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
+  
+  // 잠수함식 문제 사전 생성 캐시 (Prefetch Cache)
+  const [quizCache, setQuizCache] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_quiz_cache');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  // quizCache 변동 시 localStorage에 영속 저장
+  useEffect(() => {
+    localStorage.setItem('anti_quiz_cache', JSON.stringify(quizCache));
+  }, [quizCache]);
+
   // Exam mode state
   const [examQuestions, setExamQuestions] = useState([]);
   const [loadingExam, setLoadingExam] = useState(false);
@@ -268,6 +284,56 @@ export default function App() {
     setTimeout(() => setNotification(null), 4000);
   };
 
+  // 잠수함식 백그라운드 사전 생성 (Submarine Quiz Prefetch)
+  const prefetchQuizzes = async (reviews) => {
+    if (!reviews || reviews.length === 0) return;
+    
+    // 이미 캐싱되어 있는 토픽 ID 목록 (숫자로 변환)
+    const cachedIds = Object.keys(quizCache).map(Number);
+    
+    // 캐싱되지 않은 토픽 필터링
+    const targets = reviews.filter(r => !cachedIds.includes(r.topic_id));
+    
+    if (targets.length === 0) return;
+    
+    console.log(`[잠수함 복습 프리페치] 총 ${targets.length}개 대기 토픽 백그라운드 문제 사전 생성 시작...`);
+    
+    // 백그라운드에서 순차적으로 호출 (제미나이 Quota 한도 보호 및 과부하 방지용 순차 지연 시도)
+    for (const target of targets) {
+      const topicId = target.topic_id;
+      
+      // 루프 도중 이미 캐싱되었는지 한번 더 방어적 확인
+      if (quizCache[topicId]) continue;
+      
+      try {
+        console.log(`[잠수함 생성 시작] 토픽: "${target.title}" (ID: ${topicId})`);
+        const url = `${API_BASE}/api/topics/${topicId}/ai-questions`;
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        
+        if (res.ok && data.questions && data.questions.length > 0) {
+          setQuizCache(prev => {
+            const nextCache = {
+              ...prev,
+              [topicId]: {
+                questions: data.questions,
+                isFallback: !!data.isFallback,
+                error: data.error || ''
+              }
+            };
+            return nextCache;
+          });
+          console.log(`[잠수함 생성 완료] 캐시 저장 완료: "${target.title}"`);
+        }
+      } catch (err) {
+        console.warn(`[잠수함 생성 실패] 토픽: "${target.title}"`, err);
+      }
+      
+      // 요청 간 1.5초 안정화 딜레이
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+  };
+
   // Fetch reviews based on selected reference date
   const fetchTodayReviews = async (dateStr) => {
     setLoadingReviews(true);
@@ -276,6 +342,8 @@ export default function App() {
       const data = await res.json();
       if (res.ok && data && Array.isArray(data.reviews)) {
         setTodayReviews(data.reviews);
+        // 백그라운드 잠수함 프리페치 트리거 실행 (비동기로 실행되게 유도)
+        setTimeout(() => prefetchQuizzes(data.reviews), 500);
       } else {
         setTodayReviews([]);
         console.error('Failed to load dashboard or invalid data format:', data);
@@ -554,7 +622,7 @@ export default function App() {
 
   // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null) => {
-    // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
+    // 1. 같은 토픽의 문제가 이미 메모리에 들어있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
       setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
       // 이전 스크롤 위치 복원
@@ -563,15 +631,30 @@ export default function App() {
       });
       return;
     }
+
     setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
-    setLoadingAI(true);
-    setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
     setSelectedAnswers({}); // Reset MC selected answers
-    setIsFallback(false);
-    setAiError('');
     setShowFullReport(false);
     setReportText('');
+
+    // 2. 잠수함식 백그라운드 프리페치 캐시(quizCache)에 데이터가 이미 있다면 즉시 화면 로드!
+    if (quizCache[topicId]) {
+      const cached = quizCache[topicId];
+      setAiQuestions(cached.questions || []);
+      setIsFallback(!!cached.isFallback);
+      setAiError(cached.error || '');
+      lastQuizTopicId.current = topicId;
+      setLoadingAI(false);
+      console.log(`[퀴즈 캐시 히트] 토픽 "${title}"의 백그라운드 사전 생성 문제를 0.1초 만에 즉각 로드했습니다.`);
+      return;
+    }
+
+    // 3. 캐시에 없는 경우에만 실시간 생성 시작
+    setLoadingAI(true);
+    setAiQuestions([]);
+    setIsFallback(false);
+    setAiError('');
 
     try {
       const url = mode === 'local'
@@ -580,11 +663,22 @@ export default function App() {
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
 
-      if (res.ok) {
-        setAiQuestions(data.questions || []);
+      if (res.ok && data.questions) {
+        const fetchedQuestions = data.questions || [];
+        setAiQuestions(fetchedQuestions);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
+
+        // 실시간 생성된 문제도 캐시에 소중히 저장
+        setQuizCache(prev => ({
+          ...prev,
+          [topicId]: {
+            questions: fetchedQuestions,
+            isFallback: !!data.isFallback,
+            error: data.error || ''
+          }
+        }));
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
