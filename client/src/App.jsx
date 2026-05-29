@@ -160,6 +160,17 @@ function LatexRenderer({ text, katexLoaded, className = "" }) {
     }
   }, [text, katexLoaded]);
 
+  const isInline = className.includes('inline');
+
+  if (isInline) {
+    return (
+      <span 
+        className={`${className} leading-relaxed`}
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      />
+    );
+  }
+
   return (
     <div 
       className={`${className} whitespace-pre-line leading-relaxed`}
