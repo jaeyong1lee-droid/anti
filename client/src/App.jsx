@@ -351,6 +351,17 @@ export default function App() {
   const examBodyRef = useRef(null);     // 종합평가 패널 스크롤 컨테이너
   const savedExamScroll = useRef(0);    // 종합평가 패널 저장된 스크롤 위치
 
+  // Latest values refs to prevent stale closure bugs in modal headers
+  const latestTheoryQuestionsRef = useRef(theoryQuestions);
+  useEffect(() => {
+    latestTheoryQuestionsRef.current = theoryQuestions;
+  }, [theoryQuestions]);
+
+  const latestFormulaQuestionsRef = useRef(formulaQuestions);
+  useEffect(() => {
+    latestFormulaQuestionsRef.current = formulaQuestions;
+  }, [formulaQuestions]);
+
   // Success Notification banner
   const [notification, setNotification] = useState(null);
 
@@ -1350,6 +1361,7 @@ export default function App() {
           formula: t.answer
         }));
         const updated = [...newItems, ...prev];
+        latestTheoryQuestionsRef.current = updated;
         handleSaveTheoryQuestions(updated, false);
         return updated;
       });
@@ -1396,6 +1408,7 @@ export default function App() {
               }
               return item;
             });
+            latestTheoryQuestionsRef.current = updated;
             handleSaveTheoryQuestions(updated, false);
             return updated;
           });
@@ -1789,6 +1802,7 @@ export default function App() {
               }
               return f;
             });
+            latestFormulaQuestionsRef.current = updated;
             handleSaveFormulaQuestions(updated, false);
             return updated;
           });
@@ -3583,7 +3597,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => {
-                  handleSaveFormulaQuestions(formulaQuestions, false); // 닫기를 눌러도 저장후 닫기
+                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
                   savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
                   setFormulaSearchQuery('');
                   setShowFormulaExam(false);
@@ -3595,7 +3609,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  handleSaveFormulaQuestions(formulaQuestions, true); // 저장 버튼: 저장만 하고 닫지는 않음
+                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, true); // 저장 버튼: 저장만 하고 닫지는 않음
                 }}
                 className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
                 title="공식 변경사항 실시간 저장"
@@ -3807,11 +3821,10 @@ export default function App() {
                             <button
                               onClick={() => {
                                 if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
-                                  setFormulaQuestions(prev => {
-                                    const updated = prev.filter((_, i) => i !== idx);
-                                    handleSaveFormulaQuestions(updated, false);
-                                    return updated;
-                                  });
+                                  const updated = formulaQuestions.filter((_, i) => i !== idx);
+                                  latestFormulaQuestionsRef.current = updated;
+                                  setFormulaQuestions(updated);
+                                  handleSaveFormulaQuestions(updated, false);
                                   setFormulaRevealed(prev => {
                                     const next = { ...prev };
                                     delete next[idx];
@@ -4061,7 +4074,7 @@ export default function App() {
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
               <button
                 onClick={() => {
-                  handleSaveTheoryQuestions(theoryQuestions, false); // 닫기를 눌러도 저장후 닫기
+                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
                   savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
                   setShowTheoryExam(false);
                 }}
@@ -4072,7 +4085,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  handleSaveTheoryQuestions(theoryQuestions, true); // 저장 버튼: 저장만 하고 닫지는 않음
+                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장만 하고 닫지는 않음
                 }}
                 className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
                 title="이론 변경사항 실시간 저장"
@@ -4208,11 +4221,10 @@ export default function App() {
                           <button
                             onClick={() => {
                               if (window.confirm(`[${q.title || `이론 ${idx + 1}`}] 이론 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
-                                setTheoryQuestions(prev => {
-                                  const updated = prev.filter((_, i) => i !== idx);
-                                  handleSaveTheoryQuestions(updated, false);
-                                  return updated;
-                                });
+                                const updated = theoryQuestions.filter((_, i) => i !== idx);
+                                latestTheoryQuestionsRef.current = updated;
+                                setTheoryQuestions(updated);
+                                handleSaveTheoryQuestions(updated, false);
                                 setTheoryRevealed(prev => {
                                   const updated = { ...prev };
                                   delete updated[idx];
