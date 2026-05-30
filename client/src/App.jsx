@@ -1713,8 +1713,11 @@ export default function App() {
             </div>
 
             {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col justify-center items-center relative z-20 w-0">
-              <div className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 -translate-x-1/2 select-none">
+            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+              <div 
+                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+              >
                 <button 
                   onClick={() => handleScrollQuestion('up')}
                   className="p-2.5 rounded-full bg-slate-800/80 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-violet-500 hover:shadow-violet-600/30 cursor-pointer flex items-center justify-center group"
