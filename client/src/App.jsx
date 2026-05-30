@@ -1599,7 +1599,11 @@ export default function App() {
                             {answered && (
                               <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
-                                {!isCorrect && <span className="ml-2">정답: <strong>{q.answer}</strong></span>}
+                                {!isCorrect && (
+                                  <span className="ml-2 inline-flex items-center gap-1">
+                                    정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
+                                  </span>
+                                )}
                                 {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
 
                                 {/* Detailed Answer Button */}
@@ -1996,7 +2000,11 @@ export default function App() {
                           {answered && (
                             <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
-                              {!isCorrect && <span className="ml-2">정답: <strong>{q.answer}</strong></span>}
+                              {!isCorrect && (
+                                <span className="ml-2 inline-flex items-center gap-1">
+                                  정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
+                                </span>
+                              )}
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
                               
                               {/* Detailed Answer Button & Content */}
