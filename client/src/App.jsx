@@ -306,8 +306,8 @@ export default function App() {
   const [chatHistory, setChatHistory] = useState([]);
 
   // Formula mode states
-  const [showFormulaExam, setShowFormulaExam] = useState(false);
-  const [showTheoryExam, setShowTheoryExam] = useState(false);
+  const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
+  const [showTheoryExam, setShowTheoryExam] = useState(() => localStorage.getItem('anti_show_theory_exam') === 'true');
   const theoryBodyRef = useRef(null);
   const savedTheoryScroll = useRef(0);
   const [formulaMobileTab, setFormulaMobileTab] = useState('list');
@@ -1389,6 +1389,15 @@ export default function App() {
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
+
+  // ── 필수공식 및 이론유도 오픈 상태 브라우저 새로고침 영구 유지 연동
+  useEffect(() => {
+    localStorage.setItem('anti_show_formula_exam', showFormulaExam ? 'true' : 'false');
+  }, [showFormulaExam]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_show_theory_exam', showTheoryExam ? 'true' : 'false');
+  }, [showTheoryExam]);
 
   const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
