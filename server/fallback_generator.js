@@ -852,6 +852,252 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
 }
 
 // ============================================================================
+// High-Quality Clay Diffused Double Layer Expert Questions (이중층 전문가 문제)
+// ============================================================================
+function getDoubleLayerExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `점토 광물 표면에 물 분자와 양이온이 흡착되어 형성되는 전기이중층(Diffused Double Layer, DDL)의 공학적 정의와 지반에 미치는 영향에 대해 서술하시오.`,
+    concept: `전기이중층은 음전하를 띤 점토 입자 표면에 극성 물 분자와 양이온이 정전기적 인력으로 강력히 흡착되어 형성되는 확산층입니다. 이 이중층의 두께와 결합력은 점토 지반의 소성(Plasticity), 팽창성(Swelling), 투수성 및 전단 강도 등의 점성토 공학적 거동을 지배하는 근본 요소가 됩니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `Gouy-Chapman 이론에 따른 전기이중층의 특성 두께($1/\\kappa$) 도출 공식을 기술하고, 양이온의 가수($v$) 및 전해질 농도($n_0$)가 이중층 두께에 미치는 물리적 영향을 공식 인자가 통해 설명하시오.`,
+    concept: `양이온의 정전기적 반발력과 분산력이 평형을 이룰 때의 전기이중층 유효 두께를 나타내는 Gouy-Chapman의 특성 한계 거리 관계식입니다.`,
+    formula: `$\\frac{1}{\\kappa} = \\sqrt{\\frac{\\epsilon k T}{8 \\pi e^2 v^2 n_0}}$\n- $1/\\kappa$: 전기이중층의 유효 두께\n- $\\epsilon$: 간극수의 유전상수 (Dielectric Constant)\n- $k$: 볼츠만 상수 (Boltzmann Constant)\n- $T$: 절대 온도 (Absolute Temperature)\n- $e$: 기본 전하량 (Elementary Charge)\n- $v$: 양이온의 가수 (Valency of Cation)\n- $n_0$: 벌크 용액 내 전해질 농도 (Electrolyte Concentration)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `점토 광물 입자가 물속에서 음전하를 띠게 만드는 가장 근본적이고 영구적인 전기적 원인은 무엇인가?`,
+      options: shuffleArray([
+        "동형치환 (Isomorphous Substitution)",
+        "공융 현상 (Eutectic Crystallization)",
+        "수소 결합의 절단 (Cleavage of Hydrogen Bond)",
+        "양이온 교환 능력의 화학적 소멸"
+      ]),
+      answer: "동형치환 (Isomorphous Substitution)",
+      explanation: "점토 광물 결정 격자 형성 시 규소($Si^{4+}$)나 알루미늄($Al^{3+}$) 이온이 크기가 비슷한 하위 가수의 금속 이온($Al^{3+}, Mg^{2+}$ 등)으로 결정 구조의 변화 없이 영구적으로 치환되는 동형치환 현상에 의해 음전하가 발생합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Gouy-Chapman 이론 공식에 기초할 때, 점토 입자 주변의 전기이중층(Double Layer) 두께가 얇아져 입자 간 거리가 좁아지고 면각 구조(응집)가 촉진되는 조건으로 올바른 것은?`,
+      options: shuffleArray([
+        "간극수 내 양이온의 가수($v$)가 1가($Na^+$)에서 3가($Al^{3+}$)로 증가할 때",
+        "간극수 내 벌크 용액 전해질 농도($n_0$)가 현저히 감소하여 극도로 희석될 때",
+        "간극수의 유전상수($\\epsilon$)가 크게 상승하여 정전기적 척력이 증가할 때",
+        "온도($T$)가 비약적으로 상승하여 입자의 열 운동 분산력이 지배적일 때"
+      ]),
+      answer: "간극수 내 양이온의 가수($v$)가 1가($Na^+$)에서 3가($Al^{3+}$)로 증가할 때",
+      explanation: "공식에서 보듯이 이중층 두께($1/\\kappa$)는 양이온의 가수($v$)와 전해질 농도($n_0$)에 반비례합니다. 따라서 이온 가수가 고가일수록, 혹은 전해질 농도가 높을수록 이중층 두께는 급격히 감소하여 정전기적 반발력이 약해지고 반데르발스 인력에 의해 입자들이 서로 엉겨 붙는 응집(면각 구조)이 촉진됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `대표적인 점토 광물인 카올리나이트(Kaolinite), 일라이트(Illite), 몬모릴로나이트(Montmorillonite)의 공학적 특성에 대한 비교 설명으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "카올리나이트는 수소결합으로 결합력이 매우 약하여 수분 흡수 시 팽창과 가성 수축 거동이 가장 극대화된다.",
+        "몬모릴로나이트는 판상 결정 사이가 깁스결합으로 약하게 묶여 있어 물 분자가 쉽게 침투하며 극도로 큰 비표면적을 가진다.",
+        "일라이트는 결정 격자 판 사이에 칼륨 이온($K^+$)이 끼어 있어 몬모릴로나이트보다 수분 팽창 저항성이 크다.",
+        "점토의 비표면적이 클수록 전기이중층의 공학적 영향이 커지며 액성한계 및 소성지수도 급격히 증가한다."
+      ]),
+      answer: "카올리나이트는 수소결합으로 결합력이 매우 약하여 수분 흡수 시 팽창과 가성 수축 거동이 가장 극대화된다.",
+      explanation: "카올리나이트는 판상 결정이 강력한 '수소결합'으로 단단히 묶여 있어 물 분자가 판 사이로 침투하지 못해 비표면적이 가장 작고 팽창/수축성이 매우 낮습니다. 반면 결합력이 매우 약해 물 침투가 가장 쉽고 팽창/수축이 가장 극대화되는 광물은 몬모릴로나이트입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `간극수 전해질의 환경 변화에 따라 점토의 전기이중층 두께가 팽창할 때, 지반공학적으로 우려되는 거동 특성 변화로 옳은 것은?`,
+      options: shuffleArray([
+        "점토 지반의 팽창압(Swelling Pressure)이 급격히 증가하여 지반 부풀음 현상을 유발한다.",
+        "점토 입자 간의 접촉 전단 강도가 극대화되어 지반 지지력이 비약적으로 상승한다.",
+        "점토의 투수 계수(Permeability)가 무한대로 증가하여 모래 수준으로 배수가 원활해진다.",
+        "점토의 소성 한계 지표가 급격히 저하되어 소성 변형에 대한 저항 강도가 대폭 확보된다."
+      ]),
+      answer: "점토 지반의 팽창압(Swelling Pressure)이 급격히 증가하여 지반 부풀음 현상을 유발한다.",
+      explanation: "전기이중층 두께가 증가하면 입자 간에 강력한 정전기적 척력(반발력)이 작용하여 외부에 대해 물을 밀어내고 팽창하려는 압력(팽창압)이 대단히 강해지며, 전단 강도는 오히려 저하되어 붕괴에 취약해집니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점토 구조 중 입자 간의 전기적 척력이 인력보다 훨씬 강하여 입자들이 평행하게 배열되는 '분산 구조(Dispersed Structure)'에 대한 설명으로 옳은 것은?`,
+      options: shuffleArray([
+        "주로 해양 점토처럼 고염도의 간극수 환경이 아닌, 담수(민물) 환경에서 퇴적될 때 잘 발달한다.",
+        "동일 건조밀도 조건에서 응집 구조보다 투수 계수가 대단히 높고 배수가 신속한 편이다.",
+        "입자들이 면과 모서리(Edge-to-Face)로 맞닿아 튼튼한 다공성 해골 구조를 이룬다.",
+        "외력에 의한 압축성(Compressibility)이 극도로 낮아 기초 지반으로서 가장 우수한 거동을 보인다."
+      ]),
+      answer: "주로 해양 점토처럼 고염도의 간극수 환경이 아닌, 담수(민물) 환경에서 퇴적될 때 잘 발달한다.",
+      explanation: "담수(염도 및 이온 농도가 매우 낮음) 환경에서는 이중층 두께가 두꺼워져 입자 간 반발력이 우세해지므로, 퇴적 시 입자들이 평행하게 차곡차곡 쌓여 분산 구조를 형성합니다. 반면 고염도의 해양 점토는 이중층이 얇아져 엉겨 붙는 응집 구조를 이룹니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점토의 동형치환 과정에서 사면체(Silica Tetrahedron)의 규소($Si^{4+}$) 이온이 알루미늄($Al^{3+}$) 이온으로 치환되거나, 팔면체(Alumina Octahedron)의 알루미늄($Al^{3+}$) 이온이 마그네슘($Mg^{2+}$) 이온으로 치환될 때 발생하는 알짜 전하(Net Charge)는?`,
+      options: shuffleArray([
+        "음전하 (Negative Charge) 발생",
+        "양전하 (Positive Charge) 발생",
+        "완전한 전기적 중성 (Neutral) 유지",
+        "간극수 산성도에 따라 양전하와 음전하가 극성 교대로 변화"
+      ]),
+      answer: "음전하 (Negative Charge) 발생",
+      explanation: "결정 격자의 구조 변화 없이 양이온의 가수가 더 낮은 하위 양이온($4+ \\rightarrow 3+$, 또는 $3+ \\rightarrow 2+$)으로 치환되기 때문에 양전하의 총량이 부족해져서 격자 내부적으로 '음전하'가 최종적으로 남게 됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `몬모릴로나이트(Montmorillonite) 광물이 대표적으로 많이 함유된 벤토나이트(Bentonite) 점토가 토목 현장에서 차수성 차단벽재나 흙막이 안정액으로 널리 사용되는 근본적인 지반공학적 원리는 무엇인가?`,
+      options: shuffleArray([
+        "이중층 팽창력이 매우 커서 물을 흡수하면 극도로 팽창하며 간극을 밀밀히 메워 투수성을 거의 완벽히 차단하기 때문",
+        "카올리나이트보다 비표면적이 수백 배 작아 물을 전혀 통과시키지 않는 완전 발수성 광물이기 때문",
+        "동형치환량이 0에 가까워 전하가 완전 중성이라서 화학적으로 대단히 안정하기 때문",
+        "양이온 교환 능력이 전무하여 주변 오염 물질과 유기물을 절대 흡착하지 않는 특성 때문"
+      ]),
+      answer: "이중층 팽창력이 매우 커서 물을 흡수하면 극도로 팽창하며 간극을 밀밀히 메워 투수성을 거의 완벽히 차단하기 때문",
+      explanation: "벤토나이트(주광물 몬모릴로나이트)는 극도로 얇은 이중층 판상 구조와 높은 전하 밀도로 비표면적이 매우 큽니다. 물과 닿으면 엄청난 팽창압을 발휘하여 주위 토사의 간극을 차단하므로 차수성이 매우 뛰어난 차수재 및 안정액으로 기능합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점토 광물의 점착력을 설명하는 반데르발스 인력(Van der Waals Force)과 전기이중층 반발력이 만나는 합성 에너지를 도출하여 점토 입자의 안정성 및 응집 속도를 정량 설명하는 이론의 명칭은?`,
+      options: shuffleArray([
+        "DLVO 이론 (Derjaguin-Landau-Verwey-Overbeek)",
+        "Terzaghi 1차원 압밀 이론",
+        "Gouy-Chapman 무한 평판 이론",
+        "Coulomb 마찰 상태 평형 이론"
+      ]),
+      answer: "DLVO 이론 (Derjaguin-Landau-Verwey-Overbeek)",
+      explanation: "점토 입자 간의 결합성 및 분산성을 물리화학적으로 해석하기 위해 반데르발스 인력과 이중층 정전기적 척력의 결합 작용을 합성 에너지 곡선으로 정량 설명하는 이론이 바로 DLVO 이론입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality Clay One-Dimensional Consolidation Expert Questions (압밀 전문가 문제)
+// ============================================================================
+function getConsolidationExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `점성토 지반에 성토 등의 외부 하중이 작용할 때 발생하는 테르자기(Terzaghi) 1차원 압밀(Consolidation) 현상의 기본 정의와 물리적 거동을 설명하시오.`,
+    concept: `압밀은 투수계수가 매우 낮은 포화 점성토 지반에 외부 하중이 가해지면, 초기에는 물이 모든 하중을 받아 과잉간극수압이 발생하고, 시간이 흐름에 따라 간극수가 서서히 배수되면서 간극수압이 감소하고 유효응력이 증가하여 점진적으로 체적이 수축하고 침하가 진행되는 거동 현상입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `테르자기의 1차원 압밀 기본 미분방정식을 기술하고, 이에 포함된 압밀계수($C_v$)의 지반공학적 산정 공식을 기재한 뒤 각 기호의 정의를 서술하시오.`,
+    concept: `점성토층 내부의 깊이($z$)와 시간($t$)에 따른 과잉간극수압($u$)의 감쇄 소산 메커니즘을 규명하는 지반공학 기초 미분 방정식입니다.`,
+    formula: `$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$\n- $C_v = \\frac{k}{m_v \\gamma_w}$\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $C_v$: 압밀계수 (Coefficient of Consolidation)\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `테르자기의 1차원 압밀 이론 유도 시 설정한 역학적 기본 가정 사항으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "흙 입자와 물은 압축성이 대단히 큰 탄성 유체로 가정한다.",
+        "흙은 균질(Homogeneous)하고 완전히 포화(Saturated)되어 있다.",
+        "흙 속의 물의 흐름은 1차원 수직 방향이며 Darcy의 투수 법칙을 만족한다.",
+        "흙의 압축성과 투수성은 압밀 과정 동안 일정하게 유지된다."
+      ]),
+      answer: "흙 입자와 물은 압축성이 대단히 큰 탄성 유체로 가정한다.",
+      explanation: "테르자기의 압밀 이론에서는 흙 입자와 물 자체는 압축성이 전혀 없는 완전 '비압축성'체로 가정하며, 압밀에 의한 체적 감소는 오직 흙 입자 사이의 간극수가 빠져나가 흙의 뼈대 간극비가 감소하기 때문에 발생한다고 전제합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점토 지반의 압밀 거동 중 시간계수($T_v$)와 평균압밀도($U$)의 공학적 상관관계에 대한 설명으로 옳은 진술은?`,
+      options: shuffleArray([
+        "평균압밀도가 60% 이하인 초기 단계에서는 시간계수($T_v$)가 평균압밀도($U$)의 제곱에 비례 관계를 갖는다.",
+        "시간계수는 압밀계수($C_v$) 및 소요 시간($t$)에 반비례하고 최대 배수거리($H$)에 정비례한다.",
+        "배수 조건이 양면 배수에서 일면 배수로 변경되면 최대 배수거리가 절반으로 줄어 압밀 소요 시간이 4배 단축된다.",
+        "평균압밀도가 90%에 도달할 때의 표준 시간계수($T_{90}$) 값은 공학적으로 약 0.197을 적용한다."
+      ]),
+      answer: "평균압밀도가 60% 이하인 초기 단계에서는 시간계수($T_v$)가 평균압밀도($U$)의 제곱에 비례 관계를 갖는다.",
+      explanation: "초기 압밀 단계($U \\le 60\\%$)에서 시간계수 식은 $T_v = \\frac{\\pi}{4}(\\frac{U\\%}{100})^2$ 이므로 평균압밀도 $U$의 제곱에 비례 관계를 갖는 것이 명확한 지반공학 사실입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `포화 점토 지반에 급격한 등분포 상재하중(P)이 재하된 직후인 순간 시간 단계($t = 0$)에서의 하중 부담 주체와 간극수압 거동 특성으로 옳은 것은?`,
+      options: shuffleArray([
+        "작용 하중 전체를 비압축성인 간극수가 부담하여 초기에 과잉간극수압($\\Delta u$)이 하중 크기($P$)만큼 전적으로 상승한다.",
+        "흙의 유효응력($\\sigma'$)이 즉각 하중 크기만큼 상승하고 흙 뼈대가 하중을 100% 분산 지탱한다.",
+        "간극수가 즉각 외곽으로 전부 배출되어 과잉간극수압은 재하 즉시 0으로 소멸 수렴한다.",
+        "흙 입자의 탄성 변형으로 인해 전단 강도가 2배로 상승하고 압밀 침하가 재하 즉시 완료된다."
+      ]),
+      answer: "작용 하중 전체를 비압축성인 간극수가 부담하여 초기에 과잉간극수압($\\Delta u$)이 하중 크기($P$)만큼 전적으로 상승한다.",
+      explanation: "점토 지반은 투수성이 낮아 하중 재하 순간에는 물이 배수되지 못하므로, 비압축성 체인 포화 간극수가 하중을 100% 부담하여 과잉간극수압이 재하 하중 $P$만큼 온전히 상승하게 됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `지반 조사 결과 획득한 과압밀비(OCR, Overconsolidation Ratio)가 1보다 현저하게 작은 값을 갖거나 점토층이 과거 최대 하중보다 현재 하중을 더 크게 받고 있는 지반 상태의 공학적 명칭은?`,
+      options: shuffleArray([
+        "정규압밀 지반 (Normally Consolidated Soil)",
+        "과압밀 지반 (Overconsolidated Soil)",
+        "과포화 퀵샌드 지반",
+        "비성숙 전단 파괴 지반"
+      ]),
+      answer: "정규압밀 지반 (Normally Consolidated Soil)",
+      explanation: "현재 받고 있는 유효연직응력이 지반 역사상 받았던 선행압밀응력($p_c$)과 일치하는 경우를 정규압밀(Normally Consolidated, $OCR = 1$)이라고 하며, OCR이 1보다 크면 과압밀(Overconsolidated) 상태로 분류됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `실내 표준 압밀 시험(Oedometer Test)에서 압축 지수($C_c$)와 재압축 지수($C_r$) 및 팽창 지수($C_e$)의 지반 역학적 크기 관계 및 의미로 올바른 설명은?`,
+      options: shuffleArray([
+        "압축 지수($C_c$)는 재압축 지수($C_r$)보다 일반적으로 약 5배 ~ 10배 정도 큰 강성 구배를 보이며 압축성이 현저히 크다.",
+        "재압축 지수가 압축 지수보다 커서 과압밀 영역에서의 침하량이 정규압밀 영역보다 훨씬 급격하게 발생한다.",
+        "정규압밀 점토의 침하량 계산 시에는 압축 지수 대신 언제나 일차 변형 계수인 팽창 지수만을 적용하여 안전하게 설계한다.",
+        "세 지수는 모두 간극비와 하중의 반대비로 평가되며, 흙의 내부 전단 파찰각이 클수록 압축 지수의 절대치 역시 급증한다."
+      ]),
+      answer: "압축 지수($C_c$)는 재압축 지수($C_r$)보다 일반적으로 약 5배 ~ 10배 정도 큰 강성 구배를 보이며 압축성이 현저히 크다.",
+      explanation: "과거에 이미 받았던 응력 범위 내인 재압축 영역에서는 지반의 변형이 작으므로 재압축 지수($C_r$)가 작고, 선행압밀하중을 초과하여 처음 겪는 정규압밀 영역에서는 간극비가 급격히 무너지므로 압축 지수($C_c$)가 현저히 크게 나타납니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점성토층의 일차 압밀이 100% 완료(과잉간극수압 완전 소산)된 후에도 흙 뼈대의 유기적 재배열이나 크리프(Creep) 현상으로 인해 오랜 기간에 걸쳐 잔류 침하가 이어지는 거동 현상의 명칭은 무엇인가?`,
+      options: shuffleArray([
+        "이차 압밀 / 이차 압축 (Secondary Compression)",
+        "초기 즉시 탄성 침하 (Immediate Settlement)",
+        "소성 파괴 유동 침하",
+        "동적 액상화 침하 (Liquefaction)"
+      ]),
+      answer: "이차 압밀 / 이차 압축 (Secondary Compression)",
+      explanation: "일차 압밀(과잉간극수압 소산에 의한 침하)이 종료된 후, 유효응력이 일정한 상태 하에서 흙 입자 골격의 시간 의존적 점소성 변형에 의해 장기적으로 발생하는 침하를 이차 압밀 또는 이차 압축이라고 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `연약지반 점성토층 위에 사질토 모래를 덮는 샌드 드레인(Sand Drain)이나 합성 플라스틱 밴드를 박아 압밀을 촉진하는 연직배수공법의 핵심 물리적 원리는 무엇인가?`,
+      options: shuffleArray([
+        "점토 지반 내의 배수 거리($H$)를 획기적으로 줄여 압밀 소요 시간($t$)을 극적으로 단축시키는 원리",
+        "점토의 투수 계수($k$) 자체를 물리적으로 모래 수준으로 영구 증대시키는 원리",
+        "점토 광물의 동형치환 전하량을 완전 소멸시켜 전기이중층을 0으로 소멸시키는 화학 원리",
+        "지반 내부에 가해지는 과잉간극수압 발생 자체를 원천적으로 차단 차수하는 원리"
+      ]),
+      answer: "점토 지반 내의 배수 거리($H$)를 획기적으로 줄여 압밀 소요 시간($t$)을 극적으로 단축시키는 원리",
+      explanation: "압밀 시간계수 공식 $t = \\frac{T_v H^2}{C_v}$에 따라 압밀 소요 시간 $t$는 배수 거리 $H$의 제곱에 비례합니다. 연직배수재를 타설하면 물이 빠져나가는 수평 반경 거리가 배수거리가 되어 수십 미터 수직 배수 거리가 수 미터 내로 대폭 줄어 압밀 소요 시간이 극적으로 단축됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점토 지반에 외력을 가해 압밀을 완전히 진행시켜 과잉간극수압을 소산시켰을 때, 이 지반의 전단 강도(Shear Strength)와 전단 마찰각에 미치는 공학적 결과로 가장 타당한 진술은?`,
+      options: shuffleArray([
+        "지반의 유효응력이 대폭 증대되어 흙 뼈대의 맞물림 저항이 극대화되고 전단 전면 강도가 대폭 향상된다.",
+        "유효응력이 0이 되는 분사 Boiling 현상이 유발되어 지반이 지지력을 완전히 상실한다.",
+        "점토 입자 간의 전기이중층 두께가 10배 이상 팽창하여 점토 지반이 극도로 팽윤 부풀어 오른다.",
+        "흙의 내부 마찰각이 급격히 저하되어 외력 저항 성능이 이전 상태보다 약 2배 약화된다."
+      ]),
+      answer: "지반의 유효응력이 대폭 증대되어 흙 뼈대의 맞물림 저항이 극대화되고 전단 전면 강도가 대폭 향상된다.",
+      explanation: "압밀에 의해 간극수가 빠져나가면 유효 연직응력($\\sigma'$)이 증가합니다. 전단강도 $\\tau_f = c' + \\sigma' \\tan\\phi'$ 식에 따라 유효응력 증가로 인해 지반 전단 강도가 대폭 상승하고 단단해집니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
+
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 // This strictly prevents dynamic document mining logic from producing robotic questions.
 // It leverages handcrafted professional civil engineer style templates injected with topic titles.
@@ -993,7 +1239,29 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   // STAGE 1: Strict Title-First Routing
   // ==========================================
   
-  // 1. Q-System / Q분류 (암반 분류)
+  // 1. Double Layer / 이중층
+  if (
+    cleanTitle.includes('이중층') || 
+    cleanTitle.includes('double layer') || 
+    cleanTitle.includes('전기이중층') || 
+    cleanTitle.includes('ddl')
+  ) {
+    console.log("-> Routed (Strict Title) to Double Layer Expert-Grade Questions.");
+    return getDoubleLayerExpertQuestions(title, keywords);
+  }
+
+  // 2. Consolidation / 압밀
+  if (
+    cleanTitle.includes('압밀') || 
+    cleanTitle.includes('consolidation') || 
+    cleanTitle.includes('침하') || 
+    cleanTitle.includes('settlement')
+  ) {
+    console.log("-> Routed (Strict Title) to Consolidation Expert-Grade Questions.");
+    return getConsolidationExpertQuestions(title, keywords);
+  }
+
+  // 3. Q-System / Q분류 (암반 분류)
   if (
     cleanTitle.includes('q 분류') || 
     cleanTitle.includes('q분류') || 
@@ -1006,7 +1274,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getQSystemExpertQuestions(title, keywords);
   }
 
-  // 2. Sand Mat (샌드매트)
+  // 4. Sand Mat (샌드매트)
   if (
     cleanTitle.includes('sand mat') || 
     cleanTitle.includes('샌드매트') || 
@@ -1017,7 +1285,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSandMatExpertQuestions(title, keywords);
   }
 
-  // 3. Stereographic Projection (평사투영)
+  // 5. Stereographic Projection (평사투영)
   if (
     cleanTitle.includes('평사투영') || 
     cleanTitle.includes('평사 투영') || 
@@ -1029,7 +1297,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getStereonetExpertQuestions(title, keywords);
   }
 
-  // 4. Rockbolt Pull-out Test (락볼트 인발시험)
+  // 6. Rockbolt Pull-out Test (락볼트 인발시험)
   if (
     cleanTitle.includes('인발') || 
     cleanTitle.includes('인발시험') || 
@@ -1042,7 +1310,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getRockboltPulloutTestExpertQuestions(title, keywords);
   }
 
-  // 5. Single Shell Tunnel / 싱글쉘
+  // 7. Single Shell Tunnel / 싱글쉘
   if (
     cleanTitle.includes('싱글쉘') || 
     cleanTitle.includes('single shell') || 
@@ -1055,7 +1323,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSingleShellExpertQuestions(title, keywords);
   }
 
-  // 6. Soil Nailing / Earth Anchor (소일네일/어스앵커)
+  // 8. Soil Nailing / Earth Anchor (소일네일/어스앵커)
   if (
     cleanTitle.includes('소일내일') || 
     cleanTitle.includes('소일네일') || 
@@ -1070,7 +1338,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
   }
 
-  // 7. Prandtl's Bearing Capacity / Terzaghi / Spread Footing (프란틀/테르자기 지지력, 확대기초 아래 흙)
+  // 9. Prandtl's Bearing Capacity / Terzaghi / Spread Footing (프란틀/테르자기 지지력, 확대기초 아래 흙)
   if (
     cleanTitle.includes('프란틀') || 
     cleanTitle.includes('prandtl') || 
@@ -1094,7 +1362,29 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   // STAGE 2: Secondary Broad Match with Keywords
   // ==========================================
 
-  // 1. Q-System / Q분류
+  // 1. Double Layer / 이중층
+  if (
+    cleanKeywords.includes('이중층') || 
+    cleanKeywords.includes('double layer') || 
+    cleanKeywords.includes('전기이중층') || 
+    cleanKeywords.includes('ddl')
+  ) {
+    console.log("-> Routed (Keyword Match) to Double Layer Expert-Grade Questions.");
+    return getDoubleLayerExpertQuestions(title, keywords);
+  }
+
+  // 2. Consolidation / 압밀
+  if (
+    cleanKeywords.includes('압밀') || 
+    cleanKeywords.includes('consolidation') || 
+    cleanKeywords.includes('침하') || 
+    cleanKeywords.includes('settlement')
+  ) {
+    console.log("-> Routed (Keyword Match) to Consolidation Expert-Grade Questions.");
+    return getConsolidationExpertQuestions(title, keywords);
+  }
+
+  // 3. Q-System / Q분류
   if (
     cleanKeywords.includes('q 분류') || 
     cleanKeywords.includes('q분류') || 
@@ -1107,7 +1397,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getQSystemExpertQuestions(title, keywords);
   }
 
-  // 2. Sand Mat (샌드매트)
+  // 4. Sand Mat (샌드매트)
   if (
     cleanKeywords.includes('sand mat') || 
     cleanKeywords.includes('샌드매트') || 
@@ -1118,7 +1408,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSandMatExpertQuestions(title, keywords);
   }
 
-  // 3. Stereographic Projection (평사투영)
+  // 5. Stereographic Projection (평사투영)
   if (
     cleanKeywords.includes('평사투영') || 
     cleanKeywords.includes('평사 투영') || 
@@ -1130,7 +1420,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getStereonetExpertQuestions(title, keywords);
   }
 
-  // 4. Rockbolt Pull-out Test (락볼트 인발시험)
+  // 6. Rockbolt Pull-out Test (락볼트 인발시험)
   if (
     cleanKeywords.includes('인발') || 
     cleanKeywords.includes('인발시험') || 
@@ -1143,7 +1433,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getRockboltPulloutTestExpertQuestions(title, keywords);
   }
 
-  // 5. Single Shell Tunnel / 싱글쉘
+  // 7. Single Shell Tunnel / 싱글쉘
   if (
     cleanKeywords.includes('싱글쉘') || 
     cleanKeywords.includes('single shell') || 
@@ -1156,7 +1446,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSingleShellExpertQuestions(title, keywords);
   }
 
-  // 6. Soil Nailing / Earth Anchor
+  // 8. Soil Nailing / Earth Anchor
   if (
     cleanKeywords.includes('소일내일') || 
     cleanKeywords.includes('소일네일') || 
@@ -1171,7 +1461,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
   }
 
-  // 7. Prandtl's Bearing Capacity / Terzaghi / Spread Footing
+  // 9. Prandtl's Bearing Capacity / Terzaghi / Spread Footing
   if (
     cleanKeywords.includes('프란틀') || 
     cleanKeywords.includes('prandtl') || 
@@ -1191,7 +1481,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getPrandtlExpertQuestions(title, keywords);
   }
 
-  // 8. Ultimate High-Quality Fallback for other Topics
+  // 10. Ultimate High-Quality Fallback for other Topics
   console.log("-> No matching core topic. Routed to Ultimate High-Quality Geotechnical Expert Questions.");
   return getGeneralGeotechExpertQuestions(title, keywords);
 }
