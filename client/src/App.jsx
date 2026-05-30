@@ -3619,9 +3619,31 @@ export default function App() {
                     ← 좌우 쓸어 넘겨 튜터 대화 보기
                   </span>
                 </div>
-                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                  전공 필수 공식 집중 평가 (주관식 인출)
-                </h3>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                    전공 필수 공식 집중 평가 (주관식 인출)
+                  </h3>
+                  {/* Centered Add Question/Formula Button (Header Position next to title) */}
+                  <button
+                    onClick={() => {
+                      const newFormula = {
+                        title: "",
+                        concept: "",
+                        assumptions: "",
+                        formula: ""
+                      };
+                      const updated = [newFormula, ...formulaQuestions];
+                      latestFormulaQuestionsRef.current = updated;
+                      setFormulaQuestions(updated);
+                      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                      showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                    }}
+                    className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
+                  >
+                    <PlusCircle size={11} />
+                    <span>새로운 공식 추가 (빈표 생성)</span>
+                  </button>
+                </div>
               </div>
             </div>
             
