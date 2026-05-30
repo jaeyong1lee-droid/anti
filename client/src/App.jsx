@@ -2519,12 +2519,15 @@ export default function App() {
                           </div>
                           <button
                             onClick={() => {
-                              setFormulaQuestions(prev => prev.filter((_, i) => i !== idx));
-                              setFormulaRevealed(prev => {
-                                const next = { ...prev };
-                                delete next[idx];
-                                return next;
-                              });
+                              if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
+                                setFormulaQuestions(prev => prev.filter((_, i) => i !== idx));
+                                setFormulaRevealed(prev => {
+                                  const next = { ...prev };
+                                  delete next[idx];
+                                  return next;
+                                });
+                                showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
+                              }
                             }}
                             className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all active:scale-95 cursor-pointer flex items-center justify-center"
                             title="이 공식 문제를 평가 리스트에서 삭제"
