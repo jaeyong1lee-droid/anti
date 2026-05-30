@@ -1222,6 +1222,7 @@ export default function App() {
     }
 
     const cleaned = normalizeAndCompactifyFormulas(loadedData);
+    latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
     localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
     setFormulaRevealed({});
@@ -1285,6 +1286,7 @@ export default function App() {
       loadedData = defaultTheories;
     }
 
+    latestTheoryQuestionsRef.current = loadedData;
     setTheoryQuestions(loadedData);
     localStorage.setItem('anti_theory_questions', JSON.stringify(loadedData));
     setTheoryRevealed({});

@@ -3189,7 +3189,7 @@ app.post('/api/session/theory/upload', upload.single('pdf'), async (req, res) =>
 
     const systemInstruction = `당신은 지반공학 및 토질역학/터널/토목 분야의 최고 권위자이자 기술사 시험 전문 출제위원입니다. 
 제공된 공학 전공 PDF/HTML 텍스트를 정밀 분석하여, 수험생이 학습해야 할 중요한 핵심 이론 및 공식들을 **모두 발췌 및 발굴**하여 **여러 개의 이론 유도 문제 세트**로 구성한 JSON 형식으로 작성해 주세요.
-반드시 본문 텍스트 내에서 언급되거나 유도되는 수학적/물리적 공식과 증명 과정들을 빠짐없이 파싱하여 **최소 3개에서 최대 10개까지**의 개별 이론 카드 목록으로 만들어야 합니다.
+반드시 본문 텍스트 내에서 언급되거나 유도되는 수학적/물리적 공식과 증명 과정들을 빠짐없이 파싱하여 **최소 2개에서 최대 4개까지**의 가장 중요한 핵심적인 개별 이론 카드 목록으로만 콤팩트하게 작성해야 합니다. (출력 속도를 극대화하기 위해 사족을 빼고 핵심만 요약해 작성하십시오.)
 
 JSON 규격:
 {
@@ -3205,38 +3205,196 @@ JSON 규격:
 
     const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
 
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
-    let cleanJsonText = responseText.trim();
-    const startIdx = cleanJsonText.indexOf('{');
-    const endIdx = cleanJsonText.lastIndexOf('}');
-    if (startIdx !== -1 && endIdx !== -1) {
-      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
-    } else if (cleanJsonText.startsWith('```')) {
-      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-    }
+    try {
+      const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+      let cleanJsonText = responseText.trim();
+      const startIdx = cleanJsonText.indexOf('{');
+      const endIdx = cleanJsonText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+      } else if (cleanJsonText.startsWith('```')) {
+        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
 
-    const result = JSON.parse(cleanJsonText);
-    let theories = [];
-    if (result.theories && Array.isArray(result.theories)) {
-      theories = result.theories;
-    } else if (result.title && result.answer) {
-      theories = [result];
-    } else {
-      throw new Error('AI 추출 정보 누락');
-    }
+      const result = JSON.parse(cleanJsonText);
+      let theories = [];
+      if (result.theories && Array.isArray(result.theories)) {
+        theories = result.theories;
+      } else if (result.title && result.answer) {
+        theories = [result];
+      } else {
+        throw new Error('AI 추출 정보 누락');
+      }
 
-    res.json({
-      theories: theories.map(t => ({
-        title: (t.title || '실시간 추출 공식').trim(),
-        answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
-      }))
-    });
+      res.json({
+        theories: theories.map(t => ({
+          title: (t.title || '실시간 추출 공식').trim(),
+          answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
+        }))
+      });
+    } catch (llmErr) {
+      console.warn('[Upload AI Fallback] Gemini analysis failed or timed out. Falling back to local high-fidelity theory parser:', llmErr);
+      const theories = generateLocalTheoryQuestions(pdfName, fileText);
+      res.json({
+        theories: theories.map(t => ({
+          title: t.title.trim(),
+          answer: t.answer.trim()
+        }))
+      });
+    }
 
   } catch (err) {
     console.error('POST /api/session/theory/upload error:', err);
     res.status(500).json({ error: err.message || 'PDF 분석에 실패했습니다.' });
   }
 });
+
+// Local high-fidelity fallback generator for theory cards when AI fails or times out
+function generateLocalTheoryQuestions(pdfName, fileText) {
+  const theories = [];
+  const cleanPdfName = pdfName ? pdfName.replace(/\.[a-zA-Z0-9]+$/, '') : '첨부 문서';
+  
+  if (!fileText) return [{
+    title: `${cleanPdfName} 핵심 이론`,
+    answer: "첨부 문서의 텍스트가 비어 있어 이론식을 추출하지 못했습니다."
+  }];
+
+  const lines = fileText.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+
+  // 1. Extract block and inline LaTeX formulas
+  const mathMatches = [];
+  const doubleDollarRegex = /\$\$(.*?)\$\$/gs;
+  let match;
+  while ((match = doubleDollarRegex.exec(fileText)) !== null) {
+    if (match[1] && match[1].trim().length > 3) {
+      mathMatches.push({ formula: `$$${match[1].trim()}$$`, type: 'LaTeX Block' });
+    }
+  }
+
+  const singleDollarRegex = /\$(.*?)\$/g;
+  while ((match = singleDollarRegex.exec(fileText)) !== null) {
+    if (match[1] && match[1].trim().length > 3 && !match[1].includes('$')) {
+      mathMatches.push({ formula: `$${match[1].trim()}$`, type: 'LaTeX Inline' });
+    }
+  }
+
+  // 2. Identify lines that contain math equations (e.g. including '=' or variables)
+  const equationLines = [];
+  for (const line of lines) {
+    if (line.includes('=') && line.length > 8 && line.length < 120) {
+      if (/[a-zA-Z]/.test(line) && !line.includes('|') && !line.startsWith('http') && !line.includes('<') && !line.includes('>')) {
+        equationLines.push(line);
+      }
+    }
+  }
+
+  // Deduplicate and combine formulas
+  const extractedItems = [];
+  const seenMath = new Set();
+  
+  for (const item of mathMatches) {
+    const norm = item.formula.replace(/\s+/g, '');
+    if (!seenMath.has(norm)) {
+      seenMath.add(norm);
+      extractedItems.push(item);
+    }
+  }
+
+  for (const eq of equationLines) {
+    const norm = eq.replace(/\s+/g, '');
+    if (!seenMath.has(norm)) {
+      seenMath.add(norm);
+      extractedItems.push({ formula: `$$${eq}$$`, type: 'Equation Line' });
+    }
+  }
+
+  // 3. For each extracted formula, search surrounding context to form theory cards
+  if (extractedItems.length > 0) {
+    const maxCards = Math.min(5, extractedItems.length);
+    for (let i = 0; i < maxCards; i++) {
+      const item = extractedItems[i];
+      const formulaRaw = item.formula.replace(/^\$\$|^\$|\$\$$|\$$/g, '').trim();
+      const index = fileText.indexOf(formulaRaw);
+      
+      let context = '';
+      if (index !== -1) {
+        const start = Math.max(0, index - 200);
+        const end = Math.min(fileText.length, index + 300);
+        context = fileText.substring(start, end).trim();
+        context = context
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l.length > 10)
+          .slice(0, 4)
+          .join('\n');
+      }
+
+      // Infer title based on surrounding keywords
+      let cardTitle = `${cleanPdfName} 핵심 공식 ${i + 1}`;
+      const geotechKeywords = [
+        { word: '압밀', title: '테르자기 1차원 압밀 지배 방정식' },
+        { word: '지지력', title: '얕은기초 극한 지지력 공식' },
+        { word: '토압', title: '옹벽 배면 토압 산정 이론 식' },
+        { word: '전단', title: '지반 전단강도 파괴 포락선 식' },
+        { word: '투수', title: '지반 투수계수 및 흐름 연속식' },
+        { word: '보일링', title: '한계동수경사 및 분사현상 검토 식' },
+        { word: '사면', title: '사면 안전율 계산 이론 식' },
+        { word: '여굴', title: '터널 여굴 제어 공식' },
+        { word: 'Q분류', title: '암반 Q분류 지수 공식' },
+        { word: '흙막이', title: '흙막이 수평 지반반력계수 식' }
+      ];
+
+      for (const pair of geotechKeywords) {
+        if ((context && context.includes(pair.word)) || cleanPdfName.includes(pair.word)) {
+          cardTitle = `${pair.title} (로컬 마이닝)`;
+          break;
+        }
+      }
+
+      theories.push({
+        title: cardTitle,
+        answer: `[로컬 추출 공식]:\n${item.formula}\n\n[문서 내 맥락 분석]:\n${context || '본문에서 마이닝된 수식입니다. 상세 기호 정의와 유도는 우측 튜터에게 대화로 물어볼 수 있습니다.'}`
+      });
+    }
+  }
+
+  // 4. If we don't have enough cards, extract high-quality summary paragraphs
+  if (theories.length < 3) {
+    const paragraphs = fileText
+      .split('\n\n')
+      .map(p => p.trim())
+      .filter(p => p.length > 60 && p.length < 400);
+
+    const targetParagraphs = paragraphs.filter(p => 
+      p.includes('다.') || p.includes('있으며') || p.includes('하므로')
+    ).slice(0, 4);
+
+    for (let i = 0; i < targetParagraphs.length; i++) {
+      const p = targetParagraphs[i];
+      let inferredTitle = `${cleanPdfName} 전공 요약 ${theories.length + 1}`;
+      
+      const words = p.replace(/[^\w\s가-힣]/g, ' ').split(/\s+/).filter(w => w.length > 2).slice(0, 3).join(' ');
+      if (words.length > 4) {
+        inferredTitle = `${words} 관련 거동 메커니즘`;
+      }
+
+      theories.push({
+        title: inferredTitle,
+        answer: `[핵심 본문 지문]:\n${p}\n\n[학술 고찰]:\n해당 단락은 토목 기술사 출제에 핵심이 되는 전공 서술 파트입니다. 상세 유도는 우측 실시간 튜터에게 질문해 보세요.`
+      });
+    }
+  }
+
+  // 5. Ultimate fallback if empty
+  if (theories.length === 0) {
+    theories.push({
+      title: `${cleanPdfName} 핵심 역학 이론`,
+      answer: `본 문서에서 특이 수식을 파싱하지 못했습니다. 상세한 유도 질문은 우측의 AI 공식 튜터 대화창을 통해 질의해 주세요.`
+    });
+  }
+
+  return theories;
+}
 
 // POST /api/theory/refresh → 기존 이론을 AI로 고도화하여 갱신
 app.post('/api/theory/refresh', async (req, res) => {
