@@ -1485,6 +1485,25 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [nowTimestamp, scheduleId]);
 
+    // 6회차 이상 복습 완료 시, 장기 보존 복습을 위해 M+1(30일) ~ M+3(90일) 뒤에 다음 회차 복습을 자동으로 추가합니다.
+    if (schedule.review_round >= 6) {
+      const nextRound = schedule.review_round + 1;
+      const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+      const existingNextSchedule = await dbQuery.get(nextCheckSql, [schedule.topic_id, nextRound]);
+      
+      if (!existingNextSchedule) {
+        const randomDays = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
+        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
+        
+        const insertSql = `
+          INSERT INTO schedules (topic_id, review_round, planned_date, status)
+          VALUES (?, ?, ?, 'pending')
+        `;
+        await dbQuery.run(insertSql, [schedule.topic_id, nextRound, nextPlannedDate]);
+        console.log(`Auto-created review round ${nextRound} for topic ${schedule.topic_id} planned on ${nextPlannedDate}`);
+      }
+    }
+
     res.json({
       message: `${schedule.review_round}회차 복습 완료 처리되었습니다.`,
       schedule_id: scheduleId,
@@ -1527,6 +1546,17 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
       WHERE id = ?
     `;
     await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
+
+    // 6회차 이상 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
+    if (schedule.review_round >= 6) {
+      const nextRound = schedule.review_round + 1;
+      const deleteSql = `
+        DELETE FROM schedules 
+        WHERE topic_id = ? AND review_round = ? AND status = 'pending'
+      `;
+      await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
+      console.log(`Cleaned up auto-created future round ${nextRound} for topic ${schedule.topic_id} due to reset`);
+    }
 
     res.json({
       message: `${schedule.review_round}회차 복습이 대기 상태로 초기화되었습니다.`,
@@ -2298,10 +2328,62 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
+// Spaced Repetition 7회차 장기 보존 마이그레이션 함수
+async function migrateSpacedIntervals() {
+  console.log('[Migration] Checking for completed 6th round reviews lacking a 7th round schedule...');
+  try {
+    // 6회차는 완료되었으나 7회차 스케줄이 없는 튜플 조회
+    const sql = `
+      SELECT s6.topic_id, s6.completed_at, s6.planned_date
+      FROM schedules s6
+      WHERE s6.review_round = 6 AND s6.status = 'completed'
+        AND NOT EXISTS (
+          SELECT 1 FROM schedules s7 
+          WHERE s7.topic_id = s6.topic_id AND s7.review_round = 7
+        )
+    `;
+    const targets = await dbQuery.all(sql);
+    
+    if (targets.length === 0) {
+      console.log('[Migration] No migration targets found. All 6th round completed reviews are up to date.');
+      return;
+    }
+    
+    console.log(`[Migration] Found ${targets.length} topics that need 7th round random interval schedule.`);
+    
+    const insertSql = `
+      INSERT INTO schedules (topic_id, review_round, planned_date, status)
+      VALUES (?, 7, ?, 'pending')
+    `;
+    
+    let migratedCount = 0;
+    for (const row of targets) {
+      let baseDate = new Date();
+      if (row.completed_at) {
+        baseDate = new Date(row.completed_at);
+      } else if (row.planned_date) {
+        baseDate = new Date(row.planned_date);
+      }
+      
+      // M+1 ~ M+3 (30 ~ 90일 후)
+      const randomDays = 30 + Math.floor(Math.random() * 61);
+      const plannedDateStr = getLocalDateString(baseDate, randomDays);
+      
+      await dbQuery.run(insertSql, [row.topic_id, plannedDateStr]);
+      migratedCount++;
+    }
+    
+    console.log(`[Migration] Successfully migrated ${migratedCount} topics with 7th round schedules.`);
+  } catch (error) {
+    console.error('[Migration] Error running spaced intervals migration:', error);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
     console.log('Database schema initialization completed.');
+    await migrateSpacedIntervals();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -2327,8 +2409,9 @@ if (!process.env.VERCEL) {
   startServer();
 } else {
   // Vercel 서버리스 환경에서는 데이터베이스 연결 및 테이블 자동 생성을 비동기로 조용히 가동합니다.
-  initDatabase().then(() => {
+  initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
+    await migrateSpacedIntervals();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;
