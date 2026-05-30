@@ -376,6 +376,7 @@ export default function App() {
   const [editTheoryAssumptions, setEditTheoryAssumptions] = useState('');
   const [editTheoryFormula, setEditTheoryFormula] = useState('');
   const [theoryInputRevealed, setTheoryInputRevealed] = useState({});
+  const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
@@ -3791,97 +3792,40 @@ export default function App() {
                     })
                     .map((q) => {
                       const idx = q.originalIdx;
-                      const isRevd = !!formulaRevealed[idx];
+                      const isNewEmptyCard = !q.title && !q.formula;
+                      const isOutputVisible = isNewEmptyCard || !!formulaRevealed[idx];
+                      const isInputVisible = isNewEmptyCard || !!formulaInputRevealed[idx];
 
                       return (
-                      <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
-                        {/* Q Title Row (Q{idx + 1} 배지와 제목, 수정창, 삭제버튼이 한 행에 위치) */}
-                        <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                      <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                        {/* Title Row */}
+                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
                           <div className="flex items-center gap-2 flex-grow min-w-0">
-                            {/* Q 번호 배지 */}
-                            <span className="text-[11px] font-black bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 shrink-0 select-none">
+                            <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
                               Q{idx + 1}
                             </span>
-
-                            {/* 제목 및 편집기 */}
-                            {editingFormulaIdx === idx ? (
-                              <div className="flex items-center gap-2 flex-grow min-w-0">
-                                <input
-                                  type="text"
-                                  value={editingFormulaText}
-                                  onChange={(e) => setEditingFormulaText(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      const trimmed = editingFormulaText.trim();
-                                      if (trimmed) {
-                                        setFormulaQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
-                                          handleSaveFormulaQuestions(updated, false);
-                                          return updated;
-                                        });
-                                        setEditingFormulaIdx(null);
-                                        showNotification('공식 제목이 저장되었습니다.', 'success');
-                                      }
-                                    } else if (e.key === 'Escape') {
-                                      setEditingFormulaIdx(null);
-                                    }
-                                  }}
-                                  className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={() => {
-                                    const trimmed = editingFormulaText.trim();
-                                    if (trimmed) {
-                                      setFormulaQuestions(prev => {
-                                        const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
-                                        handleSaveFormulaQuestions(updated, false);
-                                        return updated;
-                                      });
-                                      setEditingFormulaIdx(null);
-                                      showNotification('공식 제목이 저장되었습니다.', 'success');
-                                    }
-                                  }}
-                                  className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
-                                >
-                                  저장
-                                </button>
-                                <button
-                                  onClick={() => setEditingFormulaIdx(null)}
-                                  className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
-                                >
-                                  취소
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
-                                <span 
-                                  onClick={() => {
-                                    setEditingFormulaIdx(idx);
-                                    setEditingFormulaText(q.title || q.question || '');
-                                  }}
-                                  className="text-[17px] font-extrabold text-white leading-snug truncate cursor-pointer hover:text-rose-400 hover:underline transition-all"
-                                  title="클릭하여 공식 제목 수정"
-                                >
-                                  <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
-                                </span>
-                                <button
-                                  onClick={() => {
-                                    setEditingFormulaIdx(idx);
-                                    setEditingFormulaText(q.title || q.question || '');
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0"
-                                  title="공식 제목 수정"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                              </div>
-                            )}
+                            {/* Editable Title Input */}
+                            <input
+                              type="text"
+                              value={q.title || ''}
+                              onChange={(e) => {
+                                const updated = [...formulaQuestions];
+                                updated[idx] = { ...updated[idx], title: e.target.value, question: e.target.value };
+                                latestFormulaQuestionsRef.current = updated;
+                                setFormulaQuestions(updated);
+                                localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                              }}
+                              onBlur={() => {
+                                handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                              }}
+                              className="flex-grow bg-slate-950 border border-slate-800/80 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-white focus:outline-none transition-colors"
+                              placeholder={`Q${idx + 1} 공식 제목을 입력하세요`}
+                            />
                           </div>
 
-                          {/* 액션 버튼 그룹 (리프레쉬 & 삭제) - 동일한 행높이에 배치 */}
+                          {/* Actions */}
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {/* 리프레쉬 버튼 */}
+                            {/* AI Refresh Button */}
                             <button
                               onClick={() => handleRefreshFormula(idx)}
                               disabled={refreshingFormulaIdx === idx}
@@ -3891,12 +3835,30 @@ export default function App() {
                               title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
                             >
                               <RefreshCw 
-                                size={14} 
+                                size={13} 
                                 className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
                               />
                             </button>
 
-                            {/* 삭제 버튼 */}
+                            {/* Toggle Input Editor */}
+                            <button
+                              onClick={() => {
+                                setFormulaInputRevealed(prev => ({
+                                  ...prev,
+                                  [idx]: !prev[idx]
+                                }));
+                              }}
+                              className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                isInputVisible 
+                                  ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
+                                  : 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border-transparent'
+                              }`}
+                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                            >
+                              <Edit2 size={13} />
+                            </button>
+
+                            {/* Delete/Trash Button */}
                             <button
                               onClick={() => {
                                 if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
@@ -3909,52 +3871,88 @@ export default function App() {
                                     delete next[idx];
                                     return next;
                                   });
+                                  setFormulaInputRevealed(prev => {
+                                    const next = { ...prev };
+                                    delete next[idx];
+                                    return next;
+                                  });
                                   showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
                                 }
                               }}
-                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center justify-center"
-                              title="이 공식 문제를 평가 리스트에서 삭제"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all border border-transparent cursor-pointer"
+                              title="공식 삭제"
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </div>
 
-                        {/* Subjective Reveal */}
-                        {!isRevd ? (
-                          <button
-                            onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: true }))}
-                            className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-rose-500 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-300 transition-all duration-200"
-                          >
-                            💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
-                          </button>
-                        ) : (
-                          <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-3 relative animate-scale-up">
-                            <div className="flex justify-between items-center text-[11px] font-black text-amber-400 mb-1">
-                              <span>📝 공식 및 기호 정의</span>
-                              <button
-                                onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: false }))}
-                                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                title="답안 접기"
-                              >
-                                접기 ✕
-                              </button>
+                        {/* Real-time LaTeX rendered Output Display Window */}
+                        {isOutputVisible ? (
+                          <div className="space-y-3 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                              {!isNewEmptyCard && (
+                                <button
+                                  onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: false }))}
+                                  className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
+                                >
+                                  접기 ✕
+                                </button>
+                              )}
                             </div>
-                            
+
                             {q.concept && (
                               <div className="space-y-1">
                                 <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed">
+                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} />
+                                </div>
                               </div>
                             )}
 
-                            {q.formula && (
-                              <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                            {q.formula ? (
+                              <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                 <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
+                                </div>
                               </div>
+                            ) : !q.concept && (
+                              <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
                             )}
+                          </div>
+                        ) : (
+                          /* "Show Answer" subjective trigger button if output is hidden */
+                          <div className="pt-1">
+                            <button
+                              onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: true }))}
+                              className="w-full py-2.5 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
+                            >
+                              💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                            </button>
+                          </div>
+                        )}
 
+                        {/* Input Textarea Area for Paste / Typing LaTeX */}
+                        {isInputVisible && (
+                          <div className="space-y-1 pt-1 animate-fade-in">
+                            <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
+                            <textarea
+                              value={q.formula || ''}
+                              onChange={(e) => {
+                                const updated = [...formulaQuestions];
+                                updated[idx] = { ...updated[idx], formula: e.target.value };
+                                latestFormulaQuestionsRef.current = updated;
+                                setFormulaQuestions(updated);
+                                localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                              }}
+                              onBlur={() => {
+                                handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                              placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
+                            />
                           </div>
                         )}
                       </div>
