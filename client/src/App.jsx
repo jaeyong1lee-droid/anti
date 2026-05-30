@@ -2150,7 +2150,15 @@ export default function App() {
                           ? 'bg-indigo-600 text-white rounded-br-sm'
                           : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'
                       }`}>
-                        {msg.role === 'user' ? msg.text : <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />}
+                        {msg.role === 'user' ? (
+                          msg.text
+                        ) : (
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                          />
+                        )}
                       </div>
                     </div>
                   ))
@@ -2530,7 +2538,11 @@ export default function App() {
                         {msg.role === 'user' ? (
                           msg.text
                         ) : (
-                          <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                          />
                         )}
                       </div>
                     </div>
