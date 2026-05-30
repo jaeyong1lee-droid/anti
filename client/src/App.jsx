@@ -925,7 +925,7 @@ export default function App() {
       cleanedFormula = cleanedFormula.split(cmd).join(' ');
     }
 
-    const tokenRegex = /[\\a-zA-Z0-9_\{\}]+/g;
+    const tokenRegex = /[a-zA-Z0-9_]+/g;
     const formulaTokens = cleanedFormula.match(tokenRegex) || [];
     
     const normalize = (v) => {
