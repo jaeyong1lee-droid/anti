@@ -2422,11 +2422,27 @@ export default function App() {
                     return (
                       <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Header */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded text-white bg-rose-700">
-                            주관식 · 공식 인출
-                          </span>
+                        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-800/80 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded text-white bg-rose-700">
+                              주관식 · 공식 인출
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setFormulaQuestions(prev => prev.filter((_, i) => i !== idx));
+                              setFormulaRevealed(prev => {
+                                const next = { ...prev };
+                                delete next[idx];
+                                return next;
+                              });
+                            }}
+                            className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+                            title="이 공식 문제를 평가 리스트에서 삭제"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
 
                         {/* Question Text */}
