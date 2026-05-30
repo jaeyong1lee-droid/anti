@@ -278,12 +278,21 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
   }
 
   const keyErrors = [];
+  const hasImage = image && image.data && image.mimeType;
+  let attemptedAny = false;
 
   for (let kIdx = 0; kIdx < keys.length; kIdx++) {
     const key = keys[kIdx];
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const isGrok = key.startsWith('xai-');
     const isGroq = key.startsWith('gsk_');
+
+    if (hasImage && (isGrok || isGroq)) {
+      console.log(`[Skip Text-Only Key] Key #${kIdx + 1} (${maskedKey}) - Grok/Groq은 이미지 입력을 지원하지 않으므로 건너뜁니다.`);
+      continue;
+    }
+
+    attemptedAny = true;
     let keyExhausted = false;
     let keyLastError = null;
 
@@ -493,7 +502,19 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
     }
   }
 
-  throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
+  if (hasImage && !attemptedAny) {
+    throw new Error('이미지 분석에는 Gemini API 키가 필요하지만, 현재 등록된 Gemini API 키가 없습니다. 관리자에게 문의해 주세요.');
+  }
+
+  if (keyErrors.length > 0) {
+    if (hasImage) {
+      throw new Error(`이미지 분석을 위한 모든 Gemini API 키가 할당량 초과(429 Rate Limit) 또는 장애로 인해 사용 불가능합니다. 잠시 후 다시 시도해 주세요. (상세 오류 요약: ${keyErrors.join(' | ')})`);
+    } else {
+      throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
+    }
+  }
+
+  throw new Error('모든 API 키 호출에 실패하였습니다.');
 }
 
 // Helper: Shuffle array elements
@@ -2604,7 +2625,12 @@ app.post('/api/chat', async (req, res) => {
       }
       structuredPrompt += "\n현재 사용자 질문:\n";
     }
-    structuredPrompt += message;
+    
+    let currentMessage = (message || '').trim();
+    if (!currentMessage && image) {
+      currentMessage = "이 이미지에 있는 기술사 문제를 분석하고 풀이 과정과 정답을 친절하고 상세하게 설명해주세요.";
+    }
+    structuredPrompt += currentMessage;
 
     try {
       const systemInstruction = "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요.";
