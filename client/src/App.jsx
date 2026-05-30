@@ -2787,16 +2787,6 @@ export default function App() {
                           />
                         )}
                       </div>
-                      {/* 방법 A: 튜터의 유용한 공식 말풍선 아래에 "✨ 이 공식을 필수공식 퀴즈에 추가" 버튼 연동 */}
-                      {msg.role !== 'user' && (msg.text.includes('$$') || msg.text.includes('$')) && (
-                        <button
-                          onClick={() => handleAddFormulaFromChat(msg.text)}
-                          className="mt-1.5 ml-1 px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 text-rose-300 hover:text-rose-200 text-[10px] font-extrabold flex items-center gap-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer animate-fade-in"
-                        >
-                          <Sparkles size={10} className="text-rose-400" />
-                          <span>✨ 이 공식을 필수공식 퀴즈에 추가</span>
-                        </button>
-                      )}
                     </div>
                   ))
                 )}
