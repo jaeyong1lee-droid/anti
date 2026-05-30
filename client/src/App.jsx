@@ -127,8 +127,11 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
 function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null }) {
   if (!text) return null;
 
+  // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
+  const cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
   if (!window.katex) {
-    return <div className={`${className} whitespace-pre-line leading-relaxed`}>{text}</div>;
+    return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
   }
 
   // $$ ... $$ 블록 수학 기호를 기준으로 쪼갭니다.
@@ -137,8 +140,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
   const blockRegex = /\$\$(.*?)\$\$/gs;
   let match;
 
-  while ((match = blockRegex.exec(text)) !== null) {
-    const beforeText = text.substring(lastIndex, match.index);
+  while ((match = blockRegex.exec(cleanedText)) !== null) {
+    const beforeText = cleanedText.substring(lastIndex, match.index);
     if (beforeText) {
       parts.push({ type: 'text', content: beforeText });
     }
@@ -146,7 +149,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     lastIndex = blockRegex.lastIndex;
   }
 
-  const afterText = text.substring(lastIndex);
+  const afterText = cleanedText.substring(lastIndex);
   if (afterText) {
     parts.push({ type: 'text', content: afterText });
   }
@@ -162,7 +165,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
 
   // 각 파트별 렌더링
   return (
-    <div className={`${className} space-y-3`}>
+    <div className={`${className} space-y-1.5 select-text`}>
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
           let mathHtml = part.content;
@@ -176,11 +179,11 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           return (
             <div 
               key={idx} 
-              className="my-4 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-rose-500/30 transition-all duration-300 group shadow-lg"
+              className="my-2 flex flex-col sm:flex-row items-center justify-between gap-4 py-2.5 px-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-rose-500/30 transition-all duration-300 group shadow-lg select-text"
             >
               {/* KaTeX 수식 */}
               <div 
-                className="flex-grow overflow-x-auto flex justify-center py-2 min-w-0" 
+                className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
               {/* 우측 추가 버튼 (제일 밑 공식만 퀴즈 추가 버튼 표시) */}
@@ -216,7 +219,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
             return (
               <span 
                 key={idx}
-                className="leading-relaxed whitespace-pre-line"
+                className="leading-relaxed whitespace-pre-line select-text"
                 dangerouslySetInnerHTML={{ __html: htmlContent }}
               />
             );
@@ -225,7 +228,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           return (
             <div 
               key={idx}
-              className="leading-relaxed whitespace-pre-line text-sm md:text-base"
+              className="leading-relaxed whitespace-pre-line text-sm md:text-base select-text"
               dangerouslySetInnerHTML={{ __html: htmlContent }}
             />
           );
@@ -2700,7 +2703,7 @@ export default function App() {
                 setReviewMobileTab(activeTab);
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
 
             {/* Left: Quiz Body */}
@@ -3240,7 +3243,7 @@ export default function App() {
                 setExamMobileTab(activeTab);
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
             {/* Left: Exam Body */}
@@ -3686,7 +3689,7 @@ export default function App() {
                 setFormulaMobileTab(activeTab);
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
             {/* Left: Formula Body */}
@@ -4184,7 +4187,7 @@ export default function App() {
                 setTheoryMobileTab(activeTab);
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
             {/* Left: Theory list */}
