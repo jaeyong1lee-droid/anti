@@ -25,7 +25,8 @@ import {
   Flame,
   LayoutTemplate,
   MessageSquare,
-  Send
+  Send,
+  Save
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -817,6 +818,17 @@ export default function App() {
   };
 
   // Open Essential Formulas Exam (subjective only)
+  const handleSaveFormulaQuestions = (qs = formulaQuestions, showToast = true) => {
+    try {
+      localStorage.setItem('anti_formula_questions', JSON.stringify(qs));
+      if (showToast) {
+        showNotification('필수공식 리스트가 성공적으로 저장되었습니다!', 'success');
+      }
+    } catch (err) {
+      console.warn('필수공식 저장 실패:', err);
+    }
+  };
+
   const handleOpenFormulaExam = async () => {
     if (formulaQuestions.length > 0) {
       setShowFormulaExam(true);
@@ -828,6 +840,22 @@ export default function App() {
 
     setLoadingFormula(true);
     setShowFormulaExam(true);
+
+    // 1) localStorage 복원 시도
+    try {
+      const savedStr = localStorage.getItem('anti_formula_questions');
+      if (savedStr) {
+        const parsed = JSON.parse(savedStr);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setFormulaQuestions(parsed);
+          setFormulaRevealed({});
+          setLoadingFormula(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('localStorage 필수공식 복원 실패:', err);
+    }
 
     const defaultFormulas = [
       {
@@ -1129,7 +1157,11 @@ export default function App() {
       formula: initialFormula
     };
 
-    setFormulaQuestions(prev => [newFormula, ...prev]);
+    setFormulaQuestions(prev => {
+      const updated = [newFormula, ...prev];
+      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+      return updated;
+    });
     showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
 
     // 6. 백그라운드 AI 정밀 공식 작명 및 변수/상수 해설 API 비동기 가동
@@ -1143,8 +1175,8 @@ export default function App() {
         if (data && data.title) {
           const suggestedTitle = data.title;
           const suggestedStructure = data.structure;
-          setFormulaQuestions(prev => 
-            prev.map(f => {
+          setFormulaQuestions(prev => {
+            const updated = prev.map(f => {
               if (f.id === newFormula.id) {
                 return {
                   ...f,
@@ -1154,8 +1186,10 @@ export default function App() {
                 };
               }
               return f;
-            })
-          );
+            });
+            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+            return updated;
+          });
           showNotification(`[${suggestedTitle}] 공식과 변수 해설이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
         }
       })
@@ -2646,24 +2680,25 @@ export default function App() {
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
               <button
                 onClick={() => {
+                  handleSaveFormulaQuestions(formulaQuestions, false); // 닫기를 눌러도 저장후 닫기
                   savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
                   setShowFormulaExam(false);
                 }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="화면만 숨김 (재개 시 문제 유지)"
+                title="저장 후 닫기"
               >
                 닫기
               </button>
               <button
                 onClick={() => {
+                  handleSaveFormulaQuestions(formulaQuestions, true); // 저장 버튼: 저장 후 닫기
                   setShowFormulaExam(false);
-                  setFormulaQuestions([]);
-                  setFormulaRevealed({});
                 }}
-                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="종합평가 종료"
+                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                title="공식 변경사항 저장 및 종료"
               >
-                종료
+                <Save size={13} />
+                저장
               </button>
             </div>
           </div>
@@ -2701,7 +2736,11 @@ export default function App() {
                           <button
                             onClick={() => {
                               if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
-                                setFormulaQuestions(prev => prev.filter((_, i) => i !== idx));
+                                setFormulaQuestions(prev => {
+                                  const updated = prev.filter((_, i) => i !== idx);
+                                  localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                  return updated;
+                                });
                                 setFormulaRevealed(prev => {
                                   const next = { ...prev };
                                   delete next[idx];
