@@ -333,8 +333,8 @@ export default function App() {
   
   // Exam mode state
   const [examQuestions, setExamQuestions] = useState([]);
-  const [loadingExam, setLoadingExam] = useState(false);
-  const [showExam, setShowExam] = useState(false);
+  const [showExam, setShowExam] = useState(() => localStorage.getItem('anti_show_exam') === 'true');
+  const [loadingExam, setLoadingExam] = useState(() => localStorage.getItem('anti_show_exam') === 'true');
   const [examTopic, setExamTopic] = useState(null);
   const [examRevealed, setExamRevealed] = useState({});
   const [examAnswers, setExamAnswers] = useState({});
@@ -495,9 +495,20 @@ export default function App() {
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
           if (data.savedExamScroll) savedExamScroll.current = data.savedExamScroll;
+          requestAnimationFrame(() => {
+            if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
+          });
+        } else {
+          setShowExam(false);
         }
       })
-      .catch(e => console.warn('서버 세션 복원 실패:', e));
+      .catch(e => {
+        console.warn('서버 세션 복원 실패:', e);
+        setShowExam(false);
+      })
+      .finally(() => {
+        setLoadingExam(false);
+      });
   }, []); // mount 시 1회만
 
   // ── Save state to localStorage whenever key state changes
@@ -1488,6 +1499,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('anti_show_theory_exam', showTheoryExam ? 'true' : 'false');
   }, [showTheoryExam]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_show_exam', showExam ? 'true' : 'false');
+  }, [showExam]);
 
   const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
