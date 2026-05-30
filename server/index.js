@@ -267,6 +267,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
     const key = keys[kIdx];
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const isGrok = key.startsWith('xai-');
+    const isGroq = key.startsWith('gsk_');
     let keyExhausted = false;
     let keyLastError = null;
 
@@ -337,6 +338,72 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
           }
         }
       }
+    } else if (isGroq) {
+      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+      for (const modelName of GROQ_MODELS) {
+        if (keyExhausted) break;
+
+        let attempt = 0;
+        const maxAttempts = 2; // 1 retry (2s)
+        let delay = 2000; // Initial delay: 2s
+
+        while (attempt < maxAttempts) {
+          try {
+            console.log(`[Groq 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+            const messages = [];
+            if (systemInstruction) {
+              messages.push({ role: 'system', content: systemInstruction });
+            }
+            messages.push({ role: 'user', content: userPrompt });
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: modelName,
+                messages: messages,
+                temperature: 0.2
+              })
+            });
+
+            if (!response.ok) {
+              const errBody = await response.text().catch(() => '');
+              throw new Error(`HTTP Error ${response.status}: ${errBody}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content?.trim();
+            if (text) {
+              console.log(`[Groq 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+              return text;
+            } else {
+              throw new Error('Groq response empty or invalid choices structure');
+            }
+          } catch (err) {
+            console.warn(`[Groq 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
+            keyLastError = err;
+
+            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429') || err.message?.includes('Limit');
+            if (isQuota) {
+              attempt++;
+              if (attempt < maxAttempts) {
+                console.log(`[지수 백오프] 429 감지 (Groq). ${delay}ms 후 재시도합니다...`);
+                await sleep(delay);
+                delay *= 2;
+              } else {
+                console.warn(`[Groq Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
+                keyExhausted = true;
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+        }
+      }
     } else {
       // Gemini
       const genAI = new GoogleGenerativeAI(key);
@@ -389,7 +456,10 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
 
     if (keyLastError) {
       const errMsg = keyLastError.message || 'Unknown error';
-      keyErrors.push(`Key #${kIdx + 1} (${isGrok ? 'Grok' : 'Gemini'}): ${errMsg.substring(0, 120)}`);
+      let keyType = 'Gemini';
+      if (isGrok) keyType = 'Grok';
+      else if (isGroq) keyType = 'Groq';
+      keyErrors.push(`Key #${kIdx + 1} (${keyType}): ${errMsg.substring(0, 120)}`);
     }
   }
 
@@ -2057,6 +2127,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           const key = keys[kIdx];
           const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
           const isGrok = key.startsWith('xai-');
+          const isGroq = key.startsWith('gsk_');
           let keyExhausted = false;
           let keyLastError = null;
 
@@ -2133,6 +2204,79 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                 break; // Break the models loop on success
               }
             }
+          } else if (isGroq) {
+            const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+            for (const modelName of GROQ_MODELS) {
+              if (keyExhausted) break;
+
+              let attempt = 0;
+              const maxAttempts = 2; // 1 retry (2s)
+              let delay = 2000; // 2s initial delay
+
+              while (attempt < maxAttempts) {
+                try {
+                  console.log(`[단일토픽퀴즈 Groq] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName} (시도 #${attempt + 1})`);
+                  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${key}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      model: modelName,
+                      messages: [{ role: 'user', content: prompt }],
+                      temperature: 0.2
+                    })
+                  });
+
+                  if (!response.ok) {
+                    const errBody = await response.text().catch(() => '');
+                    throw new Error(`HTTP Error ${response.status}: ${errBody}`);
+                  }
+
+                  const data = await response.json();
+                  const rawText = data.choices?.[0]?.message?.content?.trim() || '';
+
+                  try {
+                    let text = rawText;
+                    if (text.startsWith('```')) {
+                      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                    }
+                    questions = JSON.parse(text);
+                  } catch (parseErr) {
+                    console.warn(`[단일토픽퀴즈 Groq] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
+                    questions = extractJsonArray(rawText);
+                  }
+
+                  if (!questions || !Array.isArray(questions)) {
+                    throw new Error('Parsed result is not a valid JSON array or empty');
+                  }
+
+                  console.log(`[단일토픽퀴즈 Groq] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
+                  break; // 성공 시 루프 종료
+                } catch (modelErr) {
+                  keyLastError = modelErr;
+                  const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.message?.includes('429') || modelErr.message?.includes('Limit');
+                  if (isQuota) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                      console.log(`[지수 백오프] 429 감지 (단일토픽퀴즈 Groq). ${delay}ms 후 재시도합니다...`);
+                      await sleep(delay);
+                      delay *= 2;
+                    } else {
+                      console.warn(`[단일토픽퀴즈 Groq Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
+                      keyExhausted = true;
+                      break;
+                    }
+                  } else {
+                    break;
+                  }
+                }
+              }
+              if (questions) {
+                break;
+              }
+            }
           } else {
             const genAI = new GoogleGenerativeAI(key);
             const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -2196,7 +2340,10 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
           if (keyLastError) {
             const errMsg = keyLastError.message || 'Unknown error';
-            keyErrors.push(`Key #${kIdx + 1} (${isGrok ? 'Grok' : 'Gemini'}): ${errMsg.substring(0, 120)}`);
+            let keyType = 'Gemini';
+            if (isGrok) keyType = 'Grok';
+            else if (isGroq) keyType = 'Groq';
+            keyErrors.push(`Key #${kIdx + 1} (${keyType}): ${errMsg.substring(0, 120)}`);
           }
 
           if (questions) {
