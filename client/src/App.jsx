@@ -1118,22 +1118,21 @@ export default function App() {
     // 4. Question 합성
     const question = `${title} 공식을 제시하고, 각 기호의 정의를 서술하시오.`;
 
-    // 5. structure 합성
-    const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
+    // 5. initialFormula 정의 (실시간 AI 로딩 인디케이터 부착)
+    const initialFormula = formula + "\n\n⏳ 각 변수/상수의 상세 의미를 AI가 분석하고 있습니다...";
 
     const newFormula = {
       id: `f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // 실시간 비동기 매칭용 고유 ID
       title,
       question,
       concept,
-      formula,
-      structure
+      formula: initialFormula
     };
 
     setFormulaQuestions(prev => [newFormula, ...prev]);
     showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
 
-    // 6. 백그라운드 AI 정밀 공식 작명 API 비동기 가동
+    // 6. 백그라운드 AI 정밀 공식 작명 및 변수/상수 해설 API 비동기 가동
     fetch(`${API_BASE}/api/formula/suggest-title`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1151,13 +1150,13 @@ export default function App() {
                   ...f,
                   title: suggestedTitle,
                   question: `${suggestedTitle} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-                  structure: suggestedStructure || f.structure
+                  formula: suggestedStructure ? `$$${mathContent}$$\n\n${suggestedStructure}` : `$$${mathContent}$$`
                 };
               }
               return f;
             })
           );
-          showNotification(`[${suggestedTitle}] 공식이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
+          showNotification(`[${suggestedTitle}] 공식과 변수 해설이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
         }
       })
       .catch(err => {
@@ -2562,10 +2561,10 @@ export default function App() {
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-xs leading-relaxed ${
+                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed ${
                         msg.role === 'user' 
                           ? 'bg-indigo-600 text-white rounded-br-sm' 
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-sm'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-sm max-w-none'
                       }`}>
                         {msg.role === 'user' ? (
                           msg.text
@@ -2758,12 +2757,7 @@ export default function App() {
                               </div>
                             )}
 
-                            {q.structure && (
-                              <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                <span className="text-[10px] font-black text-emerald-400">📋 각각의 변수/상수가 의미하는 것 & 역학적 의의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
-                              </div>
-                            )}
+
                           </div>
                         )}
                       </div>
@@ -2816,10 +2810,10 @@ export default function App() {
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed ${
+                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed ${
                         msg.role === 'user' 
                           ? 'bg-indigo-600 text-white rounded-br-sm' 
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base max-w-none'
                       }`}>
                         {msg.role === 'user' ? (
                           msg.text

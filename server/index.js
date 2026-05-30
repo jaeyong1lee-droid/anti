@@ -2594,7 +2594,11 @@ JSON 형식:
       const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
       
       let cleanJsonText = responseText.trim();
-      if (cleanJsonText.startsWith('```')) {
+      const startIdx = cleanJsonText.indexOf('{');
+      const endIdx = cleanJsonText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+      } else if (cleanJsonText.startsWith('```')) {
         cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
       }
       
@@ -2602,13 +2606,13 @@ JSON 형식:
         const result = JSON.parse(cleanJsonText);
         res.json({
           title: result.title ? result.title.replace(/^["'`\s]+|["'`\s]+$/g, '') : '실시간 추출 공식',
-          structure: result.structure || '공식 분석 내용을 불러올 수 없습니다.'
+          structure: result.structure || '각 변수/상수의 상세 공학적 의미를 튜터 대화에서 분석해 보세요.'
         });
       } catch (parseErr) {
         console.warn('JSON parsing failed, falling back to plaintext parse:', parseErr);
         res.json({
           title: responseText.substring(0, 30).trim(),
-          structure: '1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해'
+          structure: '- 각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요.'
         });
       }
     } catch (err) {
