@@ -1788,10 +1788,24 @@ export default function App() {
             </button>
             <button
               onClick={handleOpenExam}
-              className="flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 text-amber-400 hover:text-amber-200 hover:bg-amber-950/40"
+              className="flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 text-amber-400 hover:text-amber-200 hover:bg-amber-950/40 cursor-pointer"
             >
               <Award size={14} />
               종합평가
+            </button>
+            <button
+              onClick={handleOpenFormulaExam}
+              className="flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 text-rose-400 hover:text-rose-200 hover:bg-rose-950/40 cursor-pointer"
+            >
+              <Sigma size={14} />
+              필수공식
+            </button>
+            <button
+              onClick={handleOpenTheoryExam}
+              className="flex items-center gap-2 whitespace-nowrap text-xs font-bold px-4 py-2 rounded-lg transition-all duration-200 text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40 cursor-pointer"
+            >
+              <Brain size={14} />
+              이론유도
             </button>
           </div>
         </div>
