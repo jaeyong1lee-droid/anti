@@ -26,7 +26,8 @@ import {
   LayoutTemplate,
   MessageSquare,
   Send,
-  Save
+  Save,
+  Edit2
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -251,6 +252,8 @@ export default function App() {
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
+  const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
+  const [editingFormulaText, setEditingFormulaText] = useState("");
   
   // Date selector for easy testing (defaults to today's local date 'YYYY-MM-DD')
   const getTodayString = () => {
@@ -2775,14 +2778,91 @@ export default function App() {
 
                     return (
                       <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
-                        {/* Q Header */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-800/80 pb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded text-white bg-rose-700">
-                              주관식 · 공식 인출
+                        {/* Q Title Row (Q{idx + 1} 배지와 제목, 수정창, 삭제버튼이 한 행에 위치) */}
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                          <div className="flex items-center gap-2 flex-grow min-w-0">
+                            {/* Q 번호 배지 */}
+                            <span className="text-[11px] font-black bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 shrink-0 select-none">
+                              Q{idx + 1}
                             </span>
+
+                            {/* 제목 및 편집기 */}
+                            {editingFormulaIdx === idx ? (
+                              <div className="flex items-center gap-2 flex-grow min-w-0">
+                                <input
+                                  type="text"
+                                  value={editingFormulaText}
+                                  onChange={(e) => setEditingFormulaText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const trimmed = editingFormulaText.trim();
+                                      if (trimmed) {
+                                        setFormulaQuestions(prev => {
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                          localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                          return updated;
+                                        });
+                                        setEditingFormulaIdx(null);
+                                        showNotification('공식 제목이 저장되었습니다.', 'success');
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      setEditingFormulaIdx(null);
+                                    }
+                                  }}
+                                  className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => {
+                                    const trimmed = editingFormulaText.trim();
+                                    if (trimmed) {
+                                      setFormulaQuestions(prev => {
+                                        const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                        localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                        return updated;
+                                      });
+                                      setEditingFormulaIdx(null);
+                                      showNotification('공식 제목이 저장되었습니다.', 'success');
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setEditingFormulaIdx(null)}
+                                  className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
+                                <span 
+                                  onClick={() => {
+                                    setEditingFormulaIdx(idx);
+                                    setEditingFormulaText(q.title || q.question || '');
+                                  }}
+                                  className="text-[17px] font-extrabold text-white leading-snug truncate cursor-pointer hover:text-rose-400 hover:underline transition-all"
+                                  title="클릭하여 공식 제목 수정"
+                                >
+                                  <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setEditingFormulaIdx(idx);
+                                    setEditingFormulaText(q.title || q.question || '');
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0"
+                                  title="공식 제목 수정"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                              </div>
+                            )}
                           </div>
+
+                          {/* 삭제 버튼 - 동일한 행높이에 배치 */}
                           <button
                             onClick={() => {
                               if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
@@ -2799,16 +2879,11 @@ export default function App() {
                                 showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
                               }
                             }}
-                            className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
                             title="이 공식 문제를 평가 리스트에서 삭제"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
-                        </div>
-
-                        {/* Question Text */}
-                        <div className="text-[17px] font-bold text-white leading-relaxed">
-                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
                         </div>
 
                         {/* Subjective Reveal */}
