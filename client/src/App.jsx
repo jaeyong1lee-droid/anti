@@ -17,6 +17,7 @@ import {
   ChevronUp, 
   Award, 
   BookOpen, 
+  Sigma, 
   Info,
   Check,
   Eye,
@@ -254,6 +255,14 @@ export default function App() {
   const [examAnswers, setExamAnswers] = useState({});
   const [detailedAnswers, setDetailedAnswers] = useState({});
   const [chatHistory, setChatHistory] = useState([]);
+
+  // Formula mode states
+  const [showFormulaExam, setShowFormulaExam] = useState(false);
+  const [formulaQuestions, setFormulaQuestions] = useState([]);
+  const [loadingFormula, setLoadingFormula] = useState(false);
+  const [formulaRevealed, setFormulaRevealed] = useState({});
+  const formulaBodyRef = useRef(null);
+  const savedFormulaScroll = useRef(0);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
@@ -765,6 +774,139 @@ export default function App() {
       setLoadingExam(false);
     }
   };
+
+  // Open Essential Formulas Exam (subjective only)
+  const handleOpenFormulaExam = async () => {
+    if (formulaQuestions.length > 0) {
+      setShowFormulaExam(true);
+      requestAnimationFrame(() => {
+        if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;
+      });
+      return;
+    }
+
+    setLoadingFormula(true);
+    setShowFormulaExam(true);
+
+    const defaultFormulas = [
+      {
+        title: "Barton의 암반 Q분류",
+        question: "Barton(바톤)의 암반 Q분류(Q-system) 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식",
+        formula: "$$Q = \\\\frac{RQD}{J_n} \\\\times \\\\frac{J_r}{J_a} \\\\times \\\\frac{J_w}{SRF}$$\\n\\n- $Q$: 암반 등급 지수\\n- $RQD$: 암질지수 (Rock Quality Designation)\\n- $J_n$: 절리군 수 (Joint set number)\\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
+        structure: "1. RQD/Jn: 블록의 크기\\n2. Jr/Ja: 블록 전단강도\\n3. Jw/SRF: 지반 유효응력 분포 상태"
+      },
+      {
+        title: "Terzaghi 얕은기초 극한 지지력",
+        question: "Terzaghi(테르자기)의 얕은기초 극한 지지력 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식",
+        formula: "$$q_{ult} = c N_c + q N_q + 0.5 \\\\gamma B N_{\\\\gamma}$$\\n\\n- $q_{ult}$: 극한 지지력\\n- $c$: 흙의 점착력\\n- $q$: 기초 저면의 유효상재하중 ($\\\\gamma D_f$)\\n- $\\\\gamma$: 기초 저면 아래 흙의 단위중량\\n- $B$: 기초의 폭 (단변 길이)\\n- $N_c, N_q, N_{\\\\gamma}$: 지반의 내부마찰각($\\\\phi$)에 의해 정의되는 지지력 계수",
+        structure: "1. 점착력 성분 ($c N_c$)\\n2. 마찰각 및 상재하중 성분 ($q N_q$)\\n3. 기초 자중 및 마찰 성분 ($0.5 \\\\gamma B N_{\\\\gamma}$)"
+      },
+      {
+        title: "연약지반 Sand Mat 최소 소요 두께",
+        question: "연약지반 개량공법 중 Sand Mat(샌드매트)의 최소 소요 두께 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식",
+        formula: "$$H = \\\\frac{q - q_a}{2 \\\\gamma \\\\tan\\\\theta}$$\\n\\n- $H$: 샌드매트의 소요 최소 두께\\n- $q$: 포설 장비의 접지압\\n- $q_a$: 지반의 허용 지지력\\n- $\\\\gamma$: 모래의 단위중량\\n- $\\\\theta$: 하중 분산각 (일반적으로 $45^\\\\circ$ 적용)",
+        structure: "1. 상부 장비 접지압 분산 원리\\n2. 모래의 전단 부착각과 저면 마찰 저항"
+      },
+      {
+        title: "평사투영 극점 변환 반경 (등면적 투영)",
+        question: "암반 불연속면 평사투영법에서 등면적 투영(Schmidt Net)의 원점으로부터 극점까지의 변환 반경 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식",
+        formula: "$$r = \\\\sqrt{2} R \\\\sin\\\\left(45^\\\\circ - \\\\frac{\\\\alpha}{2}\\\\right)$$\\n\\n- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\\n- $R$: 투영구(Sphere)의 반경\\n- $\\\\alpha$: 불연속면의 경사각 (Dip angle)",
+        structure: "1. 등면적 조건 구면 투영 원리\\n2. 극점(Pole) 매핑 기하학"
+      },
+      {
+        title: "락볼트 인발시험 설계 지반 고착력",
+        question: "터널 지보재 락볼트(Rock Bolt) 현장 인발시험 시, 지반과의 마찰 고착력 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식",
+        formula: "$$P = \\\\pi \\\\cdot d \\\\cdot L \\\\cdot \\\\tau_{allow}$$\\n\\n- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\\n- $d$: 락볼트 천공 구멍의 직경\\n- $L$: 그라우팅 정착 길이 (고착 영역)\\n- $\\\\tau_{allow}$: 지반과 그라우팅재(또는 그라우트와 락볼트) 간의 허용 부착 전단강도",
+        structure: "1. 부착 저항 주면적 (\\\\pi d L)\\n2. 정착 한계 부착 전단저항 특성"
+      },
+      {
+        title: "Rankine 주동토압",
+        question: "Rankine(랭킨)의 주동토압계수($K_a$) 및 주동토압 강도($p_a$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식",
+        formula: "$$K_a = \\\\tan^2\\\\left(45^\\circ - \\\\frac{\\\\phi}{2}\\\\right) = \\\\frac{1 - \\\\sin\\\\phi}{1 + \\\\sin\\\\phi}$$\\n$$p_a = K_a \\\\gamma z - 2 c \\\\sqrt{K_a}$$\\n\\n- $K_a$: 주동토압 계수\\n- $\\\\phi$: 흙의 내부마찰각\\n- $p_a$: 깊이 $z$에서의 주동토압 강도\\n- $\\\\gamma$: 흙의 단위중량\\n- $z$: 검토 단면 깊이\\n- $c$: 흙의 점착력",
+        structure: "1. 흙의 유효 상재압에 의한 주동토압력\\n2. 흙의 자립 점착력에 의한 인장 저항력 감쇄 ($2c\\\\sqrt{K_a}$)"
+      },
+      {
+        title: "Terzaghi 1차원 압밀 지배 미분방정식",
+        question: "Terzaghi(테르자기)의 1차원 압밀 기본 지배 미분방정식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식",
+        formula: "$$\\frac{\\\\partial u}{\\\\partial t} = C_v \\\\frac{\\\\partial^2 u}{\\\\partial z^2}$$\\n\\n- $u$: 시간 $t$, 깊이 $z$에서의 과잉간극수압\\n- $t$: 하중 작용 후 경과 시간\\n- $z$: 하중 분담 전파 수직 깊이\\n- $C_v$: 압밀계수 ($C_v = \\\\frac{k}{m_v \\\\gamma_w}$)\\n  * $k$: 투수계수\\n  * $m_v$: 체적압축계수\\n  * $\\\\gamma_w$: 물의 단위중량",
+        structure: "1. 시간에 따른 수압 변화 항 (\\\\partial u / \\\\partial t)\\n2. 깊이에 따른 2차 수두 배수 확산 항 (\\\\partial^2 u / \\\\partial z^2$)"
+      },
+      {
+        title: "보상도 (보상기초 하중 상쇄 비율)",
+        question: "보상기초(Compensated Foundation) 설계 시 지반 굴착 하중과 구조물 자중 간의 균형을 계측하는 보상도($C$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식",
+        formula: "$$C = \\\\frac{\\\\gamma D_f}{q}$$\\n\\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\\n- $\\\\gamma$: 굴착하여 배출한 흙의 단위중량\\n- $D_f$: 기초의 굴착 깊이\\n- $q$: 상부 구조물 총 자중 및 하중 합산값",
+        structure: "1. 흙의 굴착 자중 상쇄량 ($\\\\gamma D_f$)\\n2. 실제 침하를 유발하는 순응력 ($q_{net} = q - \\\\gamma D_f$)"
+      },
+      {
+        title: "터널 배면 싱글쉘 정수압 분포 공식",
+        question: "터널 싱글쉘(Single Shell) 라이닝에서 배수형식이 비배수형일 때, 아치 정상부 배면에 작용하는 설계 정수압($p_w$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식",
+        formula: "$$p_w = \\\\gamma_w \\\\times H$$\\n\\n- $p_w$: 라이닝 배면 작용 설계 수압\\n- $\\\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\\\,\\\\text{kN/m}^3$)\\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)",
+        structure: "1. 비배수 터널의 전수압 설계 한계\\n2. 심도와 수두의 완전 비례 관계"
+      },
+      {
+        title: "가설 흙막이 벽체 지반스프링상수",
+        question: "가설 흙막이 구조 계산에서 지반스프링(Elastoplastic Beam-Spring Model) 모델링 시, 수평 지반반력계수($k_h$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
+        concept: "벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식",
+        formula: "$$k_h = k_{h0} \\\\left(\\\\frac{B_H}{0.3}\\\\right)^{-3/4}$$\\n\\n- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\\n- $k_{h0}$: 직경 $30\\\\,\\\\text{cm}$ 강체 원판에 의한 표준 수평 지반반력계수 ($k_{h0} = \\\\frac{1}{0.3} E_0$)\\n- $B_H$: 가상의 기초 환산폭 ($B_H = \\\\sqrt{A/h}$ 또는 벽체 영향 단위폭)\\n- $E_0$: 지반의 탄성계수 (보통 표준관입시험 N치 연동: $E_0 = 2800 N$)",
+        structure: "1. 치수 효과(Size Effect) 보정 지수 ($-3/4$승)\\n2. 지반의 유효 지반 반력 강성 변환식"
+      }
+    ];
+
+    try {
+      const qs = [...defaultFormulas];
+      for (let i = qs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [qs[i], qs[j]] = [qs[j], qs[i]];
+      }
+      setFormulaQuestions(qs);
+      setFormulaRevealed({});
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingFormula(false);
+    }
+  };
+
+  const handleScrollFormula = (direction) => {
+    if (!formulaBodyRef.current) return;
+    const cards = formulaBodyRef.current.querySelectorAll('.formula-card-item');
+    if (cards.length === 0) return;
+
+    const containerTop = formulaBodyRef.current.getBoundingClientRect().top;
+    
+    let currentIndex = 0;
+    let minDiff = Infinity;
+    
+    cards.forEach((card, idx) => {
+      const rect = card.getBoundingClientRect();
+      const diff = Math.abs(rect.top - containerTop - 10);
+      if (diff < minDiff) {
+        minDiff = diff;
+        currentIndex = idx;
+      }
+    });
+
+    let targetIndex = currentIndex;
+    if (direction === 'down') {
+      targetIndex = Math.min(currentIndex + 1, cards.length - 1);
+    } else if (direction === 'up') {
+      targetIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    const targetCard = cards[targetIndex];
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   // View full report text
   const handleViewFullReport = async (topicId) => {
     setLoadingReport(true);
@@ -980,6 +1122,15 @@ export default function App() {
         >
           <Award size={20} />
           <span className="text-[10px] font-bold tracking-tight">종합평가</span>
+        </button>
+        {/* 필수공식 버튼 */}
+        <button
+          onClick={handleOpenFormulaExam}
+          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-rose-400 hover:text-rose-200 hover:bg-rose-950/40"
+          title="전공 필수 공식 집중 평가 (주관식 인출)"
+        >
+          <Sigma size={20} />
+          <span className="text-[10px] font-bold tracking-tight">필수공식</span>
         </button>
       </div>
 
@@ -2188,6 +2339,237 @@ export default function App() {
                     type="submit"
                     disabled={!chatInput.trim() || isChatLoading}
                     className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-colors"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
+      {showFormulaExam && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+          {/* Formula Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
+                <Sigma size={20} />
+              </div>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider whitespace-nowrap">필수공식 집중 복습</span>
+                  {!loadingFormula && formulaQuestions.length > 0 && (
+                    <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {formulaQuestions.length}개 공식
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                  전공 필수 공식 집중 평가 (주관식 인출)
+                </h3>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+              <button
+                onClick={() => {
+                  savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
+                  setShowFormulaExam(false);
+                }}
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="화면만 숨김 (재개 시 문제 유지)"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => {
+                  setShowFormulaExam(false);
+                  setFormulaQuestions([]);
+                  setFormulaRevealed({});
+                }}
+                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="종합평가 종료"
+              >
+                종료
+              </button>
+            </div>
+          </div>
+
+          {/* Layout Split Container */}
+          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+            
+            {/* Left: Formula Body */}
+            <div ref={formulaBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+              {loadingFormula ? (
+                <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
+                  <div className="relative">
+                    <div className="p-6 bg-rose-950/80 text-rose-400 rounded-full animate-bounce-slow">
+                      <Sigma size={40} />
+                    </div>
+                    <div className="absolute inset-0 bg-rose-500 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <h4 className="text-xl font-bold text-white mt-2">필수 공식 데이터를 로드하는 중...</h4>
+                </div>
+              ) : (
+                <div className="max-w-3xl mx-auto space-y-5">
+                  {formulaQuestions.map((q, idx) => {
+                    const isRevd = !!formulaRevealed[idx];
+
+                    return (
+                      <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                        {/* Q Header */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded text-white bg-rose-700">
+                            주관식 · 공식 인출
+                          </span>
+                        </div>
+
+                        {/* Question Text */}
+                        <div className="text-[17px] font-bold text-white leading-relaxed">
+                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                        </div>
+
+                        {/* Subjective Reveal */}
+                        {!isRevd ? (
+                          <button
+                            onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: true }))}
+                            className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-rose-500 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-300 transition-all duration-200"
+                          >
+                            💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                          </button>
+                        ) : (
+                          <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-3 relative animate-scale-up">
+                            <div className="flex justify-between items-center text-[11px] font-black text-amber-400 mb-1">
+                              <span>📝 공식 및 기호 정의</span>
+                              <button
+                                onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: false }))}
+                                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                title="답안 접기"
+                              >
+                                접기 ✕
+                              </button>
+                            </div>
+                            
+                            {q.concept && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                              </div>
+                            )}
+
+                            {q.formula && (
+                              <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
+                                <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                              </div>
+                            )}
+
+                            {q.structure && (
+                              <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                <span className="text-[10px] font-black text-emerald-400">📋 역학적 의의 / 구조: </span>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Vertical Navigation Divider Controller (PC Only) */}
+            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+              <div 
+                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+              >
+                <button 
+                  onClick={() => handleScrollFormula('up')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-rose-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-rose-500 hover:shadow-rose-600/30 cursor-pointer flex items-center justify-center group"
+                  title="이전 공식으로 스크롤"
+                >
+                  <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+                <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
+                <button 
+                  onClick={() => handleScrollFormula('down')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-rose-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-rose-500 hover:shadow-rose-600/30 cursor-pointer flex items-center justify-center group"
+                  title="다음 공식으로 스크롤"
+                >
+                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Gemini Sidebar for Formula (Desktop Only) */}
+            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <Brain size={16} className="text-rose-500" />
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
+              </div>
+              
+              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">공식 유도 과정이나 실제 계산 문제 등<br/>무엇이든 실시간으로 설명해 드립니다!</p>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
+                        {msg.role === 'user' ? '나' : 'Gemini'}
+                      </div>
+                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed ${
+                        msg.role === 'user' 
+                          ? 'bg-indigo-600 text-white rounded-br-sm' 
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base'
+                      }`}>
+                        {msg.role === 'user' ? (
+                          msg.text
+                        ) : (
+                          <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex flex-col items-start">
+                    <div className="text-[10px] mb-1 font-bold text-rose-400 ml-1">Gemini</div>
+                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }}
+                  className="relative"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    placeholder="공식 유도 및 개념 질문..."
+                    disabled={isChatLoading}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-colors"
                   >
                     <Send size={12} className="text-white" />
                   </button>
