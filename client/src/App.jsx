@@ -1323,23 +1323,24 @@ export default function App() {
       }
 
       const data = await res.json();
-      if (!data.title || !data.answer) {
-        throw new Error('AI 분석 결과에서 제목 또는 모범 답안을 반환받지 못했습니다.');
+      const theories = data.theories || [];
+      if (theories.length === 0) {
+        throw new Error('AI 분석 결과에서 이론 유도 문제를 생성하지 못했습니다.');
       }
 
       // Add to state
       setTheoryQuestions(prev => {
-        const newItem = {
-          title: data.title,
+        const newItems = theories.map(t => ({
+          title: t.title,
           concept: '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
-          formula: data.answer
-        };
-        const updated = [newItem, ...prev];
+          formula: t.answer
+        }));
+        const updated = [...newItems, ...prev];
         handleSaveTheoryQuestions(updated, false);
         return updated;
       });
 
-      showNotification(`[${data.title}] 이론 유도 과정이 성공적으로 생성되어 리스트 맨 위에 편입되었습니다!`, 'success');
+      showNotification(`총 ${theories.length}개의 핵심 이론 유도 문제가 성공적으로 생성되어 리스트 맨 위에 추가되었습니다!`, 'success');
     } catch (err) {
       console.error('Theory upload failed:', err);
       showNotification(err.message || 'PDF 분석 중 오류가 발생했습니다.', 'error');

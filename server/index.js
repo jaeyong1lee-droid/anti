@@ -3188,15 +3188,20 @@ app.post('/api/session/theory/upload', upload.single('pdf'), async (req, res) =>
     }
 
     const systemInstruction = `당신은 지반공학 및 토질역학/터널/토목 분야의 최고 권위자이자 기술사 시험 전문 출제위원입니다. 
-제공된 공학 전공 PDF/HTML 텍스트를 정밀 분석하여, 수험생을 위한 핵심 이론/공식의 명칭(title)과 해당 이론의 수학적/역학적 상세 이론 유도 및 공학적 증명 과정(answer)을 JSON 형식으로 작성해 주세요.
+제공된 공학 전공 PDF/HTML 텍스트를 정밀 분석하여, 수험생이 학습해야 할 중요한 핵심 이론 및 공식들을 **모두 발췌 및 발굴**하여 **여러 개의 이론 유도 문제 세트**로 구성한 JSON 형식으로 작성해 주세요.
+반드시 본문 텍스트 내에서 언급되거나 유도되는 수학적/물리적 공식과 증명 과정들을 빠짐없이 파싱하여 **최소 3개에서 최대 10개까지**의 개별 이론 카드 목록으로 만들어야 합니다.
 
 JSON 규격:
 {
-  "title": "이론/공식의 명칭 (예: Terzaghi 얕은기초 극한 지지력 공식)",
-  "answer": "이론의 유도 과정과 증명 및 공학적 의미 설명 (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
+  "theories": [
+    {
+      "title": "이론/공식의 명칭 (예: Terzaghi 얕은기초 극한 지지력 공식)",
+      "answer": "이론의 유도 과정과 증명 및 공학적 의미 설명 (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
+    }
+  ]
 }
 
-반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.`;
+반드시 다른 군더더기 텍스트나 마크다운 블록 (\`\`\`json) 없이 오직 지정된 JSON 구조로만 반환해 주세요.`;
 
     const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
 
@@ -3211,13 +3216,20 @@ JSON 규격:
     }
 
     const result = JSON.parse(cleanJsonText);
-    if (!result.title || !result.answer) {
+    let theories = [];
+    if (result.theories && Array.isArray(result.theories)) {
+      theories = result.theories;
+    } else if (result.title && result.answer) {
+      theories = [result];
+    } else {
       throw new Error('AI 추출 정보 누락');
     }
 
     res.json({
-      title: result.title.trim(),
-      answer: result.answer.trim()
+      theories: theories.map(t => ({
+        title: (t.title || '실시간 추출 공식').trim(),
+        answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
+      }))
     });
 
   } catch (err) {
