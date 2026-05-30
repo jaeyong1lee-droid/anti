@@ -3105,6 +3105,186 @@ app.post('/api/session/formula', async (req, res) => {
   }
 });
 
+// GET /api/session/theory → 저장된 이론유도 상태 반환
+app.get('/api/session/theory', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['theory_questions']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      res.json({ data: JSON.parse(rows[0].value) });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/theory error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/theory → 이론유도 상태 저장
+app.post('/api/session/theory', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { theoryQuestions } = req.body;
+    const value = JSON.stringify({ theoryQuestions });
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['theory_questions']);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ['theory_questions', value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/theory error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/session/theory/upload → PDF 분석하여 이론유도 생성
+app.post('/api/session/theory/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
+    }
+
+    let fileText = '';
+    const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
+    const pdfNameLower = pdfName.toLowerCase();
+    const isHtml = pdfNameLower.endsWith('.html') || pdfNameLower.endsWith('.htm') || isBufferHtml(req.file.buffer);
+
+    if (isHtml) {
+      fileText = htmlToPlainText(req.file.buffer.toString('utf-8'));
+    } else {
+      const parsedPdf = await pdfParse(req.file.buffer);
+      fileText = parsedPdf.text || '';
+    }
+
+    fileText = mergeVerticalText(fileText);
+
+    if (!fileText || fileText.trim().length < 20) {
+      return res.status(400).json({ error: '파일에서 텍스트를 추출할 수 없습니다. 스캔된 이미지 PDF인지 확인하세요.' });
+    }
+
+    // AI API 키 체크
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+
+    if (!hasAnyAiKey) {
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    // 20000자 초과 시 중략
+    if (fileText.length > 20000) {
+      fileText = fileText.substring(0, 20000) + '...[중략]';
+    }
+
+    const systemInstruction = `당신은 지반공학 및 토질역학/터널/토목 분야의 최고 권위자이자 기술사 시험 전문 출제위원입니다. 
+제공된 공학 전공 PDF/HTML 텍스트를 정밀 분석하여, 수험생을 위한 핵심 이론/공식의 명칭(title)과 해당 이론의 수학적/역학적 상세 이론 유도 및 공학적 증명 과정(answer)을 JSON 형식으로 작성해 주세요.
+
+JSON 규격:
+{
+  "title": "이론/공식의 명칭 (예: Terzaghi 얕은기초 극한 지지력 공식)",
+  "answer": "이론의 유도 과정과 증명 및 공학적 의미 설명 (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
+}
+
+반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.`;
+
+    const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    const result = JSON.parse(cleanJsonText);
+    if (!result.title || !result.answer) {
+      throw new Error('AI 추출 정보 누락');
+    }
+
+    res.json({
+      title: result.title.trim(),
+      answer: result.answer.trim()
+    });
+
+  } catch (err) {
+    console.error('POST /api/session/theory/upload error:', err);
+    res.status(500).json({ error: err.message || 'PDF 분석에 실패했습니다.' });
+  }
+});
+
+// POST /api/theory/refresh → 기존 이론을 AI로 고도화하여 갱신
+app.post('/api/theory/refresh', async (req, res) => {
+  try {
+    const { title, answer } = req.body;
+    
+    // AI API 키 체크
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+
+    if (!hasAnyAiKey) {
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 최고 권위의 이론 튜터입니다. 
+제공된 기술사 수험생용 이론의 명칭과 증명 과정을 더욱 명쾌하고 학술적으로 빈틈이 없는 완벽한 유도 과정으로 업그레이드(고도화)하여 JSON 형식으로 반환해 주세요.
+
+JSON 규격:
+{
+  "title": "개선된 이론/공식의 명칭",
+  "answer": "업그레이드된 수학적/역학적 상세 이론 유도 및 공학적 증명 과정 (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
+}
+
+반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.`;
+
+    const userPrompt = `[기존 제목]: ${title}\n\n[기존 유도 및 증명 내용]:\n${answer}`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    const result = JSON.parse(cleanJsonText);
+    if (!result.title || !result.answer) {
+      throw new Error('AI 분석 결과 누락');
+    }
+
+    res.json({
+      title: result.title.trim(),
+      answer: result.answer.trim()
+    });
+
+  } catch (err) {
+    console.error('POST /api/theory/refresh error:', err);
+    res.status(500).json({ error: err.message || '이론 고도화에 실패했습니다.' });
+  }
+});
+
 // Spaced Repetition 무한 장기 보존 마이그레이션 함수
 async function migrateSpacedIntervals() {
   console.log('[Migration] Checking for completed spaced repetition reviews lacking the next round schedule...');

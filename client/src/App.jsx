@@ -320,6 +320,14 @@ export default function App() {
   const [formulaSearchQuery, setFormulaSearchQuery] = useState('');
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
+  
+  // Theory questions states (independent of formulas)
+  const [theoryQuestions, setTheoryQuestions] = useState([]);
+  const [loadingTheory, setLoadingTheory] = useState(false);
+  const [theoryRevealed, setTheoryRevealed] = useState({});
+  const [theorySearchQuery, setTheorySearchQuery] = useState('');
+  const [refreshingTheoryIdx, setRefreshingTheoryIdx] = useState(null);
+  const [uploadingTheoryPdf, setUploadingTheoryPdf] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
@@ -1191,9 +1199,195 @@ export default function App() {
     return cleaned;
   };
 
-  // ── 마운트 시 필수공식 최우선 서버 동기화 로딩
+  const loadTheoryQuestions = async () => {
+    setLoadingTheory(true);
+    let loadedData = null;
+
+    // 1) Try Database Sync
+    try {
+      const res = await fetch(`${API_BASE}/api/session/theory`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.theoryQuestions) && body.data.theoryQuestions.length > 0) {
+          loadedData = body.data.theoryQuestions;
+          console.log('[Sync] Loaded theory questions from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database theory loading failed:', err);
+    }
+
+    // 2) Try LocalStorage Fallback
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_theory_questions');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedData = parsed;
+            console.log('[Fallback] Loaded theory questions from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 이론유도 복원 실패:', err);
+      }
+    }
+
+    // 3) Fallback to Defaults if still empty
+    if (!loadedData) {
+      const defaultTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+      loadedData = defaultTheories;
+    }
+
+    setTheoryQuestions(loadedData);
+    localStorage.setItem('anti_theory_questions', JSON.stringify(loadedData));
+    setTheoryRevealed({});
+    setLoadingTheory(false);
+    return loadedData;
+  };
+
+  const handleSaveTheoryQuestions = async (qs = theoryQuestions, showToast = true) => {
+    try {
+      localStorage.setItem('anti_theory_questions', JSON.stringify(qs));
+      
+      // Sync with database for cross-device support
+      fetch(`${API_BASE}/api/session/theory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theoryQuestions: qs })
+      }).catch(dbErr => console.warn('Cross-device theory sync failed:', dbErr));
+
+      if (showToast) {
+        showNotification('이론유도 리스트가 성공적으로 저장되었습니다!', 'success');
+      }
+    } catch (err) {
+      console.warn('이론유도 저장 실패:', err);
+    }
+  };
+
+  const handleUploadTheoryPdf = async (file) => {
+    if (!file) return;
+    const fileNameLower = file.name.toLowerCase();
+    const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+    const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
+    
+    if (!isPdf && !isHtml) {
+      showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    setUploadingTheoryPdf(true);
+    showNotification(`[${file.name}] 문서를 업로드하여 AI 분석을 시작합니다...`, 'info');
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('fileNameUtf8', file.name);
+
+      const res = await fetch(`${API_BASE}/api/session/theory/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'PDF 분석 실패');
+      }
+
+      const data = await res.json();
+      if (!data.title || !data.answer) {
+        throw new Error('AI 분석 결과에서 제목 또는 모범 답안을 반환받지 못했습니다.');
+      }
+
+      // Add to state
+      setTheoryQuestions(prev => {
+        const newItem = {
+          title: data.title,
+          concept: '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          formula: data.answer
+        };
+        const updated = [newItem, ...prev];
+        handleSaveTheoryQuestions(updated, false);
+        return updated;
+      });
+
+      showNotification(`[${data.title}] 이론 유도 과정이 성공적으로 생성되어 리스트 맨 위에 편입되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Theory upload failed:', err);
+      showNotification(err.message || 'PDF 분석 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setUploadingTheoryPdf(false);
+    }
+  };
+
+  const handleRefreshTheory = (idx) => {
+    if (idx === null || idx === undefined) return;
+    const q = theoryQuestions[idx];
+    if (!q) return;
+
+    setRefreshingTheoryIdx(idx);
+    showNotification(`[${q.title || `Q${idx + 1}`}] 이론 유도를 AI가 정밀 고도화하여 갱신하고 있습니다...`);
+
+    fetch(`${API_BASE}/api/theory/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: q.title,
+        answer: q.formula
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('AI 고도화 실패');
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.title && data.answer) {
+          setTheoryQuestions(prev => {
+            const updated = prev.map((item, i) => {
+              if (i === idx) {
+                return {
+                  ...item,
+                  title: data.title,
+                  formula: data.answer
+                };
+              }
+              return item;
+            });
+            handleSaveTheoryQuestions(updated, false);
+            return updated;
+          });
+          showNotification(`[${data.title}] 이론 유도가 성공적으로 갱신되었습니다!`, 'success');
+        }
+      })
+      .catch(err => {
+        console.error('Theory refresh error:', err);
+        showNotification('이론 갱신에 실패했습니다.', 'error');
+      })
+      .finally(() => {
+        setRefreshingTheoryIdx(null);
+      });
+  };
+
+  // ── 마운트 시 필수공식 및 이론유도 최우선 서버 동기화 로딩
   useEffect(() => {
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
+    loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
 
   const handleOpenTheoryExam = async () => {
@@ -1203,8 +1397,8 @@ export default function App() {
     requestAnimationFrame(() => {
       if (theorySplitContainerRef.current) theorySplitContainerRef.current.scrollLeft = 0;
     });
-    if (formulaQuestions.length === 0) {
-      await loadFormulaQuestions();
+    if (theoryQuestions.length === 0) {
+      await loadTheoryQuestions();
     } else {
       requestAnimationFrame(() => {
         if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
@@ -3803,49 +3997,153 @@ export default function App() {
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
           >
             
-            {/* Left: Formula list */}
+            {/* Left: Theory list */}
             <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
               <div className="max-w-3xl mx-auto space-y-5">
-                {formulaQuestions.map((q, idx) => (
-                  <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
-                    <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3">
-                      <span className="text-[11px] font-black bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 shrink-0 select-none">
-                        공식 {idx + 1}
-                      </span>
-                      <h4 className="text-[16px] font-extrabold text-white leading-snug">
-                        <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
-                      </h4>
+                
+                {/* PDF Drag & Drop Upload Area for Theory */}
+                <div 
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-indigo-500', 'bg-indigo-950/20');
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+                  }}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      await handleUploadTheoryPdf(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  className="relative group border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slateCustom-900/40 rounded-2xl p-5 text-center transition-all duration-300 backdrop-blur-sm shadow-inner overflow-hidden cursor-pointer"
+                >
+                  <input 
+                    type="file" 
+                    accept=".pdf,.html,.htm"
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        await handleUploadTheoryPdf(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  {uploadingTheoryPdf ? (
+                    <div className="flex flex-col items-center justify-center py-2 gap-3">
+                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
+                      <div className="text-xs font-black text-indigo-400">PDF 문서 텍스트 정밀 분석 중...</div>
+                      <p className="text-[10px] text-slate-500">핵심 이론 공식 및 상세 증명 유도 과정을 생성하고 있습니다.</p>
                     </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-2 gap-2">
+                      <div className="p-3 bg-indigo-950/40 text-indigo-400 rounded-xl group-hover:scale-110 transition-transform duration-300 border border-indigo-500/10">
+                        <UploadCloud size={22} className="text-indigo-400" />
+                      </div>
+                      <div className="text-xs font-black text-slate-300">기술사 교재/수식 PDF 및 HTML 업로드</div>
+                      <p className="text-[10px] text-slate-500">여기에 파일을 끌어다 놓거나 클릭하여 새로운 이론 유도를 AI가 파싱하여 학습에 편입합니다.</p>
+                    </div>
+                  )}
+                </div>
 
-                    <div className="space-y-3">
-                      {q.concept && (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                          <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                {/* Theory Questions Map */}
+                {theoryQuestions.map((q, idx) => {
+                  const isRevealed = !!theoryRevealed[idx];
+                  return (
+                    <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
+                      <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[11px] font-black bg-indigo-950/80 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 select-none">
+                            이론 {idx + 1}
+                          </span>
+                          <h4 className="text-[15px] font-extrabold text-white leading-snug truncate">
+                            <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
+                          </h4>
                         </div>
-                      )}
-
-                      {q.formula && (
-                        <div className="space-y-1 pt-2 border-t border-slate-800/80">
-                          <span className="text-[10px] font-black text-indigo-300 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                        
+                        {/* Actions (Refresh, Trash) */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleRefreshTheory(idx)}
+                            disabled={refreshingTheoryIdx === idx}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all cursor-pointer disabled:opacity-50"
+                            title="이론 증명 AI 재정리 및 갱신"
+                          >
+                            <RefreshCw size={14} className={refreshingTheoryIdx === idx ? "animate-spin" : ""} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`[${q.title || `이론 ${idx + 1}`}] 이론 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
+                                setTheoryQuestions(prev => {
+                                  const updated = prev.filter((_, i) => i !== idx);
+                                  handleSaveTheoryQuestions(updated, false);
+                                  return updated;
+                                });
+                                setTheoryRevealed(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[idx];
+                                  return updated;
+                                });
+                                showNotification('선택한 이론 유도가 성공적으로 삭제되었습니다.', 'info');
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                            title="이론 삭제"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* AI Theory Derivation Request Button */}
-                    <div className="pt-3 border-t border-slate-800/80 flex justify-end">
-                      <button
-                        onClick={() => handleAskTheoryDerivation(q.title || q.question, q.formula || '')}
-                        disabled={isChatLoading}
-                        className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Brain size={13} className={isChatLoading ? "animate-pulse" : ""} />
-                        <span>✨ 실시간 AI에게 이론 유도 및 상세 증명 요청하기</span>
-                      </button>
+                      {/* Collapsible Answer & Concept */}
+                      <div className="space-y-3">
+                        {q.concept && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black text-indigo-400">💡 요약 설명: </span>
+                            <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                          </div>
+                        )}
+
+                        {isRevealed ? (
+                          <div className="space-y-3 pt-3 border-t border-slate-800/80 animate-fade-in">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-indigo-300 font-extrabold">📐 상세 이론 유도 및 공학적 증명: </span>
+                              <button
+                                onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: false }))}
+                                className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95"
+                              >
+                                접기 ✕
+                              </button>
+                            </div>
+                            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                          </div>
+                        ) : (
+                          <div className="pt-2 border-t border-slate-800/80">
+                            <button
+                              onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: true }))}
+                              className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
+                            >
+                              💡 이론 유도 과정 및 상세 증명 확인하기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* AI Theory Derivation Sidebar Request Button */}
+                      <div className="pt-3 border-t border-slate-800/80 flex justify-end">
+                        <button
+                          onClick={() => handleAskTheoryDerivation(q.title, q.formula || '')}
+                          disabled={isChatLoading}
+                          className="w-full py-2 bg-slateCustom-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          <Brain size={13} className={isChatLoading ? "animate-pulse" : ""} />
+                          <span>💬 실시간 AI 튜터와 1:1 심층 문답하기</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
