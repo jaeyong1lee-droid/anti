@@ -119,64 +119,105 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
 }
 
 // Dynamic KaTeX loader & Math text renderer
-function LatexRenderer({ text, katexLoaded, className = "" }) {
-  const [renderedHtml, setRenderedHtml] = useState(text);
+function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null }) {
+  if (!text) return null;
 
-  useEffect(() => {
-    if (!text) {
-      setRenderedHtml('');
-      return;
-    }
-
-    if (!window.katex) {
-      setRenderedHtml(text);
-      return;
-    }
-
-    try {
-      let processedText = text;
-      
-      // 1. Process block math $$ ... $$
-      processedText = processedText.replace(/\$\$(.*?)\$\$/gs, (match, math) => {
-        try {
-          return `<div class="my-3 overflow-x-auto flex justify-center">${window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false })}</div>`;
-        } catch (e) {
-          return match;
-        }
-      });
-
-      // 2. Process inline math $ ... $
-      processedText = processedText.replace(/\$(.*?)\$/g, (match, math) => {
-        try {
-          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
-        } catch (e) {
-          return match;
-        }
-      });
-
-      setRenderedHtml(processedText);
-    } catch (err) {
-      console.warn('KaTeX rendering error:', err);
-      setRenderedHtml(text);
-    }
-  }, [text, katexLoaded]);
-
-  const isInline = className.includes('inline');
-
-  if (isInline) {
-    return (
-      <span 
-        className={`${className} leading-relaxed`}
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
-    );
+  if (!window.katex) {
+    return <div className={`${className} whitespace-pre-line leading-relaxed`}>{text}</div>;
   }
 
+  // $$ ... $$ 블록 수학 기호를 기준으로 쪼갭니다.
+  const parts = [];
+  let lastIndex = 0;
+  const blockRegex = /\$\$(.*?)\$\$/gs;
+  let match;
+
+  while ((match = blockRegex.exec(text)) !== null) {
+    const beforeText = text.substring(lastIndex, match.index);
+    if (beforeText) {
+      parts.push({ type: 'text', content: beforeText });
+    }
+    parts.push({ type: 'math-block', content: match[1].trim() });
+    lastIndex = blockRegex.lastIndex;
+  }
+
+  const afterText = text.substring(lastIndex);
+  if (afterText) {
+    parts.push({ type: 'text', content: afterText });
+  }
+
+  // 각 파트별 렌더링
   return (
-    <div 
-      className={`${className} whitespace-pre-line leading-relaxed`}
-      dangerouslySetInnerHTML={{ __html: renderedHtml }}
-    />
+    <div className={`${className} space-y-3`}>
+      {parts.map((part, idx) => {
+        if (part.type === 'math-block') {
+          let mathHtml = part.content;
+          try {
+            mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false });
+          } catch (e) {
+            console.warn(e);
+            mathHtml = `$$${part.content}$$`;
+          }
+
+          return (
+            <div 
+              key={idx} 
+              className="my-4 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-rose-500/30 transition-all duration-300 group shadow-lg"
+            >
+              {/* KaTeX 수식 */}
+              <div 
+                className="flex-grow overflow-x-auto flex justify-center py-2 min-w-0" 
+                dangerouslySetInnerHTML={{ __html: mathHtml }} 
+              />
+              {/* 우측 추가 버튼 */}
+              {onAddFormula && (
+                <button
+                  onClick={() => onAddFormula(part.content)}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
+                  title="이 특정 수식만 필수공식 퀴즈에 추가"
+                >
+                  <Sparkles size={12} className="text-rose-400" />
+                  <span>이 공식을 퀴즈에 추가</span>
+                </button>
+              )}
+            </div>
+          );
+        } else {
+          // 일반 텍스트 내 inline math $ ... $ 처리
+          let htmlContent = part.content;
+          try {
+            htmlContent = htmlContent.replace(/\$(.*?)\$/g, (m, math) => {
+              try {
+                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+              } catch (e) {
+                return m;
+              }
+            });
+          } catch (e) {
+            console.warn(e);
+          }
+
+          const isInline = className.includes('inline');
+          if (isInline) {
+            return (
+              <span 
+                key={idx}
+                className="leading-relaxed whitespace-pre-line"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            );
+          }
+
+          return (
+            <div 
+              key={idx}
+              className="leading-relaxed whitespace-pre-line text-sm md:text-base"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          );
+        }
+      })}
+    </div>
   );
 }
 
@@ -981,6 +1022,103 @@ export default function App() {
     const question = `${title} 공식을 제시하고, 각 기호의 정의를 서술하시오.`;
 
     // 6. structure 합성
+    const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
+
+    const newFormula = {
+      title,
+      question,
+      concept,
+      formula,
+      structure
+    };
+
+    setFormulaQuestions(prev => [newFormula, ...prev]);
+    showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
+  };
+
+  // 특정 큰 수식 블록 우측에서 개별 추가 시 지능적 마이닝 처리 함수
+  const handleAddSpecificFormula = (mathContent, fullText) => {
+    if (!mathContent || !fullText) return;
+
+    const lines = fullText.split('\n').map(l => l.trim()).filter(Boolean);
+    
+    // 이 수식이 위치한 line index 찾기
+    let targetMathLineIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(mathContent)) {
+        targetMathLineIdx = i;
+        break;
+      }
+    }
+
+    // 1. Title 마이닝 (수식 윗방향으로 헤더나 의미 있는 구절 탐색)
+    let title = "실시간 추출 공식";
+    if (targetMathLineIdx !== -1) {
+      for (let i = targetMathLineIdx - 1; i >= 0; i--) {
+        const line = lines[i];
+        const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
+        // markdown header 거나, 짧고 강렬한 구절(3~35자) 이면서 수식이 들어있지 않은 줄
+        if (cleanLine && cleanLine.length >= 3 && cleanLine.length <= 35 && !cleanLine.includes('$') && !cleanLine.includes(':')) {
+          title = cleanLine;
+          break;
+        }
+      }
+    }
+
+    // Title 기본 예외 처리 및 정리 (수식 기호 기반 보완)
+    if (title === "실시간 추출 공식" || title.length > 40) {
+      if (mathContent.includes('Z =') || mathContent.includes('Z=')) {
+        title = "투수계수 가설검정 Z통계량";
+      } else if (mathContent.includes('k =') || mathContent.includes('k=')) {
+        title = "Darcy 투수계수 산정식";
+      }
+    }
+
+    // 2. formula (LaTeX 대표 수식 + 바로 아래 기호설명 병합)
+    let formula = `$$${mathContent}$$`;
+    const definitionLines = [];
+    
+    if (targetMathLineIdx !== -1) {
+      // 수식 바로 아래 줄부터 기호 정의가 나오는지 순방향 탐색 (최대 4줄 검사)
+      for (let i = targetMathLineIdx + 1; i < Math.min(lines.length, targetMathLineIdx + 5); i++) {
+        const line = lines[i];
+        if (line.startsWith('여기서') || line.startsWith('-') || line.startsWith('*') || line.includes('는') || line.includes('은')) {
+          definitionLines.push(line);
+        } else {
+          break;
+        }
+      }
+    }
+
+    if (definitionLines.length > 0) {
+      formula += "\n\n" + definitionLines.join('\n');
+    }
+
+    // 3. concept (수식 이전 줄들 중 설명글 탐색)
+    let concept = "실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.";
+    if (targetMathLineIdx !== -1) {
+      for (let i = targetMathLineIdx - 1; i >= 0; i--) {
+        const line = lines[i];
+        const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
+        if (
+          cleanLine &&
+          cleanLine.length > 10 &&
+          !cleanLine.includes('$') &&
+          !cleanLine.includes(':') &&
+          !cleanLine.startsWith('-') &&
+          !cleanLine.startsWith('*') &&
+          cleanLine !== title
+        ) {
+          concept = cleanLine;
+          break;
+        }
+      }
+    }
+
+    // 4. Question 합성
+    const question = `${title} 공식을 제시하고, 각 기호의 정의를 서술하시오.`;
+
+    // 5. structure 합성
     const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
 
     const newFormula = {
@@ -2642,7 +2780,11 @@ export default function App() {
                         {msg.role === 'user' ? (
                           msg.text
                         ) : (
-                          <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                          />
                         )}
                       </div>
                       {/* 방법 A: 튜터의 유용한 공식 말풍선 아래에 "✨ 이 공식을 필수공식 퀴즈에 추가" 버튼 연동 */}
