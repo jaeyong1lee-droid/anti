@@ -4165,7 +4165,7 @@ export default function App() {
           >
             
             {/* Left: Theory list */}
-            <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
+            <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-3/5 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
               <div className="max-w-3xl mx-auto space-y-5">
                 
                 {/* Add Question/Theory Button */}
@@ -4310,7 +4310,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-2/5 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
