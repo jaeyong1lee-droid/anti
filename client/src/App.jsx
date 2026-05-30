@@ -27,7 +27,9 @@ import {
   MessageSquare,
   Send,
   Save,
-  Edit2
+  Edit2,
+  Search,
+  X
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -307,6 +309,7 @@ export default function App() {
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaRevealed, setFormulaRevealed] = useState({});
+  const [formulaSearchQuery, setFormulaSearchQuery] = useState('');
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
   const [chatInput, setChatInput] = useState('');
@@ -2796,10 +2799,29 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+              <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+                <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="공식 제목 검색..."
+                  value={formulaSearchQuery}
+                  onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                />
+                {formulaSearchQuery && (
+                  <button
+                    onClick={() => setFormulaSearchQuery('')}
+                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => {
                   handleSaveFormulaQuestions(formulaQuestions, false); // 닫기를 눌러도 저장후 닫기
                   savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
+                  setFormulaSearchQuery('');
                   setShowFormulaExam(false);
                 }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
@@ -2810,6 +2832,7 @@ export default function App() {
               <button
                 onClick={() => {
                   handleSaveFormulaQuestions(formulaQuestions, true); // 저장 버튼: 저장 후 닫기
+                  setFormulaSearchQuery('');
                   setShowFormulaExam(false);
                 }}
                 className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
@@ -2838,10 +2861,40 @@ export default function App() {
                 </div>
               ) : (
                 <div className="max-w-3xl mx-auto space-y-5">
-                  {formulaQuestions.map((q, idx) => {
-                    const isRevd = !!formulaRevealed[idx];
+                  {formulaQuestions.filter(q => {
+                    const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    return titleMatch || questionMatch;
+                  }).length === 0 && (
+                    <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                      <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                        <Search size={32} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                        <p className="text-xs text-slate-400 mt-1">다른 공식 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
+                      </div>
+                      <button
+                        onClick={() => setFormulaSearchQuery('')}
+                        className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                      >
+                        검색 필터 초기화
+                      </button>
+                    </div>
+                  )}
 
-                    return (
+                  {formulaQuestions
+                    .map((q, originalIdx) => ({ ...q, originalIdx }))
+                    .filter(q => {
+                      const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                      const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                      return titleMatch || questionMatch;
+                    })
+                    .map((q) => {
+                      const idx = q.originalIdx;
+                      const isRevd = !!formulaRevealed[idx];
+
+                      return (
                       <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Title Row (Q{idx + 1} 배지와 제목, 수정창, 삭제버튼이 한 행에 위치) */}
                         <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
