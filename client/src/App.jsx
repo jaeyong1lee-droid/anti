@@ -307,6 +307,9 @@ export default function App() {
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(false);
+  const [showTheoryExam, setShowTheoryExam] = useState(false);
+  const theoryBodyRef = useRef(null);
+  const savedTheoryScroll = useRef(0);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaRevealed, setFormulaRevealed] = useState({});
@@ -1049,6 +1052,29 @@ export default function App() {
     }
   };
 
+  const handleOpenTheoryExam = async () => {
+    // If questions are not loaded, load them first!
+    if (formulaQuestions.length === 0) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_questions');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleaned = normalizeAndCompactifyFormulas(parsed);
+            setFormulaQuestions(cleaned);
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 필수공식 복원 실패:', err);
+      }
+    }
+    setChatHistory([]); // Clear chat history to start fresh for theory study
+    setShowTheoryExam(true);
+    requestAnimationFrame(() => {
+      if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
+    });
+  };
+
   const handleOpenFormulaExam = async () => {
     if (formulaQuestions.length > 0) {
       const cleaned = normalizeAndCompactifyFormulas(formulaQuestions);
@@ -1176,6 +1202,38 @@ export default function App() {
     if (cards.length === 0) return;
 
     const containerTop = formulaBodyRef.current.getBoundingClientRect().top;
+    
+    let currentIndex = 0;
+    let minDiff = Infinity;
+    
+    cards.forEach((card, idx) => {
+      const rect = card.getBoundingClientRect();
+      const diff = Math.abs(rect.top - containerTop - 10);
+      if (diff < minDiff) {
+        minDiff = diff;
+        currentIndex = idx;
+      }
+    });
+
+    let targetIndex = currentIndex;
+    if (direction === 'down') {
+      targetIndex = Math.min(currentIndex + 1, cards.length - 1);
+    } else if (direction === 'up') {
+      targetIndex = Math.max(currentIndex - 1, 0);
+    }
+
+    const targetCard = cards[targetIndex];
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleScrollTheory = (direction) => {
+    if (!theoryBodyRef.current) return;
+    const cards = theoryBodyRef.current.querySelectorAll('.formula-card-item');
+    if (cards.length === 0) return;
+
+    const containerTop = theoryBodyRef.current.getBoundingClientRect().top;
     
     let currentIndex = 0;
     let minDiff = Infinity;
@@ -1749,6 +1807,15 @@ export default function App() {
         >
           <Sigma size={20} />
           <span className="text-[10px] font-bold tracking-tight">필수공식</span>
+        </button>
+        {/* 이론유도 버튼 */}
+        <button
+          onClick={handleOpenTheoryExam}
+          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40"
+          title="전공 필수 공식 이론 유도 및 상세 증명 학습"
+        >
+          <Brain size={20} />
+          <span className="text-[10px] font-bold tracking-tight">이론유도</span>
         </button>
       </div>
 
@@ -3378,17 +3445,6 @@ export default function App() {
                               </div>
                             )}
 
-                            <div className="pt-2.5 border-t border-amber-500/10 flex justify-end">
-                              <button
-                                onClick={() => handleAskTheoryDerivation(q.title || q.question, q.formula || '')}
-                                disabled={isChatLoading}
-                                className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 border border-rose-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Brain size={12} className={isChatLoading ? "animate-pulse" : ""} />
-                                <span>이론 유도 질문하기</span>
-                              </button>
-                            </div>
-
                           </div>
                         )}
                       </div>
@@ -3544,6 +3600,244 @@ export default function App() {
                       type="submit"
                       disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
                       className="w-7 h-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95"
+                    >
+                      <Send size={11} className="text-white" />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
+      {showTheoryExam && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-indigo-950/80 text-indigo-400 rounded-xl flex-shrink-0 mt-0.5">
+                <Brain size={20} />
+              </div>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider whitespace-nowrap">공식 이론유도</span>
+                  {formulaQuestions.length > 0 && (
+                    <span className="text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {formulaQuestions.length}개 핵심공식
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                  전공 필수 공식 이론 유도 및 상세 증명 학습
+                </h3>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => {
+                  savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
+                  setShowTheoryExam(false);
+                }}
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Container */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Left: Formula list */}
+            <div ref={theoryBodyRef} className="flex-grow overflow-y-auto p-5 space-y-4 md:w-1/2 scroll-smooth">
+              <div className="max-w-3xl mx-auto space-y-5">
+                {formulaQuestions.map((q, idx) => (
+                  <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
+                    <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                      <span className="text-[11px] font-black bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 shrink-0 select-none">
+                        공식 {idx + 1}
+                      </span>
+                      <h4 className="text-[16px] font-extrabold text-white leading-snug">
+                        <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
+                      </h4>
+                    </div>
+
+                    <div className="space-y-3">
+                      {q.concept && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                          <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                        </div>
+                      )}
+
+                      {q.formula && (
+                        <div className="space-y-1 pt-2 border-t border-slate-800/80">
+                          <span className="text-[10px] font-black text-indigo-300 font-extrabold">📐 대표 공식 및 기호 정의: </span>
+                          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AI Theory Derivation Request Button */}
+                    <div className="pt-3 border-t border-slate-800/80 flex justify-end">
+                      <button
+                        onClick={() => handleAskTheoryDerivation(q.title || q.question, q.formula || '')}
+                        disabled={isChatLoading}
+                        className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Brain size={13} className={isChatLoading ? "animate-pulse" : ""} />
+                        <span>✨ 실시간 AI에게 이론 유도 및 상세 증명 요청하기</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Vertical Navigation Divider Controller (PC Only) */}
+            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+              <div 
+                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+              >
+                <button 
+                  onClick={() => handleScrollTheory('up')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-indigo-500 hover:shadow-indigo-600/30 cursor-pointer flex items-center justify-center group"
+                  title="이전 공식으로 스크롤"
+                >
+                  <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+                <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
+                <button 
+                  onClick={() => handleScrollTheory('down')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-indigo-500 hover:shadow-indigo-600/30 cursor-pointer flex items-center justify-center group"
+                  title="다음 공식으로 스크롤"
+                >
+                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Gemini Sidebar for Theory (Desktop Only) */}
+            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <Brain size={16} className="text-indigo-500" />
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
+              </div>
+              
+              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">학습하고 싶으신 공식을 왼쪽에서 선택하여<br/>이론 유도 및 상세 증명을 요청해 보세요!</p>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
+                        {msg.role === 'user' ? '나' : 'Gemini'}
+                      </div>
+                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed ${
+                        msg.role === 'user' 
+                          ? 'bg-indigo-600 text-white rounded-br-sm' 
+                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base max-w-none'
+                      }`}>
+                        {msg.role === 'user' ? (
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img 
+                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                alt="첨부 이미지" 
+                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                              />
+                            )}
+                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                          </div>
+                        ) : (
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex flex-col items-start">
+                    <div className="text-[10px] mb-1 font-bold text-indigo-400 ml-1">Gemini</div>
+                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                  onPaste={handlePasteImage}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                >
+                  {attachedImage && (
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="첨부 이미지" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleClearAttachedImage} 
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                        title="이미지 삭제"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onPaste={handlePasteImage}
+                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "공식 유도 및 개념 질문..."}
+                      disabled={isChatLoading}
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="file" 
+                        id="theory-image-upload" 
+                        accept="image/*" 
+                        onChange={handleImageAttachment}
+                        className="hidden" 
+                      />
+                      <label 
+                        htmlFor="theory-image-upload" 
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
+                        title="스크린샷/이미지 첨부"
+                      >
+                        <Paperclip size={14} />
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
                     >
                       <Send size={11} className="text-white" />
                     </button>
