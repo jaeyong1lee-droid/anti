@@ -2606,6 +2606,76 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// 로컬 공식 매칭 사전 (AI API 장애 대책용)
+const LOCAL_FORMULA_DICTIONARY = [
+  {
+    keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
+    title: 'Terzaghi(테르자기)의 1차원 압밀',
+    structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`
+  },
+  {
+    keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
+    title: 'Terzaghi(테르자기)의 극한 지지력',
+    structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
+  },
+  {
+    keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
+    title: 'Barton(바톤)의 암반 Q분류',
+    structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
+  },
+  {
+    keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
+    title: '연약지반 Sand Mat 최소 두께',
+    structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
+  },
+  {
+    keywords: ['r', 'R', '\\alpha', 'sin', '45'],
+    title: '평사투영 Schmidt Net 극점 반경',
+    structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
+  },
+  {
+    keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
+    title: '락볼트(Rock Bolt) 설계 지반 고착력',
+    structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
+  },
+  {
+    keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
+    title: '랭킹(Rankine)의 주동토압 계수',
+    structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
+  },
+  {
+    keywords: ['C', 'D_f', 'q_{net}'],
+    title: '보상기초(Compensated Foundation) 보상도(C)',
+    structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
+  },
+  {
+    keywords: ['p_w', '\\gamma_w', 'H'],
+    title: '터널 싱글쉘(Single Shell) 설계 수압',
+    structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
+  },
+  {
+    keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
+    title: '가설 흙막이 수평 지반반력계수',
+    structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
+  }
+];
+
+function extractVariablesFromMath(mathContent) {
+  if (!mathContent) return '';
+  const cleanMath = mathContent
+    .replace(/\\[a-zA-Z]+/g, ' ')
+    .replace(/[0-9]+/g, ' ')
+    .replace(/[\{\}\[\]\(\)\+\-\*\/\=\_\^]/g, ' ');
+  
+  const words = cleanMath.split(/\s+/);
+  const uniqueVars = Array.from(new Set(words))
+    .map(w => w.trim())
+    .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
+  
+  if (uniqueVars.length === 0) return '';
+  return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
+}
+
 // 6-4. Formula Analysis & Title/Structure Generation
 app.post('/api/formula/suggest-title', async (req, res) => {
   try {
@@ -2614,12 +2684,30 @@ app.post('/api/formula/suggest-title', async (req, res) => {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
-    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 두 가지를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요.
+    // 1) 로컬 사전 매칭 시도
+    let bestLocalMatch = null;
+    let maxMatchCount = 0;
+    const cleanMathContent = mathContent.replace(/\s+/g, '');
+    
+    for (const dict of LOCAL_FORMULA_DICTIONARY) {
+      let matchCount = 0;
+      for (const kw of dict.keywords) {
+        if (cleanMathContent.includes(kw.replace(/\\\\/g, '\\')) || (fullText && fullText.includes(kw))) {
+          matchCount++;
+        }
+      }
+      if (matchCount > maxMatchCount && matchCount >= 2) {
+        maxMatchCount = matchCount;
+        bestLocalMatch = dict;
+      }
+    }
 
+    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 두 가지를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요.
+ 
 JSON 형식:
 {
   "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭 (예: '보상기초(Compensated Foundation) 보상도(C)', '랭킹(Rankine)의 주동토압 계수', 'Barton(바톤)의 Q분류' 등과 같이 한글과 영문 전공명을 섞어 극도로 콤팩트하고 학술적이게 작명해주세요. 불필요한 조사, 서술어, '산정 공식' 같은 미사여구는 빼고 명사형 위주로 아주 간결하게 작명해야 합니다.)",
-  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요."
+  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오."
 }
 
 반드시 다른 잡설 없이 오직 JSON 객체만 반환하시오. 마크다운 코드 블록(\`\`\`json) 등은 감싸지 말고 순수 JSON만 반환하시오.`;
@@ -2640,29 +2728,47 @@ JSON 형식:
       
       try {
         const result = JSON.parse(cleanJsonText);
+        let structure = result.structure || '';
+        // 혹시 AI가 사족을 포함했을 경우 안전 필터링
+        structure = structure
+          .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+          .replace(/각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+          .trim();
+
+        if (!structure && bestLocalMatch) {
+          structure = bestLocalMatch.structure;
+        } else if (!structure) {
+          structure = extractVariablesFromMath(mathContent);
+        }
+
         res.json({
-          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '') : '실시간 추출 공식',
-          structure: result.structure || '각 변수/상수의 상세 공학적 의미를 튜터 대화에서 분석해 보세요.'
+          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '') : (bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식'),
+          structure: structure
         });
       } catch (parseErr) {
-        console.warn('JSON parsing failed, falling back to plaintext parse:', parseErr);
+        console.warn('JSON parsing failed, falling back to plaintext parse or local dictionary:', parseErr);
         
-        // 정규식을 활용하여 raw string에서 title 값 안전 발굴
-        let fallbackTitle = responseText.substring(0, 30).trim();
+        let fallbackTitle = bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식';
         const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
         if (titleMatch && titleMatch[1]) {
-          fallbackTitle = titleMatch[1];
+          fallbackTitle = titleMatch[1].replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
         }
-        fallbackTitle = fallbackTitle.replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
+
+        let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
 
         res.json({
           title: fallbackTitle,
-          structure: '- 각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요.'
+          structure: fallbackStructure
         });
       }
     } catch (err) {
-      console.error('Formula suggest title LLM error:', err);
-      res.status(500).json({ error: err.message || 'LLM 호출 오류' });
+      console.warn('Formula suggest title LLM error, falling back to local dictionary:', err);
+      let fallbackTitle = bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식';
+      let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
+      res.json({
+        title: fallbackTitle,
+        structure: fallbackStructure
+      });
     }
   } catch (err) {
     console.error('Formula suggest title route error:', err);
