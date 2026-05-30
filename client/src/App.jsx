@@ -3858,7 +3858,7 @@ export default function App() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
+                              <div className="flex items-center gap-2 flex-grow min-w-0 group">
                                 <span 
                                   onClick={() => {
                                     setEditingFormulaIdx(idx);
@@ -3879,6 +3879,33 @@ export default function App() {
                                 >
                                   <Edit2 size={12} />
                                 </button>
+
+                                {/* "정답확인" / "정답접기" compact inline button next to title */}
+                                {!isNewEmptyCard && (
+                                  !isOutputVisible ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
+                                      }}
+                                      className="py-1 px-2.5 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 border border-rose-500/20 flex items-center justify-center gap-1"
+                                      title="정답 확인하기"
+                                    >
+                                      <span>정답확인</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFormulaRevealed(prev => ({ ...prev, [idx]: false }));
+                                      }}
+                                      className="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
+                                      title="정답 접기"
+                                    >
+                                      <span>정답접기</span>
+                                    </button>
+                                  )
+                                )}
                               </div>
                             )}
                           </div>
@@ -3952,7 +3979,7 @@ export default function App() {
                         </div>
 
                         {/* Real-time LaTeX rendered Output Display Window */}
-                        {isOutputVisible ? (
+                        {isOutputVisible && (
                           <div className="space-y-3 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
@@ -3985,16 +4012,6 @@ export default function App() {
                             ) : !q.concept && (
                               <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
                             )}
-                          </div>
-                        ) : (
-                          /* "Show Answer" subjective trigger button if output is hidden */
-                          <div className="pt-1">
-                            <button
-                              onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: true }))}
-                              className="w-full py-2.5 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
-                            >
-                              💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
-                            </button>
                           </div>
                         )}
 
@@ -4437,7 +4454,7 @@ export default function App() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
+                              <div className="flex items-center gap-2 flex-grow min-w-0 group">
                                 <span 
                                   onClick={() => {
                                     setEditingTheoryIdx(idx);
@@ -4458,6 +4475,33 @@ export default function App() {
                                 >
                                   <Edit2 size={12} />
                                 </button>
+
+                                {/* "정답확인" / "정답접기" compact inline button next to title */}
+                                {!isNewEmptyCard && (
+                                  !isOutputVisible ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
+                                      }}
+                                      className="py-1 px-2.5 bg-indigo-650 hover:bg-indigo-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-indigo-650/10 hover:shadow-indigo-650/20 border border-indigo-500/20 flex items-center justify-center gap-1"
+                                      title="정답 확인하기"
+                                    >
+                                      <span>정답확인</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTheoryRevealed(prev => ({ ...prev, [idx]: false }));
+                                      }}
+                                      className="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
+                                      title="정답 접기"
+                                    >
+                                      <span>정답접기</span>
+                                    </button>
+                                  )
+                                )}
                               </div>
                             )}
                           </div>
@@ -4512,7 +4556,7 @@ export default function App() {
                         </div>
 
                         {/* Real-time LaTeX rendered Output Display Window */}
-                        {isOutputVisible ? (
+                        {isOutputVisible && (
                           <div className="space-y-2 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
@@ -4533,16 +4577,6 @@ export default function App() {
                             ) : (
                               <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
                             )}
-                          </div>
-                        ) : (
-                          /* "Show Answer" subjective trigger button if output is hidden */
-                          <div className="pt-1">
-                            <button
-                              onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: true }))}
-                              className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
-                            >
-                              💡 이론 유도 과정 및 상세 증명 확인하기
-                            </button>
                           </div>
                         )}
 
