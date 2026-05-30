@@ -4087,16 +4087,38 @@ export default function App() {
                     ← 좌우 쓸어 넘겨 튜터 대화 보기
                   </span>
                 </div>
-                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                  전공 필수 공식 이론 유도 및 상세 증명 학습
-                </h3>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                    전공 필수 공식 이론 유도 및 상세 증명 학습
+                  </h3>
+                  {/* Centered Add Question/Theory Button (Header Position next to title) */}
+                  <button
+                    onClick={() => {
+                      const newTheory = {
+                        title: "",
+                        concept: "",
+                        assumptions: "",
+                        formula: ""
+                      };
+                      const updated = [newTheory, ...theoryQuestions];
+                      latestTheoryQuestionsRef.current = updated;
+                      setTheoryQuestions(updated);
+                      localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                      showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                    }}
+                    className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
+                  >
+                    <PlusCircle size={11} />
+                    <span>새로운 이론 공식 추가 (빈표 생성)</span>
+                  </button>
+                </div>
               </div>
             </div>
             
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
               <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
+                onClick={async () => {
+                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장 완료후 닫음
                   savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
                   setShowTheoryExam(false);
                 }}
@@ -4106,8 +4128,8 @@ export default function App() {
                 닫기
               </button>
               <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장만 하고 닫지는 않음
+                onClick={async () => {
+                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장 완료후 토스트 출력
                 }}
                 className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
                 title="이론 변경사항 실시간 저장"
@@ -4169,28 +4191,7 @@ export default function App() {
             <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-3/5 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
               <div className="max-w-full space-y-5">
                 
-                {/* Centered Add Question/Theory Button (Half Width & Centered Top) */}
-                <div className="flex justify-center pb-2">
-                  <button
-                    onClick={() => {
-                      const newTheory = {
-                        title: "",
-                        concept: "",
-                        assumptions: "",
-                        formula: ""
-                      };
-                      const updated = [newTheory, ...theoryQuestions];
-                      latestTheoryQuestionsRef.current = updated;
-                      setTheoryQuestions(updated);
-                      localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                      showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                    }}
-                    className="w-1/2 max-w-xs py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20"
-                  >
-                    <PlusCircle size={13} />
-                    <span>새로운 이론 공식 추가 (빈표 생성)</span>
-                  </button>
-                </div>
+
 
                 {/* Theory Questions Map */}
                 {theoryQuestions.map((q, idx) => {
