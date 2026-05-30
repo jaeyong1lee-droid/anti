@@ -832,12 +832,262 @@ function getPrandtlExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Soft Ground Sand Mat Thickness Calculation
+function getSandMatExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `연약지반 점성토 상부에 부설되는 샌드매트(Sand Mat)의 주요 공학적 역할과 기능에 대하여 간략히 서술하시오.`,
+    concept: `샌드매트는 연약지반 표층에 부설하여 배수 경로(여과 및 상부 배수층)를 형성함으로써 점토의 압밀을 촉진하고, 장비 주행성(Trafficability)을 확보하며, 상부 성토 하중을 균등하게 분산시키는 표층처리 인프라입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `샌드매트 설계 시 시공장비의 접지압과 지반 점착력을 고려한 장비 주행성 확보(전단파괴 방지) 최소 소요 두께(H) 산정 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `건설장비의 집중 하중이 연약지반에 직접 전달되어 국부 전단파괴가 일어나는 것을 방지하기 위해 필요한 샌드매트의 소요 두께를 하중분산각을 응용해 도출하는 공식입니다.`,
+    formula: `$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$\n- $H$: Sand Mat 최소 소요 두께\n- $q$: 시공장비의 접지압 (하중)\n- $q_a$: 연약지반의 허용지지력\n- $\\gamma$: Sand Mat 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $30^\\circ \\sim 45^\\circ$)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `연약지반에 부설하는 샌드매트(Sand Mat)의 주된 공학적 배수 기능과 거리가 먼 진술은 무엇인가?`,
+      options: shuffleArray([
+        "압밀 시 배출되는 물을 측면으로 원활히 배수하기 위한 수평배수층 역할을 한다.",
+        "점토 지반 고유의 물리적 압밀계수(Cv) 자체를 획기적으로 증가시킨다.",
+        "상부 양면 배수(Double Drainage) 조건을 형성하여 압밀 배수 거리를 절반으로 단축한다.",
+        "샌드드레인이나 팩드레인 등 연직배수재와 연결되어 과잉간극수를 외부로 배출한다."
+      ]),
+      answer: "점토 지반 고유의 물리적 압밀계수(Cv) 자체를 획기적으로 증가시킨다.",
+      explanation: "점토의 압밀계수(Cv)는 지반 고유의 투수성과 압축성 지표이므로 샌드매트를 깐다고 변하지 않습니다. 샌드매트는 단지 배수 거리(d)를 단축시켜 압밀 시간을 단축시킬 뿐입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `샌드매트에 사용되는 모래의 적합한 토질 공학적 품질 및 입도 조건에 대한 설명으로 올바르지 않은 것은?`,
+      options: shuffleArray([
+        "투수성이 우수하고 배수 기능이 탁월한 조립토이어야 한다.",
+        "배수 기능 저하를 막기 위해 세립분(특히 점토분) 함유량이 3~5% 이하로 매우 극소량이어야 한다.",
+        "투수계수(k)는 최소한 배수 효과가 보장되는 1.0 × 10^-3 cm/s 이상이 권장된다.",
+        "실트나 진흙 지반의 장기 압밀을 방지하기 위해 가급적 실트분을 30% 이상 넉넉히 혼합 배합해야 한다."
+      ]),
+      answer: "실트나 진흙 지반의 장기 압밀을 방지하기 위해 가급적 실트분을 30% 이상 넉넉히 혼합 배합해야 한다.",
+      explanation: "모래매트 내 세립분(실트/점토)이 많아지면 틈새가 막혀 투수계수가 급격히 저하되어 수평 배수층으로서의 역할을 상실하므로 세립분은 엄격히 차단되어야 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `초연약지반 상부에 무거운 건설장비가 올라설 때, 장비 주행 가능 여부를 나타내는 지표인 Cone 지수(qc 또는 Ic)와 트래피커빌리티(Trafficability)에 대한 설명으로 옳은 것은?`,
+      options: shuffleArray([
+        "Cone 지수가 클수록 연약지반의 강도가 강하므로 장비 주행성이 양호하다.",
+        "Cone 지수가 작을수록 모래 매트의 두께를 얇게 설계해도 궤도장비 주행이 가능하다.",
+        "트래피커빌리티는 장비의 접지압과 무관하며 오직 모래의 색상에 의해서만 결정된다.",
+        "보통 불도저와 같은 초경량 습지 장비는 Cone 지수가 1.0 이하인 완전 뻘지반에서도 무조건 주행한다."
+      ]),
+      answer: "Cone 지수가 클수록 연약지반의 강도가 강하므로 장비 주행성이 양호하다.",
+      explanation: "Cone 지수는 흙의 전단 강도와 연관된 저항 지표로, 지수 값이 높을수록 지반 지지력이 크기 때문에 건설장비의 진입 및 주행(Trafficability)이 훨씬 원활해집니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `장비 하중 분산 효과를 고려하여 Sand Mat 두께를 산정할 때, 모래의 내부마찰각(φ)이 커짐에 따른 공학적 설계 변화로 옳은 것은?`,
+      options: shuffleArray([
+        "하중 분산각(θ)이 작아지므로 필요한 소요 두께(H)가 증가한다.",
+        "하중 분산각(θ)이 커져 지중 응력이 넓게 분산되므로 필요한 소요 두께(H)는 감소한다.",
+        "단위중량이 수중중량으로 자동 환산되어 소요 두께는 하중과 상관없이 0이 된다.",
+        "모래의 강도가 커져 연약지반 표층의 고유 점착력(c)을 물리적으로 무한대 증가시킨다."
+      ]),
+      answer: "하중 분산각(θ)이 커져 지중 응력이 넓게 분산되므로 필요한 소요 두께(H)는 감소한다.",
+      explanation: "모래의 마찰각(φ)이 크고 다짐이 양호할수록 집중 하중을 양옆으로 널리 퍼뜨리는 분산각(θ)이 증가하여 하부 연약지반에 도달하는 응력이 줄어들므로, 샌드매트의 소요 두께(H)를 줄여 경제적 설계가 가능합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `샌드매트 포설 후 장기적으로 지하수위가 모래매트 상부까지 급격히 상승할 때 지반 엔지니어가 예상해야 하는 역학적 리스크로 옳은 것은?`,
+      options: shuffleArray([
+        "모래 입자 자체의 비중(Gs)이 수중에서 약 10배 이상으로 크게 증가한다.",
+        "지하수위 상승으로 부력이 발생하여 모래의 유효단위중량이 감소하고 모래층 지지력이 저하된다.",
+        "간극수압 소멸 속도가 무한대로 빨라져 점토의 1차 압밀 완료 시간이 0초로 단축된다.",
+        "모래의 내부마찰각이 강제로 90도까지 증폭되어 응력 분산 효과가 극대화된다."
+      ]),
+      answer: "지하수위 상승으로 부력이 발생하여 모래의 유효단위중량이 감소하고 모래층 지지력이 저하된다.",
+      explanation: "지하수위가 포설된 샌드매트 내부로 침투하여 포화 상태가 되면, 흙의 단위중량이 유효단위중량(습윤중량 - 물의중량)으로 약 절반 가까이 감소하므로 연약지반의 상부 지반 지지 압력이 약해집니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Sand Mat 포설 후 상부 성토를 시행하여 하부 점토층 압밀 배수를 촉진할 때, 점토 상하부가 모래매트와 암반층으로 각각 둘러싸인 양면배수(Double Drainage) 조건에서 최대 배수거리(d) 산정 수식으로 옳은 것은? (단, 점토층의 전체 두께는 Hc 이다)`,
+      options: shuffleArray([
+        "d = Hc / 2",
+        "d = Hc",
+        "d = 2 * Hc",
+        "d = Hc / 4"
+      ]),
+      answer: "d = Hc / 2",
+      explanation: "양면배수 조건에서는 점토 중앙에서 가장 멀리 있는 물이 상부 또는 하부 배수층(샌드매트 등)으로 도달하는 최장 거리가 전체 두께의 절반이 되므로 d = Hc / 2 가 됩니다. 일면배수 시에는 d = Hc 입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `표층 지반의 Cone 지수가 2 이하인 초연약 뻘 지반에서 장비 진입 시 샌드매트 모래의 국부 전단파괴 및 침하를 방지하기 위해 샌드매트 하부에 병행 부설하는 공학 재료는?`,
+      options: shuffleArray([
+        "벤토나이트 차수 매트 (GCL)",
+        "고강도 토목섬유 매트 (Geotextile)",
+        "콘크리트 라이닝 패널",
+        "아스팔트 코팅재"
+      ]),
+      answer: "고강도 토목섬유 매트 (Geotextile)",
+      explanation: "초연약지반 표층 처리 시에는 샌드매트 포설 전에 고강도 토목섬유(P.P 매트 등)를 먼저 포설하여 장비 하중을 인장력으로 버텨주고 모래가 흙 속으로 함몰하는 것을 막는 격리 및 보강(Reinforcement) 효과를 도모합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `샌드매트 내부에 모래 입도 분량 등의 원인으로 배수가 막혀 과잉간극수가 외부로 원활히 배출되지 못할 때 발생하는 역학적 유해 현상으로 옳은 것은?`,
+      options: shuffleArray([
+        "모래층 내 과잉간극수압 증가로 유효응력이 저하되어 시공 장비 지지력이 상실되고 압밀이 정체된다.",
+        "점토의 마찰각이 음수값으로 급락하여 사면이 스스로 뒤집히게 된다.",
+        "흙 내부의 공극률이 강제로 0%가 되어 지반이 순식간에 암반으로 경화된다.",
+        "모래의 전단강도가 무한대로 상승하여 어떠한 장비든 침하 없이 주행한다."
+      ]),
+      answer: "모래층 내 과잉간극수압 증가로 유효응력이 저하되어 시공 장비 지지력이 상실되고 압밀이 정체된다.",
+      explanation: "과잉간극수가 배출되지 못하고 정체되면 수압(u)이 해소되지 않고 상부 모래층의 유효응력(σ' = σ - u)을 깎아먹게 되어, 샌드매트 자체의 강도 저하 및 전체 연약지반 복합 체계의 붕괴나 주행 불능 상태를 유발합니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// Built-in Expert-Grade PE Questions for Rock Slopes Stereographic Projection
+function getStereonetExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `암반 불연속면 해석 및 비탈면 설계 분야에서 평사투영법(Stereographic Projection)의 주요 공학적 정의와 핵심 목적을 간략히 서술하시오.`,
+    concept: `평사투영법은 3차원 공간상의 불연속면(면)이나 교선(선)의 기하학적 방향성과 상대적 관계를 2차원 평면(투영망) 상에 투영하여, 암반 사면의 잠재적 파괴 모드(평면, 쐐기, 전도 파괴)를 신속하게 통계적·기하학적으로 해석하기 위한 기법입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `평사투영망 작도 시 불연속면의 '경사각(Dip, \\alpha)'을 구의 중심을 지나는 투영면 상에 극점(Pole)으로 기하학적으로 변환하는 투영 공식(r)을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `구의 표면과 접하는 교차 경로를 구의 최북단 또는 최남단에서 정사투영하여 2차원 평면의 투영 반경으로 좌표 변환하는 작도 공식입니다.`,
+    formula: `$r = R \\tan(45^\\circ - \\frac{\\alpha}{2})$\n- $r$: 평사투영망 중심으로부터 극점(Pole)까지의 투영 거리 (반경)\n- $R$: 평사투영망(투영구)의 반지름\n- $\\alpha$: 불연속면의 경사각 (Dip)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `평사투영 시 불연속면(Plane)을 가상의 투영구(Sphere) 하반구(Lower Hemisphere)와 교차시켰을 때 생기는 공간상의 호(Arc)를 평면에 투영한 형상의 명칭은?`,
+      options: shuffleArray([
+        "대원 (Great Circle)",
+        "극점 (Pole)",
+        "소원 (Small Circle)",
+        "동수두선 (Potential Line)"
+      ]),
+      answer: "대원 (Great Circle)",
+      explanation: "3차원 공간상의 면(Plane)은 투영 하반구 표면과 만나 대원(Great Circle)이라는 호를 형성하고, 이를 평사투영망 평면에 투영하면 반원 아치 모양의 투영선으로 그려집니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `평사투영망(Stereonet) 상에서 불연속면의 경사각(Dip)이 90도인 완전 수직 불연속면을 투영한 대원(Great Circle)의 기하학적 거동 형상으로 옳은 것은?`,
+      options: shuffleArray([
+        "평사투영망 정중앙(Center)을 지나는 곧은 직선",
+        "평사투영망 가장 바깥 테두리를 그리는 원 (외주원)",
+        "투영망의 남북극점을 잇는 아주 불완전한 소원들",
+        "수평면을 뜻하는 투영망 중심의 단일 점 (Point)"
+      ]),
+      answer: "평사투영망 정중앙(Center)을 지나는 곧은 직선",
+      explanation: "경사가 90도(수직)인 면은 투영구 하반구를 좌우 대칭으로 똑같이 절단하므로 투영 중심을 관통하는 지름 형태의 완벽한 직선으로 표현됩니다. 경사가 0도(수평)인 면은 가장 바깥 테두리인 외주원(Outer Circle)이 됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `암반 비탈면의 평면파괴(Planar Failure)가 발생할 가능성이 있는 한계 평형 기하학적 조건식으로 옳은 것은? (단, α_p는 불연속면 경사, α_f는 사면 경사, φ는 불연속면 내부마찰각이다)`,
+      options: shuffleArray([
+        "φ < α_p < α_f",
+        "α_f < α_p < φ",
+        "α_p < φ < α_f",
+        "α_p > α_f > φ"
+      ]),
+      answer: "φ < α_p < α_f",
+      explanation: "평면파괴는 ① 불연속면 경사가 사면 경사보다 완만해야 사면 전면으로 노출되고(α_p < α_f), ② 불연속면 경사가 마찰각보다 급해야 마찰 저항을 이겨내고 미끄러지므로(α_p > φ) 'φ < α_p < α_f' 조건이 만족되어야 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `평사투영망 상에서 암반 비탈면의 전단 파괴 안정성을 판단하기 위해 마찰각(φ)을 원의 반경으로 작도하는 마찰 원(Friction Cone)의 중심점 기준으로 옳은 것은?`,
+      options: shuffleArray([
+        "평사투영망의 정중앙 센터 포인트 (Center Point)",
+        "남북극점 중 최남단 포인트",
+        "사면 경사각의 외주원 교차점",
+        "불연속면 극점(Pole)의 최빈 밀도 분포 영역"
+      ]),
+      answer: "평사투영망의 정중앙 센터 포인트 (Center Point)",
+      explanation: "마찰각(φ)은 구의 중심에서 사방으로 균일한 전단 저항 한계 원뿔을 형성하므로, 평사투영 상에서는 투영망 정중앙(Center)을 중심으로 반경 (90°-φ)에 해당하는 마찰 원(Friction Cone)을 작도하여 안정 영역을 구분합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `암반 사면의 쐐기파괴(Wedge Failure)를 평사투영으로 해석할 때, 두 불연속면 대원의 교차점인 교선(Intersection Line)의 투영점과 사면 대원 및 마찰 원의 상대적 위치에 따른 기하학적 파괴 조건으로 옳은 것은?`,
+      options: shuffleArray([
+        "교선의 투영점이 마찰 원의 바깥쪽(Friction Cone 외곽)이면서 사면 대원과 마찰 원 영역 사이에 위치할 때",
+        "교선의 투영점이 마찰 원의 안쪽(Friction Cone 내부)에 위치할 때",
+        "교선 투영점이 외주원 바깥으로 탈출하여 아예 사라졌을 때",
+        "교선의 경사가 사면 경사보다 크고 내부마찰각보다 무한히 작을 때"
+      ]),
+      answer: "교선의 투영점이 마찰 원의 바깥쪽(Friction Cone 외곽)이면서 사면 대원과 마찰 원 영역 사이에 위치할 때",
+      explanation: "쐐기파괴는 두 불연속면의 교선 방향으로 미끄러집니다. 따라서 교선의 경사각이 사면 경사보다는 완만하여 사면 밖으로 노출(사면 대원과 마찰원 사이)되고, 내부마찰각 원뿔 밖(마찰원 외곽)에 위치하여 마찰 저항을 초과할 때 파괴가 유발됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `평사투영법에서 불연속면의 방향을 기재할 때 주향이 N90W 이고 경사가 30S 인 완만한 남향 불연속면의 극점(Pole)은 평사투영망 상에서 대략 어느 방향(방위)에 찍히게 되는가?`,
+      options: shuffleArray([
+        "북쪽(North) 부근 영역",
+        "남쪽(South) 부근 영역",
+        "동쪽(East) 부근 영역",
+        "투영망 정중앙 정밀 센터점"
+      ]),
+      answer: "북쪽(North) 부근 영역",
+      explanation: "극점(Pole)은 면에 수직인 지향선입니다. 경사가 남쪽(S)으로 30도 누워 있는 면은 그 수직 법선인 극점이 정반대편인 북쪽(N) 방향으로 중심에서 외곽 방향으로 30도 떨어진 지점에 투영됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `평사투영망 종류 중, 기하학적 각도(Angle) 관계가 완전히 보존되어 현장 불연속면의 교선 각도 등을 측정하는 데는 탁월하나 투영 면적의 왜곡이 있어 극점 통계 분석에는 적절하지 않은 투영망의 명칭은?`,
+      options: shuffleArray([
+        "울프 망 (Wulff Net / 등각 투영망)",
+        "슈미트 망 (Schmidt Net / 등면적 투영망)",
+        "카르테시안 망 (Cartesian Net)",
+        "모르 망 (Mohr Net)"
+      ]),
+      answer: "울프 망 (Wulff Net / 등각 투영망)",
+      explanation: "울프 망(Wulff Net)은 각도가 왜곡 없이 보존되는 등각 투영망으로 기하 분석에 유용하나 외곽으로 갈수록 면적이 과대 투영되는 단점이 있습니다. 통계적 극점 밀도 분포 분석에는 면적이 보존되는 슈미트 망(Schmidt Net)이 사용됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `불연속면 경사가 사면 경사와 반대 방향으로 급하게 발달할 때 발생하는 전도파괴(Toppling Failure)의 발생 한계 평형 기하학적 관계식으로 옳은 것은? (단, α_p는 불연속면 경사, α_f는 사면 경사, φ는 내부마찰각이다)`,
+      options: shuffleArray([
+        "(90° - α_p) + φ < α_f",
+        "(90° - α_p) + φ > α_f",
+        "α_p + φ < α_f",
+        "α_p - φ > α_f"
+      ]),
+      answer: "(90° - α_p) + φ < α_f",
+      explanation: "전도파괴(Toppling)가 일어나기 위해서는 사면 경사가 충분히 급해야 하고, 암반 블록이 앞으로 넘어질 수 있는 기하학적 미끄러짐 마찰 조건인 '(90° - α_p) + φ < α_f' 가 반드시 만족되어야 전도가 가능합니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // Helper function to generate technical and high-quality PE questions locally (Dynamic domain-agnostic fallback)
 function generateFallbackQuestions(title, keywords, fileText = '') {
   const cleanTitle = title.toLowerCase();
   const cleanText = fileText.toLowerCase();
 
   // Route to Expert Built-in Review Content if matching keyword is detected!
+  if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트') || cleanTitle.includes('연약지반') || cleanText.includes('sand mat') || cleanText.includes('샌드매트') || cleanText.includes('연약지반')) {
+    console.log("Routing to Built-in Expert PE Content: Soft Ground Sand Mat Thickness");
+    return getSandMatExpertQuestions(title, keywords);
+  }
+
+  if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic') || cleanText.includes('평사투영') || cleanText.includes('stereographic')) {
+    console.log("Routing to Built-in Expert PE Content: Rock Slopes Stereographic Projection");
+    return getStereonetExpertQuestions(title, keywords);
+  }
+
   if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell') || cleanText.includes('싱글쉘') || cleanText.includes('single shell')) {
     console.log("Routing to Built-in Expert PE Content: Single Shell Tunnel Method");
     return getSingleShellExpertQuestions(title, keywords);
