@@ -4401,18 +4401,6 @@ export default function App() {
                             />
                           </div>
                         )}
-
-                        {/* AI Chat Tutor Button */}
-                        <div className="pt-2 border-t border-slate-800/80 flex justify-end">
-                          <button
-                            onClick={() => handleAskTheoryDerivation(q.title || `이론 ${idx + 1}`, q.formula || '')}
-                            disabled={isChatLoading}
-                            className="w-full py-2 bg-slateCustom-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                          >
-                            <Brain size={13} className={isChatLoading ? "animate-pulse" : ""} />
-                            <span>💬 실시간 AI 튜터와 1:1 심층 문답하기</span>
-                          </button>
-                        </div>
                       </div>
                     );
                   })}
