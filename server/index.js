@@ -240,9 +240,11 @@ function extractJsonArray(str) {
   return null;
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * 5월 30일 업그레이드 완료된 다중 API 키 순환 및 3단계 모델 폴백 시스템
- * 429 한도초과(Quota Exceeded) 시 즉시 다음 보조 API 키(Secondary/Tertiary)로 가동 전환
+ * 5월 30일 업그레이드 완료된 다중 API 키 순환, 지수 백오프(Exponential Backoff), 3단계 모델 폴백 시스템
+ * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
 async function callLLMWithFailover(systemInstruction, userPrompt) {
   const keys = [
@@ -266,27 +268,44 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
 
     for (const modelName of MODELS) {
       if (keyExhausted) break;
-      try {
-        console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemInstruction || undefined
-        });
-        const result = await model.generateContent(userPrompt);
-        const text = result.response.text().trim();
-        if (text) {
-          console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-          return text;
-        }
-      } catch (err) {
-        console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName}: ${err.message?.substring(0, 120)}`);
-        lastError = err;
 
-        const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
-        if (isQuota) {
-          console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit. Switching to next key.`);
-          keyExhausted = true;
-          break; // Switch to the next key!
+      let attempt = 0;
+      const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+      let delay = 2000; // Initial delay: 2s
+
+      while (attempt < maxAttempts) {
+        try {
+          console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction || undefined
+          });
+          const result = await model.generateContent(userPrompt);
+          const text = result.response.text().trim();
+          if (text) {
+            console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+            return text;
+          }
+        } catch (err) {
+          console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
+          lastError = err;
+
+          const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
+          if (isQuota) {
+            attempt++;
+            if (attempt < maxAttempts) {
+              console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
+              await sleep(delay);
+              delay *= 2; // Double the delay (2s -> 4s -> 8s)
+            } else {
+              console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
+              keyExhausted = true;
+              break; // Switch to the next key!
+            }
+          } else {
+            // For other non-quota errors, don't retry and break immediately
+            break;
+          }
         }
       }
     }
@@ -1951,39 +1970,57 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
           for (const modelName of QUIZ_MODELS) {
             if (keyExhausted) break;
-            try {
-              console.log(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName}`);
-              const model = genAI.getGenerativeModel({ model: modelName });
-              const result = await model.generateContent(prompt);
-              const response = await result.response;
-              const rawText = response.text().trim();
+            
+            let attempt = 0;
+            const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+            let delay = 2000; // 2s initial delay
 
+            while (attempt < maxAttempts) {
               try {
-                let text = rawText;
-                if (text.startsWith('```')) {
-                  text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                console.log(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName} (시도 #${attempt + 1})`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const rawText = response.text().trim();
+
+                try {
+                  let text = rawText;
+                  if (text.startsWith('```')) {
+                    text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                  }
+                  questions = JSON.parse(text);
+                } catch (parseErr) {
+                  console.warn(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
+                  questions = extractJsonArray(rawText);
                 }
-                questions = JSON.parse(text);
-              } catch (parseErr) {
-                console.warn(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
-                questions = extractJsonArray(rawText);
-              }
 
-              if (!questions || !Array.isArray(questions)) {
-                throw new Error('Parsed result is not a valid JSON array or empty');
-              }
+                if (!questions || !Array.isArray(questions)) {
+                  throw new Error('Parsed result is not a valid JSON array or empty');
+                }
 
-              console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
-              break; // 성공 시 루프 종료
-            } catch (modelErr) {
-              lastErr = modelErr;
-              const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
-              if (isQuota) {
-                console.warn(`[단일토픽퀴즈 Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit. Switching to next key.`);
-                keyExhausted = true;
-                break; // Break model loop, switch to the next key
+                console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
+                break; // 성공 시 루프 종료
+              } catch (modelErr) {
+                lastErr = modelErr;
+                const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
+                if (isQuota) {
+                  attempt++;
+                  if (attempt < maxAttempts) {
+                    console.log(`[지수 백오프] 429 감지 (단일토픽퀴즈). ${delay}ms 후 재시도합니다...`);
+                    await sleep(delay);
+                    delay *= 2; // Double the delay
+                  } else {
+                    console.warn(`[단일토픽퀴즈 Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
+                    keyExhausted = true;
+                    break; // Break model loop, switch to next key
+                  }
+                } else {
+                  break; // Non-quota error, don't retry
+                }
               }
-              // For non-quota errors, continue trying other models/keys
+            }
+            if (questions) {
+              break; // Break the models loop on success
             }
           }
           if (questions) {
