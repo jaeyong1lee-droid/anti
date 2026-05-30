@@ -225,12 +225,36 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
             );
           }
 
+          // 비인라인 일반 텍스트의 경우, 빈 행을 제거하고 단락 숫자(1., 2. 등)가 있는 줄만 위아래 여백 적용
+          const textLines = htmlContent.split('\n');
+          const activeLines = textLines.filter(line => line.trim() !== '');
+
           return (
-            <div 
-              key={idx}
-              className="leading-relaxed whitespace-pre-line text-sm md:text-base select-text"
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-            />
+            <div key={idx} className="space-y-1 select-text">
+              {activeLines.map((line, lIdx) => {
+                const cleanLine = line.trim();
+                // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
+                const isHeading = /^\s*\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
+                
+                if (isHeading) {
+                  return (
+                    <div 
+                      key={lIdx}
+                      className="mt-5 mb-2.5 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text"
+                      dangerouslySetInnerHTML={{ __html: line }}
+                    />
+                  );
+                }
+
+                return (
+                  <div 
+                    key={lIdx}
+                    className="text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text"
+                    dangerouslySetInnerHTML={{ __html: line }}
+                  />
+                );
+              })}
+            </div>
           );
         }
       })}
