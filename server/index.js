@@ -1192,6 +1192,126 @@ function getQSystemExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Rock Bolt Pull-out Test
+function getRockboltPulloutTestExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `터널 지보재로 시공된 락볼트(Rock Bolt)의 인발시험(Pull-out Test)의 공학적 정의와 시험을 수행하는 주된 목적에 대하여 간략히 서술하시오.`,
+    concept: `락볼트 인발시험은 시공된 락볼트에 축방향 인장 하중을 가하여 볼트와 그라우트재, 그리고 암반 간의 부착력 및 최대 인발 저항력(정착 성능)을 정량적으로 평가하고 시공 상태를 검증하기 위한 품질 시험입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `락볼트 인발시험 설계 시 적용하는 락볼트 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(\\tau_{allow})의 기하학적 한계 관계 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `시추공 벽면과 그라우트재 사이의 접촉 면적과 허용 전단응력을 곱하여 전체 볼트 정착부의 극한 인발 한계 하중을 산정하는 공식입니다.`,
+    formula: `$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$\n- $P$: 락볼트 최대 인발 저항력 (허용 인발 하중)\n- $d$: 시추 구멍(또는 볼트)의 직경\n- $L$: 락볼트의 유효 정착 길이 (Bond Length)\n- $\\tau_{allow}$: 그라우트와 주변 암반 간의 허용 부착 전단 강도`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `락볼트 인발시험을 통해 직접적으로 측정하고 판정하는 락볼트 지보 시스템의 가장 핵심적인 공학적 성능 인자는 무엇인가?`,
+      options: shuffleArray([
+        "락볼트의 최대 인발 정착 하중 (Pull-out Capacity)",
+        "락볼트 철근 자체의 열팽창 계수",
+        "터널 내벽의 2차 콘크리트 라이닝 휨 압축 강도",
+        "지하수 유입에 따른 락볼트 부식 전기 화학적 속도"
+      ]),
+      answer: "락볼트의 최대 인발 정착 하중 (Pull-out Capacity)",
+      explanation: "락볼트 인발시험은 락볼트가 지반 내에 고정되어 버틸 수 있는 최대 하중인 '인발 정착력(Pull-out Capacity)'을 직접 인장력을 주어 확인하는 품질 보증 시험입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `국내 터널 시공 기준에 따라 현장 락볼트의 품질 관리를 위해 실시하는 인발시험의 표준 검사 빈도 기준으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "시공된 전체 락볼트 총 개수의 최소 1% 이상 (또는 설계서 기준 개수 및 50~100개당 1회 이상)",
+        "터널 굴착 거리 10km 마다 단 1개씩 임의 샘플 검사",
+        "시공된 모든 락볼트를 전부 인발하여 뽑아낸 후 재시공 (100% 전수 파괴 검사)",
+        "현장 대리인의 육안 관찰로 대체하며 실제 시험은 일절 금지한다."
+      ]),
+      answer: "시공된 전체 락볼트 총 개수의 최소 1% 이상 (또는 설계서 기준 개수 및 50~100개당 1회 이상)",
+      explanation: "일반적으로 현장 락볼트 인발시험은 시공된 락볼트 품질 신뢰성 검증을 위해 전체 수량의 최소 1% 이상(또는 일정 개수 단위당 1회 이상)을 무작위 추출하여 실시하는 것을 표준으로 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `현장 락볼트 인발시험 결과, 볼트가 급격히 빠져나오는 대표적인 정착 파괴 형태(Failure Mode) 중 가장 빈번하게 발견되는 역학적 파괴 취약부는 어디인가?`,
+      options: shuffleArray([
+        "그라우트재와 주변 암반 경계면 사이의 전단 부착 파괴 (Bond failure at grout-rock interface)",
+        "락볼트용 철근 강재 내부의 자체 취성 인장 인절 파괴",
+        "인발 잭(Jack) 기계 장비 프레임의 유압 실린더 압착 파손",
+        "숏크리트와 강지보재 사이의 박리 파괴"
+      ]),
+      answer: "그라우트재와 주변 암반 경계면 사이의 전단 부착 파괴 (Bond failure at grout-rock interface)",
+      explanation: "대부분의 락볼트 인발 파괴는 그라우트재와 암반 구멍 벽면 사이의 전단 부착력(Bond Strength) 부족으로 인해 경계면이 미끄러지며 발생하며, 강재 자체가 끊어지는 경우는 극히 드뭅니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `선단 정착용 쐐기 장치를 시추공 깊은 곳에 대고 기계적으로 즉시 물려 지보하는 선단정착형(Mechanical Anchor) 락볼트 인발 시 전면접착형(Resin/Cement) 대비 거동 특성으로 옳은 것은?`,
+      options: shuffleArray([
+        "인발 하중 재하 시 즉각적인 초기 슬립(Slip, 미끄러짐) 변위가 다소 발생하며, 장기 크리프 변형에 취약하다.",
+        "인발 즉시 암반과 하나로 용융되어 어떠한 변위도 발생하지 않는다.",
+        "그라우트가 양생될 때까지 최소 28일간은 인발시험을 절대로 실시해서는 안 된다.",
+        "선단 정착 장치에 부력이 작용하여 볼트가 터널 내부로 스스로 밀려 들어간다."
+      ]),
+      answer: "인발 하중 재하 시 즉각적인 초기 슬립(Slip, 미끄러짐) 변위가 다소 발생하며, 장기 크리프 변형에 취약하다.",
+      explanation: "기계적 선단정착형 락볼트는 시공 즉시 지보력을 발휘하지만 전면접착형에 비해 초기 변위(슬립)가 크게 발생하고 느슨해지기 쉬워 장기적인 암반 변형 제어 성능은 다소 떨어집니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `락볼트 인발시험 시 하중 재하 장비인 유압 잭(Jack)의 압력계 눈금과 볼트 선단부의 신장량을 측정하여 그래프 상에 매핑 작도하는 거동 평가 곡선의 명칭은 무엇인가?`,
+      options: shuffleArray([
+        "하중-변위 곡선 (Load-Displacement Curve)",
+        "GRC-LSC 반응 곡선",
+        "투수-압밀 대수 곡선",
+        "Mohr-Coulomb 파괴 포락 곡선"
+      ]),
+      answer: "하중-변위 곡선 (Load-Displacement Curve)",
+      explanation: "락볼트 인발시험 시 하중을 점진적으로 가하면서 그때마다 발생하는 볼트의 인발 변위량(신장량)을 계측하여 '하중-변위 곡선(Load-Displacement Curve)'을 작성해 정착 성능 및 변형 능력을 분석합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `현장 락볼트 인발시험 시 가해주는 최대 시험 하중(재하 기준)의 보편적인 공학적 품질 판정 기준으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "설계인발력(통상 10~15톤 내외) 이상을 확실히 도달 및 지지하는지 검증한다.",
+        "락볼트 강재가 우주선 인장 파괴 한계 하중인 1000톤에 도달할 때까지 파괴 재하한다.",
+        "하중을 전혀 가하지 않고 손으로 흔들어서 강도를 오감 판정한다.",
+        "설계 지압력의 10% 미만의 극미한 미동 하중만 순간적으로 가하고 해제한다."
+      ]),
+      answer: "설계인발력(통상 10~15톤 내외) 이상을 확실히 도달 및 지지하는지 검증한다.",
+      explanation: "인발시험 시 락볼트가 설계 조건상의 허용 지지력을 만족하는지 검증하는 것이 목적이므로, 설계인발력(현장별 통상 10~15톤 내외 또는 설계 하중의 1.2배 이상)까지 하중을 가해 버티는지 판정합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `전면접착식 시멘트 그라우팅 락볼트 시공 시 충전재로 널리 쓰이는 시멘트 페이스트(Cement Paste)의 부착 강도 및 워커빌리티를 확보하기 위한 가장 적합한 물-시멘트비(W/C) 범위는?`,
+      options: shuffleArray([
+        "W/C = 35% ~ 45% 내외",
+        "W/C = 90% ~ 100% 내외 (완전 물 상태)",
+        "W/C = 5% ~ 10% 내외 (완전 건조 가루 상태)",
+        "시멘트를 섞지 않고 순수한 지하수만 주입하는 것이 최적이다."
+      ]),
+      answer: "W/C = 35% ~ 45% 내외",
+      explanation: "부착 강도 극대화와 적절한 그라우트 주입성(압송성)을 동시에 만족시키기 위해 락볼트 충전재의 물-시멘트비는 일반적으로 35% ~ 45% 범위 내외의 걸쭉한 슬러리 상태로 배합 설계합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `현장 락볼트 인발시험 진행 도중, 설계 지지력에 미치지 못하고 볼트가 맥없이 미끄러져 빠져나오는 시공 불량 요인으로 가장 합리적이지 않은 진술은?`,
+      options: shuffleArray([
+        "천공 구멍 내부의 암분(가루) 청소를 불량하게 하여 그라우트 부착을 방해한 경우",
+        "시멘트 페이스트 주입량이 부족하여 구멍 상부에 공극(Void)이 다량 형성된 경우",
+        "그라우트 재료가 규정된 시간 동안 충분히 경화(양생)되지 않은 채 조기 인발을 시행한 경우",
+        "시추 구멍 내부에 그라우트(시멘트 충전재)가 빈틈없이 너무 꽉 찬 충만 밀실 상태인 경우"
+      ]),
+      answer: "시추 구멍 내부에 그라우트(시멘트 충전재)가 빈틈없이 너무 꽉 찬 충만 밀실 상태인 경우",
+      explanation: "그라우트가 시추공 내에 빈틈없이 밀실하게 가득 차서 충전율이 100%에 가까울수록 볼트 정착 강도는 극대화됩니다. 따라서 이는 시공 불량 원인이 아니라 최적의 시공 상태입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // Helper function to generate technical and high-quality PE questions locally (Dynamic domain-agnostic fallback)
 function generateFallbackQuestions(title, keywords, fileText = '') {
   const cleanTitle = title.toLowerCase();
@@ -1205,6 +1325,11 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic')) {
     console.log("Routing to Built-in Expert PE Content: Rock Slopes Stereographic Projection");
     return getStereonetExpertQuestions(title, keywords);
+  }
+
+  if (cleanTitle.includes('인발') || cleanTitle.includes('인발시험') || cleanTitle.includes('pullout') || cleanTitle.includes('pull-out')) {
+    console.log("Routing to Built-in Expert PE Content: Rock Bolt Pull-out Test");
+    return getRockboltPulloutTestExpertQuestions(title, keywords);
   }
 
   if (cleanTitle.includes('q 분류') || cleanTitle.includes('q분류') || cleanTitle.includes('q system') || cleanTitle.includes('q-system') || cleanTitle.includes('암반 분류') || cleanTitle.includes('암반분류')) {
