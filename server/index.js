@@ -3326,14 +3326,13 @@ function generateLocalTheoryQuestions(pdfName, fileText) {
       
       let context = '';
       if (index !== -1) {
-        const start = Math.max(0, index - 200);
-        const end = Math.min(fileText.length, index + 300);
+        const start = Math.max(0, index - 500);
+        const end = Math.min(fileText.length, index + 1500);
         context = fileText.substring(start, end).trim();
         context = context
           .split('\n')
           .map(l => l.trim())
-          .filter(l => l.length > 10)
-          .slice(0, 4)
+          .filter(l => l.length > 5)
           .join('\n');
       }
 
@@ -3354,14 +3353,16 @@ function generateLocalTheoryQuestions(pdfName, fileText) {
 
       for (const pair of geotechKeywords) {
         if ((context && context.includes(pair.word)) || cleanPdfName.includes(pair.word)) {
-          cardTitle = `${pair.title} (로컬 마이닝)`;
+          cardTitle = `${pair.title}`;
           break;
         }
       }
 
       theories.push({
         title: cardTitle,
-        answer: `[로컬 추출 공식]:\n${item.formula}\n\n[문서 내 맥락 분석]:\n${context || '본문에서 마이닝된 수식입니다. 상세 기호 정의와 유도는 우측 튜터에게 대화로 물어볼 수 있습니다.'}`
+        concept: `본문 문서에서 실시간 분석한 ${cardTitle}의 핵심 의미입니다.`,
+        assumptions: '본 문서의 물리적 평형 조건 및 지반 조건 적용',
+        answer: `${item.formula}\n\n${context || '본문에서 마이닝된 수식입니다. 상세 기호 정의와 유도는 우측 튜터에게 대화로 물어볼 수 있습니다.'}`
       });
     }
   }
@@ -3388,7 +3389,9 @@ function generateLocalTheoryQuestions(pdfName, fileText) {
 
       theories.push({
         title: inferredTitle,
-        answer: `[핵심 본문 지문]:\n${p}\n\n[학술 고찰]:\n해당 단락은 토목 기술사 출제에 핵심이 되는 전공 서술 파트입니다. 상세 유도는 우측 실시간 튜터에게 질문해 보세요.`
+        concept: `${inferredTitle}에 대한 실시간 주요 거동 해석입니다.`,
+        assumptions: '본 서적의 역학적 전제 조건 적용',
+        answer: `${p}\n\n해당 단락은 토목 기술사 출제에 핵심이 되는 전공 서술 파트입니다. 상세 유도는 우측 실시간 튜터에게 질문해 보세요.`
       });
     }
   }
@@ -3397,6 +3400,8 @@ function generateLocalTheoryQuestions(pdfName, fileText) {
   if (theories.length === 0) {
     theories.push({
       title: `${cleanPdfName} 핵심 역학 이론`,
+      concept: `${cleanPdfName}의 수식 파싱 결과입니다.`,
+      assumptions: '일반적인 공학적 조건 적용',
       answer: `본 문서에서 특이 수식을 파싱하지 못했습니다. 상세한 유도 질문은 우측의 AI 공식 튜터 대화창을 통해 질의해 주세요.`
     });
   }

@@ -4210,6 +4210,97 @@ export default function App() {
                 {/* Theory Questions Map */}
                 {theoryQuestions.map((q, idx) => {
                   const isRevealed = !!theoryRevealed[idx];
+                  const isEditing = editingTheoryIdx === idx;
+
+                  if (isEditing) {
+                    return (
+                      <div key={idx} className="formula-card-item bg-slateCustom-950/40 border-2 border-indigo-500/50 rounded-2xl p-5 space-y-4 animate-fade-in">
+                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                          <span className="text-[11px] font-black bg-indigo-950 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/30 select-none">
+                            이론 {idx + 1} 편집 모드
+                          </span>
+                        </div>
+
+                        <div className="space-y-4">
+                          {/* Title Input */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400">제목</label>
+                            <input
+                              type="text"
+                              value={editTheoryTitle}
+                              onChange={(e) => setEditTheoryTitle(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                              placeholder="이론 제목을 입력하세요"
+                            />
+                          </div>
+
+                          {/* Concept Input */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-indigo-400">💡 직관적 의미</label>
+                            <textarea
+                              value={editTheoryConcept}
+                              onChange={(e) => setEditTheoryConcept(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors h-20"
+                              placeholder="이론의 직관적인 의미나 개념을 적어주세요"
+                            />
+                          </div>
+
+                          {/* Assumptions Input */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-amber-400">📋 가정 조건</label>
+                            <input
+                              type="text"
+                              value={editTheoryAssumptions}
+                              onChange={(e) => setEditTheoryAssumptions(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                              placeholder="예: 1. 일차원 흐름, 2. Darcy 법칙 적용"
+                            />
+                          </div>
+
+                          {/* Formula Input */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-indigo-300">📐 상세 이론 유도 및 공학적 증명</label>
+                            <textarea
+                              value={editTheoryFormula}
+                              onChange={(e) => setEditTheoryFormula(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors h-36 font-mono"
+                              placeholder="LaTeX 블록이나 수식을 포함한 전체 상세 유도 내용을 입력하세요."
+                            />
+                          </div>
+
+                          {/* Edit Action Buttons */}
+                          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/80">
+                            <button
+                              onClick={() => setEditingTheoryIdx(null)}
+                              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              onClick={() => {
+                                const updated = [...theoryQuestions];
+                                updated[idx] = {
+                                  ...updated[idx],
+                                  title: editTheoryTitle,
+                                  concept: editTheoryConcept,
+                                  assumptions: editTheoryAssumptions,
+                                  formula: editTheoryFormula
+                                };
+                                latestTheoryQuestionsRef.current = updated;
+                                setTheoryQuestions(updated);
+                                handleSaveTheoryQuestions(updated, true);
+                                setEditingTheoryIdx(null);
+                              }}
+                              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-500/20"
+                            >
+                              저장하기
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
@@ -4222,8 +4313,21 @@ export default function App() {
                           </h4>
                         </div>
                         
-                        {/* Actions (Refresh, Trash) */}
+                        {/* Actions (Edit, Refresh, Trash) */}
                         <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingTheoryIdx(idx);
+                              setEditTheoryTitle(q.title || '');
+                              setEditTheoryConcept(q.concept || '');
+                              setEditTheoryAssumptions(q.assumptions || '');
+                              setEditTheoryFormula(q.formula || '');
+                            }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all cursor-pointer"
+                            title="이론 수정"
+                          >
+                            <Edit2 size={14} />
+                          </button>
                           <button
                             onClick={() => handleRefreshTheory(idx)}
                             disabled={refreshingTheoryIdx === idx}
