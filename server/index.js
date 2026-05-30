@@ -2570,6 +2570,31 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// 6-4. Formula Title Suggestion
+app.post('/api/formula/suggest-title', async (req, res) => {
+  try {
+    const { mathContent, fullText } = req.body;
+    if (!mathContent) {
+      return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = "당신은 지반공학 및 토질역학/토목 전공 학술 공식 명칭을 명명하는 작명 비서입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로, 해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭(예: 'Darcy의 투수계수식', 'Barton의 암반 Q분류식', 'Terzaghi 극한 지지력 공식' 등)을 칼같이 작명해주세요. 기호, 특수문자, 따옴표 등을 포함하지 말고, 다른 쓸데없는 잡설 없이 오직 한 줄의 '15자 내외 공식 명칭'만 반환해 주세요.";
+    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
+
+    try {
+      const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+      const cleanTitle = responseText.trim().replace(/^["'`\s]+|["'`\s]+$/g, ''); // 앞뒤 따옴표 등 제거
+      res.json({ title: cleanTitle });
+    } catch (err) {
+      console.error('Formula suggest title LLM error:', err);
+      res.status(500).json({ error: err.message || 'LLM 호출 오류' });
+    }
+  } catch (err) {
+    console.error('Formula suggest title route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;

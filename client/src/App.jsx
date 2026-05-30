@@ -1122,6 +1122,7 @@ export default function App() {
     const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
 
     const newFormula = {
+      id: `f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // 실시간 비동기 매칭용 고유 ID
       title,
       question,
       concept,
@@ -1131,6 +1132,35 @@ export default function App() {
 
     setFormulaQuestions(prev => [newFormula, ...prev]);
     showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
+
+    // 6. 백그라운드 AI 정밀 공식 작명 API 비동기 가동
+    fetch(`${API_BASE}/api/formula/suggest-title`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mathContent, fullText })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.title) {
+          const suggestedTitle = data.title;
+          setFormulaQuestions(prev => 
+            prev.map(f => {
+              if (f.id === newFormula.id) {
+                return {
+                  ...f,
+                  title: suggestedTitle,
+                  question: `${suggestedTitle} 공식을 제시하고, 각 기호의 정의를 서술하시오.`
+                };
+              }
+              return f;
+            })
+          );
+          showNotification(`[${suggestedTitle}] 공식명이 AI 추천 제목으로 정밀 업데이트되었습니다!`, 'success');
+        }
+      })
+      .catch(err => {
+        console.warn('AI 타이틀 추천 반영 실패 (로컬 기본값 보존):', err);
+      });
   };
 
   // View full report text
