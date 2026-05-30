@@ -1143,19 +1143,21 @@ export default function App() {
       .then(data => {
         if (data && data.title) {
           const suggestedTitle = data.title;
+          const suggestedStructure = data.structure;
           setFormulaQuestions(prev => 
             prev.map(f => {
               if (f.id === newFormula.id) {
                 return {
                   ...f,
                   title: suggestedTitle,
-                  question: `${suggestedTitle} 공식을 제시하고, 각 기호의 정의를 서술하시오.`
+                  question: `${suggestedTitle} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+                  structure: suggestedStructure || f.structure
                 };
               }
               return f;
             })
           );
-          showNotification(`[${suggestedTitle}] 공식명이 AI 추천 제목으로 정밀 업데이트되었습니다!`, 'success');
+          showNotification(`[${suggestedTitle}] 공식이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
         }
       })
       .catch(err => {
@@ -2758,7 +2760,7 @@ export default function App() {
 
                             {q.structure && (
                               <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                <span className="text-[10px] font-black text-emerald-400">📋 역학적 의의 / 구조: </span>
+                                <span className="text-[10px] font-black text-emerald-400">📋 각각의 변수/상수가 의미하는 것 & 역학적 의의: </span>
                                 <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
                               </div>
                             )}

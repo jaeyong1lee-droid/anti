@@ -2570,7 +2570,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// 6-4. Formula Title Suggestion
+// 6-4. Formula Analysis & Title/Structure Generation
 app.post('/api/formula/suggest-title', async (req, res) => {
   try {
     const { mathContent, fullText } = req.body;
@@ -2578,13 +2578,39 @@ app.post('/api/formula/suggest-title', async (req, res) => {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
-    const systemInstruction = "당신은 지반공학 및 토질역학/토목 전공 학술 공식 명칭을 명명하는 작명 비서입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로, 해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭(예: 'Darcy의 투수계수식', 'Barton의 암반 Q분류식', 'Terzaghi 극한 지지력 공식' 등)을 칼같이 작명해주세요. 기호, 특수문자, 따옴표 등을 포함하지 말고, 다른 쓸데없는 잡설 없이 오직 한 줄의 '15자 내외 공식 명칭'만 반환해 주세요.";
+    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 두 가지를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요.
+
+JSON 형식:
+{
+  "title": "해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭 (잡설 없이 15자 내외, 예: Darcy의 투수계수식, Barton의 암반 Q분류식, Terzaghi 극한 지지력 공식 등)",
+  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요."
+}
+
+반드시 다른 잡설 없이 오직 JSON 객체만 반환하시오. 마크다운 코드 블록(\`\`\`json) 등은 감싸지 말고 순수 JSON만 반환하시오.`;
+
     const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
 
     try {
       const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
-      const cleanTitle = responseText.trim().replace(/^["'`\s]+|["'`\s]+$/g, ''); // 앞뒤 따옴표 등 제거
-      res.json({ title: cleanTitle });
+      
+      let cleanJsonText = responseText.trim();
+      if (cleanJsonText.startsWith('```')) {
+        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+      
+      try {
+        const result = JSON.parse(cleanJsonText);
+        res.json({
+          title: result.title ? result.title.replace(/^["'`\s]+|["'`\s]+$/g, '') : '실시간 추출 공식',
+          structure: result.structure || '공식 분석 내용을 불러올 수 없습니다.'
+        });
+      } catch (parseErr) {
+        console.warn('JSON parsing failed, falling back to plaintext parse:', parseErr);
+        res.json({
+          title: responseText.substring(0, 30).trim(),
+          structure: '1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해'
+        });
+      }
     } catch (err) {
       console.error('Formula suggest title LLM error:', err);
       res.status(500).json({ error: err.message || 'LLM 호출 오류' });
