@@ -253,7 +253,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
     throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
   }
 
-  const MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
   const genAI = new GoogleGenerativeAI(geminiApiKey);
 
   let lastError = null;
@@ -1918,7 +1918,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                              process.env.GEMINI_API_KEY_TERTIARY || 
                              '';
         const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const QUIZ_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+        const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
       let questions = null;
       let lastErr = null;
