@@ -3632,11 +3632,19 @@ export default function App() {
                         assumptions: "",
                         formula: ""
                       };
-                      const updated = [newFormula, ...formulaQuestions];
+                      const updated = [...formulaQuestions, newFormula];
                       latestFormulaQuestionsRef.current = updated;
                       setFormulaQuestions(updated);
                       localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
                       showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                      setTimeout(() => {
+                        if (formulaBodyRef.current) {
+                          formulaBodyRef.current.scrollTo({
+                            top: formulaBodyRef.current.scrollHeight,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }, 80);
                     }}
                     className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
                   >
@@ -4149,11 +4157,19 @@ export default function App() {
                         assumptions: "",
                         formula: ""
                       };
-                      const updated = [newTheory, ...theoryQuestions];
+                      const updated = [...theoryQuestions, newTheory];
                       latestTheoryQuestionsRef.current = updated;
                       setTheoryQuestions(updated);
                       localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
                       showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                      setTimeout(() => {
+                        if (theoryBodyRef.current) {
+                          theoryBodyRef.current.scrollTo({
+                            top: theoryBodyRef.current.scrollHeight,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }, 80);
                     }}
                     className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
                   >
