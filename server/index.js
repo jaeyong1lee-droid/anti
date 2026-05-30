@@ -2582,7 +2582,7 @@ app.post('/api/formula/suggest-title', async (req, res) => {
 
 JSON 형식:
 {
-  "title": "해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭 (잡설 없이 15자 내외, 예: Darcy의 투수계수식, Barton의 암반 Q분류식, Terzaghi 극한 지지력 공식 등)",
+  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭 (예: '보상기초(Compensated Foundation) 보상도(C)', '랭킹(Rankine)의 주동토압 계수', 'Barton(바톤)의 Q분류' 등과 같이 한글과 영문 전공명을 섞어 극도로 콤팩트하고 학술적이게 작명해주세요. 불필요한 조사, 서술어, '산정 공식' 같은 미사여구는 빼고 명사형 위주로 아주 간결하게 작명해야 합니다.)",
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요."
 }
 
@@ -2605,13 +2605,22 @@ JSON 형식:
       try {
         const result = JSON.parse(cleanJsonText);
         res.json({
-          title: result.title ? result.title.replace(/^["'`\s]+|["'`\s]+$/g, '') : '실시간 추출 공식',
+          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '') : '실시간 추출 공식',
           structure: result.structure || '각 변수/상수의 상세 공학적 의미를 튜터 대화에서 분석해 보세요.'
         });
       } catch (parseErr) {
         console.warn('JSON parsing failed, falling back to plaintext parse:', parseErr);
+        
+        // 정규식을 활용하여 raw string에서 title 값 안전 발굴
+        let fallbackTitle = responseText.substring(0, 30).trim();
+        const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
+        if (titleMatch && titleMatch[1]) {
+          fallbackTitle = titleMatch[1];
+        }
+        fallbackTitle = fallbackTitle.replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
+
         res.json({
-          title: responseText.substring(0, 30).trim(),
+          title: fallbackTitle,
           structure: '- 각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요.'
         });
       }
