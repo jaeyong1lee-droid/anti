@@ -1,0 +1,29 @@
+@echo off
+title AntiGravity Spaced Repetition Launcher
+echo ============================================================
+echo  기술사 Spaced Repetition 학습 시스템 실행 중...
+echo ============================================================
+echo.
+
+set PROJECT_DIR=%~dp0
+set NODE_PORTABLE_DIR=%PROJECT_DIR%.node_portable\node-v20.11.1-win-x64
+set PATH=%NODE_PORTABLE_DIR%;%PATH%
+
+echo [1/3] 백엔드 서버(Port 5000)를 새 창에서 가동합니다...
+start "AntiGravity Backend" cmd /c "cd /d \"%PROJECT_DIR%server\" && node index.js"
+
+echo [2/3] 프론트엔드 서버(Port 3000)를 새 창에서 가동합니다...
+start "AntiGravity Frontend" cmd /c "cd /d \"%PROJECT_DIR%client\" && npm run dev"
+
+echo.
+echo [3/3] 잠시 후 웹 브라우저로 로컬 대시보드(http://localhost:3000)를 엽니다...
+timeout /t 3 /nobreak >nul
+start http://localhost:3000
+
+echo.
+echo ============================================================
+echo  서버 가동 및 브라우저 실행이 완료되었습니다!
+echo  학습을 완료한 후에는 실행된 두 검은색 명령프롬프트 창을 닫아주세요.
+echo ============================================================
+echo.
+timeout /t 5
