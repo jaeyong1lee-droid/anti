@@ -1442,6 +1442,128 @@ function getSeepageExpertQuestions(title, keywords) {
 }
 
 // ============================================================================
+// High-Quality Braced Wall & Elasto-plastic Beam Method Expert Questions (가설 흙막이 / 탄소성보법 전문가 문제)
+// ============================================================================
+function getBracedWallExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    concept: '탄소성보법은 흙막이 벽체를 연속보로, 배면 토사 및 버팀 구조를 탄소성 스프링으로 모델링하여 시공 단계별(단계별 굴착 및 지보재 설치) 벽체 변위, 휨모멘트, 버팀대 축력 등의 거동 변화를 연속적으로 추적 해석하는 기법입니다. 단순보법과 달리 벽체와 지반의 상호작용 및 시공 이력을 반영할 수 있습니다.',
+    formula: '',
+    structure: '',
+    question: `가설 흙막이 벽체 해석 시 적용되는 '탄소성보법(Elasto-plastic Beam Method)'의 공학적 정의와 기존 단순보법 대비 대표적인 장점을 간략히 서술하시오.`
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    concept: '탄소성보법 해석 시 지반-벽체 상호작용을 모사하기 위해 도입되는 지반 스프링 강도 산정 관계식입니다.',
+    formula: `$K_s = k_h \\cdot A$\n- $K_s$: 수평 지반 스프링 강도 (Soil Spring Stiffness)\n- $k_h$: 수평 지반반력계수 (Coefficient of Subgrade Reaction)\n- $A$: 해당 지반 스프링이 분담하는 벽체의 유효 배면적 (Effective Tributary Area)`,
+    structure: '',
+    question: `탄소성보법 해석 시 지반-벽체 상호작용을 모사하기 위해 도입되는 지반 스프링 강도($K_s$)의 기본 산정 공식과 각 기호의 정의를 서술하시오.`
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `탄소성보법 해석 시 가설 흙막이 벽체 배면에 작용하는 토압 모델링에 대한 공학적 설명으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "벽체 배면의 주동토압은 벽체가 굴착측 방향으로 변위가 발생하더라도 영구히 정지토압 상태로 고정되어 수치해석 시 절대 변하지 않는 상수로 취급한다.",
+        "벽체 변위가 발생하기 전 초기 상태에는 정지토압($K_0$)을 가하고, 굴착이 진행됨에 따라 벽체의 변위량에 비례하여 주동 및 수동토압 한계로 수렴하도록 지반 스프링을 탄소성 거동으로 모델링한다.",
+        "수동측 지반 저항은 흙의 수동 토압($P_p$)을 한계치(Yield limit)로 설정하여 지반 스프링이 겪을 수 있는 최대 압축 저항력의 소성 한계를 엄격히 제한한다.",
+        "탄소성 스프링 모델에서 인장력이 발생할 경우 흙의 인장 저항 성능이 거의 없음을 반영하여 스프링의 인장 강도를 0으로 설정(Tension-cutoff)한다."
+      ]),
+      answer: "벽체 배면의 주동토압은 벽체가 굴착측 방향으로 변위가 발생하더라도 영구히 정지토압 상태로 고정되어 수치해석 시 절대 변하지 않는 상수로 취급한다.",
+      explanation: "흙막이 벽체가 굴착측으로 전면 변위가 일어나면 배면 토압은 정지 토압에서 주동 토압($P_a$)으로 감소하게 되며, 변위 크기에 따라 스프링 저항이 탄소성 곡선을 따라 주동토압 한계치로 수렴하게 모델링합니다. 따라서 상수로 고정된다는 것은 탄소성 해석법의 기본 매커니즘에 위배됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `흙막이 탄소성보법 해석 시 '시공 단계별 해석(Stage-by-Stage Analysis)'이 필수적으로 요구되는 공학적 이유로 가장 올바른 진술은?`,
+      options: shuffleArray([
+        "흙막이 벽체는 시공 단계(굴착, 버팀대 설치, 추가 굴착)에 따른 지반 스프링의 탈락 및 신설, 지보재 선행하중(Preload) 이력 등의 경로 의존적 거동을 보이기 때문에",
+        "지반 내부의 전기이중층 두께가 시공 단계별로 급격히 팽윤(Swelling)하여 벽체 휨강도를 무한대로 상승시키기 때문",
+        "옹벽 배면에 발생하는 인장 균열 깊이가 시공 단계와 무관하게 항상 일정하여 1회 해석만으로도 부재력을 과다 평가할 수 있기 때문",
+        "흙막이 지반의 수평 투수 계수가 시공 속도에 비례하여 실시간으로 기하급수적으로 증가하기 때문"
+      ]),
+      answer: "흙막이 벽체는 시공 단계(굴착, 버팀대 설치, 추가 굴착)에 따른 지반 스프링의 탈락 및 신설, 지보재 선행하중(Preload) 이력 등의 경로 의존적 거동을 보이기 때문에",
+      explanation: "가설 흙막이 벽체는 단계별 굴착 및 지보재 설치에 따라 지점 조건이 끊임없이 변하며, 각 단계의 변위와 응력 이력이 다음 단계로 누적되는 경로 의존적(Path-dependent) 거동을 보입니다. 따라서 단순 일괄 해석이 아닌 시공 단계별 해석이 공학적으로 필수적입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `가설 흙막이 구조물 해석 시 탄소성보법의 한계점으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "벽체 배면 지반의 2차원적 변형(사선 방향 지반 거동 및 광역 침하 패턴)을 연속체적으로 정밀 모사하지 못하고 단일 지반 스프링 상수로 단순화하여 평가한다는 점",
+        "흙막이 벽체 부재의 시공 단계별 휨모멘트 및 전단력 변화를 계산해내는 것이 역학적으로 원천 불가능하다는 점",
+        "버팀대(Strut)에 인위적으로 가하는 선행하중(Preload) 효과를 수치 해석 모형에 전혀 반영할 수 없다는 점",
+        "벽체 배면 흙 입자의 다르시(Darcy) 투수 침투류 유선망 작도를 컴퓨터 내부에서 자동 소멸시킨다는 점"
+      ]),
+      answer: "벽체 배면 지반의 2차원적 변형(사선 방향 지반 거동 및 광역 침하 패턴)을 연속체적으로 정밀 모사하지 못하고 단일 지반 스프링 상수로 단순화하여 평가한다는 점",
+      explanation: "탄소성보법은 벽체를 1차원 보 부재로, 지반을 독립된 스프링(Winkler Spring)으로 가정한 모델이므로 지반의 연속체적 거동(예: 벽체 배면 이격 거리에 따른 2차원적 배후 지반 침하 거동 및 응력 전이 등)을 정밀하게 모사하지 못하는 근본적 한계를 지닙니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `흙막이 탄소성 스프링 모델에서 수평 지반반력계수($k_h$)에 영향을 미치는 지질 및 공학적 인자들에 대한 설명으로 올바르지 않은 것은?`,
+      options: shuffleArray([
+        "벽체의 휨강성($EI$) 및 근입 깊이가 클수록 지반-벽체의 상호작용 지반 스프링 유효 강성 수치는 고정되어 변하지 않는다.",
+        "지반반력계수 $k_h$는 흙의 변형계수($E_s$)에 비례하며 일반적으로 느슨한 사질토보다 단단한 암반 지반에서 훨씬 크게 평가된다.",
+        "지반반력계수 $k_h$는 고정된 흙의 고유 상수가 아니며 재하판의 크기, 벽체의 강성, 변위 수준 등에 따라 가변하는 설계 값이다.",
+        "SPT N치 또는 일축압축강도($q_u$)가 높은 단단한 점성토층일수록 수평 지반반력계수는 높게 산정된다."
+      ]),
+      answer: "벽체의 휨강성($EI$) 및 근입 깊이가 클수록 지반-벽체의 상호작용 지반 스프링 유효 강성 수치는 고정되어 변하지 않는다.",
+      explanation: "수평 지반반력계수 $k_h$는 흙의 변형성뿐 아니라 벽체의 휨강성($EI$), 벽체의 변위 폭 등에 따라 지반-구조물 상호작용(Soil-Structure Interaction) 관점에서 계속 변화하고 가변되는 관계식의 적용을 받습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `가설 흙막이 탄소성 해석 시 수동측 지반의 저항 성능을 지배하는 수평 지반반력스프링이 극한 한계 상태(Yielding)에 도달할 때의 공학적 결과로 가장 타당한 것은?`,
+      options: shuffleArray([
+        "지반 스프링이 소성 한계 수동토압($P_p$)에 도달하여 벽체 변위가 급격히 늘어나도 저항력이 더 이상 증가하지 않고 수평 소성 유동을 일으킨다.",
+        "스프링 저항력이 무한대로 발산하여 벽체가 굴착부 반대 방향으로 약 2배 이상 역변위 이동한다.",
+        "수동측 지반 속 지하수의 상향 동수경사가 급격히 하락하여 흙막이 내부가 완전 건조 진공 상태가 된다.",
+        "흙막이 벽체 내부 숏크리트 라이닝의 구조 유연성이 급격히 저하되어 벽체 두께가 1/5로 축소된다."
+      ]),
+      answer: "지반 스프링이 소성 한계 수동토압($P_p$)에 도달하여 벽체 변위가 급격히 늘어나도 저항력이 더 이상 증가하지 않고 수평 소성 유동을 일으킨다.",
+      explanation: "수동측 지반스프링이 극한 한계 수동응력에 도달(항복)하게 되면 탄소성 모델 특성상 더 이상 수평 하중 저항 강도가 증가하지 않고 소성 거동을 보이며 수평 변위가 굴착부 안쪽으로 대단히 크게 발생하게 됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `탄소성보법에서 가설 흙막이 벽체를 지지하는 버팀대(Strut) 혹은 레이커(Raker) 지보 구조의 모델링 기법에 대한 설명으로 올바른 진술은?`,
+      options: shuffleArray([
+        "버팀대 및 레이커는 축방향 압축 변형저항을 갖는 선형 또는 탄소성 축 스프링(Elastic Link / Truss Element)으로 모델링한다.",
+        "버팀대의 설치 위치에 가해지는 휨모멘트는 벽체의 휨 강성을 언제나 강제로 0으로 붕괴시키는 모멘트 핀 힌지로만 취급한다.",
+        "버팀대 스프링은 벽체가 배면 지반 밖으로 인장 변위될 때도 무한대의 압축 지지 저항을 고정적으로 유지하도록 모델링한다.",
+        "흙막이 굴착 진행 시 버팀대에 가하는 잭킹 선행하중(Preload)은 수치 모델에서 절점 강제 하중으로 반영하는 것이 공학적으로 원천 불가능하다."
+      ]),
+      answer: "버팀대 및 레이커는 축방향 압축 변형저항을 갖는 선형 또는 탄소성 축 스프링(Elastic Link / Truss Element)으로 모델링한다.",
+      explanation: "가설 흙막이 버팀대(Strut)나 어스앵커 등은 부재 단면적($A$), 탄성계수($E$), 자유장 길이($L$) 등에 의하여 산정되는 축강성 스프링 $K = EA/L$을 갖는 탄성 또는 소성 링크/트러스 요소로 모사됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `가설 흙막이 구조물 설계 시 적용되는 한계상태설계법(LSD)과 허용응력설계법(ASD)의 차이에 대한 공학적 설명으로 올바른 진술은?`,
+      options: shuffleArray([
+        "한계상태설계법(LSD)은 하중인자와 저항인자를 분리하여 신뢰성 이론 기반의 부분안전율을 적용하며, 허용응력설계법(ASD)은 단일 통합 허용안전율을 적용한다.",
+        "허용응력설계법(ASD)은 강재의 극한 한계 응력 도달 상태를 기준으로 설계하여 항상 강재 소요량을 최소화하는 기법이다.",
+        "한계상태설계법(LSD)은 지중 간극수압 상승 효과를 무시하고 흙의 유효마찰각을 항상 2배 과대 평가하여 설계한다.",
+        "허용응력설계법(ASD)은 시공 단계별 비선형 거동 해석이 불가능하고 오직 탄소성보법에만 적용할 수 있는 제한이 있다."
+      ]),
+      answer: "한계상태설계법(LSD)은 하중인자와 저항인자를 분리하여 신뢰성 이론 기반의 부분안전율을 적용하며, 허용응력설계법(ASD)은 단일 통합 허용안전율을 적용한다.",
+      explanation: "ASD는 단일 안전율을 사용하는 전통적 설계법인 반면, LSD(또는 LRFD)는 하중계수와 저항계수(부분안전율)를 각각 독립적으로 도입하여 일관된 신뢰도 수준을 확보하는 현대적이고 정교한 설계법입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `흙막이 탄소성보법 해석에서 벽체의 지지 구조로 어스앵커(Earth Anchor)를 적용할 때의 모델링 및 해석적 유의사항으로 올바르지 않은 설명은?`,
+      options: shuffleArray([
+        "어스앵커의 정착부 배후 지반의 쐐기 파괴 활동면은 벽체 배면에 고정 정지 토압 상태를 무한히 유지하는 완전한 강체로 간주하여 해석한다.",
+        "어스앵커의 인장 정착장 강도를 모사하는 축스프링은 벽체의 인장 변위에 의해서만 인장 저항이 발생하는 일방향 인장 전용 링크로 모델링해야 한다.",
+        "앵커 긴장 시 가하는 인장력(Lock-off Load)은 앵커 스프링 요소에 초기 인장 변위나 절점 외력 형태로 모델링하여 선행 응력 효과를 모사한다.",
+        "어스앵커의 축강성은 앵커 인장재의 탄성 강성뿐 아니라 자유장 길이와 정착장의 지반 전단 마찰 특성 등도 조합하여 정량 산정한다."
+      ]),
+      answer: "어스앵커의 정착부 배후 지반의 쐐기 파괴 활동면은 벽체 배면에 고정 정지 토압 상태를 무한히 유지하는 완전한 강체로 간주하여 해석한다.",
+      explanation: "어스앵커의 정착부는 흙막이 벽체 배면의 주동 쐐기 파괴 활동선 바깥의 안정 지반층(정착 지반)에 위치해야 하며, 앵커 인장력에 의해 배면 지반 내부의 전단 응력장 및 활동 안정성이 변하므로 단순 정체 강체로 가정해서는 안 됩니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 
@@ -1815,6 +1937,23 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSeepageExpertQuestions(title, keywords);
   }
 
+  // 15. Braced Wall / 가설 흙막이 / 탄소성보법
+  if (
+    cleanTitle.includes('흙막이') || 
+    cleanTitle.includes('가설 흙막이') || 
+    cleanTitle.includes('가설흙막이') || 
+    cleanTitle.includes('탄소성') || 
+    cleanTitle.includes('탄소성보') || 
+    cleanTitle.includes('탄소성보법') || 
+    cleanTitle.includes('braced wall') || 
+    cleanTitle.includes('braced_wall') || 
+    cleanTitle.includes('지반스프링') || 
+    cleanTitle.includes('지반 스프링')
+  ) {
+    console.log("-> Routed (Strict Title) to Braced Wall & Elasto-plastic Beam Method Expert Questions.");
+    return getBracedWallExpertQuestions(title, keywords);
+  }
+
   // ==========================================================
   // STAGE 2: Secondary Broad Match with Keywords
   // ==========================================
@@ -2046,6 +2185,23 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   ) {
     console.log("-> Routed (Keyword Match) to Soil Permeability & Seepage Expert Questions.");
     return getSeepageExpertQuestions(title, keywords);
+  }
+
+  // 15. Braced Wall / 가설 흙막이 / 탄소성보법
+  if (
+    cleanKeywords.includes('흙막이') || 
+    cleanKeywords.includes('가설 흙막이') || 
+    cleanKeywords.includes('가설흙막이') || 
+    cleanKeywords.includes('탄소성') || 
+    cleanKeywords.includes('탄소성보') || 
+    cleanKeywords.includes('탄소성보법') || 
+    cleanKeywords.includes('braced wall') || 
+    cleanKeywords.includes('braced_wall') || 
+    cleanKeywords.includes('지반스프링') || 
+    cleanKeywords.includes('지반 스프링')
+  ) {
+    console.log("-> Routed (Keyword Match) to Braced Wall & Elasto-plastic Beam Method Expert Questions.");
+    return getBracedWallExpertQuestions(title, keywords);
   }
 
   // 10. Ultimate High-Quality Fallback for other Topics
