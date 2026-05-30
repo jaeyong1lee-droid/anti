@@ -2610,61 +2610,61 @@ app.post('/api/chat', async (req, res) => {
 const LOCAL_FORMULA_DICTIONARY = [
   {
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
-    title: 'Terzaghi(테르자기)의 1차원 압밀',
+    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
     concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
     structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`
   },
   {
     keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
-    title: 'Terzaghi(테르자기)의 극한 지지력',
+    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
     concept: '흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식',
     structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
   },
   {
     keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
-    title: 'Barton(바톤)의 암반 Q분류',
+    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
     concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식',
     structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
   },
   {
     keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
-    title: '연약지반 Sand Mat 최소 두께',
+    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
     concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식',
     structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
   },
   {
     keywords: ['r', 'R', '\\alpha', 'sin', '45'],
-    title: '평사투영 Schmidt Net 극점 반경',
+    title: '슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)',
     concept: '통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식',
     structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
   },
   {
     keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
-    title: '락볼트(Rock Bolt) 설계 지반 고착력',
+    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
     concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식',
     structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
   },
   {
     keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
-    title: '랭킹(Rankine)의 주동토압 계수',
+    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
     concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식',
     structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
   },
   {
     keywords: ['C', 'D_f', 'q_{net}'],
-    title: '보상기초(Compensated Foundation) 보상도(C)',
+    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
     concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식',
     structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
   },
   {
     keywords: ['p_w', '\\gamma_w', 'H'],
-    title: '터널 싱글쉘(Single Shell) 설계 수압',
+    title: '싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)',
     concept: '방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식',
     structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
   },
   {
     keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
-    title: '가설 흙막이 수평 지반반력계수',
+    title: '가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
     concept: '벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식',
     structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
   }
@@ -2716,7 +2716,7 @@ app.post('/api/formula/suggest-title', async (req, res) => {
  
 JSON 형식:
 {
-  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [작명 예시]: '압밀계수(Coefficient of Consolidation, $C_v$)', '주동토압계수(Coefficient of Active Earth Pressure, $K_a$)', '암반등급지수(Barton Q-system, $Q$)', '극한지지력(Ultimate Bearing Capacity, $q_{ult}$)'",
+  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [중요 규칙]: 1) 공식에 학자/사람이름(예: 테르자기, 바톤, 랭킹, 쿨롱 등)이 연관된 경우 반드시 '테르자기 1차 압밀방정식', '바톤 암반 Q분류', '랭킹 주동토압계수'와 같이 사람이름을 최전방 한글명에 무조건 추가해 작명하시오. 2) '고착력 계산식', '설계수압' 등과 같이 대상이나 주어가 불분명한 수식은 반드시 '락볼트 고착력 계산식', '싱글쉘 터널 설계수압'처럼 주어를 확실히 명시하여 작명하시오. [작명 예시]: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)', '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)', '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)', '바톤 암반 Q분류(Barton Q-system, $Q$)', '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)'",
   "concept": "이 공식이 상징하는 공학적/물리적 의미를 수험생이 머릿속에 아주 쉽게 직관적으로 이해할 수 있도록 설명하는 극도로 직관적이고 친절한 1~2문장의 명품 공학 개념 설명입니다. 기호의 나열이나 딱딱한 학술 사전 정의를 복사하는 것은 절대 엄금합니다. 수식의 본질적 존재 이유와 실무 공학적 대조(비유)를 섞어 쉽고 흥미롭게 작성하십시오. [개념 설명 작성 예시 (압밀계수 Cv 관련 수식 유입 시)]: '압밀계수 : \"물이 빠져나가며 흙이 압축되는 속도(Speed)\" 입니다. 즉시침하 공식들이 \"침하가 최종적으로 얼마나(침하량) 일어나는가?\" 를 묻는 것이라면, 압밀계수는 그 침하가 \"얼마나 빨리(시간) 끝나는가?\" 를 결정하는 핵심 지표입니다.' 이와 같이 다른 모든 전공 공식(지지력, Q분류, 토압 등)에 대해서도 '실무적으로 이 공식이 결정해주는 진짜 물리적 의의가 무엇인지'를 이해하기 쉬운 비유와 대조를 섞어 반드시 작성하십시오.",
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오."
 }
