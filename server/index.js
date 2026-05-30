@@ -2546,7 +2546,91 @@ ${combinedText}
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
-      res.json({ questions: cleanedQuestions, total: cleanedQuestions.length, topicCount: topics.length });
+
+      // Retrieve custom formula questions and theory questions from database
+      let customFormulas = [];
+      let customTheories = [];
+      try {
+        await ensureSessionTable();
+        const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+        if (formulaRows.length > 0 && formulaRows[0].value) {
+          const parsed = JSON.parse(formulaRows[0].value);
+          if (Array.isArray(parsed.formulaQuestions)) {
+            customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+          }
+        }
+        const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+        if (theoryRows.length > 0 && theoryRows[0].value) {
+          const parsed = JSON.parse(theoryRows[0].value);
+          if (Array.isArray(parsed.theoryQuestions)) {
+            customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
+      }
+
+      // If database is empty, load defaults so that the user always has them
+      if (customFormulas.length === 0) {
+        customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+          title: d.title,
+          formula: d.formula || d.structure || '',
+          concept: d.concept || ''
+        }));
+      }
+      if (customTheories.length === 0) {
+        customTheories = [
+          {
+            title: "Terzaghi 1차원 압밀 지배방정식 유도",
+            concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+            formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+          },
+          {
+            title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+            concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+            formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+          },
+          {
+            title: "Rankine 주동토압 공식의 이론적 유도",
+            concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+            formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+          }
+        ];
+      }
+
+      // Shuffle and select up to 5 formula questions and 5 theory questions
+      const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+      const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
+      
+      const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
+        type: "주관식",
+        subtype: "공식",
+        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula,
+        concept: f.concept
+      }));
+      
+      const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
+        type: "주관식",
+        subtype: "서술",
+        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula,
+        concept: t.concept
+      }));
+
+      const customSubjs = [...selectedFormulas, ...selectedTheories];
+
+      // Filter generated questions into Subjectives and Objectives
+      const generatedSubjectives = cleanedQuestions.filter(q => q.type === '주관식');
+      const generatedObjectives = cleanedQuestions.filter(q => q.type === '객관식');
+
+      // Replace some subjective questions with custom formulas/theories to maintain 70 count
+      const subjsNeeded = Math.max(0, 25 - customSubjs.length);
+      const finalSubjectives = [...customSubjs, ...generatedSubjectives.slice(0, subjsNeeded)];
+      
+      const finalQuestions = [...finalSubjectives, ...generatedObjectives];
+
+      res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
     } catch (err) {
       console.error('Exam route error:', err);
       res.status(500).json({ error: err.message || '문제 생성 실패' });
