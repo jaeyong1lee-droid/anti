@@ -1096,6 +1096,353 @@ function getConsolidationExpertQuestions(title, keywords) {
 }
 
 // ============================================================================
+// High-Quality Tunnel Overbreak & Controlled Blasting Expert Questions (여굴 / 제어발파 전문가 문제)
+// ============================================================================
+function getOverbreakExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `터널 굴착 및 발파 시 발생하는 여굴(Overbreak)의 공학적 정의와 발생 시 유발되는 문제점에 대하여 간략히 서술하시오.`,
+    concept: `여굴은 터널 굴착 시 설계 단면을 초과하여 주변 암반이 붕락하거나 과도하게 깎여 나가는 현상입니다. 여굴이 발생하면 터널 배후에 과도한 공동(Void)이 생겨 숏크리트 라이닝의 구조적 불균형을 초래하고, 충전 콘크리트량 급증으로 공사비가 상승하며 지반 아칭 효과를 훼손하는 문제를 유발합니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `여굴을 최소화하기 위한 제어발파(Controlled Blasting) 설계 시 장약공 직경과 천공 경의 비를 조절하여 폭압을 감쇄시키는 디커플링 효과(Decoupling Effect)의 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`,
+    concept: `천공경 벽면과 폭약 사이에 여유 공간을 확보함으로써 충격파 압력을 전폭 완화하여 여굴 및 주변 암반 균열을 억제하는 공학 제어 공식입니다.`,
+    formula: `$D_e = \\frac{d_c}{d_h} < 1.0$\n- $D_e$: 디커플링 지수 (Decoupling Index)\n- $d_c$: 장약 폭약의 직경 (Diameter of Charge)\n- $d_h$: 천공 구멍의 직경 (Diameter of Hole)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `터널 굴착 여굴을 유발하는 지반 및 지질학적 요인으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "암반 내 불연속면 절리의 밀도가 극도로 낮고 단단한 무절리 무암 지반 조건",
+        "암반 내 절리, 층리, 편리 등 취약 불연속면의 주향이 터널 노선 방향과 평행할 때",
+        "지하수의 용출 압력이 강하고 단층 파쇄대 등의 연약 영역을 관통하여 굴착할 때",
+        "터널 천단부에 인접하여 경사각이 완만한 층상 전단 균열이 발달해 있을 때"
+      ]),
+      answer: "암반 내 불연속면 절리의 밀도가 극도로 낮고 단단한 무절리 무암 지반 조건",
+      explanation: "여굴은 주로 암반 내부의 절리, 균열, 단층 파쇄대 등 취약한 구조적 불연속면을 따라 블록 단위로 붕락(Keyblock 탈락)하며 발생합니다. 절리가 거의 없는 건실한 무암 지반에서는 여굴 위험성이 극히 희박합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `터널 제어발파(Controlled Blasting) 공법 중 굴착 예정선에 인접하여 천공 간격을 조밀하게 뚫은 후 폭약을 장약하지 않고 무장약공으로 두어 전파되는 충격파를 차단 차단하는 공법의 명칭은?`,
+      options: shuffleArray([
+        "라인 드릴링 공법 (Line Drilling)",
+        "스무드 블라스팅 공법 (Smooth Blasting)",
+        "프리스플리팅 공법 (Presplitting)",
+        "쿠션 블라스팅 공법 (Cushion Blasting)"
+      ]),
+      answer: "라인 드릴링 공법 (Line Drilling)",
+      explanation: "라인 드릴링은 굴착 경계선을 따라 가늘고 촘촘하게 천공을 뚫은 후, 폭약을 넣지 않는 무장약공 상태로 둠으로써 주변 암반 발파 충격파의 인접 전파를 슬릿(Slit) 형태로 반사·흡수시켜 여굴을 최소화하는 무장약식 제어 기법입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `터널 스무드 블라스팅(Smooth Blasting) 공법의 설계 기준으로 가장 올바르지 않은 설명은?`,
+      options: shuffleArray([
+        "외곽공(Contour Hole)의 발파는 터널 중심부의 주 발파공(Helper Hole)보다 가장 먼저 기폭시켜야 한다.",
+        "천공 간격($S$)과 저항선($B$)의 비($S/B$)는 보편적으로 약 0.8 내외의 조밀 조정을 원칙으로 한다.",
+        "외곽공의 천공 간격은 일반 주 발파공 간격보다 현저히 조밀하게 배치 설계해야 한다.",
+        "폭약의 단위 장약량(폭약 밀도)은 일반 기폭 발파 대비 약 1/3 ~ 1/5 수준의 소형 저폭약량을 사용한다."
+      ]),
+      answer: "외곽공(Contour Hole)의 발파는 터널 중심부의 주 발파공(Helper Hole)보다 가장 먼저 기폭시켜야 한다.",
+      explanation: "Smooth Blasting은 먼저 중심부의 주 발파공(Helper)들을 기폭시켜 충분한 '자유면'을 확보한 뒤, 마지막에 외곽 경계공(Contour)들을 순차 폭발시켜 주변 여굴 없이 미려한 굴착 단면을 뜯어내는 공법입니다. 외곽공을 가장 먼저 기폭시키는 공법은 프리스플리팅(Presplitting)입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `발파 에너지를 벽면 천공 구멍 전체에 밀착시키지 않고 공간적 유격(Decoupling Space)을 두어 압축 파괴를 배제하고 전단 파괴선만 유도하도록 장약하는 물리적 이유는 무엇인가?`,
+      options: shuffleArray([
+        "충격 맹압에 의한 암반의 소성 압축 과여굴 분쇄를 막고, 균열 결합선을 미려하게 형성하기 위해",
+        "폭약의 화학 폭발 반사 속도를 2배로 상승시켜 발파 굴진 효율을 극대화하기 위해",
+        "외곽공 천공경 배면 지중수로 물을 인위적으로 충전하여 보일링 분사 압력을 증대시키기 위해",
+        "소음과 진동 발생 장약 압력을 터널 막장 배후 전방으로 최대한 집중 흡수시키기 위해"
+      ]),
+      answer: "충격 맹압에 의한 암반의 소성 압축 과여굴 분쇄를 막고, 균열 결합선을 미려하게 형성하기 위해",
+      explanation: "디커플링(Decoupling)을 주어 폭약과 암벽 사이에 여유 공극을 두면, 초기 극초고압 충격파가 완화되어 공벽 부근 암반이 모래처럼 가루로 으깨지는 과분쇄 및 불규칙 여굴을 원천 차단하고 정교한 인접 공 간 전단 파괴만 유도할 수 있습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `터널 굴착 여굴이 장기 지반 거동 및 영구 라이닝 지보재에 미치는 역학적 해악으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "여굴부 배후에 공동이 잔존할 시 배후 지반 아칭 효과가 소멸하고 구조물의 국부 하중 및 편압을 유발한다.",
+        "여굴 부위가 늘어날수록 터널 복공 라이닝 부재의 대칭 유효 유연성이 극적으로 상승하여 안정된다.",
+        "여굴부 숏크리트가 두꺼워지면 터널 벽면의 초기 접지 탄성 저항 압력이 무한대로 저하되어 불리하다.",
+        "여굴 발생 부위가 커질수록 지하수의 하향 침투가 완전 정지되어 콘크리트 라이닝의 열화가 방지된다."
+      ]),
+      answer: "여굴부 배후에 공동이 잔존할 시 배후 지반 아칭 효과가 소멸하고 구조물의 국부 하중 및 편압을 유발한다.",
+      explanation: "여굴로 생긴 터널 배후 빈 공동을 철저히 충전(뒷채움 그라우팅)하지 않으면, 아칭 효과가 파괴되어 흙/암반 하중이 한쪽으로 쏠리는 불균형 편압(Eccentric Load)이 라이닝에 작용하여 구조 균열 및 붕괴를 초래합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `터널 현장에서 굴착 직후 여굴량과 터널 3차원 형상 단면의 오차를 신속하고 정교하게 취득하기 위해 실무 설계 및 계측에서 가장 보편적으로 도입하는 정밀 검사 기법은?`,
+      options: shuffleArray([
+        "3D 레이저 스캐너 계측 (LiDAR 기법)",
+        "표준관입시험 (SPT 관입 계측)",
+        "유선망 수치 기하학 작도법",
+        "지반 내 경사계 터널 굴진 측정"
+      ]),
+      answer: "3D 레이저 스캐너 계측 (LiDAR 기법)",
+      explanation: "현대 터널 터널 설계 및 시공 시에는 막장 굴착 직후 3D 레이저 스캐너(LiDAR)를 운용해 3차원 터널 내벽 형상 구름 데이터를 획득하고, 이를 설계 단면 CAD 도면과 겹쳐 여굴 부피 및 위험 공동 범위를 적시 정량 평가합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `여굴 대책 설계 중 폭파에 기인한 원인이 아닌 시공성 기계적 요인을 통제하기 위해 막장 전방 보강 공법으로 가장 널리 적용되는 공학 대책은?`,
+      options: shuffleArray([
+        "천단부 포어폴링(Forepoling) 및 파이프 루프(Pipe Roof) 공법",
+        "배면 배수 유도 다공 파이프 배수 공법",
+        "터널 굴착 직하부 확대기초 보강 말뚝 타설",
+        "점성토층 일차 양면 압밀 샌드 드레인 공법"
+      ]),
+      answer: "천단부 포어폴링(Forepoling) 및 파이프 루프(Pipe Roof) 공법",
+      explanation: "암반이 취약하여 굴착 시 자립하지 못하고 막장 천단이 흘러내리거나 떨어지는 낙반 여굴을 막기 위해서는 굴착 전에 천단 전방 방향으로 강관이나 철근 보강재를 미리 근입하는 포어폴링(Forepoling)이나 파이프루프 공법이 가장 적절합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `제어발파 설계 중 굴착선 경계를 따라 미리 천공을 뚫고 동시에 폭발시켜 암반 내부에 사전 전단 파괴 틈새(Presplit crack)를 미리 형성해 두고, 그 안쪽의 Helper 홀들을 나중에 주발파하는 기법의 명칭은?`,
+      options: shuffleArray([
+        "프리스플리팅 공법 (Presplitting)",
+        "스무드 블라스팅 공법 (Smooth Blasting)",
+        "쿠션 블라스팅 공법 (Cushion Blasting)",
+        "라인 드릴링 공법 (Line Drilling)"
+      ]),
+      answer: "프리스플리팅 공법 (Presplitting)",
+      explanation: "프리스플리팅(Presplitting)은 터널 주 발파공을 기폭하기 전에 외곽 경계공들을 '가장 먼저' 동시 폭파시켜 사전에 전단 인장 크랙을 유도하는 기법으로, 주발파 폭발 충격압이 외곽 경계 밖의 배후 암반으로 넘어가는 것을 사전에 차단하여 배후 암반 여굴을 막아주는 안전 설계 공법입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality Slope Stability Expert Questions (사면안정 전문가 문제)
+// ============================================================================
+function getSlopeStabilityExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `자연사면 및 인공사면 붕괴를 유발하는 내적·외적 원인과 한계평형해석법(Limit Equilibrium Method)의 기본 정의를 서술하시오.`,
+    concept: `사면 붕괴는 강우 침투 등에 의해 간극수압이 증가하여 전단 강도가 저하되는 내적 요인과, 굴착이나 상부 하중 증가로 전단 응력이 증가하는 외적 요인에 의해 유발됩니다. 한계평형해석법은 사면 활동면 상의 전단 강도와 작용 전단 응력의 한계 비를 통해 평형 관계 안전율($F.S. = \\tau_f / \\tau_d$)을 정량적으로 산정하는 기법입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `지하수 침투류 흐름이 없는 포화 균질 흙으로 구성된 무한 사면(Infinite Slope)의 설계 안전율($F.S.$) 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`,
+    concept: `평행 활동 슬라이딩 거동을 보이는 무한사면에 대하여 흙의 강도 파라미터($c', \\phi'$)와 경사각($\\beta$) 간의 한계 상태 안정 평형 관계식입니다.`,
+    formula: `$F.S. = \\frac{c' + \\gamma H \\cos^2\\beta \\tan\\phi'}{\\gamma H \\sin\\beta \\cos\\beta}$\n- $F.S.$: 사면 안전율\n- $c'$: 흙의 유효 점착력 (Cohesion)\n- $\\phi'$: 흙의 유효 내부마찰각\n- $\\gamma$: 흙의 단위중량\n- $H$: 활동면의 수직 깊이\n- $\\beta$: 사면의 경사각 (Slope Angle)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `사면 안정 해석 시 널리 적용되는 절편법(Method of Slices) 중, 각 절편 측면에 가해지는 횡방향 수평력과 수직 마찰력을 완전히 무시하여 안전율이 약간 보수적으로 평가되는 가장 간단한 절편 해석법은?`,
+      options: shuffleArray([
+        "Fellenius (스웨덴식) 간편법",
+        "Bishop 간편법 (Modified Bishop Method)",
+        "Spencer 정밀 해석법",
+        "Janbu 일반 한계 평형 해석법"
+      ]),
+      answer: "Fellenius (스웨덴식) 간편법",
+      explanation: "Fellenius(스웨덴식) 방법은 모멘트 평형 조건만 만족하며, 계산의 단순화를 위해 절편 양측면에 작용하는 횡방향 전단력과 법선력을 0으로 완전히 무시합니다. 이로 인해 안전율이 실제보다 약 10~15% 보수적으로 낮게 계산되는 경향이 있습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `집중 강우 시 사면 붕괴사고가 급증하는 근본적인 지중 유효응력 변화 매커니즘으로 올바른 공학적 진술은?`,
+      options: shuffleArray([
+        "지하수위 상승 및 침투압 유입으로 간극수압($u$)이 상승하여 유효응력($\\sigma' = \\sigma - u$)이 감소하고 전단강도가 무너짐",
+        "강우의 유입으로 흙의 점착력($c$) 자체가 물리화학적으로 2배 이상 순간 증폭되기 때문",
+        "지반 내부의 유효 수직응력이 대폭 증폭되어 흙의 전단 파괴포락선 각도가 수평으로 저하되기 때문",
+        "강우 침투류의 작용 방향이 사면 활동 방향과 정확히 정반대로 작용하여 활동 마찰 저항을 상실시키기 때문"
+      ]),
+      answer: "지하수위 상승 및 침투압 유입으로 간극수압($u$)이 상승하여 유효응력($\\sigma' = \\sigma - u$)이 감소하고 전단강도가 무너짐",
+      explanation: "지반 내에 지하수위가 상승하거나 침투수가 유입되면 간극수압($u$)이 커집니다. 유효응력 공식 $\\sigma' = \\sigma - u$에 따라 유효 수직응력이 저하되며, 결과적으로 흙의 전단 강도 $\\tau_f = c' + \\sigma' \\tan\\phi'$가 상실되어 안정 성능을 잃고 붕괴됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `암반 비탈면(Rock Slope) 안정성 해석 시, 불연속면의 경사 방향이 사면의 굴착 방향과 거의 평행하고 불연속면의 경사각($\\alpha$)이 흙의 내부 마찰각($\\phi$)보다 클 때 주로 발생하는 기구학적 파괴 모드는?`,
+      options: shuffleArray([
+        "평면 파괴 (Planar Failure)",
+        "쐐기 파괴 (Wedge Failure)",
+        "전도 파괴 (Toppling Failure)",
+        "원호 파괴 (Circular Failure)"
+      ]),
+      answer: "평면 파괴 (Planar Failure)",
+      explanation: "평면파괴는 단일 불연속면을 따라 2차원적으로 미끄러지는 파괴 모드로, 불연속면의 경사 주향이 비탈면 주향과 $20^\\circ$ 이내로 평행하고 불연속면 경사각이 비탈면 경사각보다 작으면서 암반 내부 마찰각보다 클 때 발생합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `사면의 안전율을 증대시키기 위해 설계 단계에서 적용하는 사면 보강 대책 공법 중, 지중 내부에 고인 강한 피조 수압을 신속히 저감시켜 유효응력을 증대시키는 배수 보강 공법은 무엇인가?`,
+      options: shuffleArray([
+        "수평 배수공 (Horizontal Drain)",
+        "어스 앵커 보강공 (Earth Anchor)",
+        "억지 말뚝 공법 (Stabilizing Pile)",
+        "콘크리트 옹벽 타설공"
+      ]),
+      answer: "수평 배수공 (Horizontal Drain)",
+      explanation: "수평 배수공(Horizontal Drain)은 사면 배면에 유공관 파이프를 수평/경사 방향으로 깊숙이 삽입하여 지하수 및 간극수압을 중력 배수로 신속히 소산시킴으로써 흙의 전단 저항 강도를 회복·확보시키는 공법입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality Geotechnical Earth Pressure Expert Questions (토압 전문가 문제)
+// ============================================================================
+function getEarthPressureExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `옹벽 배면 지반의 변위 방향과 크기에 따라 분류되는 정지(At-rest), 주동(Active), 수동(Passive) 토압의 기본 정의와 크기 비교를 서술하시오.`,
+    concept: `변위가 전혀 없는 안정을 정지 토압($P_0$), 옹벽이 배면 지반 밖으로 멀어질 때의 한계 상태를 주동 토압($P_a$), 옹벽이 지반 안쪽으로 강하게 밀고 들어갈 때를 수동 토압($P_p$)이라고 합니다. 옹벽 파괴 거동에 미치는 토압의 크기 관계는 언제나 $P_p > P_0 > P_a$의 상대적 순서를 만족합니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `지표면이 수평이고 옹벽 벽면 마찰력을 0으로 가정한 Rankine 토압 이론에서 주동토압계수($K_a$) 및 수동토압계수($K_p$) 산정 공식을 기술하고 기호 정의를 서술하시오.`,
+    concept: `옹벽 배면 토질의 극한 소성평형 상태(랭킨 능동/수동 상태)를 기초로 평형 한계 응력 계수를 산정하는 공식입니다.`,
+    formula: `$K_a = \\tan^2(45^\\circ - \\frac{\\phi'}{2})$\n$K_p = \\tan^2(45^\\circ + \\frac{\\phi'}{2})$\n- $K_a$: 주동토압계수 (Active Earth Pressure Coefficient)\n- $K_p$: 수동토압계수 (Passive Earth Pressure Coefficient)\n- $\\phi'$: 흙의 유효 내부마찰각`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `Rankine 토압 이론 and Coulomb 토압 이론의 기본 가정 사항 비교 설명으로 가장 적절하지 않은 진술은?`,
+      options: shuffleArray([
+        "Rankine 이론은 옹벽 벽 마찰을 매우 중시하여 벽 마찰각을 공식의 핵심 매개변수로 도입했다.",
+        "Coulomb 이론은 옹벽 배면 흙을 쐐기(Wedge) 형태의 강체로 보고 한계평형 파괴선을 유도하였다.",
+        "Rankine 이론은 벽면이 수직이며 배면 흙이 완전 반무한성 균질 지반인 상태를 가정하였다.",
+        "Coulomb 이론은 경사진 옹벽 배면 형상이나 벽체 마찰력이 존재하는 실무 설계 조건에도 유연하게 적용된다."
+      ]),
+      answer: "Rankine 이론은 옹벽 벽 마찰을 매우 중시하여 벽 마찰각을 공식의 핵심 매개변수로 도입했다.",
+      explanation: "Rankine 토압 이론은 벽면이 완전히 부드러워 벽과 흙 사이의 마찰이 존재하지 않는다(벽 마찰각 $\\delta = 0$)고 가정한 극한 소성 응력 분석입니다. 옹벽 벽면 마찰각을 중요 인자로 다룬 토압 이론은 Coulomb 이론입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `점성토 뒷채움 지반을 가진 옹벽 설계 시, 배면 인장 균열 깊이($z_c$) 구간에 우천 시 빗물이 가득 차서 수압을 가할 때 발생하는 지반 파괴적 안전 위험에 대한 올바른 설명은?`,
+      options: shuffleArray([
+        "인장 균열 배면에 유입된 수압이 쐐기 분열 하중으로 가중되어 옹벽 활동 및 전도 붕괴를 극대화한다.",
+        "수압이 균열부를 정교하게 결합 압축하여 주동 토압의 총량이 거의 0으로 안정 소멸된다.",
+        "인장 균열 깊이 방향으로 지하수가 역배수되어 배면 점성토의 압밀계수를 기하급수적으로 낮춘다.",
+        "점토 광물의 동형치환 전하가 양전하로 반전되어 정성토의 전단 점착 강도가 3배로 증가한다."
+      ]),
+      answer: "인장 균열 배면에 유입된 수압이 쐐기 분열 하중으로 가중되어 옹벽 활동 및 전도 붕괴를 극대화한다.",
+      explanation: "인장균열 깊이($z_c = 2c/(\\gamma\\sqrt{K_a})$) 구역은 흙의 전단 인장응력 한계로 옹벽 벽체와 벌어지는 구간입니다. 여기에 빗물이 차면 정수압($P_w = \\gamma_w z_c$)이 벽체 배면 수평 방향으로 가해져 주동토압 작용력에 정수압이 더해지므로 옹벽 붕괴(전도, 활동) 위험을 대단히 증대시킵니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality Soil Shear Strength Expert Questions (전단강도 전문가 문제)
+// ============================================================================
+function getShearStrengthExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `흙 지반의 전단 파괴(Shear Failure) 메커니즘을 규명하는 Mohr-Coulomb 파괴 기준과 유효응력 전단 강도 개념을 간략히 서술하시오.`,
+    concept: `흙의 전단 파괴는 입자 간 상대 미끄러짐 마찰에 의해 일어나며, 최대 전단 한계면 강도($\\tau_f$)는 흙 자체의 순수 물리적 점착력($c'$)과 파괴면 상에 작용하는 유효 연직응력($\\sigma'$)에 내부 마찰각의 탄젠트 값($\\tan\\phi'$)을 곱한 마찰 저항의 합으로 결정되는 기준 조건입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `간극수압($u$)과 유효 전단강도 파라미터($c', \\phi'$) 간의 관계를 도출하는 테르자기(Terzaghi)의 유효응력 기준 Coulomb 전단강도 공식을 쓰고 각 기호의 정의를 서술하시오.`,
+    concept: `지반 내 간극수의 수압 부담을 공제하여 흙 뼈대 고유 입자가 부담하는 실제 유효 수직 응력 기초 전단 마찰 강도 산정 관계식입니다.`,
+    formula: `$\\tau_f = c' + (\\sigma - u) \\tan\\phi'$\n- $\\tau_f$: 흙의 전단 강도 (Shear Strength)\n- $c'$: 유효 점착력 (Effective Cohesion)\n- $\\sigma$: 파괴면에 수직으로 작용하는 전 수직 응력\n- $u$: 간극수압 (Pore Water Pressure)\n- $\\phi'$: 유효 내부 마찰각 (Effective Friction Angle)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `포화 점토 지반에 성토 하중이 급격히 가해진 직후(시공 직후)의 단기 변형 안정성을 검토하기 위해 수행하는 삼축압축시험(Triaxial Shear Test) 조건으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "비배수 비압밀 시험 (UU 시험)",
+        "압밀 비배수 시험 (CU 시험)",
+        "압밀 배수 시험 (CD 시험)",
+        "일방향 일차 팽창 구속 시험"
+      ]),
+      answer: "비배수 비압밀 시험 (UU 시험)",
+      explanation: "시공 직후 및 성토 직후 점토 지반은 투수 계수가 낮아 배수 및 압밀이 진척되지 못한 상태입니다. 따라서 현장 단기 안정 분석 시에는 구속 압력과 축하중 재하 시 모두 배수를 허용하지 않는 UU(Unconsolidated Undrained) 전단 강도를 적용해야 안전합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `삼축압축시험(UU, CU, CD 시험)의 전단 강도 특성에 관한 설명으로 가장 올바르지 않은 설명은?`,
+      options: shuffleArray([
+        "UU 시험을 거친 완전 포화 점토의 경우, 구속응력 증가에 따른 전단 강도가 동일하게 유지되므로 비배수 전단 마찰각($\\phi_u$)은 $0$이 된다.",
+        "CD 시험은 전단 변형을 극도로 빠르게 진행시켜 과잉간극수압을 최대로 유발하는 배수 배제 속성 시험이다.",
+        "CU 시험에서 전단 변형 시 축하중 작용 하에 발생하는 과잉간극수압($u$)을 실시간 계측하면 흙의 유효강도 정수를 추출해낼 수 있다.",
+        "CD 시험은 지반 내에 장기적인 하중이 작용하여 간극수압 소산 변형이 완전 소멸했을 때의 장기 사면 사후 안정성 검토에 활용된다."
+      ]),
+      answer: "CD / 배수 시험은 전단 변형을 극도로 빠르게 진행시켜 과잉간극수압을 최대로 유발하는 배수 배제 속성 시험이다.",
+      explanation: "CD(Consolidated Drained) 시험은 전단 시 간극수압이 발생하지 않도록 전단 하중을 '극도로 느린 속도'로 재하하여 간극수를 완전 배수시키는 시험입니다. 속도가 매우 빠르고 배수를 차단하는 시험은 비배수 시험 계열입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality Soil Permeability & Seepage Expert Questions (투수 / 침투 / 보일링 전문가 문제)
+// ============================================================================
+function getSeepageExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `투수성 흙 지반 내부에서 흐르는 지하수 거동을 설명하는 Darcy의 투수 법칙과 상향 침투류 발생 시 안정 위험성에 대해 간략히 설명하시오.`,
+    concept: `Darcy의 법칙은 흙 속의 침투 유량 속도($v$)가 투수계수($k$)와 동수경사($i$)의 곱에 정비례한다는 법칙입니다. 만약 흙 하부로부터 상향 침투수가 강하게 유입될 경우 상향 침투 압력이 흙의 자중 유효 수직하중을 상쇄하여 지반 유효응력을 격감시키고 파괴 불안정을 초래합니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `상향 침투 수압에 의해 흙 뼈대 입자 사이의 유효응력이 정밀하게 0이 되어 흙 입자가 물속에서 분사되는 보일링(Boiling) 현상의 유발 임계 동수경사($i_{cr}$) 공식을 기술하고 기호 정의를 서술하시오.`,
+    concept: `상향 동수경사에 의한 소성 액상화 한계 상태를 규명하는 퀵샌드(Quicksand) 지반공학 한계 동수경사식입니다.`,
+    formula: `$i_{cr} = \\frac{G_s - 1}{1 + e}$\n- $i_{cr}$: 임계 동수경사 (Critical Hydraulic Gradient)\n- $G_s$: 흙 입자의 비중 (Specific Gravity)\n- $e$: 흙의 간극비 (Void Ratio)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `투수성 흙막이 지반 굴착 시 지하수위 하부 굴착면 배면에 시공하는 보일링(Boiling) 및 파이핑(Piping) 침투 붕괴 유발 방지 설계 대책으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "흙막이 벽체의 지중 근입 깊이를 획기적으로 줄여 벽체 배면 수평 저항 마찰력을 한계 소멸시킨다.",
+        "흙막이 차수 가림 벽체의 지중 근입 깊이를 불투수층 지층 깊이까지 깊숙이 근입 설계한다.",
+        "굴착면 배면 지반에 웰포인트나 딥웰 공법을 타설하여 사전 지하수위 강하를 유도한다.",
+        "굴착면 저면에 중력 필터 하중(자갈, 사석)을 부설하여 상향 유출 분사 척력에 자중을 가한다."
+      ]),
+      answer: "흙막이 벽체의 지중 근입 깊이를 획기적으로 줄여 벽체 배면 수평 저항 마찰력을 한계 소멸시킨다.",
+      explanation: "근입 깊이를 줄이게 되면 침투수가 돌아서 유출되는 경로 배수 거리가 짧아져 유출 지점의 동수경사($i = \\Delta h / L$)가 급격히 상승하여 보일링 발생 위험이 극대화됩니다. 따라서 파괴 방지를 위해서는 흙막이 벽체의 근입 깊이를 충분히 깊게 확보하여 동수경사를 낮춰야 안전합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `투수성 지반 내 침투 해석 및 침투 수량, 침투 유출 속도를 정량 도출하기 위해 작도하는 유선망(Flow Net)의 공학적 특징에 대한 설명으로 옳은 진술은?`,
+      options: shuffleArray([
+        "유선(Flow Line) and 등수두선(Equipotential Line)은 기하학적으로 항상 서로 수직 직교($90^\\circ$)하며 만난다.",
+        "각 유망 격자를 이루는 기하학적 도형은 언제나 길쭉한 직사각형 형태만 이루는 작도가 원칙이다.",
+        "유선망을 통해 도출하는 단위 침투수량은 등수두 감쇄 강하 수($N_d$)에 비례하고 유로 수($N_f$)에 반비례한다.",
+        "유선과 등수두선에 의해 둘러싸인 각 격자 체적의 침투 유속은 벽면 마찰로 인해 언제나 완전한 0이 된다."
+      ]),
+      answer: "유선(Flow Line) and 등수두선(Equipotential Line)은 기하학적으로 항상 서로 수직 직교($90^\\circ$)하며 만난다.",
+      explanation: "유선망 작도 시 물의 흐름 통로인 유선과 수두가 같은 점을 연결한 등수두선은 기하학적 흐름 조건상 반드시 $90^\\circ$ 직교하여 정방형 격자망을 형성해야 합니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
@@ -1358,7 +1705,117 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getPrandtlExpertQuestions(title, keywords);
   }
 
-  // ==========================================
+  // 10. Overbreak / 여굴
+  if (
+    cleanTitle.includes('여굴') || 
+    cleanTitle.includes('overbreak') || 
+    cleanTitle.includes('제어발파') || 
+    cleanTitle.includes('제어 발파') || 
+    cleanTitle.includes('contour hole') || 
+    cleanTitle.includes('외곽공') ||
+    cleanTitle.includes('smooth blasting') || 
+    cleanTitle.includes('스무드 블라스팅') || 
+    cleanTitle.includes('스무드블라스팅') || 
+    cleanTitle.includes('line drilling') || 
+    cleanTitle.includes('라인 드릴링') || 
+    cleanTitle.includes('presplitting') || 
+    cleanTitle.includes('프리스플리팅') || 
+    cleanTitle.includes('디커플링') || 
+    cleanTitle.includes('decoupling')
+  ) {
+    console.log("-> Routed (Strict Title) to Tunnel Overbreak Expert Questions.");
+    return getOverbreakExpertQuestions(title, keywords);
+  }
+
+  // 11. Slope Stability / 사면안정
+  if (
+    cleanTitle.includes('사면안정') || 
+    cleanTitle.includes('사면 안정') || 
+    cleanTitle.includes('slope stability') || 
+    cleanTitle.includes('slope') || 
+    cleanTitle.includes('사면 붕괴') || 
+    cleanTitle.includes('사면붕괴') || 
+    cleanTitle.includes('원호파괴') || 
+    cleanTitle.includes('평면파괴') || 
+    cleanTitle.includes('쐐기파괴') || 
+    cleanTitle.includes('전도파괴') || 
+    cleanTitle.includes('절편법') || 
+    cleanTitle.includes('fellenius') || 
+    cleanTitle.includes('펠레니우스') || 
+    cleanTitle.includes('bishop') || 
+    cleanTitle.includes('비숍')
+  ) {
+    console.log("-> Routed (Strict Title) to Slope Stability Expert Questions.");
+    return getSlopeStabilityExpertQuestions(title, keywords);
+  }
+
+  // 12. Earth Pressure / 토압
+  if (
+    cleanTitle.includes('토압') || 
+    cleanTitle.includes('옹벽') || 
+    cleanTitle.includes('earth pressure') || 
+    cleanTitle.includes('retaining wall') || 
+    cleanTitle.includes('주동토압') || 
+    cleanTitle.includes('수동토압') || 
+    cleanTitle.includes('정지토압') || 
+    cleanTitle.includes('주동 토압') || 
+    cleanTitle.includes('수동 토압') || 
+    cleanTitle.includes('정지 토압') || 
+    cleanTitle.includes('랭킨') || 
+    cleanTitle.includes('rankine') || 
+    cleanTitle.includes('쿨롱') || 
+    cleanTitle.includes('coulomb')
+  ) {
+    console.log("-> Routed (Strict Title) to Geotechnical Earth Pressure Expert Questions.");
+    return getEarthPressureExpertQuestions(title, keywords);
+  }
+
+  // 13. Shear Strength / 전단강도
+  if (
+    cleanTitle.includes('전단강도') || 
+    cleanTitle.includes('전단 강도') || 
+    cleanTitle.includes('shear strength') || 
+    cleanTitle.includes('삼축압축') || 
+    cleanTitle.includes('삼축 압축') || 
+    cleanTitle.includes('uu 시험') || 
+    cleanTitle.includes('cu 시험') || 
+    cleanTitle.includes('cd 시험') || 
+    cleanTitle.includes('uu시험') || 
+    cleanTitle.includes('cu시험') || 
+    cleanTitle.includes('cd시험') || 
+    cleanTitle.includes('비배수') || 
+    cleanTitle.includes('mohr-coulomb') || 
+    cleanTitle.includes('모어 쿨롱') || 
+    cleanTitle.includes('모어-쿨롱')
+  ) {
+    console.log("-> Routed (Strict Title) to Soil Shear Strength Expert Questions.");
+    return getShearStrengthExpertQuestions(title, keywords);
+  }
+
+  // 14. Seepage / 투수 / 침투 / 보일링
+  if (
+    cleanTitle.includes('투수') || 
+    cleanTitle.includes('침투') || 
+    cleanTitle.includes('보일링') || 
+    cleanTitle.includes('boiling') || 
+    cleanTitle.includes('분사현상') || 
+    cleanTitle.includes('분사 현상') || 
+    cleanTitle.includes('piping') || 
+    cleanTitle.includes('파이핑') || 
+    cleanTitle.includes('seepage') || 
+    cleanTitle.includes('permeability') || 
+    cleanTitle.includes('darcy') || 
+    cleanTitle.includes('다르시') || 
+    cleanTitle.includes('임계동수경사') || 
+    cleanTitle.includes('동수경사') || 
+    cleanTitle.includes('유선망') || 
+    cleanTitle.includes('flow net')
+  ) {
+    console.log("-> Routed (Strict Title) to Soil Permeability & Seepage Expert Questions.");
+    return getSeepageExpertQuestions(title, keywords);
+  }
+
+  // ==========================================================
   // STAGE 2: Secondary Broad Match with Keywords
   // ==========================================
 
@@ -1479,6 +1936,116 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   ) {
     console.log("-> Routed (Keyword Match) to Prandtl & Terzaghi Bearing Capacity Expert-Grade Questions.");
     return getPrandtlExpertQuestions(title, keywords);
+  }
+
+  // 10. Overbreak / 여굴
+  if (
+    cleanKeywords.includes('여굴') || 
+    cleanKeywords.includes('overbreak') || 
+    cleanKeywords.includes('제어발파') || 
+    cleanKeywords.includes('제어 발파') || 
+    cleanKeywords.includes('contour hole') || 
+    cleanKeywords.includes('외곽공') ||
+    cleanKeywords.includes('smooth blasting') || 
+    cleanKeywords.includes('스무드 블라스팅') || 
+    cleanKeywords.includes('스무드블라스팅') || 
+    cleanKeywords.includes('line drilling') || 
+    cleanKeywords.includes('라인 드릴링') || 
+    cleanKeywords.includes('presplitting') || 
+    cleanKeywords.includes('프리스플리팅') || 
+    cleanKeywords.includes('디커플링') || 
+    cleanKeywords.includes('decoupling')
+  ) {
+    console.log("-> Routed (Keyword Match) to Tunnel Overbreak Expert Questions.");
+    return getOverbreakExpertQuestions(title, keywords);
+  }
+
+  // 11. Slope Stability / 사면안정
+  if (
+    cleanKeywords.includes('사면안정') || 
+    cleanKeywords.includes('사면 안정') || 
+    cleanKeywords.includes('slope stability') || 
+    cleanKeywords.includes('slope') || 
+    cleanKeywords.includes('사면 붕괴') || 
+    cleanKeywords.includes('사면붕괴') || 
+    cleanKeywords.includes('원호파괴') || 
+    cleanKeywords.includes('평면파괴') || 
+    cleanKeywords.includes('쐐기파괴') || 
+    cleanKeywords.includes('전도파괴') || 
+    cleanKeywords.includes('절편법') || 
+    cleanKeywords.includes('fellenius') || 
+    cleanKeywords.includes('펠레니우스') || 
+    cleanKeywords.includes('bishop') || 
+    cleanKeywords.includes('비숍')
+  ) {
+    console.log("-> Routed (Keyword Match) to Slope Stability Expert Questions.");
+    return getSlopeStabilityExpertQuestions(title, keywords);
+  }
+
+  // 12. Earth Pressure / 토압
+  if (
+    cleanKeywords.includes('토압') || 
+    cleanKeywords.includes('옹벽') || 
+    cleanKeywords.includes('earth pressure') || 
+    cleanKeywords.includes('retaining wall') || 
+    cleanKeywords.includes('주동토압') || 
+    cleanKeywords.includes('수동토압') || 
+    cleanKeywords.includes('정지토압') || 
+    cleanKeywords.includes('주동 토압') || 
+    cleanKeywords.includes('수동 토압') || 
+    cleanKeywords.includes('정지 토압') || 
+    cleanKeywords.includes('랭킨') || 
+    cleanKeywords.includes('rankine') || 
+    cleanKeywords.includes('쿨롱') || 
+    cleanKeywords.includes('coulomb')
+  ) {
+    console.log("-> Routed (Keyword Match) to Geotechnical Earth Pressure Expert Questions.");
+    return getEarthPressureExpertQuestions(title, keywords);
+  }
+
+  // 13. Shear Strength / 전단강도
+  if (
+    cleanKeywords.includes('전단강도') || 
+    cleanKeywords.includes('전단 강도') || 
+    cleanKeywords.includes('shear strength') || 
+    cleanKeywords.includes('삼축압축') || 
+    cleanKeywords.includes('삼축 압축') || 
+    cleanKeywords.includes('uu 시험') || 
+    cleanKeywords.includes('cu 시험') || 
+    cleanKeywords.includes('cd 시험') || 
+    cleanKeywords.includes('uu시험') || 
+    cleanKeywords.includes('cu시험') || 
+    cleanKeywords.includes('cd시험') || 
+    cleanKeywords.includes('비배수') || 
+    cleanKeywords.includes('mohr-coulomb') || 
+    cleanKeywords.includes('모어 쿨롱') || 
+    cleanKeywords.includes('모어-쿨롱')
+  ) {
+    console.log("-> Routed (Keyword Match) to Soil Shear Strength Expert Questions.");
+    return getShearStrengthExpertQuestions(title, keywords);
+  }
+
+  // 14. Seepage / 투수 / 침투 / 보일링
+  if (
+    cleanKeywords.includes('투수') || 
+    cleanKeywords.includes('침투') || 
+    cleanKeywords.includes('보일링') || 
+    cleanKeywords.includes('boiling') || 
+    cleanKeywords.includes('분사현상') || 
+    cleanKeywords.includes('분사 현상') || 
+    cleanKeywords.includes('piping') || 
+    cleanKeywords.includes('파이핑') || 
+    cleanKeywords.includes('seepage') || 
+    cleanKeywords.includes('permeability') || 
+    cleanKeywords.includes('darcy') || 
+    cleanKeywords.includes('다르시') || 
+    cleanKeywords.includes('임계동수경사') || 
+    cleanKeywords.includes('동수경사') || 
+    cleanKeywords.includes('유선망') || 
+    cleanKeywords.includes('flow net')
+  ) {
+    console.log("-> Routed (Keyword Match) to Soil Permeability & Seepage Expert Questions.");
+    return getSeepageExpertQuestions(title, keywords);
   }
 
   // 10. Ultimate High-Quality Fallback for other Topics
