@@ -273,7 +273,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
         if (keyExhausted) break;
 
         let attempt = 0;
-        const maxAttempts = 3; // 2 retries (2s -> 4s)
+        const maxAttempts = 2; // 1 retry (2s)
         let delay = 2000; // Initial delay: 2s
 
         while (attempt < maxAttempts) {
@@ -343,7 +343,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
         if (keyExhausted) break;
 
         let attempt = 0;
-        const maxAttempts = 3; // 2 retries (2s -> 4s)
+        const maxAttempts = 2; // 1 retry (2s)
         let delay = 2000; // Initial delay: 2s
 
         while (attempt < maxAttempts) {
@@ -2055,7 +2055,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
               if (keyExhausted) break;
               
               let attempt = 0;
-              const maxAttempts = 3; // 2 retries (2s -> 4s)
+              const maxAttempts = 2; // 1 retry (2s)
               let delay = 2000; // 2s initial delay
 
               while (attempt < maxAttempts) {
@@ -2130,7 +2130,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
               if (keyExhausted) break;
               
               let attempt = 0;
-              const maxAttempts = 3; // 2 retries (2s -> 4s)
+              const maxAttempts = 2; // 1 retry (2s)
               let delay = 2000; // 2s initial delay
 
               while (attempt < maxAttempts) {
