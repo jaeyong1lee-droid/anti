@@ -3631,7 +3631,8 @@ export default function App() {
                         title: "",
                         concept: "",
                         assumptions: "",
-                        formula: ""
+                        formula: "",
+                        isDirectlyAdded: true
                       };
                       const updated = [...formulaQuestions, newFormula];
                       latestFormulaQuestionsRef.current = updated;
@@ -3801,62 +3802,125 @@ export default function App() {
                         {/* Title Row */}
                         <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
                           <div className="flex items-center gap-2 flex-grow min-w-0">
+                            {/* Q 번호 배지 */}
                             <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
                               Q{idx + 1}
                             </span>
-                            {/* Editable Title Input */}
-                            <input
-                              type="text"
-                              value={q.title || ''}
-                              onChange={(e) => {
-                                const updated = [...formulaQuestions];
-                                updated[idx] = { ...updated[idx], title: e.target.value, question: e.target.value };
-                                latestFormulaQuestionsRef.current = updated;
-                                setFormulaQuestions(updated);
-                                localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                              }}
-                              onBlur={() => {
-                                handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                              }}
-                              className="flex-grow bg-slate-950 border border-slate-800/80 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-white focus:outline-none transition-colors"
-                              placeholder={`Q${idx + 1} 공식 제목을 입력하세요`}
-                            />
+
+                            {/* 제목 및 편집기 */}
+                            {editingFormulaIdx === idx ? (
+                              <div className="flex items-center gap-2 flex-grow min-w-0">
+                                <input
+                                  type="text"
+                                  value={editingFormulaText}
+                                  onChange={(e) => setEditingFormulaText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const trimmed = editingFormulaText.trim();
+                                      if (trimmed) {
+                                        setFormulaQuestions(prev => {
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                          handleSaveFormulaQuestions(updated, false);
+                                          return updated;
+                                        });
+                                        setEditingFormulaIdx(null);
+                                        showNotification('공식 제목이 저장되었습니다.', 'success');
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      setEditingFormulaIdx(null);
+                                    }
+                                  }}
+                                  className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => {
+                                    const trimmed = editingFormulaText.trim();
+                                    if (trimmed) {
+                                      setFormulaQuestions(prev => {
+                                        const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                        handleSaveFormulaQuestions(updated, false);
+                                        return updated;
+                                      });
+                                      setEditingFormulaIdx(null);
+                                      showNotification('공식 제목이 저장되었습니다.', 'success');
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setEditingFormulaIdx(null)}
+                                  className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
+                                <span 
+                                  onClick={() => {
+                                    setEditingFormulaIdx(idx);
+                                    setEditingFormulaText(q.title || q.question || '');
+                                  }}
+                                  className="text-[17px] font-extrabold text-white leading-snug truncate cursor-pointer hover:text-rose-400 hover:underline transition-all"
+                                  title="클릭하여 공식 제목 수정"
+                                >
+                                  <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setEditingFormulaIdx(idx);
+                                    setEditingFormulaText(q.title || q.question || '');
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0"
+                                  title="공식 제목 수정"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* Actions */}
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {/* AI Refresh Button */}
-                            <button
-                              onClick={() => handleRefreshFormula(idx)}
-                              disabled={refreshingFormulaIdx === idx}
-                              className={`p-1.5 rounded-lg border border-transparent text-slate-500 hover:text-brand-400 hover:bg-brand-500/10 transition-all active:scale-95 cursor-pointer flex items-center justify-center ${
-                                refreshingFormulaIdx === idx ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
-                              title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
-                            >
-                              <RefreshCw 
-                                size={13} 
-                                className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
-                              />
-                            </button>
+                            {/* AI Refresh Button (Only if NOT directly added) */}
+                            {!q.isDirectlyAdded && (
+                              <button
+                                onClick={() => handleRefreshFormula(idx)}
+                                disabled={refreshingFormulaIdx === idx}
+                                className={`p-1.5 rounded-lg border border-transparent text-slate-500 hover:text-brand-400 hover:bg-brand-500/10 transition-all active:scale-95 cursor-pointer flex items-center justify-center ${
+                                  refreshingFormulaIdx === idx ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                                title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
+                              >
+                                <RefreshCw 
+                                  size={13} 
+                                  className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
+                                />
+                              </button>
+                            )}
 
-                            {/* Toggle Input Editor */}
-                            <button
-                              onClick={() => {
-                                setFormulaInputRevealed(prev => ({
-                                  ...prev,
-                                  [idx]: !prev[idx]
-                                }));
-                              }}
-                              className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                                isInputVisible 
-                                  ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
-                                  : 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border-transparent'
-                              }`}
-                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
-                            >
-                              <Edit2 size={13} />
-                            </button>
+                            {/* Toggle Input Editor (Only if directly added) */}
+                            {q.isDirectlyAdded && (
+                              <button
+                                onClick={() => {
+                                  setFormulaInputRevealed(prev => ({
+                                    ...prev,
+                                    [idx]: !prev[idx]
+                                  }));
+                                }}
+                                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                  isInputVisible 
+                                    ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
+                                    : 'text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border-transparent'
+                                }`}
+                                title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                            )}
 
                             {/* Delete/Trash Button */}
                             <button
@@ -4153,7 +4217,8 @@ export default function App() {
                         title: "",
                         concept: "",
                         assumptions: "",
-                        formula: ""
+                        formula: "",
+                        isDirectlyAdded: true
                       };
                       const updated = [...theoryQuestions, newTheory];
                       latestTheoryQuestionsRef.current = updated;
@@ -4316,23 +4381,85 @@ export default function App() {
                       <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                         <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
                           <div className="flex items-center gap-2 flex-grow min-w-0">
+                            {/* 이론 번호 배지 */}
                             <span className="text-[11px] font-black bg-indigo-950/80 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 select-none">
                               이론 {idx + 1}
                             </span>
-                            {/* Editable Title Input */}
-                            <input
-                              type="text"
-                              value={q.title || ''}
-                              onChange={(e) => {
-                                const updated = [...theoryQuestions];
-                                updated[idx] = { ...updated[idx], title: e.target.value };
-                                latestTheoryQuestionsRef.current = updated;
-                                setTheoryQuestions(updated);
-                                localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                              }}
-                              className="flex-grow bg-slate-950 border border-slate-800/80 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-white focus:outline-none transition-colors"
-                              placeholder={`이론 ${idx + 1} 제목을 입력하세요`}
-                            />
+
+                            {/* 제목 및 편집기 */}
+                            {editingTheoryIdx === idx ? (
+                              <div className="flex items-center gap-2 flex-grow min-w-0">
+                                <input
+                                  type="text"
+                                  value={editTheoryTitle}
+                                  onChange={(e) => setEditTheoryTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const trimmed = editTheoryTitle.trim();
+                                      if (trimmed) {
+                                        setTheoryQuestions(prev => {
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                          handleSaveTheoryQuestions(updated, false);
+                                          return updated;
+                                        });
+                                        setEditingTheoryIdx(null);
+                                        showNotification('이론 제목이 저장되었습니다.', 'success');
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      setEditingTheoryIdx(null);
+                                    }
+                                  }}
+                                  className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 w-full max-w-[360px]"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => {
+                                    const trimmed = editTheoryTitle.trim();
+                                    if (trimmed) {
+                                      setTheoryQuestions(prev => {
+                                        const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                        handleSaveTheoryQuestions(updated, false);
+                                        return updated;
+                                      });
+                                      setEditingTheoryIdx(null);
+                                      showNotification('이론 제목이 저장되었습니다.', 'success');
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setEditingTheoryIdx(null)}
+                                  className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] group">
+                                <span 
+                                  onClick={() => {
+                                    setEditingTheoryIdx(idx);
+                                    setEditTheoryTitle(q.title || '');
+                                  }}
+                                  className="text-[17px] font-extrabold text-white leading-snug truncate cursor-pointer hover:text-indigo-400 hover:underline transition-all"
+                                  title="클릭하여 이론 제목 수정"
+                                >
+                                  <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setEditingTheoryIdx(idx);
+                                    setEditTheoryTitle(q.title || '');
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0"
+                                  title="이론 제목 수정"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                              </div>
+                            )}
                           </div>
                           
                           {/* Actions (Toggle Input, Delete) */}
