@@ -314,6 +314,10 @@ export default function App() {
   const [theoryMobileTab, setTheoryMobileTab] = useState('list');
   const formulaSplitContainerRef = useRef(null);
   const theorySplitContainerRef = useRef(null);
+  const [reviewMobileTab, setReviewMobileTab] = useState('list');
+  const [examMobileTab, setExamMobileTab] = useState('list');
+  const reviewSplitContainerRef = useRef(null);
+  const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaRevealed, setFormulaRevealed] = useState({});
@@ -641,6 +645,10 @@ export default function App() {
 
   // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null) => {
+    setReviewMobileTab('list');
+    requestAnimationFrame(() => {
+      if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
+    });
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
       setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
@@ -863,6 +871,10 @@ export default function App() {
 
   // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
   const handleOpenExam = async () => {
+    setExamMobileTab('list');
+    requestAnimationFrame(() => {
+      if (examSplitContainerRef.current) examSplitContainerRef.current.scrollLeft = 0;
+    });
     // 1) 이미 state에 문제가 있으면 바로 열기 (같은 기기, 이미 로드됨)
     if (examQuestions.length > 0) {
       setShowExam(true);
@@ -2596,11 +2608,55 @@ export default function App() {
             </div>
           </div>
 
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setReviewMobileTab('list');
+                  reviewSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  reviewMobileTab === 'list'
+                    ? 'bg-violet-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                문제 리스트
+              </button>
+              <button
+                onClick={() => {
+                  setReviewMobileTab('tutor');
+                  const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+                  reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  reviewMobileTab === 'tutor'
+                    ? 'bg-violet-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
           {/* Layout Split Container */}
-          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+          <div 
+            ref={reviewSplitContainerRef}
+            onScroll={(e) => {
+              const scrollLeft = e.currentTarget.scrollLeft;
+              const clientWidth = e.currentTarget.clientWidth;
+              if (clientWidth > 0) {
+                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                setReviewMobileTab(activeTab);
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+          >
 
             {/* Left: Quiz Body */}
-            <div ref={quizBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -2843,8 +2899,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Chat Sidebar (Desktop Only) */}
-            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+            {/* Right: Gemini Chat Sidebar */}
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3092,11 +3148,55 @@ export default function App() {
             </div>
           </div>
 
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setExamMobileTab('list');
+                  examSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  examMobileTab === 'list'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                문제 리스트
+              </button>
+              <button
+                onClick={() => {
+                  setExamMobileTab('tutor');
+                  const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+                  examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  examMobileTab === 'tutor'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
           {/* Layout Split Container */}
-          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+          <div 
+            ref={examSplitContainerRef}
+            onScroll={(e) => {
+              const scrollLeft = e.currentTarget.scrollLeft;
+              const clientWidth = e.currentTarget.clientWidth;
+              if (clientWidth > 0) {
+                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                setExamMobileTab(activeTab);
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+          >
             
             {/* Left: Exam Body */}
-            <div ref={examBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -3288,8 +3388,8 @@ export default function App() {
             )}
             </div>
 
-            {/* Right: Gemini Sidebar (Desktop Only) */}
-            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+            {/* Right: Gemini Sidebar */}
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
