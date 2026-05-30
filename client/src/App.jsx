@@ -907,6 +907,94 @@ export default function App() {
       targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // 실시간 튜터 대화에서 공식 마이닝 및 필수공식 리스트 추가 함수
+  const handleAddFormulaFromChat = (text) => {
+    if (!text) return;
+
+    // 1. Title 마이닝
+    const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+    let title = "실시간 추가 공식";
+    
+    for (let i = 0; i < Math.min(lines.length, 3); i++) {
+      const line = lines[i];
+      const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
+      if (cleanLine && cleanLine.length < 30 && !cleanLine.includes('$') && !cleanLine.includes(':')) {
+        title = cleanLine;
+        break;
+      }
+    }
+
+    // 2. formula (LaTeX 수식 블록) 발굴
+    let formula = "";
+    const blockMathRegex = /\$\$(.*?)\$\$/gs;
+    const inlineMathRegex = /\$(.*?)\$/g;
+    
+    let blockMatch = blockMathRegex.exec(text);
+    if (blockMatch) {
+      formula = `$$${blockMatch[1].trim()}$$`;
+    } else {
+      let inlineMatch = inlineMathRegex.exec(text);
+      if (inlineMatch) {
+        formula = `$$${inlineMatch[1].trim()}$$`;
+      }
+    }
+
+    // 3. 기호 정의 목록 발굴
+    const definitionLines = [];
+    const definitionRegex = /^\s*[-*]\s*(.*?)$/;
+    
+    lines.forEach(line => {
+      if (definitionRegex.test(line) || (line.includes(':') && !line.startsWith('http') && line.length < 100)) {
+        definitionLines.push(line);
+      }
+    });
+
+    if (definitionLines.length > 0) {
+      if (formula) {
+        formula += "\n\n" + definitionLines.join('\n');
+      } else {
+        formula = definitionLines.join('\n');
+      }
+    }
+
+    // 4. concept 수확
+    let concept = "실시간 튜터링을 통해 추가된 전공 공식에 대한 설명입니다.";
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const cleanLine = line.replace(/^(#+\s*|\*+\s*)/, '').replace(/\*+$/, '').trim();
+      if (
+        cleanLine &&
+        !cleanLine.includes('$') &&
+        !cleanLine.includes(':') &&
+        !cleanLine.startsWith('-') &&
+        !cleanLine.startsWith('*') &&
+        cleanLine.length > 10 &&
+        cleanLine !== title
+      ) {
+        concept = cleanLine;
+        break;
+      }
+    }
+
+    // 5. Question 합성
+    const question = `${title} 공식을 제시하고, 각 기호의 정의를 서술하시오.`;
+
+    // 6. structure 합성
+    const structure = "1. 공식 구성 인자의 물리적/역학적 상관관계 분석\n2. 기술사 답안 작성을 위한 공식의 실무적 의의 이해";
+
+    const newFormula = {
+      title,
+      question,
+      concept,
+      formula,
+      structure
+    };
+
+    setFormulaQuestions(prev => [newFormula, ...prev]);
+    showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
+  };
+
   // View full report text
   const handleViewFullReport = async (topicId) => {
     setLoadingReport(true);
@@ -2554,6 +2642,16 @@ export default function App() {
                           <LatexRenderer text={msg.text} katexLoaded={katexLoaded} />
                         )}
                       </div>
+                      {/* 방법 A: 튜터의 유용한 공식 말풍선 아래에 "✨ 이 공식을 필수공식 퀴즈에 추가" 버튼 연동 */}
+                      {msg.role !== 'user' && (msg.text.includes('$$') || msg.text.includes('$')) && (
+                        <button
+                          onClick={() => handleAddFormulaFromChat(msg.text)}
+                          className="mt-1.5 ml-1 px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/20 text-rose-300 hover:text-rose-200 text-[10px] font-extrabold flex items-center gap-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer animate-fade-in"
+                        >
+                          <Sparkles size={10} className="text-rose-400" />
+                          <span>✨ 이 공식을 필수공식 퀴즈에 추가</span>
+                        </button>
+                      )}
                     </div>
                   ))
                 )}
