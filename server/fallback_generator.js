@@ -1934,6 +1934,169 @@ function getGeneralGeotechExpertQuestions(title, keywords) {
 }
 
 // ============================================================================
+// Dynamic Context Mining & Question Generation Engine (Bypass Zero)
+// For unknown topics with uploaded files, this dynamically extracts sentences,
+// keywords, and formulas to build highly contextual technical questions.
+// ============================================================================
+
+// Helper: Extract key features from file text dynamically (Context mining for fallbacks)
+function extractFeaturesFromText(fileText) {
+  const result = {
+    keySentences: [],
+    extractedKeywords: [],
+    extractedFormulas: [],
+    summaryParagraph: ''
+  };
+
+  if (!fileText || fileText.trim().length === 0) {
+    return result;
+  }
+
+  // Clean formatting
+  const cleanText = fileText.replace(/\s+/g, ' ').trim();
+
+  // Split into sentences using punctuation lookbehind
+  const sentences = cleanText.split(/(?<=[.?!])\s+/);
+  
+  // Filter candidate sentences that represent technical logic or conclusions
+  const candidates = sentences.filter(s => {
+    const len = s.length;
+    return len > 20 && len < 150 && (
+      s.endsWith('다.') || s.endsWith('음.') || s.endsWith('함.') || s.endsWith('임.') ||
+      s.endsWith('다') || s.endsWith('음') || s.endsWith('함') || s.endsWith('임') ||
+      s.includes('형') || s.includes('기반') || s.includes('구조') || s.includes('특징') ||
+      s.includes('공법') || s.includes('방식') || s.includes('수행') || s.includes('설계') ||
+      s.includes('압밀') || s.includes('점토') || s.includes('파괴') || s.includes('시험') ||
+      s.includes('응력') || s.includes('지반') || s.includes('강도')
+    );
+  });
+
+  result.keySentences = candidates.slice(0, 4);
+  
+  if (result.keySentences.length === 0) {
+    result.keySentences = sentences.slice(0, 3).filter(s => s.trim().length > 10);
+  }
+
+  // Extract candidate formulas or equations from sentences dynamically
+  const formulaCandidates = sentences.filter(s => {
+    const sTrim = s.trim();
+    // Formula indicators: contains math symbols, equals sign, acronyms like F.S, OCR, or explicit formula/relation keywords
+    return (sTrim.includes('=') || sTrim.includes(' + ') || sTrim.includes(' - ') || sTrim.includes(' × ') || sTrim.includes(' * ') ||
+            sTrim.includes('공식') || sTrim.includes('수식') || sTrim.includes('관계식') || sTrim.includes('계산식') || sTrim.includes('방정식') ||
+            sTrim.includes(' F.S ') || sTrim.includes('OCR') || sTrim.includes('선행압밀') || sTrim.includes('과압밀') || sTrim.includes('파괴 규준선'));
+  }).map(s => s.trim()).filter(s => s.length > 15 && s.length < 200);
+
+  result.extractedFormulas = Array.from(new Set(formulaCandidates)).slice(0, 3);
+
+  // Parse distinct keywords based on noun-like occurrences
+  const words = cleanText.match(/[a-zA-Z가-힣0-9]{3,10}/g) || [];
+  const wordFreq = {};
+  const stopWords = ['대하여', '대해', '있으며', '있는', '있습니다', '하는', '합니다', '따라', '통해', '위해', '그리고', '따라서', '또는', '또한', '의한', '이를', '것이다', '등의'];
+  
+  words.forEach(w => {
+    if (stopWords.includes(w)) return;
+    wordFreq[w] = (wordFreq[w] || 0) + 1;
+  });
+
+  const sortedWords = Object.keys(wordFreq).sort((a, b) => wordFreq[b] - wordFreq[a]);
+  result.extractedKeywords = sortedWords.slice(0, 6);
+
+  if (result.keySentences.length > 0) {
+    result.summaryParagraph = result.keySentences.slice(0, 2).join(' ');
+  } else {
+    result.summaryParagraph = cleanText.substring(0, 200) + '...';
+  }
+
+  return result;
+}
+
+// Dynamically generate questions from source text
+function getDynamicSourceExpertQuestions(title, keywords, fileText) {
+  const cleanTitle = title || '지반공학 설계 및 해석';
+  const features = extractFeaturesFromText(fileText);
+  
+  // Merge user keywords and extracted keywords
+  const userKwList = keywords ? keywords.split(/[,#\s]+/).filter(Boolean) : [];
+  const mergedKw = Array.from(new Set([...userKwList, ...features.extractedKeywords])).slice(0, 6);
+  if (mergedKw.length === 0) {
+    mergedKw.push('핵심 공법');
+    mergedKw.push('최적 설계');
+    mergedKw.push('안전성');
+  }
+  const keywordDisplay = mergedKw.join(', ');
+
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `본문 자료에 근거하여 [${cleanTitle}]의 핵심 정의와 지반공학적 설계 및 시공 시 대표적인 역할을 간략히 서술하시오.`,
+    concept: `[${cleanTitle}]은/는 ${keywordDisplay} 등 핵심 요소를 바탕으로 공학적 안전성과 원리를 규명하기 위한 핵심 공학 설계 개념이자 기준입니다. 본문 진술에 따르면, ${features.summaryParagraph || '해당 기술을 적정 프로세스에 맞춰 검토하고 구현하는 것이 필수적입니다.'}`,
+    formula: '',
+    structure: ''
+  };
+
+  let formula2 = '';
+  if (features.extractedFormulas && features.extractedFormulas.length > 0) {
+    const cleanFormulas = features.extractedFormulas.map(f => f.replace(/[\[\]]/g, '').trim());
+    formula2 = `${cleanFormulas[0]}\n- (위 공식의 물리적 상관관계와 기호의 정의를 참고하여 서술하십시오.)`;
+  } else {
+    formula2 = `$F.S. = \\frac{R}{S} \\ge F.S._{req}$\n- $F.S.$: 안전율 (Factor of Safety)\n- $R$: 저항 강도 (Resistance)\n- $S$: 설계 응력 (Stress)\n- $F.S._{req}$: 요구 안전율`;
+  }
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `[${cleanTitle}]의 거동이나 평가 시 적용하는 가장 대표적인 공식이나 한계 상태 물리 관계식을 제시하고, 각 기호의 정의를 서술하시오.`,
+    concept: `[${cleanTitle}]의 설계 안전성 및 역학적 안정성을 정량적으로 평가하기 위한 한계 상태 조건식입니다.`,
+    formula: formula2,
+    structure: ''
+  };
+
+  const mcQuestions = [];
+  // Create 8 programmatically generated dynamic multiple-choice questions
+  for (let i = 0; i < 8; i++) {
+    const correctSentence = features.keySentences[i % features.keySentences.length] || 
+      `[${cleanTitle}]은/는 ${keywordDisplay} 등의 연동 제어를 통해 구조적 안전율을 확보하는 것이 핵심 설계 기준입니다.`;
+
+    let questionText = '';
+    let correctOption = '';
+    let explanationText = '';
+    let options = [];
+
+    if (i % 2 === 0) {
+      questionText = `다음 중 본문 진술 및 공학적 원리에 기초하여 [${cleanTitle}]에 대한 올바른 설명은 무엇인가?`;
+      correctOption = correctSentence;
+      
+      const incorrectOption1 = `실무 엔지니어링 설계 시 ${mergedKw[0] || '핵심 인자'} 등의 변수는 공학적 안전율 계산에서 완전히 배제되어야 안전합니다.`;
+      const incorrectOption2 = `[${cleanTitle}]의 시공 과정에서는 물리적 리스크나 한계 수치를 사전에 감시/계측할 필요가 전혀 없습니다.`;
+      const incorrectOption3 = `[${cleanTitle}]은 기존 기술 대비 시공 정밀도와 경제적 효율성을 급격히 저하시키는 공법입니다.`;
+      
+      options = shuffleArray([correctOption, incorrectOption1, incorrectOption2, incorrectOption3]);
+      explanationText = `정답은 "${correctOption}"입니다. 본문 교재의 진술 및 핵심 원리에 입각할 때, ${cleanTitle}의 설계 안전성과 주요 기술 규준은 이와 같이 올바르게 정의됩니다. 다른 보기들은 계측의 생략이나 안전율 배제 등 공학적 타당성이 전혀 없는 명백한 오류입니다.`;
+    } else {
+      questionText = `다음 중 본문 교재의 학술적 맥락에 비추어 볼 때, [${cleanTitle}]과 관련하여 가장 올바르지 않은(틀린) 진술은 무엇인가?`;
+      
+      const incorrectOption = `설계/시공 기준 수립 시 ${mergedKw[1] || '최적 설계'} 등 핵심 요소의 영향 및 상호 거동 해석은 엔지니어링 가치 기준에서 무의미하므로 무시해야 합니다.`;
+      correctOption = incorrectOption;
+      
+      const opt2 = correctSentence;
+      const opt3 = `본문 진술에 근거하여 [${cleanTitle}] 설계 시 임계 취약 요인(Bottleneck)을 정량 분석하고 제어 대책을 강구해야 합니다.`;
+      const opt4 = `[${cleanTitle}]의 성공적 가동을 위해 ${mergedKw.slice(0, 3).join(', ')} 등의 유기적 상관 거동 특성을 규명하는 아키텍처 설계를 반영합니다.`;
+      
+      options = shuffleArray([correctOption, opt2, opt3, opt4]);
+      explanationText = `정답은 "${correctOption}"입니다. 이 보기는 핵심 설계 파라미터의 거동 해석을 무의미하게 취급하고 무시하자는 주장으로, 공학 설계 및 기술자 기준에 위배되는 명백히 틀린 설명입니다. 다른 보기들은 모두 본문 및 공학 원리에 부합하는 올바른 설명입니다.`;
+    }
+
+    mcQuestions.push({
+      type: '객관식 (4지선다)',
+      question: questionText,
+      options: options,
+      answer: correctOption,
+      explanation: explanationText
+    });
+  }
+
+  return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
 // Core Routing Fallback Generator - 100% Precision Topic Routing
 // Stage 1: Strict Title-First Strategy
 // Stage 2: Secondary Keyword-Match Strategy
@@ -2491,8 +2654,14 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   }
 
   // 10. Ultimate High-Quality Fallback for other Topics
-  console.log("-> No matching core topic. Routed to Ultimate High-Quality Geotechnical Expert Questions.");
-  return getGeneralGeotechExpertQuestions(title, keywords);
+  const hasSource = fileText && fileText.trim().length > 50;
+  if (hasSource) {
+    console.log("-> No matching core topic. Source text detected. Generating questions dynamically from source.");
+    return getDynamicSourceExpertQuestions(title, keywords, fileText);
+  } else {
+    console.log("-> No matching core topic. No source text. Routed to Ultimate High-Quality Geotechnical Expert Questions.");
+    return getGeneralGeotechExpertQuestions(title, keywords);
+  }
 }
 
 export { generateFallbackQuestions };
