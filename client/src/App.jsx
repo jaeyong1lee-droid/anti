@@ -310,6 +310,10 @@ export default function App() {
   const [showTheoryExam, setShowTheoryExam] = useState(false);
   const theoryBodyRef = useRef(null);
   const savedTheoryScroll = useRef(0);
+  const [formulaMobileTab, setFormulaMobileTab] = useState('list');
+  const [theoryMobileTab, setTheoryMobileTab] = useState('list');
+  const formulaSplitContainerRef = useRef(null);
+  const theorySplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaRevealed, setFormulaRevealed] = useState({});
@@ -1041,9 +1045,17 @@ export default function App() {
     });
   };
 
-  const handleSaveFormulaQuestions = (qs = formulaQuestions, showToast = true) => {
+  const handleSaveFormulaQuestions = async (qs = formulaQuestions, showToast = true) => {
     try {
       localStorage.setItem('anti_formula_questions', JSON.stringify(qs));
+      
+      // Sync with database for cross-device support
+      fetch(`${API_BASE}/api/session/formula`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaQuestions: qs })
+      }).catch(dbErr => console.warn('Cross-device formula sync failed:', dbErr));
+
       if (showToast) {
         showNotification('필수공식 리스트가 성공적으로 저장되었습니다!', 'success');
       }
@@ -1052,147 +1064,169 @@ export default function App() {
     }
   };
 
-  const handleOpenTheoryExam = async () => {
-    // If questions are not loaded, load them first!
-    if (formulaQuestions.length === 0) {
+  const loadFormulaQuestions = async () => {
+    setLoadingFormula(true);
+    let loadedData = null;
+
+    // 1) Try Database Sync
+    try {
+      const res = await fetch(`${API_BASE}/api/session/formula`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.formulaQuestions) && body.data.formulaQuestions.length > 0) {
+          loadedData = body.data.formulaQuestions;
+          console.log('[Sync] Loaded formula questions from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database formula loading failed:', err);
+    }
+
+    // 2) Try LocalStorage Fallback
+    if (!loadedData) {
       try {
         const savedStr = localStorage.getItem('anti_formula_questions');
         if (savedStr) {
           const parsed = JSON.parse(savedStr);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const cleaned = normalizeAndCompactifyFormulas(parsed);
-            setFormulaQuestions(cleaned);
+            loadedData = parsed;
+            console.log('[Fallback] Loaded formula questions from LocalStorage.');
           }
         }
       } catch (err) {
         console.warn('localStorage 필수공식 복원 실패:', err);
       }
     }
-    setChatHistory([]); // Clear chat history to start fresh for theory study
+
+    // 3) Fallback to Defaults if still empty
+    if (!loadedData) {
+      const defaultFormulas = [
+        {
+          title: "바톤 암반 Q분류(Barton Q-system, $Q$)",
+          question: "바톤 암반 Q분류(Barton Q-system, $Q$)",
+          concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식",
+          formula: "$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$\n\n- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
+          structure: "1. RQD/Jn: 블록의 크기\n2. Jr/Ja: 블록 전단강도\n3. Jw/SRF: 지반 유효응력 분포 상태"
+        },
+        {
+          title: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",
+          question: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",
+          concept: "흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식",
+          formula: "$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반의 내부마찰각($\\phi$)에 의해 정의되는 지지력 계수",
+          structure: "1. 점착력 성분 ($c N_c$)\n2. 마찰각 및 상재하중 성분 ($q N_q$)\n3. 기초 자중 및 마찰 성분 ($0.5 \\gamma B N_{\\gamma}$)"
+        },
+        {
+          title: "연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)",
+          question: "연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)",
+          concept: "표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식",
+          formula: "$$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$$\n\n- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)",
+          structure: "1. 상부 장비 접지압 분산 원리\n2. 모래의 전단 부착각과 저면 마찰 저항"
+        },
+        {
+          title: "슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)",
+          question: "슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)",
+          concept: "통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식",
+          formula: "$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$\n\n- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)",
+          structure: "1. 등면적 조건 구면 투영 원리\n2. 극점(Pole) 매핑 기하학"
+        },
+        {
+          title: "락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)",
+          question: "락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)",
+          concept: "인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식",
+          formula: "$$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$$\n\n- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재(또는 그라우트와 락볼트) 간의 허용 부착 전단강도",
+          structure: "1. 부착 저항 주면적 ($\\pi d L$)\n2. 정착 한계 부착 전단저항 특성"
+        },
+        {
+          title: "랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)",
+          question: "랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)",
+          concept: "지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식",
+          formula: "$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$\n$$p_a = K_a \\gamma z - 2 c \\sqrt{K_a}$$\n\n- $K_a$: 주동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 깊이 $z$에서의 주동토압 강도\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이\n- $c$: 흙의 점착력",
+          structure: "1. 흙의 유효 상재압에 의한 주동토압력\n2. 흙의 자립 점착력에 의한 인장 저항력 감쇄 ($2c\\sqrt{K_a}$)"
+        },
+        {
+          title: "테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)",
+          question: "테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)",
+          concept: "외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식",
+          formula: "$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n- $u$: 시간 $t$, 깊이 $z$에서의 과잉간극수압\n- $t$: 하중 작용 후 경과 시간\n- $z$: 하중 분담 전파 수직 깊이\n- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n  * $k$: 투수계수\n  * $m_v$: 체적압축계수\n  * $\\gamma_w$: 물의 단위중량",
+          structure: "1. 시간에 따른 수압 변화 항 (\\partial u / \\partial t)\n2. 깊이에 따른 2차 수두 배수 확산 항 (\\partial^2 u / \\partial z^2)"
+        },
+        {
+          title: "보상기초 보상도(Compensated Foundation Safety Factor, $C$)",
+          question: "보상기초 보상도(Compensated Foundation Safety Factor, $C$)",
+          concept: "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식",
+          formula: "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값",
+          structure: "1. 흙의 굴착 자중 상쇄량 (\\gamma D_f)\n2. 실제 침하를 유발하는 순응력 ($q_{net} = q - \\gamma D_f$)"
+        },
+        {
+          title: "싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)",
+          question: "싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)",
+          concept: "방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식",
+          formula: "$$p_w = \\gamma_w \\times H$$\n\n- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)",
+          structure: "1. 비배수 터널의 전수압 설계 한계\n2. 심도와 수두의 완전 비례 관계"
+        },
+        {
+          title: "가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)",
+          question: "가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)",
+          concept: "벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식",
+          formula: "$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$\n\n- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 직경 $30\\,\\text{cm}$ 강체 원판에 의한 표준 수평 지반반력계수 ($k_{h0} = \\frac{1}{0.3} E_0$)\n- $B_H$: 가상의 기초 환산폭 ($B_H = \\sqrt{A/h}$ 또는 벽체 영향 단위폭)\n- $E_0$: 지반의 탄성계수 (보통 표준관입시험 N치 연동: $E_0 = 2800 N$)",
+          structure: "1. 치수 효과(Size Effect) 보정 지수 ($-3/4$승)\n2. 지반의 유효 지반 반력 강성 변환식"
+        }
+      ];
+
+      // Shuffle defaults randomly
+      const shuffled = [...defaultFormulas];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      loadedData = shuffled;
+      console.log('[Fallback] Loaded default formula questions.');
+    }
+
+    const cleaned = normalizeAndCompactifyFormulas(loadedData);
+    setFormulaQuestions(cleaned);
+    localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
+    setFormulaRevealed({});
+    setLoadingFormula(false);
+    return cleaned;
+  };
+
+  // ── 마운트 시 필수공식 최우선 서버 동기화 로딩
+  useEffect(() => {
+    loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
+  }, []);
+
+  const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
+    setChatHistory([]); // Clear chat history to start fresh for theory study
+    setTheoryMobileTab('list');
     requestAnimationFrame(() => {
-      if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
+      if (theorySplitContainerRef.current) theorySplitContainerRef.current.scrollLeft = 0;
     });
+    if (formulaQuestions.length === 0) {
+      await loadFormulaQuestions();
+    } else {
+      requestAnimationFrame(() => {
+        if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
+      });
+    }
   };
 
   const handleOpenFormulaExam = async () => {
-    if (formulaQuestions.length > 0) {
+    setShowFormulaExam(true);
+    setFormulaMobileTab('list');
+    requestAnimationFrame(() => {
+      if (formulaSplitContainerRef.current) formulaSplitContainerRef.current.scrollLeft = 0;
+    });
+    if (formulaQuestions.length === 0) {
+      await loadFormulaQuestions();
+    } else {
       const cleaned = normalizeAndCompactifyFormulas(formulaQuestions);
       setFormulaQuestions(cleaned);
       localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
-      setShowFormulaExam(true);
       requestAnimationFrame(() => {
         if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;
       });
-      return;
-    }
-
-    setLoadingFormula(true);
-    setShowFormulaExam(true);
-
-    // 1) localStorage 복원 시도
-    try {
-      const savedStr = localStorage.getItem('anti_formula_questions');
-      if (savedStr) {
-        const parsed = JSON.parse(savedStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = normalizeAndCompactifyFormulas(parsed);
-          setFormulaQuestions(cleaned);
-          localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
-          setFormulaRevealed({});
-          setLoadingFormula(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn('localStorage 필수공식 복원 실패:', err);
-    }
-
-    const defaultFormulas = [
-      {
-        title: "바톤 암반 Q분류(Barton Q-system, $Q$)",
-        question: "바톤 암반 Q분류(Barton Q-system, $Q$)",
-        concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식",
-        formula: "$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$\n\n- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
-        structure: "1. RQD/Jn: 블록의 크기\n2. Jr/Ja: 블록 전단강도\n3. Jw/SRF: 지반 유효응력 분포 상태"
-      },
-      {
-        title: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",
-        question: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",
-        concept: "흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식",
-        formula: "$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반의 내부마찰각($\\phi$)에 의해 정의되는 지지력 계수",
-        structure: "1. 점착력 성분 ($c N_c$)\n2. 마찰각 및 상재하중 성분 ($q N_q$)\n3. 기초 자중 및 마찰 성분 ($0.5 \\gamma B N_{\\gamma}$)"
-      },
-      {
-        title: "연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)",
-        question: "연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)",
-        concept: "표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식",
-        formula: "$$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$$\n\n- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)",
-        structure: "1. 상부 장비 접지압 분산 원리\n2. 모래의 전단 부착각과 저면 마찰 저항"
-      },
-      {
-        title: "슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)",
-        question: "슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)",
-        concept: "통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식",
-        formula: "$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$\n\n- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)",
-        structure: "1. 등면적 조건 구면 투영 원리\n2. 극점(Pole) 매핑 기하학"
-      },
-      {
-        title: "락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)",
-        question: "락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)",
-        concept: "인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식",
-        formula: "$$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$$\n\n- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재(또는 그라우트와 락볼트) 간의 허용 부착 전단강도",
-        structure: "1. 부착 저항 주면적 ($\\pi d L$)\n2. 정착 한계 부착 전단저항 특성"
-      },
-      {
-        title: "랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)",
-        question: "랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)",
-        concept: "지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식",
-        formula: "$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$\n$$p_a = K_a \\gamma z - 2 c \\sqrt{K_a}$$\n\n- $K_a$: 주동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 깊이 $z$에서의 주동토압 강도\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이\n- $c$: 흙의 점착력",
-        structure: "1. 흙의 유효 상재압에 의한 주동토압력\n2. 흙의 자립 점착력에 의한 인장 저항력 감쇄 ($2c\\sqrt{K_a}$)"
-      },
-      {
-        title: "테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)",
-        question: "테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)",
-        concept: "외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식",
-        formula: "$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n- $u$: 시간 $t$, 깊이 $z$에서의 과잉간극수압\n- $t$: 하중 작용 후 경과 시간\n- $z$: 하중 분담 전파 수직 깊이\n- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n  * $k$: 투수계수\n  * $m_v$: 체적압축계수\n  * $\\gamma_w$: 물의 단위중량",
-        structure: "1. 시간에 따른 수압 변화 항 (\\partial u / \\partial t)\n2. 깊이에 따른 2차 수두 배수 확산 항 (\\partial^2 u / \\partial z^2)"
-      },
-      {
-        title: "보상기초 보상도(Compensated Foundation Safety Factor, $C$)",
-        question: "보상기초 보상도(Compensated Foundation Safety Factor, $C$)",
-        concept: "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식",
-        formula: "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값",
-        structure: "1. 흙의 굴착 자중 상쇄량 (\\gamma D_f)\n2. 실제 침하를 유발하는 순응력 ($q_{net} = q - \\gamma D_f$)"
-      },
-      {
-        title: "싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)",
-        question: "싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)",
-        concept: "방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식",
-        formula: "$$p_w = \\gamma_w \\times H$$\n\n- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)",
-        structure: "1. 비배수 터널의 전수압 설계 한계\n2. 심도와 수두의 완전 비례 관계"
-      },
-      {
-        title: "가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)",
-        question: "가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)",
-        concept: "벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식",
-        formula: "$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$\n\n- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 직경 $30\\,\\text{cm}$ 강체 원판에 의한 표준 수평 지반반력계수 ($k_{h0} = \\frac{1}{0.3} E_0$)\n- $B_H$: 가상의 기초 환산폭 ($B_H = \\sqrt{A/h}$ 또는 벽체 영향 단위폭)\n- $E_0$: 지반의 탄성계수 (보통 표준관입시험 N치 연동: $E_0 = 2800 N$)",
-        structure: "1. 치수 효과(Size Effect) 보정 지수 ($-3/4$승)\n2. 지반의 유효 지반 반력 강성 변환식"
-      }
-    ];
-
-    try {
-      const qs = [...defaultFormulas];
-      for (let i = qs.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [qs[i], qs[j]] = [qs[j], qs[i]];
-      }
-      setFormulaQuestions(qs);
-      setFormulaRevealed({});
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingFormula(false);
     }
   };
 
@@ -1442,7 +1476,7 @@ export default function App() {
 
     setFormulaQuestions(prev => {
       const updated = [newFormula, ...prev];
-      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+      handleSaveFormulaQuestions(updated, false);
       return updated;
     });
     showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
@@ -1472,7 +1506,7 @@ export default function App() {
               }
               return f;
             });
-            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+            handleSaveFormulaQuestions(updated, false);
             return updated;
           });
           showNotification(`[${suggestedTitle}] 공식과 변수 해설이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
@@ -1528,7 +1562,7 @@ export default function App() {
               }
               return f;
             });
-            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+            handleSaveFormulaQuestions(updated, false);
             return updated;
           });
           showNotification(`[${suggestedTitle}] 공식의 제목, 핵심개념, 기호정의 분석 갱신이 완료되었습니다!`, 'success');
@@ -3181,6 +3215,10 @@ export default function App() {
                       {formulaQuestions.length}개 공식
                     </span>
                   )}
+                  {/* Mobile Swipe Hint */}
+                  <span className="inline-flex md:hidden text-[9px] bg-rose-950/60 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                    ← 좌우 쓸어 넘겨 튜터 대화 보기
+                  </span>
                 </div>
                 <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
                   전공 필수 공식 집중 평가 (주관식 인출)
@@ -3232,11 +3270,55 @@ export default function App() {
             </div>
           </div>
 
-          {/* Layout Split Container */}
-          <div className="flex-1 flex flex-col md:flex-row min-h-0">
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setFormulaMobileTab('list');
+                  formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  formulaMobileTab === 'list'
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                공식 리스트
+              </button>
+              <button
+                onClick={() => {
+                  setFormulaMobileTab('tutor');
+                  const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
+                  formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  formulaMobileTab === 'tutor'
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
+          {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+          <div 
+            ref={formulaSplitContainerRef}
+            onScroll={(e) => {
+              const scrollLeft = e.currentTarget.scrollLeft;
+              const clientWidth = e.currentTarget.clientWidth;
+              if (clientWidth > 0) {
+                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                setFormulaMobileTab(activeTab);
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+          >
             
             {/* Left: Formula Body */}
-            <div ref={formulaBodyRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30">
+            <div ref={formulaBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-slateCustom-900/30">
               {loadingFormula ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -3305,7 +3387,7 @@ export default function App() {
                                       if (trimmed) {
                                         setFormulaQuestions(prev => {
                                           const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
-                                          localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                          handleSaveFormulaQuestions(updated, false);
                                           return updated;
                                         });
                                         setEditingFormulaIdx(null);
@@ -3324,7 +3406,7 @@ export default function App() {
                                     if (trimmed) {
                                       setFormulaQuestions(prev => {
                                         const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
-                                        localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                        handleSaveFormulaQuestions(updated, false);
                                         return updated;
                                       });
                                       setEditingFormulaIdx(null);
@@ -3391,7 +3473,7 @@ export default function App() {
                                 if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
                                   setFormulaQuestions(prev => {
                                     const updated = prev.filter((_, i) => i !== idx);
-                                    localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                    handleSaveFormulaQuestions(updated, false);
                                     return updated;
                                   });
                                   setFormulaRevealed(prev => {
@@ -3478,8 +3560,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar for Formula (Desktop Only) */}
-            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+            {/* Right: Gemini Sidebar for Formula */}
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-rose-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
@@ -3629,6 +3711,10 @@ export default function App() {
                       {formulaQuestions.length}개 핵심공식
                     </span>
                   )}
+                  {/* Mobile Swipe Hint */}
+                  <span className="inline-flex md:hidden text-[9px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                    ← 좌우 쓸어 넘겨 튜터 대화 보기
+                  </span>
                 </div>
                 <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
                   전공 필수 공식 이론 유도 및 상세 증명 학습
@@ -3649,10 +3735,55 @@ export default function App() {
             </div>
           </div>
 
-          {/* Modal Container */}
-          <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setTheoryMobileTab('list');
+                  theorySplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  theoryMobileTab === 'list'
+                    ? 'bg-indigo-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                공식 리스트
+              </button>
+              <button
+                onClick={() => {
+                  setTheoryMobileTab('tutor');
+                  const containerWidth = theorySplitContainerRef.current?.clientWidth || 0;
+                  theorySplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  theoryMobileTab === 'tutor'
+                    ? 'bg-indigo-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+          <div 
+            ref={theorySplitContainerRef}
+            onScroll={(e) => {
+              const scrollLeft = e.currentTarget.scrollLeft;
+              const clientWidth = e.currentTarget.clientWidth;
+              if (clientWidth > 0) {
+                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                setTheoryMobileTab(activeTab);
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full select-none scrollbar-none"
+          >
+            
             {/* Left: Formula list */}
-            <div ref={theoryBodyRef} className="flex-grow overflow-y-auto p-5 space-y-4 md:w-1/2 scroll-smooth">
+            <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
               <div className="max-w-3xl mx-auto space-y-5">
                 {formulaQuestions.map((q, idx) => (
                   <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
@@ -3721,8 +3852,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar for Theory (Desktop Only) */}
-            <div className="hidden md:flex flex-col w-1/2 bg-slate-900 border-l border-slate-800">
+            {/* Right: Gemini Sidebar for Theory */}
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>

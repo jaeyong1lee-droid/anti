@@ -3068,6 +3068,43 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
+// GET /api/session/formula → 저장된 필수공식 상태 반환
+app.get('/api/session/formula', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['formula_questions']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      res.json({ data: JSON.parse(rows[0].value) });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/formula error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/formula → 필수공식 상태 저장
+app.post('/api/session/formula', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaQuestions } = req.body;
+    const value = JSON.stringify({ formulaQuestions });
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['formula_questions']);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ['formula_questions', value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/formula error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Spaced Repetition 무한 장기 보존 마이그레이션 함수
 async function migrateSpacedIntervals() {
   console.log('[Migration] Checking for completed spaced repetition reviews lacking the next round schedule...');
