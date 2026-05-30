@@ -4168,181 +4168,54 @@ export default function App() {
             <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
               <div className="max-w-3xl mx-auto space-y-5">
                 
-                {/* PDF Drag & Drop Upload Area for Theory */}
-                <div 
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.add('border-indigo-500', 'bg-indigo-950/20');
+                {/* Add Question/Theory Button */}
+                <button
+                  onClick={() => {
+                    const newTheory = {
+                      title: "",
+                      concept: "",
+                      assumptions: "",
+                      formula: ""
+                    };
+                    const updated = [newTheory, ...theoryQuestions];
+                    latestTheoryQuestionsRef.current = updated;
+                    setTheoryQuestions(updated);
+                    localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                    showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
                   }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/20');
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove('border-indigo-500', 'bg-indigo-950/20');
-                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                      await handleUploadTheoryPdf(e.dataTransfer.files[0]);
-                    }
-                  }}
-                  className="relative group border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slateCustom-900/40 rounded-2xl p-5 text-center transition-all duration-300 backdrop-blur-sm shadow-inner overflow-hidden cursor-pointer"
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-extrabold rounded-2xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 cursor-pointer border border-indigo-500/20"
                 >
-                  <input 
-                    type="file" 
-                    accept=".pdf,.html,.htm"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    onChange={async (e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        await handleUploadTheoryPdf(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  {uploadingTheoryPdf ? (
-                    <div className="flex flex-col items-center justify-center py-2 gap-3">
-                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
-                      <div className="text-xs font-black text-indigo-400">PDF 문서 텍스트 정밀 분석 중...</div>
-                      <p className="text-[10px] text-slate-500">핵심 이론 공식 및 상세 증명 유도 과정을 생성하고 있습니다.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-2 gap-2">
-                      <div className="p-3 bg-indigo-950/40 text-indigo-400 rounded-xl group-hover:scale-110 transition-transform duration-300 border border-indigo-500/10">
-                        <UploadCloud size={22} className="text-indigo-400" />
-                      </div>
-                      <div className="text-xs font-black text-slate-300">기술사 교재/수식 PDF 및 HTML 업로드</div>
-                      <p className="text-[10px] text-slate-500">여기에 파일을 끌어다 놓거나 클릭하여 새로운 이론 유도를 AI가 파싱하여 학습에 편입합니다.</p>
-                    </div>
-                  )}
-                </div>
+                  <PlusCircle size={16} />
+                  <span>➕ 새로운 이론 공식 추가하기 (기출 빈표 생성)</span>
+                </button>
 
                 {/* Theory Questions Map */}
                 {theoryQuestions.map((q, idx) => {
-                  const isRevealed = !!theoryRevealed[idx];
-                  const isEditing = editingTheoryIdx === idx;
-
-                  if (isEditing) {
-                    return (
-                      <div key={idx} className="formula-card-item bg-slateCustom-950/40 border-2 border-indigo-500/50 rounded-2xl p-5 space-y-4 animate-fade-in">
-                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                          <span className="text-[11px] font-black bg-indigo-950 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/30 select-none">
-                            이론 {idx + 1} 편집 모드
-                          </span>
-                        </div>
-
-                        <div className="space-y-4">
-                          {/* Title Input */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400">제목</label>
-                            <input
-                              type="text"
-                              value={editTheoryTitle}
-                              onChange={(e) => setEditTheoryTitle(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                              placeholder="이론 제목을 입력하세요"
-                            />
-                          </div>
-
-                          {/* Concept Input */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-indigo-400">💡 직관적 의미</label>
-                            <textarea
-                              value={editTheoryConcept}
-                              onChange={(e) => setEditTheoryConcept(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors h-20"
-                              placeholder="이론의 직관적인 의미나 개념을 적어주세요"
-                            />
-                          </div>
-
-                          {/* Assumptions Input */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-amber-400">📋 가정 조건</label>
-                            <input
-                              type="text"
-                              value={editTheoryAssumptions}
-                              onChange={(e) => setEditTheoryAssumptions(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                              placeholder="예: 1. 일차원 흐름, 2. Darcy 법칙 적용"
-                            />
-                          </div>
-
-                          {/* Formula Input */}
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black text-indigo-300">📐 상세 이론 유도 및 공학적 증명</label>
-                            <textarea
-                              value={editTheoryFormula}
-                              onChange={(e) => setEditTheoryFormula(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors h-36 font-mono"
-                              placeholder="LaTeX 블록이나 수식을 포함한 전체 상세 유도 내용을 입력하세요."
-                            />
-                          </div>
-
-                          {/* Edit Action Buttons */}
-                          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/80">
-                            <button
-                              onClick={() => setEditingTheoryIdx(null)}
-                              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer"
-                            >
-                              취소
-                            </button>
-                            <button
-                              onClick={() => {
-                                const updated = [...theoryQuestions];
-                                updated[idx] = {
-                                  ...updated[idx],
-                                  title: editTheoryTitle,
-                                  concept: editTheoryConcept,
-                                  assumptions: editTheoryAssumptions,
-                                  formula: editTheoryFormula
-                                };
-                                latestTheoryQuestionsRef.current = updated;
-                                setTheoryQuestions(updated);
-                                handleSaveTheoryQuestions(updated, true);
-                                setEditingTheoryIdx(null);
-                              }}
-                              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer shadow-md shadow-indigo-500/20"
-                            >
-                              저장하기
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
                   return (
                     <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 flex-grow min-w-0">
                           <span className="text-[11px] font-black bg-indigo-950/80 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 select-none">
                             이론 {idx + 1}
                           </span>
-                          <h4 className="text-[15px] font-extrabold text-white leading-snug truncate">
-                            <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
-                          </h4>
+                          {/* Editable Title Input */}
+                          <input
+                            type="text"
+                            value={q.title || ''}
+                            onChange={(e) => {
+                              const updated = [...theoryQuestions];
+                              updated[idx] = { ...updated[idx], title: e.target.value };
+                              latestTheoryQuestionsRef.current = updated;
+                              setTheoryQuestions(updated);
+                              localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                            }}
+                            className="flex-grow bg-slate-950 border border-slate-800/80 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-white focus:outline-none transition-colors"
+                            placeholder={`이론 ${idx + 1} 제목을 입력하세요`}
+                          />
                         </div>
                         
-                        {/* Actions (Edit, Refresh, Trash) */}
+                        {/* Actions (Delete/Trash) */}
                         <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => {
-                              setEditingTheoryIdx(idx);
-                              setEditTheoryTitle(q.title || '');
-                              setEditTheoryConcept(q.concept || '');
-                              setEditTheoryAssumptions(q.assumptions || '');
-                              setEditTheoryFormula(q.formula || '');
-                            }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all cursor-pointer"
-                            title="이론 수정"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleRefreshTheory(idx)}
-                            disabled={refreshingTheoryIdx === idx}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all cursor-pointer disabled:opacity-50"
-                            title="이론 증명 AI 재정리 및 갱신"
-                          >
-                            <RefreshCw size={14} className={refreshingTheoryIdx === idx ? "animate-spin" : ""} />
-                          </button>
                           <button
                             onClick={() => {
                               if (window.confirm(`[${q.title || `이론 ${idx + 1}`}] 이론 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
@@ -4366,51 +4239,39 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Collapsible Answer & Concept */}
-                      <div className="space-y-3">
-                        {q.concept && (
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-black text-indigo-400">💡 직관적 의미: </span>
-                            <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
-                          </div>
-                        )}
-
-                        {q.assumptions && (
-                          <div className="space-y-1 pt-1">
-                            <span className="text-[10px] font-black text-amber-400">📋 가정 조건: </span>
-                            <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.assumptions} katexLoaded={katexLoaded} /></div>
-                          </div>
-                        )}
-
-                        {isRevealed ? (
-                          <div className="space-y-3 pt-3 border-t border-slate-800/80 animate-fade-in">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-indigo-300 font-extrabold">📐 상세 이론 유도 및 공학적 증명: </span>
-                              <button
-                                onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: false }))}
-                                className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95"
-                              >
-                                접기 ✕
-                              </button>
-                            </div>
-                            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                      {/* Real-time LaTeX rendered Output Display Window */}
+                      <div className="space-y-2 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px]">
+                        <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                        {q.formula ? (
+                          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                            <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
                           </div>
                         ) : (
-                          <div className="pt-2 border-t border-slate-800/80">
-                            <button
-                              onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: true }))}
-                              className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
-                            >
-                              💡 이론 유도 과정 및 상세 증명 확인하기
-                            </button>
-                          </div>
+                          <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
                         )}
                       </div>
 
-                      {/* AI Theory Derivation Sidebar Request Button */}
-                      <div className="pt-3 border-t border-slate-800/80 flex justify-end">
+                      {/* Input Textarea Area for Paste / Typing LaTeX */}
+                      <div className="space-y-1 pt-1">
+                        <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
+                        <textarea
+                          value={q.formula || ''}
+                          onChange={(e) => {
+                            const updated = [...theoryQuestions];
+                            updated[idx] = { ...updated[idx], formula: e.target.value };
+                            latestTheoryQuestionsRef.current = updated;
+                            setTheoryQuestions(updated);
+                            localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                          }}
+                          className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                          placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
+                        />
+                      </div>
+
+                      {/* AI Chat Tutor Button */}
+                      <div className="pt-2 border-t border-slate-800/80 flex justify-end">
                         <button
-                          onClick={() => handleAskTheoryDerivation(q.title, q.formula || '')}
+                          onClick={() => handleAskTheoryDerivation(q.title || `이론 ${idx + 1}`, q.formula || '')}
                           disabled={isChatLoading}
                           className="w-full py-2 bg-slateCustom-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800/80 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
