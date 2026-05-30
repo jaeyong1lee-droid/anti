@@ -793,71 +793,71 @@ export default function App() {
         title: "Barton의 암반 Q분류",
         question: "Barton(바톤)의 암반 Q분류(Q-system) 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식",
-        formula: "$$Q = \\\\frac{RQD}{J_n} \\\\times \\\\frac{J_r}{J_a} \\\\times \\\\frac{J_w}{SRF}$$\\n\\n- $Q$: 암반 등급 지수\\n- $RQD$: 암질지수 (Rock Quality Designation)\\n- $J_n$: 절리군 수 (Joint set number)\\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
-        structure: "1. RQD/Jn: 블록의 크기\\n2. Jr/Ja: 블록 전단강도\\n3. Jw/SRF: 지반 유효응력 분포 상태"
+        formula: "$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$\n\n- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)",
+        structure: "1. RQD/Jn: 블록의 크기\n2. Jr/Ja: 블록 전단강도\n3. Jw/SRF: 지반 유효응력 분포 상태"
       },
       {
         title: "Terzaghi 얕은기초 극한 지지력",
         question: "Terzaghi(테르자기)의 얕은기초 극한 지지력 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식",
-        formula: "$$q_{ult} = c N_c + q N_q + 0.5 \\\\gamma B N_{\\\\gamma}$$\\n\\n- $q_{ult}$: 극한 지지력\\n- $c$: 흙의 점착력\\n- $q$: 기초 저면의 유효상재하중 ($\\\\gamma D_f$)\\n- $\\\\gamma$: 기초 저면 아래 흙의 단위중량\\n- $B$: 기초의 폭 (단변 길이)\\n- $N_c, N_q, N_{\\\\gamma}$: 지반의 내부마찰각($\\\\phi$)에 의해 정의되는 지지력 계수",
-        structure: "1. 점착력 성분 ($c N_c$)\\n2. 마찰각 및 상재하중 성분 ($q N_q$)\\n3. 기초 자중 및 마찰 성분 ($0.5 \\\\gamma B N_{\\\\gamma}$)"
+        formula: "$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반의 내부마찰각($\\phi$)에 의해 정의되는 지지력 계수",
+        structure: "1. 점착력 성분 ($c N_c$)\n2. 마찰각 및 상재하중 성분 ($q N_q$)\n3. 기초 자중 및 마찰 성분 ($0.5 \\gamma B N_{\\gamma}$)"
       },
       {
         title: "연약지반 Sand Mat 최소 소요 두께",
         question: "연약지반 개량공법 중 Sand Mat(샌드매트)의 최소 소요 두께 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식",
-        formula: "$$H = \\\\frac{q - q_a}{2 \\\\gamma \\\\tan\\\\theta}$$\\n\\n- $H$: 샌드매트의 소요 최소 두께\\n- $q$: 포설 장비의 접지압\\n- $q_a$: 지반의 허용 지지력\\n- $\\\\gamma$: 모래의 단위중량\\n- $\\\\theta$: 하중 분산각 (일반적으로 $45^\\\\circ$ 적용)",
-        structure: "1. 상부 장비 접지압 분산 원리\\n2. 모래의 전단 부착각과 저면 마찰 저항"
+        formula: "$$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$$\n\n- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)",
+        structure: "1. 상부 장비 접지압 분산 원리\n2. 모래의 전단 부착각과 저면 마찰 저항"
       },
       {
         title: "평사투영 극점 변환 반경 (등면적 투영)",
         question: "암반 불연속면 평사투영법에서 등면적 투영(Schmidt Net)의 원점으로부터 극점까지의 변환 반경 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식",
-        formula: "$$r = \\\\sqrt{2} R \\\\sin\\\\left(45^\\\\circ - \\\\frac{\\\\alpha}{2}\\\\right)$$\\n\\n- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\\n- $R$: 투영구(Sphere)의 반경\\n- $\\\\alpha$: 불연속면의 경사각 (Dip angle)",
-        structure: "1. 등면적 조건 구면 투영 원리\\n2. 극점(Pole) 매핑 기하학"
+        formula: "$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$\n\n- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)",
+        structure: "1. 등면적 조건 구면 투영 원리\n2. 극점(Pole) 매핑 기하학"
       },
       {
         title: "락볼트 인발시험 설계 지반 고착력",
         question: "터널 지보재 락볼트(Rock Bolt) 현장 인발시험 시, 지반과의 마찰 고착력 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식",
-        formula: "$$P = \\\\pi \\\\cdot d \\\\cdot L \\\\cdot \\\\tau_{allow}$$\\n\\n- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\\n- $d$: 락볼트 천공 구멍의 직경\\n- $L$: 그라우팅 정착 길이 (고착 영역)\\n- $\\\\tau_{allow}$: 지반과 그라우팅재(또는 그라우트와 락볼트) 간의 허용 부착 전단강도",
-        structure: "1. 부착 저항 주면적 (\\\\pi d L)\\n2. 정착 한계 부착 전단저항 특성"
+        formula: "$$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$$\n\n- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재(또는 그라우트와 락볼트) 간의 허용 부착 전단강도",
+        structure: "1. 부착 저항 주면적 ($\\pi d L$)\n2. 정착 한계 부착 전단저항 특성"
       },
       {
         title: "Rankine 주동토압",
         question: "Rankine(랭킨)의 주동토압계수($K_a$) 및 주동토압 강도($p_a$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식",
-        formula: "$$K_a = \\\\tan^2\\\\left(45^\\circ - \\\\frac{\\\\phi}{2}\\\\right) = \\\\frac{1 - \\\\sin\\\\phi}{1 + \\\\sin\\\\phi}$$\\n$$p_a = K_a \\\\gamma z - 2 c \\\\sqrt{K_a}$$\\n\\n- $K_a$: 주동토압 계수\\n- $\\\\phi$: 흙의 내부마찰각\\n- $p_a$: 깊이 $z$에서의 주동토압 강도\\n- $\\\\gamma$: 흙의 단위중량\\n- $z$: 검토 단면 깊이\\n- $c$: 흙의 점착력",
-        structure: "1. 흙의 유효 상재압에 의한 주동토압력\\n2. 흙의 자립 점착력에 의한 인장 저항력 감쇄 ($2c\\\\sqrt{K_a}$)"
+        formula: "$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$\n$$p_a = K_a \\gamma z - 2 c \\sqrt{K_a}$$\n\n- $K_a$: 주동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 깊이 $z$에서의 주동토압 강도\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이\n- $c$: 흙의 점착력",
+        structure: "1. 흙의 유효 상재압에 의한 주동토압력\n2. 흙의 자립 점착력에 의한 인장 저항력 감쇄 ($2c\\sqrt{K_a}$)"
       },
       {
         title: "Terzaghi 1차원 압밀 지배 미분방정식",
         question: "Terzaghi(테르자기)의 1차원 압밀 기본 지배 미분방정식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식",
-        formula: "$$\\frac{\\\\partial u}{\\\\partial t} = C_v \\\\frac{\\\\partial^2 u}{\\\\partial z^2}$$\\n\\n- $u$: 시간 $t$, 깊이 $z$에서의 과잉간극수압\\n- $t$: 하중 작용 후 경과 시간\\n- $z$: 하중 분담 전파 수직 깊이\\n- $C_v$: 압밀계수 ($C_v = \\\\frac{k}{m_v \\\\gamma_w}$)\\n  * $k$: 투수계수\\n  * $m_v$: 체적압축계수\\n  * $\\\\gamma_w$: 물의 단위중량",
-        structure: "1. 시간에 따른 수압 변화 항 (\\\\partial u / \\\\partial t)\\n2. 깊이에 따른 2차 수두 배수 확산 항 (\\\\partial^2 u / \\\\partial z^2$)"
+        formula: "$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n- $u$: 시간 $t$, 깊이 $z$에서의 과잉간극수압\n- $t$: 하중 작용 후 경과 시간\n- $z$: 하중 분담 전파 수직 깊이\n- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n  * $k$: 투수계수\n  * $m_v$: 체적압축계수\n  * $\\gamma_w$: 물의 단위중량",
+        structure: "1. 시간에 따른 수압 변화 항 (\\partial u / \\partial t)\n2. 깊이에 따른 2차 수두 배수 확산 항 (\\partial^2 u / \\partial z^2)"
       },
       {
         title: "보상도 (보상기초 하중 상쇄 비율)",
         question: "보상기초(Compensated Foundation) 설계 시 지반 굴착 하중과 구조물 자중 간의 균형을 계측하는 보상도($C$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식",
-        formula: "$$C = \\\\frac{\\\\gamma D_f}{q}$$\\n\\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\\n- $\\\\gamma$: 굴착하여 배출한 흙의 단위중량\\n- $D_f$: 기초의 굴착 깊이\\n- $q$: 상부 구조물 총 자중 및 하중 합산값",
-        structure: "1. 흙의 굴착 자중 상쇄량 ($\\\\gamma D_f$)\\n2. 실제 침하를 유발하는 순응력 ($q_{net} = q - \\\\gamma D_f$)"
+        formula: "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값",
+        structure: "1. 흙의 굴착 자중 상쇄량 (\\gamma D_f)\n2. 실제 침하를 유발하는 순응력 ($q_{net} = q - \\gamma D_f$)"
       },
       {
         title: "터널 배면 싱글쉘 정수압 분포 공식",
         question: "터널 싱글쉘(Single Shell) 라이닝에서 배수형식이 비배수형일 때, 아치 정상부 배면에 작용하는 설계 정수압($p_w$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식",
-        formula: "$$p_w = \\\\gamma_w \\\\times H$$\\n\\n- $p_w$: 라이닝 배면 작용 설계 수압\\n- $\\\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\\\,\\\\text{kN/m}^3$)\\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)",
-        structure: "1. 비배수 터널의 전수압 설계 한계\\n2. 심도와 수두의 완전 비례 관계"
+        formula: "$$p_w = \\gamma_w \\times H$$\n\n- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)",
+        structure: "1. 비배수 터널의 전수압 설계 한계\n2. 심도와 수두의 완전 비례 관계"
       },
       {
         title: "가설 흙막이 벽체 지반스프링상수",
         question: "가설 흙막이 구조 계산에서 지반스프링(Elastoplastic Beam-Spring Model) 모델링 시, 수평 지반반력계수($k_h$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오.",
         concept: "벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식",
-        formula: "$$k_h = k_{h0} \\\\left(\\\\frac{B_H}{0.3}\\\\right)^{-3/4}$$\\n\\n- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\\n- $k_{h0}$: 직경 $30\\\\,\\\\text{cm}$ 강체 원판에 의한 표준 수평 지반반력계수 ($k_{h0} = \\\\frac{1}{0.3} E_0$)\\n- $B_H$: 가상의 기초 환산폭 ($B_H = \\\\sqrt{A/h}$ 또는 벽체 영향 단위폭)\\n- $E_0$: 지반의 탄성계수 (보통 표준관입시험 N치 연동: $E_0 = 2800 N$)",
-        structure: "1. 치수 효과(Size Effect) 보정 지수 ($-3/4$승)\\n2. 지반의 유효 지반 반력 강성 변환식"
+        formula: "$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$\n\n- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 직경 $30\\,\\text{cm}$ 강체 원판에 의한 표준 수평 지반반력계수 ($k_{h0} = \\frac{1}{0.3} E_0$)\n- $B_H$: 가상의 기초 환산폭 ($B_H = \\sqrt{A/h}$ 또는 벽체 영향 단위폭)\n- $E_0$: 지반의 탄성계수 (보통 표준관입시험 N치 연동: $E_0 = 2800 N$)",
+        structure: "1. 치수 효과(Size Effect) 보정 지수 ($-3/4$승)\n2. 지반의 유효 지반 반력 강성 변환식"
       }
     ];
 
