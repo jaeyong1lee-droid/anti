@@ -191,7 +191,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           // 일반 텍스트 내 inline math $ ... $ 처리
           let htmlContent = part.content;
           try {
-            htmlContent = htmlContent.replace(/\$(.*?)\$/g, (m, math) => {
+            htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
               try {
                 return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
               } catch (e) {
@@ -1011,7 +1011,7 @@ export default function App() {
       let newFormula = f.formula;
       let newConcept = f.concept;
       if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
-        newFormula = "$C = \\frac{\\gamma D_f}{q}$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
+        newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
         newConcept = "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식";
       }
 
