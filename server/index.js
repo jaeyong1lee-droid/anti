@@ -250,68 +250,142 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
   const keys = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_SECONDARY,
-    process.env.GEMINI_API_KEY_TERTIARY
+    process.env.GEMINI_API_KEY_TERTIARY,
+    process.env.XAI_API_KEY,
+    process.env.GROK_API_KEY
   ].filter(Boolean);
 
   if (keys.length === 0) {
-    throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
+    throw new Error('GEMINI_API_KEY 또는 XAI_API_KEY가 설정되어 있지 않습니다.');
   }
 
-  const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
   let lastError = null;
 
   for (let kIdx = 0; kIdx < keys.length; kIdx++) {
     const key = keys[kIdx];
-    const genAI = new GoogleGenerativeAI(key);
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+    const isGrok = key.startsWith('xai-');
     let keyExhausted = false;
 
-    for (const modelName of MODELS) {
-      if (keyExhausted) break;
+    if (isGrok) {
+      const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
+      for (const modelName of GROK_MODELS) {
+        if (keyExhausted) break;
 
-      let attempt = 0;
-      const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
-      let delay = 2000; // Initial delay: 2s
+        let attempt = 0;
+        const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+        let delay = 2000; // Initial delay: 2s
 
-      while (attempt < maxAttempts) {
-        try {
-          console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-          const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemInstruction || undefined
-          });
-          const result = await model.generateContent(userPrompt);
-          const text = result.response.text().trim();
-          if (text) {
-            console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-            return text;
-          }
-        } catch (err) {
-          console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-          lastError = err;
-
-          const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
-          if (isQuota) {
-            attempt++;
-            if (attempt < maxAttempts) {
-              console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
-              await sleep(delay);
-              delay *= 2; // Double the delay (2s -> 4s -> 8s)
-            } else {
-              console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
-              keyExhausted = true;
-              break; // Switch to the next key!
+        while (attempt < maxAttempts) {
+          try {
+            console.log(`[Grok 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+            const messages = [];
+            if (systemInstruction) {
+              messages.push({ role: 'system', content: systemInstruction });
             }
-          } else {
-            // For other non-quota errors, don't retry and break immediately
-            break;
+            messages.push({ role: 'user', content: userPrompt });
+
+            const response = await fetch('https://api.x.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: modelName,
+                messages: messages,
+                temperature: 0.2
+              })
+            });
+
+            if (!response.ok) {
+              const errBody = await response.text().catch(() => '');
+              throw new Error(`HTTP Error ${response.status}: ${errBody}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content?.trim();
+            if (text) {
+              console.log(`[Grok 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+              return text;
+            } else {
+              throw new Error('Grok response empty or invalid choices structure');
+            }
+          } catch (err) {
+            console.warn(`[Grok 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
+            lastError = err;
+
+            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429') || err.message?.includes('Limit');
+            if (isQuota) {
+              attempt++;
+              if (attempt < maxAttempts) {
+                console.log(`[지수 백오프] 429 감지 (Grok). ${delay}ms 후 재시도합니다...`);
+                await sleep(delay);
+                delay *= 2; // Double the delay
+              } else {
+                console.warn(`[Grok Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
+                keyExhausted = true;
+                break; // Switch to the next key!
+              }
+            } else {
+              // For other non-quota errors, don't retry and break immediately
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      // Gemini
+      const genAI = new GoogleGenerativeAI(key);
+      const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+
+      for (const modelName of MODELS) {
+        if (keyExhausted) break;
+
+        let attempt = 0;
+        const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+        let delay = 2000; // Initial delay: 2s
+
+        while (attempt < maxAttempts) {
+          try {
+            console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+            const model = genAI.getGenerativeModel({
+              model: modelName,
+              systemInstruction: systemInstruction || undefined
+            });
+            const result = await model.generateContent(userPrompt);
+            const text = result.response.text().trim();
+            if (text) {
+              console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+              return text;
+            }
+          } catch (err) {
+            console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
+            lastError = err;
+
+            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
+            if (isQuota) {
+              attempt++;
+              if (attempt < maxAttempts) {
+                console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
+                await sleep(delay);
+                delay *= 2; // Double the delay (2s -> 4s -> 8s)
+              } else {
+                console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
+                keyExhausted = true;
+                break; // Switch to the next key!
+              }
+            } else {
+              // For other non-quota errors, don't retry and break immediately
+              break;
+            }
           }
         }
       }
     }
   }
 
-  throw lastError || new Error('모든 Gemini 모델 및 API 키 호출에 실패했습니다.');
+  throw lastError || new Error('모든 모델 및 API 키 호출에 실패했습니다.');
 }
 
 // Helper: Shuffle array elements
@@ -1740,6 +1814,10 @@ app.get('/api/debug-env', async (req, res) => {
     claudeKeyLength: process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.length : 0,
     hasOpenaiKey: !!process.env.OPENAI_API_KEY,
     openaiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
+    hasXaiKey: !!process.env.XAI_API_KEY,
+    xaiKeyLength: process.env.XAI_API_KEY ? process.env.XAI_API_KEY.length : 0,
+    hasGrokKey: !!process.env.GROK_API_KEY,
+    grokKeyLength: process.env.GROK_API_KEY ? process.env.GROK_API_KEY.length : 0,
     hasDbUrl: !!connectionString,
     dbUrlLength: connectionString.length,
     parsedDbInfo: parsedInfo,
@@ -1838,6 +1916,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -1951,76 +2031,155 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         const keys = [
           process.env.GEMINI_API_KEY,
           process.env.GEMINI_API_KEY_SECONDARY,
-          process.env.GEMINI_API_KEY_TERTIARY
+          process.env.GEMINI_API_KEY_TERTIARY,
+          process.env.XAI_API_KEY,
+          process.env.GROK_API_KEY
         ].filter(Boolean);
 
         if (keys.length === 0) {
-          throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
+          throw new Error('GEMINI_API_KEY 또는 XAI_API_KEY가 설정되어 있지 않습니다.');
         }
 
-        const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
         let questions = null;
         let lastErr = null;
 
         for (let kIdx = 0; kIdx < keys.length; kIdx++) {
           const key = keys[kIdx];
-          const genAI = new GoogleGenerativeAI(key);
           const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+          const isGrok = key.startsWith('xai-');
           let keyExhausted = false;
 
-          for (const modelName of QUIZ_MODELS) {
-            if (keyExhausted) break;
-            
-            let attempt = 0;
-            const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
-            let delay = 2000; // 2s initial delay
+          if (isGrok) {
+            const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
+            for (const modelName of GROK_MODELS) {
+              if (keyExhausted) break;
+              
+              let attempt = 0;
+              const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+              let delay = 2000; // 2s initial delay
 
-            while (attempt < maxAttempts) {
-              try {
-                console.log(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName} (시도 #${attempt + 1})`);
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const rawText = response.text().trim();
-
+              while (attempt < maxAttempts) {
                 try {
-                  let text = rawText;
-                  if (text.startsWith('```')) {
-                    text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                  console.log(`[단일토픽퀴즈 Grok] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName} (시도 #${attempt + 1})`);
+                  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${key}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      model: modelName,
+                      messages: [{ role: 'user', content: prompt }],
+                      temperature: 0.2
+                    })
+                  });
+
+                  if (!response.ok) {
+                    const errBody = await response.text().catch(() => '');
+                    throw new Error(`HTTP Error ${response.status}: ${errBody}`);
                   }
-                  questions = JSON.parse(text);
-                } catch (parseErr) {
-                  console.warn(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
-                  questions = extractJsonArray(rawText);
-                }
 
-                if (!questions || !Array.isArray(questions)) {
-                  throw new Error('Parsed result is not a valid JSON array or empty');
-                }
+                  const data = await response.json();
+                  const rawText = data.choices?.[0]?.message?.content?.trim() || '';
 
-                console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
-                break; // 성공 시 루프 종료
-              } catch (modelErr) {
-                lastErr = modelErr;
-                const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
-                if (isQuota) {
-                  attempt++;
-                  if (attempt < maxAttempts) {
-                    console.log(`[지수 백오프] 429 감지 (단일토픽퀴즈). ${delay}ms 후 재시도합니다...`);
-                    await sleep(delay);
-                    delay *= 2; // Double the delay
+                  try {
+                    let text = rawText;
+                    if (text.startsWith('```')) {
+                      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                    }
+                    questions = JSON.parse(text);
+                  } catch (parseErr) {
+                    console.warn(`[단일토픽퀴즈 Grok] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
+                    questions = extractJsonArray(rawText);
+                  }
+
+                  if (!questions || !Array.isArray(questions)) {
+                    throw new Error('Parsed result is not a valid JSON array or empty');
+                  }
+
+                  console.log(`[단일토픽퀴즈 Grok] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
+                  break; // 성공 시 루프 종료
+                } catch (modelErr) {
+                  lastErr = modelErr;
+                  const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.message?.includes('429') || modelErr.message?.includes('Limit');
+                  if (isQuota) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                      console.log(`[지수 백오프] 429 감지 (단일토픽퀴즈 Grok). ${delay}ms 후 재시도합니다...`);
+                      await sleep(delay);
+                      delay *= 2; // Double the delay
+                    } else {
+                      console.warn(`[단일토픽퀴즈 Grok Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
+                      keyExhausted = true;
+                      break; // Break model loop, switch to next key
+                    }
                   } else {
-                    console.warn(`[단일토픽퀴즈 Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
-                    keyExhausted = true;
-                    break; // Break model loop, switch to next key
+                    break; // Non-quota error, don't retry
                   }
-                } else {
-                  break; // Non-quota error, don't retry
                 }
               }
+              if (questions) {
+                break; // Break the models loop on success
+              }
             }
-            if (questions) {
-              break; // Break the models loop on success
+          } else {
+            const genAI = new GoogleGenerativeAI(key);
+            const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+
+            for (const modelName of QUIZ_MODELS) {
+              if (keyExhausted) break;
+              
+              let attempt = 0;
+              const maxAttempts = 4; // 3 retries (2s -> 4s -> 8s)
+              let delay = 2000; // 2s initial delay
+
+              while (attempt < maxAttempts) {
+                try {
+                  console.log(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName} (시도 #${attempt + 1})`);
+                  const model = genAI.getGenerativeModel({ model: modelName });
+                  const result = await model.generateContent(prompt);
+                  const response = await result.response;
+                  const rawText = response.text().trim();
+
+                  try {
+                    let text = rawText;
+                    if (text.startsWith('```')) {
+                      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                    }
+                    questions = JSON.parse(text);
+                  } catch (parseErr) {
+                    console.warn(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
+                    questions = extractJsonArray(rawText);
+                  }
+
+                  if (!questions || !Array.isArray(questions)) {
+                    throw new Error('Parsed result is not a valid JSON array or empty');
+                  }
+
+                  console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
+                  break; // 성공 시 루프 종료
+                } catch (modelErr) {
+                  lastErr = modelErr;
+                  const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
+                  if (isQuota) {
+                    attempt++;
+                    if (attempt < maxAttempts) {
+                      console.log(`[지수 백오프] 429 감지 (단일토픽퀴즈). ${delay}ms 후 재시도합니다...`);
+                      await sleep(delay);
+                      delay *= 2; // Double the delay
+                    } else {
+                      console.warn(`[단일토픽퀴즈 Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
+                      keyExhausted = true;
+                      break; // Break model loop, switch to next key
+                    }
+                  } else {
+                    break; // Non-quota error, don't retry
+                  }
+                }
+              }
+              if (questions) {
+                break; // Break the models loop on success
+              }
             }
           }
           if (questions) {
@@ -2053,6 +2212,8 @@ app.post('/api/exam/all', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -2174,6 +2335,8 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
@@ -2218,6 +2381,8 @@ app.post('/api/chat', async (req, res) => {
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
       process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
