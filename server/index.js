@@ -241,43 +241,58 @@ function extractJsonArray(str) {
 }
 
 /**
- * 5월 24일 검증 완료된 단일 키 기반 3단계 모델 폴백 시스템 복원
- * 모델 순서: gemini-3.5-flash → gemini-2.5-flash → gemini-2.0-flash
+ * 5월 30일 업그레이드 완료된 다중 API 키 순환 및 3단계 모델 폴백 시스템
+ * 429 한도초과(Quota Exceeded) 시 즉시 다음 보조 API 키(Secondary/Tertiary)로 가동 전환
  */
 async function callLLMWithFailover(systemInstruction, userPrompt) {
-  const geminiApiKey = process.env.GEMINI_API_KEY || 
-                       process.env.GEMINI_API_KEY_SECONDARY || 
-                       process.env.GEMINI_API_KEY_TERTIARY || 
-                       '';
-  if (!geminiApiKey) {
+  const keys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_SECONDARY,
+    process.env.GEMINI_API_KEY_TERTIARY
+  ].filter(Boolean);
+
+  if (keys.length === 0) {
     throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
   }
 
   const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-  const genAI = new GoogleGenerativeAI(geminiApiKey);
-
   let lastError = null;
 
-  for (const modelName of MODELS) {
-    try {
-      console.log(`[Gemini 시도] 모델: ${modelName}`);
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemInstruction || undefined
-      });
-      const result = await model.generateContent(userPrompt);
-      const text = result.response.text().trim();
-      if (text) {
-        console.log(`[Gemini 성공] 모델: ${modelName}`);
-        return text;
+  for (let kIdx = 0; kIdx < keys.length; kIdx++) {
+    const key = keys[kIdx];
+    const genAI = new GoogleGenerativeAI(key);
+    const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+    let keyExhausted = false;
+
+    for (const modelName of MODELS) {
+      if (keyExhausted) break;
+      try {
+        console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction || undefined
+        });
+        const result = await model.generateContent(userPrompt);
+        const text = result.response.text().trim();
+        if (text) {
+          console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
+          return text;
+        }
+      } catch (err) {
+        console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName}: ${err.message?.substring(0, 120)}`);
+        lastError = err;
+
+        const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
+        if (isQuota) {
+          console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit. Switching to next key.`);
+          keyExhausted = true;
+          break; // Switch to the next key!
+        }
       }
-    } catch (err) {
-      console.warn(`[Gemini 실패] ${modelName}: ${err.message?.substring(0, 120)}`);
-      lastError = err;
     }
   }
 
-  throw lastError || new Error('모든 Gemini 모델 호출에 실패했습니다.');
+  throw lastError || new Error('모든 Gemini 모델 및 API 키 호출에 실패했습니다.');
 }
 
 // Helper: Shuffle array elements
@@ -1914,57 +1929,73 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 `;
 
       try {
-        const geminiApiKey = process.env.GEMINI_API_KEY || 
-                             process.env.GEMINI_API_KEY_SECONDARY || 
-                             process.env.GEMINI_API_KEY_TERTIARY || 
-                             '';
-        const genAI = new GoogleGenerativeAI(geminiApiKey);
-        const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        const keys = [
+          process.env.GEMINI_API_KEY,
+          process.env.GEMINI_API_KEY_SECONDARY,
+          process.env.GEMINI_API_KEY_TERTIARY
+        ].filter(Boolean);
 
-      let questions = null;
-      let lastErr = null;
-
-      for (const modelName of QUIZ_MODELS) {
-        try {
-          console.log(`[단일토픽퀴즈] 모델 시도: ${modelName}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(prompt);
-          const response = await result.response;
-          const rawText = response.text().trim();
-
-          try {
-            let text = rawText;
-            if (text.startsWith('```')) {
-              text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-            }
-            questions = JSON.parse(text);
-          } catch (parseErr) {
-            console.warn(`[단일토픽퀴즈] ${modelName} 파싱 재시도:`, parseErr);
-            questions = extractJsonArray(rawText);
-          }
-
-          if (!questions || !Array.isArray(questions)) {
-            throw new Error('Parsed result is not a valid JSON array or empty');
-          }
-
-          console.log(`[단일토픽퀴즈] 성공: ${modelName}, ${questions.length}문항`);
-          break; // 성공 시 루프 종료
-        } catch (modelErr) {
-          lastErr = modelErr;
-          const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429;
-          if (isQuota) {
-            console.warn(`[단일토픽퀴즈] ${modelName} Quota 초과, 다음 모델로 폴백`);
-            continue;
-          }
-          throw modelErr; // Quota 외 오류는 즉시 throw
+        if (keys.length === 0) {
+          throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
         }
-      }
 
-      if (!questions) {
-        throw lastErr || new Error('모든 제미나이 모델 호출 실패');
-      }
+        const QUIZ_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        let questions = null;
+        let lastErr = null;
 
-      res.json({ questions, isFallback: false });
+        for (let kIdx = 0; kIdx < keys.length; kIdx++) {
+          const key = keys[kIdx];
+          const genAI = new GoogleGenerativeAI(key);
+          const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+          let keyExhausted = false;
+
+          for (const modelName of QUIZ_MODELS) {
+            if (keyExhausted) break;
+            try {
+              console.log(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), 모델 시도: ${modelName}`);
+              const model = genAI.getGenerativeModel({ model: modelName });
+              const result = await model.generateContent(prompt);
+              const response = await result.response;
+              const rawText = response.text().trim();
+
+              try {
+                let text = rawText;
+                if (text.startsWith('```')) {
+                  text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+                }
+                questions = JSON.parse(text);
+              } catch (parseErr) {
+                console.warn(`[단일토픽퀴즈] Key #${kIdx + 1} (${maskedKey}), ${modelName} 파싱 재시도:`, parseErr);
+                questions = extractJsonArray(rawText);
+              }
+
+              if (!questions || !Array.isArray(questions)) {
+                throw new Error('Parsed result is not a valid JSON array or empty');
+              }
+
+              console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
+              break; // 성공 시 루프 종료
+            } catch (modelErr) {
+              lastErr = modelErr;
+              const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
+              if (isQuota) {
+                console.warn(`[단일토픽퀴즈 Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit. Switching to next key.`);
+                keyExhausted = true;
+                break; // Break model loop, switch to the next key
+              }
+              // For non-quota errors, continue trying other models/keys
+            }
+          }
+          if (questions) {
+            break; // Break the keys loop on success
+          }
+        }
+
+        if (!questions) {
+          throw lastErr || new Error('모든 제미나이 모델 및 API 키 호출에 실패했습니다.');
+        }
+
+        res.json({ questions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
