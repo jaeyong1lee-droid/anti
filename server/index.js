@@ -1072,23 +1072,147 @@ function getStereonetExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Rock Mass Q-System Classification
+function getQSystemExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `Barton 등이 제안한 암반 평가 방법인 Q 분류법(Q-System)의 기본 정의와 이를 구성하는 세 가지 주요 공학적 평가 요소의 물리적 의미를 간략히 서술하시오.`,
+    concept: `Q 분류법은 RQD를 포함한 6가지 핵심 변수를 조합하여 수치화된 Q 지수($0.001 \\sim 1000$)를 도출하는 기법으로, 지반의 '블록 크기', '블록 간 전단강도', '능동적인 지중 응력 상태'의 세 가지 비율 항목을 정량적으로 대표합니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `Q 분류법의 최종 지표인 Q 지수(Q)를 도출하는 Barton의 Q 산정 공식을 쓰고, 이를 구성하는 6가지 주요 매개변수 기호의 명칭과 역학적 지표 의미를 서술하시오.`,
+    concept: `암질지수와 절리군의 개수, 거칠기 및 충전물 상태, 지하수 영향과 응력 감소 현상을 모조리 변수화하여 곱하고 나누는 지반 등급 산출 수식입니다.`,
+    formula: `$Q = \\frac{RQD}{J_n} \\cdot \\frac{J_r}{J_a} \\cdot \\frac{J_w}{SRF}$\n- $Q$: 암반 품질 Q 지수\n- $RQD$: 암질 지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 계수 (Joint Set Number)\n- $J_r$: 절리 거칠기 계수 (Joint Roughness Number)\n- $J_a$: 절리 변질/충전 계수 (Joint Alteration Number)\n- $J_w$: 절리 지하수 감쇄 계수 (Joint Water Reduction Factor)\n- $SRF$: 응력 저감 계수 (Stress Reduction Factor)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `Barton의 Q 공식 $Q = (RQD / J_n) \\times (J_r / J_a) \\times (J_w / SRF)$ 에서 첫 번째 분수 항인 RQD와 Jn의 조합비(RQD / Jn)가 정량적으로 대변하는 암반의 공학적 구조 특성은?`,
+      options: shuffleArray([
+        "절리면의 기하학적 전단 강도",
+        "암반의 전체적인 블록 크기 (Block Size)",
+        "지반 내부에 작용하는 능동 응력 상태",
+        "지하수 유입에 따른 유효응력 감쇄량"
+      ]),
+      answer: "암반의 전체적인 블록 크기 (Block Size)",
+      explanation: "RQD(암질지수)와 Jn(절리군 수)의 조합비(RQD/Jn)는 절리에 의해 분할되는 암반의 대략적인 블록 크기(Block Size)에 상응하는 구조적 상태를 정량적으로 지시합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Q 분류 매개변수 중 절리군 수(Joint Set Number)를 뜻하는 Jn 지수의 설계 평치 기준으로 올바르지 않은 것은?`,
+      options: shuffleArray([
+        "절리가 없는 무균열 신선 암반인 경우 Jn의 값은 0.5~1.0 수준으로 매우 낮게 책정된다.",
+        "절리군이 많아질수록(예: 3군 이상 또는 흙처럼 파쇄) Jn의 값은 9.0~15.0 이상으로 매우 커진다.",
+        "Jn이 분모에 위치하므로, 절리군이 많아져 Jn이 커질수록 Q 지수 값은 작아져 암질이 극도로 악화된다.",
+        "절리군 수가 증가하면 지반의 아칭 효과가 극대화되므로 Jn 값이 커질수록 Q 값도 비례하여 증가한다."
+      ]),
+      answer: "절리군 수가 증가하면 지반의 아칭 효과가 극대화되므로 Jn 값이 커질수록 Q 값도 비례하여 증가한다.",
+      explanation: "Jn은 절리군의 갯수로, 절리군이 많을수록 지반이 잘게 쪼개져 불안정하므로 분모인 Jn 값이 커져 전체 Q 지수(암질)를 크게 깎아먹게 됩니다. 따라서 비례하여 증가한다는 잘못된 설명입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Q 공식의 두 번째 분수 항인 절리 거칠기 계수(Jr)와 절리 변질/충전 계수(Ja)의 조합비(Jr / Ja)가 의미하는 암반의 공학적 거동 물리량은 무엇인가?`,
+      options: shuffleArray([
+        "절리 블록 간의 기하학적 전단 강도 (Shear Strength)",
+        "지반의 유효 점착력 자체의 급격한 소실 비율",
+        "터널 굴착 시 발생하는 암석 파열(Rock Burst) 응력 비",
+        "지하수 투수에 따른 수압 감쇄율"
+      ]),
+      answer: "절리 블록 간의 기하학적 전단 강도 (Shear Strength)",
+      explanation: "Jr(거칠기)과 Ja(변질 및 점토 충전)의 비인 Jr/Ja 는 불연속면(절리)끼리 맞물리는 미찰 저항 및 점토 충전물 상태를 정량화한 것이며, 이는 절리면의 전단 강도(Shear Strength)를 나타내는 지표입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Q 분류 매개변수 중 응력 저감 계수인 SRF(Stress Reduction Factor)가 매우 높게 산정되어 Q 지수를 크게 저하시키는 공학적 파괴 상황이 아닌 것은?`,
+      options: shuffleArray([
+        "깊은 심도 터널 굴착 시 고지압으로 인한 암석 폭발성 파열(Rock Burst)이 우려되는 경우",
+        "초연약대 또는 단층 파쇄대가 발달하여 소성 변형 및 스퀴징(Squeezing, 압쇄) 지반압이 급증하는 지반",
+        "지반 내부에 작용하는 전응력과 간극수압의 차이가 완전히 0이 되어 지반이 순식간에 다져진 암반으로 경화되는 현상",
+        "취성 암반에서 고응력 집중으로 인해 벽면 박리 파괴(Spalling)가 발달하는 공학적 상황"
+      ]),
+      answer: "지반 내부에 작용하는 전응력과 간극수압의 차이가 완전히 0이 되어 지반이 순식간에 다져진 암반으로 경화되는 현상",
+      explanation: "SRF는 응력 집중, 고지압 취성 파괴(락버스트), 점토 충전 단층대의 취약성 등으로 인해 작용하는 응력 저하 인자이며, 유효응력이 0이 되어 압축 경화된다는 진술은 SRF가 높게 유도되는 상황과 무관합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Barton의 암질 Q 지수 스케일 분류 중 Q 지수가 0.01 이하(Q = 0.001 ~ 0.01)로 아주 낮게 도출된 지반의 암반 품질 등급 명칭으로 가장 적절한 것은?`,
+      options: shuffleArray([
+        "매우 양호 (Very Good)",
+        "보통 (Fair)",
+        "극히 불량 (Exceptionally Poor)",
+        "극히 양호 (Exceptionally Good)"
+      ]),
+      answer: "극히 불량 (Exceptionally Poor)",
+      explanation: "Q 지수는 로그 스케일 형태로 0.001(극도로 불량)부터 1000(완벽한 신선암)까지 분류되며, Q < 0.01 이하의 범위는 지보가 대대적으로 필요한 '극히 불량(Exceptionally Poor)' 또는 '극도로 불량(Extremely Poor)' 등급입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `Q 분류 시스템을 적용하여 터널의 무지보 자립 시간(Stand-up Time) 및 최적 지보압을 도출할 때, 터널의 중요도와 내용연수 설계 안전율을 고려하여 터널 지간 폭(D)을 나누는 공학적 환산 인자의 명칭은?`,
+      options: shuffleArray([
+        "굴착 지보비 (ESR, Excavation Support Ratio)",
+        "간극수압비 (Ru)",
+        "과압밀비 (OCR)",
+        "암질지수비 (RQD_Ratio)"
+      ]),
+      answer: "굴착 지보비 (ESR, Excavation Support Ratio)",
+      explanation: "터널 설계 시 등가 지간폭(Equivalent Span) = 터널 지간폭(D) / ESR 공식을 적용하여 지보 사양을 산정하며, 중요 시설물(철도 터널 등)은 ESR 값이 낮게 책정되어 안전율이 엄격히 제어됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `시추 코어(Core) 시편 분석 시 획득하는 RQD(Rock Quality Designation) 지수의 토질 및 기초 공학적 물리 정의로 가장 옳은 것은?`,
+      options: shuffleArray([
+        "회수된 모든 암석 코어 조각 중 길이가 5cm 이상인 신선한 암석 부재의 누적 백분율",
+        "총 시추 길이 중, 균열이 없는 원통형 신선 코어 편 중 '10cm 이상' 되는 코어 조각들의 길이 합을 백분율로 환산한 값",
+        "시추 중에 부서져서 완전히 가루(Slime)가 된 세립질 점토 코어의 비율",
+        "시추 장비의 비트 회전 속도에 비례하는 지반 전단 변형각"
+      ]),
+      answer: "총 시추 길이 중, 균열이 없는 원통형 신선 코어 편 중 '10cm 이상' 되는 코어 조각들의 길이 합을 백분율로 환산한 값",
+      explanation: "RQD는 암석 코어 중 신선하고 단단한 '10cm 이상' 조각들의 누적 길이를 총 시추 길이로 나눈 백분율(%)로, 암반의 절리 균열 밀도를 대변하는 핵심 기초 지표입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `지반 엔지니어링 실무에서 널리 활용되는 Bieniawski의 RMR 분류 지수와 Barton의 Q 분류 지수 간의 대표적인 경험적 변환 공식으로 가장 널리 공인된 것은?`,
+      options: shuffleArray([
+        "RMR = 9 ln Q + 44",
+        "RMR = Q + 100",
+        "RMR = ln Q - 10",
+        "RMR = 0.5 * log Q"
+      ]),
+      answer: "RMR = 9 ln Q + 44",
+      explanation: "경험적으로 RMR과 Q 지수 사이에는 RMR = 9 × ln Q + 44 의 로그 비례 관계식이 성립함이 입증되어 있으며, 두 암반 평가 방법의 등급 비교 환산에 상호 유용하게 활용됩니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // Helper function to generate technical and high-quality PE questions locally (Dynamic domain-agnostic fallback)
 function generateFallbackQuestions(title, keywords, fileText = '') {
   const cleanTitle = title.toLowerCase();
-  const cleanText = fileText.toLowerCase();
 
-  // Route to Expert Built-in Review Content if matching keyword is detected!
-  if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트') || cleanTitle.includes('연약지반') || cleanText.includes('sand mat') || cleanText.includes('샌드매트') || cleanText.includes('연약지반')) {
+  // Route to Expert Built-in Review Content if matching keyword is detected strictly in the TITLE!
+  if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트')) {
     console.log("Routing to Built-in Expert PE Content: Soft Ground Sand Mat Thickness");
     return getSandMatExpertQuestions(title, keywords);
   }
 
-  if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic') || cleanText.includes('평사투영') || cleanText.includes('stereographic')) {
+  if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic')) {
     console.log("Routing to Built-in Expert PE Content: Rock Slopes Stereographic Projection");
     return getStereonetExpertQuestions(title, keywords);
   }
 
-  if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell') || cleanText.includes('싱글쉘') || cleanText.includes('single shell')) {
+  if (cleanTitle.includes('q 분류') || cleanTitle.includes('q분류') || cleanTitle.includes('q system') || cleanTitle.includes('q-system') || cleanTitle.includes('암반 분류') || cleanTitle.includes('암반분류')) {
+    console.log("Routing to Built-in Expert PE Content: Rock Mass Q-System Classification");
+    return getQSystemExpertQuestions(title, keywords);
+  }
+
+  if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell')) {
     console.log("Routing to Built-in Expert PE Content: Single Shell Tunnel Method");
     return getSingleShellExpertQuestions(title, keywords);
   }
@@ -1096,13 +1220,12 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   if (
     cleanTitle.includes('소일내일링') || cleanTitle.includes('소일네일링') || cleanTitle.includes('soil nailing') || cleanTitle.includes('soilnailing') ||
     cleanTitle.includes('어스앵커') || cleanTitle.includes('어스 앵커') || cleanTitle.includes('earth anchor') || cleanTitle.includes('earthanchor') ||
-    cleanTitle.includes('앵커') ||
-    cleanText.includes('소일내일링') || cleanText.includes('소일네일링') || cleanText.includes('soil nailing') || cleanText.includes('어스앵커') || cleanText.includes('어스 앵커')
+    cleanTitle.includes('앵커')
   ) {
     return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
   }
 
-  if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanText.includes('프란틀') || cleanText.includes('prandtl') || cleanText.includes('bearing_capacity')) {
+  if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanTitle.includes('bearing_capacity')) {
     console.log("Routing to Built-in Expert PE Content: Prandtl's Bearing Capacity Theory");
     return getPrandtlExpertQuestions(title, keywords);
   }
