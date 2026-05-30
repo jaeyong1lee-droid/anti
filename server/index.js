@@ -339,7 +339,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
         }
       }
     } else if (isGroq) {
-      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama-3.1-8b-instant'];
       for (const modelName of GROQ_MODELS) {
         if (keyExhausted) break;
 
@@ -2205,7 +2205,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
               }
             }
           } else if (isGroq) {
-            const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+            const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama-3.1-8b-instant'];
             for (const modelName of GROQ_MODELS) {
               if (keyExhausted) break;
 
