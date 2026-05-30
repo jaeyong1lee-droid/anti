@@ -4050,12 +4050,24 @@ export default function App() {
             <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
               <button
                 onClick={() => {
+                  handleSaveTheoryQuestions(theoryQuestions, false); // 닫기를 눌러도 저장후 닫기
                   savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
                   setShowTheoryExam(false);
                 }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="저장 후 닫기"
               >
                 닫기
+              </button>
+              <button
+                onClick={() => {
+                  handleSaveTheoryQuestions(theoryQuestions, true); // 저장 버튼: 저장만 하고 닫지는 않음
+                }}
+                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                title="이론 변경사항 실시간 저장"
+              >
+                <Save size={12} />
+                저장
               </button>
             </div>
           </div>
