@@ -1563,6 +1563,126 @@ function getBracedWallExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Liquefaction / 액상화
+function getLiquefactionExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `사질토 지반의 액상화(Liquefaction) 현상이 발생하는 근본적인 역학적 매커니즘과 지반의 공학적 물성 변화를 설명하시오.`,
+    concept: `• 역학적 매커니즘: 포화된 느슨한 사질토 지반이 지진, 진동 등 급속한 반복 하중(Dynamic loading)을 받을 때, 과잉간극수압(Excess pore water pressure)이 급격히 상승하여 배수가 되지 않는 비배수 상태가 됩니다.\n• 공학적 물성 변화: 상승한 과잉간극수압이 지반의 초기 유효연직응력과 같아지면 유효응력(Effective stress)이 0에 도달하고, 이에 따라 Mohr-Coulomb 전단강도(t = s' tan f)가 완전히 소실되어 흙이 액체처럼 거동하며 전단 저항력을 잃게 됩니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `Seed & Idriss의 간이평가법에 따른 동적 액상화 안전율($F_L$ 또는 $F_s$) 산정 공식과 각 인자의 정의를 서술하시오.`,
+    concept: `지진 시 사질토 지반의 액상화 저항 응력비(CRR)와 지진에 의한 전단 응력비(CSR)의 관계를 분석하여 허용 한계 안전 확보를 규명하는 공학식입니다.`,
+    formula: `$F_L = \\frac{CRR_{7.5}}{CSR} \\times MSF$\n- $F_L$: 액상화 안전율 (통상 1.0 ~ 1.5 기준 판단)\n- $CRR_{7.5}$: 진도 7.5 지진 기준의 반복전단저항비 (Cyclic Resistance Ratio)\n- $CSR$: 지진에 의해 발생하는 반복전단응력비 (Cyclic Shear Stress Ratio)\n- $MSF$: 지진규모 보정계수 (Magnitude Scaling Factor)`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `포화된 사질토 지반에서 지진 거동에 의한 액상화가 가장 쉽게 발생하는 조건들을 올바르게 묶은 것은?`,
+      options: shuffleArray([
+        "느슨한 상대밀도($D_r < 50\\%$), 높은 지하수위(완전 포화), 균등계수($C_u$)가 작은 균일한 입경의 세사 지반",
+        "조밀한 상대밀도($D_r > 80\\%$), 깊은 지하수위, 입도 분포가 매우 우수한 조립 자갈 지반",
+        "소성지수가 매우 높은($PI > 30$) 고소성 점토 지반, 낮은 함수비 지반",
+        "단단하게 다져진 풍화암 지반, 균열이 없는 반고체 실트 지반"
+      ]),
+      answer: "느슨한 상대밀도($D_r < 50\\%$), 높은 지하수위(완전 포화), 균등계수($C_u$)가 작은 균일한 입경의 세사 지반",
+      explanation: "액상화는 포화된 느슨한 모래 지반에서 반복 하중이 가해질 때 유효응력이 0이 되어 전단 강도를 잃는 현상입니다. 상대밀도가 느슨할수록, 입경이 균일하고 포화도가 높을수록 발생 가능성이 극대화됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `액상화 평가 시 지반의 반복전단저항비(CRR)를 산정하기 위해 널리 사용되는 현장 원위치 시험(In-situ test)들로 가장 적절한 구성은?`,
+      options: shuffleArray([
+        "표준관입시험(SPT), 콘관입시험(CPT), 탄성파속도측정(S파 속도)",
+        "평판재하시험(PLT), 벤토나이트 유동성 시험, 베인전단시험",
+        "소성한계 시험(PL), 액성한계 시험(LL), 흙막이 지반스프링 시험",
+        "RQD 암질 시험, Barton의 Q 시스템 분석, 락볼트 인발시험"
+      ]),
+      answer: "표준관입시험(SPT), 콘관입시험(CPT), 탄성파속도측정(S파 속도)",
+      explanation: "지반의 CRR 평가에는 현장 조사를 통한 SPT의 N치(보정치 $N_1$), CPT의 선단 저항력($q_c$), 그리고 전단파 속도($V_s$) 계측치 등이 가장 표준적이고 널리 쓰이는 간이 평가 입력값들입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `지진 시 지반이 받는 반복전단응력비(CSR)를 평가하는 식에서, 깊이에 따른 지반의 유연성(Deformability)을 보정하기 위해 사용하는 저감계수는 무엇인가?`,
+      options: shuffleArray([
+        "응력감소계수($r_d$)",
+        "지진규모 보정계수(MSF)",
+        "상부 하중 보정계수($K_\\sigma$)",
+        "점착력 보정계수($K_c$)"
+      ]),
+      answer: "응력감소계수($r_d$)",
+      explanation: "지반이 완전히 강체가 아니므로 깊이에 따라 전단 응력이 감소하는 거동을 나타내기 위해 응력감소계수($r_d$, stress reduction coefficient)를 곱해 줍니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `액상화가 발생한 지반에서 구조물에 직접적으로 나타나는 대표적인 공학적 재해 피해 양상과 가장 거리가 먼 것은?`,
+      options: shuffleArray([
+        "지중 매설 파이프라인(가스관, 수도관)의 급격한 침하와 압착 파괴",
+        "얕은기초 구조물의 과도한 부등 침하 및 강체 회전(부동 침하/기울어짐)",
+        "지중 맨홀, 정화조 등 가벼운 중공식 구조물의 상방향 부상(Uplift) 현상",
+        "배후 모래 사면의 유동 슬라이딩(Flow slide) 및 옹벽 구조물의 전도"
+      ]),
+      answer: "지중 매설 파이프라인(가스관, 수도관)의 급격한 침하와 압착 파괴",
+      explanation: "지중 가스관이나 맨홀 등 내부가 비어 있는 경량 밀폐 구조물은 주변 흙이 액상화되어 액체 상태가 될 때 아르키메데스의 부력 원리에 의해 위로 둥둥 떠오르는 '부상(Uplift)' 현상이 특징적입니다. 침하 및 압착 파괴된다는 설명은 대표적 특징과 가장 멉니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `액상화 발생 가능 지반에 대한 설계 대책 중, 과잉간극수압의 소산을 가장 능동적이고 신속하게 유도하여 액상화를 방지하는 공법은 무엇인가?`,
+      options: shuffleArray([
+        "쇄석배수공법(Gravel Drain 공법)",
+        "약액주입공법(Chemical Grouting)",
+        "동다짐공법(Dynamic Compaction)",
+        "전기삼투공법(Electro-Osmosis)"
+      ]),
+      answer: "쇄석배수공법(Gravel Drain 공법)",
+      explanation: "쇄석배수공법(Gravel Drain)은 모래 지반 내에 투수성이 극도로 높은 자갈/쇄석 기둥을 촘촘히 포설하여, 지진 변동 하중 시 발생하는 과잉간극수압을 신속하게 소산(탈수)시끔으로써 유효응력 상실을 방지하는 배수형 공법입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `액상화 방지 대책공법 분류 중 지반의 상대밀도를 증대시켜 흙의 골조 구조를 조밀하게 함으로써 액상화 저항력을 높이는 '밀도 증대' 공법군에 해당하지 않는 것은?`,
+      options: shuffleArray([
+        "심층혼합처리공법(Deep Mixing Method)",
+        "모래다짐말뚝공법(Sand Compaction Pile)",
+        "동다짐공법(Dynamic Compaction)",
+        "바이브로플로테이션(Vibroflotation)"
+      ]),
+      answer: "심층혼합처리공법(Deep Mixing Method)",
+      explanation: "모래다짐말뚝(SCP), 동다짐, 바이브로플로테이션은 진동 및 타격을 통해 사질토의 공극을 줄이고 밀도를 극대화하는 공법들입니다. 반면 심층혼합처리공법(DMM)은 시멘트 등의 고결제를 강제로 섞어 흙을 고체화(Solidification)하는 '고결/강도 증대' 공법입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `느슨한 포화 세사 지반 굴착 시, 굴착 저면의 액상화(퀵샌드/Quick Sand) 현상을 유발하는 직접적인 외적 수리학적 요인은 무엇인가?`,
+      options: shuffleArray([
+        "상향의 침투 동수경사가 임계동수경사($i_{cr}$) 이상 도달",
+        "지하수 온도의 비정상적인 열적 팽창",
+        "흙막이 배면에 흐르는 물의 표면 장력 소멸",
+        "굴착 배면 배수 펌프의 역방향 가스 분출 압력"
+      ]),
+      answer: "상향의 침투 동수경사가 임계동수경사($i_{cr}$) 이상 도달",
+      explanation: "퀵샌드(Quicksand)는 수압차에 의해 상향으로 흐르는 물의 동수경사($i$)가 임계동수경사($i_{cr}$)를 초과할 때 유효응력이 0이 되어 지반이 끓어오르며 지지력을 잃는 대표적인 상향 침투류 유래 유효응력 소실 현상입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `비점성토의 동적 액상화와 대조적으로, 일부 연약한 실트 및 실트질 점토 지반에서 반복 지진 하중에 의해 강도가 서서히 저하되어 큰 침하와 붕괴를 초래하는 유사 액상화 거동을 무엇이라 부르는가?`,
+      options: shuffleArray([
+        "주기적 거동 연화(Cyclic Mobility) 및 점토의 변형성 연화",
+        "소성 파열 및 연질 팽창 현상",
+        "벤토나이트 틱소트로피 겔화 현상",
+        "Mohr-Coulomb 강성 완전 순간 소멸"
+      ]),
+      answer: "주기적 거동 연화(Cyclic Mobility) 및 점토의 변형성 연화",
+      explanation: "모래와 달리 실트나 연약점토 지반은 완전한 강도 $0$의 액상화가 아니더라도 지진 시 유효응력이 점진적으로 저하되며 점성 저하 및 서서히 파괴 비탈 유동 변형이 증가하는 주기적 거동 연화(Cyclic Mobility) 거동을 보입니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // ============================================================================
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
@@ -1954,6 +2074,17 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getBracedWallExpertQuestions(title, keywords);
   }
 
+  // 16. Liquefaction / 액상화
+  if (
+    cleanTitle.includes('액상화') || 
+    cleanTitle.includes('liquefaction') || 
+    cleanTitle.includes('간극수압') || 
+    cleanTitle.includes('과잉간극수압')
+  ) {
+    console.log("-> Routed (Strict Title) to Liquefaction Expert Questions.");
+    return getLiquefactionExpertQuestions(title, keywords);
+  }
+
   // ==========================================================
   // STAGE 2: Secondary Broad Match with Keywords
   // ==========================================
@@ -2202,6 +2333,17 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   ) {
     console.log("-> Routed (Keyword Match) to Braced Wall & Elasto-plastic Beam Method Expert Questions.");
     return getBracedWallExpertQuestions(title, keywords);
+  }
+
+  // 16. Liquefaction / 액상화
+  if (
+    cleanKeywords.includes('액상화') || 
+    cleanKeywords.includes('liquefaction') || 
+    cleanKeywords.includes('간극수압') || 
+    cleanKeywords.includes('과잉간극수압')
+  ) {
+    console.log("-> Routed (Keyword Match) to Liquefaction Expert Questions.");
+    return getLiquefactionExpertQuestions(title, keywords);
   }
 
   // 10. Ultimate High-Quality Fallback for other Topics
