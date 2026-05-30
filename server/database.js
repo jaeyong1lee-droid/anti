@@ -2,9 +2,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import pg from 'pg';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables from server/.env
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const connectionString = process.env.DATABASE_URL || 
                          process.env.POSTGRES_URL || 
