@@ -1487,6 +1487,44 @@ export default function App() {
       });
   };
 
+  // 필수공식 이론유도 질문 (실시간 튜터 연동)
+  const handleAskTheoryDerivation = async (title, formula) => {
+    if (isChatLoading) return;
+    
+    // LaTeX 기호 마크다운 전처리
+    const cleanTitle = (title || '').replace(/\$/g, '').trim();
+    const promptText = `기술사 시험을 대비하여, [${cleanTitle}] 공식의 상세한 이론적 배경과 수학적/역학적 유도 과정을 수험생의 눈높이에 맞춰 친절하고 구조적으로 유도해 설명해 주세요.\n\n공식 식: ${formula || ''}`;
+    
+    setChatHistory(prev => [...prev, { role: 'user', text: promptText }]);
+    setIsChatLoading(true);
+
+    requestAnimationFrame(() => {
+      if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
+          message: promptText,
+          image: null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+    } finally {
+      setIsChatLoading(false);
+      requestAnimationFrame(() => {
+        if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+      });
+    }
+  };
+
   // View full report text
   const handleViewFullReport = async (topicId) => {
     setLoadingReport(true);
@@ -3340,6 +3378,16 @@ export default function App() {
                               </div>
                             )}
 
+                            <div className="pt-2.5 border-t border-amber-500/10 flex justify-end">
+                              <button
+                                onClick={() => handleAskTheoryDerivation(q.title || q.question, q.formula || '')}
+                                disabled={isChatLoading}
+                                className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-rose-200 border border-rose-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Brain size={12} className={isChatLoading ? "animate-pulse" : ""} />
+                                <span>이론 유도 질문하기</span>
+                              </button>
+                            </div>
 
                           </div>
                         )}
