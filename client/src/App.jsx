@@ -1368,7 +1368,8 @@ export default function App() {
       setTheoryQuestions(prev => {
         const newItems = theories.map(t => ({
           title: t.title,
-          concept: '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          assumptions: t.assumptions || '',
           formula: t.answer
         }));
         const updated = [...newItems, ...prev];
@@ -1414,6 +1415,8 @@ export default function App() {
                 return {
                   ...item,
                   title: data.title,
+                  concept: data.concept || item.concept,
+                  assumptions: data.assumptions || '',
                   formula: data.answer
                 };
               }
@@ -4256,8 +4259,15 @@ export default function App() {
                       <div className="space-y-3">
                         {q.concept && (
                           <div className="space-y-1">
-                            <span className="text-[10px] font-black text-indigo-400">💡 요약 설명: </span>
+                            <span className="text-[10px] font-black text-indigo-400">💡 직관적 의미: </span>
                             <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                          </div>
+                        )}
+
+                        {q.assumptions && (
+                          <div className="space-y-1 pt-1">
+                            <span className="text-[10px] font-black text-amber-400">📋 가정 조건: </span>
+                            <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.assumptions} katexLoaded={katexLoaded} /></div>
                           </div>
                         )}
 
