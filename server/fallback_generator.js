@@ -70,13 +70,13 @@ function getSingleShellExpertQuestions(title, keywords) {
       type: '객관식 (4지선다)',
       question: `비배수(Hydraulic) 싱글쉘 터널 설계 시, 터널 라이닝 배면 수압(Water Pressure) 산정을 위해 사용하는 기본적인 수두 관계식으로 가장 적절한 것은?`,
       options: shuffleArray([
-        "p_w = γ_w × H (γ_w: 물의 단위중량, H: 수두)",
-        "p_w = γ_w / H",
-        "p_w = k × i",
-        "p_w = OCR × p_0"
+        "$p_w = \\gamma_w \\times H$ ($\\gamma_w$: 물의 단위중량, $H$: 수두)",
+        "$p_w = \\gamma_w / H$",
+        "$p_w = k \\times i$",
+        "$p_w = OCR \\times p_0$"
       ]),
-      answer: "p_w = γ_w × H (γ_w: 물의 단위중량, H: 수두)",
-      explanation: "비배수 터널 라이닝 배면에 작용하는 정수압(Hydrostatic Pressure)은 지하수위 아래에서의 깊이(수두, H)와 물의 단위중량(γ_w)의 곱으로 산정됩니다."
+      answer: "$p_w = \\gamma_w \\times H$ ($\\gamma_w$: 물의 단위중량, $H$: 수두)",
+      explanation: "비배수 터널 라이닝 배면에 작용하는 정수압(Hydrostatic Pressure)은 지하수위 아래에서의 깊이(수두, $H$)와 물의 단위중량($\\gamma_w$)의 곱으로 산정됩니다."
     },
     {
       type: '객관식 (4지선다)',
