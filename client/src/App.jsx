@@ -29,7 +29,8 @@ import {
   Save,
   Edit2,
   Search,
-  X
+  X,
+  Paperclip
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -315,6 +316,7 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
+  const [attachedImage, setAttachedImage] = useState(null); // { name, mimeType, data }
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -728,12 +730,93 @@ export default function App() {
     cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
+  const handleImageAttachment = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotification('이미지 파일만 첨부할 수 있습니다.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result.split(',')[1];
+      setAttachedImage({
+        name: file.name,
+        mimeType: file.type,
+        data: base64Data
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearAttachedImage = () => {
+    setAttachedImage(null);
+  };
+
+  const handlePasteImage = (e) => {
+    // 1. clipboardData.files 우선 검사 (모던 브라우저 및 OS 캡처 비트맵 파일 직접 맵핑 대응)
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setAttachedImage({
+              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type,
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    // 2. clipboardData.items 보조 검사 (브라우저 호환성 백업 및 특수 클립보드 항목 대응)
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/') || item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setAttachedImage({
+              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type || 'image/png',
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
     const userMessage = chatInput.trim();
+    if ((!userMessage && !attachedImage) || isChatLoading) return;
+    
+    const currentAttachedImage = attachedImage;
     setChatInput('');
-    setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
+    setAttachedImage(null);
+    
+    setChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
     setIsChatLoading(true);
 
     requestAnimationFrame(() => {
@@ -744,7 +827,11 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history: chatHistory, message: userMessage })
+        body: JSON.stringify({ 
+          history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
+          message: userMessage,
+          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답변 생성 실패');
@@ -824,6 +911,65 @@ export default function App() {
     }
   };
 
+  const filterStructureLinesClient = (mathContent, structure) => {
+    if (!structure) return '';
+    
+    const layoutCommands = [
+      '\\frac', '\\sqrt', '\\left', '\\right', '\\times', '\\cdot',
+      '\\partial', '\\sin', '\\cos', '\\tan', '\\log', '\\ln',
+      '\\text', '\\operatorname', '\\mathrm', '\\mathbf', '\\over', '\\choose',
+      '\\quad', '\\qquad', '\\;', '\\:', '\\,', '\\!', '\\begin', '\\end', '\\array'
+    ];
+    let cleanedFormula = mathContent;
+    for (const cmd of layoutCommands) {
+      cleanedFormula = cleanedFormula.split(cmd).join(' ');
+    }
+
+    const tokenRegex = /[\\a-zA-Z0-9_\{\}]+/g;
+    const formulaTokens = cleanedFormula.match(tokenRegex) || [];
+    
+    const normalize = (v) => {
+      if (!v) return '';
+      return v
+        .replace(/[\$\s\{\}\[\]\(\)]/g, '')
+        .replace(/\\/g, '')
+        .replace(/_/g, '');
+    };
+
+    const formulaTokenSet = new Set(formulaTokens.map(t => normalize(t)).filter(Boolean));
+
+    const lines = structure.split('\n');
+    const filteredLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      
+      if (/^\s*[\-\*\d\.]/.test(trimmed)) {
+        const colonIdx = trimmed.indexOf(':');
+        const dashIdx = trimmed.indexOf('-', 1);
+        let sepIdx = -1;
+        if (colonIdx !== -1 && dashIdx !== -1) {
+          sepIdx = Math.min(colonIdx, dashIdx);
+        } else {
+          sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
+        }
+        
+        if (sepIdx !== -1) {
+          const symbolPortion = trimmed.substring(0, sepIdx);
+          const symbolTokens = symbolPortion.match(tokenRegex) || [];
+          const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
+          
+          if (normalizedSymbols.length === 0) return true;
+          
+          const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
+          return hasMatch;
+        }
+      }
+      return true;
+    });
+
+    return filteredLines.join('\n').trim();
+  };
+
   // 필수공식 타이틀/지문 정화 및 콤팩트 규격화 함수
   const normalizeAndCompactifyFormulas = (formulas) => {
     if (!Array.isArray(formulas)) return [];
@@ -865,10 +1011,37 @@ export default function App() {
       // 사족 전면 완전 삭제: 질문을 그냥 콤팩트한 공식 타이틀명 자체로 정돈!
       const newQuestion = newTitle;
 
+      // 3. [보상기초 보상도 공식] 기호 정의 자가 치유 (Self-Healing)
+      // 만약 타이틀이 보상도 공식인데, 기호 정의(formula)에 극한지지력 기호(q_ult, N_c, 지지력 등)가 포함되어 있다면 디폴트 기본 스펙으로 강제 정화!
+      let newFormula = f.formula;
+      let newConcept = f.concept;
+      if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
+        const textToTest = (f.formula || "") + " " + (f.concept || "");
+        if (textToTest.includes("q_") || textToTest.includes("N_") || textToTest.includes("Nc") || textToTest.includes("점착력") || textToTest.includes("지지력")) {
+          newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
+          newConcept = "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식";
+        }
+      }
+
+      // 4. 모든 공식 대상 기호정의 자동 정화 (수식에 있는 기호만 표시하도록 강제 필터링!)
+      if (newFormula && newFormula.includes('$$')) {
+        const mathMatch = newFormula.match(/\$\$(.*?)\$\$/s);
+        if (mathMatch) {
+          const mathContent = mathMatch[1].trim();
+          const structureContent = newFormula.replace(/\$\$(.*?)\$\$/s, '').trim();
+          if (structureContent) {
+            const filteredStructure = filterStructureLinesClient(mathContent, structureContent);
+            newFormula = `$$${mathContent}$$\n\n${filteredStructure}`;
+          }
+        }
+      }
+
       return {
         ...f,
         title: newTitle,
-        question: newQuestion
+        question: newQuestion,
+        formula: newFormula,
+        concept: newConcept
       };
     });
   };
@@ -886,6 +1059,9 @@ export default function App() {
 
   const handleOpenFormulaExam = async () => {
     if (formulaQuestions.length > 0) {
+      const cleaned = normalizeAndCompactifyFormulas(formulaQuestions);
+      setFormulaQuestions(cleaned);
+      localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
       setShowFormulaExam(true);
       requestAnimationFrame(() => {
         if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;
@@ -2337,7 +2513,16 @@ export default function App() {
                           : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'
                       }`}>
                         {msg.role === 'user' ? (
-                          msg.text
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img 
+                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                alt="첨부 이미지" 
+                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                              />
+                            )}
+                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                          </div>
                         ) : (
                           <LatexRenderer 
                             text={msg.text} 
@@ -2362,22 +2547,73 @@ export default function App() {
               </div>
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                <form onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} className="relative">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    placeholder="기술사 용어나 개념 질문..."
-                    disabled={isChatLoading}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:hover:bg-violet-600 rounded-lg flex items-center justify-center transition-colors"
-                  >
-                    <Send size={12} className="text-white" />
-                  </button>
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                  onPaste={handlePasteImage}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
+                >
+                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
+                  {attachedImage && (
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="첨부 이미지" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleClearAttachedImage} 
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                        title="이미지 삭제"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 텍스트 입력창 (보더 없음) */}
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onPaste={handlePasteImage}
+                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "기술사 용어나 개념 질문..."}
+                      disabled={isChatLoading}
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+
+                  {/* 하단 컨트롤 바 */}
+                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
+                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="file" 
+                        id="quiz-image-upload" 
+                        accept="image/*" 
+                        onChange={handleImageAttachment}
+                        className="hidden" 
+                      />
+                      <label 
+                        htmlFor="quiz-image-upload" 
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
+                        title="스크린샷/이미지 첨부"
+                      >
+                        <Paperclip size={14} />
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
+                    </div>
+
+                    {/* 오른쪽: 전송 버튼 */}
+                    <button
+                      type="submit"
+                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      className="w-7 h-7 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-violet-600/10 active:scale-95"
+                    >
+                      <Send size={11} className="text-white" />
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -2722,7 +2958,16 @@ export default function App() {
                           : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-sm max-w-none'
                       }`}>
                         {msg.role === 'user' ? (
-                          msg.text
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img 
+                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                alt="첨부 이미지" 
+                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                              />
+                            )}
+                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                          </div>
                         ) : (
                           <LatexRenderer 
                             text={msg.text} 
@@ -2748,24 +2993,72 @@ export default function App() {
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }}
-                  className="relative"
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                  onPaste={handlePasteImage}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    placeholder="기술사 용어나 개념 질문..."
-                    disabled={isChatLoading}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-colors"
-                  >
-                    <Send size={12} className="text-white" />
-                  </button>
+                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
+                  {attachedImage && (
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="첨부 이미지" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleClearAttachedImage} 
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                        title="이미지 삭제"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 텍스트 입력창 (보더 없음) */}
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onPaste={handlePasteImage}
+                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "기술사 용어나 개념 질문..."}
+                      disabled={isChatLoading}
+                      className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+
+                  {/* 하단 컨트롤 바 */}
+                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
+                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="file" 
+                        id="exam-image-upload" 
+                        accept="image/*" 
+                        onChange={handleImageAttachment}
+                        className="hidden" 
+                      />
+                      <label 
+                        htmlFor="exam-image-upload" 
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
+                        title="스크린샷/이미지 첨부"
+                      >
+                        <Paperclip size={14} />
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
+                    </div>
+
+                    {/* 오른쪽: 전송 버튼 */}
+                    <button
+                      type="submit"
+                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
+                    >
+                      <Send size={11} className="text-white" />
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -3114,7 +3407,16 @@ export default function App() {
                           : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base max-w-none'
                       }`}>
                         {msg.role === 'user' ? (
-                          msg.text
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img 
+                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                alt="첨부 이미지" 
+                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                              />
+                            )}
+                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                          </div>
                         ) : (
                           <LatexRenderer 
                             text={msg.text} 
@@ -3140,24 +3442,72 @@ export default function App() {
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }}
-                  className="relative"
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                  onPaste={handlePasteImage}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
                 >
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    placeholder="공식 유도 및 개념 질문..."
-                    disabled={isChatLoading}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="absolute right-1.5 top-1.5 bottom-1.5 w-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-colors"
-                  >
-                    <Send size={12} className="text-white" />
-                  </button>
+                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
+                  {attachedImage && (
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="첨부 이미지" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleClearAttachedImage} 
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                        title="이미지 삭제"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 텍스트 입력창 (보더 없음) */}
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onPaste={handlePasteImage}
+                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "공식 유도 및 개념 질문..."}
+                      disabled={isChatLoading}
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                    />
+                  </div>
+
+                  {/* 하단 컨트롤 바 */}
+                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
+                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="file" 
+                        id="formula-image-upload" 
+                        accept="image/*" 
+                        onChange={handleImageAttachment}
+                        className="hidden" 
+                      />
+                      <label 
+                        htmlFor="formula-image-upload" 
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
+                        title="스크린샷/이미지 첨부"
+                      >
+                        <Paperclip size={14} />
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
+                    </div>
+
+                    {/* 오른쪽: 전송 버튼 */}
+                    <button
+                      type="submit"
+                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      className="w-7 h-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95"
+                    >
+                      <Send size={11} className="text-white" />
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
