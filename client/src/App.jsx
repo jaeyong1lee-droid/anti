@@ -1227,6 +1227,7 @@ export default function App() {
       .then(data => {
         if (data && data.title) {
           const suggestedTitle = data.title;
+          const suggestedConcept = data.concept;
           const suggestedStructure = data.structure;
           setFormulaQuestions(prev => {
             const updated = prev.map(f => {
@@ -1235,6 +1236,7 @@ export default function App() {
                   ...f,
                   title: suggestedTitle,
                   question: suggestedTitle,
+                  concept: suggestedConcept || f.concept,
                   formula: suggestedStructure ? `$$${mathContent}$$\n\n${suggestedStructure}` : `$$${mathContent}$$`
                 };
               }
