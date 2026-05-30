@@ -85,6 +85,22 @@ function mergeVerticalText(text) {
   return mergedLines.join('\n\n');
 }
 
+// Helper: Clean quiz questions by removing redundant PE question style suffixes like "을 제시하고, 각 기호의 정의를 서술하시오"
+function cleanQuizQuestion(q) {
+  if (!q) return q;
+  return q
+    .replace(/(?:을|를)\s+(?:제시하고|기술하고|쓰고|기재한\s+뒤)\s*(?:,\s*)?(?:각\s+)?(?:기호|인자)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/(?:및\s+)?각\s+(?:기호|인자|인수)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/(?:과|와)\s+각\s+(?:기호|인자|인수)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/(?:을|를)\s+기술하고\s+기호\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/,\s*각\s+(?:기호|인자)의?\s*정의를\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/공식과\s+각\s+인자의\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '공식')
+    .replace(/산정\s+공식과\s+각\s+인자의\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '산정 공식')
+    .replace(/(?:을|를)\s+간략히\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .replace(/(?:의\s+)?기본\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
+    .trim();
+}
+
 // Self-healing CP1252-to-CP949 custom reverse mapping table for double-encoded Korean mojibake bytes in U+0080 - U+009F range
 const cp1252CustomMap = {
   '\u20AC': 0x80, // €
@@ -673,7 +689,7 @@ function getSingleShellExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `싱글쉘 및 NATM 공법의 숏크리트 소요 두께를 설계하는 대표적인 Rabcewicz 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `싱글쉘 및 NATM 공법의 숏크리트 소요 두께를 설계하는 대표적인 Rabcewicz 공식`,
     concept: `지반압과 숏크리트 전단강도, 지반 물성을 고려하여 터널을 안정시키는 데 필요한 숏크리트 두께를 정량적으로 계산하는 조건 수식입니다.`,
     formula: `$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\n- $t$: 숏크리트 두께\n- $P$: 지반압\n- $C$: 지반 점착력\n- $\\varphi$: 내부마찰각\n- $S$: 전단강도\n- $D$: 터널 직경`,
     structure: ''
@@ -794,7 +810,7 @@ function getSoilNailingEarthAnchorExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `어스앵커 설계 시 극한 인장력을 산정하는 대표적인 기본 설계 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `어스앵커 설계 시 극한 인장력을 산정하는 대표적인 기본 설계 공식`,
     concept: `어스앵커의 정착부 설계에서 정착 마찰 저항력에 의한 앵커의 극한 지지력을 결정하는 공학적 공식입니다.`,
     formula: `$T_u = \\pi \\cdot d \\cdot L_a \\cdot \\tau_u$\n- $T_u$: 앵커의 극한 인장 지지력\n- $d$: 정착장 천공 직경\n- $L_a$: 앵커 정착장의 길이\n- $\\tau_u$: 지반과 그라우트 사이의 극한 주변마찰응력`,
     structure: ''
@@ -914,7 +930,7 @@ function getPrandtlExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `프란틀 공식에 지반 자체의 자중(γ)을 더해 실무에서 가장 널리 쓰이는 테르자기(Terzaghi)의 극한 지지력 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `테르자기(Terzaghi)의 극한 지지력 공식`,
     concept: `지반 점착력과 깊이 방향 상재하중, 그리고 지반 자체의 무게에 의한 영향을 모두 고려하여 연속기초의 극한 지지력을 평가하는 공학 수식입니다.`,
     formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 극한 지지력\n- $c$: 지반 점착력\n- $q$: 기초 바닥면의 유효상재압\n- $\\gamma$: 흙의 단위중량\n- $B$: 기초의 폭 (너비)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
     structure: ''
@@ -1034,7 +1050,7 @@ function getSandMatExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `샌드매트 설계 시 시공장비의 접지압과 지반 점착력을 고려한 장비 주행성 확보(전단파괴 방지) 최소 소요 두께(H) 산정 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `샌드매트 설계 시 장비 주행성 확보를 위한 최소 소요 두께(H) 산정 공식`,
     concept: `건설장비의 집중 하중이 연약지반에 직접 전달되어 국부 전단파괴가 일어나는 것을 방지하기 위해 필요한 샌드매트의 소요 두께를 하중분산각을 응용해 도출하는 공식입니다.`,
     formula: `$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$\n- $H$: Sand Mat 최소 소요 두께\n- $q$: 시공장비의 접지압 (하중)\n- $q_a$: 연약지반의 허용지지력\n- $\\gamma$: Sand Mat 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $30^\\circ \\sim 45^\\circ$)`,
     structure: ''
@@ -1154,7 +1170,7 @@ function getStereonetExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `평사투영망 작도 시 불연속면의 '경사각(Dip, \\alpha)'을 구의 중심을 지나는 투영면 상에 극점(Pole)으로 기하학적으로 변환하는 투영 공식(r)을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `평사투영망 작도 시 극점(Pole) 변환 투영 공식(r)`,
     concept: `구의 표면과 접하는 교차 경로를 구의 최북단 또는 최남단에서 정사투영하여 2차원 평면의 투영 반경으로 좌표 변환하는 작도 공식입니다.`,
     formula: `$r = R \\tan(45^\\circ - \\frac{\\alpha}{2})$\n- $r$: 평사투영망 중심으로부터 극점(Pole)까지의 투영 거리 (반경)\n- $R$: 평사투영망(투영구)의 반지름\n- $\\alpha$: 불연속면의 경사각 (Dip)`,
     structure: ''
@@ -1394,7 +1410,7 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `락볼트 인발시험 설계 시 적용하는 락볼트 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(\\tau_{allow})의 기하학적 한계 관계 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `락볼트 인발시험 설계 시 적용하는 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(\\tau_{allow})의 관계 공식`,
     concept: `시추공 벽면과 그라우트재 사이의 접촉 면적과 허용 전단응력을 곱하여 전체 볼트 정착부의 극한 인발 한계 하중을 산정하는 공식입니다.`,
     formula: `$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$\n- $P$: 락볼트 최대 인발 저항력 (허용 인발 하중)\n- $d$: 시추 구멍(또는 볼트)의 직경\n- $L$: 락볼트의 유효 정착 길이 (Bond Length)\n- $\\tau_{allow}$: 그라우트와 주변 암반 간의 허용 부착 전단 강도`,
     structure: ''
@@ -1982,8 +1998,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic) {
       console.log(`[AI Route Interceptor] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const cleanedCore = coreQuestions.map(q => ({
+        ...q,
+        question: cleanQuizQuestion(q.question)
+      }));
       return res.json({
-        questions: coreQuestions,
+        questions: cleanedCore,
         isFallback: false, // Mark false to mimic natural AI generation so UI keeps premium styling
         mode: 'ai-optimized',
         info: 'Handcrafted premium routing bypass'
@@ -2006,8 +2026,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+      const cleanedFallback = fallbackQuestions.map(q => ({
+        ...q,
+        question: cleanQuizQuestion(q.question)
+      }));
       return res.json({ 
-        questions: fallbackQuestions, 
+        questions: cleanedFallback, 
         isFallback: true,
         mode: 'local',
         error: forceLocal ? null : '백엔드 환경변수에 AI API 키가 존재하지 않습니다.'
@@ -2036,7 +2060,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽을 대표하는 가장 핵심적인 설계/평가 공식을 제시하고, 각 기호의 정의를 서술하라는 질문. (예: "[토픽]의 대표적인 핵심 공식을 제시하고, 각 기호의 정의를 서술하시오.")
+   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 깔끔하게 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
    - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성.
      * 예시 형식:
@@ -2089,7 +2113,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   },
   {
     "type": "주관식 (공식)",
-    "question": "토픽의 대표 공식과 각 기호의 정의를 서술하라는 질문 내용",
+    "question": "토픽의 대표 공식명칭 (사족 배제)",
     "concept": "공식에 대한 한 줄 요약",
     "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
     "structure": ""
@@ -2355,13 +2379,21 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
         }
 
-        res.json({ questions, isFallback: false });
+        const cleanedQuestions = questions.map(q => ({
+          ...q,
+          question: cleanQuizQuestion(q.question)
+        }));
+        res.json({ questions: cleanedQuestions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      res.json({ questions: fallbackQuestions, isFallback: true, error: errorMsg });
+      const cleanedFallback = fallbackQuestions.map(q => ({
+        ...q,
+        question: cleanQuizQuestion(q.question)
+      }));
+      res.json({ questions: cleanedFallback, isFallback: true, error: errorMsg });
     }
   } catch (error) {
     console.error('Error in AI question generation route:', error);
@@ -2475,7 +2507,11 @@ ${combinedText}
       if (!questions || !Array.isArray(questions) || questions.length === 0) {
         throw new Error('70문항 파싱 실패');
       }
-      res.json({ questions, total: questions.length, topicCount: topics.length });
+      const cleanedQuestions = questions.map(q => ({
+        ...q,
+        question: cleanQuizQuestion(q.question)
+      }));
+      res.json({ questions: cleanedQuestions, total: cleanedQuestions.length, topicCount: topics.length });
     } catch (err) {
       console.error('Exam route error:', err);
       res.status(500).json({ error: err.message || '문제 생성 실패' });

@@ -23,7 +23,7 @@ function getSingleShellExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `싱글쉘 및 NATM 공법의 숏크리트 소요 두께를 설계하는 대표적인 Rabcewicz 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `싱글쉘 및 NATM 공법의 숏크리트 소요 두께를 설계하는 대표적인 Rabcewicz 공식`,
     concept: `지반압과 숏크리트 전단강도, 지반 물성을 고려하여 터널을 안정시키는 데 필요한 숏크리트 두께를 정량적으로 계산하는 조건 수식입니다.`,
     formula: `$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\n- $t$: 숏크리트 두께\n- $P$: 지반압\n- $C$: 지반 점착력\n- $\\varphi$: 내부마찰각\n- $S$: 전단강도\n- $D$: 터널 직경`,
     structure: ''
@@ -143,7 +143,7 @@ function getSoilNailingEarthAnchorExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `어스앵커 인장 시 자유장 및 정착장의 한계 거동과 앵커 인장 설계 인장력(Td) 산정을 위한 기본적인 허용 저항력 한계 조건 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `어스앵커 인장 시 자유장 및 정착장의 한계 거동과 설계 인장력(Td) 산정 공식`,
     concept: `설계 인장 하중이 앵커 인발 저항 성능 및 앵커체 강재 인장 한계치 이하로 유지되도록 하는 다중 파괴 안전 확보 규준식입니다.`,
     formula: `$T_d \\le \\min\\left( \\frac{T_{ult}}{F.S._t}, \\frac{T_a}{F.S._a} \\right)$\n- $T_d$: 앵커 설계 인장력\n- $T_{ult}$: 지반과 앵커체 사이의 극한 인발 저항력\n- $T_a$: 앵커 인장 강재(강선)의 극한 인장 강도\n- $F.S._t$: 지반 인발에 대한 안전율 (통상 1.5 ~ 2.0)\n- $F.S._a$: 인장재 파단에 대한 안전율 (통상 2.5 ~ 3.0)`,
     structure: ''
@@ -263,7 +263,7 @@ function getPrandtlExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `프란틀 공식에 지반 자체의 자중(γ)을 더해 실무에서 가장 널리 쓰이는 테르자기(Terzaghi)의 극한 지지력 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `테르자기(Terzaghi)의 극한 지지력 공식`,
     concept: `지반 점착력과 깊이 방향 상재하중, 그리고 지반 자체의 무게에 의한 영향을 모두 고려하여 연속기초의 극한 지지력을 평가하는 공학 수식입니다.`,
     formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 극한 지지력\n- $c$: 지반 점착력\n- $q$: 기초 바닥면의 유효상재압\n- $\\gamma$: 흙의 단위중량\n- $B$: 기초의 폭 (너비)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
     structure: ''
@@ -383,7 +383,7 @@ function getSandMatExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `샌드매트 설계 시 시공장비의 접지압과 지반 점착력을 고려한 장비 주행성 확보(전단파괴 방지) 최소 소요 두께(H) 산정 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `샌드매트 설계 시 장비 주행성 확보를 위한 최소 소요 두께(H) 산정 공식`,
     concept: `건설장비의 집중 하중이 연약지반에 직접 전달되어 국부 전단파괴가 일어나는 것을 방지하기 위해 필요한 샌드매트의 소요 두께를 하중분산각을 응용해 도출하는 공식입니다.`,
     formula: `$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$\n- $H$: Sand Mat 최소 소요 두께\n- $q$: 시공장비의 접지압 (하중)\n- $q_a$: 연약지반의 허용지지력\n- $\\gamma$: Sand Mat 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $30^\\circ \\sim 45^\\circ$)`,
     structure: ''
@@ -503,7 +503,7 @@ function getStereonetExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `평사투영망 작도 시 불연속면의 '경사각(Dip, \\alpha)'을 구의 중심을 지나는 투영면 상에 극점(Pole)으로 기하학적으로 변환하는 투영 공식(r)을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `평사투영망 작도 시 극점(Pole) 변환 투영 공식(r)`,
     concept: `구의 표면과 접하는 교차 경로를 구의 최북단 또는 최남단에서 정사투영하여 2차원 평면의 투영 반경으로 좌표 변환하는 작도 공식입니다.`,
     formula: `$r = R \\tan(45^\\circ - \\frac{\\alpha}{2})$\n- $r$: 평사투영망 중심으로부터 극점(Pole)까지의 투영 거리 (반경)\n- $R$: 평사투영망(투영구)의 반지름\n- $\\alpha$: 불연속면의 경사각 (Dip)`,
     structure: ''
@@ -743,7 +743,7 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `락볼트 인발시험 설계 시 적용하는 락볼트 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(\\tau_{allow})의 기하학적 한계 관계 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `락볼트 인발시험 설계 시 적용하는 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(\\tau_{allow})의 관계 공식`,
     concept: `시추공 벽면과 그라우트재 사이의 접촉 면적과 허용 전단응력을 곱하여 전체 볼트 정착부의 극한 인발 한계 하중을 산정하는 공식입니다.`,
     formula: `$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$\n- $P$: 락볼트 최대 인발 저항력 (허용 인발 하중)\n- $d$: 시추 구멍(또는 볼트)의 직경\n- $L$: 락볼트의 유효 정착 길이 (Bond Length)\n- $\\tau_{allow}$: 그라우트와 주변 암반 간의 허용 부착 전단 강도`,
     structure: ''
@@ -979,7 +979,7 @@ function getDoubleLayerExpertQuestions(title, keywords) {
 function getConsolidationExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `점성토 지반에 성토 등의 외부 하중이 작용할 때 발생하는 테르자기(Terzaghi) 1차원 압밀(Consolidation) 현상의 기본 정의와 물리적 거동을 설명하시오.`,
+    question: `테르자기(Terzaghi) 1차원 압밀(Consolidation) 현상의 기본 정의와 물리적 거동`,
     concept: `압밀은 투수계수가 매우 낮은 포화 점성토 지반에 외부 하중이 가해지면, 초기에는 물이 모든 하중을 받아 과잉간극수압이 발생하고, 시간이 흐름에 따라 간극수가 서서히 배수되면서 간극수압이 감소하고 유효응력이 증가하여 점진적으로 체적이 수축하고 침하가 진행되는 거동 현상입니다.`,
     formula: '',
     structure: ''
@@ -987,7 +987,7 @@ function getConsolidationExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `테르자기의 1차원 압밀 기본 미분방정식을 기술하고, 이에 포함된 압밀계수($C_v$)의 지반공학적 산정 공식을 기재한 뒤 각 기호의 정의를 서술하시오.`,
+    question: `테르자기의 1차원 압밀 기본 미분방정식 및 압밀계수($C_v$)의 지반공학적 산정 공식`,
     concept: `점성토층 내부의 깊이($z$)와 시간($t$)에 따른 과잉간극수압($u$)의 감쇄 소산 메커니즘을 규명하는 지반공학 기초 미분 방정식입니다.`,
     formula: `$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$\n- $C_v = \\frac{k}{m_v \\gamma_w}$\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $C_v$: 압밀계수 (Coefficient of Consolidation)\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`,
     structure: ''
@@ -1101,7 +1101,7 @@ function getConsolidationExpertQuestions(title, keywords) {
 function getOverbreakExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `터널 굴착 및 발파 시 발생하는 여굴(Overbreak)의 공학적 정의와 발생 시 유발되는 문제점에 대하여 간략히 서술하시오.`,
+    question: `터널 굴착 및 발파 시 발생하는 여굴(Overbreak)의 공학적 정의와 발생 시 유발되는 문제점`,
     concept: `여굴은 터널 굴착 시 설계 단면을 초과하여 주변 암반이 붕락하거나 과도하게 깎여 나가는 현상입니다. 여굴이 발생하면 터널 배후에 과도한 공동(Void)이 생겨 숏크리트 라이닝의 구조적 불균형을 초래하고, 충전 콘크리트량 급증으로 공사비가 상승하며 지반 아칭 효과를 훼손하는 문제를 유발합니다.`,
     formula: '',
     structure: ''
@@ -1109,7 +1109,7 @@ function getOverbreakExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `여굴을 최소화하기 위한 제어발파(Controlled Blasting) 설계 시 장약공 직경과 천공 경의 비를 조절하여 폭압을 감쇄시키는 디커플링 효과(Decoupling Effect)의 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`,
+    question: `여굴을 최소화하기 위한 제어발파(Controlled Blasting) 시 폭압을 감쇄시키는 디커플링 효과(Decoupling Effect)의 산정 공식`,
     concept: `천공경 벽면과 폭약 사이에 여유 공간을 확보함으로써 충격파 압력을 전폭 완화하여 여굴 및 주변 암반 균열을 억제하는 공학 제어 공식입니다.`,
     formula: `$D_e = \\frac{d_c}{d_h} < 1.0$\n- $D_e$: 디커플링 지수 (Decoupling Index)\n- $d_c$: 장약 폭약의 직경 (Diameter of Charge)\n- $d_h$: 천공 구멍의 직경 (Diameter of Hole)`,
     structure: ''
@@ -1223,7 +1223,7 @@ function getOverbreakExpertQuestions(title, keywords) {
 function getSlopeStabilityExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `자연사면 및 인공사면 붕괴를 유발하는 내적·외적 원인과 한계평형해석법(Limit Equilibrium Method)의 기본 정의를 서술하시오.`,
+    question: `자연사면 및 인공사면 붕괴를 유발하는 내적·외적 원인과 한계평형해석법(Limit Equilibrium Method)의 기본 정의`,
     concept: `사면 붕괴는 강우 침투 등에 의해 간극수압이 증가하여 전단 강도가 저하되는 내적 요인과, 굴착이나 상부 하중 증가로 전단 응력이 증가하는 외적 요인에 의해 유발됩니다. 한계평형해석법은 사면 활동면 상의 전단 강도와 작용 전단 응력의 한계 비를 통해 평형 관계 안전율($F.S. = \\tau_f / \\tau_d$)을 정량적으로 산정하는 기법입니다.`,
     formula: '',
     structure: ''
@@ -1231,7 +1231,7 @@ function getSlopeStabilityExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `지하수 침투류 흐름이 없는 포화 균질 흙으로 구성된 무한 사면(Infinite Slope)의 설계 안전율($F.S.$) 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`,
+    question: `지하수 침투류 흐름이 없는 포화 균질 흙으로 구성된 무한 사면(Infinite Slope)의 설계 안전율($F.S.$) 산정 공식`,
     concept: `평행 활동 슬라이딩 거동을 보이는 무한사면에 대하여 흙의 강도 파라미터($c', \\phi'$)와 경사각($\\beta$) 간의 한계 상태 안정 평형 관계식입니다.`,
     formula: `$F.S. = \\frac{c' + \\gamma H \\cos^2\\beta \\tan\\phi'}{\\gamma H \\sin\\beta \\cos\\beta}$\n- $F.S.$: 사면 안전율\n- $c'$: 흙의 유효 점착력 (Cohesion)\n- $\\phi'$: 흙의 유효 내부마찰각\n- $\\gamma$: 흙의 단위중량\n- $H$: 활동면의 수직 깊이\n- $\\beta$: 사면의 경사각 (Slope Angle)`,
     structure: ''
@@ -1297,7 +1297,7 @@ function getSlopeStabilityExpertQuestions(title, keywords) {
 function getEarthPressureExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `옹벽 배면 지반의 변위 방향과 크기에 따라 분류되는 정지(At-rest), 주동(Active), 수동(Passive) 토압의 기본 정의와 크기 비교를 서술하시오.`,
+    question: `옹벽 배면 지반의 변위 방향과 크기에 따라 분류되는 정지(At-rest), 주동(Active), 수동(Passive) 토압의 기본 정의와 크기 비교`,
     concept: `변위가 전혀 없는 안정을 정지 토압($P_0$), 옹벽이 배면 지반 밖으로 멀어질 때의 한계 상태를 주동 토압($P_a$), 옹벽이 지반 안쪽으로 강하게 밀고 들어갈 때를 수동 토압($P_p$)이라고 합니다. 옹벽 파괴 거동에 미치는 토압의 크기 관계는 언제나 $P_p > P_0 > P_a$의 상대적 순서를 만족합니다.`,
     formula: '',
     structure: ''
@@ -1305,7 +1305,7 @@ function getEarthPressureExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `지표면이 수평이고 옹벽 벽면 마찰력을 0으로 가정한 Rankine 토압 이론에서 주동토압계수($K_a$) 및 수동토압계수($K_p$) 산정 공식을 기술하고 기호 정의를 서술하시오.`,
+    question: `랭킹(Rankine)의 주동토압계수($K_a$) 및 수동토압계수($K_p$) 산정 공식`,
     concept: `옹벽 배면 토질의 극한 소성평형 상태(랭킨 능동/수동 상태)를 기초로 평형 한계 응력 계수를 산정하는 공식입니다.`,
     formula: `$K_a = \\tan^2(45^\\circ - \\frac{\\phi'}{2})$\n$K_p = \\tan^2(45^\\circ + \\frac{\\phi'}{2})$\n- $K_a$: 주동토압계수 (Active Earth Pressure Coefficient)\n- $K_p$: 수동토압계수 (Passive Earth Pressure Coefficient)\n- $\\phi'$: 흙의 유효 내부마찰각`,
     structure: ''
@@ -1347,7 +1347,7 @@ function getEarthPressureExpertQuestions(title, keywords) {
 function getShearStrengthExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `흙 지반의 전단 파괴(Shear Failure) 메커니즘을 규명하는 Mohr-Coulomb 파괴 기준과 유효응력 전단 강도 개념을 간략히 서술하시오.`,
+    question: `흙 지반의 전단 파괴(Shear Failure) 메커니즘을 규명하는 Mohr-Coulomb 파괴 기준과 유효응력 전단 강도 개념`,
     concept: `흙의 전단 파괴는 입자 간 상대 미끄러짐 마찰에 의해 일어나며, 최대 전단 한계면 강도($\\tau_f$)는 흙 자체의 순수 물리적 점착력($c'$)과 파괴면 상에 작용하는 유효 연직응력($\\sigma'$)에 내부 마찰각의 탄젠트 값($\\tan\\phi'$)을 곱한 마찰 저항의 합으로 결정되는 기준 조건입니다.`,
     formula: '',
     structure: ''
@@ -1355,7 +1355,7 @@ function getShearStrengthExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `간극수압($u$)과 유효 전단강도 파라미터($c', \\phi'$) 간의 관계를 도출하는 테르자기(Terzaghi)의 유효응력 기준 Coulomb 전단강도 공식을 쓰고 각 기호의 정의를 서술하시오.`,
+    question: `테르자기(Terzaghi)의 유효응력 기준 쿨롱(Coulomb) 전단강도 공식`,
     concept: `지반 내 간극수의 수압 부담을 공제하여 흙 뼈대 고유 입자가 부담하는 실제 유효 수직 응력 기초 전단 마찰 강도 산정 관계식입니다.`,
     formula: `$\\tau_f = c' + (\\sigma - u) \\tan\\phi'$\n- $\\tau_f$: 흙의 전단 강도 (Shear Strength)\n- $c'$: 유효 점착력 (Effective Cohesion)\n- $\\sigma$: 파괴면에 수직으로 작용하는 전 수직 응력\n- $u$: 간극수압 (Pore Water Pressure)\n- $\\phi'$: 유효 내부 마찰각 (Effective Friction Angle)`,
     structure: ''
@@ -1397,7 +1397,7 @@ function getShearStrengthExpertQuestions(title, keywords) {
 function getSeepageExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `투수성 흙 지반 내부에서 흐르는 지하수 거동을 설명하는 Darcy의 투수 법칙과 상향 침투류 발생 시 안정 위험성에 대해 간략히 설명하시오.`,
+    question: `투수성 흙 지반 내부에서 흐르는 지하수 거동을 설명하는 Darcy의 투수 법칙과 상향 침투류 발생 시 안정 위험성`,
     concept: `Darcy의 법칙은 흙 속의 침투 유량 속도($v$)가 투수계수($k$)와 동수경사($i$)의 곱에 정비례한다는 법칙입니다. 만약 흙 하부로부터 상향 침투수가 강하게 유입될 경우 상향 침투 압력이 흙의 자중 유효 수직하중을 상쇄하여 지반 유효응력을 격감시키고 파괴 불안정을 초래합니다.`,
     formula: '',
     structure: ''
@@ -1405,7 +1405,7 @@ function getSeepageExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `상향 침투 수압에 의해 흙 뼈대 입자 사이의 유효응력이 정밀하게 0이 되어 흙 입자가 물속에서 분사되는 보일링(Boiling) 현상의 유발 임계 동수경사($i_{cr}$) 공식을 기술하고 기호 정의를 서술하시오.`,
+    question: `보일링(Boiling) 현상의 유발 임계 동수경사($i_{cr}$) 공식`,
     concept: `상향 동수경사에 의한 소성 액상화 한계 상태를 규명하는 퀵샌드(Quicksand) 지반공학 한계 동수경사식입니다.`,
     formula: `$i_{cr} = \\frac{G_s - 1}{1 + e}$\n- $i_{cr}$: 임계 동수경사 (Critical Hydraulic Gradient)\n- $G_s$: 흙 입자의 비중 (Specific Gravity)\n- $e$: 흙의 간극비 (Void Ratio)`,
     structure: ''
@@ -1450,7 +1450,7 @@ function getBracedWallExpertQuestions(title, keywords) {
     concept: '탄소성보법은 흙막이 벽체를 연속보로, 배면 토사 및 버팀 구조를 탄소성 스프링으로 모델링하여 시공 단계별(단계별 굴착 및 지보재 설치) 벽체 변위, 휨모멘트, 버팀대 축력 등의 거동 변화를 연속적으로 추적 해석하는 기법입니다. 단순보법과 달리 벽체와 지반의 상호작용 및 시공 이력을 반영할 수 있습니다.',
     formula: '',
     structure: '',
-    question: `가설 흙막이 벽체 해석 시 적용되는 '탄소성보법(Elasto-plastic Beam Method)'의 공학적 정의와 기존 단순보법 대비 대표적인 장점을 간략히 서술하시오.`
+    question: `가설 흙막이 벽체 해석 시 적용되는 '탄소성보법(Elasto-plastic Beam Method)'의 공학적 정의와 기존 단순보법 대비 장점`
   };
 
   const q2 = {
@@ -1458,7 +1458,7 @@ function getBracedWallExpertQuestions(title, keywords) {
     concept: '탄소성보법 해석 시 지반-벽체 상호작용을 모사하기 위해 도입되는 지반 스프링 강도 산정 관계식입니다.',
     formula: `$K_s = k_h \\cdot A$\n- $K_s$: 수평 지반 스프링 강도 (Soil Spring Stiffness)\n- $k_h$: 수평 지반반력계수 (Coefficient of Subgrade Reaction)\n- $A$: 해당 지반 스프링이 분담하는 벽체의 유효 배면적 (Effective Tributary Area)`,
     structure: '',
-    question: `탄소성보법 해석 시 지반-벽체 상호작용을 모사하기 위해 도입되는 지반 스프링 강도($K_s$)의 기본 산정 공식과 각 기호의 정의를 서술하시오.`
+    question: `탄소성보법 해석 시 도입되는 지반 스프링 강도($K_s$)의 기본 산정 공식`
   };
 
   const mcQuestions = [
@@ -1567,7 +1567,7 @@ function getBracedWallExpertQuestions(title, keywords) {
 function getLiquefactionExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `사질토 지반의 액상화(Liquefaction) 현상이 발생하는 근본적인 역학적 매커니즘과 지반의 공학적 물성 변화를 설명하시오.`,
+    question: `사질토 지반의 액상화(Liquefaction) 현상이 발생하는 근본적인 역학적 매커니즘과 지반의 공학적 물성 변화`,
     concept: `• 역학적 매커니즘: 포화된 느슨한 사질토 지반이 지진, 진동 등 급속한 반복 하중(Dynamic loading)을 받을 때, 과잉간극수압(Excess pore water pressure)이 급격히 상승하여 배수가 되지 않는 비배수 상태가 됩니다.\n• 공학적 물성 변화: 상승한 과잉간극수압이 지반의 초기 유효연직응력과 같아지면 유효응력(Effective stress)이 0에 도달하고, 이에 따라 Mohr-Coulomb 전단강도(t = s' tan f)가 완전히 소실되어 흙이 액체처럼 거동하며 전단 저항력을 잃게 됩니다.`,
     formula: '',
     structure: ''
@@ -1575,7 +1575,7 @@ function getLiquefactionExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `Seed & Idriss의 간이평가법에 따른 동적 액상화 안전율($F_L$ 또는 $F_s$) 산정 공식과 각 인자의 정의를 서술하시오.`,
+    question: `Seed & Idriss의 간이평가법에 따른 동적 액상화 안전율($F_L$ 또는 $F_s$) 산정 공식`,
     concept: `지진 시 사질토 지반의 액상화 저항 응력비(CRR)와 지진에 의한 전단 응력비(CSR)의 관계를 분석하여 허용 한계 안전 확보를 규명하는 공학식입니다.`,
     formula: `$F_L = \\frac{CRR_{7.5}}{CSR} \\times MSF$\n- $F_L$: 액상화 안전율 (통상 1.0 ~ 1.5 기준 판단)\n- $CRR_{7.5}$: 진도 7.5 지진 기준의 반복전단저항비 (Cyclic Resistance Ratio)\n- $CSR$: 지진에 의해 발생하는 반복전단응력비 (Cyclic Shear Stress Ratio)\n- $MSF$: 지진규모 보정계수 (Magnitude Scaling Factor)`,
     structure: ''
@@ -1687,7 +1687,7 @@ function getLiquefactionExpertQuestions(title, keywords) {
 function getCompensatedFoundationExpertQuestions(title, keywords) {
   const q1 = {
     type: '주관식 (개요)',
-    question: `연약지반 상에 구조물 건설 시 적용하는 보상기초(Compensated Foundation) 공법의 근본적인 하중 상쇄 원리와 설계 목적을 설명하시오.`,
+    question: `연약지반 상에 구조물 건설 시 적용하는 보상기초(Compensated Foundation) 공법의 하중 상쇄 원리와 설계 목적`,
     concept: `• 하중 상쇄 원리: 구조물 건설로 인해 지반에 가해지는 총 하중(q)을, 구조물 시공을 위해 굴착하여 제거한 흙의 자중($\gamma \cdot D_f$)만큼 상쇄(Compensation)시키는 원리입니다.\n• 설계 목적: 지반에 가해지는 순응력 변화($q_{net} = q - \gamma D_f$)를 0에 가깝게 통제함으로써, 연약점토 지반의 1차 및 2차 압밀 침하량을 획득 가능한 한계 이하로 억제하고 지반의 전단 파괴(지지력 파괴) 리스크를 원천 차단하기 위함입니다.`,
     formula: '',
     structure: ''
@@ -1695,7 +1695,7 @@ function getCompensatedFoundationExpertQuestions(title, keywords) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `보상기초 설계 시 완전 보상 상태(Fully Compensated)를 만족하기 위한 순압력($q_{net}$) 산정식과 보상도($C$) 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    question: `보상기초 설계 시 순압력($q_{net}$) 산정식과 보상도($C$) 공식`,
     concept: `구조물 자중과 기초 굴착토 자중의 평형 상태 및 보상 비율을 정량적으로 규명하는 기초 공학 설계식입니다.`,
     formula: `$q_{net} = q - \gamma D_f = 0$\n$C = \\frac{\gamma D_f}{q}$\n- $q_{net}$: 지반이 추가로 받는 순하중 (완전 보상 시 0)\n- $q$: 구조물 및 기초의 총 설계 압력\n- $\\gamma$: 굴착 지반의 평균 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $C$: 보상도 (완전 보상 시 1.0 또는 100% )`,
     structure: ''
@@ -2027,7 +2027,7 @@ function getDynamicSourceExpertQuestions(title, keywords, fileText) {
 
   const q1 = {
     type: '주관식 (개요)',
-    question: `본문 자료에 근거하여 [${cleanTitle}]의 핵심 정의와 지반공학적 설계 및 시공 시 대표적인 역할을 간략히 서술하시오.`,
+    question: `[${cleanTitle}]의 핵심 정의와 지반공학적 설계 및 시공 시 대표적인 역할`,
     concept: `[${cleanTitle}]은/는 ${keywordDisplay} 등 핵심 요소를 바탕으로 공학적 안전성과 원리를 규명하기 위한 핵심 공학 설계 개념이자 기준입니다. 본문 진술에 따르면, ${features.summaryParagraph || '해당 기술을 적정 프로세스에 맞춰 검토하고 구현하는 것이 필수적입니다.'}`,
     formula: '',
     structure: ''
@@ -2043,7 +2043,7 @@ function getDynamicSourceExpertQuestions(title, keywords, fileText) {
 
   const q2 = {
     type: '주관식 (공식)',
-    question: `[${cleanTitle}]의 거동이나 평가 시 적용하는 가장 대표적인 공식이나 한계 상태 물리 관계식을 제시하고, 각 기호의 정의를 서술하시오.`,
+    question: `[${cleanTitle}]의 거동이나 평가 시 적용하는 가장 대표적인 공식이나 한계 상태 물리 관계식`,
     concept: `[${cleanTitle}]의 설계 안전성 및 역학적 안정성을 정량적으로 평가하기 위한 한계 상태 조건식입니다.`,
     formula: formula2,
     structure: ''
