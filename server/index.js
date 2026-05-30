@@ -1350,7 +1350,14 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
   }
 
-  if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanTitle.includes('bearing_capacity')) {
+  if (
+    cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || 
+    cleanTitle.includes('지지력') || cleanTitle.includes('bearing_capacity') ||
+    cleanTitle.includes('확대기초') || cleanTitle.includes('확대 기초') ||
+    cleanTitle.includes('얕은기초') || cleanTitle.includes('얕은 기초') ||
+    cleanTitle.includes('기초 아래') || cleanTitle.includes('기초 하부') || cleanTitle.includes('기초하부') ||
+    cleanTitle.includes('전면전단') || cleanTitle.includes('국부전단') || cleanTitle.includes('펀칭전단')
+  ) {
     console.log("Routing to Built-in Expert PE Content: Prandtl's Bearing Capacity Theory");
     return getPrandtlExpertQuestions(title, keywords);
   }
