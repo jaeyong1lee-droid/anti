@@ -253,19 +253,22 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
     process.env.GEMINI_API_KEY_TERTIARY,
     process.env.XAI_API_KEY,
     process.env.GROK_API_KEY
-  ].filter(Boolean);
+  ]
+    .filter(Boolean)
+    .map(k => k.trim().replace(/^['"]|['"]$/g, ''));
 
   if (keys.length === 0) {
     throw new Error('GEMINI_API_KEY 또는 XAI_API_KEY가 설정되어 있지 않습니다.');
   }
 
-  let lastError = null;
+  const keyErrors = [];
 
   for (let kIdx = 0; kIdx < keys.length; kIdx++) {
     const key = keys[kIdx];
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const isGrok = key.startsWith('xai-');
     let keyExhausted = false;
+    let keyLastError = null;
 
     if (isGrok) {
       const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
@@ -313,7 +316,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
             }
           } catch (err) {
             console.warn(`[Grok 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-            lastError = err;
+            keyLastError = err;
 
             const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429') || err.message?.includes('Limit');
             if (isQuota) {
@@ -361,7 +364,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
             }
           } catch (err) {
             console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-            lastError = err;
+            keyLastError = err;
 
             const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
             if (isQuota) {
@@ -383,9 +386,14 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
         }
       }
     }
+
+    if (keyLastError) {
+      const errMsg = keyLastError.message || 'Unknown error';
+      keyErrors.push(`Key #${kIdx + 1} (${isGrok ? 'Grok' : 'Gemini'}): ${errMsg.substring(0, 120)}`);
+    }
   }
 
-  throw lastError || new Error('모든 모델 및 API 키 호출에 실패했습니다.');
+  throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
 }
 
 // Helper: Shuffle array elements
@@ -2034,20 +2042,23 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           process.env.GEMINI_API_KEY_TERTIARY,
           process.env.XAI_API_KEY,
           process.env.GROK_API_KEY
-        ].filter(Boolean);
+        ]
+          .filter(Boolean)
+          .map(k => k.trim().replace(/^['"]|['"]$/g, ''));
 
         if (keys.length === 0) {
           throw new Error('GEMINI_API_KEY 또는 XAI_API_KEY가 설정되어 있지 않습니다.');
         }
 
         let questions = null;
-        let lastErr = null;
+        const keyErrors = [];
 
         for (let kIdx = 0; kIdx < keys.length; kIdx++) {
           const key = keys[kIdx];
           const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
           const isGrok = key.startsWith('xai-');
           let keyExhausted = false;
+          let keyLastError = null;
 
           if (isGrok) {
             const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
@@ -2100,7 +2111,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                   console.log(`[단일토픽퀴즈 Grok] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
                   break; // 성공 시 루프 종료
                 } catch (modelErr) {
-                  lastErr = modelErr;
+                  keyLastError = modelErr;
                   const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.message?.includes('429') || modelErr.message?.includes('Limit');
                   if (isQuota) {
                     attempt++;
@@ -2159,7 +2170,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                   console.log(`[단일토픽퀴즈] 성공: Key #${kIdx + 1} (${maskedKey}), ${modelName}, ${questions.length}문항`);
                   break; // 성공 시 루프 종료
                 } catch (modelErr) {
-                  lastErr = modelErr;
+                  keyLastError = modelErr;
                   const isQuota = modelErr.message?.includes('Quota') || modelErr.message?.includes('quota') || modelErr.message?.includes('rate') || modelErr.status === 429 || modelErr.message?.includes('429');
                   if (isQuota) {
                     attempt++;
@@ -2182,13 +2193,19 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
               }
             }
           }
+
+          if (keyLastError) {
+            const errMsg = keyLastError.message || 'Unknown error';
+            keyErrors.push(`Key #${kIdx + 1} (${isGrok ? 'Grok' : 'Gemini'}): ${errMsg.substring(0, 120)}`);
+          }
+
           if (questions) {
             break; // Break the keys loop on success
           }
         }
 
         if (!questions) {
-          throw lastErr || new Error('모든 제미나이 모델 및 API 키 호출에 실패했습니다.');
+          throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
         }
 
         res.json({ questions, isFallback: false });
@@ -2314,10 +2331,6 @@ ${combinedText}
       res.json({ questions, total: questions.length, topicCount: topics.length });
     } catch (err) {
       console.error('Exam route error:', err);
-      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
-      if (isQuota) {
-        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다. 내일 다시 시도하거나, 잠시 후 다시 눌러보세요.' });
-      }
       res.status(500).json({ error: err.message || '문제 생성 실패' });
     }
   } catch (err) {
@@ -2361,10 +2374,6 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
       res.json({ text: responseText });
     } catch (err) {
       console.error('Detailed answer route error:', err);
-      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
-      if (isQuota) {
-        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
-      }
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
   } catch (err) {
@@ -2406,10 +2415,6 @@ app.post('/api/chat', async (req, res) => {
       res.json({ text: responseText });
     } catch (err) {
       console.error('Chat route error:', err);
-      const isQuota = err?.message?.includes('Quota') || err?.message?.includes('quota') || err?.message?.includes('rate') || err?.message?.includes('429');
-      if (isQuota) {
-        return res.status(429).json({ error: 'AI API 일일 사용 한도를 초과했습니다.' });
-      }
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
   } catch (err) {
