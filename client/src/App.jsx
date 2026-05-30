@@ -348,6 +348,7 @@ export default function App() {
   const [editTheoryConcept, setEditTheoryConcept] = useState('');
   const [editTheoryAssumptions, setEditTheoryAssumptions] = useState('');
   const [editTheoryFormula, setEditTheoryFormula] = useState('');
+  const [theoryInputRevealed, setTheoryInputRevealed] = useState({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
@@ -4166,31 +4167,37 @@ export default function App() {
             
             {/* Left: Theory list */}
             <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-3/5 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
-              <div className="max-w-3xl mx-auto space-y-5">
+              <div className="max-w-full space-y-5">
                 
-                {/* Add Question/Theory Button */}
-                <button
-                  onClick={() => {
-                    const newTheory = {
-                      title: "",
-                      concept: "",
-                      assumptions: "",
-                      formula: ""
-                    };
-                    const updated = [newTheory, ...theoryQuestions];
-                    latestTheoryQuestionsRef.current = updated;
-                    setTheoryQuestions(updated);
-                    localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                    showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                  }}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-extrabold rounded-2xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 cursor-pointer border border-indigo-500/20"
-                >
-                  <PlusCircle size={16} />
-                  <span>➕ 새로운 이론 공식 추가하기 (기출 빈표 생성)</span>
-                </button>
+                {/* Centered Add Question/Theory Button (Half Width & Centered Top) */}
+                <div className="flex justify-center pb-2">
+                  <button
+                    onClick={() => {
+                      const newTheory = {
+                        title: "",
+                        concept: "",
+                        assumptions: "",
+                        formula: ""
+                      };
+                      const updated = [newTheory, ...theoryQuestions];
+                      latestTheoryQuestionsRef.current = updated;
+                      setTheoryQuestions(updated);
+                      localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                      showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                    }}
+                    className="w-1/2 max-w-xs py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20"
+                  >
+                    <PlusCircle size={13} />
+                    <span>새로운 이론 공식 추가 (빈표 생성)</span>
+                  </button>
+                </div>
 
                 {/* Theory Questions Map */}
                 {theoryQuestions.map((q, idx) => {
+                  const isNewEmptyCard = !q.title && !q.formula;
+                  const isOutputVisible = isNewEmptyCard || !!theoryRevealed[idx];
+                  const isInputVisible = isNewEmptyCard || !!theoryInputRevealed[idx];
+
                   return (
                     <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 gap-2">
@@ -4214,8 +4221,27 @@ export default function App() {
                           />
                         </div>
                         
-                        {/* Actions (Delete/Trash) */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        {/* Actions (Toggle Input, Delete) */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Input Toggle Editor (Open/Close Input Area) */}
+                          <button
+                            onClick={() => {
+                              setTheoryInputRevealed(prev => ({
+                                ...prev,
+                                [idx]: !prev[idx]
+                              }));
+                            }}
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                              isInputVisible 
+                                ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' 
+                                : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 border-transparent'
+                            }`}
+                            title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                          >
+                            <Edit2 size={13} />
+                          </button>
+
+                          {/* Delete/Trash Button */}
                           <button
                             onClick={() => {
                               if (window.confirm(`[${q.title || `이론 ${idx + 1}`}] 이론 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
@@ -4228,45 +4254,75 @@ export default function App() {
                                   delete updated[idx];
                                   return updated;
                                 });
+                                setTheoryInputRevealed(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[idx];
+                                  return updated;
+                                });
                                 showNotification('선택한 이론 유도가 성공적으로 삭제되었습니다.', 'info');
                               }
                             }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all border border-transparent cursor-pointer"
                             title="이론 삭제"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </div>
 
                       {/* Real-time LaTeX rendered Output Display Window */}
-                      <div className="space-y-2 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px]">
-                        <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                        {q.formula ? (
-                          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                            <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
+                      {isOutputVisible ? (
+                        <div className="space-y-2 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                            {/* Hide Output/Answer Button */}
+                            {!isNewEmptyCard && (
+                              <button
+                                onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: false }))}
+                                className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
+                              >
+                                접기 ✕
+                              </button>
+                            )}
                           </div>
-                        ) : (
-                          <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
-                        )}
-                      </div>
+                          {q.formula ? (
+                            <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                              <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
+                          )}
+                        </div>
+                      ) : (
+                        /* "Show Answer" subjective trigger button if output is hidden */
+                        <div className="pt-1">
+                          <button
+                            onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: true }))}
+                            className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
+                          >
+                            💡 이론 유도 과정 및 상세 증명 확인하기
+                          </button>
+                        </div>
+                      )}
 
                       {/* Input Textarea Area for Paste / Typing LaTeX */}
-                      <div className="space-y-1 pt-1">
-                        <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
-                        <textarea
-                          value={q.formula || ''}
-                          onChange={(e) => {
-                            const updated = [...theoryQuestions];
-                            updated[idx] = { ...updated[idx], formula: e.target.value };
-                            latestTheoryQuestionsRef.current = updated;
-                            setTheoryQuestions(updated);
-                            localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                          }}
-                          className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
-                          placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
-                        />
-                      </div>
+                      {isInputVisible && (
+                        <div className="space-y-1 pt-1 animate-fade-in">
+                          <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
+                          <textarea
+                            value={q.formula || ''}
+                            onChange={(e) => {
+                              const updated = [...theoryQuestions];
+                              updated[idx] = { ...updated[idx], formula: e.target.value };
+                              latestTheoryQuestionsRef.current = updated;
+                              setTheoryQuestions(updated);
+                              localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                            }}
+                            className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                            placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
+                          />
+                        </div>
+                      )}
 
                       {/* AI Chat Tutor Button */}
                       <div className="pt-2 border-t border-slate-800/80 flex justify-end">
