@@ -1909,6 +1909,10 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 `;
 
       try {
+        const geminiApiKey = process.env.GEMINI_API_KEY || 
+                             process.env.GEMINI_API_KEY_SECONDARY || 
+                             process.env.GEMINI_API_KEY_TERTIARY || 
+                             '';
         const genAI = new GoogleGenerativeAI(geminiApiKey);
         const QUIZ_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
 
