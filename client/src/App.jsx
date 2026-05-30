@@ -3287,7 +3287,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="max-w-3xl mx-auto space-y-5">
+              <div className="w-full space-y-5">
                 {examQuestions.map((q, idx) => {
                   const isMC = q.type === '객관식';
                   const isSubj = !isMC;
