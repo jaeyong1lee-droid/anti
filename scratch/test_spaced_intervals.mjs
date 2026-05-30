@@ -127,12 +127,17 @@ async function testSpacedRepetitionFlow() {
     // Now, run the migration logic
     console.log('-> Running migrateSpacedIntervals simulated logic...');
     const sqlMigrationCheck = `
-      SELECT s6.topic_id, s6.completed_at, s6.planned_date
-      FROM schedules s6
-      WHERE s6.review_round = 6 AND s6.status = 'completed'
+      SELECT s_max.topic_id, s_max.completed_at, s_max.planned_date, s_max.review_round
+      FROM schedules s_max
+      WHERE s_max.review_round >= 6 AND s_max.status = 'completed'
+        AND s_max.review_round = (
+          SELECT MAX(s_inner.review_round) 
+          FROM schedules s_inner 
+          WHERE s_inner.topic_id = s_max.topic_id AND s_inner.status = 'completed'
+        )
         AND NOT EXISTS (
-          SELECT 1 FROM schedules s7 
-          WHERE s7.topic_id = s6.topic_id AND s7.review_round = 7
+          SELECT 1 FROM schedules s_next
+          WHERE s_next.topic_id = s_max.topic_id AND s_next.review_round = s_max.review_round + 1
         )
     `;
     const migrationTargets = await dbQuery.all(sqlMigrationCheck);
@@ -141,7 +146,7 @@ async function testSpacedRepetitionFlow() {
     let migratedCount = 0;
     const insertSql = `
       INSERT INTO schedules (topic_id, review_round, planned_date, status)
-      VALUES (?, 7, ?, 'pending')
+      VALUES (?, ?, ?, 'pending')
     `;
     
     for (const row of migrationTargets) {
@@ -154,8 +159,9 @@ async function testSpacedRepetitionFlow() {
       
       const randomDays = 30 + Math.floor(Math.random() * 61);
       const plannedDateStr = getLocalDateString(baseDate, randomDays);
+      const nextRound = row.review_round + 1;
       
-      await dbQuery.run(insertSql, [row.topic_id, plannedDateStr]);
+      await dbQuery.run(insertSql, [row.topic_id, nextRound, plannedDateStr]);
       migratedCount++;
     }
     console.log(`-> Migrated ${migratedCount} records successfully.`);

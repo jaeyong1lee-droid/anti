@@ -2328,32 +2328,37 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
-// Spaced Repetition 7회차 장기 보존 마이그레이션 함수
+// Spaced Repetition 무한 장기 보존 마이그레이션 함수
 async function migrateSpacedIntervals() {
-  console.log('[Migration] Checking for completed 6th round reviews lacking a 7th round schedule...');
+  console.log('[Migration] Checking for completed spaced repetition reviews lacking the next round schedule...');
   try {
-    // 6회차는 완료되었으나 7회차 스케줄이 없는 튜플 조회
+    // 최소 6회차 이상의 완료된 스케줄 중, 가장 최근에 완료된 스케줄이며 그 다음 회차 스케줄이 아예 존재하지 않는 튜플 조회
     const sql = `
-      SELECT s6.topic_id, s6.completed_at, s6.planned_date
-      FROM schedules s6
-      WHERE s6.review_round = 6 AND s6.status = 'completed'
+      SELECT s_max.topic_id, s_max.completed_at, s_max.planned_date, s_max.review_round
+      FROM schedules s_max
+      WHERE s_max.review_round >= 6 AND s_max.status = 'completed'
+        AND s_max.review_round = (
+          SELECT MAX(s_inner.review_round) 
+          FROM schedules s_inner 
+          WHERE s_inner.topic_id = s_max.topic_id AND s_inner.status = 'completed'
+        )
         AND NOT EXISTS (
-          SELECT 1 FROM schedules s7 
-          WHERE s7.topic_id = s6.topic_id AND s7.review_round = 7
+          SELECT 1 FROM schedules s_next
+          WHERE s_next.topic_id = s_max.topic_id AND s_next.review_round = s_max.review_round + 1
         )
     `;
     const targets = await dbQuery.all(sql);
     
     if (targets.length === 0) {
-      console.log('[Migration] No migration targets found. All 6th round completed reviews are up to date.');
+      console.log('[Migration] No migration targets found. All long-term review schedules are up to date.');
       return;
     }
     
-    console.log(`[Migration] Found ${targets.length} topics that need 7th round random interval schedule.`);
+    console.log(`[Migration] Found ${targets.length} topics that need the next round random interval schedule.`);
     
     const insertSql = `
       INSERT INTO schedules (topic_id, review_round, planned_date, status)
-      VALUES (?, 7, ?, 'pending')
+      VALUES (?, ?, ?, 'pending')
     `;
     
     let migratedCount = 0;
@@ -2368,12 +2373,14 @@ async function migrateSpacedIntervals() {
       // M+1 ~ M+3 (30 ~ 90일 후)
       const randomDays = 30 + Math.floor(Math.random() * 61);
       const plannedDateStr = getLocalDateString(baseDate, randomDays);
+      const nextRound = row.review_round + 1;
       
-      await dbQuery.run(insertSql, [row.topic_id, plannedDateStr]);
+      await dbQuery.run(insertSql, [row.topic_id, nextRound, plannedDateStr]);
       migratedCount++;
+      console.log(`[Migration] Auto-created next round ${nextRound} for topic ${row.topic_id} planned on ${plannedDateStr}`);
     }
     
-    console.log(`[Migration] Successfully migrated ${migratedCount} topics with 7th round schedules.`);
+    console.log(`[Migration] Successfully migrated ${migratedCount} topics with new long-term schedules.`);
   } catch (error) {
     console.error('[Migration] Error running spaced intervals migration:', error);
   }
