@@ -851,512 +851,349 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
-// Upgraded Dynamic Document Feature Extraction Helper
-function extractFeaturesFromText(fileText) {
-  const result = {
-    domain: 'general',
-    keySentences: [],
-    extractedKeywords: [],
-    extractedFormulas: [],
-    termDefinitions: [], // [{ term: '...', definition: '...' }]
-    summaryParagraph: ''
-  };
-
-  if (!fileText || fileText.trim().length === 0) {
-    return result;
-  }
-
-  // 1. Clean formatting
-  const cleanText = fileText.replace(/\s+/g, ' ').trim();
-
-  // 2. Domain classification
-  const domainScores = { soil: 0, hydraulics: 0, tunnel: 0, general: 0 };
-  const soilKeywords = ['압밀', '점토', '전단', '파괴', '지지력', '흙', '지반', '기초', 'clay', 'consolidation', 'settlement', 'bearing', 'shear', 'mohr', 'c-phi', 'c - phi'];
-  const hydraulicsKeywords = ['투수', '침투', '유출', '수두', 'darcy', 'seepage', 'discharge', 'velocity', 'flow', 'permeability', '퀵샌드', '보일링', '파이핑', '동수경사'];
-  const tunnelKeywords = ['터널', '지보', '숏크리트', '락볼트', '라이닝', '평사투영', 'Q분류', '암반', '절리', '불연속면', 'tunnel', 'natm', 'joint', 'rock', 'stereonet', '인발'];
-
-  soilKeywords.forEach(k => { if (cleanText.includes(k)) domainScores.soil += 1; });
-  hydraulicsKeywords.forEach(k => { if (cleanText.includes(k)) domainScores.hydraulics += 1; });
-  tunnelKeywords.forEach(k => { if (cleanText.includes(k)) domainScores.tunnel += 1; });
-
-  let maxScore = 0;
-  let detectedDomain = 'general';
-  Object.keys(domainScores).forEach(d => {
-    if (domainScores[d] > maxScore) {
-      maxScore = domainScores[d];
-      detectedDomain = d;
-    }
-  });
-  result.domain = detectedDomain;
-
-  // 3. Extract sentences
-  const sentences = cleanText.split(/(?<=[.?!])\s+/);
-  
-  const candidates = sentences.filter(s => {
-    const len = s.length;
-    return len > 25 && len < 150 && (
-      s.includes('하므로') || s.includes('때문에') || s.includes('의해') || s.includes('따라') ||
-      s.includes('비례') || s.includes('반비례') || s.includes('증가') || s.includes('감소') ||
-      s.includes('효과') || s.includes('방지') || s.includes('설계') || s.includes('역할') ||
-      s.includes('공법') || s.includes('원리') || s.includes('한계') || s.includes('안전율') ||
-      s.includes('기준') || s.includes('시험')
-    );
-  });
-
-  result.keySentences = candidates.slice(0, 15);
-  if (result.keySentences.length < 5) {
-    result.keySentences = sentences.slice(0, 10).filter(s => s.trim().length > 15);
-  }
-
-  // 4. Extract formulas (Regex looking for equations or variables)
-  const formulaRegex = /(\$[^$]+\$|[A-Za-z_θφστγπ\d\s\+\-\*\/\=\(\)\.\,\\{\\}\^]{3,30}\s*=\s*[A-Za-z_θφστγπ\d\s\+\-\*\/\=\(\)\.\,\%\\\{\}\^\cdot\s]{3,50})/g;
-  let matches = cleanText.match(formulaRegex) || [];
-  
-  matches = matches.filter(m => m.includes('=') && !m.includes('http') && m.length > 5 && m.length < 100);
-  result.extractedFormulas = Array.from(new Set(matches.map(m => m.trim()))).slice(0, 5);
-
-  // 5. Parse keywords based on frequency
-  const words = cleanText.match(/[a-zA-Z가-힣]{3,10}/g) || [];
-  const wordFreq = {};
-  const stopWords = ['대하여', '대해', '있으며', '있는', '있습니다', '하는', '합니다', '따라', '통해', '위해', '그리고', '따라서', '또는', '또한', '의한', '이를', '것이다', '등의', '설계', '시공', '경우', '대한'];
-  
-  words.forEach(w => {
-    if (stopWords.includes(w)) return;
-    wordFreq[w] = (wordFreq[w] || 0) + 1;
-  });
-
-  const sortedWords = Object.keys(wordFreq).sort((a, b) => wordFreq[b] - wordFreq[a]);
-  result.extractedKeywords = sortedWords.slice(0, 8);
-
-  // 6. Term-Definition extraction
-  sentences.forEach(s => {
-    const defMatch = s.match(/([가-힣a-zA-Z\s]{2,15})(은|는|이란|이란\s|란)\s([^.]+)(의미한다|의미하며|말한다|뜻한다|이다|임)/);
-    if (defMatch) {
-      const term = defMatch[1].trim();
-      const definition = defMatch[3].trim() + ' ' + defMatch[4].trim();
-      if (term.length > 2 && term.length < 15 && definition.length > 10 && definition.length < 100) {
-        result.termDefinitions.push({ term, definition });
-      }
-    }
-  });
-
-  if (result.keySentences.length > 0) {
-    result.summaryParagraph = result.keySentences.slice(0, 2).join(' ');
-  } else {
-    result.summaryParagraph = cleanText.substring(0, 200) + '...';
-  }
-
-  return result;
-}
-
-// High-quality geotech fallback statement pool for premium distractors
-const geotechPool = [
-  "지반의 전단강도를 극대화하기 위해 유효응력을 증가시키고 간극수압을 신속히 배출하는 공법을 적용한다.",
-  "동수경사가 한계동수경사에 도달하면 유효응력이 0이 되어 지반이 지지력을 상실하는 분사 현상이 발생한다.",
-  "터널 굴착 시 막장 전방의 아칭 효과를 최대한 유도하여 지반 스스로 하중을 분산시키도록 유도한다.",
-  "압밀 시험에서 얻은 압축지수와 압밀계수를 활용하여 연약지반의 최종 침하량 및 소요 시간을 예측한다.",
-  "평사투영법 해석 시 불연속면의 극점들이 마찰원 내부가 아닌 외부 안정 영역에 존재할 때 안전성이 확보된다.",
-  "평사투영법을 이용한 암반 비탈면 안정성 해석 시 평면파괴, 쐐기파괴, 전도파괴 거동의 기구학적 가능성을 평가한다.",
-  "연약지반 점성토층의 압밀을 촉진하기 위하여 배수 거리를 단축시킬 목적으로 연직 배수재를 타설한다.",
-  "락볼트는 암반 불연속면의 부착력을 증대시키고 보강 효과, 내압 효과, 아칭 효과를 복합적으로 발휘하는 지보재이다.",
-  "옹벽 설계 시 시행하는 활동, 전도, 지지력에 대한 안정 검토는 허용 안전율 기준 이상을 만족해야 한다.",
-  "지하수위 아래에 위치한 지반 굴착 시 보일링이나 파이핑 현상을 방지하기 위해 흙막이 벽체의 근입 깊이를 충분히 확보한다."
-];
-
-// Swap/inversion mapping to generate high-quality realistic distractors
-const inversionMap = {
-  '증가': '감소',
-  '감소': '증가',
-  '비례': '반비례',
-  '반비례': '비례',
-  '이하': '이상',
-  '이상': '이하',
-  '상승': '저하',
-  '저하': '상승',
-  '촉진': '지연',
-  '지연': '촉진',
-  '확보': '배제',
-  '배제': '확보',
-  '유리': '불리',
-  '불리': '유리',
-  '필수': '불필요',
-  '일체화': '분리',
-  '동일': '상이',
-  '독립': '의존',
-  '안정': '불안정',
-  '불안정': '안정',
-  '유사': '상이'
-};
-
-function createGeotechDistractor(sentence) {
-  let modified = sentence;
-  let replaced = false;
-  for (const [orig, repl] of Object.entries(inversionMap)) {
-    if (modified.includes(orig)) {
-      const regex = new RegExp(orig, 'g');
-      modified = modified.replace(regex, repl);
-      replaced = true;
-      break; // Prevent double-inversion reversion bug!
-    }
-  }
-  // Grammatical negation fallback if no word pairs matched
-  if (!replaced) {
-    if (modified.includes('이다.')) {
-      modified = modified.replace('이다.', '이 아니다.');
-      replaced = true;
-    } else if (modified.includes('한다.')) {
-      modified = modified.replace('한다.', '하지 않는다.');
-      replaced = true;
-    } else if (modified.includes('된다.')) {
-      modified = modified.replace('된다.', '되지 않는다.');
-      replaced = true;
-    } else if (modified.includes('있다.')) {
-      modified = modified.replace('있다.', '없다.');
-      replaced = true;
-    } else if (modified.includes('없다.')) {
-      modified = modified.replace('없다.', '있다.');
-      replaced = true;
-    }
-  }
-  // Ultimate fallback if still no replacement occurred
-  if (!replaced) {
-    modified = modified + " (그러나 이는 실무 역학 원리에 위배되는 부적절한 설명이다.)";
-  }
-  return modified;
-}
-
-// Smart subject extractor using Korean syntax particles and colon headers
-function extractSubjectFromSentence(sentence) {
-  const clean = sentence.trim();
-  
-  // 1. Check for colon or dash headers, e.g., "마찰원 (Friction Circle): ..." or "평면파괴 - ..."
-  const headerMatch = clean.match(/^([^:.\n]+?)(?::|-|\*\*는|\*\*은)/);
-  if (headerMatch) {
-    let subj = headerMatch[1].replace(/[*_()]/g, '').trim();
-    if (subj.length > 1 && subj.length < 30) {
-      return subj;
-    }
-  }
-  
-  // 2. Check for particles: 은, 는, 이, 가, 란, 이란 at the start of the sentence
-  const particleMatch = clean.match(/^([A-Za-z가-힣0-9\s_]+?)(?:은|는|이|가|란|이란)\b/);
-  if (particleMatch) {
-    let subj = particleMatch[1].replace(/[*_()]/g, '').trim();
-    if (subj.length > 1 && subj.length < 30) {
-      return subj;
-    }
-  }
-  
-  // 3. Fallback: Check standard geotech keyword list
-  const subjectList = ['샌드매트', '모래', '배수', '투수', '접지압', '두께', '콘지수', '지반', '압밀', '점토', '전단', '파괴', '지지력', '흙', '터널', '지보', '숏크리트', '락볼트', '라이닝', '침투', '수두', '차수', '유효응력', '간극수압', '공법', '설계', '토목', '안전율'];
-  for (const term of subjectList) {
-    if (clean.includes(term)) {
-      return term;
-    }
-  }
-  
-  // 4. Ultimate Fallback: First 2 words
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length > 0) {
-    let firstTwo = words.slice(0, 2).join(' ').replace(/[*_():.,]/g, '').trim();
-    if (firstTwo.length > 1 && firstTwo.length < 30) {
-      return firstTwo;
-    }
-    return words[0].replace(/[*_():.,]/g, '').trim();
-  }
-  
-  return '공학 원리';
-}
-
-// In-depth Topic-based Formula Selector Helper
-function getSpecificTopicFormula(title, keywords, domain) {
-  const cleanTitle = (title + ' ' + (keywords || '')).toLowerCase();
-  
-  // 1. Sand Mat
-  if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트')) {
-    return {
-      formula: `$H = \\frac{q - q_a}{2 \\gamma \\tan\\theta}$\n- $H$: Sand Mat 최소 소요 두께\n- $q$: 시공장비의 접지압 (하중)\n- $q_a$: 연약지반의 허용지지력\n- $\\gamma$: Sand Mat 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $30^\\circ \\sim 45^\\circ$)`,
-      concept: `시공장비의 접지압과 지반 점착력을 고려하여 장비 주행성 확보(전단파괴 방지)에 필요한 샌드매트의 소요 두께를 산정하는 공식입니다.`,
-      question: `샌드매트(Sand Mat) 설계 시 시공장비의 접지압과 지반 점착력을 고려하여 장비 주행성을 확보하기 위한 최소 소요 두께(H) 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 2. Stereographic Projection / Stereonet
-  if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic') || cleanTitle.includes('stereonet')) {
-    return {
-      formula: `$r = R \\tan(45^\\circ - \\frac{\\alpha}{2})$\n- $r$: 평사투영망 중심으로부터 극점(Pole)까지의 투영 거리 (반경)\n- $R$: 평사투영망(투영구)의 반지름\n- $\\alpha$: 불연속면의 경사각 (Dip)`,
-      concept: `3차원 구면상의 불연속면 경사각(α)을 평사투영면 상의 2차원 극점(Pole) 좌표로 기하학적으로 변환해 주는 작도 공식입니다.`,
-      question: `평사투영망 작도 시 불연속면의 경사각(Dip, α)을 구의 중심을 지나는 투영면 상에 극점(Pole)으로 기하학적으로 변환하는 투영 공식(r)을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 3. Rockbolt Pull-out Test
-  if (cleanTitle.includes('락볼트') || cleanTitle.includes('인발') || cleanTitle.includes('인발시험') || cleanTitle.includes('pullout') || cleanTitle.includes('pull-out')) {
-    return {
-      formula: `$P = \\pi \\cdot d \\cdot L \\cdot \\tau_{allow}$\n- $P$: 락볼트 최대 인발 저항력 (허용 인발 하중)\n- $d$: 시추 구멍(또는 볼트)의 직경\n- $L$: 락볼트의 유효 정착 길이 (Bond Length)\n- $\\tau_{allow}$: 그라우트와 주변 암반 간의 허용 부착 전단 강도`,
-      concept: `시추공 벽면과 그라우트재 사이의 접촉 면적과 허용 전단응력을 곱하여 락볼트 정착부의 극한 인발 한계 하중을 평가하는 산정 공식입니다.`,
-      question: `락볼트 인발시험 설계 시 적용하는 락볼트 최대 인발 저항력(P)과 유효 정착 길이(L) 및 허용 부착 전단 강도(τ_allow)의 기하학적 한계 관계 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 4. Q-System
-  if (cleanTitle.includes('q 분류') || cleanTitle.includes('q분류') || cleanTitle.includes('q system') || cleanTitle.includes('q-system')) {
-    return {
-      formula: `$Q = \\frac{RQD}{J_n} \\cdot \\frac{J_r}{J_a} \\cdot \\frac{J_w}{SRF}$\n- $Q$: Barton의 암반 품질 Q 지수\n- $RQD$: 암질 지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 계수 (Joint Set Number)\n- $J_r$: 절리 거칠기 계수 (Joint Roughness Number)\n- $J_a$: 절리 변질/충전 계수 (Joint Alteration Number)\n- $J_w$: 절리 지하수 감쇄 계수 (Joint Water Reduction Factor)\n- $SRF$: 응력 저감 계수 (Stress Reduction Factor)`,
-      concept: `암반의 블록 크기, 불연속면의 전단강도, 지중 능동 응력 상태를 6가지 독립 변수의 조합으로 수치화하여 터널 지보 압력을 산정하는 공식입니다.`,
-      question: `Barton 등이 제안한 암반 평가 방법인 Q 분류법의 최종 등급 지표인 Q 지수(Q)를 도출하는 산정 공식을 기술하고, 각 기호의 정의 및 역학적 지표 의미를 서술하시오.`
-    };
-  }
-  
-  // 5. Single Shell
-  if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell')) {
-    return {
-      formula: `$t_{lining} = f(RQD, S_{span})$\n- $t_{lining}$: 싱글쉘 숏크리트 라이닝의 구조적 두께\n- $RQD$: 암반 품질 계수\n- $S_{span}$: 터널의 지간 폭 (Span Width)`,
-      concept: `싱글쉘 터널 굴착 시 콘크리트 라이닝을 생략하고 숏크리트와 락볼트만으로 영구 지보력을 발휘하도록 설계를 규명하는 두께 산정 개념입니다.`,
-      question: `터널 싱글쉘(Single Shell) 공법 설계 시 터널의 지간 폭과 암반 상태에 따른 라이닝 설계 두께의 기본 메커니즘을 설명하고 관련 공학적 수식을 서술하시오.`
-    };
-  }
-  
-  // 6. Soil Nailing / Earth Anchor
-  if (cleanTitle.includes('소일네일') || cleanTitle.includes('소일네일링') || cleanTitle.includes('soil nail') || cleanTitle.includes('어스앵커') || cleanTitle.includes('어스 앵커') || cleanTitle.includes('earth anchor')) {
-    return {
-      formula: `$T_a = \\pi \\cdot D \\cdot L \\cdot q_a$\n- $T_a$: 앵커/네일의 허용 인발 저항력\n- $D$: 천공 직경\n- $L$: 정착장 길이 (Bond Length)\n- $q_a$: 지반과 그라우트 사이의 허용 부착력`,
-      concept: `어스앵커 또는 소일네일링 설계 시 주입된 그라우트 정착장 벽면의 전단 마찰력을 활용하여 네일/앵커의 허용 지지력을 도출하는 공식입니다.`,
-      question: `어스앵커(Earth Anchor) 또는 소일네일링 설계 시 그라우트 정착부의 지중 마찰 면적을 고려한 허용 인발 저항력(Ta) 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 7. Terzaghi / Prandtl / Bearing Capacity / spread footing / 기초
-  if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanTitle.includes('bearing') || cleanTitle.includes('기초') || cleanTitle.includes('얕은기초') || cleanTitle.includes('확대기초') || cleanTitle.includes('거동')) {
-    return {
-      formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 얕은기초의 극한 지지력 (Ultimate Bearing Capacity)\n- $c$: 기초 하부 흙의 점착력 (Cohesion)\n- $q$: 기초 저면의 유효 상재하중 (Surcharge)\n- $\\gamma$: 흙의 단위중량 (Unit Weight)\n- $B$: 기초의 최소 너비 (Width)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수 (Bearing Capacity Factors)`,
-      concept: `얕은 기초 또는 확대기초 하부 지반이 하중 재하 시 전단 파괴되지 않고 견딜 수 있는 최대 한계 지지력을 도출하는 Terzaghi의 중첩 지지력 공식입니다.`,
-      question: `확대기초 하부 지반의 극한 지지력(q_ult)을 산정하는 가장 표준적인 Terzaghi 지지력 공식(또는 Prandtl 식의 확장)을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 8. Domain Fallbacks
-  if (domain === 'soil') {
-    return {
-      formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 극한 지지력 (Bearing Capacity)\n- $c$: 지반 점착력 (Cohesion)\n- $q$: 유효 상재압\n- $\\gamma$: 단위중량\n- $B$: 기초 폭\n- $N_c, N_q, N_{\\gamma}$: 지수 계수`,
-      concept: `토사 지반 설계 시 기초의 한계 안정 상태를 검토하는 극한 지지력 대표 공식입니다.`,
-      question: `토사 지반 및 얕은 기초 설계 시 극한 지지력(q_ult)을 산정하는 가장 대표적인 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  if (domain === 'hydraulics') {
-    return {
-      formula: `$i_{cr} = \\frac{G_s - 1}{1 + e}$\n- $i_{cr}$: 한계동수경사 (Critical Hydraulic Gradient)\n- $G_s$: 흙 입자의 비중 (Specific Gravity)\n- $e$: 흙의 간극비 (Void Ratio)`,
-      concept: `상향 침투류 발생 시 유효응력이 0이 되는 분사 현상(Boiling)의 임계 한계동수경사 공식입니다.`,
-      question: `지반 침투 거동 해석 시 유효응력을 상실하게 만드는 퀵샌드 한계동수경사(i_cr) 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  if (domain === 'tunnel') {
-    return {
-      formula: `$Q = \\frac{RQD}{J_n} \\cdot \\frac{J_r}{J_a} \\cdot \\frac{J_w}{SRF}$\n- $Q$: Barton의 암반 등급 지수\n- $RQD$: 암질 지수\n- $J_n$: 절리군 수 계수\n- $J_r$: 절리 거칠기 계수\n- $J_a$: 절리 충전물 계수\n- $J_w$: 지하수 계수\n- $SRF$: 지중 응력 저감 계수`,
-      concept: `터널 지보 설계의 기준이 되는 바톤(Barton)의 암반 품질 Q 지수 공식입니다.`,
-      question: `터널 및 암반 공학에서 암반 평가의 척도로 널리 쓰이는 Barton의 Q 지수 산정 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-    };
-  }
-  
-  // 9. Ultimate Fallback (General)
-  return {
-    formula: `$F.S. = \\frac{R}{S} \\ge F.S._{req}$\n- $F.S.$: 설계 안전율 (Factor of Safety)\n- $R$: 재료 또는 지반의 저항력 (Resistance)\n- $S$: 작용 외력 또는 설계 응력 (Stress)\n- $F.S._{req}$: 허용 한계 요구 안전율`,
-    concept: `공학 실무 설계 시 구조물의 파괴 안정성을 정량 평가하기 위한 기본 허용 안전율 관계식입니다.`,
-    question: `공학 설계의 기초가 되는 허용 안전율(F.S.)의 기본적인 역학 관계 공식을 기술하고, 각 기호의 정의를 서술하시오.`
-  };
-}
-
-// Main Upgraded Fallback Generator Function
-function generateFallbackQuestions(title, keywords, fileText = '') {
-  const cleanTitle = title.toLowerCase();
-
-  // If fileText is empty or too short, we fall back to pre-defined expert templates!
-  const hasValidFileText = fileText && fileText.trim().length > 50;
-
-  if (!hasValidFileText) {
-    console.log("No source file text available or too short. Routing to Pre-defined Expert PE Content.");
-    
-    if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트')) {
-      return getSandMatExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('평사투영') || cleanTitle.includes('평사 투영') || cleanTitle.includes('stereographic') || cleanTitle.includes('stereonet')) {
-      return getStereonetExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('인발') || cleanTitle.includes('인발시험') || cleanTitle.includes('pullout') || cleanTitle.includes('pull-out')) {
-      return getRockboltPulloutTestExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('q 분류') || cleanTitle.includes('q분류') || cleanTitle.includes('q system') || cleanTitle.includes('q-system')) {
-      return getQSystemExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('싱글쉘') || cleanTitle.includes('single shell') || cleanTitle.includes('single_shell')) {
-      return getSingleShellExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('소일내일') || cleanTitle.includes('소일네일') || cleanTitle.includes('soil nail') || cleanTitle.includes('어스앵커') || cleanTitle.includes('어스 앵커') || cleanTitle.includes('earth anchor')) {
-      return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
-    }
-    if (cleanTitle.includes('프란틀') || cleanTitle.includes('prandtl') || cleanTitle.includes('지지력') || cleanTitle.includes('bearing_capacity') || cleanTitle.includes('확대기초') || cleanTitle.includes('확대 기초') || cleanTitle.includes('얕은기초') || cleanTitle.includes('얕은 기초')) {
-      return getPrandtlExpertQuestions(title, keywords);
-    }
-  }
-
-  console.log(`Performing Dynamic Source Document Mining on fileText (${fileText ? fileText.length : 0} chars)`);
-  const features = extractFeaturesFromText(fileText);
-  const domain = features.domain;
-  
-  const userKwList = keywords ? keywords.split(/[,#\s]+/).filter(Boolean) : [];
-  const mergedKw = Array.from(new Set([...userKwList, ...features.extractedKeywords])).slice(0, 6);
-  if (mergedKw.length === 0) {
-    mergedKw.push(title);
-    mergedKw.push('설계 기준');
-    mergedKw.push('공학적 거동');
-  }
-
-  // Parse candidate sentences from cleanText to ensure high quality and uniqueness
-  const cleanTextRaw = fileText.replace(/\s+/g, ' ').trim();
-  const rawSentences = cleanTextRaw.split(/(?<=[.?!])\s+/);
-  
-  const candidates = rawSentences.filter(s => {
-    const len = s.length;
-    if (len < 20 || len > 180) return false;
-    
-    // Check Korean ratio to screen out pure formula or OCR garbage
-    const koreanCharCount = (s.match(/[가-힣]/g) || []).length;
-    if (koreanCharCount / len < 0.25) return false;
-
-    // Filter out rows containing excessive math formulas
-    if ((s.match(/[=+<>*^$]/g) || []).length > 6) return false;
-
-    return (
-      s.endsWith('다.') || s.endsWith('음.') || s.endsWith('함.') || s.endsWith('임.') ||
-      s.endsWith('다') || s.endsWith('음') || s.endsWith('함') || s.endsWith('임') ||
-      s.includes('기반') || s.includes('구조') || s.includes('특징') ||
-      s.includes('공법') || s.includes('방식') || s.includes('설계') ||
-      s.includes('압밀') || s.includes('점토') || s.includes('파괴') || s.includes('시험') ||
-      s.includes('응력') || s.includes('지반') || s.includes('강도') || s.includes('투영') ||
-      s.includes('해석') || s.includes('평가') || s.includes('기준')
-    );
-  }).map(s => s.replace(/\s+\d+\.?\s*$/, '').trim());
-
-  const uniqueCandidates = Array.from(new Set(candidates));
-  if (uniqueCandidates.length < 5) {
-    // If we have very few candidate sentences, add some sentences from the general text or geotech pool
-    rawSentences.forEach(s => {
-      if (s.trim().length > 15 && s.trim().length < 150) {
-        uniqueCandidates.push(s.trim());
-      }
-    });
-  }
-  const finalCandidates = Array.from(new Set(uniqueCandidates));
-
-  // 1. Q1: 주관식 (개요)
-  let q1_term = title;
-  let q1_definition = `[${title}]은/는 ${mergedKw.slice(1, 4).join(', ')} 등의 핵심 물리 요소를 결합하여 공학적 안정성을 규명하고 주요 거동을 통제하기 위해 적용되는 학술적 개념이자 실무 가이드라인입니다.`;
-  
-  if (features.termDefinitions && features.termDefinitions.length > 0) {
-    q1_term = features.termDefinitions[0].term;
-    q1_definition = features.termDefinitions[0].definition;
-  } else if (finalCandidates.length > 0) {
-    q1_term = extractSubjectFromSentence(finalCandidates[0]);
-    q1_definition = finalCandidates[0];
-  }
+// ============================================================================
+// High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
+// This strictly prevents dynamic document mining logic from producing robotic questions.
+// It leverages handcrafted professional civil engineer style templates injected with topic titles.
+// ============================================================================
+function getGeneralGeotechExpertQuestions(title, keywords) {
+  const cleanTitle = title || '지반공학 설계 및 해석';
+  const displayKeywords = keywords ? keywords.split(/[,#\s]+/).filter(Boolean).slice(0, 3).join(', ') : '지반 거동, 역학적 안정성, 설계 기준';
 
   const q1 = {
     type: '주관식 (개요)',
-    question: `본문 자료에 근거하여 [${q1_term}]의 핵심 정의와 대표적인 공학적 역할을 간략히 서술하시오.`,
-    concept: q1_definition,
+    question: `본문 자료에 근거하여 [${cleanTitle}]의 핵심 정의와 지반공학적 설계 및 시공 시 대표적인 역할을 간략히 서술하시오.`,
+    concept: `[${cleanTitle}]은/는 지반 및 토질공학적 안정성을 확보하기 위해 적용되는 설계 가이드라인 및 핵심 시공 메커니즘입니다. 지반의 거동 특성 분석과 물리적 요소(${displayKeywords})의 상호작용을 정량 평가하여, 굴착이나 성토 시 발생 가능한 지중 붕괴 및 침하 등의 잠재 위험 요소를 미연에 방지하고 최적의 공학적 안정 대책을 수립하는 역할을 수행합니다.`,
     formula: '',
     structure: ''
   };
 
-  // 2. Q2: 주관식 (공식)
-  let q2_formula = '';
-  let q2_concept = '';
-  let q2_question = '';
-
-  if (features.extractedFormulas && features.extractedFormulas.length > 0) {
-    const extractedRaw = features.extractedFormulas[0];
-    let cleanExtracted = extractedRaw;
-    if (!cleanExtracted.startsWith('$')) {
-      cleanExtracted = `$${cleanExtracted}$`;
-    }
-    q2_formula = `${cleanExtracted}\n- (위 공식의 각 구성 기호는 본문 문맥의 물리적 파라미터를 의미합니다.)`;
-    q2_concept = `본문 소스에서 직접 검출 및 마이닝된 설계/해석 핵심 공식입니다.`;
-    q2_question = `본문 텍스트에 제시된 핵심 수식 [ ${extractedRaw} ] 에 대하여, 수식을 기재하고 그 공학적 물리 의미 및 각 기호의 뜻을 서술하시오.`;
-  } else {
-    // High-fidelity specific topic formula routing
-    const defaults = getSpecificTopicFormula(title, keywords, domain);
-    q2_formula = defaults.formula;
-    q2_concept = defaults.concept;
-    q2_question = defaults.question;
-  }
-
   const q2 = {
     type: '주관식 (공식)',
-    question: q2_question,
-    concept: q2_concept,
-    formula: q2_formula,
+    question: `[${cleanTitle}] 설계 및 거동 안정성 평가 시 가장 널리 적용되는 공학적 허용 안전율(F.S.)의 기본적인 한계 상태 평형 한계 공식과 지반 공학적 물리 파라미터 간의 상관관계를 서술하시오.`,
+    concept: `지방 또는 토공 구조물의 전단 강도 저항력과 작용 외력(또는 전단 응력) 사이의 역학적 비를 평가하여 파괴에 대한 안정 유무를 정량적으로 규명하는 범용 안전율 상관 관계식입니다.`,
+    formula: `$F.S. = \\frac{\\tau_f}{\\tau_d} \\ge F.S._{req}$\n- $F.S.$: 설계 안전율 (Factor of Safety)\n- $\\tau_f$: 지반의 전단 강도 (Shear Strength, Coulomb의 전단 파괴 기준 식 $c + \\sigma' \\tan\\phi$)\n- $\\tau_d$: 지반에 발생하는 설계 전단 응력 (Design Shear Stress)\n- $F.S._{req}$: 구조물의 한계 조건별 허용 요구 안전율`,
     structure: ''
   };
 
-  // 3. Q3 ~ Q10: 객관식 (4지선다, 8문제)
-  const mcQuestions = [];
-  
-  for (let i = 0; i < 8; i++) {
-    const correctSentence = finalCandidates[i % finalCandidates.length] || 
-      geotechPool[i % geotechPool.length];
-
-    const subject = extractSubjectFromSentence(correctSentence);
-    const dist1 = createGeotechDistractor(correctSentence);
-
-    // Grab two other unique candidate sentences from the same document (or geotechPool if not enough)
-    const otherCandidates = finalCandidates.filter(c => c !== correctSentence);
-    const shuffledOthers = shuffleArray([...otherCandidates, ...geotechPool]);
-    const correctB = shuffledOthers[0];
-    const correctC = shuffledOthers[1];
-
-    let questionText = "";
-    let correctOption = "";
-    let explanationText = "";
-    let options = [];
-
-    if (i % 2 === 0) {
-      // Correct statement question
-      const qTypes = [
-        `다음 중 [${subject}]에 관한 공학적 설명으로 가장 올바른(옳은) 것은?`,
-        `본문 자료에 근거할 때, [${subject}]의 설계 및 공학적 거동 원리에 대한 설명으로 가장 옳은 것은?`,
-        `다음 중 [${subject}]에 대한 기술적 진술로 본문 내용과 부합하는 올바른 것은?`,
-        `다음 중 [${subject}]의 핵심 매커니즘과 역학 관계를 올바르게 서술한 항목은 무엇인가?`
-      ];
-      questionText = qTypes[Math.floor(i / 2) % qTypes.length];
-      correctOption = correctSentence;
-      options = shuffleArray([correctOption, dist1, correctB, correctC]);
-      explanationText = `정답은 "${correctOption}"입니다. 업로드하신 소스 본문 내용에 근거할 때, [${subject}]에 대한 전공 기술적 진술은 이 설명과 정확히 부합합니다. 다른 보기들은 지반공학 역학 개념을 왜곡하거나 반대로 기술한 오답입니다.`;
-    } else {
-      // Incorrect statement question
-      const qTypes = [
-        `다음 중 [${subject}]에 관한 공학적 진술로 가장 적절하지 않은(틀린) 것은?`,
-        `본문 자료에 제시된 [${subject}] 시공/설계 시 고려해야 할 사항으로 가장 적절하지 않은(틀린) 것은?`,
-        `다음 중 [${subject}]의 역학적 거동 및 세부 기준에 대한 진술로 공학적으로 틀린 설명은?`,
-        `다음 중 [${subject}]에 관련한 서술 중 실무 설계 기준이나 물리 원리에 위배되는 오답은?`
-      ];
-      questionText = qTypes[Math.floor(i / 2) % qTypes.length];
-      correctOption = dist1;
-      options = shuffleArray([correctOption, correctSentence, correctB, correctC]);
-      explanationText = `정답은 "${correctOption}"입니다. 이 지문은 [${subject}]에 관한 공학적 설계 조건 및 거동 원리(증가/감소, 비례/반비례 등)를 정반대로 꼬아 오답을 작성한 형태입니다. 나머지 보기들은 업로드하신 교재 소스 본문에서 발췌한 100% 올바른 서술들입니다.`;
-    }
-
-    mcQuestions.push({
+  const mcQuestions = [
+    {
       type: '객관식 (4지선다)',
-      question: questionText,
-      options: options,
-      answer: correctOption,
-      explanation: explanationText
-    });
-  }
+      question: `[${cleanTitle}] 설계 및 해석 과정에서 지반 전단 강도 특성을 반영할 때, Mohr-Coulomb 파괴 기준에서 정의하는 주요 전단 역학 파라미터 조건으로 가장 올바른(옳은) 것은?`,
+      options: shuffleArray([
+        `지반의 전단 강도는 점착력($c$)과 유효 수직 응력($\\sigma'$), 그리고 흙의 내부 마찰각($\\phi$)의 공학적 조합으로 결정된다.`,
+        `지반의 전단 강도는 점착력($c$)과 무관하게 항상 전응력 조건 하에서만 일정하게 유지된다.`,
+        `흙의 전단 파괴면은 최대 주응력이 작용하는 면과 정확히 $90^\\circ$ 수직을 이루는 방향으로 발달한다.`,
+        `내부 마찰각($\\phi$)이 클수록 전단 저항 강도는 급격히 저하되며 펀칭 전단 파괴 거동이 지배적으로 발생한다.`
+      ]),
+      answer: `지반의 전단 강도는 점착력($c$)과 유효 수직 응력($\\sigma'$), 그리고 흙의 내부 마찰각($\\phi$)의 공학적 조합으로 결정된다.`,
+      explanation: `Mohr-Coulomb의 강도식 $\\tau_f = c + \\sigma' \\tan\\phi$에 근거할 때, 지반의 전단 강도는 점착 강도와 유효 응력에 마찰 저항 계수를 곱한 항의 결합으로 정의되는 것이 정교한 지반공학 표준 이론입니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}] 공법을 실제 현장에 시공하거나 검토할 때, 공학적 안정성 및 시공 품질을 확보하기 위해 최우선으로 분석해야 할 사항으로 가장 적절하지 않은(틀린) 것은?`,
+      options: shuffleArray([
+        `지반 거동 안정성 향상을 위해 간극수압을 인위적으로 급격히 상승시켜 지반 내부의 유효응력을 원천적으로 소멸시킨다.`,
+        `원지반 지층 분포 현황과 토질 구성 요소를 파악하기 위해 체계적인 지반 조사 및 실내 토질 시험 데이터를 취득해야 한다.`,
+        `지하수의 분포 현황과 침투류 거동 특성을 파악하여 침투압 및 유출 속도가 보일링(Boiling) 임계치에 도달하지 않도록 통제해야 한다.`,
+        `구조물 하중 배치를 체계적으로 분석하고 기초 지반에 발생하는 접지압 분포 특성을 면밀히 정량 평가하여 상호 검증해야 한다.`
+      ]),
+      answer: `지반 거동 안정성 향상을 위해 간극수압을 인위적으로 급격히 상승시켜 지반 내부의 유효응력을 원천적으로 소멸시킨다.`,
+      explanation: `간극수압이 급격히 상승하게 되면 테르자기 유효응력 공식 $\\sigma' = \\sigma - u$에 따라 유효응력이 감소하여 지반 전단 강도가 상실(붕괴 유발)되므로, 실제 현장에서는 간극수압을 신속히 배출하거나 배수를 통해 통제해야 안전합니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}]의 구조물 거동 변형 해석 시 지반 및 지층 경계면의 마찰 저항 계수와 경계면 강도 저하 현상에 대한 공학적 설명으로 올바른 진술은?`,
+      options: shuffleArray([
+        `구조체와 지반의 접합 경계면 전단 강도는 통상 주변 원지반 자체의 순수 전단 강도보다 다소 낮게 평가하여 보수적으로 설계한다.`,
+        `접합부 경계면 마찰각은 언제나 흙 자체의 파괴 내부 마찰각보다 2배 이상 현저하게 큰 값을 적용하는 것이 원칙이다.`,
+        `경계면 강도 저하 계수(Reduction Factor)를 크게 반영할수록 구조물의 설계 허용 안전율이 불합리하게 지나쳐 과대 평가된다.`,
+        `경계면의 상대 미끄러짐 마찰 저항은 구조물이 완전 밀착 일체 거동을 보일 때 마찰 손실이 완전히 0이 되는 무한대 강도를 갖는다.`
+      ]),
+      answer: `구조체와 지반의 접합 경계면 전단 강도는 통상 주변 원지반 자체의 순수 전단 강도보다 다소 낮게 평가하여 보수적으로 설계한다.`,
+      explanation: `구조체와 지반 접합 경계면은 불연속 거동 특성상 마찰 저항력이 흙 자체보다 떨어지기 때문에, 강도 저감 계수(Reduction factor, 약 0.67~0.8)를 적용해 원지반 강도보다 다소 낮추어 안전 설계를 진행하는 것이 정교한 기술사 표준 원칙입니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}] 거동 시 침수 혹은 투수성 지반 환경에서 지하수의 상향 침투류 흐름이 발생할 때 우려되는 분사(Boiling) 현상의 유발 역학적 한계 조건에 대한 설명으로 옳은 것은?`,
+      options: shuffleArray([
+        `지반 내부의 유출 상향 동수경사($i$)가 흙의 고유 임계동수경사($i_{cr}$)에 근접하거나 초과할 때 유효응력이 소성 상실되며 발생한다.`,
+        `상향 동수경사가 급격히 하락하여 지하수 흐름이 완전 정지될 때 지반 붕괴와 동수 압력이 극대화되어 일어난다.`,
+        `지반 내부의 점착력 강도 지표가 무한대로 증가하여 흙 입자가 물속에서 완전 분산 결합할 때 보일링이 활성화된다.`,
+        `상향 유출 속도가 원지반 투수 계수의 역수보다 100배 이상 작아져 흐름이 완전 층류일 때 보일링 현상이 지배적이다.`
+      ]),
+      answer: `지반 내부의 유출 상향 동수경사($i$)가 흙의 고유 임계동수경사($i_{cr}$)에 근접하거나 초과할 때 유효응력이 소성 상실되며 발생한다.`,
+      explanation: `상향 침투 수압에 의한 동수경사가 임계동수경사 $i_{cr} = (G_s - 1)/(1 + e)$를 초과하게 되면 지반 유효응력이 0이 되어 지반이 액체 상태처럼 지지력을 완전히 잃는 Boiling 현상이 일어납니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}] 설계 및 거동 제어 실무에서 현장 지반 강성 확보를 목적으로 다짐(Compaction)이나 그라우팅(Grouting) 공법을 수행할 때의 공학적 매커니즘으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        `느슨한 사질 지반에 다짐 에너지를 가할 경우 흙의 간극비를 급격히 증대시켜 지반 투수율을 한계 기준치 이상으로 끌어올린다.`,
+        `다짐을 철저히 수행하면 흙 입자의 배열이 긴밀해져 내부 마찰 저항이 발현되고 전단 전면 강도가 대폭 확보된다.`,
+        `차수 또는 보강 그라우팅 시 주입재의 고압 침투를 유도하여 지반 불연속면을 치밀하게 메워주고 투수 능력을 극적으로 차단한다.`,
+        `점성토층의 안정성 강화를 위해서는 과도한 순간 다짐보다 연직 배수재를 병용 타설하여 단계적으로 배수 밀도를 높이는 압밀 촉진이 유효하다.`
+      ]),
+      answer: `느슨한 사질 지반에 다짐 에너지를 가할 경우 흙의 간극비를 급격히 증대시켜 지반 투수율을 한계 기준치 이상으로 끌어올린다.`,
+      explanation: `지반 다짐 공법은 흙 속의 공기 또는 간극수를 배출해 간극비($e$)를 '감소' 시켜 밀도를 최대화하고 강도를 극대화하는 원리이므로, 간극비를 증대시킨다는 진술은 지반공학 역학에 완전히 위배되는 오류입니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}]의 구조 안정 해석 및 수치 해석 모델링 시 한계상태설계법(LSD)과 허용응력설계법(ASD)의 차이에 대한 공학적 진술로 올바른 설명은?`,
+      options: shuffleArray([
+        `허용응력설계법은 작용 응력이 재료 극한 강도를 허용 안전율로 나눈 허용응력 한계치 이하에 도달하도록 단일 강도 안전 매개변수로 평가한다.`,
+        `한계상태설계법은 오직 단치 성토 자중 조건만을 무한히 고려하므로 복합 설계 하중 조합 계수를 일절 적용하지 않는 점이 특징이다.`,
+        `허용응력설계법은 지반의 불균질한 재료 저항과 외부 불확실한 다각 하중 계수를 각각의 고유 저감 계수로 분리 산정하여 최적화한다.`,
+        `두 설계 철학의 궁극적 지향점은 상이하며, 한계상태설계법의 수치해석 안정성은 언제나 구조의 파괴를 0% 방지하는 극한 조건만 보증한다.`
+      ]),
+      answer: `허용응력설계법은 작용 응력이 재료 극한 강도를 허용 안전율로 나눈 허용응력 한계치 이하에 도달하도록 단일 강도 안전 매개변수로 평가한다.`,
+      explanation: `허용응력설계법은 극한 강도 파괴 기준에 통합 안전율 $F.S.$를 대입하여 설계 기준 응력 이내로 통제하는 단순 정형적 체계를 취하며, 하중계수와 저항계수를 개별 분리 적용하는 한계상태설계법(LSD)과 구별됩니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}] 실무 설계 및 안정성 모니터링 과정에서 현장에 계측기(Instrumentation)를 배치하여 분석할 때 계측 시스템 운용의 기술사적 목적으로 타당하지 않은 진술은?`,
+      options: shuffleArray([
+        `계측 결과 데이터가 예상 허용치를 무단 초과하더라도 시공 속도를 무조건 가속화하여 계측 센서 내부의 물리 응력을 소멸시킨다.`,
+        `실제 시공 단계에서 지중 변위 및 지하수압 분포 추이를 실시간 모니터링하여 예상 거동과 설계 예측치를 적시 비교 검증한다.`,
+        `지반 굴착 및 구조 성토에 의해 인접 구조물에 미치는 영향(배면 침하, 경사 변형)을 조기에 포착해 안전사고를 사전 예방한다.`,
+        `역해석(Back Analysis) 기법을 병용해 시공 중 파악된 실제 계측 값을 바탕으로 지반 역학 물성치를 정밀 재보정하여 최적 설계를 검증한다.`
+      ]),
+      answer: `계측 결과 데이터가 예상 허용치를 무단 초과하더라도 시공 속도를 무조건 가속화하여 계측 센서 내부의 물리 응력을 소멸시킨다.`,
+      explanation: `시공 중 계측치 데이터가 허용 한계를 초과하면 급격한 붕괴나 지반 파괴의 경고이므로, 즉각 작업을 정지하고 원인 분석 및 배면 보강, 차수벽 그라우팅 등의 안전 대책을 수립해야 하며 속도를 가속화한다는 진술은 극히 위험하고 불합리한 처사입니다.`
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `[${cleanTitle}]의 장기적 변형 및 압밀(Consolidation) 현상에 대한 토질공학적 안정 평가 시 점성토층 지반 거동 원리와 부합하는 올바른(옳은) 설명은?`,
+      options: shuffleArray([
+        `포화 점성토 지반에 성토 하중이 가해지면 초기에는 하중을 간극수가 모두 부담(과잉간극수압 상승)하며, 시간이 지남에 따라 점진적으로 배출되어 유효응력으로 전이된다.`,
+        `포화 점성토의 압밀 거동은 모래 지반의 탄성 변형 속도와 완벽히 동일하여 하중 재하 즉시 100% 압밀 침하가 완전 종료된다.`,
+        `압밀계수($C_v$)가 극대 수준으로 작을수록 지반 내의 배수 유동 경로가 비약적으로 차단되어 압밀 소요 시간 또한 극단적으로 하락한다.`,
+        `일차 압밀 변형이 완전히 해소된 직후에는 흙의 장기 변동이 없으므로 이차 크리프 변형률을 0으로 강제 환산 평가하는 설계 기준이 통상적이다.`
+      ]),
+      answer: `포화 점성토 지반에 성토 하중이 가해지면 초기에는 하중을 간극수가 모두 부담(과잉간극수압 상승)하며, 시간이 지남에 따라 점진적으로 배출되어 유효응력으로 전이된다.`,
+      explanation: `테르자기 압밀 원리에 따라, 투수 계수가 낮은 포화 점성토층은 외부 하중 작용 시 초기에 물이 압축력을 100% 부담하여 과잉간극수압이 발생하고, 장기적인 미세 배수가 진척되면서 비로소 간극수압이 감쇠하고 흙 입자에 압축 유효응력이 가해져 침하(압밀)가 진행되는 것이 명확한 물리적 팩트입니다.`
+    }
+  ];
 
   return [q1, q2, ...mcQuestions];
+}
+
+// ============================================================================
+// Core Routing Fallback Generator - 100% Precision Topic Routing
+// Stage 1: Strict Title-First Strategy
+// Stage 2: Secondary Keyword-Match Strategy
+// ============================================================================
+function generateFallbackQuestions(title, keywords, fileText = '') {
+  const cleanTitle = (title || '').toLowerCase();
+  const cleanKeywords = (keywords || '').toLowerCase();
+
+  console.log(`[Precision Router] Routing fallback questions for topic: "${title}" (keywords: "${keywords || ''}")`);
+
+  // ==========================================
+  // STAGE 1: Strict Title-First Routing
+  // ==========================================
+  
+  // 1. Q-System / Q분류 (암반 분류)
+  if (
+    cleanTitle.includes('q 분류') || 
+    cleanTitle.includes('q분류') || 
+    cleanTitle.includes('q system') || 
+    cleanTitle.includes('q-system') || 
+    cleanTitle.includes('barton') ||
+    cleanTitle.includes('바톤')
+  ) {
+    console.log("-> Routed (Strict Title) to Q-System Expert-Grade Questions.");
+    return getQSystemExpertQuestions(title, keywords);
+  }
+
+  // 2. Sand Mat (샌드매트)
+  if (
+    cleanTitle.includes('sand mat') || 
+    cleanTitle.includes('샌드매트') || 
+    cleanTitle.includes('샌드 매트') || 
+    cleanTitle.includes('sandmat')
+  ) {
+    console.log("-> Routed (Strict Title) to Sand Mat Expert-Grade Questions.");
+    return getSandMatExpertQuestions(title, keywords);
+  }
+
+  // 3. Stereographic Projection (평사투영)
+  if (
+    cleanTitle.includes('평사투영') || 
+    cleanTitle.includes('평사 투영') || 
+    cleanTitle.includes('stereographic') || 
+    cleanTitle.includes('stereonet') ||
+    cleanTitle.includes('평사')
+  ) {
+    console.log("-> Routed (Strict Title) to Stereographic Projection Expert-Grade Questions.");
+    return getStereonetExpertQuestions(title, keywords);
+  }
+
+  // 4. Rockbolt Pull-out Test (락볼트 인발시험)
+  if (
+    cleanTitle.includes('인발') || 
+    cleanTitle.includes('인발시험') || 
+    cleanTitle.includes('pullout') || 
+    cleanTitle.includes('pull-out') ||
+    cleanTitle.includes('락볼트 인발') ||
+    cleanTitle.includes('인발 시험')
+  ) {
+    console.log("-> Routed (Strict Title) to Rockbolt Pull-out Test Expert-Grade Questions.");
+    return getRockboltPulloutTestExpertQuestions(title, keywords);
+  }
+
+  // 5. Single Shell Tunnel / 싱글쉘
+  if (
+    cleanTitle.includes('싱글쉘') || 
+    cleanTitle.includes('single shell') || 
+    cleanTitle.includes('single_shell') || 
+    cleanTitle.includes('싱글 쉘') ||
+    cleanTitle.includes('sst') ||
+    cleanTitle.includes('더블쉘')
+  ) {
+    console.log("-> Routed (Strict Title) to Single Shell Tunnel Expert-Grade Questions.");
+    return getSingleShellExpertQuestions(title, keywords);
+  }
+
+  // 6. Soil Nailing / Earth Anchor (소일네일/어스앵커)
+  if (
+    cleanTitle.includes('소일내일') || 
+    cleanTitle.includes('소일네일') || 
+    cleanTitle.includes('soil nail') || 
+    cleanTitle.includes('어스앵커') || 
+    cleanTitle.includes('어스 앵커') || 
+    cleanTitle.includes('earth anchor') ||
+    cleanTitle.includes('네일') ||
+    cleanTitle.includes('앵커')
+  ) {
+    console.log("-> Routed (Strict Title) to Soil Nailing & Earth Anchor Expert-Grade Questions.");
+    return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
+  }
+
+  // 7. Prandtl's Bearing Capacity / Terzaghi / Spread Footing (프란틀/테르자기 지지력, 확대기초 아래 흙)
+  if (
+    cleanTitle.includes('프란틀') || 
+    cleanTitle.includes('prandtl') || 
+    cleanTitle.includes('지지력') || 
+    cleanTitle.includes('bearing') || 
+    cleanTitle.includes('확대기초') || 
+    cleanTitle.includes('확대 기초') || 
+    cleanTitle.includes('얕은기초') || 
+    cleanTitle.includes('얕은 기초') ||
+    cleanTitle.includes('테르자기') ||
+    cleanTitle.includes('terzaghi') ||
+    cleanTitle.includes('흙의 거동') ||
+    cleanTitle.includes('확대기초 아래') ||
+    cleanTitle.includes('기초 아래 흙')
+  ) {
+    console.log("-> Routed (Strict Title) to Prandtl & Terzaghi Bearing Capacity Expert-Grade Questions.");
+    return getPrandtlExpertQuestions(title, keywords);
+  }
+
+  // ==========================================
+  // STAGE 2: Secondary Broad Match with Keywords
+  // ==========================================
+
+  // 1. Q-System / Q분류
+  if (
+    cleanKeywords.includes('q 분류') || 
+    cleanKeywords.includes('q분류') || 
+    cleanKeywords.includes('q system') || 
+    cleanKeywords.includes('q-system') || 
+    cleanKeywords.includes('barton') ||
+    cleanKeywords.includes('바톤')
+  ) {
+    console.log("-> Routed (Keyword Match) to Q-System Expert-Grade Questions.");
+    return getQSystemExpertQuestions(title, keywords);
+  }
+
+  // 2. Sand Mat (샌드매트)
+  if (
+    cleanKeywords.includes('sand mat') || 
+    cleanKeywords.includes('샌드매트') || 
+    cleanKeywords.includes('샌드 매트') || 
+    cleanKeywords.includes('sandmat')
+  ) {
+    console.log("-> Routed (Keyword Match) to Sand Mat Expert-Grade Questions.");
+    return getSandMatExpertQuestions(title, keywords);
+  }
+
+  // 3. Stereographic Projection (평사투영)
+  if (
+    cleanKeywords.includes('평사투영') || 
+    cleanKeywords.includes('평사 투영') || 
+    cleanKeywords.includes('stereographic') || 
+    cleanKeywords.includes('stereonet') ||
+    cleanKeywords.includes('평사')
+  ) {
+    console.log("-> Routed (Keyword Match) to Stereographic Projection Expert-Grade Questions.");
+    return getStereonetExpertQuestions(title, keywords);
+  }
+
+  // 4. Rockbolt Pull-out Test (락볼트 인발시험)
+  if (
+    cleanKeywords.includes('인발') || 
+    cleanKeywords.includes('인발시험') || 
+    cleanKeywords.includes('pullout') || 
+    cleanKeywords.includes('pull-out') ||
+    cleanKeywords.includes('락볼트 인발') ||
+    cleanKeywords.includes('인발 시험')
+  ) {
+    console.log("-> Routed (Keyword Match) to Rockbolt Pull-out Test Expert-Grade Questions.");
+    return getRockboltPulloutTestExpertQuestions(title, keywords);
+  }
+
+  // 5. Single Shell Tunnel / 싱글쉘
+  if (
+    cleanKeywords.includes('싱글쉘') || 
+    cleanKeywords.includes('single shell') || 
+    cleanKeywords.includes('single_shell') || 
+    cleanKeywords.includes('싱글 쉘') ||
+    cleanKeywords.includes('sst') ||
+    cleanKeywords.includes('더블쉘')
+  ) {
+    console.log("-> Routed (Keyword Match) to Single Shell Tunnel Expert-Grade Questions.");
+    return getSingleShellExpertQuestions(title, keywords);
+  }
+
+  // 6. Soil Nailing / Earth Anchor
+  if (
+    cleanKeywords.includes('소일내일') || 
+    cleanKeywords.includes('소일네일') || 
+    cleanKeywords.includes('soil nail') || 
+    cleanKeywords.includes('어스앵커') || 
+    cleanKeywords.includes('어스 앵커') || 
+    cleanKeywords.includes('earth anchor') ||
+    cleanKeywords.includes('네일') ||
+    cleanKeywords.includes('앵커')
+  ) {
+    console.log("-> Routed (Keyword Match) to Soil Nailing & Earth Anchor Expert-Grade Questions.");
+    return getSoilNailingEarthAnchorExpertQuestions(title, keywords);
+  }
+
+  // 7. Prandtl's Bearing Capacity / Terzaghi / Spread Footing
+  if (
+    cleanKeywords.includes('프란틀') || 
+    cleanKeywords.includes('prandtl') || 
+    cleanKeywords.includes('지지력') || 
+    cleanKeywords.includes('bearing') || 
+    cleanKeywords.includes('확대기초') || 
+    cleanKeywords.includes('확대 기초') || 
+    cleanKeywords.includes('얕은기초') || 
+    cleanKeywords.includes('얕은 기초') ||
+    cleanKeywords.includes('테르자기') ||
+    cleanKeywords.includes('terzaghi') ||
+    cleanKeywords.includes('흙의 거동') ||
+    cleanKeywords.includes('확대기초 아래') ||
+    cleanKeywords.includes('기초 아래 흙')
+  ) {
+    console.log("-> Routed (Keyword Match) to Prandtl & Terzaghi Bearing Capacity Expert-Grade Questions.");
+    return getPrandtlExpertQuestions(title, keywords);
+  }
+
+  // 8. Ultimate High-Quality Fallback for other Topics
+  console.log("-> No matching core topic. Routed to Ultimate High-Quality Geotechnical Expert Questions.");
+  return getGeneralGeotechExpertQuestions(title, keywords);
 }
 
 export { generateFallbackQuestions };
