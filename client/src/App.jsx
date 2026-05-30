@@ -151,6 +151,15 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     parts.push({ type: 'text', content: afterText });
   }
 
+  // 제일 밑(마지막) $$ ... $$ 블록 공식의 인덱스를 찾습니다.
+  let lastMathBlockIdx = -1;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].type === 'math-block') {
+      lastMathBlockIdx = i;
+      break;
+    }
+  }
+
   // 각 파트별 렌더링
   return (
     <div className={`${className} space-y-3`}>
@@ -174,8 +183,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
                 className="flex-grow overflow-x-auto flex justify-center py-2 min-w-0" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-              {/* 우측 추가 버튼 */}
-              {onAddFormula && (
+              {/* 우측 추가 버튼 (제일 밑 공식만 퀴즈 추가 버튼 표시) */}
+              {onAddFormula && idx === lastMathBlockIdx && (
                 <button
                   onClick={() => onAddFormula(part.content)}
                   className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
