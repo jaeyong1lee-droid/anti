@@ -245,7 +245,10 @@ function extractJsonArray(str) {
  * 모델 순서: gemini-3.5-flash → gemini-2.5-flash → gemini-2.0-flash
  */
 async function callLLMWithFailover(systemInstruction, userPrompt) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY || 
+                       process.env.GEMINI_API_KEY_SECONDARY || 
+                       process.env.GEMINI_API_KEY_TERTIARY || 
+                       '';
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY가 설정되어 있지 않습니다.');
   }
