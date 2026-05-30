@@ -1564,7 +1564,7 @@ export default function App() {
                         </div>
 
                         {/* Question Text */}
-                        <div className="text-sm font-bold text-white leading-relaxed">
+                        <div className="text-[17px] font-bold text-white leading-relaxed">
                           <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
                         </div>
 
@@ -1572,7 +1572,7 @@ export default function App() {
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ";
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ";
                               if (!answered) {
                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
                               } else if (opt === q.answer) {
@@ -1597,7 +1597,7 @@ export default function App() {
                               );
                             })}
                             {answered && (
-                              <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                              <div className={`mt-2 p-3 rounded-xl text-sm leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                                 {!isCorrect && (
                                   <span className="ml-2 inline-flex items-center gap-1">
@@ -1620,7 +1620,7 @@ export default function App() {
                                   ) : (
                                     <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
                                       <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                      <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
                                         <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
                                       </div>
                                     </div>
@@ -1646,23 +1646,23 @@ export default function App() {
                               {q.concept && (
                                 <div className="space-y-1">
                                   <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
                                 </div>
                               )}
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
                                 </div>
                               )}
                               {q.structure && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
-                                  <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
                                 </div>
                               )}
                               {!q.concept && !q.formula && !q.structure && (
-                                <div className="text-xs text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} /></div>
                               )}
 
                               {/* Detailed Answer Button */}
@@ -1679,7 +1679,7 @@ export default function App() {
                                 ) : (
                                   <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
                                     <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
                                       <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
                                     </div>
                                   </div>
@@ -1759,7 +1759,7 @@ export default function App() {
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-xs leading-relaxed ${
+                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed ${
                         msg.role === 'user'
                           ? 'bg-indigo-600 text-white rounded-br-sm'
                           : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'
@@ -1789,7 +1789,7 @@ export default function App() {
                     onChange={e => setChatInput(e.target.value)}
                     placeholder="기술사 용어나 개념 질문..."
                     disabled={isChatLoading}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-3 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
                   />
                   <button
                     type="submit"
@@ -1965,7 +1965,7 @@ export default function App() {
                       </div>
 
                       {/* Question Text */}
-                      <div className="text-sm font-bold text-white leading-relaxed">
+                      <div className="text-[17px] font-bold text-white leading-relaxed">
                         <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
                       </div>
 
@@ -1973,7 +1973,7 @@ export default function App() {
                       {isMC && (
                         <div className="space-y-2">
                           {q.options?.map((opt, oIdx) => {
-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ";
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ";
                             if (!answered) {
                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
                             } else if (opt === q.answer) {
@@ -1998,7 +1998,7 @@ export default function App() {
                             );
                           })}
                           {answered && (
-                            <div className={`mt-2 p-3 rounded-xl text-xs leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                            <div className={`mt-2 p-3 rounded-xl text-sm leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && (
                                 <span className="ml-2 inline-flex items-center gap-1">
@@ -2023,7 +2023,7 @@ export default function App() {
                                 ) : (
                                   <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
                                     <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-sm">
+                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-base">
                                       <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
                                     </div>
                                     {detailedAnswers[idx].error && (
@@ -2049,7 +2049,7 @@ export default function App() {
                         ) : (
                           <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
                             <div className="text-[11px] font-black text-amber-400">📝 모범 답안</div>
-                            <div className="text-xs text-slate-200 leading-relaxed">
+                            <div className="text-sm text-slate-200 leading-relaxed">
                               <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} />
                             </div>
                             {q.concept && (
@@ -2075,7 +2075,7 @@ export default function App() {
                               ) : (
                                 <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
                                   <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                  <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-sm">
+                                  <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-base">
                                     <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
                                   </div>
                                   {detailedAnswers[idx].error && (
