@@ -262,7 +262,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 5월 30일 업그레이드 완료된 다중 API 키 순환, 지수 백오프(Exponential Backoff), 3단계 모델 폴백 시스템
  * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
-async function callLLMWithFailover(systemInstruction, userPrompt) {
+async function callLLMWithFailover(systemInstruction, userPrompt, image = null) {
   const keys = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_SECONDARY,
@@ -439,7 +439,21 @@ async function callLLMWithFailover(systemInstruction, userPrompt) {
               model: modelName,
               systemInstruction: systemInstruction || undefined
             });
-            const result = await model.generateContent(userPrompt);
+            
+            let generateContentArg = userPrompt;
+            if (image && image.data && image.mimeType) {
+              generateContentArg = [
+                userPrompt,
+                {
+                  inlineData: {
+                    mimeType: image.mimeType,
+                    data: image.data
+                  }
+                }
+              ];
+            }
+            
+            const result = await model.generateContent(generateContentArg);
             const text = result.response.text().trim();
             if (text) {
               console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
@@ -2568,7 +2582,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 // 6-3. Freeform Chat Search
 app.post('/api/chat', async (req, res) => {
   try {
-    const { history, message } = req.body;
+    const { history, message, image } = req.body;
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -2594,7 +2608,7 @@ app.post('/api/chat', async (req, res) => {
 
     try {
       const systemInstruction = "당신은 국가기술자격 기술사 시험을 돕는 전문 튜터입니다. 사용자의 질문에 대해 기술사 시험 수준의 전문 용어를 사용하여 명확하고 구조적으로 답변해주세요. 수식은 LaTeX 형식으로 작성해주세요.";
-      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt);
+      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
       res.json({ text: responseText });
     } catch (err) {
       console.error('Chat route error:', err);
