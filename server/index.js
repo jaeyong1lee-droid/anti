@@ -5,6 +5,7 @@ import pdfParse from 'pdf-parse';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initDatabase, dbQuery } from './database.js';
+import { generateFallbackQuestions as generateFallbackQuestionsModule } from './fallback_generator.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1314,7 +1315,8 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
 
 // Helper function to generate technical and high-quality PE questions locally (Dynamic domain-agnostic fallback)
 function generateFallbackQuestions(title, keywords, fileText = '') {
-  const cleanTitle = title.toLowerCase();
+  return generateFallbackQuestionsModule(title, keywords, fileText);
+}
 
   // Route to Expert Built-in Review Content if matching keyword is detected strictly in the TITLE!
   if (cleanTitle.includes('sand mat') || cleanTitle.includes('샌드매트') || cleanTitle.includes('샌드 매트')) {
