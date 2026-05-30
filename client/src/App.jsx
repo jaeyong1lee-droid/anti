@@ -230,7 +230,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           const activeLines = textLines.filter(line => line.trim() !== '');
 
           return (
-            <div key={idx} className="space-y-1 select-text">
+            <div key={idx} className="select-text">
               {activeLines.map((line, lIdx) => {
                 const cleanLine = line.trim();
                 // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
@@ -240,7 +240,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
                   return (
                     <div 
                       key={lIdx}
-                      className="mt-5 mb-2.5 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text"
+                      className={`${lIdx === 0 ? 'pt-2' : 'pt-6'} pb-2 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text block`}
                       dangerouslySetInnerHTML={{ __html: line }}
                     />
                   );
@@ -249,7 +249,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
                 return (
                   <div 
                     key={lIdx}
-                    className="text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text"
+                    className="py-0.5 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text block"
                     dangerouslySetInnerHTML={{ __html: line }}
                   />
                 );
