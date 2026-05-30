@@ -817,7 +817,135 @@ export default function App() {
     }
   };
 
-  // Open Essential Formulas Exam (subjective only)
+  // 필수공식 타이틀/지문 정화 및 콤팩트 규격화 함수
+  const normalizeAndCompactifyFormulas = (formulas) => {
+    if (!Array.isArray(formulas)) return [];
+    return formulas.map(f => {
+      let title = f.title || "";
+      
+      // 1. JSON 깨짐 버그 데이터 정화 ({ "title": "..." } 형태 등)
+      if (title.includes('{') || title.includes('"title"')) {
+        const titleMatch = title.match(/"title"\s*:\s*"([^"]+)"/);
+        if (titleMatch && titleMatch[1]) {
+          title = titleMatch[1];
+        } else {
+          title = title.replace(/[{}\[\]"']/g, '').replace(/title\s*:\s*/g, '').trim();
+        }
+      }
+      
+      title = title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim();
+
+      // 2. 디폴트 공식 및 기존 공식 타이틀/질문 강제 콤팩트 변환
+      let newTitle = title;
+      let newQuestion = f.question || "";
+
+      const compactMappings = {
+        "Barton의 암반 Q분류": {
+          title: "Barton(바톤)의 암반 Q분류",
+          question: "Barton(바톤)의 암반 Q분류(Q-system) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Barton(바톤)의 암반 Q분류": {
+          title: "Barton(바톤)의 암반 Q분류",
+          question: "Barton(바톤)의 암반 Q분류(Q-system) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Terzaghi 얕은기초 극한 지지력": {
+          title: "Terzaghi(테르자기)의 극한 지지력",
+          question: "Terzaghi(테르자기)의 얕은기초 극한 지지력 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Terzaghi(테르자기)의 극한 지지력": {
+          title: "Terzaghi(테르자기)의 극한 지지력",
+          question: "Terzaghi(테르자기)의 얕은기초 극한 지지력 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "연약지반 Sand Mat 최소 소요 두께": {
+          title: "연약지반 Sand Mat 최소 두께",
+          question: "연약지반 Sand Mat 최소 소요 두께 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "연약지반 Sand Mat 최소 두께": {
+          title: "연약지반 Sand Mat 최소 두께",
+          question: "연약지반 Sand Mat 최소 소요 두께 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "평사투영 극점 변환 반경 (등면적 투영)": {
+          title: "평사투영 Schmidt Net 극점 반경",
+          question: "평사투영 극점 변환 반경(Schmidt Net) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "평사투영 Schmidt Net 극점 반경": {
+          title: "평사투영 Schmidt Net 극점 반경",
+          question: "평사투영 극점 변환 반경(Schmidt Net) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "락볼트 인발시험 설계 지반 고착력": {
+          title: "락볼트(Rock Bolt) 설계 지반 고착력",
+          question: "락볼트 인발시험 지반 고착력 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "락볼트(Rock Bolt) 설계 지반 고착력": {
+          title: "락볼트(Rock Bolt) 설계 지반 고착력",
+          question: "락볼트 인발시험 지반 고착력 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Rankine 주동토압": {
+          title: "랭킹(Rankine)의 주동토압 계수",
+          question: "랭킹(Rankine)의 주동토압 계수 및 강도 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "랭킹(Rankine)의 주동토압 계수": {
+          title: "랭킹(Rankine)의 주동토압 계수",
+          question: "랭킹(Rankine)의 주동토압 계수 및 강도 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "랭킹의 주동토압 계수식": {
+          title: "랭킹(Rankine)의 주동토압 계수",
+          question: "랭킹(Rankine)의 주동토압 계수 및 강도 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Terzaghi 1차원 압밀 지배 미분방정식": {
+          title: "Terzaghi(테르자기)의 1차원 압밀",
+          question: "Terzaghi의 1차원 압밀 기본 지배 미분방정식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "Terzaghi(테르자기)의 1차원 압밀": {
+          title: "Terzaghi(테르자기)의 1차원 압밀",
+          question: "Terzaghi의 1차원 압밀 기본 지배 미분방정식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "보상도 (보상기초 하중 상쇄 비율)": {
+          title: "보상기초(Compensated Foundation) 보상도(C)",
+          question: "보상기초(Compensated Foundation) 설계 시 보상도($C$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "보상기초(Compensated Foundation) 보상도(C)": {
+          title: "보상기초(Compensated Foundation) 보상도(C)",
+          question: "보상기초(Compensated Foundation) 설계 시 보상도($C$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "터널 배면 싱글쉘 정수압 분포 공식": {
+          title: "터널 싱글쉘(Single Shell) 설계 수압",
+          question: "비배수 터널 싱글쉘 라이닝 아치부 설계 정수압($p_w$) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "터널 싱글쉘(Single Shell) 설계 수압": {
+          title: "터널 싱글쉘(Single Shell) 설계 수압",
+          question: "비배수 터널 싱글쉘 라이닝 아치부 설계 정수압($p_w$) 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "가설 흙막이 벽체 지반스프링상수": {
+          title: "가설 흙막이 수평 지반반력계수",
+          question: "가설 흙막이 수평 지반반력계수($k_h$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        },
+        "가설 흙막이 수평 지반반력계수": {
+          title: "가설 흙막이 수평 지반반력계수",
+          question: "가설 흙막이 수평 지반반력계수($k_h$) 산정 공식을 제시하고, 각 기호의 정의를 서술하시오."
+        }
+      };
+
+      if (compactMappings[newTitle]) {
+        newTitle = compactMappings[newTitle].title;
+        newQuestion = compactMappings[newTitle].question;
+      } else {
+        if (newQuestion.includes('설계 시 지반 굴착 하중과 구조물 자중 간의 균형을 계측하는')) {
+          newQuestion = newQuestion.replace('설계 시 지반 굴착 하중과 구조물 자중 간의 균형을 계측하는 ', '설계 시 ');
+        }
+        if (!newQuestion.includes('공식을 제시하고, 각 기호의 정의를 서술하시오.')) {
+          newQuestion = `${newTitle} 공식을 제시하고, 각 기호의 정의를 서술하시오.`;
+        }
+      }
+
+      return {
+        ...f,
+        title: newTitle,
+        question: newQuestion
+      };
+    });
+  };
+
   const handleSaveFormulaQuestions = (qs = formulaQuestions, showToast = true) => {
     try {
       localStorage.setItem('anti_formula_questions', JSON.stringify(qs));
@@ -847,7 +975,9 @@ export default function App() {
       if (savedStr) {
         const parsed = JSON.parse(savedStr);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setFormulaQuestions(parsed);
+          const cleaned = normalizeAndCompactifyFormulas(parsed);
+          setFormulaQuestions(cleaned);
+          localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
           setFormulaRevealed({});
           setLoadingFormula(false);
           return;
