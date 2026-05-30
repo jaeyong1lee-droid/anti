@@ -1069,18 +1069,25 @@ export default function App() {
     try {
       localStorage.setItem('anti_formula_questions', JSON.stringify(qs));
       
-      // Sync with database for cross-device support
-      fetch(`${API_BASE}/api/session/formula`, {
+      // Sync with database for cross-device support (AWAITED to avoid timing issues)
+      const res = await fetch(`${API_BASE}/api/session/formula`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ formulaQuestions: qs })
-      }).catch(dbErr => console.warn('Cross-device formula sync failed:', dbErr));
+      });
+
+      if (!res.ok) {
+        throw new Error('Database sync returned non-OK status');
+      }
 
       if (showToast) {
         showNotification('필수공식 리스트가 성공적으로 저장되었습니다!', 'success');
       }
     } catch (err) {
       console.warn('필수공식 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
     }
   };
 
@@ -1278,18 +1285,25 @@ export default function App() {
     try {
       localStorage.setItem('anti_theory_questions', JSON.stringify(qs));
       
-      // Sync with database for cross-device support
-      fetch(`${API_BASE}/api/session/theory`, {
+      // Sync with database for cross-device support (AWAITED to avoid timing issues)
+      const res = await fetch(`${API_BASE}/api/session/theory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theoryQuestions: qs })
-      }).catch(dbErr => console.warn('Cross-device theory sync failed:', dbErr));
+      });
+
+      if (!res.ok) {
+        throw new Error('Database sync returned non-OK status');
+      }
 
       if (showToast) {
         showNotification('이론유도 리스트가 성공적으로 저장되었습니다!', 'success');
       }
     } catch (err) {
       console.warn('이론유도 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
     }
   };
 
@@ -1419,13 +1433,13 @@ export default function App() {
     requestAnimationFrame(() => {
       if (theorySplitContainerRef.current) theorySplitContainerRef.current.scrollLeft = 0;
     });
-    if (theoryQuestions.length === 0) {
-      await loadTheoryQuestions();
-    } else {
-      requestAnimationFrame(() => {
-        if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
-      });
-    }
+    
+    // Always load the latest synced data from database to ensure multi-device sync
+    await loadTheoryQuestions();
+    
+    requestAnimationFrame(() => {
+      if (theoryBodyRef.current) theoryBodyRef.current.scrollTop = savedTheoryScroll.current;
+    });
   };
 
   const handleOpenFormulaExam = async () => {
@@ -1434,16 +1448,13 @@ export default function App() {
     requestAnimationFrame(() => {
       if (formulaSplitContainerRef.current) formulaSplitContainerRef.current.scrollLeft = 0;
     });
-    if (formulaQuestions.length === 0) {
-      await loadFormulaQuestions();
-    } else {
-      const cleaned = normalizeAndCompactifyFormulas(formulaQuestions);
-      setFormulaQuestions(cleaned);
-      localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
-      requestAnimationFrame(() => {
-        if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;
-      });
-    }
+    
+    // Always load the latest synced data from database to ensure multi-device sync
+    const latest = await loadFormulaQuestions();
+    
+    requestAnimationFrame(() => {
+      if (formulaBodyRef.current) formulaBodyRef.current.scrollTop = savedFormulaScroll.current;
+    });
   };
 
   const handleScrollFormula = (direction) => {
