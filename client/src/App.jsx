@@ -341,6 +341,13 @@ export default function App() {
   const [theorySearchQuery, setTheorySearchQuery] = useState('');
   const [refreshingTheoryIdx, setRefreshingTheoryIdx] = useState(null);
   const [uploadingTheoryPdf, setUploadingTheoryPdf] = useState(false);
+
+  // Theory inline editing states
+  const [editingTheoryIdx, setEditingTheoryIdx] = useState(null);
+  const [editTheoryTitle, setEditTheoryTitle] = useState('');
+  const [editTheoryConcept, setEditTheoryConcept] = useState('');
+  const [editTheoryAssumptions, setEditTheoryAssumptions] = useState('');
+  const [editTheoryFormula, setEditTheoryFormula] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
