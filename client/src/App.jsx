@@ -2831,12 +2831,10 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  handleSaveFormulaQuestions(formulaQuestions, true); // 저장 버튼: 저장 후 닫기
-                  setFormulaSearchQuery('');
-                  setShowFormulaExam(false);
+                  handleSaveFormulaQuestions(formulaQuestions, true); // 저장 버튼: 저장만 하고 닫지는 않음
                 }}
                 className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
-                title="공식 변경사항 저장 및 종료"
+                title="공식 변경사항 실시간 저장"
               >
                 <Save size={13} />
                 저장
