@@ -1683,6 +1683,126 @@ function getLiquefactionExpertQuestions(title, keywords) {
   return [q1, q2, ...mcQuestions];
 }
 
+// Built-in Expert-Grade PE Questions for Compensated Foundation / 보상기초
+function getCompensatedFoundationExpertQuestions(title, keywords) {
+  const q1 = {
+    type: '주관식 (개요)',
+    question: `연약지반 상에 구조물 건설 시 적용하는 보상기초(Compensated Foundation) 공법의 근본적인 하중 상쇄 원리와 설계 목적을 설명하시오.`,
+    concept: `• 하중 상쇄 원리: 구조물 건설로 인해 지반에 가해지는 총 하중(q)을, 구조물 시공을 위해 굴착하여 제거한 흙의 자중($\gamma \cdot D_f$)만큼 상쇄(Compensation)시키는 원리입니다.\n• 설계 목적: 지반에 가해지는 순응력 변화($q_{net} = q - \gamma D_f$)를 0에 가깝게 통제함으로써, 연약점토 지반의 1차 및 2차 압밀 침하량을 획득 가능한 한계 이하로 억제하고 지반의 전단 파괴(지지력 파괴) 리스크를 원천 차단하기 위함입니다.`,
+    formula: '',
+    structure: ''
+  };
+
+  const q2 = {
+    type: '주관식 (공식)',
+    question: `보상기초 설계 시 완전 보상 상태(Fully Compensated)를 만족하기 위한 순압력($q_{net}$) 산정식과 보상도($C$) 공식을 쓰고, 각 기호의 정의를 서술하시오.`,
+    concept: `구조물 자중과 기초 굴착토 자중의 평형 상태 및 보상 비율을 정량적으로 규명하는 기초 공학 설계식입니다.`,
+    formula: `$q_{net} = q - \gamma D_f = 0$\n$C = \\frac{\gamma D_f}{q}$\n- $q_{net}$: 지반이 추가로 받는 순하중 (완전 보상 시 0)\n- $q$: 구조물 및 기초의 총 설계 압력\n- $\\gamma$: 굴착 지반의 평균 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $C$: 보상도 (완전 보상 시 1.0 또는 100% )`,
+    structure: ''
+  };
+
+  const mcQuestions = [
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초 공법을 적용하여 완전 보상($q_{net} = 0$) 설계를 목표로 할 때, 점성토 지반의 압밀 거동 측면에서 기대할 수 있는 공학적 효과로 가장 올바른 것은?`,
+      options: shuffleArray([
+        "굴착 및 시공 후 지반의 연직 순유효응력 변화가 없어 추가적인 압밀 침하가 거의 발생하지 않는다.",
+        "흙의 압밀계수($C_v$)가 무한대로 급증하여 1차 압밀 완료 시간이 단 1초 이내로 단축된다.",
+        "지반 내 흙 입자 사이의 부착 점착력($c$)이 완전히 소멸하여 소성 유동 상태가 유도된다.",
+        "점토의 팽창지수($C_s$)가 압축지수($C_c$)보다 약 10배 이상 커져 기초가 상방으로 1m 이상 지속 부상한다."
+      ]),
+      answer: "굴착 및 시공 후 지반의 연직 순유효응력 변화가 없어 추가적인 압밀 침하가 거의 발생하지 않는다.",
+      explanation: "완전 보상 기초는 시공 후 순응력 변화가 $q_{net} = 0$이 되므로 연직 응력 증가량이 없습니다. 따라서 추가적인 과잉간극수압 상승이 없어 압밀 침하를 원천적으로 통제할 수 있습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초 설계 및 시공 과정에서 점성토 지반 굴착 시 가해지는 응력 해방(Stress Relief)으로 인해 굴착 저면이 상방으로 팽창해 오르는 공학적 리스크 현상의 명칭은 무엇인가?`,
+      options: shuffleArray([
+        "리바운드(Rebound / 저면 히빙 현상)",
+        "액상화(Liquefaction) 슬라이딩",
+        "다이레이턴시(Dilatancy) 체적 수축",
+        "퀵샌드(Quicksand) 분사 거동"
+      ]),
+      answer: "리바운드(Rebound / 저면 히빙 현상)",
+      explanation: "깊은 굴착 시 상부 토사의 자중이 제거되면 하부 지반은 응력 해방으로 인해 탄성 및 소성적으로 부풀어 오르는 '리바운드(Rebound)' 또는 '히빙(Heaving)' 현상이 발생하게 되며, 이는 후속 침하의 원인이 될 수 있습니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초 설계 시 지하수위가 기초 바닥면보다 높게 형성되어 있을 경우, 반드시 검토해야 하는 수리학적/안정성 평가 핵심 항목은 무엇인가?`,
+      options: shuffleArray([
+        "기초 바닥면에 작용하는 양압력(Buoyancy / 부력)에 대한 기초의 부상 안정성 검토",
+        "지하수의 화학적 산소 요구량(COD) 및 수질 오염 유해성 검토",
+        "모래 지반의 표면 장력 소멸에 의한 순간적인 틱소트로피 겔화 검토",
+        "옹벽 배면에 수평으로 작용하는 정지 토압의 완전 소멸 리스크 검토"
+      ]),
+      answer: "기초 바닥면에 작용하는 양압력(Buoyancy / 부력)에 대한 기초의 부상 안정성 검토",
+      explanation: "지하수위 이하로 기초가 깊게 굴착되면 물의 양압력(부력)이 강하게 작용하여 지반 굴착토 중량이 작아진 완전보상기초의 경우 부력에 의해 둥둥 뜨거나 들릴 위험이 있으므로 부상 안정성 검토 및 락앵커(Pull-out anchor) 시공 등의 대책이 필수적입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초 공법을 연약 점토 지반에 설계할 때, 굴착 깊이($D_f$)를 증가시키면 보상도($C$)와 지반의 허용 지지력 성능은 각각 어떻게 변화하는가?`,
+      options: shuffleArray([
+        "보상도($C$)가 증가하며, 지반의 순 허용 지지력 및 전단 안정성 수치도 향상된다.",
+        "보상도($C$)는 일정하게 고정되고, 허용 지지력은 오히려 소성 붕괴 상태로 하락한다.",
+        "보상도($C$)는 급격히 마이너스로 추락하고, 기초의 자중만 50배 커진다.",
+        "굴착 깊이는 지반 지지력 향상에 어떠한 공학적 기여도 하지 못하고 지하수 용출만 100배 촉진한다."
+      ]),
+      answer: "보상도($C$)가 증가하며, 지반의 순 허용 지지력 및 전단 안정성 수치도 향상된다.",
+      explanation: "굴착 깊이($D_f$)가 증가할수록 배제되는 토사 중량($\\gamma D_f$)이 늘어나므로 보상도($C$)가 향상되고, Terzaghi 지지력 공식 상 깊이 항($q = \\gamma D_f$)의 근입 깊이 효과에 따라 기초의 지지 성능과 파괴 안전율 역시 함께 증가하게 됩니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초의 리바운드(Rebound) 팽창량을 최소화하고 연약 지반의 교란을 차단하기 위한 시공 설계 관리 대책으로 가장 적절하지 않은 것은?`,
+      options: shuffleArray([
+        "굴착 후 기초 콘크리트 타설 시까지 굴착 저면을 6개월 이상 방치하여 자연 대기압에 노출시킨다.",
+        "분할 굴착(Step-by-step excavation)을 실시하고 굴착 즉시 버림 콘크리트를 타설하여 지반 노출을 줄인다.",
+        "굴착 도중 웰포인트나 deep well 공법을 병행하여 지하수위를 통제하고 지반의 유효응력을 유지한다.",
+        "굴착 장비의 직접적인 저면 충격 및 점토 교란을 방지하기 위해 마지막 10~20cm는 조심스럽게 인력 굴착한다."
+      ]),
+      answer: "굴착 후 기초 콘크리트 타설 시까지 굴착 저면을 6개월 이상 방치하여 자연 대기압에 노출시킨다.",
+      explanation: "굴착 저면을 장기간 방치하게 되면 공기 노출 및 대기압 해방 상태가 장기화되어 지반 팽창(리바운드)과 교란이 극대화되고 지하수 침투로 연화가 심해지므로, 굴착 즉시 속속들이 버림 콘크리트를 쳐서 지반을 밀봉 구속해야 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `보상기초(Compensated Foundation)를 강성 기초판으로 통합 거동하도록 설계할 때, 얕은 전면 기초 형식 중 구조적으로 가장 많이 활용되는 기초 종류는 무엇인가?`,
+      options: shuffleArray([
+        "전면 매트 기초 (Raft / Mat Foundation)",
+        "독립 주동 확대 기초 (Spread Footing)",
+        "말뚝 복합 띠 기초 (Strip Footing)",
+        "무근 조립식 프리캐스트 기초"
+      ]),
+      answer: "전면 매트 기초 (Raft / Mat Foundation)",
+      explanation: "보상기초는 굴착을 통해 대량의 자중을 상쇄시켜야 하므로 단면적을 넓게 쓰는 전면 매트(Raft) 기초 형식을 결합하여 강성 거동을 유도하는 매트 전면 구조가 가장 표준적입니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `완전 보상($q_{net} = 0$)에 못 미치고 구조물 하중이 굴착토 중량보다 커서 일부 순연직응력 증가가 발생하는 보상기초 설계를 무엇이라 지칭하는가?`,
+      options: shuffleArray([
+        "부분 보상 기초 (Partially Compensated Foundation)",
+        "인장 초과 보상 기초 (Over-compensated Foundation)",
+        "소성 불균형 매트 기초",
+        "비선형 전단 마찰 기초"
+      ]),
+      answer: "부분 보상 기초 (Partially Compensated Foundation)",
+      explanation: "구조물 자중이 굴착 흙 무게보다 커서 어느 정도의 순하중이 발생하는 보상기초를 부분 보상 기초(Partially Compensated)라고 하며, 반대로 흙을 더 많이 파내어 마이너스 순하중을 유도하는 형태를 초과 보상 기초(Over-compensated)라고 합니다."
+    },
+    {
+      type: '객관식 (4지선다)',
+      question: `연약지반용 부분 보상 기초($q_{net} > 0$) 설계 시, 향후 발생할 점토 지반의 압밀 침하량을 계산할 때 기준으로 삼아야 하는 유효 응력 증가량($\\Delta \\sigma'$)의 정량 한계는 무엇인가?`,
+      options: shuffleArray([
+        "구조물 총 설계 압력(q)에서 굴착 깊이까지의 흙 자중($\\gamma D_f$)을 뺀 순 유효응력 증가량($q_{net}$)",
+        "구조물의 연직 총 자중 압력($q$) 전체 크기",
+        "기초 배면의 수평 수동토압($P_p$)의 2배 크기",
+        "지하수위 변동에 따른 모관흡수력 팽창량 전체 값"
+      ]),
+      answer: "구조물 총 설계 압력(q)에서 굴착 깊이까지의 흙 자중($\\gamma D_f$)을 뺀 순 유효응력 증가량($q_{net}$)",
+      explanation: "보상기초 시공 시 실제 지반이 경험하는 실질적인 추가 유효 연직응력 증가량은 총 하중 $q$가 아니라 굴착으로 해방된 자중을 공제한 순하중 $q_{net}$ 입니다. 따라서 압밀 침하량 산정 시 연직 응력 증가량 $\\Delta \\sigma'$은 반드시 순하중 $q_{net}$을 적용하여 계산해야 과도한 설계를 막을 수 있습니다."
+    }
+  ];
+
+  return [q1, q2, ...mcQuestions];
+}
+
 // ============================================================================
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
 // High-Quality General Geotechnical/Soil Engineering Expert Questions (Ultimate Fallback)
@@ -2085,6 +2205,18 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     return getLiquefactionExpertQuestions(title, keywords);
   }
 
+  // 17. Compensated Foundation / 보상기초
+  if (
+    cleanTitle.includes('보상기초') || 
+    cleanTitle.includes('compensated foundation') || 
+    cleanTitle.includes('compensated_foundation') ||
+    cleanTitle.includes('하중 보상') ||
+    cleanTitle.includes('하중보상')
+  ) {
+    console.log("-> Routed (Strict Title) to Compensated Foundation Expert Questions.");
+    return getCompensatedFoundationExpertQuestions(title, keywords);
+  }
+
   // ==========================================================
   // STAGE 2: Secondary Broad Match with Keywords
   // ==========================================
@@ -2344,6 +2476,18 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   ) {
     console.log("-> Routed (Keyword Match) to Liquefaction Expert Questions.");
     return getLiquefactionExpertQuestions(title, keywords);
+  }
+
+  // 17. Compensated Foundation / 보상기초
+  if (
+    cleanKeywords.includes('보상기초') || 
+    cleanKeywords.includes('compensated foundation') || 
+    cleanKeywords.includes('compensated_foundation') ||
+    cleanKeywords.includes('하중 보상') ||
+    cleanKeywords.includes('하중보상')
+  ) {
+    console.log("-> Routed (Keyword Match) to Compensated Foundation Expert Questions.");
+    return getCompensatedFoundationExpertQuestions(title, keywords);
   }
 
   // 10. Ultimate High-Quality Fallback for other Topics
