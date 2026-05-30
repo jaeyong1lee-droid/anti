@@ -946,12 +946,7 @@ export default function App() {
       if (/^\s*[\-\*\d\.]/.test(trimmed)) {
         const colonIdx = trimmed.indexOf(':');
         const dashIdx = trimmed.indexOf('-', 1);
-        let sepIdx = -1;
-        if (colonIdx !== -1 && dashIdx !== -1) {
-          sepIdx = Math.min(colonIdx, dashIdx);
-        } else {
-          sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
-        }
+        const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
         
         if (sepIdx !== -1) {
           const symbolPortion = trimmed.substring(0, sepIdx);
@@ -1012,15 +1007,12 @@ export default function App() {
       const newQuestion = newTitle;
 
       // 3. [보상기초 보상도 공식] 기호 정의 자가 치유 (Self-Healing)
-      // 만약 타이틀이 보상도 공식인데, 기호 정의(formula)에 극한지지력 기호(q_ult, N_c, 지지력 등)가 포함되어 있다면 디폴트 기본 스펙으로 강제 정화!
+      // 만약 타이틀이 보상도 공식이면 디폴트 기본 스펙으로 100% 무조건 강제 정화 및 자가 치유!
       let newFormula = f.formula;
       let newConcept = f.concept;
       if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
-        const textToTest = (f.formula || "") + " " + (f.concept || "");
-        if (textToTest.includes("q_") || textToTest.includes("N_") || textToTest.includes("Nc") || textToTest.includes("점착력") || textToTest.includes("지지력")) {
-          newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
-          newConcept = "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식";
-        }
+        newFormula = "$C = \\frac{\\gamma D_f}{q}$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";
+        newConcept = "구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식";
       }
 
       // 4. 모든 공식 대상 기호정의 자동 정화 (수식에 있는 기호만 표시하도록 강제 필터링!)
