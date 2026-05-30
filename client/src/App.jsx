@@ -254,6 +254,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('dashboard');
   const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
   const [editingFormulaText, setEditingFormulaText] = useState("");
+  const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
   
   // Date selector for easy testing (defaults to today's local date 'YYYY-MM-DD')
   const getTodayString = () => {
@@ -1250,6 +1251,68 @@ export default function App() {
       })
       .catch(err => {
         console.warn('AI 타이틀 추천 반영 실패 (로컬 기본값 보존):', err);
+      });
+  };
+
+  // 필수공식 개별 리프레쉬 (AI 분석 재요청 및 갱신)
+  const handleRefreshFormula = (idx) => {
+    if (idx === null || idx === undefined) return;
+    const q = formulaQuestions[idx];
+    if (!q) return;
+
+    // 수식 본문 내 LaTeX 추출
+    let mathContent = "";
+    const match = q.formula.match(/\$\$(.*?)\$\$/s);
+    if (match) {
+      mathContent = match[1].trim();
+    } else {
+      mathContent = q.formula.replace(/^\$\$|\$\$$/g, '').trim();
+    }
+
+    setRefreshingFormulaIdx(idx);
+    showNotification(`[${q.title || `Q${idx + 1}`}] 공식을 AI가 정밀 분석하여 재생성하고 있습니다...`);
+
+    fetch(`${API_BASE}/api/formula/suggest-title`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mathContent,
+        fullText: `${q.concept || ''}\n${q.formula || ''}`
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.title) {
+          const suggestedTitle = data.title;
+          const suggestedConcept = data.concept;
+          const suggestedStructure = data.structure;
+          setFormulaQuestions(prev => {
+            const updated = prev.map((f, i) => {
+              if (i === idx) {
+                return {
+                  ...f,
+                  title: suggestedTitle,
+                  question: suggestedTitle,
+                  concept: suggestedConcept || f.concept,
+                  formula: suggestedStructure ? `$$${mathContent}$$\n\n${suggestedStructure}` : `$$${mathContent}$$`
+                };
+              }
+              return f;
+            });
+            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+            return updated;
+          });
+          showNotification(`[${suggestedTitle}] 공식의 제목, 핵심개념, 기호정의 분석 갱신이 완료되었습니다!`, 'success');
+        } else {
+          showNotification('공식 재분석 결과가 유효하지 않습니다.', 'error');
+        }
+      })
+      .catch(err => {
+        console.warn('공식 리프레쉬 AI 추천 반영 실패:', err);
+        showNotification('AI 재분석 호출 중 오류가 발생했습니다.', 'error');
+      })
+      .finally(() => {
+        setRefreshingFormulaIdx(null);
       });
   };
 
@@ -2864,28 +2927,46 @@ export default function App() {
                             )}
                           </div>
 
-                          {/* 삭제 버튼 - 동일한 행높이에 배치 */}
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
-                                setFormulaQuestions(prev => {
-                                  const updated = prev.filter((_, i) => i !== idx);
-                                  localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                                  return updated;
-                                });
-                                setFormulaRevealed(prev => {
-                                  const next = { ...prev };
-                                  delete next[idx];
-                                  return next;
-                                });
-                                showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
-                              }
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
-                            title="이 공식 문제를 평가 리스트에서 삭제"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {/* 액션 버튼 그룹 (리프레쉬 & 삭제) - 동일한 행높이에 배치 */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* 리프레쉬 버튼 */}
+                            <button
+                              onClick={() => handleRefreshFormula(idx)}
+                              disabled={refreshingFormulaIdx === idx}
+                              className={`p-1.5 rounded-lg border border-transparent text-slate-500 hover:text-brand-400 hover:bg-brand-500/10 transition-all active:scale-95 cursor-pointer flex items-center justify-center ${
+                                refreshingFormulaIdx === idx ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
+                            >
+                              <RefreshCw 
+                                size={14} 
+                                className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
+                              />
+                            </button>
+
+                            {/* 삭제 버튼 */}
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
+                                  setFormulaQuestions(prev => {
+                                    const updated = prev.filter((_, i) => i !== idx);
+                                    localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                    return updated;
+                                  });
+                                  setFormulaRevealed(prev => {
+                                    const next = { ...prev };
+                                    delete next[idx];
+                                    return next;
+                                  });
+                                  showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
+                                }
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center justify-center"
+                              title="이 공식 문제를 평가 리스트에서 삭제"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Subjective Reveal */}
