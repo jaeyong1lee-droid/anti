@@ -2876,7 +2876,7 @@ export default function App() {
           >
 
             {/* Left: Quiz Body */}
-            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[58%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[70%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -3119,10 +3119,10 @@ export default function App() {
             </div>
 
             {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
                   onClick={() => handleScrollQuestion('up')}
@@ -3143,7 +3143,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Chat Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[42%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3396,7 +3396,7 @@ export default function App() {
           >
             
             {/* Left: Exam Body */}
-            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[58%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[70%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -3613,10 +3613,10 @@ export default function App() {
             </div>
 
             {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
                   onClick={() => handleScrollExamQuestion('up')}
@@ -3637,7 +3637,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[42%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
