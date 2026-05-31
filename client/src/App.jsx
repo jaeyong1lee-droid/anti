@@ -194,6 +194,65 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
 
   if (isHeavyHtml(cleanedText)) {
     let srcDoc = cleanedText;
+    const styleInjection = `
+      <style>
+        /* Compact & Premium Spacing & Title Overrides */
+        html, body {
+          margin: 0 !important;
+          padding: 12px !important;
+          padding-top: 4px !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body > *:first-child, body > *:first-child > *:first-child {
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+        }
+        /* Collapse empty spacing elements */
+        p:empty, div:empty, span:empty {
+          display: none !important;
+        }
+        /* Make titles elegant, compact and not overly thick */
+        h1, h2, h3, h4, .title, [class*="title"], [class*="header"], [class*="banner"], [class*="title-bar"] {
+          font-weight: 700 !important; /* Premium semi-bold instead of ultra-bold 900 */
+          letter-spacing: -0.025em !important;
+          margin-top: 4px !important;
+          margin-bottom: 8px !important;
+          padding-top: 8px !important;
+          padding-bottom: 8px !important;
+          min-height: auto !important;
+          height: auto !important;
+        }
+        h1 {
+          font-size: 1.4rem !important;
+        }
+        h2 {
+          font-size: 1.2rem !important;
+        }
+        h3 {
+          font-size: 1.05rem !important;
+        }
+        /* Adjust layout containers to be compact */
+        .container, .wrapper, [class*="container"], [class*="wrapper"] {
+          padding-top: 4px !important;
+          margin-top: 0 !important;
+        }
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(241, 245, 249, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      </style>
+    `;
+
     if (!/<!DOCTYPE/i.test(cleanedText) && !/<html/i.test(cleanedText)) {
       srcDoc = `
 <!DOCTYPE html>
@@ -201,29 +260,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-      body {
-        margin: 0;
-        padding: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background-color: #ffffff;
-        color: #1e293b;
-      }
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: rgba(241, 245, 249, 0.5);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-    </style>
+    ${styleInjection}
   </head>
   <body>
     ${cleanedText}
@@ -231,28 +268,12 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
 </html>
       `;
     } else {
-      const styleInjection = `
-        <style>
-          ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-          ::-webkit-scrollbar-track {
-            background: rgba(241, 245, 249, 0.5);
-          }
-          ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-          }
-          ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-          }
-        </style>
-      `;
       if (/<head>/i.test(srcDoc)) {
         srcDoc = srcDoc.replace(/<head>/i, `<head>${styleInjection}`);
       } else if (/<html/i.test(srcDoc)) {
         srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}</head>`);
+      } else {
+        srcDoc = styleInjection + srcDoc;
       }
     }
 
