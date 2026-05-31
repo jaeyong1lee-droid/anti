@@ -2979,16 +2979,59 @@ export default function App() {
             </div>
           </div>
 
-          {/* Layout Split Container */}
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setReviewMobileTab('list');
+                  reviewSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  reviewMobileTab === 'list'
+                    ? 'bg-violet-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                문제 풀이
+              </button>
+              <button
+                onClick={() => {
+                  setReviewMobileTab('tutor');
+                  const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+                  reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  reviewMobileTab === 'tutor'
+                    ? 'bg-violet-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
+          {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
           <div 
             ref={reviewSplitContainerRef}
-            className="flex-1 flex flex-row overflow-hidden min-h-0 w-full"
+            onScroll={(e) => {
+              if (!isDesktop) {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const clientWidth = e.currentTarget.clientWidth;
+                if (clientWidth > 0) {
+                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                  setReviewMobileTab(activeTab);
+                }
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
 
             {/* Left: Quiz Wrapper */}
             <div 
-              style={{ width: `${reviewSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              style={{ width: isDesktop ? `${reviewSplitRatio}%` : '100%' }} 
+              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body */}
               <div 
@@ -3199,13 +3242,10 @@ export default function App() {
                                      </div>
                                    )}
                                  </div>
-
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                               </div>
+                             )}
+                           </div>
+                         )}
 
                         {/* Subjective Reveal */}
                         {isSubj && (
@@ -3329,7 +3369,7 @@ export default function App() {
           <div 
             onMouseDown={startReviewResize}
             onTouchStart={startReviewResize}
-            className="w-1.5 hover:w-2 bg-slate-800/80 hover:bg-violet-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 flex items-center justify-center relative group"
+            className="hidden md:flex w-1.5 hover:w-2 bg-slate-800/80 hover:bg-violet-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 items-center justify-center relative group"
             title="좌우 드래그하여 제미나이 튜터 크기 조절"
           >
             {/* Center Indicator Line for micro-interaction */}
@@ -3337,7 +3377,10 @@ export default function App() {
           </div>
 
             {/* Right: Gemini Chat Sidebar */}
-            <div style={{ width: `${100 - reviewSplitRatio}%` }} className="shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div 
+              style={{ width: isDesktop ? `${100 - reviewSplitRatio}%` : '100%' }} 
+              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3542,16 +3585,59 @@ export default function App() {
             </div>
           </div>
 
-          {/* Layout Split Container */}
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setExamMobileTab('list');
+                  examSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  examMobileTab === 'list'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                문제 풀이
+              </button>
+              <button
+                onClick={() => {
+                  setExamMobileTab('tutor');
+                  const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+                  examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  examMobileTab === 'tutor'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
+          {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
           <div 
             ref={examSplitContainerRef}
-            className="flex-1 flex flex-row overflow-hidden min-h-0 w-full"
+            onScroll={(e) => {
+              if (!isDesktop) {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const clientWidth = e.currentTarget.clientWidth;
+                if (clientWidth > 0) {
+                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                  setExamMobileTab(activeTab);
+                }
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
             {/* Left: Exam Wrapper */}
             <div 
-              style={{ width: `${examSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              style={{ width: isDesktop ? `${examSplitRatio}%` : '100%' }} 
+              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body */}
               <div 
@@ -3864,7 +3950,7 @@ export default function App() {
             <div 
               onMouseDown={startExamResize}
               onTouchStart={startExamResize}
-              className="w-1.5 hover:w-2 bg-slate-800/80 hover:bg-amber-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 flex items-center justify-center relative group"
+              className="hidden md:flex w-1.5 hover:w-2 bg-slate-800/80 hover:bg-amber-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 items-center justify-center relative group"
               title="좌우 드래그하여 제미나이 튜터 크기 조절"
             >
               {/* Center Indicator Line for micro-interaction */}
@@ -3872,7 +3958,10 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar */}
-            <div style={{ width: `${100 - examSplitRatio}%` }} className="shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div 
+              style={{ width: isDesktop ? `${100 - examSplitRatio}%` : '100%' }} 
+              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
