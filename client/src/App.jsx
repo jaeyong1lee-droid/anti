@@ -3030,8 +3030,8 @@ export default function App() {
 
             {/* Left: Quiz Wrapper */}
             <div 
-              style={{ width: isDesktop ? `${reviewSplitRatio}%` : '100%' }} 
-              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              style={{ width: isDesktop ? `${reviewSplitRatio}%` : '100%', maxWidth: isDesktop ? '768px' : 'none' }} 
+              className="w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body */}
               <div 
@@ -3378,7 +3378,7 @@ export default function App() {
 
             {/* Right: Gemini Chat Sidebar */}
             <div 
-              style={{ width: isDesktop ? `${100 - reviewSplitRatio}%` : '100%' }} 
+              style={{ flex: isDesktop ? '1 1 0%' : 'none', width: isDesktop ? 'auto' : '100%' }} 
               className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
@@ -3636,8 +3636,8 @@ export default function App() {
             
             {/* Left: Exam Wrapper */}
             <div 
-              style={{ width: isDesktop ? `${examSplitRatio}%` : '100%' }} 
-              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              style={{ width: isDesktop ? `${examSplitRatio}%` : '100%', maxWidth: isDesktop ? '768px' : 'none' }} 
+              className="w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body */}
               <div 
@@ -3959,7 +3959,7 @@ export default function App() {
 
             {/* Right: Gemini Sidebar */}
             <div 
-              style={{ width: isDesktop ? `${100 - examSplitRatio}%` : '100%' }} 
+              style={{ flex: isDesktop ? '1 1 0%' : 'none', width: isDesktop ? 'auto' : '100%' }} 
               className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
