@@ -447,20 +447,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
               systemInstruction: systemInstruction || undefined
             });
             
-            let generateContentArg = userPrompt;
-            if (image && image.data && image.mimeType) {
-              generateContentArg = [
-                userPrompt,
-                {
-                  inlineData: {
-                    mimeType: image.mimeType,
-                    data: image.data
-                  }
-                }
-              ];
-            }
-            
-            const result = await model.generateContent(generateContentArg);
+            const result = await model.generateContent(userPrompt);
             const text = result.response.text().trim();
             if (text) {
               console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
