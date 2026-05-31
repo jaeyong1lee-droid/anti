@@ -2006,8 +2006,10 @@ app.get('/api/debug-env', async (req, res) => {
   res.json({
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
     keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    primaryKeyPrefix: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 5) : '',
     hasSecondaryGeminiKey: !!process.env.GEMINI_API_KEY_SECONDARY,
     secondaryKeyLength: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.length : 0,
+    secondaryKeyPrefix: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.substring(0, 5) : '',
     hasTertiaryGeminiKey: !!process.env.GEMINI_API_KEY_TERTIARY,
     tertiaryKeyLength: process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.length : 0,
     hasClaudeKey: !!process.env.ANTHROPIC_API_KEY,
