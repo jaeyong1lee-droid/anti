@@ -365,6 +365,64 @@ export default function App() {
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
   
+  // Drag Resizable Splitter State and Event Handlers
+  const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
+  const [examSplitRatio, setExamSplitRatio] = useState(60);
+
+  const startReviewResize = (e) => {
+    e.preventDefault();
+    const startX = e.clientX || (e.touches && e.touches[0].clientX);
+    const containerWidth = reviewSplitContainerRef.current?.clientWidth || 1000;
+    const startRatio = reviewSplitRatio;
+
+    const doResize = (moveEvent) => {
+      const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
+      const deltaX = currentX - startX;
+      const deltaRatio = (deltaX / containerWidth) * 100;
+      const newRatio = Math.max(30, Math.min(80, startRatio + deltaRatio));
+      setReviewSplitRatio(newRatio);
+    };
+
+    const stopResize = () => {
+      window.removeEventListener('mousemove', doResize);
+      window.removeEventListener('mouseup', stopResize);
+      window.removeEventListener('touchmove', doResize);
+      window.removeEventListener('touchend', stopResize);
+    };
+
+    window.addEventListener('mousemove', doResize);
+    window.addEventListener('mouseup', stopResize);
+    window.addEventListener('touchmove', doResize, { passive: false });
+    window.addEventListener('touchend', stopResize);
+  };
+
+  const startExamResize = (e) => {
+    e.preventDefault();
+    const startX = e.clientX || (e.touches && e.touches[0].clientX);
+    const containerWidth = examSplitContainerRef.current?.clientWidth || 1000;
+    const startRatio = examSplitRatio;
+
+    const doResize = (moveEvent) => {
+      const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
+      const deltaX = currentX - startX;
+      const deltaRatio = (deltaX / containerWidth) * 100;
+      const newRatio = Math.max(30, Math.min(80, startRatio + deltaRatio));
+      setExamSplitRatio(newRatio);
+    };
+
+    const stopResize = () => {
+      window.removeEventListener('mousemove', doResize);
+      window.removeEventListener('mouseup', stopResize);
+      window.removeEventListener('touchmove', doResize);
+      window.removeEventListener('touchend', stopResize);
+    };
+
+    window.addEventListener('mousemove', doResize);
+    window.addEventListener('mouseup', stopResize);
+    window.addEventListener('touchmove', doResize, { passive: false });
+    window.addEventListener('touchend', stopResize);
+  };
+  
   // Theory questions states (independent of formulas)
   const [theoryQuestions, setTheoryQuestions] = useState([]);
   const [loadingTheory, setLoadingTheory] = useState(false);
@@ -2835,7 +2893,7 @@ export default function App() {
           >
 
             {/* Left: Quiz Body */}
-            <div ref={quizBodyRef} className="w-[60%] shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={quizBodyRef} style={{ width: `${reviewSplitRatio}%` }} className="shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -3077,32 +3135,46 @@ export default function App() {
               )}
             </div>
 
-            {/* Vertical Navigation Divider Controller (Floating Style) */}
+            {/* Vertical Navigation Divider Controller (Floating Style - Drag Resizable Splitter) */}
             <div className="flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100"
+                onMouseDown={startReviewResize}
+                onTouchStart={startReviewResize}
+                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-col-resize group"
+                title="좌우 드래그: 창 크기 조절 | 버튼 클릭: 문제 스크롤"
               >
                 <button 
-                  onClick={() => handleScrollQuestion('up')}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group"
+                  onClick={(e) => { e.stopPropagation(); handleScrollQuestion('up'); }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group/btn"
                   title="이전 문제로 스크롤"
                 >
-                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                  <ChevronUp size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
                 </button>
-                <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
+                
+                {/* Drag Indicator Dots */}
+                <div className="flex flex-col gap-0.5 items-center justify-center my-0.5 opacity-55 group-hover:opacity-100 transition-opacity">
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full"></span>
+                </div>
+                
                 <button 
-                  onClick={() => handleScrollQuestion('down')}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group"
+                  onClick={(e) => { e.stopPropagation(); handleScrollQuestion('down'); }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group/btn"
                   title="다음 문제로 스크롤"
                 >
-                  <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+                  <ChevronDown size={14} className="group-hover/btn:translate-y-0.5 transition-transform" />
                 </button>
               </div>
             </div>
 
             {/* Right: Gemini Chat Sidebar */}
-            <div className="w-[40%] shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div style={{ width: `${100 - reviewSplitRatio}%` }} className="shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3314,7 +3386,7 @@ export default function App() {
           >
             
             {/* Left: Exam Body */}
-            <div ref={examBodyRef} className="w-[60%] shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={examBodyRef} style={{ width: `${examSplitRatio}%` }} className="shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -3530,32 +3602,46 @@ export default function App() {
             )}
             </div>
 
-            {/* Vertical Navigation Divider Controller (Floating Style) */}
+            {/* Vertical Navigation Divider Controller (Floating Style - Drag Resizable Splitter) */}
             <div className="flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100"
+                onMouseDown={startExamResize}
+                onTouchStart={startExamResize}
+                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-col-resize group"
+                title="좌우 드래그: 창 크기 조절 | 버튼 클릭: 문제 스크롤"
               >
                 <button 
-                  onClick={() => handleScrollExamQuestion('up')}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  onClick={(e) => { e.stopPropagation(); handleScrollExamQuestion('up'); }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group/btn"
                   title="이전 문제로 스크롤"
                 >
-                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                  <ChevronUp size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
                 </button>
-                <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
+                
+                {/* Drag Indicator Dots */}
+                <div className="flex flex-col gap-0.5 items-center justify-center my-0.5 opacity-55 group-hover:opacity-100 transition-opacity">
+                  <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                </div>
+                
                 <button 
-                  onClick={() => handleScrollExamQuestion('down')}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  onClick={(e) => { e.stopPropagation(); handleScrollExamQuestion('down'); }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group/btn"
                   title="다음 문제로 스크롤"
                 >
-                  <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+                  <ChevronDown size={14} className="group-hover/btn:translate-y-0.5 transition-transform" />
                 </button>
               </div>
             </div>
 
             {/* Right: Gemini Sidebar */}
-            <div className="w-[40%] shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div style={{ width: `${100 - examSplitRatio}%` }} className="shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
