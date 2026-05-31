@@ -349,10 +349,42 @@ const handleOpenHtmlAnswerPopup = (title, text) => {
   
   if (popupWindow) {
     const htmlDocument = buildHtmlDocument(text, true);
+    // Escape single quotes and double quotes for srcdoc
+    const escapedHtml = htmlDocument
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;');
+
+    const wrapperHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${parsedTitle} - 시뮬레이터 정답</title>
+  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      background-color: #edf7f2 !important;
+    }
+    iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+  </style>
+</head>
+<body>
+  <iframe srcdoc="${escapedHtml}"></iframe>
+</body>
+</html>
+    `;
     popupWindow.document.open();
-    popupWindow.document.write(htmlDocument);
-    // Dynamic title injection
-    popupWindow.document.title = `${parsedTitle} - 시뮬레이터 정답`;
+    popupWindow.document.write(wrapperHtml);
     popupWindow.document.close();
     popupWindow.focus();
   } else {
@@ -3262,61 +3294,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Floating Vertical Navigation - Left Center (Desktop Only) */}
-      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[80] rounded-2xl glow-purple animate-fade-in">
-        <button
-          onClick={() => setViewMode('dashboard')}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            viewMode === 'dashboard'
-              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-          }`}
-          title="오늘의 복습"
-        >
-          <Calendar size={20} />
-          <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
-        </button>
-        <button
-          onClick={() => setViewMode('all_topics')}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            viewMode === 'all_topics'
-              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-          }`}
-          title={`토픽 진행현황 (${allTopics.length})`}
-        >
-          <List size={20} />
-          <span className="text-[10px] font-bold tracking-tight">진행현황</span>
-          <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
-        </button>
-        {/* 종합평가 버튼 */}
-        <button
-          onClick={handleOpenExam}
-          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-amber-400 hover:text-amber-200 hover:bg-amber-950/40"
-          title="전체 소스 기반 70문항 종합평가"
-        >
-          <Award size={20} />
-          <span className="text-[10px] font-bold tracking-tight">종합평가</span>
-        </button>
-        {/* 필수공식 버튼 */}
-        <button
-          onClick={handleOpenFormulaExam}
-          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-rose-400 hover:text-rose-200 hover:bg-rose-950/40"
-          title="전공 필수 공식 집중 평가 (주관식 인출)"
-        >
-          <Sigma size={20} />
-          <span className="text-[10px] font-bold tracking-tight">필수공식</span>
-        </button>
-        {/* 이론유도 버튼 */}
-        <button
-          onClick={handleOpenTheoryExam}
-          className="flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40"
-          title="전공 필수 공식 이론 유도 및 상세 증명 학습"
-        >
-          <Brain size={20} />
-          <span className="text-[10px] font-bold tracking-tight">이론유도</span>
-        </button>
-      </div>
 
       {/* Main Content Area */}
       <main className="max-w-7xl w-full mx-auto px-6 md:px-12 md:pl-28 mt-8 flex-grow">
@@ -3792,7 +3769,7 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
+        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Review Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -4440,7 +4417,7 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
+        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Exam Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5017,7 +4994,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
+        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Formula Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5598,7 +5575,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
       {showTheoryExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
+        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -6127,6 +6104,100 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
+      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
+        <button
+          onClick={() => {
+            setViewMode('dashboard');
+            setSelectedTopic(null);
+            setShowExam(false);
+            setShowFormulaExam(false);
+            setShowTheoryExam(false);
+          }}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+          }`}
+          title="오늘의 복습"
+        >
+          <Calendar size={20} />
+          <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
+        </button>
+        <button
+          onClick={() => {
+            setViewMode('all_topics');
+            setSelectedTopic(null);
+            setShowExam(false);
+            setShowFormulaExam(false);
+            setShowTheoryExam(false);
+          }}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+          }`}
+          title={`토픽 진행현황 (${allTopics.length})`}
+        >
+          <List size={20} />
+          <span className="text-[10px] font-bold tracking-tight">진행현황</span>
+          <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
+        </button>
+        {/* 종합평가 버튼 */}
+        <button
+          onClick={() => {
+            setSelectedTopic(null);
+            setShowFormulaExam(false);
+            setShowTheoryExam(false);
+            handleOpenExam();
+          }}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            showExam
+              ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white shadow-lg glow-amber'
+              : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/40'
+          }`}
+          title="전체 소스 기반 70문항 종합평가"
+        >
+          <Award size={20} />
+          <span className="text-[10px] font-bold tracking-tight">종합평가</span>
+        </button>
+        {/* 필수공식 버튼 */}
+        <button
+          onClick={() => {
+            setSelectedTopic(null);
+            setShowExam(false);
+            setShowTheoryExam(false);
+            handleOpenFormulaExam();
+          }}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            showFormulaExam
+              ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
+              : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
+          }`}
+          title="전공 필수 공식 집중 평가 (주관식 인출)"
+        >
+          <Sigma size={20} />
+          <span className="text-[10px] font-bold tracking-tight">필수공식</span>
+        </button>
+        {/* 이론유도 버튼 */}
+        <button
+          onClick={() => {
+            setSelectedTopic(null);
+            setShowExam(false);
+            setShowFormulaExam(false);
+            handleOpenTheoryExam();
+          }}
+          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            showTheoryExam
+              ? 'bg-gradient-to-tr from-indigo-600 to-purple-500 text-white shadow-lg glow-indigo'
+              : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40'
+          }`}
+          title="전공 필수 공식 이론 유도 및 상세 증명 학습"
+        >
+          <Brain size={20} />
+          <span className="text-[10px] font-bold tracking-tight">이론유도</span>
+        </button>
+      </div>
     </div>
   );
 }
