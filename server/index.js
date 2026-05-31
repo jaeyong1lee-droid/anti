@@ -362,6 +362,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
 
     if (isGrok) {
       const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
+      let basicModelFailedCount = 0;
       for (const modelName of GROK_MODELS) {
         if (keyExhausted) break;
 
@@ -416,19 +417,24 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
                 await sleep(delay);
                 delay *= 2; // Double the delay
               } else {
-                console.warn(`[Grok Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
-                keyExhausted = true;
-                break; // Switch to the next key!
+                console.warn(`[Grok Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
+                basicModelFailedCount++;
+                break;
               }
             } else {
-              // For other non-quota errors, don't retry and break immediately
+              basicModelFailedCount++;
               break;
             }
           }
         }
       }
+      if (basicModelFailedCount >= GROK_MODELS.length) {
+        console.warn(`[Grok Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
+        keyExhausted = true;
+      }
     } else if (isGroq) {
-      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama-3.1-8b-instant'];
+      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
+      let basicModelFailedCount = 0;
       for (const modelName of GROQ_MODELS) {
         if (keyExhausted) break;
 
@@ -483,15 +489,20 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
                 await sleep(delay);
                 delay *= 2;
               } else {
-                console.warn(`[Groq Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit limit after ${maxAttempts} attempts. Switching to next key.`);
-                keyExhausted = true;
+                console.warn(`[Groq Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
+                basicModelFailedCount++;
                 break;
               }
             } else {
+              basicModelFailedCount++;
               break;
             }
           }
         }
+      }
+      if (basicModelFailedCount >= GROQ_MODELS.length) {
+        console.warn(`[Groq Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
+        keyExhausted = true;
       }
     } else {
       // Gemini (심폐소생 순환 로직 최적화 파트)
@@ -2388,8 +2399,8 @@ app.post('/api/exam/all', async (req, res) => {
           }
         } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
         fileText = mergeVerticalText(fileText);
-        // Limit per topic: 2000 chars to avoid total overflow
-        if (fileText.length > 2000) fileText = fileText.substring(0, 2000) + '...[중략]';
+        // Limit per topic: 1200 chars to avoid total overflow
+        if (fileText.length > 1200) fileText = fileText.substring(0, 1200) + '...[중략]';
       }
       topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || '소스 없음'}`);
     }
@@ -2488,10 +2499,10 @@ ${combinedText}
       }));
       cleanedQuestions.push(...cleaned);
 
-      // Sleep a bit between successful chunks to avoid hitting Google's rate limit
+      // RPM 방지를 위한 청크 간 지연시간 부여 (마지막 청크 제외)
       if (chunkIdx < chunksCount - 1) {
-        console.log(`[Rate Limit 관리] 다음 청크 생성을 시작하기 전에 1.2초간 대기합니다...`);
-        await sleep(1200);
+        console.log(`[종합평가 대기] RPM 초과 방지를 위해 1.5초간 대기합니다...`);
+        await sleep(1500);
       }
     }
 
