@@ -3253,9 +3253,9 @@ export default function App() {
                   </div>
                   <div className="absolute inset-0 bg-amber-500 rounded-full animate-ping opacity-20"></div>
                 </div>
-                <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 10문항씩 나누어 종합평가를 생성하는 중...</h4>
+                <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 종합평가 테스트 문제를 생성하는 중...</h4>
                 <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                  구글 API 안정성 확보 및 버퍼 초과(429 Rate Limit) 방지를 위해 10문항 단위로 순차적 빌드 및 자동 검증을 진행합니다. 잠시만 대기해 주세요.
+                  구글 API 안정성 확보 및 버퍼 초과(429 Rate Limit) 방지를 위해 실시간 문제 빌드 및 자동 검증을 진행합니다. 잠시만 대기해 주세요.
                 </p>
               </div>
             ) : (
