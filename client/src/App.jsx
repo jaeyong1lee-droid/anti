@@ -1110,6 +1110,22 @@ export default function App() {
     }
   }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers]);
 
+  // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
+  useEffect(() => {
+    if (selectedTopic && selectedTopic.id) {
+      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0) {
+        try {
+          localStorage.setItem(`anti_review_progress_${selectedTopic.id}`, JSON.stringify({
+            revealedQuestions,
+            selectedAnswers
+          }));
+        } catch (e) {
+          console.warn('localStorage 복습 진행률 저장 실패:', e);
+        }
+      }
+    }
+  }, [selectedTopic, revealedQuestions, selectedAnswers]);
+
 
   // Load PDF.js dynamically when switching to image view
   useEffect(() => {
@@ -1221,6 +1237,7 @@ export default function App() {
     if (selectedTopic.id) {
       fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
         .catch(e => console.warn('복습 완료 시 세션 리셋 실패:', e));
+      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 복습 완료 시 로컬 진행률 초기화
     }
 
     if (sId) {
@@ -1330,6 +1347,21 @@ export default function App() {
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
+        
+        // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 localStorage에서 복원
+        try {
+          const savedProgress = localStorage.getItem(`anti_review_progress_${topicId}`);
+          if (savedProgress) {
+            const { revealedQuestions: savedRevealed, selectedAnswers: savedSelected } = JSON.parse(savedProgress);
+            if (savedRevealed) setRevealedQuestions(savedRevealed);
+            if (savedSelected) setSelectedAnswers(savedSelected);
+          } else {
+            setRevealedQuestions({});
+            setSelectedAnswers({});
+          }
+        } catch (e) {
+          console.warn('복습 진행률 복원 실패:', e);
+        }
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
@@ -1412,6 +1444,7 @@ export default function App() {
       // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
       await fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
         .catch(e => console.warn('복습 세션 초기화 실패:', e));
+      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 전체 재생성 시 로컬 복습 기록도 제거
         
       // 2. 실시간 AI 생성 요청
       const url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
