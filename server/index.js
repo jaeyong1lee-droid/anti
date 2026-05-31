@@ -507,7 +507,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
     } else {
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
-      const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       
       let basicModelFailedCount = 0;
 
