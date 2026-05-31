@@ -230,6 +230,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           padding: 12px !important;
           padding-top: 4px !important;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          overflow: hidden !important; /* Prevent internal scrollbars entirely */
         }
         body > *:first-child, body > *:first-child > *:first-child {
           margin-top: 0 !important;
@@ -281,6 +282,85 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
       </style>
     `;
 
+    const katexAndAutoRenderInjection = `
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+      <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+      <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+      <script>
+        function healIframeMath() {
+          const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+          let node;
+          const mathNodes = [];
+          const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\b|([kK]_[{]?[h30]+[}]?)|([y\\\\u03B3]_[{]?[a-zA-Z0-9]+[}]?)/;
+          while (node = walk.nextNode()) {
+            const parent = node.parentNode;
+            if (parent) {
+              const tag = parent.tagName.toUpperCase();
+              if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'CODE' || tag === 'PRE') {
+                continue;
+              }
+            }
+            const text = node.nodeValue;
+            if (!text) continue;
+            if (hasLaTeX.test(text) && !text.includes('$')) {
+              mathNodes.push(node);
+            }
+          }
+          mathNodes.forEach(node => {
+            node.nodeValue = '$$' + node.nodeValue + '$$';
+          });
+        }
+
+        let isRendering = false;
+        function triggerRender() {
+          if (isRendering) return;
+          isRendering = true;
+          try {
+            healIframeMath();
+            if (typeof renderMathInElement === 'function') {
+              renderMathInElement(document.body, {
+                delimiters: [
+                  {left: "$$", right: "$$", display: true},
+                  {left: "$", right: "$", display: false},
+                  {left: "\\\\(", right: "\\\\)", display: false},
+                  {left: "\\\\[", right: "\\\\]", display: true}
+                ],
+                throwOnError: false
+              });
+            }
+            if (window.parent) {
+              window.parent.postMessage({ type: 'mathRendered' }, '*');
+            }
+          } catch (e) {
+            console.warn("KaTeX render error inside iframe:", e);
+          } finally {
+            isRendering = false;
+          }
+        }
+
+        function initKaTeX() {
+          if (typeof renderMathInElement === 'function') {
+            triggerRender();
+            const observer = new MutationObserver(() => {
+              observer.disconnect();
+              triggerRender();
+              observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            });
+            observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+          } else {
+            setTimeout(initKaTeX, 50);
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener("DOMContentLoaded", initKaTeX);
+        } else {
+          initKaTeX();
+        }
+        window.addEventListener("load", initKaTeX);
+      </script>
+    `;
+
     if (!/<!DOCTYPE/i.test(cleanedText) && !/<html/i.test(cleanedText)) {
       srcDoc = `
 <!DOCTYPE html>
@@ -289,6 +369,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     ${styleInjection}
+    ${katexAndAutoRenderInjection}
   </head>
   <body>
     ${cleanedText}
@@ -297,11 +378,11 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
       `;
     } else {
       if (/<head>/i.test(srcDoc)) {
-        srcDoc = srcDoc.replace(/<head>/i, `<head>${styleInjection}`);
+        srcDoc = srcDoc.replace(/<head>/i, `<head>${styleInjection}${katexAndAutoRenderInjection}`);
       } else if (/<html/i.test(srcDoc)) {
-        srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}</head>`);
+        srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}${katexAndAutoRenderInjection}</head>`);
       } else {
-        srcDoc = styleInjection + srcDoc;
+        srcDoc = styleInjection + katexAndAutoRenderInjection + srcDoc;
       }
     }
 
@@ -310,7 +391,46 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
         <iframe
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
-          className="w-full min-h-[520px] h-[550px] border-0 block"
+          className="w-full border-0 block"
+          style={{ height: '520px', overflow: 'hidden' }}
+          scrolling="no"
+          onLoad={(e) => {
+            const iframe = e.target;
+            const adjustHeight = () => {
+              try {
+                const doc = iframe.contentWindow?.document;
+                if (doc && doc.body) {
+                  const height = Math.max(
+                    doc.body.scrollHeight,
+                    doc.documentElement.scrollHeight,
+                    doc.body.offsetHeight,
+                    doc.documentElement.offsetHeight
+                  );
+                  iframe.style.height = (height + 28) + 'px';
+                }
+              } catch (err) {
+                // ignore
+              }
+            };
+
+            adjustHeight();
+
+            const handleMessage = (event) => {
+              if (event.data && event.data.type === 'mathRendered') {
+                adjustHeight();
+              }
+            };
+            window.addEventListener('message', handleMessage);
+
+            const intervals = [100, 300, 600, 1000, 2000, 4000];
+            intervals.forEach((delay) => {
+              setTimeout(adjustHeight, delay);
+            });
+
+            iframe.addEventListener('unload', () => {
+              window.removeEventListener('message', handleMessage);
+            });
+          }}
           title="Interactive Simulator Drawing"
         />
       </div>
