@@ -3520,6 +3520,46 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
   }
 });
 
+// 6-5. AI Option Explanation API for Multiple Choice
+app.post('/api/question/option-explanation', async (req, res) => {
+  const { question, options, answer } = req.body;
+
+  if (!question || !options || !Array.isArray(options) || options.length !== 4) {
+    return res.status(400).json({ error: '유효하지 않은 객관식 문제 정보입니다.' });
+  }
+
+  try {
+    const prompt = `
+당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+제공되는 객관식 문제의 질문과 4개 보기 목록을 면밀히 분석하여, 각 보기(①, ②, ③, ④)가 왜 정답인지(정답 이유) 또는 왜 정답이 아닌지(오답 이유)를 대한민국 공학 지침 및 표준 학술 이론에 근거하여 매우 직관적이고 명확하게 기술사적 관점에서 설명해 주십시오.
+
+[질문]: ${question}
+[보기 목록]:
+① ${options[0]}
+② ${options[1]}
+③ ${options[2]}
+④ ${options[3]}
+[정답]: ${answer}
+
+[요구사항]:
+1. ①, ②, ③, ④ 각 보기별 오답/정답 요인 분석을 한눈에 들어오도록 콤팩트하게 작성하십시오 (각 보기당 1~2줄 이내 권장).
+2. 수식이나 단위 기호는 반드시 LaTeX 문법(인라인 $...$, 블록 $$...$$)을 활용하며, 모든 역슬래시(\\ 기호)는 JSON 이스케이프용 이중 역슬래시(\\\\ 기호)로 두 번 기재해야 합니다.
+3. 마크다운의 '\`\`\`' 등의 특수 기호는 감싸지 말고 다음의 문자열 형식으로만 곧바로 반환해 주십시오:
+
+- **① ${options[0]}** : [정답/오답 핵심 분석] (여기에 명확하고 압축된 공학적 해설 기재)
+- **② ${options[1]}** : [정답/오답 핵심 분석] ...
+- **③ ${options[2]}** : [정답/오답 핵심 분석] ...
+- **④ ${options[3]}** : [정답/오답 핵심 분석] ...
+`;
+
+    const responseText = await callLLMWithFailover(null, prompt);
+    res.json({ text: responseText.trim() });
+  } catch (err) {
+    console.error('Error generating option explanation:', err);
+    res.status(500).json({ error: 'AI 보기별 분석 해설을 생성하지 못했습니다.' });
+  }
+});
+
 // GET /api/session/formula → 저장된 필수공식 상태 반환
 app.get('/api/session/formula', async (req, res) => {
   try {

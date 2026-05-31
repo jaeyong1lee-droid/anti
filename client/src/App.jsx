@@ -365,6 +365,9 @@ export default function App() {
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
   
+  // Option Explanations State for Multiple Choice Option Analysis
+  const [optionExplanations, setOptionExplanations] = useState({});
+  
   // Drag Resizable Splitter State and Event Handlers
   const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
   const [examSplitRatio, setExamSplitRatio] = useState(60);
@@ -837,6 +840,51 @@ export default function App() {
     }
   };
 
+  // ── Reset Single Multiple-Choice Answer (다시 풀기) ──────────────────
+  const handleResetSingleReviewAnswer = (idx) => {
+    setSelectedAnswers(prev => {
+      const copy = { ...prev };
+      delete copy[idx];
+      fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: selectedTopic?.id, questions: aiQuestions })
+      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      return copy;
+    });
+    setOptionExplanations(prev => {
+      const copy = { ...prev };
+      delete copy[idx];
+      return copy;
+    });
+    showNotification('해당 문제의 풀이 상태를 초기화했습니다.', 'info');
+  };
+
+  const handleResetSingleExamAnswer = (idx) => {
+    setExamAnswers(prev => {
+      const copy = { ...prev };
+      delete copy[idx];
+      fetch(`${API_BASE}/api/session/exam`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          examQuestions, 
+          examRevealed, 
+          examAnswers: copy, 
+          examTopic,
+          savedExamScroll: examBodyRef.current?.scrollTop || 0 
+        })
+      }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+      return copy;
+    });
+    setOptionExplanations(prev => {
+      const copy = { ...prev };
+      delete copy[idx];
+      return copy;
+    });
+    showNotification('해당 문제의 풀이 상태를 초기화했습니다.', 'info');
+  };
+
   // Regenerate a single question (mode: 'review' or 'exam')
   const handleRegenerateQuestion = async (mode, idx, currentQ) => {
     const isReview = mode === 'review';
@@ -935,6 +983,26 @@ export default function App() {
 
   // Open review quiz AND mark schedule as complete simultaneously
   // (removed - now handled by separate buttons)
+
+  // ── Request Option Explanation for Multiple Choice Questions ──────────
+  const handleRequestOptionExplanation = async (idx, question, options, answer) => {
+    // 이미 가져온 해설이 있다면 무시
+    if (optionExplanations[idx]) return;
+    
+    setOptionExplanations(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
+    try {
+      const res = await fetch(`${API_BASE}/api/question/option-explanation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, options, answer })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '보기별 해설을 생성하지 못했습니다.');
+      setOptionExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
+    } catch (err) {
+      setOptionExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
+    }
+  };
 
   // ── Request Detailed Answer for Exam Questions ────────────────────────
   const handleRequestDetailedAnswer = async (idx, question, answer) => {
@@ -2985,26 +3053,46 @@ export default function App() {
                             </span>
                           </div>
                           
-                          <button
-                            disabled={regeneratingReview[idx]}
-                            onClick={() => handleRegenerateQuestion('review', idx, q)}
-                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
-                              regeneratingReview[idx]
-                                ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
-                            }`}
-                          >
-                            <svg
-                              className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
+                          <div className="flex items-center gap-2">
+                            {answered && isMC && (
+                              <button
+                                onClick={() => handleResetSingleReviewAnswer(idx)}
+                                className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-violet-950/40 hover:border-violet-500/50 hover:text-violet-400 active:scale-95 transition-all duration-300"
+                              >
+                                <svg
+                                  className="w-3 h-3 text-slate-400 hover:text-violet-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                다시 풀기
+                              </button>
+                            )}
+                            
+                            <button
+                              disabled={regeneratingReview[idx]}
+                              onClick={() => handleRegenerateQuestion('review', idx, q)}
+                              className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                                regeneratingReview[idx]
+                                  ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                              }`}
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                            {regeneratingReview[idx] ? '변환 중...' : '변환'}
-                          </button>
+                              <svg
+                                className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                              </svg>
+                              {regeneratingReview[idx] ? '변환 중...' : '변환'}
+                            </button>
+                          </div>
                         </div>
 
                         {/* Question Text */}
@@ -3030,7 +3118,10 @@ export default function App() {
                                 <button
                                   key={oIdx}
                                   disabled={answered}
-                                  onClick={() => setSelectedAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                  onClick={() => {
+                                    setSelectedAnswers(prev => ({ ...prev, [idx]: opt }));
+                                    handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
+                                  }}
                                   className={cls}
                                 >
                                   <span className="flex gap-2 items-start">
@@ -3049,6 +3140,36 @@ export default function App() {
                                   </span>
                                 )}
                                 {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+
+                                {/* 보기별 정밀 분석 (왜 오답이고 정답인지) AI 설명 */}
+                                <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                  {!optionExplanations[idx] ? (
+                                    <button
+                                      onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all"
+                                    >
+                                      🔍 보기별 정밀 분석 해설 보기 (AI)
+                                    </button>
+                                  ) : optionExplanations[idx].loading ? (
+                                    <div className="py-2.5 flex flex-col gap-1.5 animate-pulse">
+                                      <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                        <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
+                                      </div>
+                                      <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                      <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                    </div>
+                                  ) : optionExplanations[idx].error ? (
+                                    <div className="text-[10px] text-rose-400 font-bold">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                  ) : (
+                                    <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl">
+                                      <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                        <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
 
                                 {/* Detailed Answer Button */}
                                 <div className="mt-3 pt-2 border-t border-slate-700/50">
@@ -3461,26 +3582,46 @@ export default function App() {
                           </span>
                         </div>
                         
-                        <button
-                          disabled={regeneratingExam[idx]}
-                          onClick={() => handleRegenerateQuestion('exam', idx, q)}
-                          className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
-                            regeneratingExam[idx]
-                              ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                              : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
-                          }`}
-                        >
-                          <svg
-                            className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
+                        <div className="flex items-center gap-2">
+                          {answered && isMC && (
+                            <button
+                              onClick={() => handleResetSingleExamAnswer(idx)}
+                              className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-amber-950/40 hover:border-amber-500/50 hover:text-amber-400 active:scale-95 transition-all duration-300"
+                            >
+                              <svg
+                                className="w-3 h-3 text-slate-400 hover:text-amber-400"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                              </svg>
+                              다시 풀기
+                            </button>
+                          )}
+                          
+                          <button
+                            disabled={regeneratingExam[idx]}
+                            onClick={() => handleRegenerateQuestion('exam', idx, q)}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                              regeneratingExam[idx]
+                                ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                            }`}
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                          {regeneratingExam[idx] ? '변환 중...' : '변환'}
-                        </button>
+                            <svg
+                              className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            {regeneratingExam[idx] ? '변환 중...' : '변환'}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Question Text */}
@@ -3506,7 +3647,10 @@ export default function App() {
                               <button
                                 key={oIdx}
                                 disabled={answered}
-                                onClick={() => setExamAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                onClick={() => {
+                                  setExamAnswers(prev => ({ ...prev, [idx]: opt }));
+                                  handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
+                                }}
                                 className={cls}
                               >
                                 <span className="flex gap-2 items-start">
@@ -3526,6 +3670,36 @@ export default function App() {
                               )}
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
                               
+                              {/* 보기별 정밀 분석 (왜 오답이고 정답인지) AI 설명 */}
+                              <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                {!optionExplanations[idx] ? (
+                                  <button
+                                    onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all"
+                                  >
+                                    🔍 보기별 정밀 분석 해설 보기 (AI)
+                                  </button>
+                                ) : optionExplanations[idx].loading ? (
+                                  <div className="py-2.5 flex flex-col gap-1.5 animate-pulse">
+                                    <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
+                                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
+                                      <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
+                                    </div>
+                                    <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                    <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                  </div>
+                                ) : optionExplanations[idx].error ? (
+                                  <div className="text-[10px] text-rose-400 font-bold">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                ) : (
+                                  <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl">
+                                    <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                      <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
                               {/* Detailed Answer Button & Content */}
                               <div className="mt-3 pt-2 border-t border-slate-700/50">
                                 {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading ? (
