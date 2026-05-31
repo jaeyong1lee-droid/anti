@@ -507,6 +507,66 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
+  const activeModalRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedTopic) {
+      activeModalRef.current = 'review';
+    } else if (showExam) {
+      activeModalRef.current = 'exam';
+    } else if (showFormulaExam) {
+      activeModalRef.current = 'formula';
+    } else if (showTheoryExam) {
+      activeModalRef.current = 'theory';
+    } else {
+      activeModalRef.current = null;
+    }
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Only intercept on mobile viewport (under 768px width)
+      const isMobileDevice = window.innerWidth < 768;
+      if (!isMobileDevice) return;
+
+      if (activeModalRef.current) {
+        // Close the active modal acting as hardware back button
+        if (activeModalRef.current === 'review') {
+          setSelectedTopic(null);
+        } else if (activeModalRef.current === 'exam') {
+          setShowExam(false);
+          localStorage.setItem('anti_show_exam', 'false');
+        } else if (activeModalRef.current === 'formula') {
+          setShowFormulaExam(false);
+          localStorage.setItem('anti_show_formula_exam', 'false');
+        } else if (activeModalRef.current === 'theory') {
+          setShowTheoryExam(false);
+          localStorage.setItem('anti_show_theory_exam', 'false');
+        }
+        // Re-push state so we can intercept the next back button
+        window.history.pushState({ home: true }, "");
+      } else {
+        // If on the home dashboard, prompt before exiting the web application
+        if (window.confirm("앱을 끄시겠습니까?")) {
+          window.close();
+          window.location.href = "about:blank";
+        } else {
+          // Re-push state so we can intercept the next back button
+          window.history.pushState({ home: true }, "");
+        }
+      }
+    };
+
+    // Push initial dummy state to block the first back exit
+    window.history.pushState({ home: true }, "");
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
   
   // Drag Resizable Splitter State and Event Handlers
   const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
