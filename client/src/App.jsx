@@ -3417,7 +3417,7 @@ export default function App() {
                               💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
                             </button>
                           ) : (
-                            <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                            <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                               <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                 <span>📝 모범 답안</span>
                                 <button
@@ -4041,7 +4041,7 @@ export default function App() {
                             💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
                           </button>
                         ) : (
-                          <div className="bg-amber-950/30 border border-amber-500/20 rounded-xl p-4 space-y-2">
+                          <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                             <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                               <span>📝 모범 답안</span>
                               <button
@@ -4636,7 +4636,7 @@ export default function App() {
 
                         {/* Real-time LaTeX rendered Output Display Window */}
                         {isOutputVisible && (
-                          <div className="space-y-3 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
+                          <div className="space-y-3 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
                               {!isNewEmptyCard && (
@@ -5175,7 +5175,7 @@ export default function App() {
 
                         {/* Real-time LaTeX rendered Output Display Window */}
                         {isOutputVisible && (
-                          <div className="space-y-2 p-4 bg-slateCustom-950/40 rounded-xl border border-slate-800/80 min-h-[60px] relative">
+                          <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
                               {/* Hide Output/Answer Button */}
