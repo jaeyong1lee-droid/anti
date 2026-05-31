@@ -3039,15 +3039,14 @@ export default function App() {
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
 
-            {/* Left: Quiz Wrapper */}
+            {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              style={{ width: isDesktop ? `${reviewSplitRatio}%` : '100%', maxWidth: isDesktop ? '768px' : 'none' }} 
-              className="w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
-              {/* Left: Quiz Body */}
+              {/* Left: Quiz Body (Expanded to max-w-5xl for wider, highly readable questions) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3351,11 +3350,13 @@ export default function App() {
                 </div>
               )}
             </div>
-            
-            {/* Floating Scroll Button Capsule (Detached from resize, floats independently on Quiz Wrapper right edge) */}
+          </div>
+
+          {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
+          <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
-              style={{ top: '50%', transform: 'translateY(-50%)' }}
-              className="absolute right-12 hidden md:flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
+              className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
               title="문제 위/아래 이동"
             >
               <button 
@@ -3376,22 +3377,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Sleek, Dedicated Drag Resizable Splitter (Thin vertical bar) */}
+          {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            onMouseDown={startReviewResize}
-            onTouchStart={startReviewResize}
-            className="hidden md:flex w-1.5 hover:w-2 bg-slate-800/80 hover:bg-violet-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 items-center justify-center relative group"
-            title="좌우 드래그하여 제미나이 튜터 크기 조절"
+            className="w-full md:w-[30%] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
-            {/* Center Indicator Line for micro-interaction */}
-            <div className="w-[1px] h-10 bg-slate-700/50 group-hover:bg-violet-300 group-hover:h-20 transition-all duration-300 rounded-full" />
-          </div>
-
-            {/* Right: Gemini Chat Sidebar */}
-            <div 
-              style={{ flex: isDesktop ? '1 1 0%' : 'none', width: isDesktop ? 'auto' : '100%' }} 
-              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
-            >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3645,15 +3634,14 @@ export default function App() {
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
-            {/* Left: Exam Wrapper */}
+            {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              style={{ width: isDesktop ? `${examSplitRatio}%` : '100%', maxWidth: isDesktop ? '768px' : 'none' }} 
-              className="w-full min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
-              {/* Left: Exam Body */}
+              {/* Left: Exam Body (Expanded to max-w-5xl for wider, highly readable questions) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3932,11 +3920,13 @@ export default function App() {
               </div>
             )}
               </div>
+            </div>
 
-              {/* Floating Scroll Button Capsule (Amber/Amber-500 Theme - floats independently on Exam Wrapper right edge) */}
+            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
+            <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+              {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
-                style={{ top: '50%', transform: 'translateY(-50%)' }}
-                className="absolute right-12 hidden md:flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
+                className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
                 title="문제 위/아래 이동"
               >
                 <button 
@@ -3957,21 +3947,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sleek, Dedicated Drag Resizable Splitter (Thin vertical bar) - Amber/Amber-500 Theme */}
+            {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              onMouseDown={startExamResize}
-              onTouchStart={startExamResize}
-              className="hidden md:flex w-1.5 hover:w-2 bg-slate-800/80 hover:bg-amber-500/80 cursor-col-resize h-full transition-all duration-200 z-20 flex-shrink-0 items-center justify-center relative group"
-              title="좌우 드래그하여 제미나이 튜터 크기 조절"
-            >
-              {/* Center Indicator Line for micro-interaction */}
-              <div className="w-[1px] h-10 bg-slate-700/50 group-hover:bg-amber-300 group-hover:h-20 transition-all duration-300 rounded-full" />
-            </div>
-
-            {/* Right: Gemini Sidebar */}
-            <div 
-              style={{ flex: isDesktop ? '1 1 0%' : 'none', width: isDesktop ? 'auto' : '100%' }} 
-              className="w-full max-w-full min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[30%] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
