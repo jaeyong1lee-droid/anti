@@ -2253,7 +2253,7 @@ ${specialInstructions}
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}`;,StartLine:2233,TargetContent:
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
 1. 반드시 총 10개의 문제를 다음과 같이 구성하여 출제하십시오:
