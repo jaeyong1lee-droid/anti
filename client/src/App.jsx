@@ -567,6 +567,19 @@ export default function App() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
+
+  // Disable body scroll when any full-screen modal is open to eliminate the redundant far-right browser scrollbar on PC
+  useEffect(() => {
+    const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
   
   // Drag Resizable Splitter State and Event Handlers
   const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
