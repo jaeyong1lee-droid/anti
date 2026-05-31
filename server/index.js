@@ -2303,6 +2303,7 @@ ${specialInstructions}
 2. 수식 및 기호 표기:
    - 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다.
    - 중요: LaTeX 수식 기호( $ 또는 $$ ) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: '$수식$'은 올바르고, '$ 수식 $'과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \\\\times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 
 3. 중복 질문 및 꼬임 금지:
    - 10개 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
@@ -3278,6 +3279,7 @@ ${combinedText}
    - 객관식 (type: "객관식"): 4문제 (4지선다형)
 2. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
 3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -3530,7 +3532,8 @@ app.post('/api/chat', async (req, res) => {
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
 6. 수식 및 기호 표기:
    - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.
-   - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.`;
+   - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
       const healedText = healLatexFormulas(responseText);
       res.json({ text: healedText });
@@ -3946,99 +3949,146 @@ function healLatexFormulas(text) {
   
   let healed = text;
 
-  // 1. Replace multiple backslashes with a single backslash
-  healed = healed.replace(/\\+/g, '\\');
+  // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
 
-  // 1.5. Heal invalid \y commands and bare 'y' used as gamma in geotech formulas
-  healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
-    if (suffix.startsWith('cdot')) {
-      return '\\gamma \\cdot ' + suffix.substring(4);
-    }
-    return '\\gamma ' + suffix;
-  });
-  healed = healed.replace(/\\y\b/g, '\\gamma');
-
-  // Convert bare 'y' to '\gamma' inside mathematical blocks ($...$) for geotech parameters
-  healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
-    let replaced = math;
-    replaced = replaced.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
-    replaced = replaced.replace(/\by\s*D_f\b/g, '\\gamma D_f');
-    replaced = replaced.replace(/\byD_f\b/g, '\\gamma D_f');
-    replaced = replaced.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
-    return `$${replaced}$`;
-  });
-
-  // 2. Wrap bare Greek letters with backslashes
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
-  symbols.forEach(sym => {
-    const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
-    healed = healed.replace(regex, `\\${sym}`);
-  });
-
-  // 3. Wrap specific arithmetic equations like \sigma' = \sigma - P_w
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, g1) => g1 ? `$${g1}$` : match);
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
-
-  // 4. Match and wrap comparison/equality formulas containing greek letters or backslashes
-  const formulaPattern = /(?:\$[^\$]+\$)|((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?(?:\s*[-+*\/]*\s*[<>=]+\s*[-+*\/]*\s*\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?)+))/g;
-  
-  healed = healed.replace(formulaPattern, (match, g1) => {
-    if (g1) {
-      const hasBackslash = g1.includes('\\');
-      const hasGreek = symbols.some(sym => g1.includes(sym));
-      const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
-      if (hasBackslash || hasGreek || hasMathContext) {
-        return `$${g1.trim()}$`;
+  // 1. Line-by-line recovery for formulas with a single missing delimiter
+  // If a line starts with a formula variable/command and an equals sign, but has exactly one dollar sign,
+  // we strip the single dollar sign so that the formulaPattern can wrap the whole equation cleanly.
+  const lines = healed.split('\n');
+  const processedLines = lines.map(line => {
+    const dollarCount = (line.match(/\$/g) || []).length;
+    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
+    if (dollarCount === 1) {
+      if (isFormulaLine) {
+        return line.replace(/\$/g, '');
       }
-      return g1;
+    }
+    return line;
+  });
+  healed = processedLines.join('\n');
+
+  // 2. Repair formulas starting with LaTeX commands but having fragmented dollars mid-way and at the end
+  // e.g. \theta = \frac{$\delta}{L}$ -> $\theta = \frac{\delta}{L}$
+  // e.g. \theta = 1$/300$ -> $\theta = 1/300$
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+    const hasBackslash = p1.includes('\\') || p2.includes('\\');
+    const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
+    if (hasBackslash || hasGreek) {
+      return start + '$' + p1 + p2 + '$';
     }
     return match;
   });
 
-  // 5. Wrap individual Greek variables like \alpha_p, \alpha_f, \phi, including curly brace subscripts like \tau_{allow}
-  const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-  const greekPattern = new RegExp(`(?:\\$[^\$]+\\$)|((\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_])))`, 'g');
-  healed = healed.replace(greekPattern, (match, g1) => {
-    if (g1) {
-      return `$${g1}$`;
+  // 3. Clean up split fractions in curly braces like \frac{$\delta}{L} -> \frac{\delta}{L}
+  healed = healed.replace(/\\frac\s*\{\s*\$([^\$]+?)\}/g, '\\frac{$1}');
+  healed = healed.replace(/\{\s*\$([^\$]+?)\s*\}/g, '{$1}');
+
+  // 4. Clean up arithmetic split dollars like 1$/300$ -> 1/300$
+  healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
+
+  // 5. Clean up multiple backslashes ONLY when they are part of a command name (e.g. \\gamma -> \gamma)
+  // This preserves standard LaTeX newlines like \\
+  healed = healed.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+
+  // 6. Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
+  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
+  healed = healed.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+    if (p1.includes('\\left') || p1.includes('\\right')) {
+      return match;
     }
-    return match;
+    return '($' + p1.trim() + '$)';
   });
 
-  // 6. Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w) that don't have backslashes
-  const plainSubscriptPattern = /(?:\$[^\$]+\$)|((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
-  healed = healed.replace(plainSubscriptPattern, (match, g1) => {
-    if (g1) {
-      return `$${g1}$`;
+  // --- Multi-Step Tokenization & Wrapping Architecture ---
+
+  // STEP 1: Wrap larger formulas (equations and specific arithmetic expressions) on text tokens
+  let tokens = tokenizeForHealing(healed);
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+
+      // Match and wrap comparison/equality formulas containing greek letters or backslashes
+      // We restrict the right-side match to typical mathematical characters, stopping at Korean or markdown formatting
+      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+      t = t.replace(formulaPattern, (match, g1) => {
+        if (g1) {
+          const hasBackslash = g1.includes('\\');
+          const hasGreek = symbols.some(sym => g1.includes(sym));
+          const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
+          if (hasBackslash || hasGreek || hasMathContext) {
+            const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
+            return isComplex ? `$$${g1.trim()}$$` : `$${g1.trim()}$`;
+          }
+        }
+        return match;
+      });
+
+      // Wrap specific arithmetic equations like \sigma' = \sigma - P_w
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
     }
-    return match;
   });
 
-  // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
-  healed = healed.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
-    const lower = formula.toLowerCase();
-    const hasBlockElement = /\\frac|\\sqrt|\\sum|\\int|\\begin|\\end|\\\\|=/.test(lower);
-    if (!hasBlockElement) {
-      return `$${formula.trim()}$`;
+  // STEP 2: Re-tokenize and wrap smaller Greek variables and subscripts
+  let reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
+
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+
+      // Wrap bare Greek letters with backslashes
+      symbols.forEach(sym => {
+        const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
+        t = t.replace(regex, `\\${sym}`);
+      });
+
+      // Wrap individual Greek variables like \alpha_p, \alpha_f, \phi, including curly brace subscripts like \tau_{allow}
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
+
+      // Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w)
+      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
     }
-    return match;
   });
 
-  // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
-  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
-  healed = healed.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
+  // STEP 3: Re-tokenize and perform inner math block formatting
+  reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
 
-  // Ensure space before opening parenthesis/bracket if preceded by Korean or number
-  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
-  // Ensure space after closing parenthesis/bracket if followed by Korean or number
-  healed = healed.replace(/([\)\}\]])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+  tokens.forEach(token => {
+    if (token.type !== 'text') {
+      let inside = token.content;
+      const isBlock = inside.startsWith('$$');
+      let math = isBlock 
+        ? inside.substring(2, inside.length - 2).trim()
+        : inside.substring(1, inside.length - 1).trim();
 
-  // Tokenize the text to strictly process and format math formulas
-  const tokens = tokenizeForHealing(healed);
+      // Convert bare 'y' to '\gamma' inside math blocks
+      math = math.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
+      math = math.replace(/\by\s*D_f\b/g, '\\gamma D_f');
+      math = math.replace(/\byD_f\b/g, '\\gamma D_f');
+      math = math.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+
+      token.content = isBlock ? `$$${math}$$` : `$${math}$`;
+    }
+  });
+
+  // Reassemble and perform final spacing formatting
+  reassembled = tokens.map(t => t.content).join('');
+
+  // Re-tokenize to ensure perfect spacing
+  const finalTokens = tokenizeForHealing(reassembled);
 
   // Process Rule 1: Remove spaces inside math blocks
-  tokens.forEach(token => {
+  finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
       const inside = token.content.substring(1, token.content.length - 1).trim();
       token.content = `$${inside}$`;
@@ -4048,22 +4098,27 @@ function healLatexFormulas(text) {
     }
   });
 
+  reassembled = finalTokens.map(t => t.content).join('');
+  // Ensure space before/after brackets
+  reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
+  reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+
   // Process Rule 2: Ensure external spacing
+  const processedTokens = tokenizeForHealing(reassembled);
   let result = '';
-  for (let i = 0; i < tokens.length; i++) {
-    const current = tokens[i];
+  for (let i = 0; i < processedTokens.length; i++) {
+    const current = processedTokens[i];
     if (i === 0) {
       result += current.content;
       continue;
     }
 
-    const prev = tokens[i - 1];
+    const prev = processedTokens[i - 1];
     let needSpace = false;
 
     if (prev.type === 'text' && (current.type === 'inline-math' || current.type === 'block-math')) {
       const lastChar = prev.content[prev.content.length - 1];
       if (lastChar && !/\s/.test(lastChar)) {
-        // No space after standard opening punctuation (like (, [, {, ', ")
         if (!/[\(\[\{\'\"]/.test(lastChar)) {
           needSpace = true;
         }
@@ -4071,8 +4126,7 @@ function healLatexFormulas(text) {
     } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar)) {
-        // No space before standard trailing punctuation
-        if (!/[\,\.\?\!\)\]\}\:\;]/.test(firstChar)) {
+        if (!/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) {
           needSpace = true;
         }
       }
