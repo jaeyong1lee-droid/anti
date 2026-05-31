@@ -3305,10 +3305,10 @@ export default function App() {
             <div 
               className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
-              {/* Left: Quiz Body (Expanded to max-w-5xl for wider, highly readable questions) */}
+              {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3945,10 +3945,10 @@ export default function App() {
             <div 
               className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
-              {/* Left: Exam Body (Expanded to max-w-5xl for wider, highly readable questions) */}
+              {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
               >
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -4538,10 +4538,10 @@ export default function App() {
             <div 
               className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
-              {/* Left: Formula Body (Expanded to max-w-5xl for wider, highly readable questions) */}
+              {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
               >
               {loadingFormula ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5113,8 +5113,8 @@ export default function App() {
             
             {/* Left: Theory Wrapper (Takes exactly 60% width on Desktop) */}
             <div className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
-              {/* Left: Theory Body (Expanded to max-w-5xl for wider, highly readable questions) */}
-              <div ref={theoryBodyRef} className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 space-y-4 scroll-smooth">
+              {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
+              <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5">
                 
 
