@@ -227,7 +227,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           return (
             <div 
               key={idx} 
-              className="my-2 flex flex-col sm:flex-row items-center justify-between gap-4 py-2.5 px-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-slate-700/40 transition-all duration-300 group shadow-lg select-text"
+              className="my-1 md:my-2 flex flex-col md:flex-row items-center justify-between gap-4 md:py-2.5 md:px-4 bg-transparent md:bg-slateCustom-950/60 rounded-none md:rounded-2xl border-0 md:border md:border-slate-800/80 hover:border-transparent md:hover:border-slate-700/40 transition-all duration-300 group shadow-none md:shadow-lg select-text"
             >
               {/* KaTeX 수식 */}
               <div 
@@ -3624,15 +3624,15 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed ${
+                      <div className={
                         msg.role === 'user'
-                          ? 'bg-indigo-600 text-white rounded-br-sm'
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm'
-                      }`}>
+                          ? 'px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm'
+                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[90%] bg-transparent border-0 p-0 max-w-full w-full'
+                      }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
                             {msg.image && (
@@ -3656,9 +3656,9 @@ export default function App() {
                   ))
                 )}
                 {isChatLoading && (
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-start w-full">
                     <div className="text-[10px] mb-1 font-bold text-violet-400 ml-1">Gemini</div>
-                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
                       <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce delay-75"></div>
                       <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce delay-150"></div>
@@ -4229,15 +4229,15 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed ${
+                      <div className={
                         msg.role === 'user' 
-                          ? 'bg-indigo-600 text-white rounded-br-sm' 
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-sm max-w-none'
-                      }`}>
+                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                          : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
+                      }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
                             {msg.image && (
@@ -4261,9 +4261,9 @@ export default function App() {
                   ))
                 )}
                 {isChatLoading && (
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-start w-full">
                     <div className="text-[10px] mb-1 font-bold text-amber-400 ml-1">Gemini</div>
-                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce delay-75"></div>
                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce delay-150"></div>
@@ -4794,15 +4794,15 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed ${
+                      <div className={
                         msg.role === 'user' 
-                          ? 'bg-indigo-600 text-white rounded-br-sm' 
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base max-w-none'
-                      }`}>
+                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                      }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
                             {msg.image && (
@@ -4826,9 +4826,9 @@ export default function App() {
                   ))
                 )}
                 {isChatLoading && (
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-start w-full">
                     <div className="text-[10px] mb-1 font-bold text-rose-400 ml-1">Gemini</div>
-                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
                       <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-75"></div>
                       <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-150"></div>
@@ -5317,15 +5317,15 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
-                      <div className={`px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed ${
+                      <div className={
                         msg.role === 'user' 
-                          ? 'bg-indigo-600 text-white rounded-br-sm' 
-                          : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm prose prose-invert prose-base max-w-none'
-                      }`}>
+                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                      }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
                             {msg.image && (
@@ -5349,9 +5349,9 @@ export default function App() {
                   ))
                 )}
                 {isChatLoading && (
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-start w-full">
                     <div className="text-[10px] mb-1 font-bold text-indigo-400 ml-1">Gemini</div>
-                    <div className="px-3 py-2 rounded-2xl bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm text-xs flex gap-1 items-center">
+                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
                       <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
                       <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
