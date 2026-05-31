@@ -3387,10 +3387,10 @@ export default function App() {
                   {selectedTopic.pdf_name && (
                     <button
                       onClick={handleOpenOriginalReport}
-                      className="px-2.5 py-1 bg-violet-950/60 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/30 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-1"
+                      className="px-5 py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-xs sm:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-2"
                       title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                     >
-                      <FileText size={12} />
+                      <FileText size={18} />
                       <span>원 보고서 보기</span>
                     </button>
                   )}
