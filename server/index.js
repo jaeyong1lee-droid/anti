@@ -2260,31 +2260,39 @@ app.post('/api/exam/all', async (req, res) => {
 
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
-    const randomSeed = Math.floor(Math.random() * 10000);
 
-    const prompt = `
+    const cleanedQuestions = [];
+    const chunksCount = 6; // 60 questions from AI (6 chunks * 10 questions)
+    
+    console.log(`[종합평가 생성 시작] 총 ${chunksCount}개의 10문항 청크 단위로 AI 문제 생성을 시작합니다.`);
+
+    for (let chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++) {
+      console.log(`[청크 #${chunkIdx + 1}/6 생성 시도] 10개 문제 생성 중...`);
+      
+      // Mix question types for this chunk to reach exactly 15 Subj / 45 Obj
+      // Chunk 1, 2, 3: 3 Subj, 7 Obj
+      // Chunk 4, 5, 6: 2 Subj, 8 Obj
+      const subjCount = chunkIdx < 3 ? 3 : 2;
+      const objCount = 10 - subjCount;
+      const randomSeed = Math.floor(Math.random() * 10000) + chunkIdx;
+      
+      const chunkPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 모든 토픽의 소스 자료를 통합하여 정확히 70개의 종합평가 문제를 생성하십시오.
-매번 문제 구성을 다르게 출제하십시오 (랜덤 시드: ${randomSeed}).
+아래 범위 토픽 소스 자료를 참고하여, 정확히 10개의 종합평가 문제를 생성하십시오.
+매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}, 청크 번호: ${chunkIdx + 1}).
 
-[평가 범위 토픽 목록]: ${topicTitles}
+[출제 범위 토픽 목록]: ${topicTitles}
 
 [통합 소스 텍스트]:
 ${combinedText}
 
 [출제 규칙]:
-1. 총 70문제를 아래 비율로 구성:
-   - 주관식 (type: "주관식"): 25문제
-     * subtype "개요": 개요/정의/특징을 2~3줄로 서술 (최소 8문제)
-     * subtype "공식": 공식·수식·계산식·핵심 구성요소 기술 (최소 6문제)
-     * subtype "서술": 메커니즘·원리·비교 설명 (나머지)
-   - 객관식 (type: "객관식"): 45문제 (4지선다)
-2. 개요·정의·공식을 묻는 문제는 반드시 주관식으로만 출제.
-3. 모든 토픽에서 골고루 출제 (각 토픽별 최소 1문제 이상).
-4. 전문용어, 수치, 공식을 정확히 사용.
-5. 객관식 오답은 그럴듯하게 구성.
-6. 공식·수식은 LaTeX 형식 사용 ($수식$).
-7. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
+1. 정확히 10개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
+   - 주관식 (type: "주관식"): 정확히 ${subjCount}문제
+     * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
+   - 객관식 (type: "객관식"): 정확히 ${objCount}문제 (4지선다형)
+2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
+3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
 
 [JSON 포맷]:
 [
@@ -2302,28 +2310,56 @@ ${combinedText}
     "answer": "정답 보기 텍스트",
     "explanation": "해설"
   }
-  ... (총 70개)
 ]
 `;
 
-    let questions = null;
-    try {
-      const rawText = await callLLMWithFailover(null, prompt);
-      try {
-        let text = rawText;
-        if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-        questions = JSON.parse(text);
-      } catch {
-        questions = extractJsonArray(rawText);
+      let parsedQuestions = null;
+      let attempt = 0;
+      const maxChunkAttempts = 3;
+
+      while (attempt < maxChunkAttempts) {
+        try {
+          const rawText = await callLLMWithFailover(null, chunkPrompt);
+          let text = rawText;
+          if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+          
+          try {
+            parsedQuestions = JSON.parse(text);
+          } catch {
+            parsedQuestions = extractJsonArray(rawText);
+          }
+
+          if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log(`[청크 #${chunkIdx + 1}/6 성공] 10개 문제 생성 완료.`);
+            break;
+          }
+          throw new Error('JSON parsing failed or empty array');
+        } catch (err) {
+          attempt++;
+          console.warn(`[청크 #${chunkIdx + 1}/6 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
+          await sleep(1500); // 1.5s delay before retry
+        }
       }
-      if (!questions || !Array.isArray(questions) || questions.length === 0) {
-        throw new Error('70문항 파싱 실패');
+
+      if (!parsedQuestions || !Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
+        throw new Error(`종합평가 청크 #${chunkIdx + 1} 생성에 최종 실패하였습니다.`);
       }
-      const cleanedQuestions = questions.map(q => ({
+
+      // Add to final list
+      const cleaned = parsedQuestions.map(q => ({
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
+      cleanedQuestions.push(...cleaned);
 
+      // Sleep a bit between successful chunks to avoid hitting Google's rate limit
+      if (chunkIdx < chunksCount - 1) {
+        console.log(`[Rate Limit 관리] 다음 청크 생성을 시작하기 전에 1.2초간 대기합니다...`);
+        await sleep(1200);
+      }
+    }
+
+    try {
       // Retrieve custom formula questions and theory questions from database
       let customFormulas = [];
       let customTheories = [];
