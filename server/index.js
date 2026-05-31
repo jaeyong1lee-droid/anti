@@ -2409,24 +2409,21 @@ app.post('/api/exam/all', async (req, res) => {
     const topicTitles = topics.map(t => t.title).join(', ');
 
     const cleanedQuestions = [];
-    const chunksCount = 6; // 60 questions from AI (6 chunks * 10 questions)
+    const chunksCount = 1; // 단 1개의 문항만 생성
     
-    console.log(`[종합평가 생성 시작] 총 ${chunksCount}개의 10문항 청크 단위로 AI 문제 생성을 시작합니다.`);
+    console.log(`[종합평가 생성 시작] 단 1개의 객관식 문제 생성을 시작합니다.`);
 
     for (let chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++) {
-      console.log(`[청크 #${chunkIdx + 1}/6 생성 시도] 10개 문제 생성 중...`);
+      console.log(`[청크 #${chunkIdx + 1}/1 생성 시도] 1개 문제 생성 중...`);
       
-      // Mix question types for this chunk to reach exactly 15 Subj / 45 Obj
-      // Chunk 1, 2, 3: 3 Subj, 7 Obj
-      // Chunk 4, 5, 6: 2 Subj, 8 Obj
-      const subjCount = chunkIdx < 3 ? 3 : 2;
-      const objCount = 10 - subjCount;
+      const subjCount = 0;
+      const objCount = 1;
       const randomSeed = Math.floor(Math.random() * 10000) + chunkIdx;
       
       const chunkPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 정확히 10개의 종합평가 문제를 생성하십시오.
-매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}, 청크 번호: ${chunkIdx + 1}).
+아래 범위 토픽 소스 자료를 참고하여, 정확히 1개의 종합평가 객관식 문제를 생성하십시오.
+매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}).
 
 [출제 범위 토픽 목록]: ${topicTitles}
 
@@ -2434,22 +2431,13 @@ app.post('/api/exam/all', async (req, res) => {
 ${combinedText}
 
 [출제 규칙]:
-1. 정확히 10개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
-   - 주관식 (type: "주관식"): 정확히 ${subjCount}문제
-     * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
-   - 객관식 (type: "객관식"): 정확히 ${objCount}문제 (4지선다형)
+1. 정확히 1개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
+   - 객관식 (type: "객관식"): 정확히 1문제 (4지선다형)
 2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
 3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
 
 [JSON 포맷]:
 [
-  {
-    "type": "주관식",
-    "subtype": "개요",
-    "question": "질문",
-    "answer": "2~3줄 모범답안",
-    "concept": "핵심 개념 1줄"
-  },
   {
     "type": "객관식",
     "question": "질문",
@@ -2477,13 +2465,13 @@ ${combinedText}
           }
 
           if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log(`[청크 #${chunkIdx + 1}/6 성공] 10개 문제 생성 완료.`);
+            console.log(`[청크 #${chunkIdx + 1}/1 성공] 1개 문제 생성 완료.`);
             break;
           }
           throw new Error('JSON parsing failed or empty array');
         } catch (err) {
           attempt++;
-          console.warn(`[청크 #${chunkIdx + 1}/6 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
+          console.warn(`[청크 #${chunkIdx + 1}/1 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
           await sleep(1500); // 1.5s delay before retry
         }
       }
@@ -2498,97 +2486,12 @@ ${combinedText}
         question: cleanQuizQuestion(q.question)
       }));
       cleanedQuestions.push(...cleaned);
-
-      // RPM 방지를 위한 청크 간 지연시간 부여 (마지막 청크 제외)
-      if (chunkIdx < chunksCount - 1) {
-        console.log(`[종합평가 대기] RPM 초과 방지를 위해 1.5초간 대기합니다...`);
-        await sleep(1500);
-      }
     }
 
     try {
-      // Retrieve custom formula questions and theory questions from database
-      let customFormulas = [];
-      let customTheories = [];
-      try {
-        await ensureSessionTable();
-        const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
-        if (formulaRows.length > 0 && formulaRows[0].value) {
-          const parsed = JSON.parse(formulaRows[0].value);
-          if (Array.isArray(parsed.formulaQuestions)) {
-            customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-          }
-        }
-        const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
-        if (theoryRows.length > 0 && theoryRows[0].value) {
-          const parsed = JSON.parse(theoryRows[0].value);
-          if (Array.isArray(parsed.theoryQuestions)) {
-            customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-          }
-        }
-      } catch (dbErr) {
-        console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
-      }
-
-      // If database is empty, load defaults so that the user always has them
-      if (customFormulas.length === 0) {
-        customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
-          title: d.title,
-          formula: d.formula || d.structure || '',
-          concept: d.concept || ''
-        }));
-      }
-      if (customTheories.length === 0) {
-        customTheories = [
-          {
-            title: "Terzaghi 1차원 압밀 지배방정식 유도",
-            concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-            formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-          },
-          {
-            title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-            concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-            formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-          },
-          {
-            title: "Rankine 주동토압 공식의 이론적 유도",
-            concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-            formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-          }
-        ];
-      }
-
-      // Shuffle and select up to 5 formula questions and 5 theory questions
-      const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
-      const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
-      
-      const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
-        type: "주관식",
-        subtype: "공식",
-        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-        answer: f.formula,
-        concept: f.concept
-      }));
-      
-      const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
-        type: "주관식",
-        subtype: "서술",
-        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-        answer: t.formula,
-        concept: t.concept
-      }));
-
-      const customSubjs = [...selectedFormulas, ...selectedTheories];
-
-      // Filter generated questions into Subjectives and Objectives
-      const generatedSubjectives = cleanedQuestions.filter(q => q.type === '주관식');
+      // 1문제 전용 반환이므로 custom formulas/theories는 병합 배제하고 즉시 반환
       const generatedObjectives = cleanedQuestions.filter(q => q.type === '객관식');
-
-      // Replace some subjective questions with custom formulas/theories to maintain 70 count
-      const subjsNeeded = Math.max(0, 25 - customSubjs.length);
-      const finalSubjectives = [...customSubjs, ...generatedSubjectives.slice(0, subjsNeeded)];
-      
-      const finalQuestions = [...finalSubjectives, ...generatedObjectives];
+      const finalQuestions = generatedObjectives.slice(0, 1);
 
       res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
     } catch (err) {
@@ -2671,8 +2574,12 @@ app.post('/api/chat', async (req, res) => {
     }
     
     let currentMessage = (message || '').trim();
-    if (!currentMessage && image) {
-      currentMessage = "이 이미지에 있는 기술사 문제를 분석하고 풀이 과정과 정답을 친절하고 상세하게 설명해주세요.";
+    if (image) {
+      if (!currentMessage) {
+        currentMessage = "[첨부 이미지 분석 요청] 수험생이 기술사 관련 스크린샷/이미지를 첨부하였습니다. 이미지에 담긴 모든 텍스트, 문제, 수식, 그래프, 도표 등을 고도로 정밀하게 분석 및 해독하여, 해당 문제의 출제 의도, 명쾌한 풀이 과정 및 정확한 최종 정답을 친절하고 기술학적으로 완벽히 설명해 주십시오.";
+      } else {
+        currentMessage = `[첨부 이미지 분석 요청] 수험생이 이미지(스크린샷)와 함께 다음 질문을 보냈습니다: "${currentMessage}". 첨부된 이미지에 표현된 핵심 기술사 문제, 수식, 다이어그램, 텍스트 등을 최우선으로 정밀 분석하여 질문에 매우 구체적이고 체계적으로 답변해 주십시오.`;
+      }
     }
     structuredPrompt += currentMessage;
 
@@ -2693,7 +2600,8 @@ app.post('/api/chat', async (req, res) => {
      * 이완되는 지반 하부에 미치는 **잔류 연직응력($\sigma_v$)은 아칭 효과에 의해 "감소(감쇄)"**하게 되며, 이는 수식 내의 지수 감쇄항 $e^{-K \tan \phi \frac{z}{B}}$를 통해 완벽히 증명됩니다.
      * 이러한 물리적 인과관계를 철저하게 고수하며, 엉터리 비례/반비례 관계를 나타내는 임의의 날조 수식을 절대 출하지 마십시오.
 3. 실재하지 않는 UI 및 문서 뷰어에 대한 환각(Hallucination) 절대 엄금:
-   - 답변할 때 "현재 우측 Canvas에 열려 있는 문서", "우측 화면의 캔버스", "상단 문서 뷰어" 등 실제 애플리케이션 화면에 표시되지 않는 가상의 인터페이스 요소를 멋대로 추측하거나 언급하지 마십시오. 오직 수험생이 직접 질문한 텍스트 맥락에만 집중하여 답변해 주십시오.
+   - 답변할 때 "현재 우측 Canvas에 열려 있는 문서", "우측 화면의 캔버스", "상단 문서 뷰어" 등 실제 애플리케이션 화면에 표시되지 않는 가상의 인터페이스 요소를 멋대로 추측하거나 언급하지 마십시오.
+   - **[이미지/스크린샷 정밀 판독 필수]**: 만약 수험생이 이미지(스마트폰 캡처, 시험 문제지 사진, 스크린샷 등)를 첨부하여 질문을 전송한 경우, 해당 이미지 속의 필기 글씨, 인쇄 텍스트, 수식, 그래프 지표, 토질 단면도 등을 최우선으로 깊이 있게 분석 및 이해하여 이를 기반으로 답변해 주십시오. 이미지와 사용자 메시지의 내용을 유기적으로 결합하여 최상의 전문 답변을 도출해 주십시오.
 4. 겸손하고 전문적인 대화 태도 유지 (훈계조/가상 오류 지적 절대 금지):
    - 수험생이 직접 질문하지도 않은 엉터리 수식(예: $\sigma = \frac{F}{A \tan \phi}$ 등)을 수험생이 제시했다고 간주하고 비난하거나, 또는 반대로 튜터 스스로가 이러한 엉터리 공식을 아칭 효과 공식이라며 수험생에게 소개하여 수험생의 불신을 사는 일이 절대 없도록 하십시오.
    - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
@@ -3024,6 +2932,7 @@ async function ensureSessionTable() {
 // GET /api/session/exam → 저장된 종합평가 상태 반환
 app.get('/api/session/exam', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const rows = await dbQuery.all(
       'SELECT value FROM app_session WHERE key = ?',
@@ -3074,6 +2983,7 @@ app.delete('/api/session/exam', async (req, res) => {
 // GET /api/session/formula → 저장된 필수공식 상태 반환
 app.get('/api/session/formula', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const rows = await dbQuery.all(
       'SELECT value FROM app_session WHERE key = ?',
@@ -3111,6 +3021,7 @@ app.post('/api/session/formula', async (req, res) => {
 // GET /api/session/theory → 저장된 이론유도 상태 반환
 app.get('/api/session/theory', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const rows = await dbQuery.all(
       'SELECT value FROM app_session WHERE key = ?',

@@ -486,7 +486,7 @@ export default function App() {
     }
 
     // 2) 서버 → 종합평가 세션 복원 (기기 간 공유 우선)
-    fetch(`${API_BASE}/api/session/exam`)
+    fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`)
       .then(r => r.json())
       .then(({ data }) => {
         if (data?.examQuestions?.length) {
@@ -955,7 +955,7 @@ export default function App() {
     setLoadingExam(true);
     setShowExam(true);
     try {
-      const sessionRes = await fetch(`${API_BASE}/api/session/exam`);
+      const sessionRes = await fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`);
       const sessionData = await sessionRes.json();
       if (sessionData?.data?.examQuestions?.length > 0) {
         // 서버에 저장된 문제가 있음 → 그대로 복원
@@ -1164,7 +1164,7 @@ export default function App() {
 
     // 1) Try Database Sync
     try {
-      const res = await fetch(`${API_BASE}/api/session/formula`);
+      const res = await fetch(`${API_BASE}/api/session/formula?t=${Date.now()}`);
       if (res.ok) {
         const body = await res.json();
         if (body && body.data && Array.isArray(body.data.formulaQuestions) && body.data.formulaQuestions.length > 0) {
@@ -1292,7 +1292,7 @@ export default function App() {
 
     // 1) Try Database Sync
     try {
-      const res = await fetch(`${API_BASE}/api/session/theory`);
+      const res = await fetch(`${API_BASE}/api/session/theory?t=${Date.now()}`);
       if (res.ok) {
         const body = await res.json();
         if (body && body.data && Array.isArray(body.data.theoryQuestions) && body.data.theoryQuestions.length > 0) {
