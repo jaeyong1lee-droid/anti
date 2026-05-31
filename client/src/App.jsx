@@ -191,6 +191,63 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
   cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
   cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
 
+  // Check if text contains HTML tags (fully supported for custom layouts/tables/styling)
+  const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
+
+  if (hasHtml) {
+    let htmlContent = cleanedText;
+    if (window.katex) {
+      // Render block math $$ ... $$
+      htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        try {
+          return window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+        } catch (e) {
+          return m;
+        }
+      });
+      // Render inline math $ ... $
+      htmlContent = htmlContent.replace(/\$([^\$]+?)\$/g, (m, math) => {
+        try {
+          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+        } catch (e) {
+          return m;
+        }
+      });
+    }
+
+    const isInline = className.includes('inline');
+    if (isInline) {
+      return (
+        <span 
+          className={`${className} select-text`}
+          onMouseDown={startPress}
+          onMouseUp={endPress}
+          onMouseMove={cancelPress}
+          onMouseLeave={cancelPress}
+          onTouchStart={startPress}
+          onTouchEnd={endPress}
+          onTouchMove={cancelPress}
+          onTouchCancel={cancelPress}
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+      );
+    }
+    return (
+      <div 
+        className={`${className} select-text w-full overflow-x-auto`}
+        onMouseDown={startPress}
+        onMouseUp={endPress}
+        onMouseMove={cancelPress}
+        onMouseLeave={cancelPress}
+        onTouchStart={startPress}
+        onTouchEnd={endPress}
+        onTouchMove={cancelPress}
+        onTouchCancel={cancelPress}
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+    );
+  }
+
   if (!window.katex) {
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
   }
