@@ -1592,50 +1592,14 @@ function getRockboltPulloutTestExpertQuestions(title, keywords) {
         "Mohr-Coulomb 파괴 포락 곡선"
       ]),
       answer: "하중-변위 곡선 (Load-Displacement Curve)",
-      explanation: "락볼트 인발시험 시 하중을 점진적으로 가하면서 그때마다 발생하는 볼트의 인발 변위량(신장량)을 계측하여 '하중-변위 곡선(Load-Displacement Curve)'을 작성해 정착 성능 및 변형 능력을 분석합니다."
-    },
-    {
-      type: '객관식 (4지선다)',
-      question: `현장 락볼트 인발시험 시 가해주는 최대 시험 하중(재하 기준)의 보편적인 공학적 품질 판정 기준으로 가장 적절한 것은?`,
-      options: shuffleArray([
-        "설계인발력(통상 10~15톤 내외) 이상을 확실히 도달 및 지지하는지 검증한다.",
-        "락볼트 강재가 우주선 인장 파괴 한계 하중인 1000톤에 도달할 때까지 파괴 재하한다.",
-        "하중을 전혀 가하지 않고 손으로 흔들어서 강도를 오감 판정한다.",
-        "설계 지압력의 10% 미만의 극미한 미동 하중만 순간적으로 가하고 해제한다."
-      ]),
-      answer: "설계인발력(통상 10~15톤 내외) 이상을 확실히 도달 및 지지하는지 검증한다.",
-      explanation: "인발시험 시 락볼트가 설계 조건상의 허용 지지력을 만족하는지 검증하는 것이 목적이므로, 설계인발력(현장별 통상 10~15톤 내외 또는 설계 하중의 1.2배 이상)까지 하중을 가해 버티는지 판정합니다."
-    },
-    {
-      type: '객관식 (4지선다)',
-      question: `전면접착식 시멘트 그라우팅 락볼트 시공 시 충전재로 널리 쓰이는 시멘트 페이스트(Cement Paste)의 부착 강도 및 워커빌리티를 확보하기 위한 가장 적합한 물-시멘트비(W/C) 범위는?`,
-      options: shuffleArray([
-        "W/C = 35% ~ 45% 내외",
-        "W/C = 90% ~ 100% 내외 (완전 물 상태)",
-        "W/C = 5% ~ 10% 내외 (완전 건조 가루 상태)",
-        "시멘트를 섞지 않고 순수한 지하수만 주입하는 것이 최적이다."
-      ]),
-      answer: "W/C = 35% ~ 45% 내외",
-      explanation: "부착 강도 극대화와 적절한 그라우트 주입성(압송성)을 동시에 만족시키기 위해 락볼트 충전재의 물-시멘트비는 일반적으로 35% ~ 45% 범위 내외의 걸쭉한 슬러리 상태로 배합 설계합니다."
-    },
-    {
-      type: '객관식 (4지선다)',
-      question: `현장 락볼트 인발시험 진행 도중, 설계 지지력에 미치지 못하고 볼트가 맥없이 미끄러져 빠져나오는 시공 불량 요인으로 가장 합리적이지 않은 진술은?`,
-      options: shuffleArray([
-        "천공 구멍 내부의 암분(가루) 청소를 불량하게 하여 그라우트 부착을 방해한 경우",
-        "시멘트 페이스트 주입량이 부족하여 구멍 상부에 공극(Void)이 다량 형성된 경우",
-        "그라우트 재료가 규정된 시간 동안 충분히 경화(양생)되지 않은 채 조기 인발을 시행한 경우",
-        "시추 구멍 내부에 그라우트(시멘트 충전재)가 빈틈없이 너무 꽉 찬 충만 밀실 상태인 경우"
-      ]),
-      answer: "시추 구멍 내부에 그라우트(시멘트 충전재)가 빈틈없이 너무 꽉 찬 충만 밀실 상태인 경우",
-      explanation: "그라우트가 시추공 내에 빈틈없이 밀실하게 가득 차서 충전율이 100%에 가까울수록 볼트 정착 강도는 극대화됩니다. 따라서 이는 시공 불량 원인이 아니라 최적의 시공 상태입니다."
+      explanation: "인발시험의 하중-변위 관계선에서 초기 경사 기울기 비율이 100%에 가까울수록 볼트 정착 강도가 극대화됩니다. 따라서 이는 시공 불량 원인이 아니며 최적의 시공 상태입니다."
     }
   ];
 
   return [q1, q2, ...mcQuestions];
 }
 
-// Helper function to generate technical and high-quality PE questions locally (Dynamic domain-agnostic fallback)
+// Built-in Expert-Grade PE Questions for Soil Nailing & Earth Anchor Comparison
 function generateFallbackQuestions(title, keywords, fileText = '') {
   return generateFallbackQuestionsModule(title, keywords, fileText);
 }
@@ -2269,7 +2233,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
-아래 제공되는 [토픽 제목], [핵심 키워드], 그리고 [첨부파일 본문 텍스트]를 심층 분석하여, 총 10개의 고난도 예상문제를 생성해 주십시오.
+아래 제공되는 [토픽 제목], [핵심 키워드], 그리고 [첨부파일 본문 텍스트]를 심층 분석하여, 총 10개의 예상문제를 생성해 주십시오.
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
@@ -2289,43 +2253,27 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제�      const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
-수험생의 질문이나 이미지 자료에 대해 군더더기 없이 오직 핵심 요지만 매우 콤팩트하고 명확하게 답변해 주십시오.
+   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
+   - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
+   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
+   - "structure": 반드시 빈 문자열 ""
 
-[답변 원칙]:
-1. 극도의 간결성 및 장황함 배제 (묻는 말에만 답변):
-   - 구구절절하고 긴 서론, 일반적인 개요, 넓은 시공 대책, 장황한 결론 조항 등 질문의 범위를 벗어나는 서술형 답변을 강력히 금지합니다.
-   - 오직 수험생이 던진 **질문의 요지 및 묻는 핵심 논점에 대해서만 2~4문장 이내로 명확하고 컴팩트하게 즉구형 핵심 답변**을 기재하십시오. 
-2. 토목공학 전 분야의 폭넓은 지식 활용:
-   - 지반공학(토질역학, 터널, 기초), 구조공학(콘크리트, 강구조, 교량), 시공 및 환경, 도로, 수자원 등 토목공학 전 분야에 걸친 풍부한 지식을 기반으로 유연하고 전문성 있게 대응하십시오.
-3. 개념의 학술적/실무적 정확성 (예: 아칭 효과 등):
-   - 특정 용어가 지반 거동과 구조적 부재 거동 모두에 해당할 수 있는 경우, 수험생의 질문 맥락을 정밀하게 파악하여 지반역학적 정의와 부재역학적 관점을 명확히 구분하고 균형 있게 설명하십시오.
-   - **절대 존재하지 않거나 단순 오개념에 불과한 가짜 수식(예: 아칭 효과 공식을 $\sigma = \frac{F}{A \tan \phi}$ 등으로 표현하는 행위)을 스스로 날조(환각)하여 제시하지 마십시오.**
-   - 아칭 효과(Arching Effect)의 실제 수학적/공학적 모델링은 오직 **테르자기(Terzaghi)의 트랩도어(Trapdoor) 이론**에 근거한 비선형 응력 감쇄식(아래 지배방정식)을 기준으로 정확하게 설명하십시오:
-     $$\sigma_v = \frac{B \left( \gamma - \frac{c}{B} \right)}{K \tan \phi} \left( 1 - e^{-K \tan \phi \frac{z}{B}} \right) + q e^{-K \tan \phi \frac{z}{B}}$$
-   - **역학적 기전의 물리적 타당성 규정**:
-     * 흙의 내부마찰각($\phi$)이 커질수록 흙의 전단 강도와 전단 저항이 가동되는 능력이 강해지므로, **인접한 단단한 지반으로 전이되는 응력(Stress Transfer, 전이 하중)은 내부마찰각 $\phi$가 커질수록 "증가"**합니다.
-     * 이완되는 지반 하부에 미치는 **잔류 연직응력($\sigma_v$)은 아칭 효과에 의해 "감소(감쇄)"**하게 되며, 이는 수식 내의 지수 감쇄항 $e^{-K \tan \phi \frac{z}{B}}$를 통해 완벽히 증명됩니다.
-   - 이러한 물리적 인과관계를 철저하게 고수하며, 엉터리 비례/반비례 관계를 나타내는 임의의 날조 수식을 절대 출하지 마십시오.
-4. 실재하지 않는 UI 및 문서 뷰어에 대한 환각(Hallucination) 절대 엄금:
-   - 답변할 때 "현재 우측 Canvas에 열려 있는 문서", "우측 화면의 캔버스", "상단 문서 뷰어" 등 실제 애플리케이션 화면에 표시되지 않는 가상의 인터페이스 요소를 멋대로 추측하거나 언급하지 마십시오.
-   - **[이미지/스크린샷 정밀 판독 필수]**: 만약 수험생이 이미지(스마트폰 캡처, 시험 문제지 사진, 스크린샷 등)를 첨부하여 질문을 전송한 경우, 해당 이미지 속의 필기 글씨, 인쇄 텍스트, 수식, 그래프 지표, 토질 단면도 등을 최우선으로 깊이 있게 분석 및 이해하여 이를 기반으로 답변해 주십시오.
-5. 겸손하고 전문적인 대화 태도 유지 (훈계조/가상 오류 지적 절대 금지):
-   - 수험생이 직접 질문하지도 않은 엉터리 수식을 수험생이 제시했다고 간주하고 비난하거나, 또는 반대로 튜터 스스로가 이러한 엉터리 공식을 아칭 효과 공식이라며 수험생에게 소개하여 수험생의 불신을 사는 일이 절대 없도록 하십시오.
-   - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
-6. 수식 및 기호 표기:
-   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.`;
-      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
-      const healedText = healLatexFormulas(responseText);
-      res.json({ text: healedText });��안(concept, formula)은 구구절절하고 장황한 설명조의 문장을 일절 배제하십시오.
-   - 1번 개요는 해당 토픽이 무엇인지를 명확하게 가리키는 1~2줄의 직관적 문장으로만 구성하십시오.
-   - 2번 공식은 공식 수식 자체와 각 기호의 직관적 물리 명칭만 아주 짧고 컴팩트하게 나열하여 기재하십시오.
+   [3번~10번 문제] 객관식 (4지선다):
+   - 목적: 토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
+   - "type" 값: 반드시 "객관식 (4지선다)"
+   - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
+   - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
+   - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
+   - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
 
-5. 공식이나 수식을 보여줄 때는 반드시 LaTeX 문법 형식을 활용하여 기재하십시오. 인라인 수식은 '$수식$' 형태로, 블록 수식은 '$$수식$$' 형태로 감싸야 합니다.
-6. 중요: LaTeX 수식 기호( $ 또는 $$ ) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: '$수식$'은 올바르고, '$ 수식 $'과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \\\\times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
-7. 중요: JSON 포맷 내에서 LaTeX 수식을 기재할 때, 모든 역슬래시(backslash, \\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프하여 출력하셔야 JSON 파싱 오류가 발생하지 않습니다. (예: "\\\\frac" 대신 "\\\\frac", "\\\\sin" 대신 "\\\\sin" 과 같이 모든 LaTeX 명령어 기호 앞의 역슬래시를 두 번씩 기재하십시오.)
+2. 수식 및 기호 표기:
+   - 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다.
+   - 중요: LaTeX 수식 기호( $ 또는 $$ ) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: '$수식$'은 올바르고, '$ 수식 $'과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \\\\times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
 
-8. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 '\`\`\`json' 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
+3. 중복 질문 및 꼬임 금지:
+   - 10개 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
+
+4. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
 
 [응답 JSON 포맷]:
 [
@@ -2354,7 +2302,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 ]
 `;
 
-      try {
+try {
         const responseText = await callLLMWithFailover(null, prompt);
         
         let text = responseText.trim();
@@ -2396,7 +2344,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedFallback = fallbackQuestions.map(q => ({
+      const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
@@ -2770,10 +2718,10 @@ ${formatRequirement}
       }
 
       return res.json({
-        question: {
+        question: healQuizQuestionObject({
           ...parsedQuestion,
           question: cleanQuizQuestion(parsedQuestion.question)
-        },
+        }),
         isFallback: false
       });
     } else {
@@ -3110,7 +3058,8 @@ app.post('/api/chat', async (req, res) => {
 6. 수식 및 기호 표기:
    - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
-      res.json({ text: responseText });
+      const healedText = healLatexFormulas(responseText);
+      res.json({ text: healedText });
     } catch (err) {
       console.error('Chat route error:', err);
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
@@ -3523,8 +3472,8 @@ function healLatexFormulas(text) {
   
   let healed = text;
 
-  // 1. Replace double backslashes (\\) with single backslashes (\) safely
-  healed = healed.replace(/\\\\/g, '\\');
+  // 1. Replace multiple backslashes with a single backslash
+  healed = healed.replace(/\\+/g, '\\');
 
   // 2. Wrap bare Greek letters with backslashes
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
@@ -3564,7 +3513,100 @@ function healLatexFormulas(text) {
     return match;
   });
 
-  return healed;
+  // 6. Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w) that don't have backslashes
+  const plainSubscriptPattern = /(?:\$[^\$]+\$)|((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+  healed = healed.replace(plainSubscriptPattern, (match, g1) => {
+    if (g1) {
+      return `$${g1}$`;
+    }
+    return match;
+  });
+
+  // Ensure space before opening parenthesis/bracket if preceded by Korean or number
+  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
+  // Ensure space after closing parenthesis/bracket if followed by Korean or number
+  healed = healed.replace(/([\)\}\]])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+
+  // Tokenize the text to strictly process and format math formulas
+  const tokens = tokenizeForHealing(healed);
+
+  // Process Rule 1: Remove spaces inside math blocks
+  tokens.forEach(token => {
+    if (token.type === 'inline-math') {
+      const inside = token.content.substring(1, token.content.length - 1).trim();
+      token.content = `$${inside}$`;
+    } else if (token.type === 'block-math') {
+      const inside = token.content.substring(2, token.content.length - 2).trim();
+      token.content = `$$${inside}$$`;
+    }
+  });
+
+  // Process Rule 2: Ensure external spacing
+  let result = '';
+  for (let i = 0; i < tokens.length; i++) {
+    const current = tokens[i];
+    if (i === 0) {
+      result += current.content;
+      continue;
+    }
+
+    const prev = tokens[i - 1];
+    let needSpace = false;
+
+    if (prev.type === 'text' && (current.type === 'inline-math' || current.type === 'block-math')) {
+      const lastChar = prev.content[prev.content.length - 1];
+      if (lastChar && !/\s/.test(lastChar)) {
+        // No space after standard opening punctuation (like (, [, {, ', ")
+        if (!/[\(\[\{\'\"]/.test(lastChar)) {
+          needSpace = true;
+        }
+      }
+    } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && current.type === 'text') {
+      const firstChar = current.content[0];
+      if (firstChar && !/\s/.test(firstChar)) {
+        // No space before standard trailing punctuation
+        if (!/[\,\.\?\!\)\]\}\:\;]/.test(firstChar)) {
+          needSpace = true;
+        }
+      }
+    } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && (current.type === 'inline-math' || current.type === 'block-math')) {
+      needSpace = true;
+    }
+
+    if (needSpace) {
+      result += ' ' + current.content;
+    } else {
+      result += current.content;
+    }
+  }
+
+  return result;
+}
+
+// Helper tokenization for healLatexFormulas
+function tokenizeForHealing(text) {
+  const tokens = [];
+  let lastIndex = 0;
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const before = text.substring(lastIndex, match.index);
+    if (before) {
+      tokens.push({ type: 'text', content: before });
+    }
+    const mathContent = match[0];
+    if (mathContent.startsWith('$$')) {
+      tokens.push({ type: 'block-math', content: mathContent });
+    } else {
+      tokens.push({ type: 'inline-math', content: mathContent });
+    }
+    lastIndex = regex.lastIndex;
+  }
+  const after = text.substring(lastIndex);
+  if (after) {
+    tokens.push({ type: 'text', content: after });
+  }
+  return tokens;
 }
 
 function healQuizQuestionObject(q) {
@@ -3792,10 +3834,10 @@ JSON 규격:
 
       res.json({
         theories: theories.map(t => ({
-          title: (t.title || '실시간 추출 공식').trim(),
-          concept: (t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim(),
-          assumptions: (t.assumptions || '').trim(),
-          answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
+          title: healLatexFormulas((t.title || '실시간 추출 공식').trim()),
+          concept: healLatexFormulas((t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim()),
+          assumptions: healLatexFormulas((t.assumptions || '').trim()),
+          answer: healLatexFormulas((t.answer || '상세 유도 과정이 존재하지 않습니다.').trim())
         }))
       });
     } catch (llmErr) {
@@ -4022,10 +4064,10 @@ JSON 규격:
     }
 
     res.json({
-      title: result.title.trim(),
-      concept: (result.concept || '').trim(),
-      assumptions: (result.assumptions || '').trim(),
-      answer: result.answer.trim()
+      title: healLatexFormulas(result.title.trim()),
+      concept: healLatexFormulas((result.concept || '').trim()),
+      assumptions: healLatexFormulas((result.assumptions || '').trim()),
+      answer: healLatexFormulas(result.answer.trim())
     });
 
   } catch (err) {
