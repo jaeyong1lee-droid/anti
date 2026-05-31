@@ -2408,25 +2408,13 @@ app.post('/api/exam/all', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
-    const cleanedQuestions = [];
-    const chunksCount = 6; // 60 questions from AI (6 chunks * 10 questions)
-    
-    console.log(`[종합평가 생성 시작] 총 ${chunksCount}개의 10문항 청크 단위로 AI 문제 생성을 시작합니다.`);
+    const randomSeed = Math.floor(Math.random() * 10000);
+    console.log(`[종합평가 생성 시작] 단일 고속 API 호출로 60문항 문제 생성을 시작합니다.`);
 
-    for (let chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++) {
-      console.log(`[청크 #${chunkIdx + 1}/6 생성 시도] 10개 문제 생성 중...`);
-      
-      // Mix question types for this chunk to reach exactly 15 Subj / 45 Obj
-      // Chunk 1, 2, 3: 3 Subj, 7 Obj
-      // Chunk 4, 5, 6: 2 Subj, 8 Obj
-      const subjCount = chunkIdx < 3 ? 3 : 2;
-      const objCount = 10 - subjCount;
-      const randomSeed = Math.floor(Math.random() * 10000) + chunkIdx;
-      
-      const chunkPrompt = `
+    const prompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 정확히 10개의 종합평가 문제를 생성하십시오.
-매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}, 청크 번호: ${chunkIdx + 1}).
+아래 범위 토픽 소스 자료를 참고하여, 정확히 60개의 종합평가 문제를 생성하십시오.
+매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}).
 
 [출제 범위 토픽 목록]: ${topicTitles}
 
@@ -2434,10 +2422,10 @@ app.post('/api/exam/all', async (req, res) => {
 ${combinedText}
 
 [출제 규칙]:
-1. 정확히 10개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
-   - 주관식 (type: "주관식"): 정확히 ${subjCount}문제
+1. 정확히 60개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
+   - 주관식 (type: "주관식"): 정확히 15문제
      * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
-   - 객관식 (type: "객관식"): 정확히 ${objCount}문제 (4지선다형)
+   - 객관식 (type: "객관식"): 정확히 45문제 (4지선다형)
 2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
 3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
 
@@ -2460,51 +2448,33 @@ ${combinedText}
 ]
 `;
 
-      let parsedQuestions = null;
-      let attempt = 0;
-      const maxChunkAttempts = 3;
-
-      while (attempt < maxChunkAttempts) {
-        try {
-          const rawText = await callLLMWithFailover(null, chunkPrompt);
-          let text = rawText;
-          if (text.startsWith('```')) text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-          
-          try {
-            parsedQuestions = JSON.parse(text);
-          } catch {
-            parsedQuestions = extractJsonArray(rawText);
-          }
-
-          if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log(`[청크 #${chunkIdx + 1}/6 성공] 10개 문제 생성 완료.`);
-            break;
-          }
-          throw new Error('JSON parsing failed or empty array');
-        } catch (err) {
-          attempt++;
-          console.warn(`[청크 #${chunkIdx + 1}/6 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
-          await sleep(1500); // 1.5s delay before retry
-        }
+    let aiQuestions = [];
+    try {
+      const rawText = await callLLMWithFailover(null, prompt);
+      let text = rawText.trim();
+      if (text.startsWith('```')) {
+        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
       }
 
-      if (!parsedQuestions || !Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
-        throw new Error(`종합평가 청크 #${chunkIdx + 1} 생성에 최종 실패하였습니다.`);
+      try {
+        aiQuestions = JSON.parse(text);
+      } catch {
+        aiQuestions = extractJsonArray(rawText);
       }
-
-      // Add to final list
-      const cleaned = parsedQuestions.map(q => ({
-        ...q,
-        question: cleanQuizQuestion(q.question)
-      }));
-      cleanedQuestions.push(...cleaned);
-
-      // Sleep a bit between successful chunks to avoid hitting Google's rate limit
-      if (chunkIdx < chunksCount - 1) {
-        console.log(`[Rate Limit 관리] 다음 청크 생성을 시작하기 전에 1.5초간 대기합니다...`);
-        await sleep(1500);
-      }
+    } catch (aiError) {
+      console.error('Gemini API call failed for comprehensive exam:', aiError);
+      throw aiError;
     }
+
+    if (!aiQuestions || !Array.isArray(aiQuestions) || aiQuestions.length === 0) {
+      throw new Error('AI 종합평가 문제 파싱에 실패하였습니다.');
+    }
+
+    // Clean generated questions
+    const cleanedQuestions = aiQuestions.map(q => ({
+      ...q,
+      question: cleanQuizQuestion(q.question)
+    }));
 
     try {
       // Retrieve custom formula questions and theory questions from database
@@ -2592,8 +2562,8 @@ ${combinedText}
 
       res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
     } catch (err) {
-      console.error('Exam route error:', err);
-      res.status(500).json({ error: err.message || '문제 생성 실패' });
+      console.error('Exam route error during DB merge:', err);
+      res.status(500).json({ error: err.message || '문제 병합 실패' });
     }
   } catch (err) {
     console.error('Exam route error:', err);
