@@ -154,15 +154,6 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     parts.push({ type: 'text', content: afterText });
   }
 
-  // 제일 밑(마지막) $$ ... $$ 블록 공식의 인덱스를 찾습니다.
-  let lastMathBlockIdx = -1;
-  for (let i = parts.length - 1; i >= 0; i--) {
-    if (parts[i].type === 'math-block') {
-      lastMathBlockIdx = i;
-      break;
-    }
-  }
-
   // 각 파트별 렌더링
   return (
     <div className={`${className} space-y-1.5 select-text`}>
@@ -179,21 +170,21 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           return (
             <div 
               key={idx} 
-              className="my-2 flex flex-col sm:flex-row items-center justify-between gap-4 py-2.5 px-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-rose-500/30 transition-all duration-300 group shadow-lg select-text"
+              className="my-2 flex flex-col sm:flex-row items-center justify-between gap-4 py-2.5 px-4 bg-slateCustom-950/60 rounded-2xl border border-slate-800/80 hover:border-slate-700/40 transition-all duration-300 group shadow-lg select-text"
             >
               {/* KaTeX 수식 */}
               <div 
                 className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-              {/* 우측 추가 버튼 (제일 밑 공식만 퀴즈 추가 버튼 표시) */}
-              {onAddFormula && idx === lastMathBlockIdx && (
+              {/* 우측 추가 버튼 (모든 공식에 퀴즈 추가 버튼 표시 & 바탕색 옅은 회색으로 변경) */}
+              {onAddFormula && (
                 <button
                   onClick={() => onAddFormula(part.content)}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
                   title="이 특정 수식만 필수공식 퀴즈에 추가"
                 >
-                  <Sparkles size={12} className="text-rose-400" />
+                  <Sparkles size={12} className="text-slate-400" />
                   <span>이 공식을 퀴즈에 추가</span>
                 </button>
               )}
