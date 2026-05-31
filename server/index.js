@@ -2326,21 +2326,24 @@ app.post('/api/exam/all', async (req, res) => {
     const topicTitles = topics.map(t => t.title).join(', ');
 
     const cleanedQuestions = [];
-    const chunksCount = 1; // 1 question from AI (1 chunk * 1 question)
+    const chunksCount = 6; // 60 questions from AI (6 chunks * 10 questions)
     
-    console.log(`[종합평가 생성 시작] 총 1개의 AI 문제 생성을 시작합니다.`);
+    console.log(`[종합평가 생성 시작] 총 ${chunksCount}개의 10문항 청크 단위로 AI 문제 생성을 시작합니다.`);
 
     for (let chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++) {
-      console.log(`[청크 #${chunkIdx + 1}/1 생성 시도] 1개 문제 생성 중...`);
+      console.log(`[청크 #${chunkIdx + 1}/6 생성 시도] 10개 문제 생성 중...`);
       
-      const subjCount = 0;
-      const objCount = 1;
+      // Mix question types for this chunk to reach exactly 15 Subj / 45 Obj
+      // Chunk 1, 2, 3: 3 Subj, 7 Obj
+      // Chunk 4, 5, 6: 2 Subj, 8 Obj
+      const subjCount = chunkIdx < 3 ? 3 : 2;
+      const objCount = 10 - subjCount;
       const randomSeed = Math.floor(Math.random() * 10000) + chunkIdx;
       
       const chunkPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 정확히 1개의 종합평가 문제를 생성하십시오.
-매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}).
+아래 범위 토픽 소스 자료를 참고하여, 정확히 10개의 종합평가 문제를 생성하십시오.
+매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}, 청크 번호: ${chunkIdx + 1}).
 
 [출제 범위 토픽 목록]: ${topicTitles}
 
@@ -2348,13 +2351,22 @@ app.post('/api/exam/all', async (req, res) => {
 ${combinedText}
 
 [출제 규칙]:
-1. 정확히 1개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
-   - 객관식 (type: "객관식"): 정확히 1문제 (4지선다형)
+1. 정확히 10개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
+   - 주관식 (type: "주관식"): 정확히 ${subjCount}문제
+     * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
+   - 객관식 (type: "객관식"): 정확히 ${objCount}문제 (4지선다형)
 2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
 3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
 
 [JSON 포맷]:
 [
+  {
+    "type": "주관식",
+    "subtype": "개요",
+    "question": "질문",
+    "answer": "2~3줄 모범답안",
+    "concept": "핵심 개념 1줄"
+  },
   {
     "type": "객관식",
     "question": "질문",
@@ -2382,13 +2394,13 @@ ${combinedText}
           }
 
           if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log(`[청크 #${chunkIdx + 1}/1 성공] 1개 문제 생성 완료.`);
+            console.log(`[청크 #${chunkIdx + 1}/6 성공] 10개 문제 생성 완료.`);
             break;
           }
           throw new Error('JSON parsing failed or empty array');
         } catch (err) {
           attempt++;
-          console.warn(`[청크 #${chunkIdx + 1}/1 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
+          console.warn(`[청크 #${chunkIdx + 1}/6 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
           await sleep(1500); // 1.5s delay before retry
         }
       }
@@ -2467,7 +2479,7 @@ ${combinedText}
       const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
       const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
       
-      const selectedFormulas = shuffledFormulas.slice(0, 0).map(f => ({
+      const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
         type: "주관식",
         subtype: "공식",
         question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
@@ -2475,7 +2487,7 @@ ${combinedText}
         concept: f.concept
       }));
       
-      const selectedTheories = shuffledTheories.slice(0, 0).map(t => ({
+      const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
         type: "주관식",
         subtype: "서술",
         question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
