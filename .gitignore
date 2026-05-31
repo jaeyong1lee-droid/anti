@@ -38,3 +38,4 @@ Desktop.ini
 dist/
 build/
 client/dist/
+.env*

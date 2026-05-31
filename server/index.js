@@ -2360,7 +2360,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   }
 });
 
-// 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini
+// 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini (5문항 분할 배치 최적화 버전)
 app.post('/api/exam/all', async (req, res) => {
   try {
     const hasAnyAiKey = !!(
@@ -2399,8 +2399,8 @@ app.post('/api/exam/all', async (req, res) => {
           }
         } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
         fileText = mergeVerticalText(fileText);
-        // Limit per topic: 1200 chars to avoid total overflow
-        if (fileText.length > 1200) fileText = fileText.substring(0, 1200) + '...[중략]';
+        // Limit per topic to avoid prompt token bloating
+        if (fileText.length > 1500) fileText = fileText.substring(0, 1500) + '...[중략]';
       }
       topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || '소스 없음'}`);
     }
@@ -2408,166 +2408,173 @@ app.post('/api/exam/all', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
-    const randomSeed = Math.floor(Math.random() * 10000);
-    console.log(`[종합평가 생성 시작] 단일 고속 API 호출로 60문항 문제 생성을 시작합니다.`);
+    // 💡 5문제씩 분할 생성 아키텍처 가동
+    let aggregatedAiQuestions = [];
+    const TOTAL_BATCHES = 12; // 12회 * 5문제 = 60문제 AI 생성 + 로컬 10문제 = 총 70문제 완성
+    
+    console.log(`[종합평가 분할 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
 
-    const prompt = `
+    for (let i = 0; i < TOTAL_BATCHES; i++) {
+      const randomSeed = Math.floor(Math.random() * 10000);
+      
+      const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 정확히 60개의 종합평가 문제를 생성하십시오.
-매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}).
+아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
+(현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
-[출제 범위 토픽 목록]: ${topicTitles}
-
+[평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
 
 [출제 규칙]:
-1. 정확히 60개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
-   - 주관식 (type: "주관식"): 정확히 15문제
-     * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
-   - 객관식 (type: "객관식"): 정확히 45문제 (4지선다형)
-2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
-3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
+1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
+   - 객관식 (type: "객관식"): 4문제 (4지선다형)
+2. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
+4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
 [
   {
     "type": "주관식",
     "subtype": "개요",
-    "question": "질문",
-    "answer": "2~3줄 모범답안",
-    "concept": "핵심 개념 1줄"
+    "question": "질문 내용",
+    "answer": "2~3줄 명품 모범답안",
+    "concept": "핵심 개념 1줄 요약"
   },
   {
     "type": "객관식",
-    "question": "질문",
+    "question": "공학적 현상 분석 질문",
     "options": ["보기1", "보기2", "보기3", "보기4"],
-    "answer": "정답 보기 텍스트",
-    "explanation": "해설"
+    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
+    "explanation": "이유와 오답 정밀 해설"
   }
 ]
 `;
 
-    let aiQuestions = [];
-    try {
-      const rawText = await callLLMWithFailover(null, prompt);
-      let text = rawText.trim();
-      if (text.startsWith('```')) {
-        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-      }
-
       try {
-        aiQuestions = JSON.parse(text);
-      } catch {
-        aiQuestions = extractJsonArray(rawText);
+        console.log(`[종합평가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
+        const rawText = await callLLMWithFailover(null, batchPrompt);
+        let text = rawText.trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        }
+
+        let batchQuestions = null;
+        try {
+          batchQuestions = JSON.parse(text);
+        } catch {
+          batchQuestions = extractJsonArray(rawText);
+        }
+
+        if (batchQuestions && Array.isArray(batchQuestions)) {
+          aggregatedAiQuestions.push(...batchQuestions);
+          console.log(`[종합평가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
+        }
+
+        // 💡 분당 요청 수(RPM) 차단을 우회하기 위해 배치 사이에 1.2초의 미세 대기 텀(휴식)을 줍니다.
+        if (i < TOTAL_BATCHES - 1) {
+          await sleep(1200);
+        }
+      } catch (batchError) {
+        // 특정 배차가 실패해도 전체 시스템이 셧다운되지 않고 끈질기게 다음 루프를 수행하도록 예외 흡수
+        console.warn(`[배치 우회 경고] ${i + 1}회차 생성 중 429/네트워크 에러 발생. 폴백 연동을 위해 계속 진행합니다:`, batchError.message);
       }
-    } catch (aiError) {
-      console.error('Gemini API call failed for comprehensive exam:', aiError);
-      throw aiError;
     }
 
-    if (!aiQuestions || !Array.isArray(aiQuestions) || aiQuestions.length === 0) {
-      throw new Error('AI 종합평가 문제 파싱에 실패하였습니다.');
+    if (aggregatedAiQuestions.length === 0) {
+      throw new Error('모든 API 키와 가용 모델의 분할 문제 출제 요청이 거부되었습니다. 잠시 후 다시 시도해 주세요.');
     }
 
     // Clean generated questions
-    const cleanedQuestions = aiQuestions.map(q => ({
+    const cleanedQuestions = aggregatedAiQuestions.map(q => ({
       ...q,
       question: cleanQuizQuestion(q.question)
     }));
 
+    // Retrieve custom formula questions and theory questions from database
+    let customFormulas = [];
+    let customTheories = [];
     try {
-      // Retrieve custom formula questions and theory questions from database
-      let customFormulas = [];
-      let customTheories = [];
-      try {
-        await ensureSessionTable();
-        const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
-        if (formulaRows.length > 0 && formulaRows[0].value) {
-          const parsed = JSON.parse(formulaRows[0].value);
-          if (Array.isArray(parsed.formulaQuestions)) {
-            customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-          }
+      await ensureSessionTable();
+      const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+      if (formulaRows.length > 0 && formulaRows[0].value) {
+        const parsed = JSON.parse(formulaRows[0].value);
+        if (Array.isArray(parsed.formulaQuestions)) {
+          customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
         }
-        const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
-        if (theoryRows.length > 0 && theoryRows[0].value) {
-          const parsed = JSON.parse(theoryRows[0].value);
-          if (Array.isArray(parsed.theoryQuestions)) {
-            customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-          }
+      }
+      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+      if (theoryRows.length > 0 && theoryRows[0].value) {
+        const parsed = JSON.parse(theoryRows[0].value);
+        if (Array.isArray(parsed.theoryQuestions)) {
+          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
         }
-      } catch (dbErr) {
-        console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
       }
-
-      // If database is empty, load defaults so that the user always has them
-      if (customFormulas.length === 0) {
-        customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
-          title: d.title,
-          formula: d.formula || d.structure || '',
-          concept: d.concept || ''
-        }));
-      }
-      if (customTheories.length === 0) {
-        customTheories = [
-          {
-            title: "Terzaghi 1차원 압밀 지배방정식 유도",
-            concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-            formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-          },
-          {
-            title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-            concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-            formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-          },
-          {
-            title: "Rankine 주동토압 공식의 이론적 유도",
-            concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-            formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-          }
-        ];
-      }
-
-      // Shuffle and select up to 5 formula questions and 5 theory questions
-      const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
-      const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
-      
-      const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
-        type: "주관식",
-        subtype: "공식",
-        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-        answer: f.formula,
-        concept: f.concept
-      }));
-      
-      const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
-        type: "주관식",
-        subtype: "서술",
-        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-        answer: t.formula,
-        concept: t.concept
-      }));
-
-      const customSubjs = [...selectedFormulas, ...selectedTheories];
-
-      // Filter generated questions into Subjectives and Objectives
-      const generatedSubjectives = cleanedQuestions.filter(q => q.type === '주관식');
-      const generatedObjectives = cleanedQuestions.filter(q => q.type === '객관식');
-
-      // Replace some subjective questions with custom formulas/theories to maintain 70 count
-      const subjsNeeded = Math.max(0, 25 - customSubjs.length);
-      const finalSubjectives = [...customSubjs, ...generatedSubjectives.slice(0, subjsNeeded)];
-      
-      const finalQuestions = [...finalSubjectives, ...generatedObjectives];
-
-      res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
-    } catch (err) {
-      console.error('Exam route error during DB merge:', err);
-      res.status(500).json({ error: err.message || '문제 병합 실패' });
+    } catch (dbErr) {
+      console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
     }
+
+    // If database is empty, load defaults so that the user always has them
+    if (customFormulas.length === 0) {
+      customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+        title: d.title,
+        formula: d.formula || d.structure || '',
+        concept: d.concept || ''
+      }));
+    }
+    if (customTheories.length === 0) {
+      customTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+    }
+
+    // Shuffle and select up to 5 formula questions and 5 theory questions
+    const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
+    
+    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
+      type: "주관식",
+      subtype: "공식",
+      question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+      answer: f.formula,
+      concept: f.concept
+    }));
+    
+    const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
+      type: "주관식",
+      subtype: "서술",
+      question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+      answer: t.formula,
+      concept: t.concept
+    }));
+
+    const customSubjs = [...selectedFormulas, ...selectedTheories];
+
+    // 최종 결합: 로컬 DB 핵심 기출 10문항 + 분할 마이닝된 AI 문항들 병합
+    const finalQuestions = [...customSubjs, ...cleanedQuestions];
+
+    console.log(`[종합평가 출제 완료] 총 ${finalQuestions.length}문항이 성공적으로 준비되었습니다.`);
+    res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
+
   } catch (err) {
     console.error('Exam route error:', err);
-    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
   }
 });
 
