@@ -202,9 +202,6 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     return healed;
   };
 
-  // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
-  let cleanedText = healFormulas(text).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-
   // 1.5) 그림 및 시뮬레이터 HTML(JS/Canvas 포함) 격리 샌드박스 Iframe 렌더러 탑재
   const isHeavyHtml = (rawText) => {
     if (!rawText) return false;
@@ -220,7 +217,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     );
   };
 
-  if (isHeavyHtml(cleanedText)) {
+  const isHeavy = isHeavyHtml(text);
+
+  // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리 (HTML 보고서인 경우 백슬래시 보호를 위해 자가치유 스킵)
+  let cleanedText = isHeavy
+    ? text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+    : healFormulas(text).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  if (isHeavy) {
     let srcDoc = cleanedText;
     const styleInjection = `
       <style>
@@ -231,6 +235,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           padding-top: 4px !important;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           overflow: hidden !important; /* Prevent internal scrollbars entirely */
+          background-color: #eef9f2 !important; /* Elegant light pastel green / mint-green background */
+          color: #111827 !important; /* High-contrast deep black/charcoal text */
         }
         body > *:first-child, body > *:first-child > *:first-child {
           margin-top: 0 !important;
