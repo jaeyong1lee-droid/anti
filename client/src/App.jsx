@@ -4965,7 +4965,7 @@ export default function App() {
                                       setEditingFormulaIdx(idx);
                                       setEditingFormulaText(q.title || q.question || '');
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0 inline-flex items-center"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)]"
                                     title="공식 제목 수정"
                                   >
                                     <Edit2 size={12} />
@@ -5531,7 +5531,7 @@ export default function App() {
                                       setEditingTheoryIdx(idx);
                                       setEditTheoryTitle(q.title || '');
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white rounded transition-opacity cursor-pointer shrink-0 inline-flex items-center"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)]"
                                     title="이론 제목 수정"
                                   >
                                     <Edit2 size={12} />
