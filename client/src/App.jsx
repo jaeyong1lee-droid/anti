@@ -3121,7 +3121,7 @@ export default function App() {
             {/* Vertical Navigation Divider Controller (PC Only) */}
             <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
-                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
                 className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
@@ -3615,7 +3615,7 @@ export default function App() {
             {/* Vertical Navigation Divider Controller (PC Only) */}
             <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
-                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
                 className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
@@ -4172,11 +4172,10 @@ export default function App() {
               )}
             </div>
 
-            {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
-                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+                style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
                   onClick={() => handleScrollFormula('up')}
@@ -4690,11 +4689,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
               <div 
-                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+                style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
               >
                 <button 
                   onClick={() => handleScrollTheory('up')}
