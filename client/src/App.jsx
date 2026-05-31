@@ -127,6 +127,53 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
 function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null }) {
   if (!text) return null;
 
+  const pressTimer = useRef(null);
+  const isLongPress = useRef(false);
+
+  const startPress = (e) => {
+    // Only detect left click for mouse
+    if (e.type === 'mousedown' && e.button !== 0) return;
+
+    const katexEl = e.target.closest('.katex');
+    if (!katexEl) return;
+
+    // Extract the raw LaTeX content
+    const annotation = katexEl.querySelector('annotation');
+    let mathContent = null;
+    if (annotation && annotation.textContent) {
+      mathContent = annotation.textContent.trim();
+    } else {
+      mathContent = katexEl.textContent.trim();
+    }
+
+    if (!mathContent) return;
+
+    isLongPress.current = false;
+    pressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      if (onAddFormula) {
+        if (e.cancelable) e.preventDefault();
+        if (window.confirm("이 수식을 필수공식에 넣을까요?")) {
+          onAddFormula(mathContent);
+        }
+      }
+    }, 600); // 600ms long-press duration
+  };
+
+  const endPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
   // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
   const cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
@@ -156,7 +203,17 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
 
   // 각 파트별 렌더링
   return (
-    <div className={`${className} space-y-1.5 select-text`}>
+    <div 
+      className={`${className} space-y-1.5 select-text`}
+      onMouseDown={startPress}
+      onMouseUp={endPress}
+      onMouseMove={cancelPress}
+      onMouseLeave={cancelPress}
+      onTouchStart={startPress}
+      onTouchEnd={endPress}
+      onTouchMove={cancelPress}
+      onTouchCancel={cancelPress}
+    >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
           let mathHtml = part.content;
@@ -3318,7 +3375,7 @@ export default function App() {
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
 
                                                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -3397,7 +3454,7 @@ export default function App() {
                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
                                        <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                        <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                         <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
+                                         <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, optionExplanations[idx].text)} />
                                        </div>
                                      </div>
                                    )}
@@ -3431,23 +3488,23 @@ export default function App() {
                               {q.concept && (
                                 <div className="space-y-1">
                                   <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.concept)} /></div>
                                 </div>
                               )}
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.formula)} /></div>
                                 </div>
                               )}
                               {q.structure && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.structure)} /></div>
                                 </div>
                               )}
                               {!q.concept && !q.formula && !q.structure && (
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} /></div>
                               )}
 
                               {/* 문제조정 입력 및 결과 보드 */}
@@ -3942,7 +3999,7 @@ export default function App() {
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -4021,7 +4078,7 @@ export default function App() {
                                   <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
                                     <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                     <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                      <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
+                                      <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, optionExplanations[idx].text)} />
                                     </div>
                                   </div>
                                 )}
@@ -4053,7 +4110,7 @@ export default function App() {
                               </button>
                             </div>
                             <div className="text-sm text-slate-200 leading-relaxed">
-                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} />
+                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} />
                             </div>
                             {q.concept && (
                               <div className="pt-2 border-t border-amber-500/10">
