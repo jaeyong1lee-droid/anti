@@ -1056,6 +1056,7 @@ export default function App() {
         if (s.selectedAnswers) setSelectedAnswers(s.selectedAnswers);
         if (s.openSections) setOpenSections(s.openSections);
         if (s.isFallback !== undefined) setIsFallback(s.isFallback);
+        if (s.chatHistory) setChatHistory(s.chatHistory);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
@@ -1118,11 +1119,12 @@ export default function App() {
         examQuestions,
         examRevealed,
         examAnswers,
+        chatHistory,
       }));
     } catch (e) {
       console.warn('localStorage 저장 실패:', e);
     }
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, chatHistory]);
 
   // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
   useEffect(() => {
