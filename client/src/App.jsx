@@ -195,8 +195,11 @@ const buildHtmlDocument = (text, isPopup = false) => {
         background: #94a3b8;
       }
       /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
-      .katex, .katex * {
-        font-family: inherit;
+      .katex {
+        font-family: KaTeX_Main, "Times New Roman", serif !important;
+      }
+      .katex * {
+        font-family: inherit !important;
       }
       .katex .mathnormal {
         font-family: KaTeX_Math, "Times New Roman", serif !important;
