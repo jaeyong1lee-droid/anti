@@ -54,14 +54,25 @@ if (isPostgres) {
       port: parsed.port,
       database: parsed.database,
       ssl: { rejectUnauthorized: false },
+      max: 20, // Neon serverless connection limit protection
+      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      connectionTimeoutMillis: 10000, // Timeout after 10 seconds trying to connect
     });
   } else {
     // Fallback: use connection string directly
     pgPool = new pg.Pool({
       connectionString: connectionString,
       ssl: { rejectUnauthorized: false },
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
     });
   }
+
+  // Gracefully handle idle client errors to prevent server crash or connection lockup on Neon pauses
+  pgPool.on('error', (err, client) => {
+    console.error('Unexpected error on idle PostgreSQL client in Neon Pool:', err.message);
+  });
 }
 
 // Lazy loader for SQLite database to prevent top-level await syntax issues & Vercel EROFS crashes
