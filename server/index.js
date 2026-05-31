@@ -435,8 +435,6 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
       const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
       for (const modelName of MODELS) {
-        if (keyExhausted) break;
-
         let attempt = 0;
         const maxAttempts = 2; // 1 retry (2s)
         let delay = 2000; // Initial delay: 2s
@@ -478,19 +476,19 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
               if (attempt < maxAttempts) {
                 console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
                 await sleep(delay);
-                delay *= 2; // Double the delay (2s -> 4s -> 8s)
+                delay *= 2; // Double the delay
               } else {
-                console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey}) hit quota limit after ${maxAttempts} attempts. Switching to next key.`);
-                keyExhausted = true;
-                break; // Switch to the next key!
+                console.warn(`[Gemini Model Exhausted] Key #${kIdx + 1} (${maskedKey})의 ${modelName} 모델 제한 초과. 다음 모델로 전환합니다.`);
+                break; // while 루프를 빠져나와 다음 모델(for문)을 시도합니다.
               }
             } else {
-              // For other non-quota errors, don't retry and break immediately
+              // 쿼터 에러가 아닌 다른 치명적 에러는 재시도 없이 다음 모델로 패스
               break;
             }
           }
         }
       }
+      console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 모델이 실패했습니다. 다음 API 키로 교체합니다.`);
     }
 
     if (keyLastError) {
