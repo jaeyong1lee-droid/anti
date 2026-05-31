@@ -2409,21 +2409,24 @@ app.post('/api/exam/all', async (req, res) => {
     const topicTitles = topics.map(t => t.title).join(', ');
 
     const cleanedQuestions = [];
-    const chunksCount = 1; // 단 1개의 문항만 생성
+    const chunksCount = 6; // 60 questions from AI (6 chunks * 10 questions)
     
-    console.log(`[종합평가 생성 시작] 단 1개의 객관식 문제 생성을 시작합니다.`);
+    console.log(`[종합평가 생성 시작] 총 ${chunksCount}개의 10문항 청크 단위로 AI 문제 생성을 시작합니다.`);
 
     for (let chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++) {
-      console.log(`[청크 #${chunkIdx + 1}/1 생성 시도] 1개 문제 생성 중...`);
+      console.log(`[청크 #${chunkIdx + 1}/6 생성 시도] 10개 문제 생성 중...`);
       
-      const subjCount = 0;
-      const objCount = 1;
+      // Mix question types for this chunk to reach exactly 15 Subj / 45 Obj
+      // Chunk 1, 2, 3: 3 Subj, 7 Obj
+      // Chunk 4, 5, 6: 2 Subj, 8 Obj
+      const subjCount = chunkIdx < 3 ? 3 : 2;
+      const objCount = 10 - subjCount;
       const randomSeed = Math.floor(Math.random() * 10000) + chunkIdx;
       
       const chunkPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 정확히 1개의 종합평가 객관식 문제를 생성하십시오.
-매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}).
+아래 범위 토픽 소스 자료를 참고하여, 정확히 10개의 종합평가 문제를 생성하십시오.
+매번 다른 문제를 출제해야 하며 중복되지 않도록 하십시오 (랜덤 시드: ${randomSeed}, 청크 번호: ${chunkIdx + 1}).
 
 [출제 범위 토픽 목록]: ${topicTitles}
 
@@ -2431,13 +2434,22 @@ app.post('/api/exam/all', async (req, res) => {
 ${combinedText}
 
 [출제 규칙]:
-1. 정확히 1개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
-   - 객관식 (type: "객관식"): 정확히 1문제 (4지선다형)
+1. 정확히 10개의 문제를 출제하며, 반드시 다음 비율로 구성할 것:
+   - 주관식 (type: "주관식"): 정확히 ${subjCount}문제
+     * subtype "개요" 또는 "서술"로 구성하여 개요/정의/특징/원리를 2~3줄로 서술하도록 하십시오.
+   - 객관식 (type: "객관식"): 정확히 ${objCount}문제 (4지선다형)
 2. 전문용어, 수치, 공식을 정확히 사용하고 공식·수식은 LaTeX 형식($수식$)을 적극 활용하십시오.
 3. 반드시 순수 JSON 배열만 반환 (마크다운 코드블록 없이).
 
 [JSON 포맷]:
 [
+  {
+    "type": "주관식",
+    "subtype": "개요",
+    "question": "질문",
+    "answer": "2~3줄 모범답안",
+    "concept": "핵심 개념 1줄"
+  },
   {
     "type": "객관식",
     "question": "질문",
@@ -2465,13 +2477,13 @@ ${combinedText}
           }
 
           if (parsedQuestions && Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log(`[청크 #${chunkIdx + 1}/1 성공] 1개 문제 생성 완료.`);
+            console.log(`[청크 #${chunkIdx + 1}/6 성공] 10개 문제 생성 완료.`);
             break;
           }
           throw new Error('JSON parsing failed or empty array');
         } catch (err) {
           attempt++;
-          console.warn(`[청크 #${chunkIdx + 1}/1 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
+          console.warn(`[청크 #${chunkIdx + 1}/6 실패] 시도 #${attempt} 실패: ${err.message}. 재시도합니다...`);
           await sleep(1500); // 1.5s delay before retry
         }
       }
@@ -2486,12 +2498,97 @@ ${combinedText}
         question: cleanQuizQuestion(q.question)
       }));
       cleanedQuestions.push(...cleaned);
+
+      // Sleep a bit between successful chunks to avoid hitting Google's rate limit
+      if (chunkIdx < chunksCount - 1) {
+        console.log(`[Rate Limit 관리] 다음 청크 생성을 시작하기 전에 1.5초간 대기합니다...`);
+        await sleep(1500);
+      }
     }
 
     try {
-      // 1문제 전용 반환이므로 custom formulas/theories는 병합 배제하고 즉시 반환
+      // Retrieve custom formula questions and theory questions from database
+      let customFormulas = [];
+      let customTheories = [];
+      try {
+        await ensureSessionTable();
+        const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+        if (formulaRows.length > 0 && formulaRows[0].value) {
+          const parsed = JSON.parse(formulaRows[0].value);
+          if (Array.isArray(parsed.formulaQuestions)) {
+            customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+          }
+        }
+        const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+        if (theoryRows.length > 0 && theoryRows[0].value) {
+          const parsed = JSON.parse(theoryRows[0].value);
+          if (Array.isArray(parsed.theoryQuestions)) {
+            customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
+      }
+
+      // If database is empty, load defaults so that the user always has them
+      if (customFormulas.length === 0) {
+        customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+          title: d.title,
+          formula: d.formula || d.structure || '',
+          concept: d.concept || ''
+        }));
+      }
+      if (customTheories.length === 0) {
+        customTheories = [
+          {
+            title: "Terzaghi 1차원 압밀 지배방정식 유도",
+            concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+            formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+          },
+          {
+            title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+            concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+            formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+          },
+          {
+            title: "Rankine 주동토압 공식의 이론적 유도",
+            concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+            formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+          }
+        ];
+      }
+
+      // Shuffle and select up to 5 formula questions and 5 theory questions
+      const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+      const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
+      
+      const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
+        type: "주관식",
+        subtype: "공식",
+        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula,
+        concept: f.concept
+      }));
+      
+      const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
+        type: "주관식",
+        subtype: "서술",
+        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula,
+        concept: t.concept
+      }));
+
+      const customSubjs = [...selectedFormulas, ...selectedTheories];
+
+      // Filter generated questions into Subjectives and Objectives
+      const generatedSubjectives = cleanedQuestions.filter(q => q.type === '주관식');
       const generatedObjectives = cleanedQuestions.filter(q => q.type === '객관식');
-      const finalQuestions = generatedObjectives.slice(0, 1);
+
+      // Replace some subjective questions with custom formulas/theories to maintain 70 count
+      const subjsNeeded = Math.max(0, 25 - customSubjs.length);
+      const finalSubjectives = [...customSubjs, ...generatedSubjectives.slice(0, subjsNeeded)];
+      
+      const finalQuestions = [...finalSubjectives, ...generatedObjectives];
 
       res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
     } catch (err) {
