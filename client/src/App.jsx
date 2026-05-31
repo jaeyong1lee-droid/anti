@@ -2988,12 +2988,12 @@ export default function App() {
             {/* Left: Quiz Wrapper */}
             <div 
               style={{ width: `${reviewSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col"
+              className="shrink-0 h-full relative overflow-hidden flex flex-col bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3009,7 +3009,7 @@ export default function App() {
                   </p>
                 </div>
               ) : (
-                <div className="max-w-3xl mx-auto space-y-5">
+                <div className="w-full space-y-5">
                   {isFallback && (
                     <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/20 text-amber-200 flex items-start gap-3 animate-fade-in mb-6 shadow-xl">
                       <div className="p-2.5 bg-amber-900/50 text-amber-400 rounded-xl">
@@ -3539,12 +3539,12 @@ export default function App() {
             {/* Left: Exam Wrapper */}
             <div 
               style={{ width: `${examSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col"
+              className="shrink-0 h-full relative overflow-hidden flex flex-col bg-slateCustom-900/30"
             >
               {/* Left: Exam Body */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
