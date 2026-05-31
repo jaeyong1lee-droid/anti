@@ -341,6 +341,10 @@ export default function App() {
   const [detailedAnswers, setDetailedAnswers] = useState({});
   const [chatHistory, setChatHistory] = useState([]);
 
+  // Single Question Regeneration states
+  const [regeneratingReview, setRegeneratingReview] = useState({});
+  const [regeneratingExam, setRegeneratingExam] = useState({});
+
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
   const [showTheoryExam, setShowTheoryExam] = useState(() => localStorage.getItem('anti_show_theory_exam') === 'true');
@@ -756,6 +760,80 @@ export default function App() {
       setAiError(err.message || '서버 통신 오류');
     } finally {
       setLoadingAI(false);
+    }
+  };
+
+  // Regenerate a single question (mode: 'review' or 'exam')
+  const handleRegenerateQuestion = async (mode, idx, currentQ) => {
+    const isReview = mode === 'review';
+    const setRegenerating = isReview ? setRegeneratingReview : setRegeneratingExam;
+    
+    setRegenerating(prev => ({ ...prev, [idx]: true }));
+
+    try {
+      const body = {
+        mode,
+        topicId: isReview ? selectedTopic?.id : null,
+        currentQuestion: currentQ,
+        questionIdx: idx
+      };
+
+      const res = await fetch(`${API_BASE}/api/question/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      
+      const data = await res.json();
+
+      if (res.ok && data.question) {
+        if (isReview) {
+          // 1. 해당 인덱스 문항 교체
+          setAiQuestions(prev => prev.map((q, i) => i === idx ? data.question : q));
+          // 2. 해당 인덱스의 선택 답안, 정답 확인 여부 초기화
+          setSelectedAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+          setRevealedQuestions(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+          // 3. 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
+          setOpenSections(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(key => {
+              if (key.startsWith(`${idx}-`)) {
+                delete copy[key];
+              }
+            });
+            return copy;
+          });
+        } else {
+          // 종합평가인 경우
+          setExamQuestions(prev => prev.map((q, i) => i === idx ? data.question : q));
+          setExamAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+          setExamRevealed(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+        }
+        showNotification('해당 문제를 성공적으로 변환했습니다.', 'success');
+      } else {
+        showNotification(data.error || '문제를 변환하지 못했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Regenerate question error:', err);
+      showNotification('서버 통신 오류로 문제를 변환하지 못했습니다.', 'error');
+    } finally {
+      setRegenerating(prev => ({ ...prev, [idx]: false }));
     }
   };
 
@@ -2797,11 +2875,34 @@ export default function App() {
                     return (
                       <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Header */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                            {isMC ? '객관식' : `주관식·${q.type?.replace('구조 인출 (단락별 리콜)', '개요') || '서술'}`}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 flex-wrap w-full">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                              {isMC ? '객관식' : `주관식·${q.type?.replace('구조 인출 (단락별 리콜)', '개요') || '서술'}`}
+                            </span>
+                          </div>
+                          
+                          <button
+                            disabled={regeneratingReview[idx]}
+                            onClick={() => handleRegenerateQuestion('review', idx, q)}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                              regeneratingReview[idx]
+                                ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                            }`}
+                          >
+                            <svg
+                              className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            {regeneratingReview[idx] ? '변환 중...' : '변환'}
+                          </button>
                         </div>
 
                         {/* Question Text */}
@@ -3277,11 +3378,34 @@ export default function App() {
                   return (
                     <div key={idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3">
                       {/* Q Header */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                          {isMC ? '객관식' : `주관식·${q.subtype || '서술'}`}
-                        </span>
+                      <div className="flex items-center justify-between gap-2 flex-wrap w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                            {isMC ? '객관식' : `주관식·${q.subtype || '서술'}`}
+                          </span>
+                        </div>
+                        
+                        <button
+                          disabled={regeneratingExam[idx]}
+                          onClick={() => handleRegenerateQuestion('exam', idx, q)}
+                          className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                            regeneratingExam[idx]
+                              ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                              : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                          }`}
+                        >
+                          <svg
+                            className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                          </svg>
+                          {regeneratingExam[idx] ? '변환 중...' : '변환'}
+                        </button>
                       </div>
 
                       {/* Question Text */}

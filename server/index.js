@@ -2360,6 +2360,371 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   }
 });
 
+// 6-3. Single Question Regeneration API
+app.post('/api/question/regenerate', async (req, res) => {
+  const { mode, topicId, currentQuestion, questionIdx } = req.body;
+
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+
+    if (mode === 'review') {
+      if (!topicId) {
+        return res.status(400).json({ error: '토픽 ID가 제공되지 않았습니다.' });
+      }
+
+      const topicSql = `SELECT * FROM topics WHERE id = ?`;
+      const topic = await dbQuery.get(topicSql, [topicId]);
+
+      if (!topic) {
+        return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+      }
+
+      let fileText = '';
+      if (topic.pdf_data) {
+        const isHtml = topic.pdf_name && (
+          topic.pdf_name.toLowerCase().endsWith('.html') || 
+          topic.pdf_name.toLowerCase().endsWith('.htm') || 
+          isBufferHtml(topic.pdf_data)
+        );
+        if (isHtml) {
+          try {
+            const rawHtml = topic.pdf_data.toString('utf-8');
+            fileText = htmlToPlainText(rawHtml);
+          } catch (htmlErr) {
+            console.warn('Failed to parse HTML string:', htmlErr);
+          }
+        } else {
+          try {
+            const parsedPdf = await pdfParse(topic.pdf_data);
+            fileText = parsedPdf.text || '';
+          } catch (pdfErr) {
+            console.warn('Failed to parse PDF binary:', pdfErr);
+          }
+        }
+        
+        fileText = mergeVerticalText(fileText);
+        if (fileText.length > 8000) {
+          fileText = fileText.substring(0, 8000) + '... [중략]';
+        }
+      }
+
+      // 전공 정밀 가로채기 레이어
+      const cleanTitle = (topic.title || '').toLowerCase();
+      const cleanKeywords = (topic.keywords || '').toLowerCase();
+      const searchTarget = `${cleanTitle} ${cleanKeywords}`;
+
+      const isCoreTopic = 
+        searchTarget.includes('이중층') || searchTarget.includes('double layer') || searchTarget.includes('전기이중층') || searchTarget.includes('ddl') ||
+        searchTarget.includes('압밀') || searchTarget.includes('consolidation') || searchTarget.includes('침하') || searchTarget.includes('settlement') ||
+        searchTarget.includes('sand mat') || searchTarget.includes('샌드매트') || searchTarget.includes('샌드 매트') || searchTarget.includes('sandmat') ||
+        searchTarget.includes('평사투영') || searchTarget.includes('평사 투영') || searchTarget.includes('stereographic') || searchTarget.includes('stereonet') || searchTarget.includes('평사') ||
+        searchTarget.includes('인발') || searchTarget.includes('인발시험') || searchTarget.includes('pullout') || searchTarget.includes('pull-out') || searchTarget.includes('락볼트 인발') || searchTarget.includes('인발 시험') ||
+        searchTarget.includes('q 분류') || searchTarget.includes('q분류') || searchTarget.includes('q system') || searchTarget.includes('q-system') || searchTarget.includes('barton') || searchTarget.includes('바톤') ||
+        searchTarget.includes('싱글쉘') || searchTarget.includes('single shell') || searchTarget.includes('single_shell') || searchTarget.includes('싱글 쉘') || searchTarget.includes('sst') || searchTarget.includes('더블쉘') ||
+        searchTarget.includes('소일내일') || searchTarget.includes('소일네일') || searchTarget.includes('soil nail') || searchTarget.includes('어스앵커') || searchTarget.includes('어스 앵커') || searchTarget.includes('earth anchor') || searchTarget.includes('네일') || searchTarget.includes('앵커') ||
+        searchTarget.includes('프란틀') || searchTarget.includes('prandtl') || searchTarget.includes('지지력') || searchTarget.includes('bearing') || searchTarget.includes('확대기초') || searchTarget.includes('확대 기초') || searchTarget.includes('얕은기초') || cleanTitle.includes('얕은 기초') || searchTarget.includes('테르자기') || searchTarget.includes('terzaghi') || searchTarget.includes('흙의 거동') || searchTarget.includes('확대기초 아래') || searchTarget.includes('기초 아래 흙') ||
+        searchTarget.includes('여굴') || searchTarget.includes('overbreak') || searchTarget.includes('제어발파') || searchTarget.includes('제어 발파') || searchTarget.includes('contour hole') || searchTarget.includes('외곽공') || searchTarget.includes('smooth blasting') || searchTarget.includes('스무드 블라스팅') || searchTarget.includes('스무드블라스팅') || searchTarget.includes('line drilling') || searchTarget.includes('라인 드릴링') || searchTarget.includes('presplitting') || searchTarget.includes('프리스플리팅') || searchTarget.includes('디커플링') || searchTarget.includes('decoupling') ||
+        searchTarget.includes('사면안정') || searchTarget.includes('사면 안정') || searchTarget.includes('slope stability') || searchTarget.includes('slope') || searchTarget.includes('사면 붕괴') || searchTarget.includes('사면붕괴') || searchTarget.includes('원호파괴') || searchTarget.includes('평면파괴') || searchTarget.includes('쐐기파괴') || searchTarget.includes('전도파괴') || searchTarget.includes('절편법') || searchTarget.includes('fellenius') || searchTarget.includes('펠레니우스') || searchTarget.includes('bishop') || searchTarget.includes('비숍') ||
+        searchTarget.includes('토압') || searchTarget.includes('옹벽') || searchTarget.includes('earth pressure') || searchTarget.includes('retaining wall') || searchTarget.includes('주동토압') || searchTarget.includes('수동토압') || searchTarget.includes('정지토압') || searchTarget.includes('주동 토압') || searchTarget.includes('수동 토압') || searchTarget.includes('정지 토압') || searchTarget.includes('랭킨') || searchTarget.includes('rankine') || searchTarget.includes('쿨롱') || searchTarget.includes('coulomb') ||
+        searchTarget.includes('전단강도') || searchTarget.includes('전단 강도') || searchTarget.includes('shear strength') || searchTarget.includes('삼축압축') || searchTarget.includes('삼축 압축') || searchTarget.includes('uu 시험') || searchTarget.includes('cu 시험') || searchTarget.includes('cd 시험') || searchTarget.includes('uu시험') || searchTarget.includes('cu시험') || searchTarget.includes('cd시험') || searchTarget.includes('비배수') || searchTarget.includes('mohr-coulomb') || searchTarget.includes('모어 쿨롱') || searchTarget.includes('모어-쿨롱') ||
+        searchTarget.includes('투수') || searchTarget.includes('침투') || searchTarget.includes('보일링') || searchTarget.includes('boiling') || searchTarget.includes('분사현상') || searchTarget.includes('분사 현상') || searchTarget.includes('piping') || searchTarget.includes('파이핑') || searchTarget.includes('seepage') || searchTarget.includes('permeability') || searchTarget.includes('darcy') || searchTarget.includes('다르시') || searchTarget.includes('임계동수경사') || searchTarget.includes('동수경사') || searchTarget.includes('유선망') || searchTarget.includes('flow net') ||
+        searchTarget.includes('흙막이') || searchTarget.includes('가설 흙막이') || searchTarget.includes('가설흙막이') || searchTarget.includes('탄소성') || searchTarget.includes('탄소성보') || searchTarget.includes('탄소성보법') || searchTarget.includes('braced wall') || searchTarget.includes('braced_wall') || searchTarget.includes('지반스프링') || searchTarget.includes('지반 스프링') ||
+        searchTarget.includes('액상화') || searchTarget.includes('liquefaction') || searchTarget.includes('간극수압') || searchTarget.includes('과잉간극수압') ||
+        searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상');
+
+      // targetType 결정
+      let targetType = '객관식 (4지선다)';
+      if (questionIdx === 0) targetType = '주관식 (개요)';
+      else if (questionIdx === 1) targetType = '주관식 (공식)';
+
+      if (isCoreTopic || !hasAnyAiKey) {
+        // Core Topic 혹은 API Key가 없으면 예비 풀(generateFallbackQuestions)에서 추출하여 다른 문항 반환
+        const fallbackList = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+        // 타입에 맞는 문항 필터링
+        const candidates = fallbackList.filter(q => {
+          if (targetType === '주관식 (개요)') return q.type?.includes('개요');
+          if (targetType === '주관식 (공식)') return q.type?.includes('공식');
+          return q.type?.includes('객관식');
+        });
+        
+        // 기존 질문과 겹치지 않는 문항 선택
+        let selectedQ = candidates.find(c => c.question !== currentQuestion?.question);
+        if (!selectedQ) selectedQ = candidates[Math.floor(Math.random() * candidates.length)] || fallbackList[0];
+
+        return res.json({
+          question: {
+            ...selectedQ,
+            question: cleanQuizQuestion(selectedQ.question)
+          },
+          isFallback: !isCoreTopic
+        });
+      }
+
+      // AI를 활용한 재생성
+      let typeRequirement = '';
+      let formatRequirement = '';
+      if (targetType === '주관식 (개요)') {
+        typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
+- 목적: 토픽의 핵심 정의(개요)만 명확하게 묻는 간결한 질문.
+- "type" 값: 반드시 "주관식 (개요)"
+- "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
+- "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
+- "formula": 반드시 빈 문자열 ""
+- "structure": 반드시 빈 문자열 ""`;
+        formatRequirement = `{
+  "type": "주관식 (개요)",
+  "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
+  "concept": "1~2줄 컴팩트 요약 답변",
+  "formula": "",
+  "structure": ""
+}`;
+      } else if (targetType === '주관식 (공식)') {
+        typeRequirement = `[2번 문제] 주관식 (공식) 유형으로 생성하십시오:
+- 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
+- "type" 값: 반드시 "주관식 (공식)"
+- "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
+- "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
+- "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
+- "structure": 반드시 빈 문자열 ""`;
+        formatRequirement = `{
+  "type": "주관식 (공식)",
+  "question": "토픽의 대표 공식명칭 (사족 배제)",
+  "concept": "공식에 대한 한 줄 요약",
+  "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
+  "structure": ""
+}`;
+      } else {
+        typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
+- "type" 값: 반드시 "객관식 (4지선다)"
+- "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
+- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
+- "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
+- "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.`;
+        formatRequirement = `{
+  "type": "객관식 (4지선다)",
+  "question": "질문 내용",
+  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
+  "answer": "정확히 일치하는 정답 보기 텍스트",
+  "explanation": "상세한 해설"
+}`;
+      }
+
+      const prompt = `
+당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+[토픽 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+
+[기존 문제 (이 질문과 절대로 겹치거나 유사해서는 안 됨)]:
+- 질문: ${currentQuestion?.question || ''}
+- 정답/풀이: ${currentQuestion?.answer || currentQuestion?.concept || ''}
+
+[출제 요구사항]:
+현재 기존에 제공되었던 위의 문제와 완벽히 다른 새로운 개념의 문제를 **단 1개**만 생성해 주십시오.
+
+${typeRequirement}
+
+- 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다.
+- 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
+
+[응답 JSON 포맷]:
+${formatRequirement}
+`;
+
+      const responseText = await callLLMWithFailover(null, prompt);
+      let text = responseText.trim();
+      if (text.startsWith('```')) {
+        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      }
+
+      let parsedQuestion = null;
+      try {
+        parsedQuestion = JSON.parse(text);
+      } catch (parseErr) {
+        console.warn('[단일문제재생성] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
+        const extracted = extractJsonArray('[' + text + ']');
+        if (extracted && extracted[0]) parsedQuestion = extracted[0];
+      }
+
+      if (!parsedQuestion || typeof parsedQuestion !== 'object') {
+        throw new Error('AI 재생성 문항 파싱에 실패했습니다.');
+      }
+
+      return res.json({
+        question: {
+          ...parsedQuestion,
+          question: cleanQuizQuestion(parsedQuestion.question)
+        },
+        isFallback: false
+      });
+
+    } else if (mode === 'exam') {
+      // 종합평가 모드 재생성
+      const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+      if (!topics || topics.length === 0) {
+        return res.status(400).json({ error: '등록된 토픽이 없습니다.' });
+      }
+
+      // 텍스트 간략 추출
+      const topicTexts = [];
+      for (const topic of topics.slice(0, 8)) {
+        let fileText = '';
+        if (topic.pdf_data) {
+          const isHtml = topic.pdf_name && (
+            topic.pdf_name.toLowerCase().endsWith('.html') ||
+            topic.pdf_name.toLowerCase().endsWith('.htm') ||
+            isBufferHtml(topic.pdf_data)
+          );
+          try {
+            if (isHtml) fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            else {
+              const parsed = await pdfParse(topic.pdf_data);
+              fileText = parsed.text || '';
+            }
+          } catch (e) {}
+          fileText = mergeVerticalText(fileText);
+          if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
+        }
+        topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`);
+      }
+
+      const combinedText = topicTexts.join('\n\n---\n\n');
+      const topicTitles = topics.map(t => t.title).join(', ');
+
+      const qType = currentQuestion?.type || '객관식';
+      const qSubtype = currentQuestion?.subtype || '';
+
+      let typeRequirement = '';
+      let formatRequirement = '';
+
+      if (qType === '주관식') {
+        if (qSubtype === '공식') {
+          typeRequirement = `[주관식 공식 유형]으로 생성하십시오:
+- "type": "주관식"
+- "subtype": "공식"
+- "question": "[필수공식] (공식명칭) 공식을 제시하고, 각 기호의 정의를 서술하시오." 와 같은 완성형 질문
+- "answer": LaTeX로 상세 작성된 공식 및 각 기호의 의미 (\\n 으로 구분)
+- "concept": 핵심 개념 1줄 요약`;
+          formatRequirement = `{
+  "type": "주관식",
+  "subtype": "공식",
+  "question": "[필수공식] 랭킨(Rankine) 주동토압 공식...",
+  "answer": "$$p_a = \\\\gamma z K_a$$...",
+  "concept": "벽체 배면의 수평 토압 산정 공식"
+}`;
+        } else if (qSubtype === '서술') {
+          typeRequirement = `[주관식 서술/유도 유형]으로 생성하십시오:
+- "type": "주관식"
+- "subtype": "서술"
+- "question": "[이론유도] (유도개념)의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오." 형태의 완성형 질문
+- "answer": LaTeX 수식을 포함한 심도 있는 이론적 유도 메커니즘 설명 (\\n 구분)
+- "concept": 핵심 개념 1줄 요약`;
+          formatRequirement = `{
+  "type": "주관식",
+  "subtype": "서술",
+  "question": "[이론유도] Terzaghi 1차원 압밀...",
+  "answer": "$$\\\\frac{\\\\partial u}{\\\\partial t} = C_v \\\\frac{\\\\partial^2 u}{\\\\partial z^2}$$...",
+  "concept": "과잉간극수압 소산 지배 미분방정식"
+}`;
+        } else {
+          // 주관식 개요
+          typeRequirement = `[주관식 개요 유형]으로 생성하십시오:
+- "type": "주관식"
+- "subtype": "개요"
+- "question": 공학적 중요 정의와 핵심 메커니즘을 서술형으로 묻는 핵심 질문
+- "answer": 2~3줄 명품 모범답안 (\\n 구분)
+- "concept": 핵심 개념 1줄 요약`;
+          formatRequirement = `{
+  "type": "주관식",
+  "subtype": "개요",
+  "question": "샌드매트(Sand Mat)의 공학적 목적...",
+  "answer": "배수경로 단축으로 압밀 촉진, 건설 장비의 주행성(Trafficability) 확보...",
+  "concept": "연약지반 상부 모래 배수층 역할"
+}`;
+        }
+      } else {
+        // 객관식
+        typeRequirement = `[4지선다 객관식] 유형으로 생성하십시오:
+- "type": "객관식"
+- "question": 공학적 원리 또는 현상 분석 고난도 질문
+- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개)
+- "answer": "options" 배열 내의 정확한 정답 보기 텍스트와 토씨 하나 틀리지 않는 값
+- "explanation": 명쾌하고 공학적으로 깊이 있는 정밀 해설`;
+        formatRequirement = `{
+  "type": "객관식",
+  "question": "공학적 현상 분석 질문 내용",
+  "options": ["보기1", "보기2", "보기3", "보기4"],
+  "answer": "정확히 일치하는 정답 보기 텍스트",
+  "explanation": "상세한 해설"
+}`;
+      }
+
+      const prompt = `
+당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+[평가 범위 토픽 목록]: ${topicTitles}
+[통합 소스 텍스트]:
+${combinedText}
+
+[기존 문제 (이 질문과 절대로 겹치거나 유사해서는 안 됨)]:
+- 질문: ${currentQuestion?.question || ''}
+- 정답: ${currentQuestion?.answer || ''}
+
+[출제 요구사항]:
+위 기존 문제와 내용상 겹치지 않고 전혀 새로운 주제를 다루는 명품 문제를 **단 1개**만 새로 생성하십시오.
+
+${typeRequirement}
+
+- 수식 기호는 반드시 LaTeX 문법($수식$)을 준수하여 작성하십시오.
+- JSON 파싱을 위해 LaTeX 백슬래시는 반드시 이중 백슬래시(\\\\ 기호)로 작성하십시오.
+- 추가 설명 텍스트 없이 오직 순수 JSON 데이터만 반환하십시오.
+
+[JSON 포맷]:
+${formatRequirement}
+`;
+
+      const responseText = await callLLMWithFailover(null, prompt);
+      let text = responseText.trim();
+      if (text.startsWith('```')) {
+        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      }
+
+      let parsedQuestion = null;
+      try {
+        parsedQuestion = JSON.parse(text);
+      } catch (parseErr) {
+        console.warn('[종합평가단일재생성] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
+        const extracted = extractJsonArray('[' + text + ']');
+        if (extracted && extracted[0]) parsedQuestion = extracted[0];
+      }
+
+      if (!parsedQuestion || typeof parsedQuestion !== 'object') {
+        throw new Error('AI 종합평가 재생성 문항 파싱에 실패했습니다.');
+      }
+
+      return res.json({
+        question: {
+          ...parsedQuestion,
+          question: cleanQuizQuestion(parsedQuestion.question)
+        },
+        isFallback: false
+      });
+    } else {
+      return res.status(400).json({ error: '올바르지 않은 모드(mode)입니다.' });
+    }
+  } catch (error) {
+    console.error('Error in question regeneration route:', error);
+    res.status(500).json({ error: error.message || '서버 오류로 단일 문제를 재생성하지 못했습니다.' });
+  }
+});
+
 // 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini (5문항 분할 배치 최적화 버전)
 app.post('/api/exam/all', async (req, res) => {
   try {
