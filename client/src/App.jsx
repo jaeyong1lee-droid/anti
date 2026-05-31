@@ -2828,55 +2828,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setReviewMobileTab('list');
-                  reviewSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  reviewMobileTab === 'list'
-                    ? 'bg-violet-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                문제 리스트
-              </button>
-              <button
-                onClick={() => {
-                  setReviewMobileTab('tutor');
-                  const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-                  reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  reviewMobileTab === 'tutor'
-                    ? 'bg-violet-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
-            </div>
-          </div>
-
           {/* Layout Split Container */}
           <div 
             ref={reviewSplitContainerRef}
-            onScroll={(e) => {
-              const scrollLeft = e.currentTarget.scrollLeft;
-              const clientWidth = e.currentTarget.clientWidth;
-              if (clientWidth > 0) {
-                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                setReviewMobileTab(activeTab);
-              }
-            }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            className="flex-1 flex flex-row overflow-hidden min-h-0 w-full"
           >
 
             {/* Left: Quiz Body */}
-            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[70%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={quizBodyRef} className="w-[60%] shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -3118,32 +3077,32 @@ export default function App() {
               )}
             </div>
 
-            {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
+            {/* Vertical Navigation Divider Controller (Floating Style) */}
+            <div className="flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
+                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100"
               >
                 <button 
                   onClick={() => handleScrollQuestion('up')}
-                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-violet-500 hover:shadow-violet-600/30 cursor-pointer flex items-center justify-center group"
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group"
                   title="이전 문제로 스크롤"
                 >
-                  <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
                 </button>
                 <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
                 <button 
                   onClick={() => handleScrollQuestion('down')}
-                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-violet-500 hover:shadow-violet-600/30 cursor-pointer flex items-center justify-center group"
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group"
                   title="다음 문제로 스크롤"
                 >
-                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                  <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
                 </button>
               </div>
             </div>
 
             {/* Right: Gemini Chat Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-[40%] shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3348,55 +3307,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setExamMobileTab('list');
-                  examSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  examMobileTab === 'list'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                문제 리스트
-              </button>
-              <button
-                onClick={() => {
-                  setExamMobileTab('tutor');
-                  const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-                  examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  examMobileTab === 'tutor'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
-            </div>
-          </div>
-
           {/* Layout Split Container */}
           <div 
             ref={examSplitContainerRef}
-            onScroll={(e) => {
-              const scrollLeft = e.currentTarget.scrollLeft;
-              const clientWidth = e.currentTarget.clientWidth;
-              if (clientWidth > 0) {
-                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                setExamMobileTab(activeTab);
-              }
-            }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            className="flex-1 flex flex-row overflow-hidden min-h-0 w-full"
           >
             
             {/* Left: Exam Body */}
-            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[70%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={examBodyRef} className="w-[60%] shrink-0 h-full overflow-y-auto p-3 sm:p-6 bg-slateCustom-900/30 scroll-smooth">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -3612,32 +3530,32 @@ export default function App() {
             )}
             </div>
 
-            {/* Vertical Navigation Divider Controller (PC Only) */}
-            <div className="hidden md:flex flex-col items-center relative z-30 w-0 h-full">
+            {/* Vertical Navigation Divider Controller (Floating Style) */}
+            <div className="flex flex-col items-center relative z-30 w-0 h-full">
               <div 
                 style={{ top: '50%', transform: 'translate(-50%, -50%)' }}
-                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none z-30"
+                className="absolute flex flex-col gap-2 p-1.5 sm:p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100"
               >
                 <button 
                   onClick={() => handleScrollExamQuestion('up')}
-                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
                   title="이전 문제로 스크롤"
                 >
-                  <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                  <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
                 </button>
                 <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
                 <button 
                   onClick={() => handleScrollExamQuestion('down')}
-                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
                   title="다음 문제로 스크롤"
                 >
-                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                  <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
                 </button>
               </div>
             </div>
 
             {/* Right: Gemini Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-[40%] shrink-0 h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
