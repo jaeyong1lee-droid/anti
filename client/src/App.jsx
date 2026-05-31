@@ -177,6 +177,97 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
   // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
+  // 1.5) 그림 및 시뮬레이터 HTML(JS/Canvas 포함) 격리 샌드박스 Iframe 렌더러 탑재
+  const isHeavyHtml = (rawText) => {
+    if (!rawText) return false;
+    const lower = rawText.toLowerCase();
+    return (
+      lower.includes('<!doctype') ||
+      lower.includes('<html>') ||
+      lower.includes('<body') ||
+      lower.includes('<script') ||
+      lower.includes('<canvas') ||
+      lower.includes('<svg') ||
+      (lower.includes('<div') && lower.includes('style='))
+    );
+  };
+
+  if (isHeavyHtml(cleanedText)) {
+    let srcDoc = cleanedText;
+    if (!/<!DOCTYPE/i.test(cleanedText) && !/<html/i.test(cleanedText)) {
+      srcDoc = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #ffffff;
+        color: #1e293b;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(241, 245, 249, 0.5);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    ${cleanedText}
+  </body>
+</html>
+      `;
+    } else {
+      const styleInjection = `
+        <style>
+          ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          ::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.5);
+          }
+          ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+          }
+        </style>
+      `;
+      if (/<head>/i.test(srcDoc)) {
+        srcDoc = srcDoc.replace(/<head>/i, `<head>${styleInjection}`);
+      } else if (/<html/i.test(srcDoc)) {
+        srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}</head>`);
+      }
+    }
+
+    return (
+      <div className="w-full my-3 overflow-hidden rounded-2xl border border-slate-700/40 shadow-2xl bg-white animate-fade-in">
+        <iframe
+          srcDoc={srcDoc}
+          sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+          className="w-full min-h-[520px] h-[550px] border-0 block"
+          title="Interactive Simulator Drawing"
+        />
+      </div>
+    );
+  }
+
   // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
   cleanedText = cleanedText.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
     const lower = formula.toLowerCase();
@@ -4739,14 +4830,14 @@ export default function App() {
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
-            {/* Left: Formula Wrapper (Takes exactly 60% width on Desktop) */}
+            {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
-              className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[68%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth"
               >
               {loadingFormula ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5048,8 +5139,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
+            <div className="hidden md:flex md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -5316,10 +5407,10 @@ export default function App() {
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
           >
             
-            {/* Left: Theory Wrapper (Takes exactly 60% width on Desktop) */}
-            <div className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
+            <div className="w-full md:w-[68%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
-              <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 space-y-4 scroll-smooth">
+              <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5">
                 
 
@@ -5578,8 +5669,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
+            <div className="hidden md:flex md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
