@@ -69,6 +69,12 @@
   background-size: 100% 2.5rem;
 }
 
+/* Prevent outer document scrolling when full screen modal is open */
+.modal-open, .modal-open body {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
 /* Hide scrollbars but keep functionality */
 .scrollbar-none::-webkit-scrollbar {
   display: none;

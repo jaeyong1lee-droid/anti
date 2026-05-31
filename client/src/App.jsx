@@ -573,11 +573,14 @@ export default function App() {
     const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
+      document.documentElement.classList.add('modal-open');
     } else {
       document.body.style.overflow = '';
+      document.documentElement.classList.remove('modal-open');
     }
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.classList.remove('modal-open');
     };
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
   
