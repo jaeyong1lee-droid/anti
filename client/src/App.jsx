@@ -219,14 +219,14 @@ const buildHtmlDocument = (text, isPopup = false) => {
 
   const katexAndAutoRenderInjection = `
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <script>
       function healIframeMath() {
         const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
         let node;
         const mathNodes = [];
-        const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\\\b|([kK]_[{]?[h30]+[}]?)|([y\\\\u03B3]_[{]?[a-zA-Z0-9]+[}]?)/;
+        const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\b|([kK]_[{]?[h30]+[}]?)|([yγ]_[{]?[a-zA-Z0-9]+[}]?)/;
         while (node = walk.nextNode()) {
           const parent = node.parentNode;
           if (parent) {
@@ -296,11 +296,9 @@ const buildHtmlDocument = (text, isPopup = false) => {
         }
       }
 
-      if (document.readyState === 'loading') {
-        document.addEventListener("DOMContentLoaded", initKaTeX);
-      } else {
-        initKaTeX();
-      }
+      // Immediately run failsafe, and also bind to load/DOMContentLoaded
+      initKaTeX();
+      document.addEventListener("DOMContentLoaded", initKaTeX);
       window.addEventListener("load", initKaTeX);
     </script>
   `;
