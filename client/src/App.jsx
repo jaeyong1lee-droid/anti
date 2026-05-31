@@ -199,6 +199,16 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
       return `$${replaced}$`;
     });
     
+    // 3) Wrap geotech variables and equations (like M_w < 7.5, MSF > 1.0) in $ if they aren't already wrapped
+    healed = healed.replace(/\b(M_w|MSF|F_s|K_h|K_{30})\s*([<>=]=?)\s*([0-9\.]+)\b/g, (match, v, op, num) => {
+      return `$${v} ${op} ${num}$`;
+    });
+
+    // 4) Heal misplaced dollar sign typos like M_w$=7.5 or MSF$=1.0
+    healed = healed.replace(/\b([a-zA-Z0-9_]+)\$=\s*([0-9\.]+)\b/g, (match, v, num) => {
+      return `$${v} = ${num}$`;
+    });
+    
     return healed;
   };
 
@@ -615,6 +625,10 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           let htmlContent = part.content;
           try {
             htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
+              // 한글이 포함된 경우 단순 텍스트로 취급하여 수식 오작동 방지 (달러 기호 오탈자 구제)
+              if (/[\uAC00-\uD7A3]/.test(math)) {
+                return m;
+              }
               try {
                 return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
               } catch (e) {
