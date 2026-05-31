@@ -201,6 +201,12 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     parts.push({ type: 'text', content: afterText });
   }
 
+  // Find the index of the last math-block in parts to only show add button there
+  const mathBlockIndices = parts
+    .map((p, i) => (p.type === 'math-block' ? i : -1))
+    .filter((i) => i !== -1);
+  const lastMathBlockIdx = mathBlockIndices.length > 0 ? mathBlockIndices[mathBlockIndices.length - 1] : -1;
+
   // 각 파트별 렌더링
   return (
     <div 
@@ -227,15 +233,15 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           return (
             <div 
               key={idx} 
-              className="my-1 md:my-2 flex flex-col md:flex-row items-center justify-between gap-4 md:py-2.5 md:px-4 bg-transparent md:bg-slateCustom-950/60 rounded-none md:rounded-2xl border-0 md:border md:border-slate-800/80 hover:border-transparent md:hover:border-slate-700/40 transition-all duration-300 group shadow-none md:shadow-lg select-text"
+              className="my-1 md:my-2 flex flex-col md:flex-row items-center justify-between gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
             >
               {/* KaTeX 수식 */}
               <div 
                 className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-              {/* 우측 추가 버튼 (모든 공식에 퀴즈 추가 버튼 표시 & 바탕색 옅은 회색으로 변경) */}
-              {onAddFormula && (
+              {/* 우측 추가 버튼 (마지막 공식에만 적용) */}
+              {onAddFormula && idx === lastMathBlockIdx && (
                 <button
                   onClick={() => onAddFormula(part.content)}
                   className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
