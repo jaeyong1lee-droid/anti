@@ -2125,6 +2125,22 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
     }
 
+    // 캐싱된 복습 세션 문제 복원
+    await ensureSessionTable();
+    const key = `review_questions_topic_${topicId}`;
+    const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (cached && cached.value) {
+      console.log(`[Cache Hit] Serving saved review questions for topic ${topicId}`);
+      try {
+        const parsed = JSON.parse(cached.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return res.json({ questions: parsed, isFallback: false, isCached: true });
+        }
+      } catch (e) {
+        console.warn('Failed to parse cached review questions:', e);
+      }
+    }
+
     let fileText = '';
     if (topic.pdf_data) {
       const isHtml = topic.pdf_name && (
@@ -2191,6 +2207,18 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
+
+      // 세션에 자동 저장
+      try {
+        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+        await dbQuery.run(
+          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+          [key, JSON.stringify(cleanedCore)]
+        );
+      } catch (e) {
+        console.warn('Failed to auto-save core review questions to app_session:', e);
+      }
+
       return res.json({
         questions: cleanedCore,
         isFallback: false, // Mark false to mimic natural AI generation so UI keeps premium styling
@@ -2219,6 +2247,18 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
+
+      // 세션에 자동 저장
+      try {
+        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+        await dbQuery.run(
+          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+          [key, JSON.stringify(cleanedFallback)]
+        );
+      } catch (e) {
+        console.warn('Failed to auto-save local fallback review questions to app_session:', e);
+      }
+
       return res.json({ 
         questions: cleanedFallback, 
         isFallback: true,
@@ -2342,6 +2382,18 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           ...q,
           question: cleanQuizQuestion(q.question)
         }));
+
+        // 세션에 자동 저장
+        try {
+          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+          await dbQuery.run(
+            'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+            [key, JSON.stringify(cleanedQuestions)]
+          );
+        } catch (e) {
+          console.warn('Failed to auto-save generated review questions to app_session:', e);
+        }
+
         res.json({ questions: cleanedQuestions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
@@ -2352,6 +2404,18 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
+
+      // 세션에 자동 저장
+      try {
+        await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+        await dbQuery.run(
+          'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+          [key, JSON.stringify(cleanedFallback)]
+        );
+      } catch (e) {
+        console.warn('Failed to auto-save fallback review questions to app_session:', e);
+      }
+
       res.json({ questions: cleanedFallback, isFallback: true, error: errorMsg });
     }
   } catch (error) {
@@ -3415,6 +3479,43 @@ app.delete('/api/session/exam', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/session/exam error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/session/review → 복습 문제 세트 영구 저장
+app.post('/api/session/review', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { topicId, questions } = req.body;
+    if (!topicId || !questions) {
+      return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
+    }
+    const key = `review_questions_topic_${topicId}`;
+    const value = JSON.stringify(questions);
+    
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [key, value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/session/review/topic/:id → 특정 토픽의 복습 세션 문제 초기화
+app.delete('/api/session/review/topic/:id', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const topicId = req.params.id;
+    const key = `review_questions_topic_${topicId}`;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/session/review/topic error:', err);
     res.status(500).json({ error: err.message });
   }
 });

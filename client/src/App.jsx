@@ -712,6 +712,12 @@ export default function App() {
       }
     }
 
+    // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
+    if (selectedTopic.id) {
+      fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+        .catch(e => console.warn('복습 완료 시 세션 리셋 실패:', e));
+    }
+
     if (sId) {
       await handleCompleteReview(sId, selectedTopic.title, sRound);
       // 모달 닫기
@@ -856,8 +862,16 @@ export default function App() {
 
       if (res.ok && data.question) {
         if (isReview) {
-          // 1. 해당 인덱스 문항 교체
-          setAiQuestions(prev => prev.map((q, i) => i === idx ? data.question : q));
+          // 1. 해당 인덱스 문항 교체 및 서버 세션 동기화 저장
+          setAiQuestions(prev => {
+            const updated = prev.map((q, i) => i === idx ? data.question : q);
+            fetch(`${API_BASE}/api/session/review`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ topicId: selectedTopic?.id, questions: updated })
+            }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+            return updated;
+          });
           // 2. 해당 인덱스의 선택 답안, 정답 확인 여부 초기화
           setSelectedAnswers(prev => {
             const copy = { ...prev };
@@ -880,8 +894,22 @@ export default function App() {
             return copy;
           });
         } else {
-          // 종합평가인 경우
-          setExamQuestions(prev => prev.map((q, i) => i === idx ? data.question : q));
+          // 종합평가인 경우 문항 교체 및 서버 세션 동기화 저장
+          setExamQuestions(prev => {
+            const updated = prev.map((q, i) => i === idx ? data.question : q);
+            fetch(`${API_BASE}/api/session/exam`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                examQuestions: updated, 
+                examRevealed, 
+                examAnswers, 
+                examTopic,
+                savedExamScroll: examBodyRef.current?.scrollTop || 0 
+              })
+            }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+            return updated;
+          });
           setExamAnswers(prev => {
             const copy = { ...prev };
             delete copy[idx];
@@ -2877,7 +2905,13 @@ export default function App() {
                 닫기
               </button>
               <button
-                onClick={() => { setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; }}
+                onClick={() => { 
+                  if (selectedTopic?.id) {
+                    fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+                      .catch(e => console.warn('세션 초기화 실패:', e));
+                  }
+                  setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; 
+                }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="문제 초기화 (재개 시 새 문제 생성)"
               >
