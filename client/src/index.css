@@ -40,8 +40,8 @@
 
 /* Premium Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
 }
 
 ::-webkit-scrollbar-track {
@@ -49,12 +49,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #eab308;
   border-radius: 100px;
+  border: 4px solid #020617; /* 옅게 띄워 보이기 위해 트랙과 동일한 보더 여백 부여 */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8b5cf6;
+  background: #fbbf24;
 }
 
 /* Custom PE Paper Styling */
