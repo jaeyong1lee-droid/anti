@@ -2993,7 +2993,7 @@ export default function App() {
               {/* Left: Quiz Body */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth scrollbar-none"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3544,7 +3544,7 @@ export default function App() {
               {/* Left: Exam Body */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth scrollbar-none"
               >
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
