@@ -2203,7 +2203,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic) {
       console.log(`[AI Route Interceptor] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedCore = coreQuestions.map(q => ({
+      const cleanedCore = coreQuestions.map(q => healQuizQuestionObject({
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
@@ -2243,7 +2243,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedFallback = fallbackQuestions.map(q => ({
+      const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
@@ -2374,7 +2374,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
           throw new Error('AI 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.');
         }
 
-        const cleanedQuestions = questions.map(q => ({
+        const cleanedQuestions = questions.map(q => healQuizQuestionObject({
           ...q,
           question: cleanQuizQuestion(q.question)
         }));
@@ -2520,10 +2520,10 @@ app.post('/api/question/regenerate', async (req, res) => {
         if (!selectedQ) selectedQ = candidates[Math.floor(Math.random() * candidates.length)] || fallbackList[0];
 
         return res.json({
-          question: {
+          question: healQuizQuestionObject({
             ...selectedQ,
             question: cleanQuizQuestion(selectedQ.question)
-          },
+          }),
           isFallback: !isCoreTopic
         });
       }
@@ -2619,10 +2619,10 @@ ${formatRequirement}
       }
 
       return res.json({
-        question: {
+        question: healQuizQuestionObject({
           ...parsedQuestion,
           question: cleanQuizQuestion(parsedQuestion.question)
-        },
+        }),
         isFallback: false
       });
 
@@ -2995,7 +2995,8 @@ ${combinedText}
     const finalQuestions = [...customSubjs, ...cleanedQuestions];
 
     console.log(`[종합평가 출제 완료] 총 ${finalQuestions.length}문항이 성공적으로 준비되었습니다.`);
-    res.json({ questions: finalQuestions, total: finalQuestions.length, topicCount: topics.length });
+    const healedFinalQuestions = finalQuestions.map(q => healQuizQuestionObject(q));
+    res.json({ questions: healedFinalQuestions, total: healedFinalQuestions.length, topicCount: topics.length });
 
   } catch (err) {
     console.error('Exam route error:', err);
@@ -3553,8 +3554,9 @@ function healLatexFormulas(text) {
     return match;
   });
 
-  // 5. Wrap individual Greek variables like \alpha_p, \alpha_f, \phi
-  const greekPattern = new RegExp(`(?:\\$[^\$]+\\$)|((\\\\\\b(?:${symbols.join('|')})(?:_[a-zA-Z0-9]+)?\\b))`, 'g');
+  // 5. Wrap individual Greek variables like \alpha_p, \alpha_f, \phi, including curly brace subscripts like \tau_{allow}
+  const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+  const greekPattern = new RegExp(`(?:\\$[^\$]+\\$)|((\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_])))`, 'g');
   healed = healed.replace(greekPattern, (match, g1) => {
     if (g1) {
       return `$${g1}$`;
@@ -3564,6 +3566,22 @@ function healLatexFormulas(text) {
 
   return healed;
 }
+
+function healQuizQuestionObject(q) {
+  if (!q) return q;
+  const healed = { ...q };
+  if (healed.question) healed.question = healLatexFormulas(healed.question);
+  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
+  if (healed.explanation) healed.explanation = healLatexFormulas(healed.explanation);
+  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
+  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
+  if (healed.structure) healed.structure = healLatexFormulas(healed.structure);
+  if (healed.options && Array.isArray(healed.options)) {
+    healed.options = healed.options.map(opt => healLatexFormulas(opt));
+  }
+  return healed;
+}
+
 
 
 
