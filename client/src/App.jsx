@@ -174,8 +174,36 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
     }
   };
 
+  // 0.5) 필수공식/이론유도 내 지반 단위중량 기호 y(\y) 그리스 감마(\gamma) 자가치유 규칙 탑재
+  const healFormulas = (val) => {
+    if (!val) return val;
+    let healed = val;
+    healed = healed.replace(/\\+/g, '\\');
+    
+    // 1) Heal invalid \y commands used for gamma
+    healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
+      if (suffix.startsWith('cdot')) {
+        return '\\gamma \\cdot ' + suffix.substring(4);
+      }
+      return '\\gamma ' + suffix;
+    });
+    healed = healed.replace(/\\y\b/g, '\\gamma');
+
+    // 2) Inside LaTeX math blocks, convert bare 'y' used as gamma to '\gamma'
+    healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
+      let replaced = math;
+      replaced = replaced.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
+      replaced = replaced.replace(/\by\s*D_f\b/g, '\\gamma D_f');
+      replaced = replaced.replace(/\byD_f\b/g, '\\gamma D_f');
+      replaced = replaced.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+      return `$${replaced}$`;
+    });
+    
+    return healed;
+  };
+
   // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
-  let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  let cleanedText = healFormulas(text).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
   // 1.5) 그림 및 시뮬레이터 HTML(JS/Canvas 포함) 격리 샌드박스 Iframe 렌더러 탑재
   const isHeavyHtml = (rawText) => {

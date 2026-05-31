@@ -3930,6 +3930,25 @@ function healLatexFormulas(text) {
   // 1. Replace multiple backslashes with a single backslash
   healed = healed.replace(/\\+/g, '\\');
 
+  // 1.5. Heal invalid \y commands and bare 'y' used as gamma in geotech formulas
+  healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
+    if (suffix.startsWith('cdot')) {
+      return '\\gamma \\cdot ' + suffix.substring(4);
+    }
+    return '\\gamma ' + suffix;
+  });
+  healed = healed.replace(/\\y\b/g, '\\gamma');
+
+  // Convert bare 'y' to '\gamma' inside mathematical blocks ($...$) for geotech parameters
+  healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
+    let replaced = math;
+    replaced = replaced.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
+    replaced = replaced.replace(/\by\s*D_f\b/g, '\\gamma D_f');
+    replaced = replaced.replace(/\byD_f\b/g, '\\gamma D_f');
+    replaced = replaced.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+    return `$${replaced}$`;
+  });
+
   // 2. Wrap bare Greek letters with backslashes
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
   symbols.forEach(sym => {
