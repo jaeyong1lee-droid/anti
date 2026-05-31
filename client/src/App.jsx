@@ -3264,7 +3264,8 @@ export default function App() {
                   const isMC = q.type === '객관식';
                   const isSubj = !isMC;
                   const answered = examAnswers[idx] !== undefined;
-                  const isCorrect = answered && examAnswers[idx] === q.answer;
+                  const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                  const isCorrect = answered && normalizeAns(examAnswers[idx]) === normalizeAns(q.answer);
                   const isRevd = !!examRevealed[idx];
 
                   const subtypeBadgeColor =
@@ -3295,9 +3296,9 @@ export default function App() {
                             let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ";
                             if (!answered) {
                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
-                            } else if (opt === q.answer) {
+                            } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
                               cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold";
-                            } else if (opt === examAnswers[idx] && opt !== q.answer) {
+                            } else if (normalizeAns(opt) === normalizeAns(examAnswers[idx]) && normalizeAns(opt) !== normalizeAns(q.answer)) {
                               cls += "bg-rose-950/70 border-rose-500 text-rose-200";
                             } else {
                               cls += "bg-slate-800/30 border-slate-800 text-slate-500 opacity-60";
