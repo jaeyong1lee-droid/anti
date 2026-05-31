@@ -3051,36 +3051,15 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  onPaste={handlePasteImage}
                   className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
                 >
-                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
-                  {attachedImage && (
-                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="첨부 이미지" 
-                        className="w-full h-full object-cover"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={handleClearAttachedImage} 
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
-                        title="이미지 삭제"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )}
-
                   {/* 텍스트 입력창 (보더 없음) */}
                   <div className="flex-grow">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      onPaste={handlePasteImage}
-                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "기술사 용어나 개념 질문..."}
+                      placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
                     />
@@ -3088,29 +3067,14 @@ export default function App() {
 
                   {/* 하단 컨트롤 바 */}
                   <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="file" 
-                        id="quiz-image-upload" 
-                        accept="image/*" 
-                        onChange={handleImageAttachment}
-                        className="hidden" 
-                      />
-                      <label 
-                        htmlFor="quiz-image-upload" 
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
-                        title="스크린샷/이미지 첨부"
-                      >
-                        <Paperclip size={14} />
-                      </label>
                       <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
                     </div>
 
                     {/* 오른쪽: 전송 버튼 */}
                     <button
                       type="submit"
-                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      disabled={!chatInput.trim() || isChatLoading}
                       className="w-7 h-7 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-violet-600/10 active:scale-95"
                     >
                       <Send size={11} className="text-white" />
@@ -3540,36 +3504,15 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  onPaste={handlePasteImage}
                   className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
-                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
-                  {attachedImage && (
-                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="첨부 이미지" 
-                        className="w-full h-full object-cover"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={handleClearAttachedImage} 
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
-                        title="이미지 삭제"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )}
-
                   {/* 텍스트 입력창 (보더 없음) */}
                   <div className="flex-grow">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      onPaste={handlePasteImage}
-                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "기술사 용어나 개념 질문..."}
+                      placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0"
                     />
@@ -3577,29 +3520,14 @@ export default function App() {
 
                   {/* 하단 컨트롤 바 */}
                   <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="file" 
-                        id="exam-image-upload" 
-                        accept="image/*" 
-                        onChange={handleImageAttachment}
-                        className="hidden" 
-                      />
-                      <label 
-                        htmlFor="exam-image-upload" 
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
-                        title="스크린샷/이미지 첨부"
-                      >
-                        <Paperclip size={14} />
-                      </label>
                       <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
                     </div>
 
                     {/* 오른쪽: 전송 버튼 */}
                     <button
                       type="submit"
-                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      disabled={!chatInput.trim() || isChatLoading}
                       className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
                     >
                       <Send size={11} className="text-white" />
@@ -4143,36 +4071,15 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  onPaste={handlePasteImage}
                   className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
                 >
-                  {/* 첨부 이미지 썸네일 (입력창 내부 상단 배치) */}
-                  {attachedImage && (
-                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="첨부 이미지" 
-                        className="w-full h-full object-cover"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={handleClearAttachedImage} 
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
-                        title="이미지 삭제"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )}
-
                   {/* 텍스트 입력창 (보더 없음) */}
                   <div className="flex-grow">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      onPaste={handlePasteImage}
-                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "공식 유도 및 개념 질문..."}
+                      placeholder="공식 유도 및 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
                     />
@@ -4180,29 +4087,14 @@ export default function App() {
 
                   {/* 하단 컨트롤 바 */}
                   <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    {/* 왼쪽: 이미지 첨부 클립 버튼 */}
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="file" 
-                        id="formula-image-upload" 
-                        accept="image/*" 
-                        onChange={handleImageAttachment}
-                        className="hidden" 
-                      />
-                      <label 
-                        htmlFor="formula-image-upload" 
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
-                        title="스크린샷/이미지 첨부"
-                      >
-                        <Paperclip size={14} />
-                      </label>
                       <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
                     </div>
 
                     {/* 오른쪽: 전송 버튼 */}
                     <button
                       type="submit"
-                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      disabled={!chatInput.trim() || isChatLoading}
                       className="w-7 h-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95"
                     >
                       <Send size={11} className="text-white" />
@@ -4704,34 +4596,14 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  onPaste={handlePasteImage}
                   className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
-                  {attachedImage && (
-                    <div className="relative w-12 h-12 rounded-xl border border-slate-650 shadow-md overflow-hidden group animate-fade-in ml-1 mt-1 flex-shrink-0">
-                      <img 
-                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
-                        alt="첨부 이미지" 
-                        className="w-full h-full object-cover"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={handleClearAttachedImage} 
-                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center transition-colors cursor-pointer"
-                        title="이미지 삭제"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )}
-
                   <div className="flex-grow">
                     <input
                       type="text"
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      onPaste={handlePasteImage}
-                      placeholder={attachedImage ? "이미지와 함께 보낼 질문 입력..." : "공식 유도 및 개념 질문..."}
+                      placeholder="공식 유도 및 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
                     />
@@ -4739,26 +4611,12 @@ export default function App() {
 
                   <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="file" 
-                        id="theory-image-upload" 
-                        accept="image/*" 
-                        onChange={handleImageAttachment}
-                        className="hidden" 
-                      />
-                      <label 
-                        htmlFor="theory-image-upload" 
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-700/60 transition-all cursor-pointer flex items-center justify-center"
-                        title="스크린샷/이미지 첨부"
-                      >
-                        <Paperclip size={14} />
-                      </label>
                       <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
                     </div>
 
                     <button
                       type="submit"
-                      disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
+                      disabled={!chatInput.trim() || isChatLoading}
                       className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
                     >
                       <Send size={11} className="text-white" />
