@@ -4445,11 +4445,13 @@ export default function App() {
           <div 
             ref={formulaSplitContainerRef}
             onScroll={(e) => {
-              const scrollLeft = e.currentTarget.scrollLeft;
-              const clientWidth = e.currentTarget.clientWidth;
-              if (clientWidth > 0) {
-                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                setFormulaMobileTab(activeTab);
+              if (!isDesktop) {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const clientWidth = e.currentTarget.clientWidth;
+                if (clientWidth > 0) {
+                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                  setFormulaMobileTab(activeTab);
+                }
               }
             }}
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
@@ -4475,7 +4477,7 @@ export default function App() {
                   <h4 className="text-xl font-bold text-white mt-2">필수 공식 데이터를 로드하는 중...</h4>
                 </div>
               ) : (
-                <div className="max-w-3xl mx-auto space-y-5">
+                <div className="w-full space-y-5">
                   {formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                     const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -5020,11 +5022,13 @@ export default function App() {
           <div 
             ref={theorySplitContainerRef}
             onScroll={(e) => {
-              const scrollLeft = e.currentTarget.scrollLeft;
-              const clientWidth = e.currentTarget.clientWidth;
-              if (clientWidth > 0) {
-                const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                setTheoryMobileTab(activeTab);
+              if (!isDesktop) {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const clientWidth = e.currentTarget.clientWidth;
+                if (clientWidth > 0) {
+                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                  setTheoryMobileTab(activeTab);
+                }
               }
             }}
             className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
@@ -5034,7 +5038,7 @@ export default function App() {
             <div className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to max-w-5xl for wider, highly readable questions) */}
               <div ref={theoryBodyRef} className="flex-1 max-w-5xl w-full mx-auto overflow-y-auto p-3 sm:p-6 space-y-4 scroll-smooth">
-                <div className="max-w-3xl mx-auto space-y-5">
+                <div className="w-full space-y-5">
                 
 
 
