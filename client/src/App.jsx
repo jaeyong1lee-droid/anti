@@ -1098,6 +1098,86 @@ export default function App() {
     showNotification('해당 문제의 풀이 상태를 초기화했습니다.', 'info');
   };
 
+  // ── Refresh All Review Questions (복습하기 전체 문제 재생성) ──────────────────
+  const handleRefreshReviewQuestions = async () => {
+    if (!selectedTopic?.id) return;
+    if (!window.confirm("현재 생성된 복습 문제들이 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.")) {
+      return;
+    }
+    
+    setLoadingAI(true);
+    setAiQuestions([]);
+    setRevealedQuestions({});
+    setSelectedAnswers({});
+    setIsFallback(false);
+    setAiError('');
+    
+    try {
+      // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
+      await fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+        .catch(e => console.warn('복습 세션 초기화 실패:', e));
+        
+      // 2. 실시간 AI 생성 요청
+      const url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
+      const res = await fetch(url, { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setAiQuestions(data.questions || []);
+        setIsFallback(!!data.isFallback);
+        setAiError(data.error || '');
+        lastQuizTopicId.current = selectedTopic.id;
+        showNotification('복습 문제가 성공적으로 다시 구성되었습니다.', 'success');
+      } else {
+        showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('AI refresh call error:', err);
+      showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
+      setAiError(err.message || '서버 통신 오류');
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
+  // ── Refresh All Exam Questions (종합평가 전체 문제 재생성) ──────────────────
+  const handleRefreshExamQuestions = async () => {
+    if (!window.confirm("현재 생성된 종합평가 문제들이 각 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.")) {
+      return;
+    }
+    
+    setLoadingExam(true);
+    setExamQuestions([]);
+    setExamRevealed({});
+    setExamAnswers({});
+    
+    try {
+      // 1. 서버의 기존 세션 데이터 날리기
+      await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+        .catch(e => console.warn('종합평가 세션 삭제 실패:', e));
+      
+      // 2. 전체 토픽 통합 종합평가 새 문제 생성
+      const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        const qs = data.questions || [];
+        // Fisher-Yates shuffle – 주관식/객관식 랜덤 혼합
+        for (let i = qs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [qs[i], qs[j]] = [qs[j], qs[i]];
+        }
+        setExamQuestions(qs);
+        showNotification('종합평가 문제가 성공적으로 다시 구성되었습니다.', 'success');
+      } else {
+        showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      showNotification('서버 통신 오류: ' + err.message, 'error');
+    } finally {
+      setLoadingExam(false);
+    }
+  };
+
   // Regenerate a single question (mode: 'review' or 'exam')
   const handleRegenerateQuestion = async (mode, idx, currentQ) => {
     const isReview = mode === 'review';
@@ -3302,6 +3382,22 @@ export default function App() {
                   정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
                 </span>
               )}
+              {selectedTopic && (
+                <button
+                  onClick={handleRefreshReviewQuestions}
+                  disabled={loadingAI}
+                  className="px-4 py-2 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                >
+                  {loadingAI ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : "🔄"}
+                  <span>리프레쉬</span>
+                </button>
+              )}
               <button
                 onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
@@ -3922,6 +4018,20 @@ export default function App() {
                   정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
                 </span>
               )}
+              <button
+                onClick={handleRefreshExamQuestions}
+                disabled={loadingExam}
+                className="px-4 py-2 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="종합평가 전체 문제 실시간 AI 재출제"
+              >
+                {loadingExam ? (
+                  <svg className="animate-spin h-3.5 w-3.5 text-amber-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : "🔄"}
+                <span>리프레쉬</span>
+              </button>
               <button
                 onClick={async () => {
                   savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
