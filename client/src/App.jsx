@@ -235,7 +235,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
           padding-top: 4px !important;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           overflow: hidden !important; /* Prevent internal scrollbars entirely */
-          background-color: #eef9f2 !important; /* Elegant light pastel green / mint-green background */
+          background-color: #edf7f2 !important; /* Elegant light pastel green / mint-green background */
           color: #111827 !important; /* High-contrast deep black/charcoal text */
         }
         body > *:first-child, body > *:first-child > *:first-child {
@@ -404,7 +404,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
       `;
     } else {
       if (/<head>/i.test(srcDoc)) {
-        srcDoc = srcDoc.replace(/<head>/i, `<head>${styleInjection}${katexAndAutoRenderInjection}`);
+        srcDoc = srcDoc.replace(/<head>/i, () => `<head>${styleInjection}${katexAndAutoRenderInjection}`);
       } else if (/<html/i.test(srcDoc)) {
         srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}${katexAndAutoRenderInjection}</head>`);
       } else {
