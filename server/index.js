@@ -1949,6 +1949,76 @@ app.get('/api/init-db', async (req, res) => {
   }
 });
 
+// Safe LLM Diagnoser Route
+app.get('/api/test-llm', async (req, res) => {
+  const logs = [];
+  const keys = [
+    { name: 'GEMINI_API_KEY', val: process.env.GEMINI_API_KEY },
+    { name: 'GEMINI_API_KEY_SECONDARY', val: process.env.GEMINI_API_KEY_SECONDARY }
+  ];
+
+  for (const k of keys) {
+    if (!k.val) {
+      logs.push({ name: k.name, status: 'SKIPPED', reason: 'Key not configured' });
+      continue;
+    }
+    const trimmed = k.val.trim().replace(/^['"]|['"]$/g, '');
+    const masked = `${trimmed.substring(0, 8)}...${trimmed.substring(trimmed.length - 4)}`;
+    
+    if (trimmed.startsWith('gsk_')) {
+      // Test Groq call
+      logs.push({ name: k.name, type: 'Groq', masked, status: 'TESTING' });
+      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama-3.1-8b-instant'];
+      let groqSuccess = false;
+      
+      for (const model of GROQ_MODELS) {
+        try {
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${trimmed}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: [{ role: 'user', content: 'Say hello in 3 words' }],
+              temperature: 0.2
+            })
+          });
+
+          const status = response.status;
+          const text = await response.text();
+          if (response.ok) {
+            const data = JSON.parse(text);
+            logs.push({ name: k.name, model, status: 'SUCCESS', response: data.choices?.[0]?.message?.content });
+            groqSuccess = true;
+            break;
+          } else {
+            logs.push({ name: k.name, model, status: 'FAILED', httpStatus: status, error: text.substring(0, 300) });
+          }
+        } catch (err) {
+          logs.push({ name: k.name, model, status: 'ERROR', error: err.message });
+        }
+      }
+    } else {
+      // Test Gemini call
+      logs.push({ name: k.name, type: 'Gemini', masked, status: 'TESTING' });
+      try {
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(trimmed);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const result = await model.generateContent('Say hello in 3 words');
+        const text = result.response.text();
+        logs.push({ name: k.name, model: 'gemini-2.0-flash', status: 'SUCCESS', response: text });
+      } catch (err) {
+        logs.push({ name: k.name, model: 'gemini-2.0-flash', status: 'FAILED', error: err.message });
+      }
+    }
+  }
+
+  res.json({ success: true, logs });
+});
+
 // Environment Debug Route
 app.get('/api/debug-env', async (req, res) => {
   const connectionString = process.env.DATABASE_URL || 
