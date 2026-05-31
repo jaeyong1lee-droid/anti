@@ -3195,15 +3195,15 @@ export default function App() {
                                                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
                                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                                     {/* 답안 전문보기 버튼 */}
-                                     {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading && (
-                                       <button
-                                         onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.explanation)}
-                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                       >
-                                         ✨ 답안 전문보기 (AI 심층 해설)
-                                       </button>
-                                     )}
+                                     {/* 문제조정 버튼 */}
+                                      {adjustingInputKey !== `r_${idx}` && (
+                                        <button
+                                          onClick={() => setAdjustingInputKey(`r_${idx}`)}
+                                          className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                        >
+                                          🛠️ 문제조정 (AI 피드백)
+                                        </button>
+                                      )}
                                      
                                      {/* 보기별 정밀 분석 해설 보기 버튼 */}
                                      {!optionExplanations[idx] && (
@@ -3216,18 +3216,40 @@ export default function App() {
                                      )}
                                    </div>
 
-                                   {/* 답안 전문보기 결과 */}
-                                   {detailedAnswers[`r_${idx}`]?.loading && (
-                                     <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1">⏳ AI가 심층 해설 작성 중...</div>
-                                   )}
-                                   {detailedAnswers[`r_${idx}`]?.text && (
-                                     <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl select-text">
-                                       <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                       <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                         <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
-                                       </div>
-                                     </div>
-                                   )}
+                                   {/* 문제조정 입력 및 결과 보드 */}
+                                    {adjustingInputKey === `r_${idx}` && (
+                                      <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                        <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
+                                        <textarea
+                                          rows={2}
+                                          value={adjustingText[`r_${idx}`] || ''}
+                                          onChange={(e) => {
+                                            const text = e.target.value;
+                                            setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                          }}
+                                          placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
+                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
+                                        />
+                                        <div className="flex gap-2 justify-end">
+                                          <button
+                                            onClick={() => setAdjustingInputKey(null)}
+                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                          <button
+                                            onClick={() => handleAdjustQuestion('review', idx, q)}
+                                            disabled={adjustingLoading[`r_${idx}`]}
+                                            className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                          >
+                                            {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
+                                          </button>
+                                        </div>
+                                        {adjustingLoading[`r_${idx}`] && (
+                                          <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
+                                        )}
+                                      </div>
+                                    )}
 
                                    {/* 보기별 정밀 분석 결과 */}
                                    {optionExplanations[idx]?.loading && (
@@ -3300,23 +3322,46 @@ export default function App() {
                                 <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} /></div>
                               )}
 
-                              {/* Detailed Answer Button */}
+                              {/* 문제조정 입력 및 결과 보드 */}
                               <div className="mt-3 pt-2 border-t border-slate-700/50">
-                                {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading ? (
+                                {adjustingInputKey !== `r_${idx}` ? (
                                   <button
-                                    onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.answer || q.concept)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                    onClick={() => setAdjustingInputKey(`r_${idx}`)}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                   >
-                                    ✨ 답안 전문보기 (AI 심층 해설)
+                                    🛠️ 문제조정 (AI 피드백)
                                   </button>
-                                ) : detailedAnswers[`r_${idx}`]?.loading ? (
-                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse">⏳ AI가 심층 해설 작성 중...</div>
                                 ) : (
-                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
-                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                      <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
+                                  <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                    <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
+                                    <textarea
+                                      rows={2}
+                                      value={adjustingText[`r_${idx}`] || ''}
+                                      onChange={(e) => {
+                                        const text = e.target.value;
+                                        setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                      }}
+                                      placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
+                                      className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                      <button
+                                        onClick={() => setAdjustingInputKey(null)}
+                                        className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                      >
+                                        취소
+                                      </button>
+                                      <button
+                                        onClick={() => handleAdjustQuestion('review', idx, q)}
+                                        disabled={adjustingLoading[`r_${idx}`]}
+                                        className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                      >
+                                        {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
+                                      </button>
                                     </div>
+                                    {adjustingLoading[`r_${idx}`] && (
+                                      <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -3774,13 +3819,13 @@ export default function App() {
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-3 pt-3 border-t border-slate-700/50">
                                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                                  {/* 답안 전문보기 버튼 */}
-                                  {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading && (
+                                  {/* 문제조정 버튼 */}
+                                  {adjustingInputKey !== `e_${idx}` && (
                                     <button
-                                      onClick={() => handleRequestDetailedAnswer(idx, q.question, q.explanation)}
+                                      onClick={() => setAdjustingInputKey(`e_${idx}`)}
                                       className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                     >
-                                      ✨ 답안 전문보기 (AI 심층 해설)
+                                      🛠️ 문제조정 (AI 피드백)
                                     </button>
                                   )}
                                   
@@ -3795,20 +3840,37 @@ export default function App() {
                                   )}
                                 </div>
 
-                                {/* 답안 전문보기 결과 */}
-                                {detailedAnswers[idx]?.loading && (
-                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1">
-                                    ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
-                                  </div>
-                                )}
-                                {detailedAnswers[idx]?.text && (
-                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl select-text">
-                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text prose prose-invert max-w-none prose-base">
-                                      <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
+                                {/* 문제조정 입력 및 결과 보드 */}
+                                {adjustingInputKey === `e_${idx}` && (
+                                  <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                    <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
+                                    <textarea
+                                      rows={2}
+                                      value={adjustingText[`e_${idx}`] || ''}
+                                      onChange={(e) => {
+                                        const text = e.target.value;
+                                        setAdjustingText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                      }}
+                                      placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
+                                      className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                      <button
+                                        onClick={() => setAdjustingInputKey(null)}
+                                        className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                      >
+                                        취소
+                                      </button>
+                                      <button
+                                        onClick={() => handleAdjustQuestion('exam', idx, q)}
+                                        disabled={adjustingLoading[`e_${idx}`]}
+                                        className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                      >
+                                        {adjustingLoading[`e_${idx}`] ? '조정 중...' : '조정하기'}
+                                      </button>
                                     </div>
-                                    {detailedAnswers[idx].error && (
-                                      <div className="text-xs text-rose-400 mt-2 select-text">{detailedAnswers[idx].error}</div>
+                                    {adjustingLoading[`e_${idx}`] && (
+                                      <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
                                     )}
                                   </div>
                                 )}
@@ -3872,27 +3934,45 @@ export default function App() {
                               </div>
                             )}
 
-                            {/* Detailed Answer Button & Content */}
+                            {/* 문제조정 입력 및 결과 보드 */}
                             <div className="mt-3 pt-2 border-t border-slate-700/50">
-                              {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading ? (
+                              {adjustingInputKey !== `e_${idx}` ? (
                                 <button
-                                  onClick={() => handleRequestDetailedAnswer(idx, q.question, q.answer)}
-                                  className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
+                                  onClick={() => setAdjustingInputKey(`e_${idx}`)}
+                                  className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                 >
-                                  ✨ 답안 전문보기 (AI 심층 해설)
+                                  🛠️ 문제조정 (AI 피드백)
                                 </button>
-                              ) : detailedAnswers[idx]?.loading ? (
-                                <div className="text-[10px] text-indigo-400 font-bold animate-pulse">
-                                  ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
-                                </div>
                               ) : (
-                                <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
-                                  <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                  <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-base">
-                                    <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
+                                <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                  <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
+                                  <textarea
+                                    rows={2}
+                                    value={adjustingText[`e_${idx}`] || ''}
+                                    onChange={(e) => {
+                                      const text = e.target.value;
+                                      setAdjustingText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                    }}
+                                    placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
+                                    className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <button
+                                      onClick={() => setAdjustingInputKey(null)}
+                                      className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                    >
+                                      취소
+                                    </button>
+                                    <button
+                                      onClick={() => handleAdjustQuestion('exam', idx, q)}
+                                      disabled={adjustingLoading[`e_${idx}`]}
+                                      className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                    >
+                                      {adjustingLoading[`e_${idx}`] ? '조정 중...' : '조정하기'}
+                                    </button>
                                   </div>
-                                  {detailedAnswers[idx].error && (
-                                    <div className="text-xs text-rose-400 mt-2">{detailedAnswers[idx].error}</div>
+                                  {adjustingLoading[`e_${idx}`] && (
+                                    <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
                                   )}
                                 </div>
                               )}
