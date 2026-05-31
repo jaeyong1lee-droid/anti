@@ -3961,6 +3961,20 @@ function healLatexFormulas(text) {
     return match;
   });
 
+  // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
+  healed = healed.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
+    const lower = formula.toLowerCase();
+    const hasBlockElement = /\\frac|\\sqrt|\\sum|\\int|\\begin|\\end|\\\\|=/.test(lower);
+    if (!hasBlockElement) {
+      return `$${formula.trim()}$`;
+    }
+    return match;
+  });
+
+  // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
+  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
+  healed = healed.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
+
   // Ensure space before opening parenthesis/bracket if preceded by Korean or number
   healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
   // Ensure space after closing parenthesis/bracket if followed by Korean or number

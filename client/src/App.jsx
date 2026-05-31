@@ -175,7 +175,21 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
   };
 
   // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리
-  const cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
+  cleanedText = cleanedText.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
+    const lower = formula.toLowerCase();
+    const hasBlockElement = /\\frac|\\sqrt|\\sum|\\int|\\begin|\\end|\\\\|=/.test(lower);
+    if (!hasBlockElement) {
+      return `$${formula.trim()}$`;
+    }
+    return match;
+  });
+
+  // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
+  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
 
   if (!window.katex) {
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
