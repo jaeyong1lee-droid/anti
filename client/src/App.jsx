@@ -503,12 +503,22 @@ export default function App() {
             if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
           });
         } else {
-          setShowExam(false);
+          // 서버 세션에 데이터가 없더라도, 로컬스토리지 복원을 통해 이미 메모리에 로드된 종합평가 문제가 있다면 유지
+          setExamQuestions(prev => {
+            if (prev && prev.length > 0) return prev;
+            setShowExam(false);
+            return prev;
+          });
         }
       })
       .catch(e => {
         console.warn('서버 세션 복원 실패:', e);
-        setShowExam(false);
+        // 서버 요청 오류 시에도 로컬스토리지 복원된 종합평가가 있다면 유지
+        setExamQuestions(prev => {
+          if (prev && prev.length > 0) return prev;
+          setShowExam(false);
+          return prev;
+        });
       })
       .finally(() => {
         setLoadingExam(false);
