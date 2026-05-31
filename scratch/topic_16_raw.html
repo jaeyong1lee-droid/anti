@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>토질및기초기술사 답안: 확대기초 아래 흙의 거동 및 파괴형태</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MathJax Configuration (Crucial for correct LaTeX rendering) -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <!-- MathJax Library -->
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+    </script>
+
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .answer-sheet { background-color: white; max-width: 900px; margin: 2rem auto; padding: 3rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .heading-1 { font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #2563eb; padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem; color: #1e3a8a; }
+        .heading-2 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.75rem; display: flex; align-items: center; }
+        .heading-2::before { content: "■"; color: #2563eb; margin-right: 0.5rem; font-size: 1rem; }
+        .list-disc { padding-left: 1.5rem; margin-bottom: 1rem; }
+        .list-disc li { margin-bottom: 0.5rem; line-height: 1.6; }
+        .svg-container { display: flex; justify-content: center; margin: 2rem 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
+        .math-display { text-align: center; margin: 1.5rem 0; overflow-x: auto; }
+        .table-auto { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+        .table-auto th, .table-auto td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: center; }
+        .table-auto th { background-color: #f1f5f9; font-weight: bold; }
+        .kds-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 1rem; margin-top: 2rem; border-radius: 0 0.5rem 0.5rem 0; }
+        
+        /* MathJax SVG 렌더링 시 Tailwind CSS 충돌(줄바꿈) 방지 */
+        mjx-container svg { display: inline !important; }
+    </style>
+</head>
+<body>
+
+<div class="answer-sheet">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">문) 확대기초 아래 흙의 거동 및 파괴형태</h1>
+        <p class="text-gray-500 mt-2">제 XX회 토질및기초기술사 기출문제 모범답안</p>
+    </div>
+
+    <!-- Section 1 -->
+    <h2 class="heading-1">1. 개요</h2>
+    <ul class="list-disc">
+        <li>확대기초(얕은기초)에 작용하는 하중 $q$ 가 증가하면, 기초 아래의 지반은 압축 및 전단변형을 일으키며 궁극적으로 전단파괴(Shear Failure)에 도달하게 된다.</li>
+        <li>지반의 파괴형태는 주로 흙의 상대밀도 $D_{r}$ , 압축성, 기초의 근입깊이비 $D_{f}/B$ 등에 따라 크게 <b>전반전단파괴, 국부전단파괴, 관입(펀칭)전단파괴</b>의 3가지로 구분된다.</li>
+        <li>또한, 파괴 이전 하중 상태에서의 지반 거동은 기초의 강성(연성, 강성)과 흙의 종류(사질토, 점성토)에 따라 접지압 분포 및 침하 형상이 다르게 나타난다.</li>
+        <li>정확한 흙의 거동 및 파괴형태 규명은 적절한 지지력 공식(Terzaghi, Meyerhof 등)의 적용과 안전율 $F_{s}$ 의 산정, 그리고 기초 구조설계를 위해 필수적이다.</li>
+    </ul>
+
+    <!-- Section 2 -->
+    <h2 class="heading-1">2. 확대기초 아래 흙의 파괴형태 3가지 (극한 상태)</h2>
+    
+    <div class="svg-container">
+        <!-- SVG: 3 Failure Modes -->
+        <svg width="850" height="250" viewBox="0 0 850 250" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="soil" width="10" height="10" patternUnits="userSpaceOnUse">
+                    <path d="M 0 10 L 10 0 M -1 1 L 1 -1 M 9 11 L 11 9" stroke="#cbd5e1" stroke-width="0.5"/>
+                </pattern>
+                <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                </marker>
+            </defs>
+
+            <!-- 1. General Shear -->
+            <g transform="translate(20, 20)">
+                <text x="130" y="-5" font-weight="bold" font-size="14" text-anchor="middle">(a) 전반전단파괴</text>
+                <rect x="0" y="40" width="260" height="180" fill="url(#soil)" />
+                <line x1="0" y1="40" x2="260" y2="40" stroke="#333" stroke-width="2" /> <!-- Ground -->
+                <!-- Foundation -->
+                <rect x="90" y="20" width="80" height="30" fill="#94a3b8" stroke="#333" stroke-width="2" />
+                <!-- Load arrow -->
+                <line x1="130" y1="0" x2="130" y2="15" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)" />
+                <text x="140" y="10" fill="#ef4444" font-size="14" font-weight="bold">Q</text>
+                <!-- Shear lines -->
+                <path d="M 90 50 L 130 90 L 170 50" fill="none" stroke="#2563eb" stroke-width="2" />
+                <path d="M 90 50 C 50 90 30 70 20 40" fill="none" stroke="#2563eb" stroke-width="2" />
+                <path d="M 170 50 C 210 90 230 70 240 40" fill="none" stroke="#2563eb" stroke-width="2" />
+                <!-- Heaving -->
+                <path d="M 20 40 C 40 30 70 30 90 40" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="4" />
+                <path d="M 170 40 C 190 30 220 30 240 40" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="4" />
+                <text x="40" y="25" font-size="12" fill="#2563eb">Heaving</text>
+            </g>
+
+            <!-- 2. Local Shear -->
+            <g transform="translate(300, 20)">
+                <text x="130" y="-5" font-weight="bold" font-size="14" text-anchor="middle">(b) 국부전단파괴</text>
+                <rect x="0" y="40" width="260" height="180" fill="url(#soil)" />
+                <line x1="0" y1="40" x2="260" y2="40" stroke="#333" stroke-width="2" /> <!-- Ground -->
+                <!-- Foundation -->
+                <rect x="90" y="25" width="80" height="30" fill="#94a3b8" stroke="#333" stroke-width="2" />
+                <!-- Load arrow -->
+                <line x1="130" y1="0" x2="130" y2="20" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)" />
+                <text x="140" y="15" fill="#ef4444" font-size="14" font-weight="bold">Q</text>
+                <!-- Shear lines (Dashed to show local) -->
+                <path d="M 90 55 L 130 95 L 170 55" fill="none" stroke="#16a34a" stroke-width="2" />
+                <path d="M 90 55 C 60 85 45 65 40 50" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,5" />
+                <path d="M 170 55 C 200 85 215 65 220 50" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,5" />
+                <!-- Slight Heaving -->
+                <path d="M 60 40 C 70 35 80 35 90 40" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="2" />
+            </g>
+
+            <!-- 3. Punching Shear -->
+            <g transform="translate(580, 20)">
+                <text x="130" y="-5" font-weight="bold" font-size="14" text-anchor="middle">(c) 관입전단파괴</text>
+                <rect x="0" y="40" width="260" height="180" fill="url(#soil)" />
+                <line x1="0" y1="40" x2="260" y2="40" stroke="#333" stroke-width="2" /> <!-- Ground -->
+                <!-- Foundation -->
+                <rect x="90" y="35" width="80" height="30" fill="#94a3b8" stroke="#333" stroke-width="2" />
+                <!-- Load arrow -->
+                <line x1="130" y1="0" x2="130" y2="30" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)" />
+                <text x="140" y="20" fill="#ef4444" font-size="14" font-weight="bold">Q</text>
+                <!-- Shear lines (Vertical) -->
+                <line x1="90" y1="65" x2="90" y2="150" stroke="#9333ea" stroke-width="2" stroke-dasharray="5,3" />
+                <line x1="170" y1="65" x2="170" y2="150" stroke="#9333ea" stroke-width="2" stroke-dasharray="5,3" />
+                <!-- Compression indicator -->
+                <path d="M 130 75 L 130 115" stroke="#9333ea" stroke-width="2" marker-end="url(#arrow)" />
+                <text x="140" y="105" fill="#9333ea" font-size="12">압축</text>
+            </g>
+        </svg>
+    </div>
+
+    <h3 class="heading-2">2.1 전반전단파괴 (General Shear Failure)</h3>
+    <ul class="list-disc">
+        <li><b>발생 조건:</b> 조밀한 모래 ( $D_{r} \gt 70\%$ ) 또는 단단한 점토지반.</li>
+        <li><b>거동 특성:</b> 파괴면이 기초 저면에서 지표면까지 연속적으로 발달하며, 명확한 항복점과 최대 지지력 $q_{u}$ 가 발생한다.</li>
+        <li><b>시각적 특징:</b> 파괴 시 기초가 전도되거나 주변 지반이 크게 융기(Heaving)하는 현상이 동반된다. Terzaghi 지지력 공식이 완벽하게 적용된다.</li>
+    </ul>
+
+    <h3 class="heading-2">2.2 국부전단파괴 (Local Shear Failure)</h3>
+    <ul class="list-disc">
+        <li><b>발생 조건:</b> 중간 밀도의 사질토 ( $35\% \lt D_{r} \lt 70\%$ ) 또는 중간 굳기의 점성토.</li>
+        <li><b>거동 특성:</b> 파괴면이 지중에서 일부 발달하다가 지표면까지 도달하지 못하고 소멸된다.</li>
+        <li><b>시각적 특징:</b> 명확한 최대 지지력이 나타나지 않으며, 하중 증가에 따라 침하가 지속된다. 설계 시 지반의 강도정수( $c, \phi$ )를 저감시켜 적용해야 한다. (예: $c^{\prime} = \frac{2}{3}c$ )</li>
+    </ul>
+
+    <h3 class="heading-2">2.3 관입전단파괴 (Punching Shear Failure)</h3>
+    <ul class="list-disc">
+        <li><b>발생 조건:</b> 느슨한 모래 ( $D_{r} \lt 35\%$ ) 또는 매우 연약한 점성토. 기초의 근입깊이가 매우 깊은 경우.</li>
+        <li><b>거동 특성:</b> 전단파괴면이 전혀 발달하지 않고, 기초 아래 흙이 쐐기 모양으로 수직 압축되며 그대로 박히는 현상이다.</li>
+        <li><b>시각적 특징:</b> 지표면의 융기(Heaving)가 없으며, 파괴의 징후 없이 급격한 대규모 침하가 발생한다.</li>
+    </ul>
+
+    <!-- Section 3: New Section added based on User Input -->
+    <h2 class="heading-1">3. 기초 강성에 따른 흙의 변형 거동 (접지압 및 침하형상)</h2>
+    <ul class="list-disc">
+        <li>파괴에 이르기 전 사용하중 상태에서의 지반 거동은 기초의 상대적 강성과 흙의 거동 특성(소성흐름, 탄성변형)에 지배된다.</li>
+    </ul>
+
+    <div class="svg-container">
+        <!-- SVG: Contact Pressure and Settlement -->
+        <svg width="800" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="10" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 0 L 5 10 z" fill="#ef4444" />
+                </marker>
+            </defs>
+
+            <!-- Quad 1: Flexible + Sand -->
+            <g transform="translate(50, 20)">
+                <text x="125" y="15" font-weight="bold" font-size="14" text-anchor="middle">연성기초 (Flexible) + 사질토 (Sand)</text>
+                <line x1="0" y1="80" x2="250" y2="80" stroke="#333" stroke-width="1.5" /> <!-- Ground -->
+                <!-- Foundation -->
+                <rect x="50" y="50" width="150" height="30" fill="#e2e8f0" stroke="#64748b" stroke-width="2" />
+                <!-- Loads -->
+                <line x1="50" y1="30" x2="50" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="100" y1="30" x2="100" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="150" y1="30" x2="150" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="200" y1="30" x2="200" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <!-- Contact Pressure (Green) -->
+                <rect x="50" y="80" width="150" height="30" fill="#dcfce7" stroke="#22c55e" stroke-width="2" />
+                <text x="125" y="100" fill="#16a34a" font-size="12" font-weight="bold" text-anchor="middle">접지압 (등분포)</text>
+                <!-- Settlement (Blue) -->
+                <path d="M 50 140 Q 125 120 200 140" fill="none" stroke="#2563eb" stroke-width="2" />
+                <text x="125" y="155" fill="#2563eb" font-size="12" font-weight="bold" text-anchor="middle">침하형상 (가장자리 최대)</text>
+            </g>
+
+            <!-- Quad 2: Flexible + Clay -->
+            <g transform="translate(450, 20)">
+                <text x="125" y="15" font-weight="bold" font-size="14" text-anchor="middle">연성기초 (Flexible) + 점성토 (Clay)</text>
+                <line x1="0" y1="80" x2="250" y2="80" stroke="#333" stroke-width="1.5" />
+                <rect x="50" y="50" width="150" height="30" fill="#e2e8f0" stroke="#64748b" stroke-width="2" />
+                <line x1="50" y1="30" x2="50" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="100" y1="30" x2="100" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="150" y1="30" x2="150" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <line x1="200" y1="30" x2="200" y2="45" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow-down)" />
+                <!-- Contact Pressure (Green) -->
+                <rect x="50" y="80" width="150" height="30" fill="#dcfce7" stroke="#22c55e" stroke-width="2" />
+                <text x="125" y="100" fill="#16a34a" font-size="12" font-weight="bold" text-anchor="middle">접지압 (등분포)</text>
+                <!-- Settlement (Blue) -->
+                <path d="M 50 120 Q 125 150 200 120" fill="none" stroke="#2563eb" stroke-width="2" />
+                <text x="125" y="155" fill="#2563eb" font-size="12" font-weight="bold" text-anchor="middle">침하형상 (중심부 최대)</text>
+            </g>
+
+            <!-- Divider -->
+            <line x1="50" y1="200" x2="750" y2="200" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="5,5" />
+            <line x1="400" y1="20" x2="400" y2="380" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="5,5" />
+
+            <!-- Quad 3: Rigid + Sand -->
+            <g transform="translate(50, 220)">
+                <text x="125" y="15" font-weight="bold" font-size="14" text-anchor="middle">강성기초 (Rigid) + 사질토 (Sand)</text>
+                <line x1="0" y1="80" x2="250" y2="80" stroke="#333" stroke-width="1.5" />
+                <rect x="50" y="50" width="150" height="30" fill="#94a3b8" stroke="#475569" stroke-width="2" />
+                <line x1="125" y1="25" x2="125" y2="45" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow-down)" />
+                <!-- Contact Pressure (Green Parabola) -->
+                <path d="M 50 80 Q 125 140 200 80 Z" fill="#dcfce7" stroke="#22c55e" stroke-width="2" />
+                <text x="125" y="125" fill="#16a34a" font-size="12" font-weight="bold" text-anchor="middle">접지압 (포물선, 중심최대)</text>
+                <!-- Settlement (Blue Uniform) -->
+                <line x1="50" y1="150" x2="200" y2="150" stroke="#2563eb" stroke-width="3" />
+                <text x="125" y="165" fill="#2563eb" font-size="12" font-weight="bold" text-anchor="middle">침하형상 (균등침하)</text>
+            </g>
+
+            <!-- Quad 4: Rigid + Clay -->
+            <g transform="translate(450, 220)">
+                <text x="125" y="15" font-weight="bold" font-size="14" text-anchor="middle">강성기초 (Rigid) + 점성토 (Clay)</text>
+                <line x1="0" y1="80" x2="250" y2="80" stroke="#333" stroke-width="1.5" />
+                <rect x="50" y="50" width="150" height="30" fill="#94a3b8" stroke="#475569" stroke-width="2" />
+                <line x1="125" y1="25" x2="125" y2="45" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow-down)" />
+                <!-- Contact Pressure (Green U-shape) -->
+                <path d="M 50 80 L 50 130 Q 125 80 200 130 L 200 80 Z" fill="#dcfce7" stroke="#22c55e" stroke-width="2" />
+                <text x="125" y="105" fill="#16a34a" font-size="12" font-weight="bold" text-anchor="middle">접지압 (U자형, 가장자리최대)</text>
+                <!-- Settlement (Blue Uniform) -->
+                <line x1="50" y1="150" x2="200" y2="150" stroke="#2563eb" stroke-width="3" />
+                <text x="125" y="165" fill="#2563eb" font-size="12" font-weight="bold" text-anchor="middle">침하형상 (균등침하)</text>
+            </g>
+        </svg>
+    </div>
+
+    <!-- Section 4 -->
+    <h2 class="heading-1">4. 하중 - 침하량(q - S) 곡선 비교</h2>
+    
+    <div class="svg-container">
+        <!-- SVG: Load-Settlement Graph -->
+        <svg width="500" height="350" viewBox="0 0 500 350" xmlns="http://www.w3.org/2000/svg">
+            <!-- Grid & Axes -->
+            <line x1="50" y1="300" x2="480" y2="300" stroke="#333" stroke-width="2" marker-end="url(#arrow)" /> <!-- X axis -->
+            <line x1="50" y1="300" x2="50" y2="20" stroke="#333" stroke-width="2" marker-end="url(#arrow)" /> <!-- Y axis -->
+            
+            <text x="460" y="325" font-weight="bold" font-size="14">침하량 (S)</text>
+            <text x="20" y="20" font-weight="bold" font-size="14">하중 (q)</text>
+
+            <!-- General Shear Curve (Blue) -->
+            <path d="M 50 300 Q 80 100 120 70 T 250 110" fill="none" stroke="#2563eb" stroke-width="3" />
+            <circle cx="120" cy="70" r="4" fill="#2563eb" />
+            <text x="130" y="65" fill="#2563eb" font-weight="bold">전반전단 (q_u peak)</text>
+
+            <!-- Local Shear Curve (Green) -->
+            <path d="M 50 300 Q 150 200 300 160 T 450 140" fill="none" stroke="#16a34a" stroke-width="3" />
+            <text x="250" y="150" fill="#16a34a" font-weight="bold">국부전단 (불분명한 peak)</text>
+
+            <!-- Punching Shear Curve (Purple) -->
+            <path d="M 50 300 Q 100 280 150 250 T 450 200" fill="none" stroke="#9333ea" stroke-width="3" />
+            <text x="300" y="235" fill="#9333ea" font-weight="bold">관입전단 (Peak 없음, 지속 침하)</text>
+
+            <!-- Dotted lines for q_u -->
+            <line x1="50" y1="70" x2="120" y2="70" stroke="#2563eb" stroke-dasharray="4" />
+            <text x="15" y="75" fill="#2563eb" font-size="12">q_u</text>
+        </svg>
+    </div>
+
+    <!-- Section 5 -->
+    <h2 class="heading-1">5. 파괴형태를 결정하는 주요 영향 인자</h2>
+    
+    <table class="table-auto">
+        <thead>
+            <tr>
+                <th>구분</th>
+                <th>전반전단파괴</th>
+                <th>국부전단파괴</th>
+                <th>관입전단파괴</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="font-bold">상대밀도 ( $D_{r}$ )</td>
+                <td>$D_{r} \gt 70\%$ (조밀)</td>
+                <td>$35\% \lt D_{r} \lt 70\%$</td>
+                <td>$D_{r} \lt 35\%$ (느슨)</td>
+            </tr>
+            <tr>
+                <td class="font-bold">근입깊이비 ( $D_{f}/B$ )</td>
+                <td>얕음 (지표면 부근)</td>
+                <td>중간 깊이</td>
+                <td>깊음 (말뚝, 케이슨 등)</td>
+            </tr>
+            <tr>
+                <td class="font-bold">압축성</td>
+                <td>비압축성 지반</td>
+                <td>중간 압축성</td>
+                <td>고압축성 지반</td>
+            </tr>
+            <tr>
+                <td class="font-bold">하중-침하 곡선 피크</td>
+                <td>명확하게 존재</td>
+                <td>불명확함</td>
+                <td>없음 (수직 낙하형)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="mb-4">
+        Vesic(1973)은 모래 지반에서 기초의 근입깊이비 $D_{f}/B^*$ 와 상대밀도 $D_{r}$ 의 관계를 통해 파괴형태를 정량적으로 예측하는 도표를 제안하였다. (여기서 $B^* = 2BL / (B+L)$)
+    </p>
+
+    <!-- Section 6 -->
+    <h2 class="heading-1">6. 설계 실무 적용 및 KDS 기준 교차검증</h2>
+    
+    <h3 class="heading-2">6.1 실무 설계 시 유의사항</h3>
+    <ul class="list-disc">
+        <li>전반전단파괴가 예상되는 지반에서는 극한지지력 공식을 그대로 적용하여 허용지지력을 산정한다.</li>
+        <br>
+        $$
+        q_{a} = \frac{q_{u}}{F_{s}}
+        $$
+        <br>
+        <li>국부전단이나 관입전단이 예상되는 느슨한 지반에서는 파괴 이전에 <b>과도한 침하</b>가 먼저 발생하여 구조물에 피해를 주므로, 지지력 기준이 아닌 <b>허용침하량 기준</b>으로 지지력을 결정해야 한다.</li>
+        <li>이 경우 지반의 전단강도정수를 다음과 같이 저감하여 Terzaghi 수정 공식을 적용한다.</li>
+        <br>
+        $$
+        c^{\prime} = \frac{2}{3} c \quad , \quad \tan \phi^{\prime} = \frac{2}{3} \tan \phi
+        $$
+        <br>
+    </ul>
+
+    <h3 class="heading-2">6.2 최신 국가건설기준(KDS) 교차검증</h3>
+    
+    <div class="kds-box">
+        <h4 class="font-bold text-lg mb-2 text-blue-800">✅ KDS 11 50 15 (얕은기초 설계기준) 검증</h4>
+        <p class="mb-2 text-sm text-gray-700"><b>4.1.1 지지력 산정 일반</b></p>
+        <blockquote class="italic text-gray-600 bg-white p-3 rounded border-l-2 border-blue-400 mb-3">
+            "구조물 기초의 극한지지력은 <b>지반의 파괴 형태(전반전단파괴, 국부전단파괴, 관입전단파괴 등)를 고려하여 평가</b>하여야 하며... 연약하거나 느슨한 지반에서는 전반전단파괴가 일어나기 전에 <b>침하가 허용치를 초과할 수 있으므로</b> 침하에 대한 검토가 반드시 병행되어야 한다."
+        </blockquote>
+        
+        <p class="mb-2 text-sm text-gray-700 mt-4"><b>✅ KDS 14 20 50 (콘크리트구조 기초설계기준) 검증</b></p>
+        <blockquote class="italic text-gray-600 bg-white p-3 rounded border-l-2 border-blue-400 mb-3">
+            "<b>4.2.1 접지압:</b> 기초판의 단면 설계 시 작용하는 접지압은 지반의 변형 특성과 기초의 강성을 고려하여 산정하여야 한다. 다만, 일반적인 경우 안전측으로 등분포 또는 선형 분포로 가정할 수 있다."
+        </blockquote>
+        
+        <p class="text-sm font-semibold mt-2">
+            🔗 검증 링크: <a href="https://www.kcsc.re.kr/" target="_blank" class="text-blue-600 underline hover:text-blue-800">국가건설기준센터 (KCSC) 공식 홈페이지</a>에서 [KDS 11 50 15] 및 [KDS 14 20 50] 검색.
+        </p>
+    </div>
+
+</div>
+
+</body>
+</html>

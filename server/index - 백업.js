@@ -1743,21 +1743,10 @@ app.get('/api/dashboard', async (req, res) => {
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
-
-    // 동일 토픽의 중복 일정 방어 (중복 시 가장 낮은 review_round 일정 하나만 유지)
-    const uniqueReviewsMap = new Map();
-    for (const r of pendingReviews) {
-      const existing = uniqueReviewsMap.get(r.topic_id);
-      if (!existing || r.review_round < existing.review_round) {
-        uniqueReviewsMap.set(r.topic_id, r);
-      }
-    }
-    const uniqueReviews = Array.from(uniqueReviewsMap.values());
-
     res.json({
       date: queryDate,
-      count: uniqueReviews.length,
-      reviews: uniqueReviews
+      count: pendingReviews.length,
+      reviews: pendingReviews
     });
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);
@@ -3529,8 +3518,7 @@ app.post('/api/chat', async (req, res) => {
 5. 기술사 수준의 고품격 서술형 구조:
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
 6. 수식 및 기호 표기:
-   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.
-   - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.`;
+   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
       const healedText = healLatexFormulas(responseText);
       res.json({ text: healedText });

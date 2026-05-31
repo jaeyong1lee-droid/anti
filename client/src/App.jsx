@@ -123,8 +123,247 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   );
 }
 
+// 1.4) HTML/시뮬레이터 감지 및 문서 템플릿 생성 헬퍼
+const isHeavyHtml = (rawText) => {
+  if (!rawText) return false;
+  const lower = rawText.toLowerCase();
+  return (
+    lower.includes('<!doctype') ||
+    lower.includes('<html>') ||
+    lower.includes('<body') ||
+    lower.includes('<script') ||
+    lower.includes('<canvas') ||
+    lower.includes('<svg') ||
+    (lower.includes('<div') && lower.includes('style='))
+  );
+};
+
+const buildHtmlDocument = (text, isPopup = false) => {
+  let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  
+  const styleInjection = `
+    <style>
+      /* Compact & Premium Spacing & Title Overrides */
+      html, body {
+        margin: 0 !important;
+        padding: 16px !important;
+        padding-top: 8px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        ${isPopup ? 'overflow: auto !important;' : 'overflow: hidden !important;'} /* Allow scrollbars in popup, hide in iframe */
+        background-color: #edf7f2 !important; /* Elegant light pastel green / mint-green background */
+        color: #111827 !important; /* High-contrast deep black/charcoal text */
+      }
+      body > *:first-child, body > *:first-child > *:first-child {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+      /* Collapse empty spacing elements */
+      p:empty, div:empty, span:empty {
+        display: none !important;
+      }
+      /* Make titles elegant, compact and not overly thick */
+      h1, h2, h3, h4, .title, [class*="title"], [class*="header"], [class*="banner"], [class*="title-bar"] {
+        font-weight: 700 !important; /* Premium semi-bold instead of ultra-bold 900 */
+        letter-spacing: -0.025em !important;
+        margin-top: 4px !important;
+        margin-bottom: 8px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        min-height: auto !important;
+        height: auto !important;
+      }
+      h1 { font-size: 1.4rem !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1.05rem !important; }
+      /* Adjust layout containers to be compact */
+      .container, .wrapper, [class*="container"], [class*="wrapper"] {
+        padding-top: 4px !important;
+        margin-top: 0 !important;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(241, 245, 249, 0.5);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
+      .katex, .katex * {
+        font-family: inherit;
+      }
+      .katex .mathnormal {
+        font-family: KaTeX_Math, "Times New Roman", serif !important;
+        font-style: italic !important;
+      }
+      .katex .main {
+        font-family: KaTeX_Main, "Times New Roman", serif !important;
+      }
+      .katex .size1 { font-family: KaTeX_Size1 !important; }
+      .katex .size2 { font-family: KaTeX_Size2 !important; }
+      .katex .size3 { font-family: KaTeX_Size3 !important; }
+      .katex .size4 { font-family: KaTeX_Size4 !important; }
+      .katex .ams { font-family: KaTeX_AMS !important; }
+      .katex .cal { font-family: KaTeX_Caligraphic !important; }
+      .katex .frak { font-family: KaTeX_Fraktur !important; }
+      .katex .sans { font-family: KaTeX_SansSerif !important; }
+      .katex .mono { font-family: KaTeX_Typewriter !important; }
+    </style>
+  `;
+
+  const katexAndAutoRenderInjection = `
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+      function healIframeMath() {
+        const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        const mathNodes = [];
+        const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\\\b|([kK]_[{]?[h30]+[}]?)|([y\\\\u03B3]_[{]?[a-zA-Z0-9]+[}]?)/;
+        while (node = walk.nextNode()) {
+          const parent = node.parentNode;
+          if (parent) {
+            const tag = parent.tagName.toUpperCase();
+            if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'CODE' || tag === 'PRE') {
+              continue;
+            }
+          }
+          const text = node.nodeValue;
+          if (!text) continue;
+          if (hasLaTeX.test(text) && !text.includes('$')) {
+            mathNodes.push(node);
+          }
+        }
+        mathNodes.forEach(node => {
+          node.nodeValue = '$$' + node.nodeValue + '$$';
+        });
+      }
+
+      let isRendering = false;
+      function triggerRender() {
+        if (isRendering) return;
+        isRendering = true;
+        try {
+          healIframeMath();
+          if (typeof renderMathInElement === 'function') {
+            renderMathInElement(document.body, {
+              delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\\\(", right: "\\\\)", display: false},
+                {left: "\\\\[", right: "\\\\]", display: true}
+              ],
+              throwOnError: false
+            });
+          }
+          if (window.parent) {
+            window.parent.postMessage({ type: 'mathRendered' }, '*');
+          }
+        } catch (e) {
+          console.warn("KaTeX render error inside HTML:", e);
+        } finally {
+          isRendering = false;
+        }
+      }
+
+      function initKaTeX() {
+        if (typeof renderMathInElement === 'function') {
+          triggerRender();
+          
+          document.body.addEventListener('input', () => {
+            setTimeout(triggerRender, 50);
+          });
+          document.body.addEventListener('change', () => {
+            setTimeout(triggerRender, 50);
+          });
+          document.body.addEventListener('click', () => {
+            setTimeout(triggerRender, 100);
+          });
+          
+          const intervals = [100, 300, 600, 1200, 2000, 4000];
+          intervals.forEach((delay) => {
+            setTimeout(triggerRender, delay);
+          });
+        } else {
+          setTimeout(initKaTeX, 50);
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", initKaTeX);
+      } else {
+        initKaTeX();
+      }
+      window.addEventListener("load", initKaTeX);
+    </script>
+  `;
+
+  let srcDoc = cleanedText;
+  if (!/<!DOCTYPE/i.test(cleanedText) && !/<html/i.test(cleanedText)) {
+    srcDoc = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${styleInjection}
+  ${katexAndAutoRenderInjection}
+</head>
+<body>
+  ${cleanedText}
+</body>
+</html>
+    `;
+  } else {
+    if (/<head>/i.test(srcDoc)) {
+      srcDoc = srcDoc.replace(/<head>/i, () => `<head>${styleInjection}${katexAndAutoRenderInjection}</head>`);
+    } else if (/<html/i.test(srcDoc)) {
+      srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}${katexAndAutoRenderInjection}</head>`);
+    } else {
+      srcDoc = styleInjection + katexAndAutoRenderInjection + srcDoc;
+    }
+  }
+
+  return srcDoc;
+};
+
+// 1.6) HTML/시뮬레이터 팝업 창 오픈 헬퍼 함수
+const handleOpenHtmlAnswerPopup = (title, text) => {
+  if (!text) return;
+  const parsedTitle = title || "정답 확인";
+  const popupWidth = 1200;
+  const popupHeight = 900;
+  const left = window.screen.width / 2 - popupWidth / 2;
+  const top = window.screen.height / 2 - popupHeight / 2;
+  
+  const popupWindow = window.open(
+    '', 
+    '_blank', 
+    `width=${popupWidth},height=${popupHeight},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+  );
+  
+  if (popupWindow) {
+    const htmlDocument = buildHtmlDocument(text, true);
+    popupWindow.document.open();
+    popupWindow.document.write(htmlDocument);
+    // Dynamic title injection
+    popupWindow.document.title = `${parsedTitle} - 시뮬레이터 정답`;
+    popupWindow.document.close();
+    popupWindow.focus();
+  } else {
+    alert("팝업 차단기가 활성화되어 있어 팝업창을 열 수 없습니다. 브라우저 설정에서 이 사이트의 팝업을 허용해 주세요.");
+  }
+};
+
 // Dynamic KaTeX loader & Math text renderer
-function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null }) {
+function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "" }) {
   if (!text) return null;
 
   const pressTimer = useRef(null);
@@ -187,253 +426,65 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
       }
       return '\\gamma ' + suffix;
     });
-    healed = healed.replace(/\\y\b/g, '\\gamma');
+    healed = healed.replace(/\\y\\b/g, '\\gamma');
 
     // 2) Inside LaTeX math blocks, convert bare 'y' used as gamma to '\gamma'
     healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
       let replaced = math;
-      replaced = replaced.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
-      replaced = replaced.replace(/\by\s*D_f\b/g, '\\gamma D_f');
-      replaced = replaced.replace(/\byD_f\b/g, '\\gamma D_f');
-      replaced = replaced.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+      replaced = replaced.replace(/\\by_([a-zA-Z0-9]+)\\b/g, '\\gamma_$1');
+      replaced = replaced.replace(/\\by\\s*D_f\\b/g, '\\gamma D_f');
+      replaced = replaced.replace(/\\byD_f\\b/g, '\\gamma D_f');
+      replaced = replaced.replace(/\\by\\s*\\\\?cdot\\b/g, '\\gamma \\cdot');
       return `$${replaced}$`;
     });
-    
+
     // 3) Wrap geotech variables and equations (like M_w < 7.5, MSF > 1.0) in $ if they aren't already wrapped
-    healed = healed.replace(/\b(M_w|MSF|F_s|K_h|K_{30})\s*([<>=]=?)\s*([0-9\.]+)\b/g, (match, v, op, num) => {
+    healed = healed.replace(/\\b(M_w|MSF|F_s|K_h|K_{30})\\s*([<>=]=?)\\s*([0-9\\.]+)\\b/g, (match, v, op, num) => {
       return `$${v} ${op} ${num}$`;
     });
 
     // 4) Heal misplaced dollar sign typos like M_w$=7.5 or MSF$=1.0
-    healed = healed.replace(/\b([a-zA-Z0-9_]+)\$=\s*([0-9\.]+)\b/g, (match, v, num) => {
+    healed = healed.replace(/\\b([a-zA-Z0-9_]+)\\$=\\s*([0-9\\.]+)\\b/g, (match, v, num) => {
       return `$${v} = ${num}$`;
     });
     
     return healed;
   };
 
-  // 1.5) 그림 및 시뮬레이터 HTML(JS/Canvas 포함) 격리 샌드박스 Iframe 렌더러 탑재
-  const isHeavyHtml = (rawText) => {
-    if (!rawText) return false;
-    const lower = rawText.toLowerCase();
-    return (
-      lower.includes('<!doctype') ||
-      lower.includes('<html>') ||
-      lower.includes('<body') ||
-      lower.includes('<script') ||
-      lower.includes('<canvas') ||
-      lower.includes('<svg') ||
-      (lower.includes('<div') && lower.includes('style='))
-    );
-  };
-
   const isHeavy = isHeavyHtml(text);
 
   // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리 (HTML 보고서인 경우 백슬래시 보호를 위해 자가치유 스킵)
   let cleanedText = isHeavy
-    ? text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-    : healFormulas(text).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
+    : healFormulas(text).replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
 
   if (isHeavy) {
-    let srcDoc = cleanedText;
-    const styleInjection = `
-      <style>
-        /* Compact & Premium Spacing & Title Overrides */
-        html, body {
-          margin: 0 !important;
-          padding: 12px !important;
-          padding-top: 4px !important;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          overflow: hidden !important; /* Prevent internal scrollbars entirely */
-          background-color: #edf7f2 !important; /* Elegant light pastel green / mint-green background */
-          color: #111827 !important; /* High-contrast deep black/charcoal text */
-        }
-        body > *:first-child, body > *:first-child > *:first-child {
-          margin-top: 0 !important;
-          padding-top: 0 !important;
-        }
-        /* Collapse empty spacing elements */
-        p:empty, div:empty, span:empty {
-          display: none !important;
-        }
-        /* Make titles elegant, compact and not overly thick */
-        h1, h2, h3, h4, .title, [class*="title"], [class*="header"], [class*="banner"], [class*="title-bar"] {
-          font-weight: 700 !important; /* Premium semi-bold instead of ultra-bold 900 */
-          letter-spacing: -0.025em !important;
-          margin-top: 4px !important;
-          margin-bottom: 8px !important;
-          padding-top: 8px !important;
-          padding-bottom: 8px !important;
-          min-height: auto !important;
-          height: auto !important;
-        }
-        h1 {
-          font-size: 1.4rem !important;
-        }
-        h2 {
-          font-size: 1.2rem !important;
-        }
-        h3 {
-          font-size: 1.05rem !important;
-        }
-        /* Adjust layout containers to be compact */
-        .container, .wrapper, [class*="container"], [class*="wrapper"] {
-          padding-top: 4px !important;
-          margin-top: 0 !important;
-        }
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: rgba(241, 245, 249, 0.5);
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-        /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
-        .katex, .katex * {
-          font-family: inherit;
-        }
-        .katex .mathnormal {
-          font-family: KaTeX_Math, "Times New Roman", serif !important;
-          font-style: italic !important;
-        }
-        .katex .main {
-          font-family: KaTeX_Main, "Times New Roman", serif !important;
-        }
-        .katex .size1 { font-family: KaTeX_Size1 !important; }
-        .katex .size2 { font-family: KaTeX_Size2 !important; }
-        .katex .size3 { font-family: KaTeX_Size3 !important; }
-        .katex .size4 { font-family: KaTeX_Size4 !important; }
-        .katex .ams { font-family: KaTeX_AMS !important; }
-        .katex .cal { font-family: KaTeX_Caligraphic !important; }
-        .katex .frak { font-family: KaTeX_Fraktur !important; }
-        .katex .sans { font-family: KaTeX_SansSerif !important; }
-        .katex .mono { font-family: KaTeX_Typewriter !important; }
-      </style>
-    `;
-
-    const katexAndAutoRenderInjection = `
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-      <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-      <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-      <script>
-        function healIframeMath() {
-          const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-          let node;
-          const mathNodes = [];
-          const hasLaTeX = /\\\\(cdot|frac|left|right|gamma|sigma|tau|beta|alpha|delta|theta|phi|mu|omega|pi|sqrt|times|bar|hat|tilde|mathrm|text)\\b|([kK]_[{]?[h30]+[}]?)|([y\\\\u03B3]_[{]?[a-zA-Z0-9]+[}]?)/;
-          while (node = walk.nextNode()) {
-            const parent = node.parentNode;
-            if (parent) {
-              const tag = parent.tagName.toUpperCase();
-              if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'CODE' || tag === 'PRE') {
-                continue;
-              }
-            }
-            const text = node.nodeValue;
-            if (!text) continue;
-            if (hasLaTeX.test(text) && !text.includes('$')) {
-              mathNodes.push(node);
-            }
-          }
-          mathNodes.forEach(node => {
-            node.nodeValue = '$$' + node.nodeValue + '$$';
-          });
-        }
-
-        let isRendering = false;
-        function triggerRender() {
-          if (isRendering) return;
-          isRendering = true;
-          try {
-            healIframeMath();
-            if (typeof renderMathInElement === 'function') {
-              renderMathInElement(document.body, {
-                delimiters: [
-                  {left: "$$", right: "$$", display: true},
-                  {left: "$", right: "$", display: false},
-                  {left: "\\\\(", right: "\\\\)", display: false},
-                  {left: "\\\\[", right: "\\\\]", display: true}
-                ],
-                throwOnError: false
-              });
-            }
-            if (window.parent) {
-              window.parent.postMessage({ type: 'mathRendered' }, '*');
-            }
-          } catch (e) {
-            console.warn("KaTeX render error inside iframe:", e);
-          } finally {
-            isRendering = false;
-          }
-        }
-
-        function initKaTeX() {
-          if (typeof renderMathInElement === 'function') {
-            triggerRender();
-            
-            // 안전하고 성능이 극대화된 사용자 인터랙션 기반의 실시간 재렌더링 이벤트 등록
-            // (무한 루프나 브라우저 멈춤 현상을 완벽히 방어하면서 실시간 데이터 변동을 반영)
-            document.body.addEventListener('input', () => {
-              setTimeout(triggerRender, 50);
-            });
-            document.body.addEventListener('change', () => {
-              setTimeout(triggerRender, 50);
-            });
-            document.body.addEventListener('click', () => {
-              setTimeout(triggerRender, 100);
-            });
-            
-            // 비동기 스크립트 실행/렌더링 지연을 대비하여 안전한 타임아웃 갱신 병행
-            const intervals = [100, 300, 600, 1200, 2000, 4000];
-            intervals.forEach((delay) => {
-              setTimeout(triggerRender, delay);
-            });
-          } else {
-            setTimeout(initKaTeX, 50);
-          }
-        }
-
-        if (document.readyState === 'loading') {
-          document.addEventListener("DOMContentLoaded", initKaTeX);
-        } else {
-          initKaTeX();
-        }
-        window.addEventListener("load", initKaTeX);
-      </script>
-    `;
-
-    if (!/<!DOCTYPE/i.test(cleanedText) && !/<html/i.test(cleanedText)) {
-      srcDoc = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    ${styleInjection}
-    ${katexAndAutoRenderInjection}
-  </head>
-  <body>
-    ${cleanedText}
-  </body>
-</html>
-      `;
-    } else {
-      if (/<head>/i.test(srcDoc)) {
-        srcDoc = srcDoc.replace(/<head>/i, () => `<head>${styleInjection}${katexAndAutoRenderInjection}`);
-      } else if (/<html/i.test(srcDoc)) {
-        srcDoc = srcDoc.replace(/<html[^>]*>/i, (m) => `${m}<head>${styleInjection}${katexAndAutoRenderInjection}</head>`);
-      } else {
-        srcDoc = styleInjection + katexAndAutoRenderInjection + srcDoc;
-      }
+    if (placeholderIfHeavy) {
+      return (
+        <div className="w-full my-3 p-6 rounded-2xl border border-slate-700/60 shadow-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 animate-fade-in flex flex-col items-center justify-center text-center space-y-4">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.15)]">
+            <Brain size={32} className="text-rose-500" />
+          </div>
+          <div className="space-y-1 max-w-md">
+            <h4 className="text-base font-extrabold text-white tracking-tight">인터랙티브 시뮬레이터 로드 완료</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              복잡한 대형 HTML/JS 시뮬레이터 정답입니다. 학습 환경의 쾌적함과 고성능 운용을 위해 별도의 <strong>새 브라우저 팝업 창</strong>에 안전하게 마운트되었습니다.
+            </p>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenHtmlAnswerPopup(popupTitle, text);
+            }}
+            className="mt-2 py-2 px-5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl transition-all duration-200 active:scale-[0.97] hover:scale-105 cursor-pointer shadow-lg shadow-rose-600/20 hover:shadow-rose-600/40 border border-rose-500/30 flex items-center justify-center gap-2 group select-none"
+          >
+            <span>🖥️ 새 팝업 창에 다시 열기</span>
+          </button>
+        </div>
+      );
     }
 
+    const srcDoc = buildHtmlDocument(text, false);
     return (
       <div className="w-full my-3 overflow-hidden rounded-2xl border border-slate-700/40 shadow-2xl bg-white animate-fade-in">
         <iframe
@@ -1008,14 +1059,23 @@ export default function App() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Fetch reviews based on selected reference date
+    // Fetch reviews based on selected reference date
   const fetchTodayReviews = async (dateStr) => {
     setLoadingReviews(true);
     try {
       const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
       if (res.ok && data && Array.isArray(data.reviews)) {
-        setTodayReviews(data.reviews);
+        // 동일 토픽 중복 일정 방어 (중복 시 가장 낮은 review_round 일정 하나만 프론트에서도 유지)
+        const uniqueMap = new Map();
+        for (const r of data.reviews) {
+          const existing = uniqueMap.get(r.topic_id);
+          if (!existing || r.review_round < existing.review_round) {
+            uniqueMap.set(r.topic_id, r);
+          }
+        }
+        const uniqueList = Array.from(uniqueMap.values());
+        setTodayReviews(uniqueList);
       } else {
         setTodayReviews([]);
         console.error('Failed to load dashboard or invalid data format:', data);
@@ -5257,11 +5317,14 @@ export default function App() {
                           {/* Row 2: Action Buttons (정답확인, 리프레쉬, 삭제) */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full mt-1.5">
                             {/* 정답확인/정답접기 button */}
-                            {!isNewEmptyCard && (
+                                                        {!isNewEmptyCard && (
                               !isOutputVisible ? (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (isHeavyHtml(q.formula)) {
+                                      handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
+                                    }
                                     setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
                                     scrollToFormulaCard(idx);
                                   }}
@@ -5368,11 +5431,11 @@ export default function App() {
                               )}
                             </div>
 
-                            {q.concept && (
+                                                        {q.concept && (
                               <div className="space-y-1">
                                 <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
                                 <div className="text-sm text-slate-200 leading-relaxed">
-                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} />
+                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 핵심 개념"} />
                                 </div>
                               </div>
                             )}
@@ -5381,7 +5444,7 @@ export default function App() {
                               <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                 <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
                                 <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
+                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                 </div>
                               </div>
                             ) : !q.concept && (
@@ -5824,11 +5887,14 @@ export default function App() {
                           {/* Row 2: Action Buttons (정답확인, 수정하기, 삭제) */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full mt-1.5">
                             {/* 정답확인/정답접기 button */}
-                            {!isNewEmptyCard && (
+                                                        {!isNewEmptyCard && (
                               !isOutputVisible ? (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (isHeavyHtml(q.formula)) {
+                                      handleOpenHtmlAnswerPopup(q.title || `이론 ${idx + 1}`, q.formula);
+                                    }
                                     setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
                                     scrollToTheoryCard(idx);
                                   }}
@@ -5915,9 +5981,9 @@ export default function App() {
                                 </button>
                               )}
                             </div>
-                            {q.formula ? (
+                                                        {q.formula ? (
                               <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} />
+                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `이론 ${idx + 1}`} />
                               </div>
                             ) : (
                               <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
