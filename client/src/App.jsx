@@ -1101,6 +1101,13 @@ export default function App() {
     showNotification('해당 문제의 풀이 상태를 초기화했습니다.', 'info');
   };
 
+  // ── Open Original Report (복습하기 원 보고서 팝업 띄우기) ──────────────────
+  const handleOpenOriginalReport = () => {
+    if (!selectedTopic?.id) return;
+    const url = `${API_BASE}/api/topics/${selectedTopic.id}/pdf`;
+    window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+  };
+
   // ── Refresh All Review Questions (복습하기 전체 문제 재생성) ──────────────────
   const handleRefreshReviewQuestions = async () => {
     if (!selectedTopic?.id) return;
@@ -3373,9 +3380,21 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
-                  {selectedTopic.title}
-                </h3>
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
+                    {selectedTopic.title}
+                  </h3>
+                  {selectedTopic.pdf_name && (
+                    <button
+                      onClick={handleOpenOriginalReport}
+                      className="px-2.5 py-1 bg-violet-950/60 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/30 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-1"
+                      title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                    >
+                      <FileText size={12} />
+                      <span>원 보고서 보기</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             
