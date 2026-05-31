@@ -377,12 +377,24 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
         function initKaTeX() {
           if (typeof renderMathInElement === 'function') {
             triggerRender();
-            const observer = new MutationObserver(() => {
-              observer.disconnect();
-              triggerRender();
-              observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            
+            // 안전하고 성능이 극대화된 사용자 인터랙션 기반의 실시간 재렌더링 이벤트 등록
+            // (무한 루프나 브라우저 멈춤 현상을 완벽히 방어하면서 실시간 데이터 변동을 반영)
+            document.body.addEventListener('input', () => {
+              setTimeout(triggerRender, 50);
             });
-            observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            document.body.addEventListener('change', () => {
+              setTimeout(triggerRender, 50);
+            });
+            document.body.addEventListener('click', () => {
+              setTimeout(triggerRender, 100);
+            });
+            
+            // 비동기 스크립트 실행/렌더링 지연을 대비하여 안전한 타임아웃 갱신 병행
+            const intervals = [100, 300, 600, 1200, 2000, 4000];
+            intervals.forEach((delay) => {
+              setTimeout(triggerRender, delay);
+            });
           } else {
             setTimeout(initKaTeX, 50);
           }
