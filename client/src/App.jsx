@@ -4399,7 +4399,7 @@ export default function App() {
           >
             
             {/* Left: Formula Body */}
-            <div ref={formulaBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-slateCustom-900/30">
+            <div ref={formulaBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 bg-slateCustom-900/30">
               {loadingFormula ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -4964,7 +4964,7 @@ export default function App() {
           >
             
             {/* Left: Theory list */}
-            <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-3/5 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-5 space-y-4 scroll-smooth">
+            <div ref={theoryBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-3/5 md:shrink snap-start h-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-4 scroll-smooth">
               <div className="max-w-full space-y-5">
                 
 
