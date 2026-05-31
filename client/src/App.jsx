@@ -2449,6 +2449,29 @@ export default function App() {
     }
   };
 
+  // 정답확인 클릭 시 카드가 스크롤 영역 상단에 부드럽게 안착되도록 돕는 헬퍼 함수
+  const scrollToFormulaCard = (idx) => {
+    setTimeout(() => {
+      const cardEl = document.getElementById(`formula-card-${idx}`);
+      if (cardEl && formulaBodyRef.current) {
+        const container = formulaBodyRef.current;
+        const offsetTop = cardEl.offsetTop - 16; // 최적의 가독성을 위한 16px 마진 감안
+        container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      }
+    }, 120);
+  };
+
+  const scrollToTheoryCard = (idx) => {
+    setTimeout(() => {
+      const cardEl = document.getElementById(`theory-card-${idx}`);
+      if (cardEl && theoryBodyRef.current) {
+        const container = theoryBodyRef.current;
+        const offsetTop = cardEl.offsetTop - 16;
+        container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      }
+    }, 120);
+  };
+
   // 실시간 튜터 대화에서 공식 마이닝 및 필수공식 리스트 추가 함수
   const handleAddFormulaFromChat = (text) => {
     if (!text) return;
@@ -4936,7 +4959,7 @@ export default function App() {
                       const isInputVisible = isNewEmptyCard || !!formulaInputRevealed[idx];
 
                       return (
-                      <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                      <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
                         <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-3">
                           {/* Row 1: Q badge & Title */}
@@ -5033,6 +5056,7 @@ export default function App() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
+                                    scrollToFormulaCard(idx);
                                   }}
                                   className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 border border-rose-500/20 flex items-center justify-center gap-1"
                                   title="정답 확인하기"
@@ -5502,7 +5526,7 @@ export default function App() {
                     const isInputVisible = isNewEmptyCard || !!theoryInputRevealed[idx];
 
                     return (
-                      <div key={idx} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
+                      <div key={idx} id={`theory-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
                         <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-3">
                           {/* Row 1: Q badge & Title */}
@@ -5599,6 +5623,7 @@ export default function App() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
+                                    scrollToTheoryCard(idx);
                                   }}
                                   className="py-1 px-3 bg-indigo-650 hover:bg-indigo-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-indigo-650/10 hover:shadow-indigo-650/20 border border-indigo-500/20 flex items-center justify-center gap-1"
                                   title="정답 확인하기"
