@@ -358,6 +358,17 @@ export default function App() {
   
   // Option Explanations State for Multiple Choice Option Analysis
   const [optionExplanations, setOptionExplanations] = useState({});
+
+  // Desktop view state (width >= 768px)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Drag Resizable Splitter State and Event Handlers
   const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
@@ -3344,7 +3355,7 @@ export default function App() {
             {/* Floating Scroll Button Capsule (Detached from resize, floats independently on Quiz Wrapper right edge) */}
             <div 
               style={{ top: '50%', transform: 'translateY(-50%)' }}
-              className="absolute right-12 flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
+              className="absolute right-12 hidden md:flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
               title="문제 위/아래 이동"
             >
               <button 
@@ -3925,7 +3936,7 @@ export default function App() {
               {/* Floating Scroll Button Capsule (Amber/Amber-500 Theme - floats independently on Exam Wrapper right edge) */}
               <div 
                 style={{ top: '50%', transform: 'translateY(-50%)' }}
-                className="absolute right-12 flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
+                className="absolute right-12 hidden md:flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 scale-90 sm:scale-100 cursor-default"
                 title="문제 위/아래 이동"
               >
                 <button 
