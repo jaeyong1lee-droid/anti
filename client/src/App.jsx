@@ -3263,7 +3263,7 @@ export default function App() {
       </header>
 
       {/* Floating Vertical Navigation - Left Center (Desktop Only) */}
-      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-40 rounded-2xl glow-purple animate-fade-in">
+      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[80] rounded-2xl glow-purple animate-fade-in">
         <button
           onClick={() => setViewMode('dashboard')}
           className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
@@ -3792,7 +3792,7 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
           {/* Review Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -4440,7 +4440,7 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
           {/* Exam Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5017,7 +5017,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
           {/* Formula Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5598,7 +5598,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
       {showTheoryExam && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
