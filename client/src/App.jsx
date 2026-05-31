@@ -174,7 +174,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
             >
               {/* KaTeX 수식 */}
               <div 
-                className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
+                className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
               {/* 우측 추가 버튼 (모든 공식에 퀴즈 추가 버튼 표시 & 바탕색 옅은 회색으로 변경) */}

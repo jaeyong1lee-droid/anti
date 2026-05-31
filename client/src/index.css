@@ -77,3 +77,45 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Inline/Block LaTeX (KaTeX) horizontal scrolling & custom mini scrollbars */
+.katex {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(234, 179, 8, 0.4) transparent;
+}
+
+/* Mini-scrollbar override for KaTeX and horizontal overflow math boxes */
+.katex::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.katex-display::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.katex::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.katex-display::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3) !important;
+  border-radius: 2px !important;
+}
+
+.katex::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(234, 179, 8, 0.5) !important; /* Amber / Yellow thumb */
+  border: none !important;
+  border-radius: 2px !important;
+}
+
+.katex::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.katex-display::-webkit-scrollbar-thumb:hover {
+  background: rgba(234, 179, 8, 0.8) !important;
+}
+
