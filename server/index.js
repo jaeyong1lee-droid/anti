@@ -430,9 +430,11 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
         }
       }
     } else {
-      // Gemini
+      // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
       const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+      
+      let basicModelFailedCount = 0;
 
       for (const modelName of MODELS) {
         let attempt = 0;
@@ -447,7 +449,20 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
               systemInstruction: systemInstruction || undefined
             });
             
-            const result = await model.generateContent(userPrompt);
+            let generateContentArg = userPrompt;
+            if (image && image.data && image.mimeType) {
+              generateContentArg = [
+                userPrompt,
+                {
+                  inlineData: {
+                    mimeType: image.mimeType,
+                    data: image.data
+                  }
+                }
+              ];
+            }
+            
+            const result = await model.generateContent(generateContentArg);
             const text = result.response.text().trim();
             if (text) {
               console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
@@ -463,19 +478,26 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
               if (attempt < maxAttempts) {
                 console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
                 await sleep(delay);
-                delay *= 2; // Double the delay
+                delay *= 2;
               } else {
-                console.warn(`[Gemini Model Exhausted] Key #${kIdx + 1} (${maskedKey})의 ${modelName} 모델 제한 초과. 다음 모델로 전환합니다.`);
-                break; // while 루프를 빠져나와 다음 모델(for문)을 시도합니다.
+                console.warn(`[Gemini Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
+                basicModelFailedCount++;
+                break; // 현재 모델의 while 루프만 탈출하고 다음 modelName 자원을 계속 탐색
               }
             } else {
-              // 쿼터 에러가 아닌 다른 치명적 에러는 재시도 없이 다음 모델로 패스
+              // 쿼터 에러가 아닌 다른 치명적 에러 발생 시에도 하위 모델 기회 균등 보장
+              basicModelFailedCount++;
               break;
             }
           }
         }
       }
-      console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 모델이 실패했습니다. 다음 API 키로 교체합니다.`);
+
+      // [핵심] 3가지 백오프 대상 모델이 '전부' 무력화되었을 때만 최종 키 사망 마킹 처리
+      if (basicModelFailedCount >= MODELS.length) {
+        console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
+        keyExhausted = true;
+      }
     }
 
     if (keyLastError) {
