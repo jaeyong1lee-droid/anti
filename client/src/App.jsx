@@ -285,6 +285,26 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null 
         ::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
         }
+        /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
+        .katex, .katex * {
+          font-family: inherit;
+        }
+        .katex .mathnormal {
+          font-family: KaTeX_Math, "Times New Roman", serif !important;
+          font-style: italic !important;
+        }
+        .katex .main {
+          font-family: KaTeX_Main, "Times New Roman", serif !important;
+        }
+        .katex .size1 { font-family: KaTeX_Size1 !important; }
+        .katex .size2 { font-family: KaTeX_Size2 !important; }
+        .katex .size3 { font-family: KaTeX_Size3 !important; }
+        .katex .size4 { font-family: KaTeX_Size4 !important; }
+        .katex .ams { font-family: KaTeX_AMS !important; }
+        .katex .cal { font-family: KaTeX_Caligraphic !important; }
+        .katex .frak { font-family: KaTeX_Fraktur !important; }
+        .katex .sans { font-family: KaTeX_SansSerif !important; }
+        .katex .mono { font-family: KaTeX_Typewriter !important; }
       </style>
     `;
 
