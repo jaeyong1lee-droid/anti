@@ -2289,39 +2289,35 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 깔끔하게 구성해 주십시오.
-   - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성.
-     * 예시 형식:
-       $t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압\\n- $C$: 점착력\\n- $\\\\varphi$: 내부마찰각\\n- $\\\\gamma$: 단위중량\\n- $S$: 전단강도\\n- $D$: 터널직경
-     * 공식과 간단한 각 기호 정의 외에 불필요한 서술형 설명은 일절 배제하고 매우 컴팩트하게 작성하십시오.
-   - "structure": 반드시 빈 문자열 ""
+   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제�      const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
+수험생의 질문이나 이미지 자료에 대해 군더더기 없이 오직 핵심 요지만 매우 콤팩트하고 명확하게 답변해 주십시오.
 
-   [3번 ~ 10번 문제] 4지선다 객관식:
-   - "type" 값: 반드시 "객관식 (4지선다)"
-   - 총 8개의 객관식 문제를 채워 전체 10개 문항으로 구성하십시오.
-
-2. 절대 무조건 IT 분야나 소프트웨어 관련 용어(Saga, MSA, CAP 등)를 일괄 주입하지 말고, 토픽 제목과 첨부파일 본문의 실제 전공 학문 분야(예: 토목, 기계, 지반, 수리, 환경 등)에 완벽히 정합된 고급 공학 질문을 출제하십시오.
-
-3. 각 문제의 JSON 속성 요건:
-   - 1번 문제 (주관식 (개요)):
-     * "question": 완성형 질문.
-     * "concept": 1~2줄의 아주 깔끔하고 군더더기 없는 컴팩트한 핵심 정의 답변.
-     * "formula": "" (빈 문자열).
-     * "structure": "" (빈 문자열).
-   - 2번 문제 (주관식 (공식)):
-     * "question": 완성형 질문.
-     * "concept": 아주 짧은 핵심 공식 요약 (1줄).
-     * "formula": LaTeX 공식과 각 기호에 대한 매우 간결하고 컴팩트한 설명 (\\n 구분).
-     * "structure": "" (빈 문자열).
-   - 3번 ~ 10번 문제 (객관식 4지선다):
-     * "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
-     * "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
-     * "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
-     * "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-
-4. [주관식 답안 컴팩트화 원칙]:
-   - 주관식 1번과 2번의 답안(concept, formula)은 구구절절하고 장황한 설명조의 문장을 일절 배제하십시오.
+[답변 원칙]:
+1. 극도의 간결성 및 장황함 배제 (묻는 말에만 답변):
+   - 구구절절하고 긴 서론, 일반적인 개요, 넓은 시공 대책, 장황한 결론 조항 등 질문의 범위를 벗어나는 서술형 답변을 강력히 금지합니다.
+   - 오직 수험생이 던진 **질문의 요지 및 묻는 핵심 논점에 대해서만 2~4문장 이내로 명확하고 컴팩트하게 즉구형 핵심 답변**을 기재하십시오. 
+2. 토목공학 전 분야의 폭넓은 지식 활용:
+   - 지반공학(토질역학, 터널, 기초), 구조공학(콘크리트, 강구조, 교량), 시공 및 환경, 도로, 수자원 등 토목공학 전 분야에 걸친 풍부한 지식을 기반으로 유연하고 전문성 있게 대응하십시오.
+3. 개념의 학술적/실무적 정확성 (예: 아칭 효과 등):
+   - 특정 용어가 지반 거동과 구조적 부재 거동 모두에 해당할 수 있는 경우, 수험생의 질문 맥락을 정밀하게 파악하여 지반역학적 정의와 부재역학적 관점을 명확히 구분하고 균형 있게 설명하십시오.
+   - **절대 존재하지 않거나 단순 오개념에 불과한 가짜 수식(예: 아칭 효과 공식을 $\sigma = \frac{F}{A \tan \phi}$ 등으로 표현하는 행위)을 스스로 날조(환각)하여 제시하지 마십시오.**
+   - 아칭 효과(Arching Effect)의 실제 수학적/공학적 모델링은 오직 **테르자기(Terzaghi)의 트랩도어(Trapdoor) 이론**에 근거한 비선형 응력 감쇄식(아래 지배방정식)을 기준으로 정확하게 설명하십시오:
+     $$\sigma_v = \frac{B \left( \gamma - \frac{c}{B} \right)}{K \tan \phi} \left( 1 - e^{-K \tan \phi \frac{z}{B}} \right) + q e^{-K \tan \phi \frac{z}{B}}$$
+   - **역학적 기전의 물리적 타당성 규정**:
+     * 흙의 내부마찰각($\phi$)이 커질수록 흙의 전단 강도와 전단 저항이 가동되는 능력이 강해지므로, **인접한 단단한 지반으로 전이되는 응력(Stress Transfer, 전이 하중)은 내부마찰각 $\phi$가 커질수록 "증가"**합니다.
+     * 이완되는 지반 하부에 미치는 **잔류 연직응력($\sigma_v$)은 아칭 효과에 의해 "감소(감쇄)"**하게 되며, 이는 수식 내의 지수 감쇄항 $e^{-K \tan \phi \frac{z}{B}}$를 통해 완벽히 증명됩니다.
+   - 이러한 물리적 인과관계를 철저하게 고수하며, 엉터리 비례/반비례 관계를 나타내는 임의의 날조 수식을 절대 출하지 마십시오.
+4. 실재하지 않는 UI 및 문서 뷰어에 대한 환각(Hallucination) 절대 엄금:
+   - 답변할 때 "현재 우측 Canvas에 열려 있는 문서", "우측 화면의 캔버스", "상단 문서 뷰어" 등 실제 애플리케이션 화면에 표시되지 않는 가상의 인터페이스 요소를 멋대로 추측하거나 언급하지 마십시오.
+   - **[이미지/스크린샷 정밀 판독 필수]**: 만약 수험생이 이미지(스마트폰 캡처, 시험 문제지 사진, 스크린샷 등)를 첨부하여 질문을 전송한 경우, 해당 이미지 속의 필기 글씨, 인쇄 텍스트, 수식, 그래프 지표, 토질 단면도 등을 최우선으로 깊이 있게 분석 및 이해하여 이를 기반으로 답변해 주십시오.
+5. 겸손하고 전문적인 대화 태도 유지 (훈계조/가상 오류 지적 절대 금지):
+   - 수험생이 직접 질문하지도 않은 엉터리 수식을 수험생이 제시했다고 간주하고 비난하거나, 또는 반대로 튜터 스스로가 이러한 엉터리 공식을 아칭 효과 공식이라며 수험생에게 소개하여 수험생의 불신을 사는 일이 절대 없도록 하십시오.
+   - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
+6. 수식 및 기호 표기:
+   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.`;
+      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
+      const healedText = healLatexFormulas(responseText);
+      res.json({ text: healedText });��안(concept, formula)은 구구절절하고 장황한 설명조의 문장을 일절 배제하십시오.
    - 1번 개요는 해당 토픽이 무엇인지를 명확하게 가리키는 1~2줄의 직관적 문장으로만 구성하십시오.
    - 2번 공식은 공식 수식 자체와 각 기호의 직관적 물리 명칭만 아주 짧고 컴팩트하게 나열하여 기재하십시오.
 
@@ -3526,44 +3522,50 @@ function healLatexFormulas(text) {
   
   let healed = text;
 
-  // 1. 백슬래시 없는 그리스 문자 단어 및 특수 기호를 올바른 LaTeX 수식 기호로 자동 복원
+  // 1. Replace double backslashes (\\) with single backslashes (\) safely
+  healed = healed.replace(/\\\\/g, '\\');
+
+  // 2. Wrap bare Greek letters with backslashes
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
   symbols.forEach(sym => {
-    // 백슬래시가 없는 단독 단어 형태의 그리스 문자를 찾아 앞에 백슬래시(\) 추가 (단, 이미 백슬래시가 있으면 패스)
     const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
     healed = healed.replace(regex, `\\${sym}`);
   });
 
-  // 2. 흔한 공학 대입 수식 및 변수 결합 패턴을 감지하여 이미 $로 둘러싸여 있지 않으면 자동으로 $...$로 래핑
-  // 예: \sigma' = \sigma - P_w -> $\sigma' = \sigma - P_w$
-  healed = healed.replace(/(?<!\$)\\sigma'\s*=\s*\\sigma\s*-\s*P_w(?!\$)/g, '$\\sigma\' = \\sigma - P_w$');
-  healed = healed.replace(/(?<!\$)\\sigma'\s*=\s*\\sigma\s*-\s*u(?!\$)/g, '$\\sigma\' = \\sigma - u$');
-  healed = healed.replace(/(?<!\$)\\sigma\s*-\s*P_w(?!\$)/g, '$\\sigma - P_w$');
+  // 3. Wrap specific arithmetic equations like \sigma' = \sigma - P_w
+  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
+  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, g1) => g1 ? `$${g1}$` : match);
+  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
+
+  // 4. Match and wrap comparison/equality formulas containing greek letters or backslashes
+  const formulaPattern = /(?:\$[^\$]+\$)|((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?(?:\s*[-+*\/]*\s*[<>=]+\s*[-+*\/]*\s*\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?)+))/g;
   
-  // 개별 그리스 기호 단독 노출 복구
-  healed = healed.replace(/(?<!\$)\\sigma'(?!\$)/g, '$\\sigma\'$');
-  healed = healed.replace(/(?<!\$)\\tau_f(?!\$)/g, '$\\tau_f$');
-  healed = healed.replace(/(?<!\$)\\sigma_v(?!\$)/g, '$\\sigma_v$');
-  healed = healed.replace(/(?<!\$)\\sigma_h(?!\$)/g, '$\\sigma_h$');
-  healed = healed.replace(/(?<!\$)\\sigma(?!\$)/g, '$\\sigma$');
-  healed = healed.replace(/(?<!\$)\\tau(?!\$)/g, '$\\tau$');
-  healed = healed.replace(/(?<!\$)\\phi(?!\$)/g, '$\\phi$');
-  healed = healed.replace(/(?<!\$)\\theta(?!\$)/g, '$\\theta$');
-  healed = healed.replace(/(?<!\$)\\alpha(?!\$)/g, '$\\alpha$');
-  healed = healed.replace(/(?<!\$)\\beta(?!\$)/g, '$\\beta$');
-  healed = healed.replace(/(?<!\$)\\gamma(?!\$)/g, '$\\gamma$');
-  healed = healed.replace(/(?<!\$)\\delta(?!\$)/g, '$\\delta$');
-  healed = healed.replace(/(?<!\$)\\lambda(?!\$)/g, '$\\lambda$');
-  healed = healed.replace(/(?<!\$)\\omega(?!\$)/g, '$\\omega$');
-  
-  // 일반적인 수식 변수 패턴 복구
-  healed = healed.replace(/(?<!\$)\b([A-Z]_[a-z0-9])\b(?!\$)/g, '$$1$');
-  // 등호나 사칙연산 기호가 섞인 단순 텍스트 공식들을 감지하여 $로 래핑
-  healed = healed.replace(/(?<!\$)\b(c\s*=\s*0)\b(?!\$)/g, '$c = 0$');
-  healed = healed.replace(/(?<!\$)\\phi\s*=\s*0(?!\$)/g, '$\\phi = 0$');
+  healed = healed.replace(formulaPattern, (match, g1) => {
+    if (g1) {
+      const hasBackslash = g1.includes('\\');
+      const hasGreek = symbols.some(sym => g1.includes(sym));
+      const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
+      if (hasBackslash || hasGreek || hasMathContext) {
+        return `$${g1.trim()}$`;
+      }
+      return g1;
+    }
+    return match;
+  });
+
+  // 5. Wrap individual Greek variables like \alpha_p, \alpha_f, \phi
+  const greekPattern = new RegExp(`(?:\\$[^\$]+\\$)|((\\\\\\b(?:${symbols.join('|')})(?:_[a-zA-Z0-9]+)?\\b))`, 'g');
+  healed = healed.replace(greekPattern, (match, g1) => {
+    if (g1) {
+      return `$${g1}$`;
+    }
+    return match;
+  });
 
   return healed;
 }
+
+
 
 // 6-5. AI Option Explanation API for Multiple Choice
 app.post('/api/question/option-explanation', async (req, res) => {

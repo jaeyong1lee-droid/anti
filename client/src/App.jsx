@@ -2988,12 +2988,12 @@ export default function App() {
             {/* Left: Quiz Wrapper */}
             <div 
               style={{ width: `${reviewSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col bg-slateCustom-900/30"
+              className="shrink-0 h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth scrollbar-none"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3119,7 +3119,6 @@ export default function App() {
                                   disabled={answered}
                                   onClick={() => {
                                     setSelectedAnswers(prev => ({ ...prev, [idx]: opt }));
-                                    handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
                                   }}
                                   className={cls}
                                 >
@@ -3140,54 +3139,67 @@ export default function App() {
                                 )}
                                 {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
 
-                                {/* 보기별 정밀 분석 (왜 오답이고 정답인지) AI 설명 */}
-                                <div className="mt-3 pt-3 border-t border-slate-700/50">
-                                  {!optionExplanations[idx] ? (
-                                    <button
-                                      onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
-                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all"
-                                    >
-                                      🔍 보기별 정밀 분석 해설 보기 (AI)
-                                    </button>
-                                  ) : optionExplanations[idx].loading ? (
-                                    <div className="py-2.5 flex flex-col gap-1.5 animate-pulse">
-                                      <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-                                        <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
-                                      </div>
-                                      <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                      <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                    </div>
-                                  ) : optionExplanations[idx].error ? (
-                                    <div className="text-[10px] text-rose-400 font-bold">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
-                                  ) : (
-                                    <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl">
-                                      <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
-                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                        <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
+                                                                 {/* AI 해설 및 보기분석 버튼 패널 */}
+                                 <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                   <div className="flex flex-wrap items-center gap-2 mb-2">
+                                     {/* 답안 전문보기 버튼 */}
+                                     {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading && (
+                                       <button
+                                         onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.explanation)}
+                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                       >
+                                         ✨ 답안 전문보기 (AI 심층 해설)
+                                       </button>
+                                     )}
+                                     
+                                     {/* 보기별 정밀 분석 해설 보기 버튼 */}
+                                     {!optionExplanations[idx] && (
+                                       <button
+                                         onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer"
+                                       >
+                                         🔍 보기별 정밀 분석 해설 보기 (AI)
+                                       </button>
+                                     )}
+                                   </div>
 
-                                {/* Detailed Answer Button */}
-                                <div className="mt-3 pt-2 border-t border-slate-700/50">
-                                  {!detailedAnswers[`r_${idx}`]?.text && !detailedAnswers[`r_${idx}`]?.loading ? (
-                                    <button
-                                      onClick={() => handleRequestDetailedAnswer(`r_${idx}`, q.question, q.explanation)}
-                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
-                                    >
-                                      ✨ 답안 전문보기 (AI 심층 해설)
-                                    </button>
-                                  ) : detailedAnswers[`r_${idx}`]?.loading ? (
-                                    <div className="text-[10px] text-indigo-400 font-bold animate-pulse">⏳ AI가 심층 해설 작성 중...</div>
-                                  ) : (
-                                    <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
-                                      <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                      <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                        <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
-                                      </div>
-                                    </div>
+                                   {/* 답안 전문보기 결과 */}
+                                   {detailedAnswers[`r_${idx}`]?.loading && (
+                                     <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1">⏳ AI가 심층 해설 작성 중...</div>
+                                   )}
+                                   {detailedAnswers[`r_${idx}`]?.text && (
+                                     <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl select-text">
+                                       <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                       <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                         <LatexRenderer text={detailedAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} />
+                                       </div>
+                                     </div>
+                                   )}
+
+                                   {/* 보기별 정밀 분석 결과 */}
+                                   {optionExplanations[idx]?.loading && (
+                                     <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
+                                       <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                         <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                         <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
+                                       </div>
+                                       <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                       <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                     </div>
+                                   )}
+                                   {optionExplanations[idx]?.error && (
+                                     <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                   )}
+                                   {optionExplanations[idx]?.text && !optionExplanations[idx]?.loading && (
+                                     <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
+                                       <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                       <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                         <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
+                                       </div>
+                                     </div>
+                                   )}
+                                 </div>
+
                                   )}
                                 </div>
                               </div>
@@ -3539,12 +3551,12 @@ export default function App() {
             {/* Left: Exam Wrapper */}
             <div 
               style={{ width: `${examSplitRatio}%` }} 
-              className="shrink-0 h-full relative overflow-hidden flex flex-col bg-slateCustom-900/30"
+              className="shrink-0 h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth scrollbar-none"
+                className="flex-1 max-w-3xl w-full mx-auto overflow-y-auto p-3 sm:p-6 scroll-smooth"
               >
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -3674,17 +3686,51 @@ export default function App() {
                               )}
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} /></div>}
                               
-                              {/* 보기별 정밀 분석 (왜 오답이고 정답인지) AI 설명 */}
+                              {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-3 pt-3 border-t border-slate-700/50">
-                                {!optionExplanations[idx] ? (
-                                  <button
-                                    onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all"
-                                  >
-                                    🔍 보기별 정밀 분석 해설 보기 (AI)
-                                  </button>
-                                ) : optionExplanations[idx].loading ? (
-                                  <div className="py-2.5 flex flex-col gap-1.5 animate-pulse">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  {/* 답안 전문보기 버튼 */}
+                                  {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading && (
+                                    <button
+                                      onClick={() => handleRequestDetailedAnswer(idx, q.question, q.explanation)}
+                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                    >
+                                      ✨ 답안 전문보기 (AI 심층 해설)
+                                    </button>
+                                  )}
+                                  
+                                  {/* 보기별 정밀 분석 해설 보기 버튼 */}
+                                  {!optionExplanations[idx] && (
+                                    <button
+                                      onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer"
+                                    >
+                                      🔍 보기별 정밀 분석 해설 보기 (AI)
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* 답안 전문보기 결과 */}
+                                {detailedAnswers[idx]?.loading && (
+                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1">
+                                    ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
+                                  </div>
+                                )}
+                                {detailedAnswers[idx]?.text && (
+                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl select-text">
+                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
+                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text prose prose-invert max-w-none prose-base">
+                                      <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
+                                    </div>
+                                    {detailedAnswers[idx].error && (
+                                      <div className="text-xs text-rose-400 mt-2 select-text">{detailedAnswers[idx].error}</div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* 보기별 정밀 분석 결과 */}
+                                {optionExplanations[idx]?.loading && (
+                                  <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
                                     <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
                                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
                                       <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
@@ -3692,40 +3738,16 @@ export default function App() {
                                     <div className="h-4 bg-slate-800 rounded w-5/6"></div>
                                     <div className="h-4 bg-slate-800 rounded w-4/6"></div>
                                   </div>
-                                ) : optionExplanations[idx].error ? (
-                                  <div className="text-[10px] text-rose-400 font-bold">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
-                                ) : (
-                                  <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl">
+                                )}
+                                {optionExplanations[idx]?.error && (
+                                  <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                )}
+                                {optionExplanations[idx]?.text && !optionExplanations[idx]?.loading && (
+                                  <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
                                     <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                     <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                       <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} />
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Detailed Answer Button & Content */}
-                              <div className="mt-3 pt-2 border-t border-slate-700/50">
-                                {!detailedAnswers[idx]?.text && !detailedAnswers[idx]?.loading ? (
-                                  <button
-                                    onClick={() => handleRequestDetailedAnswer(idx, q.question, q.explanation)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all"
-                                  >
-                                    ✨ 답안 전문보기 (AI 심층 해설)
-                                  </button>
-                                ) : detailedAnswers[idx]?.loading ? (
-                                  <div className="text-[10px] text-indigo-400 font-bold animate-pulse">
-                                    ⏳ AI가 기술사 수준의 심층 해설을 작성 중입니다...
-                                  </div>
-                                ) : (
-                                  <div className="mt-2 p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl">
-                                    <div className="text-[11px] font-black text-indigo-400 mb-2">✨ AI 심층 해설</div>
-                                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap prose prose-invert max-w-none prose-base">
-                                      <LatexRenderer text={detailedAnswers[idx].text} katexLoaded={katexLoaded} />
-                                    </div>
-                                    {detailedAnswers[idx].error && (
-                                      <div className="text-xs text-rose-400 mt-2">{detailedAnswers[idx].error}</div>
-                                    )}
                                   </div>
                                 )}
                               </div>
