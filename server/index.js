@@ -3520,6 +3520,51 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
   }
 });
 
+// Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
+function healLatexFormulas(text) {
+  if (!text) return text;
+  
+  let healed = text;
+
+  // 1. 백슬래시 없는 그리스 문자 단어 및 특수 기호를 올바른 LaTeX 수식 기호로 자동 복원
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
+  symbols.forEach(sym => {
+    // 백슬래시가 없는 단독 단어 형태의 그리스 문자를 찾아 앞에 백슬래시(\) 추가 (단, 이미 백슬래시가 있으면 패스)
+    const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
+    healed = healed.replace(regex, `\\${sym}`);
+  });
+
+  // 2. 흔한 공학 대입 수식 및 변수 결합 패턴을 감지하여 이미 $로 둘러싸여 있지 않으면 자동으로 $...$로 래핑
+  // 예: \sigma' = \sigma - P_w -> $\sigma' = \sigma - P_w$
+  healed = healed.replace(/(?<!\$)\\sigma'\s*=\s*\\sigma\s*-\s*P_w(?!\$)/g, '$\\sigma\' = \\sigma - P_w$');
+  healed = healed.replace(/(?<!\$)\\sigma'\s*=\s*\\sigma\s*-\s*u(?!\$)/g, '$\\sigma\' = \\sigma - u$');
+  healed = healed.replace(/(?<!\$)\\sigma\s*-\s*P_w(?!\$)/g, '$\\sigma - P_w$');
+  
+  // 개별 그리스 기호 단독 노출 복구
+  healed = healed.replace(/(?<!\$)\\sigma'(?!\$)/g, '$\\sigma\'$');
+  healed = healed.replace(/(?<!\$)\\tau_f(?!\$)/g, '$\\tau_f$');
+  healed = healed.replace(/(?<!\$)\\sigma_v(?!\$)/g, '$\\sigma_v$');
+  healed = healed.replace(/(?<!\$)\\sigma_h(?!\$)/g, '$\\sigma_h$');
+  healed = healed.replace(/(?<!\$)\\sigma(?!\$)/g, '$\\sigma$');
+  healed = healed.replace(/(?<!\$)\\tau(?!\$)/g, '$\\tau$');
+  healed = healed.replace(/(?<!\$)\\phi(?!\$)/g, '$\\phi$');
+  healed = healed.replace(/(?<!\$)\\theta(?!\$)/g, '$\\theta$');
+  healed = healed.replace(/(?<!\$)\\alpha(?!\$)/g, '$\\alpha$');
+  healed = healed.replace(/(?<!\$)\\beta(?!\$)/g, '$\\beta$');
+  healed = healed.replace(/(?<!\$)\\gamma(?!\$)/g, '$\\gamma$');
+  healed = healed.replace(/(?<!\$)\\delta(?!\$)/g, '$\\delta$');
+  healed = healed.replace(/(?<!\$)\\lambda(?!\$)/g, '$\\lambda$');
+  healed = healed.replace(/(?<!\$)\\omega(?!\$)/g, '$\\omega$');
+  
+  // 일반적인 수식 변수 패턴 복구
+  healed = healed.replace(/(?<!\$)\b([A-Z]_[a-z0-9])\b(?!\$)/g, '$$1$');
+  // 등호나 사칙연산 기호가 섞인 단순 텍스트 공식들을 감지하여 $로 래핑
+  healed = healed.replace(/(?<!\$)\b(c\s*=\s*0)\b(?!\$)/g, '$c = 0$');
+  healed = healed.replace(/(?<!\$)\\phi\s*=\s*0(?!\$)/g, '$\\phi = 0$');
+
+  return healed;
+}
+
 // 6-5. AI Option Explanation API for Multiple Choice
 app.post('/api/question/option-explanation', async (req, res) => {
   const { question, options, answer } = req.body;
@@ -3553,7 +3598,8 @@ app.post('/api/question/option-explanation', async (req, res) => {
 `;
 
     const responseText = await callLLMWithFailover(null, prompt);
-    res.json({ text: responseText.trim() });
+    const healedText = healLatexFormulas(responseText.trim());
+    res.json({ text: healedText });
   } catch (err) {
     console.error('Error generating option explanation:', err);
     res.status(500).json({ error: 'AI 보기별 분석 해설을 생성하지 못했습니다.' });
