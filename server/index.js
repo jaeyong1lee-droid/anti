@@ -2453,8 +2453,8 @@ app.post('/api/question/regenerate', async (req, res) => {
       if (questionIdx === 0) targetType = '주관식 (개요)';
       else if (questionIdx === 1) targetType = '주관식 (공식)';
 
-      if (isCoreTopic || !hasAnyAiKey) {
-        // Core Topic 혹은 API Key가 없으면 예비 풀(generateFallbackQuestions)에서 추출하여 다른 문항 반환
+      if (!hasAnyAiKey) {
+        // API Key가 없으면 예비 풀(generateFallbackQuestions)에서 추출하여 다른 문항 반환
         const fallbackList = generateFallbackQuestions(topic.title, topic.keywords, fileText);
         // 타입에 맞는 문항 필터링
         const candidates = fallbackList.filter(q => {
@@ -2472,7 +2472,7 @@ app.post('/api/question/regenerate', async (req, res) => {
             ...selectedQ,
             question: cleanQuizQuestion(selectedQ.question)
           }),
-          isFallback: !isCoreTopic
+          isFallback: true
         });
       }
 
@@ -2525,18 +2525,36 @@ app.post('/api/question/regenerate', async (req, res) => {
 }`;
       }
 
+      const sourceQuestionText = currentQuestion?.question || '';
+      const sourceQuestionAnswer = currentQuestion?.answer || '';
+      const sourceQuestionConcept = currentQuestion?.concept || '';
+      const sourceQuestionFormula = currentQuestion?.formula || '';
+      const sourceQuestionOptions = currentQuestion?.options ? JSON.stringify(currentQuestion.options) : '';
+      const sourceQuestionExplanation = currentQuestion?.explanation || '';
+
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
-[기존 문제 (이 질문과 절대로 겹치거나 유사해서는 안 됨)]:
-- 질문: ${currentQuestion?.question || ''}
-- 정답/풀이: ${currentQuestion?.answer || currentQuestion?.concept || ''}
+[기초 소스 문제 (이 문제를 기반으로 응용/변형하여 새로운 문제를 출제해야 함)]:
+- 질문: ${sourceQuestionText}
+- 유형: ${targetType}
+${sourceQuestionOptions ? `- 보기 목록: ${sourceQuestionOptions}` : ''}
+${sourceQuestionAnswer ? `- 정답: ${sourceQuestionAnswer}` : ''}
+${sourceQuestionConcept ? `- 핵심 개념 요약: ${sourceQuestionConcept}` : ''}
+${sourceQuestionFormula ? `- 공식: ${sourceQuestionFormula}` : ''}
+${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : ''}
 
-[출제 요구사항]:
-현재 기존에 제공되었던 위의 문제와 완벽히 다른 새로운 개념의 문제를 **단 1개**만 생성해 주십시오.
+[출제 요구사항 - 중요]:
+반드시 위의 **[기초 소스 문제]**를 기반으로 하여, 이를 창의적으로 응용, 변형 또는 심화시킨 **새로운 응용/변형 문제 1개**를 출제해 주십시오. 
+- 완전히 무관한 뜬금없는 개념을 가져오지 말고, **[기초 소스 문제]의 공학적 개념, 수식, 또는 상황적 전제**를 기반으로 삼으십시오.
+- 어떻게 변형 및 응용할 것인가:
+  1. 수치적 조건 변경 및 공학적 실무 시나리오(예: 특정 지반 유형, 벽체 거동 조건 등 구체적인 실무 문제) 적용
+  2. 질문의 방향성 전환 (예: 원인을 묻던 것을 대책이나 메커니즘을 묻는 방향으로, 또는 변수 $X$를 구하는 공식 대신 다른 연관 변수 $Y$의 거동 영향도를 분석하도록 변형)
+  3. 객관식의 경우, 다른 핵심적인 오답 지문이나 다른 성격의 정답 문항으로 재구성하여 더 참신한 공학적 판단력을 요구하도록 변경
+- [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
 
@@ -2610,6 +2628,53 @@ ${formatRequirement}
       const qType = currentQuestion?.type || '객관식';
       const qSubtype = currentQuestion?.subtype || '';
 
+      if (!hasAnyAiKey) {
+        // AI 키가 없는 경우 종합평가 예비 문항 fallback 선택
+        const selectedTopic = topics[Math.floor(Math.random() * topics.length)];
+        let fileText = '';
+        if (selectedTopic.pdf_data) {
+          const isHtml = selectedTopic.pdf_name && (
+            selectedTopic.pdf_name.toLowerCase().endsWith('.html') ||
+            selectedTopic.pdf_name.toLowerCase().endsWith('.htm') ||
+            isBufferHtml(selectedTopic.pdf_data)
+          );
+          try {
+            if (isHtml) fileText = htmlToPlainText(selectedTopic.pdf_data.toString('utf-8'));
+            else {
+              const parsed = await pdfParse(selectedTopic.pdf_data);
+              fileText = parsed.text || '';
+            }
+          } catch (e) {}
+          fileText = mergeVerticalText(fileText);
+        }
+        
+        const fallbackList = generateFallbackQuestions(selectedTopic.title, selectedTopic.keywords, fileText);
+        const candidates = fallbackList.filter(q => {
+          if (qType === '주관식') {
+            if (qSubtype === '공식') return q.type?.includes('공식');
+            if (qSubtype === '서술') return q.type?.includes('서술') || q.type?.includes('유도');
+            return q.type?.includes('개요');
+          }
+          return q.type?.includes('객관식');
+        });
+        
+        let selectedQ = candidates.find(c => c.question !== currentQuestion?.question);
+        if (!selectedQ) selectedQ = candidates[Math.floor(Math.random() * candidates.length)] || fallbackList[0];
+
+        // Ensure proper subtype and type fields for exam
+        const finalQ = {
+          ...selectedQ,
+          type: qType,
+          subtype: qSubtype,
+          question: cleanQuizQuestion(selectedQ.question)
+        };
+
+        return res.json({
+          question: healQuizQuestionObject(finalQ),
+          isFallback: true
+        });
+      }
+
       let typeRequirement = '';
       let formatRequirement = '';
 
@@ -2675,18 +2740,36 @@ ${formatRequirement}
 }`;
       }
 
+      const sourceQuestionText = currentQuestion?.question || '';
+      const sourceQuestionAnswer = currentQuestion?.answer || '';
+      const sourceQuestionConcept = currentQuestion?.concept || '';
+      const sourceQuestionFormula = currentQuestion?.formula || '';
+      const sourceQuestionOptions = currentQuestion?.options ? JSON.stringify(currentQuestion.options) : '';
+      const sourceQuestionExplanation = currentQuestion?.explanation || '';
+
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
 
-[기존 문제 (이 질문과 절대로 겹치거나 유사해서는 안 됨)]:
-- 질문: ${currentQuestion?.question || ''}
-- 정답: ${currentQuestion?.answer || ''}
+[기초 소스 문제 (이 문제를 기반으로 응용/변형하여 새로운 문제를 출제해야 함)]:
+- 질문: ${sourceQuestionText}
+- 유형: ${qType} (하위 유형: ${qSubtype})
+${sourceQuestionOptions ? `- 보기 목록: ${sourceQuestionOptions}` : ''}
+${sourceQuestionAnswer ? `- 정답/답안: ${sourceQuestionAnswer}` : ''}
+${sourceQuestionConcept ? `- 핵심 개념 요약: ${sourceQuestionConcept}` : ''}
+${sourceQuestionFormula ? `- 공식: ${sourceQuestionFormula}` : ''}
+${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 
-[출제 요구사항]:
-위 기존 문제와 내용상 겹치지 않고 전혀 새로운 주제를 다루는 명품 문제를 **단 1개**만 새로 생성하십시오.
+[출제 요구사항 - 중요]:
+반드시 위의 **[기초 소스 문제]**를 기반으로 하여, 이를 창의적으로 응용, 변형 또는 심화시킨 **새로운 응용/변형 문제 1개**를 출제해 주십시오.
+- 완전히 무관한 뜬금없는 개념을 가져오지 말고, **[기초 소스 문제]의 공학적 개념, 수식, 또는 상황적 전제**를 기반으로 삼으십시오.
+- 어떻게 변형 및 응용할 것인가:
+  1. 수치적 조건 변경 및 공학적 실무 시나리오(예: 특정 지반 유형, 벽체 거동 조건 등 구체적인 실무 문제) 적용
+  2. 질문의 방향성 전환 (예: 원인을 묻던 것을 대책이나 메커니즘을 묻는 방향으로, 또는 변수 $X$를 구하는 공식 대신 다른 연관 변수 $Y$의 거동 영향도를 분석하도록 변형)
+  3. 객관식의 경우, 다른 핵심적인 오답 지문이나 다른 성격의 정답 문항으로 재구성하여 더 참신한 공학적 판단력을 요구하도록 변경
+- [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
 
