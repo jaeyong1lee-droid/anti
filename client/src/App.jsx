@@ -898,6 +898,47 @@ export default function App() {
     cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // ── Scroll Exam Question Up/Down for Desktop Split-View ────────────
+  const handleScrollExamQuestion = (direction) => {
+    if (!examBodyRef.current) return;
+    const cards = examBodyRef.current.querySelectorAll('.exam-card-item');
+    if (cards.length === 0) return;
+
+    const containerTop = examBodyRef.current.getBoundingClientRect().top;
+    
+    // 현재 화면(컨테이너 기준)의 상단에 가장 가까운 카드를 찾습니다.
+    let currentIndex = 0;
+    let minDiff = Infinity;
+    
+    cards.forEach((card, idx) => {
+      const rect = card.getBoundingClientRect();
+      const diff = Math.abs(rect.top - containerTop - 10);
+      if (diff < minDiff) {
+        minDiff = diff;
+        currentIndex = idx;
+      }
+    });
+
+    let targetIndex = currentIndex;
+    if (direction === 'down') {
+      targetIndex = Math.min(currentIndex + 1, cards.length - 1);
+      // 만약 현재 카드의 top이 이미 컨테이너보다 아래에 있다면 그 카드가 타겟이 될 수 있음
+      const curRect = cards[currentIndex].getBoundingClientRect();
+      if (curRect.top - containerTop > 20) {
+        targetIndex = currentIndex;
+      }
+    } else if (direction === 'up') {
+      targetIndex = Math.max(currentIndex - 1, 0);
+      // 만약 현재 카드의 top이 컨테이너보다 위에 있다면 현재 카드가 타겟이 될 수 있음
+      const curRect = cards[currentIndex].getBoundingClientRect();
+      if (curRect.top - containerTop < -20) {
+        targetIndex = currentIndex;
+      }
+    }
+
+    cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
   const handleImageAttachment = (e) => {
     const file = e.target.files[0];
@@ -2825,7 +2866,7 @@ export default function App() {
           >
 
             {/* Left: Quiz Body */}
-            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={quizBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[58%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -3092,7 +3133,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Chat Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[42%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -3345,7 +3386,7 @@ export default function App() {
           >
             
             {/* Left: Exam Body */}
-            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
+            <div ref={examBodyRef} className="w-full max-w-full min-w-0 shrink-0 md:w-[58%] md:shrink snap-start h-full overflow-y-auto p-4 md:p-6 bg-slateCustom-900/30 scroll-smooth">
             {loadingExam ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -3376,7 +3417,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                       {/* Q Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                         <div className="flex items-center gap-2">
@@ -3561,8 +3602,32 @@ export default function App() {
             )}
             </div>
 
+            {/* Vertical Navigation Divider Controller (PC Only) */}
+            <div className="hidden md:flex flex-col items-center relative z-20 w-0 h-full">
+              <div 
+                style={{ top: '33.33%', transform: 'translate(-50%, -50%)' }}
+                className="absolute flex flex-col gap-2 p-1.5 rounded-full bg-slateCustom-950/90 border border-slate-800 backdrop-blur-md shadow-2xl shadow-black/80 select-none"
+              >
+                <button 
+                  onClick={() => handleScrollExamQuestion('up')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  title="이전 문제로 스크롤"
+                >
+                  <ChevronUp size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+                <div className="w-4 border-t border-slate-800/80 mx-auto"></div>
+                <button 
+                  onClick={() => handleScrollExamQuestion('down')}
+                  className="p-2.5 rounded-full bg-slate-800/80 hover:bg-amber-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-95 shadow-md border border-slate-700/50 hover:border-amber-500 hover:shadow-amber-600/30 cursor-pointer flex items-center justify-center group"
+                  title="다음 문제로 스크롤"
+                >
+                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+
             {/* Right: Gemini Sidebar */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-1/2 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[42%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
