@@ -3051,9 +3051,9 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
                 >
-                  {/* 텍스트 입력창 (보더 없음) */}
+                  {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <input
                       type="text"
@@ -3065,21 +3065,14 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 하단 컨트롤 바 */}
-                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
-                    </div>
-
-                    {/* 오른쪽: 전송 버튼 */}
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-7 h-7 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-violet-600/10 active:scale-95"
-                    >
-                      <Send size={11} className="text-white" />
-                    </button>
-                  </div>
+                  {/* 전송 버튼 */}
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="w-8 h-8 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-violet-600/10 active:scale-95 flex-shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
                 </form>
               </div>
             </div>
@@ -3504,9 +3497,9 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
-                  {/* 텍스트 입력창 (보더 없음) */}
+                  {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <input
                       type="text"
@@ -3518,21 +3511,14 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 하단 컨트롤 바 */}
-                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
-                    </div>
-
-                    {/* 오른쪽: 전송 버튼 */}
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
-                    >
-                      <Send size={11} className="text-white" />
-                    </button>
-                  </div>
+                  {/* 전송 버튼 */}
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
                 </form>
               </div>
             </div>
@@ -4071,9 +4057,9 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
                 >
-                  {/* 텍스트 입력창 (보더 없음) */}
+                  {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <input
                       type="text"
@@ -4085,21 +4071,14 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 하단 컨트롤 바 */}
-                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
-                    </div>
-
-                    {/* 오른쪽: 전송 버튼 */}
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-7 h-7 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95"
-                    >
-                      <Send size={11} className="text-white" />
-                    </button>
-                  </div>
+                  {/* 전송 버튼 */}
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="w-8 h-8 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95 flex-shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
                 </form>
               </div>
             </div>
@@ -4596,7 +4575,7 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex flex-col gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
                   <div className="flex-grow">
                     <input
@@ -4609,19 +4588,13 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-700/50 pt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-500 font-medium tracking-tight">Gemini 2.0 Flash (High)</span>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-7 h-7 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95"
-                    >
-                      <Send size={11} className="text-white" />
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
                 </form>
               </div>
             </div>
