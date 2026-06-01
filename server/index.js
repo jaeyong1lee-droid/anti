@@ -1756,6 +1756,57 @@ app.get('/api/dashboard', async (req, res) => {
     }
     const uniqueReviews = Array.from(uniqueReviewsMap.values());
 
+    // 💡 [추가] 복습 완료한 건 중 객관식 점수가 낮은 순 중심 랜덤 2건 보너스 복습 추가
+    try {
+      const bonusSql = `
+        SELECT 
+          s.id AS schedule_id,
+          s.review_round,
+          s.planned_date,
+          s.status,
+          s.completed_at,
+          s.score,
+          t.id AS topic_id,
+          t.title,
+          t.keywords,
+          t.pdf_name,
+          t.created_at
+        FROM schedules s
+        JOIN topics t ON s.topic_id = t.id
+        WHERE s.status = 'completed' AND s.score IS NOT NULL
+        ORDER BY s.score ASC
+        LIMIT 8
+      `;
+      const lowScoreReviews = await dbQuery.all(bonusSql);
+      
+      const uniqueBonusCandidates = [];
+      const seenTopics = new Set();
+      // 오늘 이미 일반 복습(pending)에 포함된 토픽은 보너스 대상에서 제외
+      for (const r of uniqueReviews) {
+        seenTopics.add(r.topic_id);
+      }
+      for (const r of lowScoreReviews) {
+        if (!seenTopics.has(r.topic_id)) {
+          uniqueBonusCandidates.push(r);
+          seenTopics.add(r.topic_id);
+        }
+      }
+      
+      // 셔플하여 최대 2건 선정
+      const shuffledBonus = shuffleArray(uniqueBonusCandidates);
+      const selectedBonus = shuffledBonus.slice(0, 2).map(b => ({
+        ...b,
+        isBonus: true,
+        // 보너스 카드가 대시보드 리스트에 자연스럽게 작동하도록 status를 잠시 pending으로 위장
+        status: 'pending' 
+      }));
+
+      // 기존 복습 목록에 병합
+      uniqueReviews.push(...selectedBonus);
+    } catch (bonusErr) {
+      console.warn('Failed to fetch low-score bonus reviews for dashboard:', bonusErr);
+    }
+
     res.json({
       date: queryDate,
       count: uniqueReviews.length,
@@ -1840,16 +1891,20 @@ app.post('/api/quiz/submit', async (req, res) => {
     }
 
     // 2. 퀴즈 통과 여부에 따라 schedules 상태를 completed / failed로 확실하게 전환
+    const scoreVal = score !== undefined ? score : null;
+    const correctVal = correctCount !== undefined ? correctCount : null;
+    const totalVal = total !== undefined ? total : null;
+
     if (isPassed) {
       await dbQuery.run(
-        `UPDATE schedules SET status = 'completed', completed_at = ? WHERE id = ?`,
-        [now, schedule_id]
+        `UPDATE schedules SET status = 'completed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [now, scoreVal, correctVal, totalVal, schedule_id]
       );
     } else {
       // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
       await dbQuery.run(
-        `UPDATE schedules SET status = 'failed', completed_at = ? WHERE id = ?`,
-        [now, schedule_id]
+        `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [now, scoreVal, correctVal, totalVal, schedule_id]
       );
     }
 

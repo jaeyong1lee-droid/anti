@@ -227,7 +227,10 @@ export async function initDatabase() {
             review_round INTEGER NOT NULL,
             planned_date TEXT NOT NULL,
             completed_at TIMESTAMP,
-            status TEXT DEFAULT 'pending'
+            status TEXT DEFAULT 'pending',
+            score REAL,
+            correct_count INTEGER,
+            total_count INTEGER
           )
         `);
         // 3. app_session table: cross-device state sync (key-value store)
@@ -239,6 +242,7 @@ export async function initDatabase() {
           )
         `);
         console.log('Cloud PostgreSQL database tables initialized successfully.');
+        await migrateSchedulesTable();
       } catch (pgInitError) {
         if (isVercel) {
           throw pgInitError; // Keep failing on Vercel as SQLite is disabled there
@@ -284,6 +288,9 @@ async function initSQLiteTables() {
       planned_date TEXT NOT NULL,
       completed_at DATETIME,
       status TEXT DEFAULT 'pending',
+      score REAL,
+      correct_count INTEGER,
+      total_count INTEGER,
       FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
     )
   `);
@@ -295,7 +302,33 @@ async function initSQLiteTables() {
     )
   `);
   console.log('Local SQLite database tables initialized successfully.');
+  await migrateSchedulesTable();
 }
+
+async function migrateSchedulesTable() {
+  try {
+    if (isPostgres) {
+      if (pgPool) {
+        await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS score REAL`);
+        await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS correct_count INTEGER`);
+        await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS total_count INTEGER`);
+        console.log('Cloud PostgreSQL schedules table migration checked.');
+      }
+    } else {
+      try {
+        await dbQuery.run(`ALTER TABLE schedules ADD COLUMN score REAL`);
+      } catch (e) {}
+      try {
+        await dbQuery.run(`ALTER TABLE schedules ADD COLUMN correct_count INTEGER`);
+      } catch (e) {}
+      try {
+        await dbQuery.run(`ALTER TABLE schedules ADD COLUMN total_count INTEGER`);
+      } catch (e) {}
+      console.log('Local SQLite schedules table migration checked.');
+    }
+  } catch (err) {
+    console.error('Migration schedules table error:', err);
+  }
 
 // Auto init database tables if Postgres env is detected
 if (isPostgres) {

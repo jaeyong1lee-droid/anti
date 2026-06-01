@@ -403,33 +403,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   const isLongPress = useRef(false);
 
   const startPress = (e) => {
-    // Only detect left click for mouse
-    if (e.type === 'mousedown' && e.button !== 0) return;
-
-    const katexEl = e.target.closest('.katex');
-    if (!katexEl) return;
-
-    // Extract the raw LaTeX content
-    const annotation = katexEl.querySelector('annotation');
-    let mathContent = null;
-    if (annotation && annotation.textContent) {
-      mathContent = annotation.textContent.trim();
-    } else {
-      mathContent = katexEl.textContent.trim();
-    }
-
-    if (!mathContent) return;
-
-    isLongPress.current = false;
-    pressTimer.current = setTimeout(() => {
-      isLongPress.current = true;
-      if (onAddFormula) {
-        if (e.cancelable) e.preventDefault();
-        if (window.confirm("이 수식을 필수공식에 넣을까요?")) {
-          onAddFormula(mathContent);
-        }
-      }
-    }, 600); // 600ms long-press duration
+    // "이 공식을 퀴즈에 추가" 기능 삭제에 따라 롱프레스 비활성화
   };
 
   const endPress = () => {
@@ -703,17 +677,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                 className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-              {/* 우측 추가 버튼 (마지막 공식에만 적용) */}
-              {onAddFormula && idx === lastMathBlockIdx && (
-                <button
-                  onClick={() => onAddFormula(part.content)}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-black tracking-tight transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm cursor-pointer whitespace-nowrap opacity-80 group-hover:opacity-100 animate-fade-in"
-                  title="이 특정 수식만 필수공식 퀴즈에 추가"
-                >
-                  <Sparkles size={12} className="text-slate-400" />
-                  <span>이 공식을 퀴즈에 추가</span>
-                </button>
-              )}
+              {/* "이 공식을 퀴즈에 추가" 기능 삭제 */}
             </div>
           );
         } else {
@@ -3396,10 +3360,16 @@ export default function App() {
                     >
                       <div className="space-y-2.5 flex-grow">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${getRoundBadgeStyle(item.review_round)}`}>
-                            {item.review_round}회차 복습
-                          </span>
-                          {item.planned_date < referenceDate && (
+                          {item.isBonus ? (
+                            <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/30 font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                              💡 약점 보완 추천 {item.score !== undefined && item.score !== null ? `(이전 점수: ${item.score}점)` : ''}
+                            </span>
+                          ) : (
+                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${getRoundBadgeStyle(item.review_round)}`}>
+                              {item.review_round}회차 복습
+                            </span>
+                          )}
+                          {!item.isBonus && item.planned_date < referenceDate && (
                             <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold px-2 py-0.5 rounded-full">
                               미뤄진 복습
                             </span>
