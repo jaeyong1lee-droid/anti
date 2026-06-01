@@ -1521,7 +1521,7 @@ export default function App() {
       } else {
         // [Fallback] 이전 데이터 기록이 존재하지 않는 경우 (업데이트 이전 항목 등), 실시간 API를 통해 가볍게 기출문제만 재조회
         showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
-        const fbRes = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`);
+        const fbRes = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`, { method: 'POST' });
         const fbData = await fbRes.json();
         if (fbRes.ok) {
           setAiQuestions(fbData.questions || []);
