@@ -3774,6 +3774,32 @@ app.post('/api/exam/additional', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
+    // Retrieve custom formula questions and theory questions from database
+    let customFormulas = [];
+    let customTheories = [];
+    try {
+      await ensureSessionTable();
+      const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+      if (formulaRows.length > 0 && formulaRows[0].value) {
+        const parsed = JSON.parse(formulaRows[0].value);
+        if (Array.isArray(parsed.formulaQuestions)) {
+          customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+      if (theoryRows.length > 0 && theoryRows[0].value) {
+        const parsed = JSON.parse(theoryRows[0].value);
+        if (Array.isArray(parsed.theoryQuestions)) {
+          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading formula/theory sessions for comprehensive exam refresh:', dbErr);
+    }
+
+    const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
+    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
+
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 2; // 2 batches * 5 questions = 10 questions
 
@@ -3784,18 +3810,26 @@ app.post('/api/exam/additional', async (req, res) => {
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 범위 토픽 소스 자료를 참고하여, 기존 문제들과 중복되지 않는 고난도 종합평가 추가 문제 **정확히 5개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 5개**를 생성하십시오.
 (현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
 
-[평가 범위 토픽 목록]: \${topicTitles}
-[통합 소스 텍스트]:
+🚨 [출제 출처 한정 규칙 - 매우 중요!]:
+반드시 아래의 **[평가 범위 토픽 목록 및 본문]**, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 다루고 있는 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오. 여기에 존재하지 않거나 무관한 엉뚱한 타 공학 분야나 임의의 다른 지식을 출제 규칙에 주입하지 마십시오.
+
+[평가 범위 토픽 목록 및 본문]:
 \${combinedText}
+
+[저장된 필수공식 목록]:
+\${formulasText || '저장된 내용 없음'}
+
+[저장된 이론유도 목록]:
+\${theoriesText || '저장된 내용 없음'}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
    - 객관식 (type: "객관식"): 4문제 (4지선다형)
-2. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+2. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
 3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
    - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.

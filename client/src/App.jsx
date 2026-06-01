@@ -1732,6 +1732,76 @@ export default function App() {
     }
   };
 
+  // ── Delete a single Comprehensive Exam Question (종합평가 단일 문제 삭제) ──────────────────
+  const handleDeleteExamQuestion = (deleteIdx) => {
+    if (!window.confirm(`Q${deleteIdx + 1}번 문제를 종합평가에서 영구 삭제하시겠습니까?\n삭제 시 이후 문제들의 응답 상태 및 해설 내역이 앞으로 한 칸씩 안전하게 자동 정렬됩니다.`)) {
+      return;
+    }
+
+    const updatedQuestions = examQuestions.filter((_, i) => i !== deleteIdx);
+
+    const newAnswers = {};
+    Object.keys(examAnswers).forEach(key => {
+      const idx = parseInt(key);
+      if (idx < deleteIdx) {
+        newAnswers[idx] = examAnswers[key];
+      } else if (idx > deleteIdx) {
+        newAnswers[idx - 1] = examAnswers[key];
+      }
+    });
+
+    const newRevealed = {};
+    Object.keys(examRevealed).forEach(key => {
+      const idx = parseInt(key);
+      if (idx < deleteIdx) {
+        newRevealed[idx] = examRevealed[key];
+      } else if (idx > deleteIdx) {
+        newRevealed[idx - 1] = examRevealed[key];
+      }
+    });
+
+    const newOptionExplanations = {};
+    Object.keys(examOptionExplanations).forEach(key => {
+      const idx = parseInt(key);
+      if (idx < deleteIdx) {
+        newOptionExplanations[idx] = examOptionExplanations[key];
+      } else if (idx > deleteIdx) {
+        newOptionExplanations[idx - 1] = examOptionExplanations[key];
+      }
+    });
+
+    const newDetailedAnswers = {};
+    Object.keys(detailedAnswers).forEach(key => {
+      const idx = parseInt(key);
+      if (idx < deleteIdx) {
+        newDetailedAnswers[idx] = detailedAnswers[key];
+      } else if (idx > deleteIdx) {
+        newDetailedAnswers[idx - 1] = detailedAnswers[key];
+      }
+    });
+
+    setExamQuestions(updatedQuestions);
+    setExamAnswers(newAnswers);
+    setExamRevealed(newRevealed);
+    setExamOptionExplanations(newOptionExplanations);
+    setDetailedAnswers(newDetailedAnswers);
+
+    // Sync to server session
+    fetch(`${API_BASE}/api/session/exam`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        examQuestions: updatedQuestions, 
+        examRevealed: newRevealed, 
+        examAnswers: newAnswers, 
+        examTopic,
+        savedExamScroll: examBodyRef.current?.scrollTop || 0 
+      })
+    }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+
+    showNotification('해당 문제를 성공적으로 삭제했습니다.', 'info');
+  };
+
   // Regenerate a single question (mode: 'review' or 'exam')
   const handleRegenerateQuestion = async (mode, idx, currentQ) => {
     const isReview = mode === 'review';
@@ -4771,6 +4841,23 @@ export default function App() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
                             {regeneratingExam[idx] ? '변환 중...' : '변환'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteExamQuestion(idx)}
+                            className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/40 hover:border-rose-500/50 hover:text-rose-400 active:scale-95 transition-all duration-300 cursor-pointer"
+                            title="이 문제를 종합평가에서 삭제"
+                          >
+                            <svg
+                              className="w-3 h-3 text-slate-400 group-hover:text-rose-400"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            삭제
                           </button>
                         </div>
                       </div>
