@@ -508,17 +508,20 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
       const MODELS = [
+        'gemini-3.5-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
         'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro'
+        'gemini-1.5-flash'
       ];
       
       let basicModelFailedCount = 0;
 
       for (const modelName of MODELS) {
         let attempt = 0;
-        const maxAttempts = 2; // 1 retry (2s)
-        let delay = 2000; // Initial delay: 2s
+        const maxAttempts = 1; // 429 감지 시 대기 시간 낭비 없이 즉시 하위 모델로 우회(Failover)하도록 1로 최적화!
+        let delay = 0; // 즉각 우회용 대기 시간 Zero화
 
         while (attempt < maxAttempts) {
           try {
