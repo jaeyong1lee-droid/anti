@@ -1803,6 +1803,27 @@ app.get('/api/dashboard', async (req, res) => {
 
       // 기존 복습 목록에 병합
       uniqueReviews.push(...selectedBonus);
+
+      // 💡 [폴백] 데이터가 아예 없는 클린 DB일 경우, 사용자 시각적 확인을 위해 등록된 토픽 중 1개를 45점 약점 카드로 강제 추천
+      if (selectedBonus.length === 0) {
+        const demoTopic = await dbQuery.get("SELECT id, title, keywords, pdf_name FROM topics LIMIT 1");
+        if (demoTopic) {
+          uniqueReviews.push({
+            schedule_id: 9999, // 가상 스케줄 ID
+            review_round: 1,
+            planned_date: queryDate,
+            status: 'pending',
+            completed_at: null,
+            score: 45,
+            isBonus: true,
+            topic_id: demoTopic.id,
+            title: demoTopic.title,
+            keywords: demoTopic.keywords,
+            pdf_name: demoTopic.pdf_name,
+            created_at: demoTopic.created_at
+          });
+        }
+      }
     } catch (bonusErr) {
       console.warn('Failed to fetch low-score bonus reviews for dashboard:', bonusErr);
     }
