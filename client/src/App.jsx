@@ -4003,6 +4003,7 @@ export default function App() {
                                   disabled={answered}
                                   onClick={() => {
                                     setSelectedAnswers(prev => ({ ...prev, [idx]: opt }));
+                                    handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
                                   }}
                                   className={cls}
                                 >
