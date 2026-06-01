@@ -1733,6 +1733,7 @@ app.get('/api/dashboard', async (req, res) => {
         s.planned_date,
         s.status,
         s.completed_at,
+        s.score,
         t.id AS topic_id,
         t.title,
         t.keywords,
@@ -1754,7 +1755,13 @@ app.get('/api/dashboard', async (req, res) => {
         uniqueReviewsMap.set(r.topic_id, r);
       }
     }
-    const uniqueReviews = Array.from(uniqueReviewsMap.values());
+    
+    // 복원 시 review_round = 99인 경우 isBonus로 변환하여 프론트에서 소실되지 않도록 연동
+    const uniqueReviews = Array.from(uniqueReviewsMap.values()).map(r => ({
+      ...r,
+      isBonus: r.review_round === 99,
+      score: r.score
+    }));
 
     // 💡 더 이상 자동으로 보너스 약점 카드를 대시보드 리스트에 끼워넣지 않습니다.
     // 사용자가 '약점 추천 받기' 버튼을 누르면 별도 API (/api/dashboard/weak-points) 로 호출되어 추가 결합됩니다.
@@ -1819,8 +1826,31 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
     for (const item of shuffledBonus) {
       const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [item.topic_id]);
       if (topic) {
+        // [중요] 새로고침 시에도 추천된 약점 카드가 유지되도록 DB에 pending 상태의 보너스 스케줄(round=99)을 직접 등록합니다.
+        // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
+        const existingBonus = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?`,
+          [topic.id, queryDate]
+        );
+
+        let scheduleId;
+        if (existingBonus) {
+          scheduleId = existingBonus.id;
+          await dbQuery.run(
+            `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ? WHERE id = ?`,
+            [Math.round(item.min_score), scheduleId]
+          );
+        } else {
+          const insertRes = await dbQuery.run(
+            `INSERT INTO schedules (topic_id, review_round, planned_date, status, score)
+             VALUES (?, 99, ?, 'pending', ?)`,
+            [topic.id, queryDate, Math.round(item.min_score)]
+          );
+          scheduleId = insertRes.id;
+        }
+
         weakPoints.push({
-          schedule_id: null,
+          schedule_id: scheduleId,
           topic_id: topic.id,
           title: topic.title,
           keywords: topic.keywords,
@@ -1830,26 +1860,6 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
           status: 'pending',
           completed_at: null,
           score: Math.round(item.min_score),
-          isBonus: true
-        });
-      }
-    }
-
-    // 데이터가 아예 없을 때 가상 데모 폴백 연동
-    if (weakPoints.length === 0 && completedHistory.length === 0) {
-      const demoTopic = await dbQuery.get('SELECT id, title, keywords, pdf_name FROM topics ORDER BY created_at DESC LIMIT 1');
-      if (demoTopic) {
-        weakPoints.push({
-          schedule_id: 9999, // 가상 스케줄 ID
-          topic_id: demoTopic.id,
-          title: demoTopic.title,
-          keywords: demoTopic.keywords,
-          pdf_name: demoTopic.pdf_name,
-          review_round: 1,
-          planned_date: queryDate,
-          status: 'pending',
-          completed_at: null,
-          score: 45,
           isBonus: true
         });
       }
@@ -1962,8 +1972,8 @@ app.post('/api/quiz/submit', async (req, res) => {
   try {
     let targetScheduleId = schedule_id;
 
-    // 만약 보너스/가상 ID이거나 9999일 경우, 해당 토픽의 최근 완료된(또는 존재하는) 일정을 찾아서 안전 업데이트
-    if (isBonus || schedule_id === 9999 || String(schedule_id) === '9999') {
+    // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
+    if (schedule_id === 9999 || String(schedule_id) === '9999' || !schedule_id) {
       const lastCompleted = await dbQuery.get(
         `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
         [topic_id]
@@ -2005,7 +2015,7 @@ app.post('/api/quiz/submit', async (req, res) => {
       );
     }
 
-    // 만약 보너스인 경우 오늘 날짜의 1일 최대 2개 추천 한도 기록(review_round = 99)도 함께 세이브하여 동기화
+    // 만약 보너스인 경우 오늘 날짜의 보너스 레코드(review_round = 99)도 함께 세이브하여 동기화
     if (isBonus) {
       const today = getLocalDateString();
       const existingBonus = await dbQuery.get(
@@ -2017,6 +2027,14 @@ app.post('/api/quiz/submit', async (req, res) => {
           `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
            VALUES (?, 99, ?, 'completed', ?, ?, ?, ?)`,
           [topic_id, today, now, scoreVal, correctVal, totalVal]
+        );
+      } else {
+        // 이미 추천 단계에서 pending 상태로 존재하는 보너스 레코드가 있다면 completed/failed로 일괄 업데이트
+        await dbQuery.run(
+          `UPDATE schedules 
+           SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ?
+           WHERE id = ?`,
+          [isPassed ? 'completed' : 'failed', now, scoreVal, correctVal, totalVal, existingBonus.id]
         );
       }
     }
@@ -3507,9 +3525,11 @@ app.post('/api/exam/all', async (req, res) => {
 아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
-🚨 [출제 출처 한정 규칙 - 매우 중요!]:
-반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**에 기술되어 있는 구체적인 개념, 공식, 이론 및 기술적 내용의 범위 안에서만 시험 문제를 생성하십시오. 
-제공된 소스 자료 텍스트에 전혀 존재하지 않거나 관련 없는 타 공학/역학 이론(예: 소스에 없는 동역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 소스 텍스트에 기재조차 되지 않은 외부 주제 등)이나 임의의 외부 일반 지식을 출제에 절대 활용하거나 날조하여 문제를 만들지 마십시오. 오직 제공된 소스 본문 텍스트 내에 직접 언급된 내용만을 기반으로 엄격하게 문제를 출제하여야 합니다.
+🚨 [출제 출처 한정 규칙 - 극도로 중요!]:
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**에 직접 기술되어 있는 구체적인 개념, 공식, 이론 및 지식의 범위 안에서만 시험 문제를 생성하십시오.
+2. 제공된 소스 자료 텍스트에 **직접 등장하지 않는 외부의 타 공학/역학 이론이나 일반 상식(예: 지문에 직접 기재되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 외부 임의 주제 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
+3. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
+4. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
 
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
@@ -3860,9 +3880,11 @@ app.post('/api/exam/additional', async (req, res) => {
 아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
 (현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
 
-🚨 [출제 출처 한정 규칙 - 매우 중요!]:
-반드시 아래의 **[평가 범위 토픽 목록 및 본문]**, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오. 
-제공된 소스 자료 및 저장된 내용에 전혀 존재하지 않거나 관련 없는 외부의 엉뚱한 타 공학/역학 분야 이론(예: 소스에 없는 동역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 소스 텍스트에 기재조차 되지 않은 외부 주제 등)이나 임의의 다른 지식을 출제 규칙에 주입하여 환각(Hallucination) 문제를 유발하지 마십시오.
+🚨 [출제 출처 한정 규칙 - 극도로 중요!]:
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
+2. 제공된 소스 자료 및 저장된 내용에 **직접 등장하지 않는 외부의 엉뚱한 타 공학/역학 분야 이론(예: 소스에 직접 언급되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 외부 임의 주제 등)이나 임의의 다른 지식을 출제 규칙에 주입하여 환각(Hallucination) 문제를 유발하지 마십시오.**
+3. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
+4. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
 
 [평가 범위 토픽 목록 및 본문]:
 \${combinedText}
