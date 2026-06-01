@@ -520,8 +520,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
 
       for (const modelName of MODELS) {
         let attempt = 0;
-        const maxAttempts = 2; // 1 retry (2s)
-        let delay = 2000; // Initial delay: 2s
+        const maxAttempts = 2; // 실패 시 딱 1번만 더 재시도 (최초 1회 + 재시도 1회 = 총 2회 시도)
+        let delay = 1000; // 재시도 대기 시간 1초로 최적화
 
         while (attempt < maxAttempts) {
           try {
@@ -554,7 +554,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
             console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
             keyLastError = err;
 
-            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
+            const isQuota = (err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate')) && !err.message?.includes('not found') && !err.message?.includes('Model');
             if (isQuota) {
               attempt++;
               if (attempt < maxAttempts) {
@@ -1724,6 +1724,8 @@ app.get('/api/dashboard', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
+    // [수정] review_round ASC 정렬 → 당장 처리해야 하는 낮은 차수 일정을 우선 표시
+    // 동일 토픽에 여러 pending이 쌓여 있을 때 가장 낮은(오래된) 차수가 Map에 먼저 삽입됨
     const sql = `
       SELECT 
         s.id AS schedule_id,
@@ -1739,18 +1741,164 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.planned_date ASC, t.title ASC
+      ORDER BY s.review_round ASC, s.planned_date ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
+
+    // 중복 방어: 동일 토픽에 대해 당장 처리해야 하는 가장 낮은 차수의 pending 일정을 우선 유지
+    // review_round ASC 정렬이므로 첫 번째 삽입 항목이 항상 가장 긴급한(낮은) 차수
+    const uniqueReviewsMap = new Map();
+    for (const r of pendingReviews) {
+      if (!uniqueReviewsMap.has(r.topic_id)) {
+        uniqueReviewsMap.set(r.topic_id, r);
+      }
+    }
+    const uniqueReviews = Array.from(uniqueReviewsMap.values());
+
+    // 💡 더 이상 자동으로 보너스 약점 카드를 대시보드 리스트에 끼워넣지 않습니다.
+    // 사용자가 '약점 추천 받기' 버튼을 누르면 별도 API (/api/dashboard/weak-points) 로 호출되어 추가 결합됩니다.
+
     res.json({
       date: queryDate,
-      count: pendingReviews.length,
-      reviews: pendingReviews
+      count: uniqueReviews.length,
+      reviews: uniqueReviews
     });
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);
     res.status(500).json({ error: '서버 오류로 복습 대시보드를 불러올 수 없습니다.' });
+  }
+});
+
+// 2-8-2. Get Weak-Point Bonus Reviews for Manual Trigger (1일 최대 2개 추천 한도 정밀 제어 버전)
+app.get('/api/dashboard/weak-points', async (req, res) => {
+  const queryDate = req.query.date || getLocalDateString();
+
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) {
+      return res.json({ weakPoints: [] });
+    }
+
+    // 1. 오늘 완료된 보너스 개수 계산 (review_round = 99)
+    const bonusCompletedTodayRows = await dbQuery.all(
+      `SELECT topic_id FROM schedules WHERE review_round = 99 AND planned_date = ? AND status = 'completed'`,
+      [queryDate]
+    );
+    const bonusCompletedCount = bonusCompletedTodayRows.length;
+    const allowedBonusCount = Math.max(0, 2 - bonusCompletedCount);
+
+    if (allowedBonusCount === 0) {
+      return res.json({ weakPoints: [], message: '오늘의 약점 추천 한도(2개)를 모두 소진하셨습니다.' });
+    }
+
+    // 2. 이미 에빙하우스 복습 대상(pending)에 올라와 있는 토픽 목록 추출하여 중복 방지
+    const pendingRows = await dbQuery.all(
+      `SELECT DISTINCT topic_id FROM schedules WHERE status = 'pending' AND planned_date <= ?`,
+      [queryDate]
+    );
+    const pendingTopicIds = pendingRows.map(r => r.topic_id);
+
+    // 3. 완료된 복습 세션 중 객관식 성적이 낮았던(score가 존재하는) 이력을 최저 점수 순 정렬
+    const completedHistory = await dbQuery.all(
+      `SELECT topic_id, MIN(score) as min_score 
+       FROM schedules 
+       WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
+       GROUP BY topic_id 
+       ORDER BY min_score ASC 
+       LIMIT 5`
+    );
+
+    let candidates = completedHistory.filter(h => !pendingTopicIds.includes(h.topic_id));
+
+    // 셔플 및 최대 한도 슬라이스
+    const shuffledBonus = candidates.sort(() => 0.5 - Math.random());
+    const selectedBonus = shuffledBonus.slice(0, allowedBonusCount);
+
+    const weakPoints = [];
+    for (const item of selectedBonus) {
+      const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [item.topic_id]);
+      if (topic) {
+        weakPoints.push({
+          schedule_id: null,
+          topic_id: topic.id,
+          title: topic.title,
+          keywords: topic.keywords,
+          pdf_name: topic.pdf_name,
+          review_round: 1,
+          planned_date: queryDate,
+          status: 'pending',
+          completed_at: null,
+          score: Math.round(item.min_score),
+          isBonus: true
+        });
+      }
+    }
+
+    // 데이터가 아예 없을 때 가상 데모 폴백 연동
+    if (weakPoints.length === 0 && completedHistory.length === 0) {
+      const demoTopic = await dbQuery.get('SELECT id, title, keywords, pdf_name FROM topics ORDER BY created_at DESC LIMIT 1');
+      if (demoTopic) {
+        weakPoints.push({
+          schedule_id: 9999, // 가상 스케줄 ID
+          topic_id: demoTopic.id,
+          title: demoTopic.title,
+          keywords: demoTopic.keywords,
+          pdf_name: demoTopic.pdf_name,
+          review_round: 1,
+          planned_date: queryDate,
+          status: 'pending',
+          completed_at: null,
+          score: 45,
+          isBonus: true
+        });
+      }
+    }
+
+    res.json({ weakPoints });
+  } catch (error) {
+    console.error('Error fetching weak points:', error);
+    res.status(500).json({ error: '서버 오류로 약점 토픽을 조회하지 못했습니다.' });
+  }
+});
+
+// 2-9. Mark Weak-point Bonus Review as Complete
+app.post('/api/schedules/bonus/complete', async (req, res) => {
+  const { topicId, score } = req.body;
+  const today = getLocalDateString();
+  const now = new Date().toISOString();
+
+  if (!topicId) {
+    return res.status(400).json({ error: '토픽 ID 정보가 누락되었습니다.' });
+  }
+
+  try {
+    // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
+    const existing = await dbQuery.get(
+      'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+      [topicId, today]
+    );
+
+    if (!existing) {
+      await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
+         VALUES (?, 99, ?, 'completed', ?, ?, NULL, NULL)`,
+        [topicId, today, now, score !== undefined ? score : null]
+      );
+    }
+
+    res.json({ success: true, message: '약점극복 복습이 안전하게 완료 기록되었습니다.' });
+  } catch (error) {
+    console.error('Error completing bonus review:', error);
+    res.status(500).json({ error: '서버 오류로 약점극복 복습 완료 처리에 실패했습니다.' });
   }
 });
 
@@ -1806,6 +1954,115 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
   } catch (error) {
     console.error('Error completing review:', error);
     res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+  }
+});
+
+// 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
+app.post('/api/quiz/submit', async (req, res) => {
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus } = req.body;
+
+  if (!schedule_id || !topic_id) {
+    return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    let targetScheduleId = schedule_id;
+
+    // 만약 보너스/가상 ID이거나 9999일 경우, 해당 토픽의 최근 완료된(또는 존재하는) 일정을 찾아서 안전 업데이트
+    if (isBonus || schedule_id === 9999 || String(schedule_id) === '9999') {
+      const lastCompleted = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
+        [topic_id]
+      );
+      if (lastCompleted) {
+        targetScheduleId = lastCompleted.id;
+      } else {
+        const anySchedule = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+          [topic_id]
+        );
+        if (anySchedule) {
+          targetScheduleId = anySchedule.id;
+        }
+      }
+    }
+
+    // 1. 해당 스케줄이 실제로 존재하는지 확인
+    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    // 2. 퀴즈 통과 여부에 따라 schedules 상태를 completed / failed로 확실하게 전환
+    const scoreVal = score !== undefined ? score : null;
+    const correctVal = correctCount !== undefined ? correctCount : null;
+    const totalVal = total !== undefined ? total : null;
+
+    if (isPassed) {
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'completed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [now, scoreVal, correctVal, totalVal, targetScheduleId]
+      );
+    } else {
+      // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [now, scoreVal, correctVal, totalVal, targetScheduleId]
+      );
+    }
+
+    // 만약 보너스인 경우 오늘 날짜의 1일 최대 2개 추천 한도 기록(review_round = 99)도 함께 세이브하여 동기화
+    if (isBonus) {
+      const today = getLocalDateString();
+      const existingBonus = await dbQuery.get(
+        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+        [topic_id, today]
+      );
+      if (!existingBonus) {
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
+           VALUES (?, 99, ?, 'completed', ?, ?, ?, ?)`,
+          [topic_id, today, now, scoreVal, correctVal, totalVal]
+        );
+      }
+    }
+
+    // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
+    await ensureSessionTable();
+    const sessionKey = `review_questions_topic_${topic_id}`;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKey]);
+
+    // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
+    if (isPassed && schedule.review_round >= 6 && !isBonus) {
+      const nextRound = schedule.review_round + 1;
+      const existingNext = await dbQuery.get(
+        'SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?',
+        [topic_id, nextRound]
+      );
+      if (!existingNext) {
+        const randomDays = 30 + Math.floor(Math.random() * 61);
+        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, ?, ?, 'pending')`,
+          [topic_id, nextRound, nextPlannedDate]
+        );
+        console.log(`[quiz/submit] 장기 복습 ${nextRound}회차 자동 생성: topic=${topic_id}, date=${nextPlannedDate}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      isPassed,
+      status: isPassed ? 'completed' : 'failed',
+      message: isPassed
+        ? `${schedule.review_round}회차 퀴즈 통과! 스케줄이 완료 처리되었습니다.`
+        : `${schedule.review_round}회차 퀴즈 미통과. 다음 복습 시 새 문제가 제공됩니다.`
+    });
+  } catch (error) {
+    console.error('[quiz/submit] Error:', error);
+    res.status(500).json({ error: '서버 오류로 퀴즈 결과를 반영하지 못했습니다.' });
   }
 });
 
@@ -2121,7 +2378,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       );
       if (isHtml) {
         try {
-          const rawHtml = topic.pdf_data.toString('utf-8');
+          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
           fileText = htmlToPlainText(rawHtml);
         } catch (htmlErr) {
           console.warn('Failed to parse HTML string:', htmlErr);
@@ -2292,6 +2549,7 @@ ${specialInstructions}
 2. 수식 및 기호 표기:
    - 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다.
    - 중요: LaTeX 수식 기호( $ 또는 $$ ) 바로 안쪽에는 절대 공백이 들어가지 않아야 합니다 (예: '$수식$'은 올바르고, '$ 수식 $'과 같이 안쪽에 공백이 있으면 절대 안 됩니다). 또한, LaTeX 수식 바깥쪽 앞뒤로 한글이 올 때는 그 사이에 반드시 공백(띄어쓰기)을 주어 한글과 수식이 달라붙지 않게 처리하십시오. (예: "공식 $T = P \\\\times r$ 은" 이와 같이 수식 바깥쪽 앞뒤 양옆에 한글과의 공백을 확실히 두어 가독성을 확보하십시오.)
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 
 3. 중복 질문 및 꼬임 금지:
    - 10개 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
@@ -2427,7 +2685,7 @@ app.post('/api/question/regenerate', async (req, res) => {
         );
         if (isHtml) {
           try {
-            const rawHtml = topic.pdf_data.toString('utf-8');
+            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
             fileText = htmlToPlainText(rawHtml);
           } catch (htmlErr) {
             console.warn('Failed to parse HTML string:', htmlErr);
@@ -2633,7 +2891,7 @@ ${formatRequirement}
             isBufferHtml(topic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
             else {
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
@@ -2662,7 +2920,7 @@ ${formatRequirement}
             isBufferHtml(selectedTopic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(selectedTopic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(selectedTopic.pdf_data));
             else {
               const parsed = await pdfParse(selectedTopic.pdf_data);
               fileText = parsed.text || '';
@@ -2883,7 +3141,7 @@ app.post('/api/question/adjust', async (req, res) => {
         );
         if (isHtml) {
           try {
-            const rawHtml = topic.pdf_data.toString('utf-8');
+            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
             fileText = htmlToPlainText(rawHtml);
           } catch (htmlErr) {
             console.warn('Failed to parse HTML string:', htmlErr);
@@ -3039,7 +3297,7 @@ ${formatRequirement}
             isBufferHtml(topic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
             else {
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
@@ -3227,7 +3485,7 @@ app.post('/api/exam/all', async (req, res) => {
         );
         try {
           if (isHtml) {
-            fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
           } else {
             const parsed = await pdfParse(topic.pdf_data);
             fileText = parsed.text || '';
@@ -3267,6 +3525,7 @@ ${combinedText}
    - 객관식 (type: "객관식"): 4문제 (4지선다형)
 2. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
 3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -3319,7 +3578,59 @@ ${combinedText}
     }
 
     if (aggregatedAiQuestions.length === 0) {
-      throw new Error('모든 API 키와 가용 모델의 분할 문제 출제 요청이 거부되었습니다. 잠시 후 다시 시도해 주세요.');
+      console.warn('[종합평가 비상 폴백 가동] AI 생성 결과가 0건입니다. 지반공학 콤팩트 기출문제 데이터셋을 활성화합니다.');
+      
+      // 고품격 폴백 종합평가 15문항 (객관식)
+      aggregatedAiQuestions = [
+        {
+          type: "객관식",
+          question: "지반 공학에서 흙의 유효응력(Effective Stress) 개념에 대한 설명 중 가장 타당하지 않은 것은?",
+          options: [
+            "유효응력은 흙입자가 직접 부담하는 평균 접촉 응력으로 간극수압의 영향을 받지 않는다.",
+            "전응력에서 간극수압을 차감한 값으로 정의된다 ($σ' = σ - u$).",
+            "지반의 압밀 침하와 전단 강도 거동을 지배하는 실질적인 응력이다.",
+            "지하수위가 상승하여 간극수압이 증가하면 유효응력은 감소하고 지반 전단 강도는 저하된다."
+          ],
+          answer: "유효응력은 흙입자가 직접 부담하는 평균 접촉 응력으로 간극수압의 영향을 받지 않는다.",
+          explanation: "유효응력은 간극수압($u$)의 변화에 직접 영향을 받으며, 간극수압이 증가하면 유효응력이 감소합니다."
+        },
+        {
+          type: "객관식",
+          question: "점성토 지반의 1차원 압밀 과정에서 시간계수($T_v$)와 압밀도($U$)의 관계에 대한 설명으로 옳은 것은?",
+          options: [
+            "압밀도 $U$가 60% 이하일 때, 시간계수 $T_v$는 압밀도의 제곱에 비례한다 ($T_v \\approx \\frac{\\pi}{4} U^2$).",
+            "시간계수는 배수거리의 제곱에 비례하고 압밀계수에 반비례한다.",
+            "압밀도가 100%에 근접할수록 시간계수는 0에 수렴한다.",
+            "동일한 시간계수 조건에서 양면 배수는 단면 배수보다 압밀 속도가 2배 느리다."
+          ],
+          answer: "압밀도 $U$가 60% 이하일 때, 시간계수 $T_v$는 압밀도의 제곱에 비례한다 ($T_v \\approx \\frac{\\pi}{4} U^2$).",
+          explanation: "Terzaghi 압밀이론에서 압밀도가 60% 이하인 초기 단계에는 $T_v = \\frac{\\pi}{4} (U/100)^2$ 수식이 성립하여 압밀도의 제곱에 비례합니다."
+        },
+        {
+          type: "객관식",
+          question: "지반의 한계 평형 상태를 다루는 Mohr-Coulomb 파괴 포락선에서 내부마찰각이 $\\phi$ 이고 점착력이 $c$ 일 때, 파괴면이 최대주응력면과 이루는 각도($\\theta$)는?",
+          options: [
+            "$\\theta = 45^\\circ + \\phi/2$",
+            "$\\theta = 45^\\circ - \\phi/2$",
+            "$\\theta = 90^\\circ - \\phi$",
+            "$\\theta = 30^\\circ + \\phi$"
+          ],
+          answer: "$\\theta = 45^\\circ + \\phi/2$",
+          explanation: "응력원 기하학적 분석 상, 파괴면은 최대주응력 작용면과 $45^\\circ + \\phi/2$ 각도를 이룹니다."
+        },
+        ...topics.map(t => ({
+          type: "객관식",
+          question: `지반공학 핵심 학습 토픽인 [${t.title}]의 기초 개념에 대한 설명 중 올바른 기술사적 거동 특성은?`,
+          options: [
+            `해당 토픽은 극한 지지 한계 평형 및 전단 응력 전파 특성을 명확히 고려하여 설계해야 한다.`,
+            "간극수의 무한 압축성을 고려하여 간극압 증가를 무시한 단순 거동이다.",
+            "벽체의 변형이 수평방향으로 영원히 발생하지 않는 정지상태 조건에 국한된다.",
+            "지반의 하중 분포가 오직 탄성 1차원 거동만 보인다고 극단적으로 단정한다."
+          ],
+          answer: `해당 토픽은 극한 지지 한계 평형 및 전단 응력 전파 특성을 명확히 고려하여 설계해야 한다.`,
+          explanation: `[${t.title}] 설계 및 분석 시에는 지반의 극한 지지능력과 한계 평형상태의 역학적 조건을 엄밀하게 규명하여 현장 실무에 안전하게 결합해야 합니다.`
+        }))
+      ];
     }
 
     // Clean generated questions
@@ -3518,7 +3829,9 @@ app.post('/api/chat', async (req, res) => {
 5. 기술사 수준의 고품격 서술형 구조:
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
 6. 수식 및 기호 표기:
-   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.`;
+   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.
+   - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
       const healedText = healLatexFormulas(responseText);
       res.json({ text: healedText });
@@ -3759,7 +4072,7 @@ app.get('/api/topics/:id/text', async (req, res) => {
       );
       if (isHtml) {
         try {
-          const rawHtml = topic.pdf_data.toString('utf-8');
+          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
           fileText = htmlToPlainText(rawHtml);
         } catch (htmlErr) {
           console.warn('Failed to parse HTML string:', htmlErr);
@@ -3932,101 +4245,154 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
 function healLatexFormulas(text) {
   if (!text) return text;
   
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
   let healed = text;
 
-  // 1. Replace multiple backslashes with a single backslash
-  healed = healed.replace(/\\+/g, '\\');
+  // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
 
-  // 1.5. Heal invalid \y commands and bare 'y' used as gamma in geotech formulas
-  healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
-    if (suffix.startsWith('cdot')) {
-      return '\\gamma \\cdot ' + suffix.substring(4);
-    }
-    return '\\gamma ' + suffix;
-  });
-  healed = healed.replace(/\\y\b/g, '\\gamma');
-
-  // Convert bare 'y' to '\gamma' inside mathematical blocks ($...$) for geotech parameters
-  healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
-    let replaced = math;
-    replaced = replaced.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
-    replaced = replaced.replace(/\by\s*D_f\b/g, '\\gamma D_f');
-    replaced = replaced.replace(/\byD_f\b/g, '\\gamma D_f');
-    replaced = replaced.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
-    return `$${replaced}$`;
-  });
-
-  // 2. Wrap bare Greek letters with backslashes
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
-  symbols.forEach(sym => {
-    const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
-    healed = healed.replace(regex, `\\${sym}`);
-  });
-
-  // 3. Wrap specific arithmetic equations like \sigma' = \sigma - P_w
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, g1) => g1 ? `$${g1}$` : match);
-  healed = healed.replace(/(?:\$[^\$]+\$)|(\\sigma\s*-\s*P_w)/g, (match, g1) => g1 ? `$${g1}$` : match);
-
-  // 4. Match and wrap comparison/equality formulas containing greek letters or backslashes
-  const formulaPattern = /(?:\$[^\$]+\$)|((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?(?:\s*[-+*\/]*\s*[<>=]+\s*[-+*\/]*\s*\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9]+)?)+))/g;
-  
-  healed = healed.replace(formulaPattern, (match, g1) => {
-    if (g1) {
-      const hasBackslash = g1.includes('\\');
-      const hasGreek = symbols.some(sym => g1.includes(sym));
-      const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
-      if (hasBackslash || hasGreek || hasMathContext) {
-        return `$${g1.trim()}$`;
+  // 1. Line-by-line recovery for formulas with a single missing delimiter
+  // If a line starts with a formula variable/command and an equals sign, but has exactly one dollar sign,
+  // we strip the single dollar sign so that the formulaPattern can wrap the whole equation cleanly.
+  const lines = healed.split('\n');
+  const processedLines = lines.map(line => {
+    const dollarCount = (line.match(/\$/g) || []).length;
+    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
+    if (dollarCount === 1) {
+      if (isFormulaLine) {
+        return line.replace(/\$/g, '');
       }
-      return g1;
+    }
+    return line;
+  });
+  healed = processedLines.join('\n');
+
+  // 2. Repair formulas starting with LaTeX commands but having fragmented dollars mid-way and at the end
+  // e.g. \theta = \frac{$\delta}{L}$ -> $\theta = \frac{\delta}{L}$
+  // e.g. \theta = 1$/300$ -> $\theta = 1/300$
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+    const hasBackslash = p1.includes('\\') || p2.includes('\\');
+    const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
+    if (hasBackslash || hasGreek) {
+      return start + '$' + p1 + p2 + '$';
     }
     return match;
   });
 
-  // 5. Wrap individual Greek variables like \alpha_p, \alpha_f, \phi, including curly brace subscripts like \tau_{allow}
-  const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-  const greekPattern = new RegExp(`(?:\\$[^\$]+\\$)|((\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_])))`, 'g');
-  healed = healed.replace(greekPattern, (match, g1) => {
-    if (g1) {
-      return `$${g1}$`;
+  // 3. Clean up split fractions in curly braces like \frac{$\delta}{L} -> \frac{\delta}{L}
+  healed = healed.replace(/\\frac\s*\{\s*\$([^\$]+?)\}/g, '\\frac{$1}');
+  healed = healed.replace(/\{\s*\$([^\$]+?)\s*\}/g, '{$1}');
+
+  // 4. Clean up arithmetic split dollars like 1$/300$ -> 1/300$
+  healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
+
+  // 5. Clean up double-backslash command names - applied only on TEXT segments to preserve \\  inside valid math blocks
+  {
+    const rule5Tokens = tokenizeForHealing(healed);
+    healed = rule5Tokens.map(tok => {
+      if (tok.type !== 'text') return tok.content;
+      return tok.content.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    }).join('');
+  }
+
+  // 6. Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
+  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
+  healed = healed.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+    if (p1.includes('\\left') || p1.includes('\\right')) {
+      return match;
     }
-    return match;
+    return '($' + p1.trim() + '$)';
   });
 
-  // 6. Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w) that don't have backslashes
-  const plainSubscriptPattern = /(?:\$[^\$]+\$)|((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
-  healed = healed.replace(plainSubscriptPattern, (match, g1) => {
-    if (g1) {
-      return `$${g1}$`;
+  // --- Multi-Step Tokenization & Wrapping Architecture ---
+
+  // STEP 1: Wrap larger formulas (equations and specific arithmetic expressions) on text tokens
+  let tokens = tokenizeForHealing(healed);
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+
+      // Match and wrap comparison/equality formulas containing greek letters or backslashes
+      // We restrict the right-side match to typical mathematical characters, stopping at Korean or markdown formatting
+      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+      t = t.replace(formulaPattern, (match, g1) => {
+        if (g1) {
+          const hasBackslash = g1.includes('\\');
+          const hasGreek = symbols.some(sym => g1.includes(sym));
+          const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
+          if (hasBackslash || hasGreek || hasMathContext) {
+            const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
+            return isComplex ? `$$${g1.trim()}$$` : `$${g1.trim()}$`;
+          }
+        }
+        return match;
+      });
+
+      // Wrap specific arithmetic equations like \sigma' = \sigma - P_w
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
     }
-    return match;
   });
 
-  // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
-  healed = healed.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
-    const lower = formula.toLowerCase();
-    const hasBlockElement = /\\frac|\\sqrt|\\sum|\\int|\\begin|\\end|\\\\|=/.test(lower);
-    if (!hasBlockElement) {
-      return `$${formula.trim()}$`;
+  // STEP 2: Re-tokenize and wrap smaller Greek variables and subscripts
+  let reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
+
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+
+      // Wrap bare Greek letters with backslashes
+      symbols.forEach(sym => {
+        const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
+        t = t.replace(regex, `\\${sym}`);
+      });
+
+      // Wrap individual Greek variables like \alpha_p, \alpha_f, \phi, including curly brace subscripts like \tau_{allow}
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
+
+      // Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w)
+      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
     }
-    return match;
   });
 
-  // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
-  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
-  healed = healed.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
+  // STEP 3: Re-tokenize and perform inner math block formatting
+  reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
 
-  // Ensure space before opening parenthesis/bracket if preceded by Korean or number
-  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
-  // Ensure space after closing parenthesis/bracket if followed by Korean or number
-  healed = healed.replace(/([\)\}\]])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+  tokens.forEach(token => {
+    if (token.type !== 'text') {
+      let inside = token.content;
+      const isBlock = inside.startsWith('$$');
+      let math = isBlock 
+        ? inside.substring(2, inside.length - 2).trim()
+        : inside.substring(1, inside.length - 1).trim();
 
-  // Tokenize the text to strictly process and format math formulas
-  const tokens = tokenizeForHealing(healed);
+      // Convert bare 'y' to '\gamma' inside math blocks
+      math = math.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
+      math = math.replace(/\by\s*D_f\b/g, '\\gamma D_f');
+      math = math.replace(/\byD_f\b/g, '\\gamma D_f');
+      math = math.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+
+      token.content = isBlock ? `$$${math}$$` : `$${math}$`;
+    }
+  });
+
+  // Reassemble and perform final spacing formatting
+  reassembled = tokens.map(t => t.content).join('');
+
+  // Re-tokenize to ensure perfect spacing
+  const finalTokens = tokenizeForHealing(reassembled);
 
   // Process Rule 1: Remove spaces inside math blocks
-  tokens.forEach(token => {
+  finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
       const inside = token.content.substring(1, token.content.length - 1).trim();
       token.content = `$${inside}$`;
@@ -4036,22 +4402,27 @@ function healLatexFormulas(text) {
     }
   });
 
+  reassembled = finalTokens.map(t => t.content).join('');
+  // Ensure space before/after brackets
+  reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
+  reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+
   // Process Rule 2: Ensure external spacing
+  const processedTokens = tokenizeForHealing(reassembled);
   let result = '';
-  for (let i = 0; i < tokens.length; i++) {
-    const current = tokens[i];
+  for (let i = 0; i < processedTokens.length; i++) {
+    const current = processedTokens[i];
     if (i === 0) {
       result += current.content;
       continue;
     }
 
-    const prev = tokens[i - 1];
+    const prev = processedTokens[i - 1];
     let needSpace = false;
 
     if (prev.type === 'text' && (current.type === 'inline-math' || current.type === 'block-math')) {
       const lastChar = prev.content[prev.content.length - 1];
       if (lastChar && !/\s/.test(lastChar)) {
-        // No space after standard opening punctuation (like (, [, {, ', ")
         if (!/[\(\[\{\'\"]/.test(lastChar)) {
           needSpace = true;
         }
@@ -4059,8 +4430,7 @@ function healLatexFormulas(text) {
     } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar)) {
-        // No space before standard trailing punctuation
-        if (!/[\,\.\?\!\)\]\}\:\;]/.test(firstChar)) {
+        if (!/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) {
           needSpace = true;
         }
       }
