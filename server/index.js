@@ -520,8 +520,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
 
       for (const modelName of MODELS) {
         let attempt = 0;
-        const maxAttempts = 1; // 429 감지 시 대기 시간 낭비 없이 즉시 하위 모델로 우회(Failover)하도록 1로 최적화!
-        let delay = 0; // 즉각 우회용 대기 시간 Zero화
+        const maxAttempts = 2; // 실패 시 딱 1번만 더 재시도 (최초 1회 + 재시도 1회 = 총 2회 시도)
+        let delay = 1000; // 재시도 대기 시간 1초로 최적화
 
         while (attempt < maxAttempts) {
           try {
