@@ -1724,8 +1724,8 @@ app.get('/api/dashboard', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
-    // SQL: review_round DESC 정렬로 가장 진행도가 높은(최신) 라운드를 먼저 가져옴
-    // → 동일 토픽에 여러 pending 일정이 쌓여 있어도 가장 마지막 라운드가 Map에 먼저 삽입됨
+    // [수정] review_round ASC 정렬 → 당장 처리해야 하는 낮은 차수 일정을 우선 표시
+    // 동일 토픽에 여러 pending이 쌓여 있을 때 가장 낮은(오래된) 차수가 Map에 먼저 삽입됨
     const sql = `
       SELECT 
         s.id AS schedule_id,
@@ -1741,14 +1741,13 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.review_round DESC, s.planned_date ASC
+      ORDER BY s.review_round ASC, s.planned_date ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
 
-    // 중복 방어: 동일 토픽에 대해 가장 진행도가 높은(최신) 라운드를 우선 유지
-    // review_round DESC 정렬 덕분에 첫 번째로 삽입되는 항목이 항상 가장 높은 라운드
-    // → 과거 밀린 낮은 라운드가 오늘의 새 라운드를 덮어쓰는 버그 완전 차단
+    // 중복 방어: 동일 토픽에 대해 당장 처리해야 하는 가장 낮은 차수의 pending 일정을 우선 유지
+    // review_round ASC 정렬이므로 첫 번째 삽입 항목이 항상 가장 긴급한(낮은) 차수
     const uniqueReviewsMap = new Map();
     for (const r of pendingReviews) {
       if (!uniqueReviewsMap.has(r.topic_id)) {
@@ -1820,6 +1819,74 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
   } catch (error) {
     console.error('Error completing review:', error);
     res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+  }
+});
+
+// 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
+app.post('/api/quiz/submit', async (req, res) => {
+  const { schedule_id, topic_id, total, correctCount, score, isPassed } = req.body;
+
+  if (!schedule_id || !topic_id) {
+    return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    // 1. 해당 스케줄이 실제로 존재하는지 확인
+    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [schedule_id]);
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    // 2. 퀴즈 통과 여부에 따라 schedules 상태를 completed / failed로 확실하게 전환
+    if (isPassed) {
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'completed', completed_at = ? WHERE id = ?`,
+        [now, schedule_id]
+      );
+    } else {
+      // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'failed', completed_at = ? WHERE id = ?`,
+        [now, schedule_id]
+      );
+    }
+
+    // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
+    await ensureSessionTable();
+    const sessionKey = `review_questions_topic_${topic_id}`;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKey]);
+
+    // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
+    if (isPassed && schedule.review_round >= 6) {
+      const nextRound = schedule.review_round + 1;
+      const existingNext = await dbQuery.get(
+        'SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?',
+        [topic_id, nextRound]
+      );
+      if (!existingNext) {
+        const randomDays = 30 + Math.floor(Math.random() * 61);
+        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, ?, ?, 'pending')`,
+          [topic_id, nextRound, nextPlannedDate]
+        );
+        console.log(`[quiz/submit] 장기 복습 ${nextRound}회차 자동 생성: topic=${topic_id}, date=${nextPlannedDate}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      isPassed,
+      status: isPassed ? 'completed' : 'failed',
+      message: isPassed
+        ? `${schedule.review_round}회차 퀴즈 통과! 스케줄이 완료 처리되었습니다.`
+        : `${schedule.review_round}회차 퀴즈 미통과. 다음 복습 시 새 문제가 제공됩니다.`
+    });
+  } catch (error) {
+    console.error('[quiz/submit] Error:', error);
+    res.status(500).json({ error: '서버 오류로 퀴즈 결과를 반영하지 못했습니다.' });
   }
 });
 
