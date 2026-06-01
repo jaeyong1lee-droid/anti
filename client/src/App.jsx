@@ -1732,6 +1732,48 @@ export default function App() {
     }
   };
 
+  // ── Add Questions (종합평가 10문항 하단에 추가 - 기존 문제 보존) ──────────────────
+  const handleAddExamQuestions = async () => {
+    if (!window.confirm("종합평가 문제 추가를 진행하시겠습니까?\n하단에 새로운 10문제를 생성하여 추가합니다.\n(기존 문제들은 풀이 내역과 함께 모두 안전하게 보존됩니다)")) {
+      return;
+    }
+
+    setLoadingExam(true);
+    
+    try {
+      // 2. 전체 토픽 통합 종합평가 추가 10문제 생성
+      const res = await fetch(`${API_BASE}/api/exam/additional`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        const newQs = data.questions || [];
+        const updatedQuestions = [...examQuestions, ...newQs];
+        
+        setExamQuestions(updatedQuestions);
+        
+        // Sync to server session
+        await fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            examQuestions: updatedQuestions, 
+            examRevealed, 
+            examAnswers, 
+            examTopic,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0 
+          })
+        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+        
+        showNotification('새로운 10개 문항을 하단에 추가했습니다.', 'success');
+      } else {
+        showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      showNotification('서버 통신 오류: ' + err.message, 'error');
+    } finally {
+      setLoadingExam(false);
+    }
+  };
+
   // ── Delete a single Comprehensive Exam Question (종합평가 단일 문제 삭제) ──────────────────
   const handleDeleteExamQuestion = (deleteIdx) => {
     if (!window.confirm(`Q${deleteIdx + 1}번 문제를 종합평가에서 영구 삭제하시겠습니까?\n삭제 시 이후 문제들의 응답 상태 및 해설 내역이 앞으로 한 칸씩 안전하게 자동 정렬됩니다.`)) {
@@ -4648,6 +4690,20 @@ export default function App() {
                   정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
                 </span>
               )}
+              <button
+                onClick={handleAddExamQuestions}
+                disabled={loadingExam}
+                className="px-4 py-2 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed mr-1"
+                title="종합평가에 신규 AI 문제 10문항 추가 (기존 풀이 보존)"
+              >
+                {loadingExam ? (
+                  <svg className="animate-spin h-3.5 w-3.5 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : "➕"}
+                <span>문제추가</span>
+              </button>
               <button
                 onClick={handleRefreshExamQuestions}
                 disabled={loadingExam}
