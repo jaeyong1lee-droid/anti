@@ -508,12 +508,9 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
       const MODELS = [
-        'gemini-3.5-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
         'gemini-2.0-flash',
-        'gemini-1.5-flash'
+        'gemini-1.5-flash',
+        'gemini-1.5-pro'
       ];
       
       let basicModelFailedCount = 0;
@@ -554,7 +551,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
             console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
             keyLastError = err;
 
-            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429');
+            const isQuota = (err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate')) && !err.message?.includes('not found') && !err.message?.includes('Model');
             if (isQuota) {
               attempt++;
               if (attempt < maxAttempts) {
@@ -2202,7 +2199,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       );
       if (isHtml) {
         try {
-          const rawHtml = topic.pdf_data.toString('utf-8');
+          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
           fileText = htmlToPlainText(rawHtml);
         } catch (htmlErr) {
           console.warn('Failed to parse HTML string:', htmlErr);
@@ -2509,7 +2506,7 @@ app.post('/api/question/regenerate', async (req, res) => {
         );
         if (isHtml) {
           try {
-            const rawHtml = topic.pdf_data.toString('utf-8');
+            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
             fileText = htmlToPlainText(rawHtml);
           } catch (htmlErr) {
             console.warn('Failed to parse HTML string:', htmlErr);
@@ -2715,7 +2712,7 @@ ${formatRequirement}
             isBufferHtml(topic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
             else {
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
@@ -2744,7 +2741,7 @@ ${formatRequirement}
             isBufferHtml(selectedTopic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(selectedTopic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(selectedTopic.pdf_data));
             else {
               const parsed = await pdfParse(selectedTopic.pdf_data);
               fileText = parsed.text || '';
@@ -2965,7 +2962,7 @@ app.post('/api/question/adjust', async (req, res) => {
         );
         if (isHtml) {
           try {
-            const rawHtml = topic.pdf_data.toString('utf-8');
+            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
             fileText = htmlToPlainText(rawHtml);
           } catch (htmlErr) {
             console.warn('Failed to parse HTML string:', htmlErr);
@@ -3121,7 +3118,7 @@ ${formatRequirement}
             isBufferHtml(topic.pdf_data)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
             else {
               const parsed = await pdfParse(topic.pdf_data);
               fileText = parsed.text || '';
@@ -3309,7 +3306,7 @@ app.post('/api/exam/all', async (req, res) => {
         );
         try {
           if (isHtml) {
-            fileText = htmlToPlainText(topic.pdf_data.toString('utf-8'));
+            fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
           } else {
             const parsed = await pdfParse(topic.pdf_data);
             fileText = parsed.text || '';
@@ -3844,7 +3841,7 @@ app.get('/api/topics/:id/text', async (req, res) => {
       );
       if (isHtml) {
         try {
-          const rawHtml = topic.pdf_data.toString('utf-8');
+          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
           fileText = htmlToPlainText(rawHtml);
         } catch (htmlErr) {
           console.warn('Failed to parse HTML string:', htmlErr);
