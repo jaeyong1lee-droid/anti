@@ -3987,9 +3987,14 @@ function healLatexFormulas(text) {
   // 4. Clean up arithmetic split dollars like 1$/300$ -> 1/300$
   healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
 
-  // 5. Clean up multiple backslashes ONLY when they are part of a command name (e.g. \\gamma -> \gamma)
-  // This preserves standard LaTeX newlines like \\
-  healed = healed.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+  // 5. Clean up double-backslash command names - applied only on TEXT segments to preserve \\  inside valid math blocks
+  {
+    const rule5Tokens = tokenizeForHealing(healed);
+    healed = rule5Tokens.map(tok => {
+      if (tok.type !== 'text') return tok.content;
+      return tok.content.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    }).join('');
+  }
 
   // 6. Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
   // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
