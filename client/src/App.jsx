@@ -1284,7 +1284,21 @@ export default function App() {
   };
 
   // Mark specific schedule round as complete
-  const handleCompleteReview = async (scheduleId, topicTitle, round) => {
+  const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
+    if (isBonus && topicId) {
+      // 약점극복학습(보너스 추천)은 클라이언트단에서 즉시 리스트에서 숨김 처리
+      setHiddenBonusTopicIds(prev => [...prev, topicId]);
+      showNotification(`[${topicTitle}] 약점극복 복습 완료 처리가 완료되었습니다!`);
+      
+      // 백엔드로 보너스 완료 이력을 가볍게 전송 (하루 최대 2개 추천 한도 동기화용)
+      fetch(`${API_BASE}/api/schedules/bonus/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId })
+      }).catch(e => console.warn('보너스 완료 이력 기록 실패:', e));
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/complete`, {
         method: 'POST',
@@ -1322,6 +1336,13 @@ export default function App() {
       }
     }
 
+    // 객관식 정답률(점수) 정밀 채점
+    const totalMC = aiQuestions.filter(q => q.options?.length > 0).length;
+    const correctMC = Object.keys(selectedAnswers).filter(
+      (i) => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer
+    ).length;
+    const scoreMC = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : 100;
+
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
       fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
@@ -1329,23 +1350,60 @@ export default function App() {
       localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 복습 완료 시 로컬 진행률 초기화
     }
 
-    if (sId) {
-      await handleCompleteReview(sId, selectedTopic.title, sRound);
-      // 모달 닫기
+    try {
+      // 퀴즈 결과 및 채점된 점수를 서버로 전송 (영구 보존 및 약점 극복 조건 탈출)
+      const res = await fetch(`${API_BASE}/api/quiz/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schedule_id: sId || 9999,
+          topic_id: selectedTopic.id,
+          total: totalMC,
+          correctCount: correctMC,
+          score: scoreMC,
+          isPassed: true,
+          isBonus: !!selectedTopic.isBonus
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        if (selectedTopic.isBonus) {
+          // 약점 보완 추천은 즉시 클라이언트 숨김 처리
+          setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
+          showNotification(`[${selectedTopic.title}] 약점극복 복습이 완료되어 성적이 ${scoreMC}점으로 업데이트되었습니다!`, 'success');
+        } else {
+          showNotification(`[${selectedTopic.title}] ${sRound}회차 복습 완료 및 성적이 ${scoreMC}점으로 업데이트되었습니다!`, 'success');
+        }
+        
+        // 목록 갱신
+        fetchTodayReviews(referenceDate);
+        fetchAllTopics();
+      } else {
+        // 백엔드 점수 업데이트 실패 시에도 약점보완 강제완료 처리 지원 (UX 복원용)
+        if (selectedTopic.isBonus) {
+          setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
+          showNotification(`[${selectedTopic.title}] 약점극복 복습 완료 처리가 완료되었습니다!`);
+        } else {
+          showNotification(data.error || '복습 완료 성적 갱신에 실패했습니다.', 'error');
+        }
+      }
+    } catch (err) {
+      console.error('Quiz submit error:', err);
+      if (selectedTopic.isBonus) {
+        setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
+        showNotification(`[${selectedTopic.title}] 약점극복 복습 완료 처리가 완료되었습니다!`);
+      } else {
+        showNotification('서버 오류로 퀴즈 완료 성적 처리에 실패했습니다.', 'error');
+      }
+    } finally {
+      // 모달 닫기 및 상태 전면 리셋
       setSelectedTopic(null);
       setAiQuestions([]);
       setRevealedQuestions({});
       setSelectedAnswers({});
       setOpenSections({});
-      lastQuizTopicId.current = null;
-    } else {
-      showNotification('오늘 이 토픽의 예정된 복습 일정이 없습니다. 자유 복습이 완료되었습니다!', 'info');
-      // 모달 닫기
-      setSelectedTopic(null);
-      setAiQuestions([]);
-      setRevealedQuestions({});
-      setSelectedAnswers({});
-      setOpenSections({});
+      setReviewOptionExplanations({});
       lastQuizTopicId.current = null;
     }
   };

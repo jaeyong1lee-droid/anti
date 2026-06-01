@@ -1939,7 +1939,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -1948,8 +1948,29 @@ app.post('/api/quiz/submit', async (req, res) => {
   const now = new Date().toISOString();
 
   try {
+    let targetScheduleId = schedule_id;
+
+    // 만약 보너스/가상 ID이거나 9999일 경우, 해당 토픽의 최근 완료된(또는 존재하는) 일정을 찾아서 안전 업데이트
+    if (isBonus || schedule_id === 9999 || String(schedule_id) === '9999') {
+      const lastCompleted = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
+        [topic_id]
+      );
+      if (lastCompleted) {
+        targetScheduleId = lastCompleted.id;
+      } else {
+        const anySchedule = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+          [topic_id]
+        );
+        if (anySchedule) {
+          targetScheduleId = anySchedule.id;
+        }
+      }
+    }
+
     // 1. 해당 스케줄이 실제로 존재하는지 확인
-    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [schedule_id]);
+    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
     if (!schedule) {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
     }
@@ -1962,14 +1983,30 @@ app.post('/api/quiz/submit', async (req, res) => {
     if (isPassed) {
       await dbQuery.run(
         `UPDATE schedules SET status = 'completed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [now, scoreVal, correctVal, totalVal, schedule_id]
+        [now, scoreVal, correctVal, totalVal, targetScheduleId]
       );
     } else {
       // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
       await dbQuery.run(
         `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [now, scoreVal, correctVal, totalVal, schedule_id]
+        [now, scoreVal, correctVal, totalVal, targetScheduleId]
       );
+    }
+
+    // 만약 보너스인 경우 오늘 날짜의 1일 최대 2개 추천 한도 기록(review_round = 99)도 함께 세이브하여 동기화
+    if (isBonus) {
+      const today = getLocalDateString();
+      const existingBonus = await dbQuery.get(
+        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+        [topic_id, today]
+      );
+      if (!existingBonus) {
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
+           VALUES (?, 99, ?, 'completed', ?, ?, ?, ?)`,
+          [topic_id, today, now, scoreVal, correctVal, totalVal]
+        );
+      }
     }
 
     // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
@@ -1978,7 +2015,7 @@ app.post('/api/quiz/submit', async (req, res) => {
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKey]);
 
     // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
-    if (isPassed && schedule.review_round >= 6) {
+    if (isPassed && schedule.review_round >= 6 && !isBonus) {
       const nextRound = schedule.review_round + 1;
       const existingNext = await dbQuery.get(
         'SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?',
