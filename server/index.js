@@ -3947,6 +3947,7 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
 function healLatexFormulas(text) {
   if (!text) return text;
   
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
   let healed = text;
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
