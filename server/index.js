@@ -1961,7 +1961,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -2037,6 +2037,17 @@ app.post('/api/quiz/submit', async (req, res) => {
           [isPassed ? 'completed' : 'failed', now, scoreVal, correctVal, totalVal, existingBonus.id]
         );
       }
+    }
+
+    // [핵심] 복습 완료 시, 풀이한 문제 세트, 객관식 마킹 내역, 주관식 풀이 열람 이력을 기기 간 완벽 복원하기 위해 세션 테이블에 세이브
+    if (questions && questions.length > 0) {
+      const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
+      const solvedSessionValue = JSON.stringify({ questions, selectedAnswers, revealedQuestions });
+      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
+      await dbQuery.run(
+        'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [solvedSessionKey, solvedSessionValue]
+      );
     }
 
     // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
@@ -4517,6 +4528,26 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/session/review/topic error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/completed-review/:scheduleId → 특정 복습 회차의 저장된 풀이 문제, 객관식 마크 및 주관식 열람 이력 반환
+app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
+  const scheduleId = req.params.scheduleId;
+  try {
+    await ensureSessionTable();
+    const row = await dbQuery.get(
+      'SELECT value FROM app_session WHERE key = ?',
+      [`completed_review_schedule_${scheduleId}`]
+    );
+    if (row && row.value) {
+      res.json({ success: true, data: JSON.parse(row.value) });
+    } else {
+      res.json({ success: false, error: '해당 복습의 저장된 풀이 기록이 없습니다.' });
+    }
+  } catch (err) {
+    console.error('GET /api/session/completed-review error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -1384,7 +1384,10 @@ export default function App() {
           correctCount: correctMC,
           score: scoreMC,
           isPassed: true,
-          isBonus: !!selectedTopic.isBonus
+          isBonus: !!selectedTopic.isBonus,
+          questions: aiQuestions,
+          selectedAnswers: selectedAnswers,
+          revealedQuestions: revealedQuestions
         })
       });
       const data = await res.json();
@@ -1479,6 +1482,56 @@ export default function App() {
       showNotification('서버 오류로 초기화 처리에 실패했습니다.', 'error');
     } finally {
       setResetConfirmTarget(null);
+    }
+  };
+
+  // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
+  const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round) => {
+    setReviewMobileTab('list');
+    requestAnimationFrame(() => {
+      if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
+    });
+
+    setLoadingAI(true);
+    setSelectedTopic({ 
+      id: topicId, 
+      title: topicTitle, 
+      schedule_id: scheduleId, 
+      review_round: round, 
+      isReadOnly: true 
+    });
+    setAiQuestions([]);
+    setRevealedQuestions({});
+    setSelectedAnswers({});
+    setReviewOptionExplanations({});
+    setIsFallback(false);
+    setAiError('');
+    setShowFullReport(false);
+    setReportText('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAiQuestions(data.data.questions || []);
+        setSelectedAnswers(data.data.selectedAnswers || {});
+        setRevealedQuestions(data.data.revealedQuestions || {});
+      } else {
+        // [Fallback] 이전 데이터 기록이 존재하지 않는 경우 (업데이트 이전 항목 등), 실시간 API를 통해 가볍게 기출문제만 재조회
+        showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
+        const fbRes = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`);
+        const fbData = await fbRes.json();
+        if (fbRes.ok) {
+          setAiQuestions(fbData.questions || []);
+        } else {
+          showNotification('해당 토픽의 예상문제를 로드하지 못했습니다.', 'error');
+        }
+      }
+    } catch (err) {
+      console.error('Load completed review error:', err);
+      showNotification('통신 오류로 복습 풀이 기록을 가져오지 못했습니다.', 'error');
+    } finally {
+      setLoadingAI(false);
     }
   };
 
@@ -3985,13 +4038,9 @@ export default function App() {
                                     <div className="flex flex-col items-center">
                                       {sched.status === 'completed' ? (
                                         <button
-                                          onClick={() => setResetConfirmTarget({
-                                            scheduleId: sched.id,
-                                            topicTitle: topic.title,
-                                            round: round
-                                          })}
+                                          onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round)}
                                           className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none"
-                                          title="클릭 시 이 복습을 다시 대기 상태로 되돌리고 오늘 복습에 생성합니다."
+                                          title="클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다."
                                         >
                                           완료
                                         </button>
@@ -4466,48 +4515,50 @@ export default function App() {
                               )}
 
                               {/* 문제조정 입력 및 결과 보드 */}
-                              <div className="mt-3 pt-2 border-t border-slate-700/50">
-                                {adjustingInputKey !== `r_${idx}` ? (
-                                  <button
-                                    onClick={() => setAdjustingInputKey(`r_${idx}`)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                  >
-                                    🛠️ 문제조정 (AI 피드백)
-                                  </button>
-                                ) : (
-                                  <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
-                                    <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
-                                    <textarea
-                                      rows={2}
-                                      value={adjustingText[`r_${idx}`] || ''}
-                                      onChange={(e) => {
-                                        const text = e.target.value;
-                                        setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
-                                      }}
-                                      placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
-                                      className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
-                                    />
-                                    <div className="flex gap-2 justify-end">
-                                      <button
-                                        onClick={() => setAdjustingInputKey(null)}
-                                        className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                      >
-                                        취소
-                                      </button>
-                                      <button
-                                        onClick={() => handleAdjustQuestion('review', idx, q)}
-                                        disabled={adjustingLoading[`r_${idx}`]}
-                                        className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
-                                      >
-                                        {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
-                                      </button>
+                              {!selectedTopic?.isReadOnly && (
+                                <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                  {adjustingInputKey !== `r_${idx}` ? (
+                                    <button
+                                      onClick={() => setAdjustingInputKey(`r_${idx}`)}
+                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                    >
+                                      🛠️ 문제조정 (AI 피드백)
+                                    </button>
+                                  ) : (
+                                    <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                      <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
+                                      <textarea
+                                        rows={2}
+                                        value={adjustingText[`r_${idx}`] || ''}
+                                        onChange={(e) => {
+                                          const text = e.target.value;
+                                          setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                        }}
+                                        placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
+                                        className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
+                                      />
+                                      <div className="flex gap-2 justify-end">
+                                        <button
+                                          onClick={() => setAdjustingInputKey(null)}
+                                          className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                        >
+                                          취소
+                                        </button>
+                                        <button
+                                          onClick={() => handleAdjustQuestion('review', idx, q)}
+                                          disabled={adjustingLoading[`r_${idx}`]}
+                                          className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                        >
+                                          {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
+                                        </button>
+                                      </div>
+                                      {adjustingLoading[`r_${idx}`] && (
+                                        <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
+                                      )}
                                     </div>
-                                    {adjustingLoading[`r_${idx}`] && (
-                                      <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )
                         )}
@@ -4517,22 +4568,40 @@ export default function App() {
 
                   {aiQuestions.length > 0 && (
                     <div className="text-center py-6">
-                      <button
-                        onClick={handleQuizCompleteClick}
-                        className="inline-flex items-center gap-3 bg-violet-950 hover:bg-violet-900/90 border border-violet-500/40 hover:border-violet-400 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-950/50 hover:shadow-violet-900/30 group"
-                        title="복습 완료 처리 및 대시보드로 돌아가기"
-                      >
-                        <Award size={22} className="text-violet-400 group-hover:animate-bounce-slow" />
-                        <div className="text-left">
-                          <div className="text-xs text-violet-300 font-black">복습 완료하기</div>
-                          <div className="text-sm text-white font-extrabold">
-                            객관식 정답률: {Math.round(
-                              Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length /
-                              Math.max(aiQuestions.filter(q => q.options?.length > 0).length, 1) * 100
-                            )}%
+                      {selectedTopic?.isReadOnly ? (
+                        <button
+                          onClick={() => {
+                            setSelectedTopic(null);
+                            setAiQuestions([]);
+                            setRevealedQuestions({});
+                            setSelectedAnswers({});
+                            setReviewOptionExplanations({});
+                            lastQuizTopicId.current = null;
+                          }}
+                          className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                          title="풀이 결과 확인 완료"
+                        >
+                          <Award size={20} className="text-emerald-400" />
+                          <span>확인 및 닫기</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleQuizCompleteClick}
+                          className="inline-flex items-center gap-3 bg-violet-950 hover:bg-violet-900/90 border border-violet-500/40 hover:border-violet-400 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-950/50 hover:shadow-violet-900/30 group"
+                          title="복습 완료 처리 및 대시보드로 돌아가기"
+                        >
+                          <Award size={22} className="text-violet-400 group-hover:animate-bounce-slow" />
+                          <div className="text-left">
+                            <div className="text-xs text-violet-300 font-black">복습 완료하기</div>
+                            <div className="text-sm text-white font-extrabold">
+                              객관식 정답률: {Math.round(
+                                Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length /
+                                Math.max(aiQuestions.filter(q => q.options?.length > 0).length, 1) * 100
+                              )}%
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
