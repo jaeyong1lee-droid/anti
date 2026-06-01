@@ -3726,7 +3726,7 @@ ${combinedText}
 });
 
 
-// 6-1-2. Comprehensive Exam: Generate 10 additional questions (2 batches of 5)
+// 6-1-2. Comprehensive Exam: Generate 10 additional questions (2 batches of 4 AI + 2 custom)
 app.post('/api/exam/additional', async (req, res) => {
   try {
     const hasAnyAiKey = !!(
@@ -3797,20 +3797,71 @@ app.post('/api/exam/additional', async (req, res) => {
       console.warn('Error reading formula/theory sessions for comprehensive exam refresh:', dbErr);
     }
 
+    // Load defaults if empty, exactly like /api/exam/all
+    if (customFormulas.length === 0) {
+      customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+        title: d.title,
+        formula: d.formula || d.structure || '',
+        concept: d.concept || ''
+      }));
+    }
+    if (customTheories.length === 0) {
+      customTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+    }
+
+    // Select 1 formula and 1 theory randomly
+    const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
+
+    const selectedFormula = shuffledFormulas.slice(0, 1).map(f => ({
+      type: "주관식",
+      subtype: "공식",
+      question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+      answer: f.formula,
+      concept: f.concept
+    }));
+
+    const selectedTheory = shuffledTheories.slice(0, 1).map(t => ({
+      type: "주관식",
+      subtype: "서술",
+      question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+      answer: t.formula,
+      concept: t.concept
+    }));
+
+    const customSubjs = [...selectedFormula, ...selectedTheory];
+
+    // Format formulas and theories text for LLM context
     const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
     const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 2; // 2 batches * 5 questions = 10 questions
+    const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
 
-    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 5문제씩 총 \${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 \${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
 
     for (let i = 0; i < TOTAL_BATCHES; i++) {
       const randomSeed = Math.floor(Math.random() * 10000);
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 5개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
 (현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
 
 🚨 [출제 출처 한정 규칙 - 매우 중요!]:
@@ -3826,9 +3877,9 @@ app.post('/api/exam/additional', async (req, res) => {
 \${theoriesText || '저장된 내용 없음'}
 
 [출제 규칙]:
-1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
+1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
-   - 객관식 (type: "객관식"): 4문제 (4지선다형)
+   - 객관식 (type: "객관식"): 3문제 (4지선다형)
 2. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
 3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
    - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
@@ -3916,7 +3967,17 @@ app.post('/api/exam/additional', async (req, res) => {
     }));
 
     const healedFinalQuestions = cleanedQuestions.map(q => healQuizQuestionObject(q));
-    res.json({ questions: healedFinalQuestions });
+    
+    // Combine 2 custom questions and 8 AI questions
+    const finalQuestions = [...customSubjs, ...healedFinalQuestions];
+
+    // Fisher-Yates shuffle the final 10 questions to perfectly mix them
+    for (let i = finalQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [finalQuestions[i], finalQuestions[j]] = [finalQuestions[j], finalQuestions[i]];
+    }
+
+    res.json({ questions: finalQuestions });
 
   } catch (err) {
     console.error('Exam additional route error:', err);
