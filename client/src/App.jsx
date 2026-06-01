@@ -860,6 +860,7 @@ export default function App() {
 
   // Hidden Weak-Point Bonus topic IDs (Client hide-on-complete state)
   const [hiddenBonusTopicIds, setHiddenBonusTopicIds] = useState([]);
+  const [loadingWeakPoints, setLoadingWeakPoints] = useState(false);
 
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -1405,6 +1406,35 @@ export default function App() {
       setOpenSections({});
       setReviewOptionExplanations({});
       lastQuizTopicId.current = null;
+    }
+  };
+
+  // 약점 보완 추천 토픽 수동 추가 요청 핸들러
+  const handleRequestWeakPoints = async () => {
+    setLoadingWeakPoints(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/dashboard/weak-points?date=${referenceDate}`);
+      const data = await res.json();
+      if (data.weakPoints && data.weakPoints.length > 0) {
+        // 이미 todayReviews에 존재하는 topic_id가 있는지 걸러내고 병합
+        setTodayReviews(prev => {
+          const existingIds = new Set(prev.map(r => r.topic_id));
+          const newPoints = data.weakPoints.filter(w => !existingIds.has(w.topic_id));
+          if (newPoints.length === 0) {
+            showNotification('이미 모든 약점 보완 토픽이 복습 목록에 추가되어 있습니다.', 'info');
+            return prev;
+          }
+          showNotification(`약점 보완 추천 토픽 ${newPoints.length}개가 오늘의 복습 목록에 성공적으로 추가되었습니다!`, 'success');
+          return [...newPoints, ...prev]; // 보너스를 상단에 노출하기 위해 앞에 붙임
+        });
+      } else {
+        showNotification(data.message || '오늘 추천 가능한 새로운 약점 토픽이 없습니다. (하루 최대 2개 완료 한도)', 'info');
+      }
+    } catch (err) {
+      console.error('Weak points fetch error:', err);
+      showNotification('서버 통신 오류로 약점 토픽을 가져오지 못했습니다.', 'error');
+    } finally {
+      setLoadingWeakPoints(false);
     }
   };
 
@@ -3393,10 +3423,20 @@ export default function App() {
             
             {/* LEFT: Today's review items list */}
             <section className="lg:col-span-7 space-y-5">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <Clock size={20} className="text-brand-400" />
-                  <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
+              <div className="flex justify-between items-center flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Clock size={20} className="text-brand-400" />
+                    <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
+                  </div>
+                  <button
+                    onClick={handleRequestWeakPoints}
+                    disabled={loadingWeakPoints}
+                    className="text-[10px] px-2.5 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-500/30 font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed glow-amber-hover"
+                    title="이전 복습 성적이 낮았던 약점 토픽을 추가 추천받아 복습 (하루 최대 2개)"
+                  >
+                    {loadingWeakPoints ? '⏳ 불러오는 중...' : '💡 약점 추천 받기'}
+                  </button>
                 </div>
                 <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
                   총 {todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length}개 대기 중

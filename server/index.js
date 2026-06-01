@@ -1756,88 +1756,8 @@ app.get('/api/dashboard', async (req, res) => {
     }
     const uniqueReviews = Array.from(uniqueReviewsMap.values());
 
-    // 💡 [추가] 복습 완료한 건 중 객관식 점수가 낮은 순 중심 랜덤 2건 보너스 복습 추가
-    try {
-      // 오늘 날짜에 이미 완료한 보너스 복습(review_round = 99)이 있는지 확인 및 개수 파악
-      const completedBonusRows = await dbQuery.all(
-        `SELECT topic_id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
-        [queryDate]
-      );
-      const completedBonusCount = completedBonusRows.length; // 오늘 완료한 보너스 복습 개수
-      const allowedBonusCount = Math.max(0, 2 - completedBonusCount); // 오늘 추가 추천 가능한 개수
-      const completedBonusTopicIds = new Set(completedBonusRows.map(r => r.topic_id));
-
-      const bonusSql = `
-        SELECT 
-          s.id AS schedule_id,
-          s.review_round,
-          s.planned_date,
-          s.status,
-          s.completed_at,
-          s.score,
-          t.id AS topic_id,
-          t.title,
-          t.keywords,
-          t.pdf_name,
-          t.created_at
-        FROM schedules s
-        JOIN topics t ON s.topic_id = t.id
-        WHERE s.status = 'completed' AND s.score IS NOT NULL
-        ORDER BY s.score ASC
-        LIMIT 8
-      `;
-      const lowScoreReviews = await dbQuery.all(bonusSql);
-      
-      const uniqueBonusCandidates = [];
-      const seenTopics = new Set();
-      // 오늘 이미 일반 복습(pending)에 포함된 토픽은 보너스 대상에서 제외
-      for (const r of uniqueReviews) {
-        seenTopics.add(r.topic_id);
-      }
-      for (const r of lowScoreReviews) {
-        // 이미 pending에 올라왔거나, 오늘 완료한 보너스 목록에 있는 토픽 제외
-        if (!seenTopics.has(r.topic_id) && !completedBonusTopicIds.has(r.topic_id)) {
-          uniqueBonusCandidates.push(r);
-          seenTopics.add(r.topic_id);
-        }
-      }
-      
-      // 셔플하여 최대 allowedBonusCount 만큼만 선정
-      const shuffledBonus = shuffleArray(uniqueBonusCandidates);
-      const selectedBonus = shuffledBonus.slice(0, allowedBonusCount).map(b => ({
-        ...b,
-        isBonus: true,
-        // 보너스 카드가 대시보드 리스트에 자연스럽게 작동하도록 status를 잠시 pending으로 위장
-        status: 'pending' 
-      }));
-
-      // 기존 복습 목록에 병합
-      uniqueReviews.push(...selectedBonus);
-
-      // 💡 [폴백] 데이터가 아예 없는 클린 DB일 경우, 사용자 시각적 확인을 위해 등록된 토픽 중 1개를 45점 약점 카드로 강제 추천 (한도가 허용될 때만)
-      if (selectedBonus.length === 0 && allowedBonusCount > 0) {
-        const demoTopic = await dbQuery.get("SELECT id, title, keywords, pdf_name FROM topics LIMIT 1");
-        // 데모 토픽 역시 오늘 완료한 적이 없을 경우에만 폴백 노출
-        if (demoTopic && !completedBonusTopicIds.has(demoTopic.id)) {
-          uniqueReviews.push({
-            schedule_id: 9999, // 가상 스케줄 ID
-            review_round: 1,
-            planned_date: queryDate,
-            status: 'pending',
-            completed_at: null,
-            score: 45,
-            isBonus: true,
-            topic_id: demoTopic.id,
-            title: demoTopic.title,
-            keywords: demoTopic.keywords,
-            pdf_name: demoTopic.pdf_name,
-            created_at: demoTopic.created_at
-          });
-        }
-      }
-    } catch (bonusErr) {
-      console.warn('Failed to fetch low-score bonus reviews for dashboard:', bonusErr);
-    }
+    // 💡 더 이상 자동으로 보너스 약점 카드를 대시보드 리스트에 끼워넣지 않습니다.
+    // 사용자가 '약점 추천 받기' 버튼을 누르면 별도 API (/api/dashboard/weak-points) 로 호출되어 추가 결합됩니다.
 
     res.json({
       date: queryDate,
@@ -1847,6 +1767,106 @@ app.get('/api/dashboard', async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);
     res.status(500).json({ error: '서버 오류로 복습 대시보드를 불러올 수 없습니다.' });
+  }
+});
+
+// 2-8-2. Get Weak-Point Bonus Reviews for Manual Trigger (1일 최대 2개 추천 한도 정밀 제어 버전)
+app.get('/api/dashboard/weak-points', async (req, res) => {
+  const queryDate = req.query.date || getLocalDateString();
+
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) {
+      return res.json({ weakPoints: [] });
+    }
+
+    // 1. 오늘 완료된 보너스 개수 계산 (review_round = 99)
+    const bonusCompletedTodayRows = await dbQuery.all(
+      `SELECT topic_id FROM schedules WHERE review_round = 99 AND planned_date = ? AND status = 'completed'`,
+      [queryDate]
+    );
+    const bonusCompletedCount = bonusCompletedTodayRows.length;
+    const allowedBonusCount = Math.max(0, 2 - bonusCompletedCount);
+
+    if (allowedBonusCount === 0) {
+      return res.json({ weakPoints: [], message: '오늘의 약점 추천 한도(2개)를 모두 소진하셨습니다.' });
+    }
+
+    // 2. 이미 에빙하우스 복습 대상(pending)에 올라와 있는 토픽 목록 추출하여 중복 방지
+    const pendingRows = await dbQuery.all(
+      `SELECT DISTINCT topic_id FROM schedules WHERE status = 'pending' AND planned_date <= ?`,
+      [queryDate]
+    );
+    const pendingTopicIds = pendingRows.map(r => r.topic_id);
+
+    // 3. 완료된 복습 세션 중 객관식 성적이 낮았던(score가 존재하는) 이력을 최저 점수 순 정렬
+    const completedHistory = await dbQuery.all(
+      `SELECT topic_id, MIN(score) as min_score 
+       FROM schedules 
+       WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
+       GROUP BY topic_id 
+       ORDER BY min_score ASC 
+       LIMIT 8`
+    );
+
+    let candidates = completedHistory.filter(h => !pendingTopicIds.includes(h.topic_id));
+
+    // 셔플 및 최대 한도 슬라이스
+    const shuffledBonus = candidates.sort(() => 0.5 - Math.random());
+    const selectedBonus = shuffledBonus.slice(0, allowedBonusCount);
+
+    const weakPoints = [];
+    for (const item of selectedBonus) {
+      const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [item.topic_id]);
+      if (topic) {
+        weakPoints.push({
+          schedule_id: null,
+          topic_id: topic.id,
+          title: topic.title,
+          keywords: topic.keywords,
+          pdf_name: topic.pdf_name,
+          review_round: 1,
+          planned_date: queryDate,
+          status: 'pending',
+          completed_at: null,
+          score: Math.round(item.min_score),
+          isBonus: true
+        });
+      }
+    }
+
+    // 데이터가 아예 없을 때 가상 데모 폴백 연동
+    if (weakPoints.length === 0 && completedHistory.length === 0) {
+      const demoTopic = await dbQuery.get('SELECT id, title, keywords, pdf_name FROM topics ORDER BY created_at DESC LIMIT 1');
+      if (demoTopic) {
+        weakPoints.push({
+          schedule_id: 9999, // 가상 스케줄 ID
+          topic_id: demoTopic.id,
+          title: demoTopic.title,
+          keywords: demoTopic.keywords,
+          pdf_name: demoTopic.pdf_name,
+          review_round: 1,
+          planned_date: queryDate,
+          status: 'pending',
+          completed_at: null,
+          score: 45,
+          isBonus: true
+        });
+      }
+    }
+
+    res.json({ weakPoints });
+  } catch (error) {
+    console.error('Error fetching weak points:', error);
+    res.status(500).json({ error: '서버 오류로 약점 토픽을 조회하지 못했습니다.' });
   }
 });
 
