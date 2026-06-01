@@ -1770,7 +1770,7 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-// 2-8-2. Get Weak-Point Bonus Reviews for Manual Trigger (1일 최대 2개 추천 한도 정밀 제어 버전)
+// 2-8-2. Get Weak-Point Bonus Reviews for Manual Trigger (한도 없는 실시간 약점 추천 버전)
 app.get('/api/dashboard/weak-points', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
@@ -1788,43 +1788,35 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
       return res.json({ weakPoints: [] });
     }
 
-    // 1. 오늘 완료된 보너스 개수 계산 (review_round = 99)
-    const bonusCompletedTodayRows = await dbQuery.all(
-      `SELECT topic_id FROM schedules WHERE review_round = 99 AND planned_date = ? AND status = 'completed'`,
-      [queryDate]
-    );
-    const bonusCompletedCount = bonusCompletedTodayRows.length;
-    const allowedBonusCount = Math.max(0, 2 - bonusCompletedCount);
-
-    if (allowedBonusCount === 0) {
-      return res.json({ weakPoints: [], message: '오늘의 약점 추천 한도(2개)를 모두 소진하셨습니다.' });
-    }
-
-    // 2. 이미 에빙하우스 복습 대상(pending)에 올라와 있는 토픽 목록 추출하여 중복 방지
+    // 1. 이미 에빙하우스 복습 대상(pending)에 올라와 있는 토픽 목록 추출하여 중복 방지
     const pendingRows = await dbQuery.all(
       `SELECT DISTINCT topic_id FROM schedules WHERE status = 'pending' AND planned_date <= ?`,
       [queryDate]
     );
     const pendingTopicIds = pendingRows.map(r => r.topic_id);
 
-    // 3. 완료된 복습 세션 중 객관식 성적이 낮았던(score가 존재하는) 이력을 최저 점수 순 정렬
+    // 2. 완료된 복습 세션 중, 각 토픽별로 '가장 최근에 완료된 복습'의 객관식 성적을 가져와 100점 미만인 항목을 최저 점수 순 정렬 (하위 5개)
+    // ROW_NUMBER() OVER를 사용하여 각 토픽의 가장 최신 완료 이력(review_round <> 99) 1건만 안전하게 추출합니다.
     const completedHistory = await dbQuery.all(
-      `SELECT topic_id, MIN(score) as min_score 
-       FROM schedules 
-       WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
-       GROUP BY topic_id 
-       ORDER BY min_score ASC 
+      `SELECT topic_id, score as min_score
+       FROM (
+         SELECT topic_id, score,
+                ROW_NUMBER() OVER (PARTITION BY topic_id ORDER BY completed_at DESC) as rn
+         FROM schedules
+         WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
+       ) t
+       WHERE rn = 1 AND score < 100
+       ORDER BY score ASC
        LIMIT 5`
     );
 
     let candidates = completedHistory.filter(h => !pendingTopicIds.includes(h.topic_id));
 
-    // 셔플 및 최대 한도 슬라이스
+    // 셔플하여 하위 5개 중 랜덤 매치 (최대 한도 슬라이스 없이 모든 후보 복습 추천 제공)
     const shuffledBonus = candidates.sort(() => 0.5 - Math.random());
-    const selectedBonus = shuffledBonus.slice(0, allowedBonusCount);
 
     const weakPoints = [];
-    for (const item of selectedBonus) {
+    for (const item of shuffledBonus) {
       const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [item.topic_id]);
       if (topic) {
         weakPoints.push({
@@ -3515,6 +3507,10 @@ app.post('/api/exam/all', async (req, res) => {
 아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
+🚨 [출제 출처 한정 규칙 - 매우 중요!]:
+반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**에 기술되어 있는 구체적인 개념, 공식, 이론 및 기술적 내용의 범위 안에서만 시험 문제를 생성하십시오. 
+제공된 소스 자료 텍스트에 전혀 존재하지 않거나 관련 없는 타 공학/역학 이론(예: 소스에 없는 동역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 소스 텍스트에 기재조차 되지 않은 외부 주제 등)이나 임의의 외부 일반 지식을 출제에 절대 활용하거나 날조하여 문제를 만들지 마십시오. 오직 제공된 소스 본문 텍스트 내에 직접 언급된 내용만을 기반으로 엄격하게 문제를 출제하여야 합니다.
+
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}
@@ -3865,7 +3861,8 @@ app.post('/api/exam/additional', async (req, res) => {
 (현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
 
 🚨 [출제 출처 한정 규칙 - 매우 중요!]:
-반드시 아래의 **[평가 범위 토픽 목록 및 본문]**, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 다루고 있는 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오. 여기에 존재하지 않거나 무관한 엉뚱한 타 공학 분야나 임의의 다른 지식을 출제 규칙에 주입하지 마십시오.
+반드시 아래의 **[평가 범위 토픽 목록 및 본문]**, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오. 
+제공된 소스 자료 및 저장된 내용에 전혀 존재하지 않거나 관련 없는 외부의 엉뚱한 타 공학/역학 분야 이론(예: 소스에 없는 동역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 소스 텍스트에 기재조차 되지 않은 외부 주제 등)이나 임의의 다른 지식을 출제 규칙에 주입하여 환각(Hallucination) 문제를 유발하지 마십시오.
 
 [평가 범위 토픽 목록 및 본문]:
 \${combinedText}
@@ -4506,7 +4503,25 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
 function healLatexFormulas(text) {
   if (!text) return text;
   
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta'];
+  // 💡 [단일 공식/수식형 전체 감싸기 최적화]: 단일 공식이나 객관식 보기 등 짧은 수식형 문장은
+  // 굳이 잘게 쪼개서 파편화하지 않고, 전체를 단일 $...$ 로 감싸 KaTeX가 한 번에 미려하게 렌더링하도록 합니다.
+  let trimmed = text.trim();
+  if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+    trimmed = trimmed.substring(2, trimmed.length - 2).trim();
+  } else if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
+    trimmed = trimmed.substring(1, trimmed.length - 1).trim();
+  }
+
+  const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
+                            /[_^{<>=]/.test(trimmed);
+  const isPlainSentence = /[\uAC00-\uD7A3]/.test(trimmed) && trimmed.split(/\s+/).length > 6;
+
+  if (hasMathIndicators && !isPlainSentence && trimmed.length < 150) {
+    const cleanedMath = trimmed.replace(/\$/g, '');
+    return `$${cleanedMath}$`;
+  }
+  
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let healed = text;
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
@@ -4557,7 +4572,7 @@ function healLatexFormulas(text) {
 
   // 6. Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
   // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
-  healed = healed.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+  healed = healed.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
     if (p1.includes('\\left') || p1.includes('\\right')) {
       return match;
     }

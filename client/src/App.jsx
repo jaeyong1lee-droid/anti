@@ -1216,6 +1216,27 @@ export default function App() {
     }
   }, [selectedTopic, revealedQuestions, selectedAnswers]);
 
+  // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
+  useEffect(() => {
+    if (examQuestions.length > 0 && !loadingExam) {
+      const delayDebounceFn = setTimeout(() => {
+        fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examQuestions,
+            examRevealed,
+            examAnswers,
+            examTopic,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
+      }, 1000); // 1.0-second debounce to prevent spamming server on rapid clicks
+
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [examQuestions, examRevealed, examAnswers, examTopic]);
+
 
   // Load PDF.js dynamically when switching to image view
   useEffect(() => {
@@ -1428,7 +1449,7 @@ export default function App() {
           return [...newPoints, ...prev]; // 보너스를 상단에 노출하기 위해 앞에 붙임
         });
       } else {
-        showNotification(data.message || '오늘 추천 가능한 새로운 약점 토픽이 없습니다. (하루 최대 2개 완료 한도)', 'info');
+        showNotification(data.message || '추천 가능한 새로운 약점 토픽이 없습니다.', 'info');
       }
     } catch (err) {
       console.error('Weak points fetch error:', err);
@@ -2312,29 +2333,19 @@ export default function App() {
     requestAnimationFrame(() => {
       if (examSplitContainerRef.current) examSplitContainerRef.current.scrollLeft = 0;
     });
-    // 1) 이미 state에 문제가 있으면 바로 열기 (같은 기기, 이미 로드됨)
-    if (examQuestions.length > 0) {
-      setShowExam(true);
-      requestAnimationFrame(() => {
-        if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
-      });
-      return;
-    }
-
-    // 2) 서버에서 저장된 세션 확인 (기기 간 공유 - 타이밍 이슈 없이 직접 조회)
+    // 1) ALWAYS try to retrieve the latest session from the server first (ensures perfect Mobile-PC linkage)
     setLoadingExam(true);
     setShowExam(true);
     try {
       const sessionRes = await fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`);
       const sessionData = await sessionRes.json();
       if (sessionData?.data?.examQuestions?.length > 0) {
-        // 서버에 저장된 문제가 있음 → 그대로 복원
+        // Server has a valid session → Restore it perfectly
         const d = sessionData.data;
         setExamQuestions(d.examQuestions);
-        if (d.examRevealed) setExamRevealed(d.examRevealed);
-        if (d.examAnswers) setExamAnswers(d.examAnswers);
-        if (d.examTopic) setExamTopic(d.examTopic);
-        else setExamTopic({ title: '전체 토픽 통합 종합평가' });
+        setExamRevealed(d.examRevealed || {});
+        setExamAnswers(d.examAnswers || {});
+        setExamTopic(d.examTopic || { title: '전체 토픽 통합 종합평가' });
         if (d.savedExamScroll) savedExamScroll.current = d.savedExamScroll;
         
         setLoadingExam(false);
@@ -2342,12 +2353,27 @@ export default function App() {
           if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
         });
         return;
+      } else {
+        // If server session is empty but we had local memory state,
+        // it means the session was ended/reset on another device. We should sync and clear local state.
+        setExamQuestions([]);
+        setExamRevealed({});
+        setExamAnswers({});
+        setExamTopic(null);
       }
     } catch (e) {
-      console.warn('서버 세션 확인 실패, 새로 생성합니다:', e);
+      console.warn('서버 세션 확인 실패, 로컬 상태를 사용합니다:', e);
+      // Fallback to local memory only if server query fails
+      if (examQuestions.length > 0) {
+        setLoadingExam(false);
+        requestAnimationFrame(() => {
+          if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
+        });
+        return;
+      }
     }
 
-    // 3) 저장된 세션 없음 → 새로 생성
+    // 2) No server session and no local memory → Create new questions
     setExamTopic({ title: '전체 토픽 통합 종합평가' });
     setExamQuestions([]);
     setExamRevealed({});
@@ -2364,6 +2390,20 @@ export default function App() {
           [qs[i], qs[j]] = [qs[j], qs[i]];
         }
         setExamQuestions(qs);
+        
+        // Save the newly created session to the server immediately
+        fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            examQuestions: qs, 
+            examRevealed: {}, 
+            examAnswers: {}, 
+            examTopic: { title: '전체 토픽 통합 종합평가' },
+            savedExamScroll: 0 
+          }),
+        }).catch(e => console.warn('서버 세션 초기 저장 실패:', e));
+
       } else {
         showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
         setShowExam(false);
