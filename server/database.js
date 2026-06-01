@@ -329,6 +329,7 @@ async function migrateSchedulesTable() {
   } catch (err) {
     console.error('Migration schedules table error:', err);
   }
+}
 
 // Auto init database tables if Postgres env is detected
 if (isPostgres) {
