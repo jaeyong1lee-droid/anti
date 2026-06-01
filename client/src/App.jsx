@@ -566,7 +566,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       // Render block math $$ ... $$
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
         try {
-          return window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false });
+          return window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false }).replace(/\n/g, '');
         } catch (e) {
           return m;
         }
@@ -574,7 +574,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/g, (m, math) => {
         try {
-          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
         } catch (e) {
           return m;
         }
@@ -661,7 +661,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
         if (part.type === 'math-block') {
           let mathHtml = part.content;
           try {
-            mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false });
+            mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false }).replace(/\n/g, '');
           } catch (e) {
             console.warn(e);
             mathHtml = `$$${part.content}$$`;
@@ -690,7 +690,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                 return m;
               }
               try {
-                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
               } catch (e) {
                 return m;
               }
@@ -1647,35 +1647,81 @@ export default function App() {
     }
   };
 
-  // ── Refresh All Exam Questions (종합평가 전체 문제 재생성) ──────────────────
+  // ── Refresh Exam Questions (종합평가 1~10번 삭제 및 하단 10문항 추가) ──────────────────
   const handleRefreshExamQuestions = async () => {
-    if (!window.confirm("현재 생성된 종합평가 문제들이 각 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.")) {
+    if (!window.confirm("종합평가 리프레쉬를 진행하시겠습니까?\n1~10번까지의 문제를 삭제하고, 추가로 10문제를 하단에 생성하여 추가합니다.\n(기존 남은 문제들은 계속해서 풀이가 가능합니다)")) {
       return;
     }
     
+    const deleteCount = Math.min(10, examQuestions.length);
+    const remainingQuestions = examQuestions.slice(deleteCount);
+
+    // Shift keys of answer/revealed indices by deleteCount
+    const newAnswers = {};
+    Object.keys(examAnswers).forEach(key => {
+      const idx = parseInt(key);
+      if (idx >= deleteCount) {
+        newAnswers[idx - deleteCount] = examAnswers[key];
+      }
+    });
+
+    const newRevealed = {};
+    Object.keys(examRevealed).forEach(key => {
+      const idx = parseInt(key);
+      if (idx >= deleteCount) {
+        newRevealed[idx - deleteCount] = examRevealed[key];
+      }
+    });
+
+    const newOptionExplanations = {};
+    Object.keys(examOptionExplanations).forEach(key => {
+      const idx = parseInt(key);
+      if (idx >= deleteCount) {
+        newOptionExplanations[idx - deleteCount] = examOptionExplanations[key];
+      }
+    });
+
+    const newDetailedAnswers = {};
+    Object.keys(detailedAnswers).forEach(key => {
+      const idx = parseInt(key);
+      if (idx >= deleteCount) {
+        newDetailedAnswers[idx - deleteCount] = detailedAnswers[key];
+      }
+    });
+
+    // Update state to immediately reflect the deletion & shifts (so they can keep playing!)
+    setExamQuestions(remainingQuestions);
+    setExamAnswers(newAnswers);
+    setExamRevealed(newRevealed);
+    setExamOptionExplanations(newOptionExplanations);
+    setDetailedAnswers(newDetailedAnswers);
+
     setLoadingExam(true);
-    setExamQuestions([]);
-    setExamRevealed({});
-    setExamAnswers({});
-    setExamOptionExplanations({});
     
     try {
-      // 1. 서버의 기존 세션 데이터 날리기
-      await fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-        .catch(e => console.warn('종합평가 세션 삭제 실패:', e));
-      
-      // 2. 전체 토픽 통합 종합평가 새 문제 생성
-      const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
+      // 2. 전체 토픽 통합 종합평가 추가 10문제 생성
+      const res = await fetch(`${API_BASE}/api/exam/additional`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        const qs = data.questions || [];
-        // Fisher-Yates shuffle – 주관식/객관식 랜덤 혼합
-        for (let i = qs.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [qs[i], qs[j]] = [qs[j], qs[i]];
-        }
-        setExamQuestions(qs);
-        showNotification('종합평가 문제가 성공적으로 다시 구성되었습니다.', 'success');
+        const newQs = data.questions || [];
+        const updatedQuestions = [...remainingQuestions, ...newQs];
+        
+        setExamQuestions(updatedQuestions);
+        
+        // Sync to server session
+        await fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            examQuestions: updatedQuestions, 
+            examRevealed: newRevealed, 
+            examAnswers: newAnswers, 
+            examTopic,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0 
+          })
+        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+        
+        showNotification('1~10번 문항을 삭제하고 새로운 10개 문항을 하단에 추가했습니다.', 'success');
       } else {
         showNotification(data.error || '종합평가 생성에 실패했습니다.', 'error');
       }
@@ -4647,7 +4693,7 @@ export default function App() {
                 ref={examBodyRef} 
                 className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
               >
-            {loadingExam ? (
+            {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
                   <div className="p-6 bg-amber-950/80 text-amber-400 rounded-full animate-bounce-slow">
@@ -4943,7 +4989,19 @@ export default function App() {
                   );
                 })}
 
-                {examQuestions.length > 0 && (
+                {loadingExam && (
+                  <div className="bg-slateCustom-900 border border-violet-500/30 rounded-2xl p-6 text-center animate-pulse flex flex-col items-center justify-center gap-3">
+                    <div className="p-3 bg-violet-950/80 text-violet-400 rounded-full animate-bounce">
+                      <Brain size={28} />
+                    </div>
+                    <div className="space-y-1">
+                      <h5 className="text-sm font-bold text-white">Gemini AI가 추가 10문항을 생성하고 있습니다...</h5>
+                      <p className="text-[11px] text-slate-400">1~10번 문항이 삭제되었으며, 기존 남은 문제들을 푸는 동안 백그라운드에서 신규 문항이 하단에 자동으로 채워집니다.</p>
+                    </div>
+                  </div>
+                )}
+
+                {examQuestions.length > 0 && !loadingExam && (
                   <div className="text-center py-6">
                     <div className="inline-flex items-center gap-3 bg-amber-950/60 border border-amber-500/20 rounded-2xl px-6 py-4">
                       <Award size={20} className="text-amber-400" />

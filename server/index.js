@@ -3726,6 +3726,172 @@ ${combinedText}
 });
 
 
+// 6-1-2. Comprehensive Exam: Generate 10 additional questions (2 batches of 5)
+app.post('/api/exam/additional', async (req, res) => {
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+
+    // Fetch all topics with pdf_data
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+    if (!topics || topics.length === 0) {
+      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+    }
+
+    // Extract text from each topic (limit per topic to avoid token overflow)
+    const topicTexts = [];
+    for (const topic of topics) {
+      let fileText = '';
+      if (topic.pdf_data) {
+        const isHtml = topic.pdf_name && (
+          topic.pdf_name.toLowerCase().endsWith('.html') ||
+          topic.pdf_name.toLowerCase().endsWith('.htm') ||
+          isBufferHtml(topic.pdf_data)
+        );
+        try {
+          if (isHtml) {
+            fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
+          } else {
+            const parsed = await pdfParse(topic.pdf_data);
+            fileText = parsed.text || '';
+          }
+        } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
+        fileText = mergeVerticalText(fileText);
+        // Limit per topic to avoid prompt token bloating
+        if (fileText.length > 1500) fileText = fileText.substring(0, 1500) + '...[중략]';
+      }
+      topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || '소스 없음'}`);
+    }
+
+    const combinedText = topicTexts.join('\n\n---\n\n');
+    const topicTitles = topics.map(t => t.title).join(', ');
+
+    let aggregatedAiQuestions = [];
+    const TOTAL_BATCHES = 2; // 2 batches * 5 questions = 10 questions
+
+    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 5문제씩 총 \${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+
+    for (let i = 0; i < TOTAL_BATCHES; i++) {
+      const randomSeed = Math.floor(Math.random() * 10000);
+      
+      const batchPrompt = `
+당신은 국가기술자격 기술사 시험 출제위원입니다.
+아래 범위 토픽 소스 자료를 참고하여, 기존 문제들과 중복되지 않는 고난도 종합평가 추가 문제 **정확히 5개**를 생성하십시오.
+(현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
+
+[평가 범위 토픽 목록]: \${topicTitles}
+[통합 소스 텍스트]:
+\${combinedText}
+
+[출제 규칙]:
+1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
+   - 객관식 (type: "객관식"): 4문제 (4지선다형)
+2. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+3. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
+   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
+4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
+
+[JSON 포맷]:
+[
+  {
+    "type": "주관식",
+    "subtype": "개요",
+    "question": "질문 내용",
+    "answer": "2~3줄 명품 모범답안",
+    "concept": "핵심 개념 1줄 요약"
+  },
+  {
+    "type": "객관식",
+    "question": "공학적 현상 분석 질문",
+    "options": ["보기1", "보기2", "보기3", "보기4"],
+    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
+    "explanation": "이유와 오답 정밀 해설"
+  }
+]
+`;
+
+      try {
+        console.log(`[종합평가 추가 생성] (\${i + 1}/\${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
+        const rawText = await callLLMWithFailover(null, batchPrompt);
+        let text = rawText.trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        }
+
+        let batchQuestions = null;
+        try {
+          batchQuestions = JSON.parse(text);
+        } catch {
+          batchQuestions = extractJsonArray(rawText);
+        }
+
+        if (batchQuestions && Array.isArray(batchQuestions)) {
+          aggregatedAiQuestions.push(...batchQuestions);
+          console.log(`[종합평가 추가 배치 성공] (\${i + 1}/\${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: \${aggregatedAiQuestions.length}`);
+        }
+
+        if (i < TOTAL_BATCHES - 1) {
+          await sleep(1200);
+        }
+      } catch (batchError) {
+        console.warn(`[추가 배치 우회 경고] \${i + 1}회차 생성 중 에러 발생:`, batchError.message);
+      }
+    }
+
+    if (aggregatedAiQuestions.length === 0) {
+      aggregatedAiQuestions = [
+        {
+          type: "객관식",
+          question: "점성토 지반의 압밀 시험에서 압하 압력의 변화에 따른 공극비($e$)와 대수 유효 응력($\\log \\sigma'$) 곡선(e-log p 곡선) 상의 주요 거동 인자에 대한 설명 중 가장 타당하지 않은 것은?",
+          options: [
+            "압축지수($C_c$)는 정규압밀 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
+            "선행압밀하중($p_c$)은 흙이 과거에 받았던 최대의 유효 수직응력이다.",
+            "재압축지수($C_r$)는 팽창 및 재압축 구간의 평균 기울기로, 일반적으로 압축지수의 1/5 ~ 1/10 수준이다.",
+            "과압밀비(OCR)가 1보다 큰 점토는 외력에 의한 전단 변형 시 양의 체적 팽창(Dilatancy) 거동을 보일 수 있다."
+          ],
+          answer: "압축지수($C_c$)는 정규압밀 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
+          explanation: "지반의 소성 활성도가 높고 압축성이 큰 흙일수록 정규압밀 기울기인 압축지수($C_c$)는 오히려 증가합니다."
+        },
+        {
+          type: "객관식",
+          question: "사질토 지반의 다짐(Compaction) 거동 특성에 있어 최대 건조 단위 중량($\\gamma_{d,max}$)과 최적 함수비(OMC)에 미치는 다짐 에너지의 영향으로 올바른 것은?",
+          options: [
+            "다짐 에너지가 증가하면 최대 건조 단위 중량은 커지고 최적 함수비는 감소한다.",
+            "다짐 에너지가 증가하면 최대 건조 단위 중량과 최적 함수비가 모두 증가한다.",
+            "다짐 에너지는 건조 측 다짐 상태의 전단 강도에는 영향을 미치지 않는다.",
+            "최적 함수비보다 훨씬 습윤한 측면에서는 다짐 에너지가 증가해도 건조 단위 중량이 급격히 증가한다."
+          ],
+          answer: "다짐 에너지가 증가하면 최대 건조 단위 중량은 커지고 최적 함수비는 감소한다.",
+          explanation: "다짐 에너지가 커지면 흙입자가 더 조밀하게 맞물려 최대 건조 단위 중량은 커지고, 필요한 최적 함수비는 건조한 측(좌측)으로 이동하여 감소합니다."
+        }
+      ];
+    }
+
+    const cleanedQuestions = aggregatedAiQuestions.map(q => ({
+      ...q,
+      question: cleanQuizQuestion(q.question)
+    }));
+
+    const healedFinalQuestions = cleanedQuestions.map(q => healQuizQuestionObject(q));
+    res.json({ questions: healedFinalQuestions });
+
+  } catch (err) {
+    console.error('Exam additional route error:', err);
+    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+  }
+});
+
+
+
 // 6-2. Comprehensive Exam: Generate Detailed Answer for a specific question
 app.post('/api/exam/detailed-answer', async (req, res) => {
   try {
