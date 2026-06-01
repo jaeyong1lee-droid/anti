@@ -1814,7 +1814,7 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
        WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
        GROUP BY topic_id 
        ORDER BY min_score ASC 
-       LIMIT 8`
+       LIMIT 5`
     );
 
     let candidates = completedHistory.filter(h => !pendingTopicIds.includes(h.topic_id));
