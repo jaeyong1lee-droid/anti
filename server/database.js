@@ -16,7 +16,7 @@ const connectionString = process.env.DATABASE_URL ||
                          process.env.SUPABASE_DATABASE_URL ||
                          '';
 
-const isPostgres = !!connectionString;
+let isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
 
 let db = null;
@@ -202,80 +202,99 @@ export const dbQuery = {
 export async function initDatabase() {
   try {
     if (isPostgres) {
-      // 1. topics table: stores studied topics and raw PDF data as a BYTEA
-      await pgPool.query(`
-        CREATE TABLE IF NOT EXISTS topics (
-          id SERIAL PRIMARY KEY,
-          title TEXT NOT NULL,
-          keywords TEXT,
-          pdf_name TEXT,
-          pdf_data BYTEA,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      try {
+        console.log('Verifying Cloud PostgreSQL connection...');
+        // Execute a quick probe query to ensure database is responsive
+        await pgPool.query('SELECT NOW()');
+        
+        // 1. topics table: stores studied topics and raw PDF data as a BYTEA
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS topics (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            keywords TEXT,
+            pdf_name TEXT,
+            pdf_data BYTEA,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-      // 2. schedules table: maps spaced repetition intervals for each topic
-      await pgPool.query(`
-        CREATE TABLE IF NOT EXISTS schedules (
-          id SERIAL PRIMARY KEY,
-          topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
-          review_round INTEGER NOT NULL,
-          planned_date TEXT NOT NULL,
-          completed_at TIMESTAMP,
-          status TEXT DEFAULT 'pending'
-        )
-      `);
-      // 3. app_session table: cross-device state sync (key-value store)
-      await pgPool.query(`
-        CREATE TABLE IF NOT EXISTS app_session (
-          key TEXT PRIMARY KEY,
-          value TEXT,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('Cloud PostgreSQL database tables initialized successfully.');
-    } else {
-      if (isVercel) {
-        console.warn('Running on Serverless Vercel and DATABASE_URL is not set. Bypassing local SQLite database initialization.');
-        return;
+        // 2. schedules table: maps spaced repetition intervals for each topic
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS schedules (
+            id SERIAL PRIMARY KEY,
+            topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+            review_round INTEGER NOT NULL,
+            planned_date TEXT NOT NULL,
+            completed_at TIMESTAMP,
+            status TEXT DEFAULT 'pending'
+          )
+        `);
+        // 3. app_session table: cross-device state sync (key-value store)
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS app_session (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        console.log('Cloud PostgreSQL database tables initialized successfully.');
+      } catch (pgInitError) {
+        if (isVercel) {
+          throw pgInitError; // Keep failing on Vercel as SQLite is disabled there
+        }
+        console.error('PostgreSQL connection failed at startup. Dynamically falling back to local SQLite database...', pgInitError.message);
+        isPostgres = false; // Graceful switch to SQLite
+
+        // Re-initialize local SQLite database tables instead
+        await initSQLiteTables();
       }
-      // Initialize Local SQLite
-      const localDb = await getSQLiteDb();
-      await dbQuery.run(`
-        CREATE TABLE IF NOT EXISTS topics (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          keywords TEXT,
-          pdf_name TEXT,
-          pdf_data BLOB,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      await dbQuery.run(`
-        CREATE TABLE IF NOT EXISTS schedules (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          topic_id INTEGER NOT NULL,
-          review_round INTEGER NOT NULL,
-          planned_date TEXT NOT NULL,
-          completed_at DATETIME,
-          status TEXT DEFAULT 'pending',
-          FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
-        )
-      `);
-      await dbQuery.run(`
-        CREATE TABLE IF NOT EXISTS app_session (
-          key TEXT PRIMARY KEY,
-          value TEXT,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('Local SQLite database tables initialized successfully.');
+    } else {
+      await initSQLiteTables();
     }
   } catch (error) {
     console.error('Failed to initialize database tables:', error);
     throw error;
   }
+}
+
+async function initSQLiteTables() {
+  if (isVercel) {
+    console.warn('Running on Serverless Vercel and DATABASE_URL is not set. Bypassing local SQLite database initialization.');
+    return;
+  }
+  // Initialize Local SQLite
+  const localDb = await getSQLiteDb();
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS topics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      keywords TEXT,
+      pdf_name TEXT,
+      pdf_data BLOB,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic_id INTEGER NOT NULL,
+      review_round INTEGER NOT NULL,
+      planned_date TEXT NOT NULL,
+      completed_at DATETIME,
+      status TEXT DEFAULT 'pending',
+      FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
+    )
+  `);
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS app_session (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('Local SQLite database tables initialized successfully.');
 }
 
 // Auto init database tables if Postgres env is detected
