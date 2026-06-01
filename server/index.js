@@ -1724,6 +1724,8 @@ app.get('/api/dashboard', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
+    // SQL: review_round DESC 정렬로 가장 진행도가 높은(최신) 라운드를 먼저 가져옴
+    // → 동일 토픽에 여러 pending 일정이 쌓여 있어도 가장 마지막 라운드가 Map에 먼저 삽입됨
     const sql = `
       SELECT 
         s.id AS schedule_id,
@@ -1739,16 +1741,17 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.planned_date ASC, t.title ASC
+      ORDER BY s.review_round DESC, s.planned_date ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
 
-    // 동일 토픽의 중복 일정 방어 (중복 시 가장 낮은 review_round 일정 하나만 유지)
+    // 중복 방어: 동일 토픽에 대해 가장 진행도가 높은(최신) 라운드를 우선 유지
+    // review_round DESC 정렬 덕분에 첫 번째로 삽입되는 항목이 항상 가장 높은 라운드
+    // → 과거 밀린 낮은 라운드가 오늘의 새 라운드를 덮어쓰는 버그 완전 차단
     const uniqueReviewsMap = new Map();
     for (const r of pendingReviews) {
-      const existing = uniqueReviewsMap.get(r.topic_id);
-      if (!existing || r.review_round < existing.review_round) {
+      if (!uniqueReviewsMap.has(r.topic_id)) {
         uniqueReviewsMap.set(r.topic_id, r);
       }
     }
