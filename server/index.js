@@ -1758,6 +1758,15 @@ app.get('/api/dashboard', async (req, res) => {
 
     // 💡 [추가] 복습 완료한 건 중 객관식 점수가 낮은 순 중심 랜덤 2건 보너스 복습 추가
     try {
+      // 오늘 날짜에 이미 완료한 보너스 복습(review_round = 99)이 있는지 확인 및 개수 파악
+      const completedBonusRows = await dbQuery.all(
+        `SELECT topic_id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
+        [queryDate]
+      );
+      const completedBonusCount = completedBonusRows.length; // 오늘 완료한 보너스 복습 개수
+      const allowedBonusCount = Math.max(0, 2 - completedBonusCount); // 오늘 추가 추천 가능한 개수
+      const completedBonusTopicIds = new Set(completedBonusRows.map(r => r.topic_id));
+
       const bonusSql = `
         SELECT 
           s.id AS schedule_id,
@@ -1786,15 +1795,16 @@ app.get('/api/dashboard', async (req, res) => {
         seenTopics.add(r.topic_id);
       }
       for (const r of lowScoreReviews) {
-        if (!seenTopics.has(r.topic_id)) {
+        // 이미 pending에 올라왔거나, 오늘 완료한 보너스 목록에 있는 토픽 제외
+        if (!seenTopics.has(r.topic_id) && !completedBonusTopicIds.has(r.topic_id)) {
           uniqueBonusCandidates.push(r);
           seenTopics.add(r.topic_id);
         }
       }
       
-      // 셔플하여 최대 2건 선정
+      // 셔플하여 최대 allowedBonusCount 만큼만 선정
       const shuffledBonus = shuffleArray(uniqueBonusCandidates);
-      const selectedBonus = shuffledBonus.slice(0, 2).map(b => ({
+      const selectedBonus = shuffledBonus.slice(0, allowedBonusCount).map(b => ({
         ...b,
         isBonus: true,
         // 보너스 카드가 대시보드 리스트에 자연스럽게 작동하도록 status를 잠시 pending으로 위장
@@ -1804,10 +1814,11 @@ app.get('/api/dashboard', async (req, res) => {
       // 기존 복습 목록에 병합
       uniqueReviews.push(...selectedBonus);
 
-      // 💡 [폴백] 데이터가 아예 없는 클린 DB일 경우, 사용자 시각적 확인을 위해 등록된 토픽 중 1개를 45점 약점 카드로 강제 추천
-      if (selectedBonus.length === 0) {
+      // 💡 [폴백] 데이터가 아예 없는 클린 DB일 경우, 사용자 시각적 확인을 위해 등록된 토픽 중 1개를 45점 약점 카드로 강제 추천 (한도가 허용될 때만)
+      if (selectedBonus.length === 0 && allowedBonusCount > 0) {
         const demoTopic = await dbQuery.get("SELECT id, title, keywords, pdf_name FROM topics LIMIT 1");
-        if (demoTopic) {
+        // 데모 토픽 역시 오늘 완료한 적이 없을 경우에만 폴백 노출
+        if (demoTopic && !completedBonusTopicIds.has(demoTopic.id)) {
           uniqueReviews.push({
             schedule_id: 9999, // 가상 스케줄 ID
             review_round: 1,
@@ -1836,6 +1847,38 @@ app.get('/api/dashboard', async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);
     res.status(500).json({ error: '서버 오류로 복습 대시보드를 불러올 수 없습니다.' });
+  }
+});
+
+// 2-9. Mark Weak-point Bonus Review as Complete
+app.post('/api/schedules/bonus/complete', async (req, res) => {
+  const { topicId, score } = req.body;
+  const today = getLocalDateString();
+  const now = new Date().toISOString();
+
+  if (!topicId) {
+    return res.status(400).json({ error: '토픽 ID 정보가 누락되었습니다.' });
+  }
+
+  try {
+    // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
+    const existing = await dbQuery.get(
+      'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+      [topicId, today]
+    );
+
+    if (!existing) {
+      await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
+         VALUES (?, 99, ?, 'completed', ?, ?, NULL, NULL)`,
+        [topicId, today, now, score !== undefined ? score : null]
+      );
+    }
+
+    res.json({ success: true, message: '약점극복 복습이 안전하게 완료 기록되었습니다.' });
+  } catch (error) {
+    console.error('Error completing bonus review:', error);
+    res.status(500).json({ error: '서버 오류로 약점극복 복습 완료 처리에 실패했습니다.' });
   }
 });
 

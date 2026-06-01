@@ -854,8 +854,12 @@ export default function App() {
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
   
-  // Option Explanations State for Multiple Choice Option Analysis
-  const [optionExplanations, setOptionExplanations] = useState({});
+  // Option Explanations State for Multiple Choice Option Analysis (Separated for Review and Exam)
+  const [reviewOptionExplanations, setReviewOptionExplanations] = useState({});
+  const [examOptionExplanations, setExamOptionExplanations] = useState({});
+
+  // Hidden Weak-Point Bonus topic IDs (Client hide-on-complete state)
+  const [hiddenBonusTopicIds, setHiddenBonusTopicIds] = useState([]);
 
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
@@ -1395,26 +1399,26 @@ export default function App() {
     }
   };
 
-  // Trigger AI questions Modal (mode: 'ai' = Gemini+source, 'local' = source only)
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null) => {
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false) => {
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
-      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
+      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound, isBonus });
       // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
         if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
       });
       return;
     }
-    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound });
+    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound, isBonus });
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
     setSelectedAnswers({}); // Reset MC selected answers
+    setReviewOptionExplanations({}); // Reset Option Explanations
     setIsFallback(false);
     setAiError('');
     setShowFullReport(false);
@@ -1471,7 +1475,7 @@ export default function App() {
       }).catch(e => console.warn('복습 세션 동기화 실패:', e));
       return copy;
     });
-    setOptionExplanations(prev => {
+    setReviewOptionExplanations(prev => {
       const copy = { ...prev };
       delete copy[idx];
       return copy;
@@ -1496,7 +1500,7 @@ export default function App() {
       }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
       return copy;
     });
-    setOptionExplanations(prev => {
+    setExamOptionExplanations(prev => {
       const copy = { ...prev };
       delete copy[idx];
       return copy;
@@ -1522,6 +1526,7 @@ export default function App() {
     setAiQuestions([]);
     setRevealedQuestions({});
     setSelectedAnswers({});
+    setReviewOptionExplanations({});
     setIsFallback(false);
     setAiError('');
     
@@ -1564,6 +1569,7 @@ export default function App() {
     setExamQuestions([]);
     setExamRevealed({});
     setExamAnswers({});
+    setExamOptionExplanations({});
     
     try {
       // 1. 서버의 기존 세션 데이터 날리기
@@ -1752,7 +1758,7 @@ export default function App() {
             return copy;
           });
           // 4. 보기별 해설도 초기화
-          setOptionExplanations(prev => {
+          setReviewOptionExplanations(prev => {
             const copy = { ...prev };
             delete copy[idx];
             return copy;
@@ -1785,7 +1791,7 @@ export default function App() {
             return copy;
           });
           // 보기별 해설 초기화
-          setOptionExplanations(prev => {
+          setExamOptionExplanations(prev => {
             const copy = { ...prev };
             delete copy[idx];
             return copy;
@@ -1816,11 +1822,15 @@ export default function App() {
   // (removed - now handled by separate buttons)
 
   // ── Request Option Explanation for Multiple Choice Questions ──────────
-  const handleRequestOptionExplanation = async (idx, question, options, answer) => {
+  const handleRequestOptionExplanation = async (mode, idx, question, options, answer) => {
+    const isReview = mode === 'review';
+    const explanations = isReview ? reviewOptionExplanations : examOptionExplanations;
+    const setExplanations = isReview ? setReviewOptionExplanations : setExamOptionExplanations;
+
     // 이미 가져온 해설이 있다면 무시
-    if (optionExplanations[idx]) return;
+    if (explanations[idx]) return;
     
-    setOptionExplanations(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
+    setExplanations(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
     try {
       const res = await fetch(`${API_BASE}/api/question/option-explanation`, {
         method: 'POST',
@@ -1829,9 +1839,9 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '보기별 해설을 생성하지 못했습니다.');
-      setOptionExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
+      setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
-      setOptionExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
+      setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
     }
   };
 
@@ -2096,6 +2106,7 @@ export default function App() {
     setExamQuestions([]);
     setExamRevealed({});
     setExamAnswers({});
+    setExamOptionExplanations({});
     try {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
@@ -3330,7 +3341,7 @@ export default function App() {
                   <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
                 </div>
                 <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
-                  총 {todayReviews.length}개 대기 중
+                  총 {todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length}개 대기 중
                 </span>
               </div>
 
@@ -3339,7 +3350,7 @@ export default function App() {
                   <RefreshCw className="animate-spin text-brand-500" size={32} />
                   <p className="text-sm font-medium text-slate-400">데이터를 불러오는 중입니다...</p>
                 </div>
-              ) : todayReviews.length === 0 ? (
+              ) : todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length === 0 ? (
                 /* Empty state */
                 <div className="glass-panel rounded-3xl p-12 border border-slate-800 text-center flex flex-col items-center justify-center">
                   <div className="p-4 bg-emerald-950/30 text-emerald-400 rounded-full mb-4 animate-pulse-slow">
@@ -3353,11 +3364,15 @@ export default function App() {
               ) : (
                 /* Card List */
                 <div className="space-y-4">
-                  {todayReviews.map((item) => (
-                    <div 
-                      key={item.schedule_id}
-                      className="glass-panel rounded-2xl p-5 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-purple-hover"
-                    >
+                  {todayReviews.map((item) => {
+                    if (item.isBonus && hiddenBonusTopicIds.includes(item.topic_id)) {
+                      return null;
+                    }
+                    return (
+                      <div 
+                        key={item.schedule_id || `bonus_${item.topic_id}`}
+                        className="glass-panel rounded-2xl p-5 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-purple-hover"
+                      >
                       <div className="space-y-2.5 flex-grow">
                         <div className="flex items-center gap-2 flex-wrap">
                           {item.isBonus ? (
@@ -3402,7 +3417,7 @@ export default function App() {
                       <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
                         {/* 소스 + Gemini 복습 */}
                         <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round)}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round, item.isBonus)}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
                           title="소스 + Gemini AI로 고난도 문제 생성"
                         >
@@ -3411,7 +3426,7 @@ export default function App() {
                         </button>
                         {/* 복습 완료 */}
                         <button
-                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round)}
+                          onClick={() => handleCompleteReview(item.schedule_id, item.title, item.review_round, item.isBonus, item.topic_id)}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
                         >
                           <Check size={13} />
@@ -3419,7 +3434,7 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  ); })}
                 </div>
               )}
             </section>
@@ -3811,7 +3826,7 @@ export default function App() {
                     fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
                       .catch(e => console.warn('세션 초기화 실패:', e));
                   }
-                  setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); lastQuizTopicId.current = null; 
+                  setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
                 }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="문제 초기화 (재개 시 새 문제 생성)"
@@ -4466,7 +4481,7 @@ export default function App() {
                   // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null);
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
                 }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
