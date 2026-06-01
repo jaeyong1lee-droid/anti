@@ -1486,7 +1486,7 @@ export default function App() {
   };
 
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
-  const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round) => {
+  const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
@@ -1496,6 +1496,8 @@ export default function App() {
     setSelectedTopic({ 
       id: topicId, 
       title: topicTitle, 
+      keywords,
+      pdf_name: pdfName,
       schedule_id: scheduleId, 
       review_round: round, 
       isReadOnly: true 
@@ -4038,7 +4040,7 @@ export default function App() {
                                     <div className="flex flex-col items-center">
                                       {sched.status === 'completed' ? (
                                         <button
-                                          onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round)}
+                                          onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
                                           className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none"
                                           title="클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다."
                                         >
@@ -4142,7 +4144,7 @@ export default function App() {
                   정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
                 </span>
               )}
-              {selectedTopic && (
+              {selectedTopic && !selectedTopic.isReadOnly && (
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
@@ -4165,19 +4167,21 @@ export default function App() {
               >
                 닫기
               </button>
-              <button
-                onClick={() => { 
-                  if (selectedTopic?.id) {
-                    fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
-                      .catch(e => console.warn('세션 초기화 실패:', e));
-                  }
-                  setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
-                }}
-                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="문제 초기화 (재개 시 새 문제 생성)"
-              >
-                종료
-              </button>
+              {selectedTopic && !selectedTopic.isReadOnly && (
+                <button
+                  onClick={() => { 
+                    if (selectedTopic?.id) {
+                      fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+                        .catch(e => console.warn('세션 초기화 실패:', e));
+                    }
+                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                  }}
+                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                  title="문제 초기화 (재개 시 새 문제 생성)"
+                >
+                  종료
+                </button>
+              )}
             </div>
           </div>
 
@@ -4297,7 +4301,7 @@ export default function App() {
                           </div>
                           
                           <div className="flex items-center gap-2">
-                            {answered && isMC && (
+                            {answered && isMC && !selectedTopic?.isReadOnly && (
                               <button
                                 onClick={() => handleResetSingleReviewAnswer(idx)}
                                 className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-violet-950/40 hover:border-violet-500/50 hover:text-violet-400 active:scale-95 transition-all duration-300"
@@ -4315,26 +4319,28 @@ export default function App() {
                               </button>
                             )}
                             
-                            <button
-                              disabled={regeneratingReview[idx]}
-                              onClick={() => handleRegenerateQuestion('review', idx, q)}
-                              className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
-                                regeneratingReview[idx]
-                                  ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
-                              }`}
-                            >
-                              <svg
-                                className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
+                            {!selectedTopic?.isReadOnly && (
+                              <button
+                                disabled={regeneratingReview[idx]}
+                                onClick={() => handleRegenerateQuestion('review', idx, q)}
+                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                                  regeneratingReview[idx]
+                                    ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                                }`}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                              </svg>
-                              {regeneratingReview[idx] ? '변환 중...' : '변환'}
-                            </button>
+                                <svg
+                                  className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                {regeneratingReview[idx] ? '변환 중...' : '변환'}
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -4388,7 +4394,7 @@ export default function App() {
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
                                    <div className="flex flex-wrap items-center gap-2 mb-2">
                                      {/* 문제조정 버튼 */}
-                                      {adjustingInputKey !== `r_${idx}` && (
+                                      {adjustingInputKey !== `r_${idx}` && !selectedTopic?.isReadOnly && (
                                         <button
                                           onClick={() => setAdjustingInputKey(`r_${idx}`)}
                                           className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
