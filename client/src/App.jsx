@@ -4111,9 +4111,9 @@ export default function App() {
                                       )}
                                      
                                      {/* 보기별 정밀 분석 해설 보기 버튼 */}
-                                     {!optionExplanations[idx] && (
+                                     {!reviewOptionExplanations[idx] && (
                                        <button
-                                         onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                         onClick={() => handleRequestOptionExplanation('review', idx, q.question, q.options, q.answer)}
                                          className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer"
                                        >
                                          🔍 보기별 정밀 분석 해설 보기 (AI)
@@ -4157,7 +4157,7 @@ export default function App() {
                                     )}
 
                                    {/* 보기별 정밀 분석 결과 */}
-                                   {optionExplanations[idx]?.loading && (
+                                   {reviewOptionExplanations[idx]?.loading && (
                                      <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
                                        <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
                                          <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
@@ -4167,14 +4167,14 @@ export default function App() {
                                        <div className="h-4 bg-slate-800 rounded w-4/6"></div>
                                      </div>
                                    )}
-                                   {optionExplanations[idx]?.error && (
-                                     <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                   {reviewOptionExplanations[idx]?.error && (
+                                     <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {reviewOptionExplanations[idx].error}</div>
                                    )}
-                                   {optionExplanations[idx]?.text && !optionExplanations[idx]?.loading && (
+                                   {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
                                        <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                        <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                         <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, optionExplanations[idx].text)} />
+                                         <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, reviewOptionExplanations[idx].text)} />
                                        </div>
                                      </div>
                                    )}
@@ -4749,9 +4749,9 @@ export default function App() {
                                   )}
                                   
                                   {/* 보기별 정밀 분석 해설 보기 버튼 */}
-                                  {!optionExplanations[idx] && (
+                                  {!examOptionExplanations[idx] && (
                                     <button
-                                      onClick={() => handleRequestOptionExplanation(idx, q.question, q.options, q.answer)}
+                                      onClick={() => handleRequestOptionExplanation('exam', idx, q.question, q.options, q.answer)}
                                       className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer"
                                     >
                                       🔍 보기별 정밀 분석 해설 보기 (AI)
@@ -4795,7 +4795,7 @@ export default function App() {
                                 )}
 
                                 {/* 보기별 정밀 분석 결과 */}
-                                {optionExplanations[idx]?.loading && (
+                                {examOptionExplanations[idx]?.loading && (
                                   <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
                                     <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
                                       <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
@@ -4805,14 +4805,14 @@ export default function App() {
                                     <div className="h-4 bg-slate-800 rounded w-4/6"></div>
                                   </div>
                                 )}
-                                {optionExplanations[idx]?.error && (
-                                  <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {optionExplanations[idx].error}</div>
+                                {examOptionExplanations[idx]?.error && (
+                                  <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {examOptionExplanations[idx].error}</div>
                                 )}
-                                {optionExplanations[idx]?.text && !optionExplanations[idx]?.loading && (
+                                {examOptionExplanations[idx]?.text && !examOptionExplanations[idx]?.loading && (
                                   <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
                                     <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                     <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                      <LatexRenderer text={optionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, optionExplanations[idx].text)} />
+                                      <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, examOptionExplanations[idx].text)} />
                                     </div>
                                   </div>
                                 )}
