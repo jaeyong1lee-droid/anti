@@ -4886,28 +4886,7 @@ export default function App() {
                           <Award size={20} className="text-emerald-400" />
                           <span>확인 및 닫기</span>
                         </button>
-                        {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
-                          <button
-                            onClick={() => {
-                              setSelectedTopic(null);
-                              setAiQuestions([]);
-                              setRevealedQuestions({});
-                              setSelectedAnswers({});
-                              setReviewOptionExplanations({});
-                              lastQuizTopicId.current = null;
-                              setResetConfirmTarget({
-                                scheduleId: selectedTopic.schedule_id,
-                                topicTitle: selectedTopic.title,
-                                round: selectedTopic.review_round
-                              });
-                            }}
-                            className="inline-flex items-center gap-3 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-500/30 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg font-bold text-amber-300 text-xs"
-                            title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
-                          >
-                            <RefreshCw size={14} className="text-amber-400" />
-                            <span>이 복습 회차 초기화 (다시 풀기)</span>
-                          </button>
-                        )}
+
                       </div>
                     </div>
                   )}
