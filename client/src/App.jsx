@@ -4497,7 +4497,7 @@ export default function App() {
                   </p>
                 </div>
               ) : (
-                <div className="w-full space-y-5">
+                <div className="w-full space-y-5 pb-32">
                   {isFallback && (
                     <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/20 text-amber-200 flex items-start gap-3 animate-fade-in mb-6 shadow-xl">
                       <div className="p-2.5 bg-amber-900/50 text-amber-400 rounded-xl">
@@ -5184,7 +5184,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="w-full space-y-5">
+              <div className="w-full space-y-5 pb-32">
                 {examQuestions.map((q, idx) => {
                   const isMC = q.type === '객관식';
                   const isSubj = !isMC;
@@ -5813,7 +5813,7 @@ export default function App() {
                   <h4 className="text-xl font-bold text-white mt-2">필수 공식 데이터를 로드하는 중...</h4>
                 </div>
               ) : (
-                <div className="w-full space-y-5">
+                <div className="w-full space-y-5 pb-32">
                   {formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                     const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -6378,7 +6378,7 @@ export default function App() {
             <div className="w-full md:w-[68%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
-                <div className="w-full space-y-5">
+                <div className="w-full space-y-5 pb-32">
                 
 
 
