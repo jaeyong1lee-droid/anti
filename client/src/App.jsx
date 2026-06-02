@@ -1639,41 +1639,6 @@ export default function App() {
     }
   };
 
-  // 이 회차의 복습 점수를 직접 키보드로 입력하여 강제 성적 부여 및 갱신
-  const handleManualScoreInput = async () => {
-    if (!selectedTopic?.schedule_id) return;
-    const rawScore = window.prompt("이 복습 회차의 점수를 직접 입력해 주세요. (0 ~ 100 사이의 정수)", "");
-    if (rawScore === null) return; // 취소됨
-    
-    const parsed = parseInt(rawScore, 10);
-    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
-      showNotification("점수는 0에서 100 사이의 정수여야 합니다.", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/score`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: parsed })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showNotification(`성적이 ${parsed}점으로 성공적으로 저장되었습니다!`, 'success');
-        // 모달 상태의 selectedTopic 성적 갱신
-        setSelectedTopic(prev => prev ? { ...prev, score: parsed } : null);
-        // 리스트 새로고침
-        fetchTodayReviews(referenceDate);
-        fetchAllTopics();
-      } else {
-        showNotification(data.error || '성적 갱신에 실패했습니다.', 'error');
-      }
-    } catch (err) {
-      console.error('Manual score error:', err);
-      showNotification('서버 통신 오류로 성적을 입력하지 못했습니다.', 'error');
-    }
-  };
-
   // Delete specific Topic (includes prompt safety confirm)
   const handleDeleteTopic = async (topicId, topicTitle) => {
     if (!window.confirm(`[${topicTitle}] 토픽과 관련된 모든 4회차 복습 스케줄이 영구 삭제됩니다.\n정말 삭제하시겠습니까?`)) {
@@ -4408,16 +4373,7 @@ export default function App() {
                       <span>원 보고서 보기</span>
                     </button>
                   )}
-                  {selectedTopic?.schedule_id && (
-                    <button
-                      onClick={handleManualScoreInput}
-                      className="px-5 py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-xs sm:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-2"
-                      title="이 복습 회차의 성적 점수를 직접 기입하여 저장합니다."
-                    >
-                      <CheckCircle size={18} />
-                      <span>점수 직접 입력</span>
-                    </button>
-                  )}
+
                 </div>
               </div>
             </div>
