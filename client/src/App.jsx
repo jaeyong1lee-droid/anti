@@ -937,6 +937,25 @@ export default function App() {
   const [hiddenBonusTopicIds, setHiddenBonusTopicIds] = useState([]);
   const [loadingWeakPoints, setLoadingWeakPoints] = useState(false);
 
+  // Answersheet study modal states
+  const [showAnswerSheet, setShowAnswerSheet] = useState(() => localStorage.getItem('anti_show_answersheet') === 'true');
+  const [answersheetQuestions, setAnswersheetQuestions] = useState([]);
+  const [loadingAnswersheet, setLoadingAnswersheet] = useState(false);
+  const [answersheetRevealed, setAnswersheetRevealed] = useState({});
+  const [answersheetSearchQuery, setAnswersheetSearchQuery] = useState('');
+  const [refreshingAnswersheetIdx, setRefreshingAnswersheetIdx] = useState(null);
+  const [uploadingAnswersheetPdf, setUploadingAnswersheetPdf] = useState(false);
+  const [editingAnswersheetIdx, setEditingAnswersheetIdx] = useState(null);
+  const [editAnswersheetTitle, setEditAnswersheetTitle] = useState('');
+  const [answersheetInputRevealed, setAnswersheetInputRevealed] = useState({});
+  const [answersheetMobileTab, setAnswersheetMobileTab] = useState('list');
+
+  // Answersheet refs
+  const latestAnswersheetQuestionsRef = useRef([]);
+  const answersheetSplitContainerRef = useRef(null);
+  const answersheetBodyRef = useRef(null);
+  const savedAnswersheetScroll = useRef(0);
+
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
@@ -964,6 +983,8 @@ export default function App() {
       activeModalRef.current = 'formula';
     } else if (showTheoryExam) {
       activeModalRef.current = 'theory';
+    } else if (showAnswerSheet) {
+      activeModalRef.current = 'answersheet';
     } else {
       activeModalRef.current = null;
     }
@@ -987,7 +1008,7 @@ export default function App() {
     }
     
     wasModalOpenRef.current = isCurrentlyOpen;
-  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet]);
 
   useEffect(() => {
     const handlePopState = (event) => {
@@ -1013,6 +1034,9 @@ export default function App() {
         } else if (activeModalRef.current === 'theory') {
           setShowTheoryExam(false);
           localStorage.setItem('anti_show_theory_exam', 'false');
+        } else if (activeModalRef.current === 'answersheet') {
+          setShowAnswerSheet(false);
+          localStorage.setItem('anti_show_answersheet', 'false');
         }
         console.log("[History] Back button pressed, closed modal: " + activeModalRef.current);
       } else {
@@ -1050,7 +1074,7 @@ export default function App() {
       document.body.style.overflow = '';
       document.documentElement.classList.remove('modal-open');
     };
-  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, showAnswerSheet]);
   
   // Drag Resizable Splitter State and Event Handlers
   const [reviewSplitRatio, setReviewSplitRatio] = useState(60);
@@ -1626,6 +1650,7 @@ export default function App() {
 
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
   const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
+    setShowAnswerSheet(false);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
@@ -1730,6 +1755,7 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false) => {
+    setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
     if (!finalScheduleId) {
@@ -3393,6 +3419,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('anti_show_exam', showExam ? 'true' : 'false');
   }, [showExam]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_show_answersheet', showAnswerSheet ? 'true' : 'false');
+  }, [showAnswerSheet]);
 
   const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
@@ -7631,9 +7661,10 @@ export default function App() {
               setShowExam(false);
               setShowFormulaExam(false);
               setShowTheoryExam(false);
+              setShowAnswerSheet(false);
             }}
             className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+              viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                 ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
             }`}
@@ -7649,9 +7680,10 @@ export default function App() {
               setShowExam(false);
               setShowFormulaExam(false);
               setShowTheoryExam(false);
+              setShowAnswerSheet(false);
             }}
             className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+              viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                 ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
             }`}
@@ -7667,6 +7699,7 @@ export default function App() {
               setSelectedTopic(null);
               setShowFormulaExam(false);
               setShowTheoryExam(false);
+              setShowAnswerSheet(false);
               handleOpenExam();
             }}
             className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
@@ -7685,6 +7718,7 @@ export default function App() {
               setSelectedTopic(null);
               setShowExam(false);
               setShowTheoryExam(false);
+              setShowAnswerSheet(false);
               handleOpenFormulaExam();
             }}
             className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
@@ -7703,6 +7737,7 @@ export default function App() {
               setSelectedTopic(null);
               setShowExam(false);
               setShowFormulaExam(false);
+              setShowAnswerSheet(false);
               handleOpenTheoryExam();
             }}
             className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
