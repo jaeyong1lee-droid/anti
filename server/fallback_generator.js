@@ -2101,7 +2101,44 @@ function getDynamicSourceExpertQuestions(title, keywords, fileText) {
 // Stage 1: Strict Title-First Strategy
 // Stage 2: Secondary Keyword-Match Strategy
 // ============================================================================
+function padTo10Questions(questions, title, keywords) {
+  if (!Array.isArray(questions) || questions.length >= 10) {
+    return questions;
+  }
+  
+  console.log(`[Padding] Current questions length: ${questions.length}. Padding up to 10 questions...`);
+  const padded = [...questions];
+  const generalPool = getGeneralGeotechExpertQuestions(title, keywords);
+  
+  // Extract multiple choice questions from generalPool that don't duplicate any text
+  const existingQuestions = new Set(questions.map(q => q.question.trim()));
+  
+  for (const gq of generalPool) {
+    if (padded.length >= 10) break;
+    if (!existingQuestions.has(gq.question.trim())) {
+      padded.push(gq);
+      existingQuestions.add(gq.question.trim());
+    }
+  }
+  
+  // Just in case we are still short, pull anything from generalPool
+  for (const gq of generalPool) {
+    if (padded.length >= 10) break;
+    if (padded.indexOf(gq) === -1) {
+      padded.push(gq);
+    }
+  }
+  
+  console.log(`[Padding] Padded questions count: ${padded.length}`);
+  return padded;
+}
+
 function generateFallbackQuestions(title, keywords, fileText = '') {
+  const rawQuestions = routeFallbackQuestions(title, keywords, fileText);
+  return padTo10Questions(rawQuestions, title, keywords);
+}
+
+function routeFallbackQuestions(title, keywords, fileText = '') {
   const cleanTitle = (title || '').toLowerCase();
   const cleanKeywords = (keywords || '').toLowerCase();
 

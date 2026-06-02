@@ -2485,8 +2485,19 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       searchTarget.includes('액상화') || searchTarget.includes('liquefaction') || searchTarget.includes('간극수압') || searchTarget.includes('과잉간극수압') ||
       searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상');
 
-    if (isCoreTopic) {
-      console.log(`[AI Route Interceptor] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    const forceLocal = req.query.local === 'true';
+
+    if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
+      console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const cleanedCore = coreQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -2506,22 +2517,11 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
       return res.json({
         questions: cleanedCore,
-        isFallback: false, // Mark false to mimic natural AI generation so UI keeps premium styling
+        isFallback: true, // Treat as fallback as AI was bypassed
         mode: 'ai-optimized',
         info: 'Handcrafted premium routing bypass'
       });
     }
-
-    const hasAnyAiKey = !!(
-      process.env.GEMINI_API_KEY ||
-      process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY
-    );
-    const forceLocal = req.query.local === 'true';
 
     // Force local/source-based mode
     if (forceLocal || !hasAnyAiKey) {
