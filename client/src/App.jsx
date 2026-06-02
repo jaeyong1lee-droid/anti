@@ -4666,7 +4666,6 @@ export default function App() {
                                       }
                                       return updated;
                                     });
-                                    handleRequestOptionExplanation('review', idx, q.question, q.options, q.answer);
                                   }}
                                   className={cls}
                                 >
@@ -5371,7 +5370,6 @@ export default function App() {
                                     }
                                     return updated;
                                   });
-                                  handleRequestOptionExplanation('exam', idx, q.question, q.options, q.answer);
                                 }}
                                 className={cls}
                               >

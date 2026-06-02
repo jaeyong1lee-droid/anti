@@ -508,7 +508,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
       let MODELS = [];
-      if (scenario === 'tutor') {
+      if (scenario === 'tutor' || scenario === 'option-explanation') {
         MODELS = ['gemini-3.1-flash-lite'];
       } else if (scenario === 'question') {
         MODELS = [
@@ -2503,6 +2503,41 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       }
     }
 
+    // 1) Find the most recently completed/failed schedule of this topic and extract incorrect questions
+    let carryOverQuestions = [];
+    let incorrectQuestions = [];
+    try {
+      const prevSchedule = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
+        [topicId]
+      );
+      if (prevSchedule) {
+        const prevSessionKey = `completed_review_schedule_${prevSchedule.id}`;
+        const prevSession = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [prevSessionKey]);
+        if (prevSession && prevSession.value) {
+          const parsed = JSON.parse(prevSession.value);
+          if (parsed && Array.isArray(parsed.questions)) {
+            parsed.questions.forEach((q, qIdx) => {
+              if (q.options && q.options.length > 0) {
+                const selected = parsed.selectedAnswers?.[qIdx];
+                const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                if (normalizeAns(selected) !== normalizeAns(q.answer)) {
+                  incorrectQuestions.push(q);
+                }
+              }
+            });
+          }
+        }
+      }
+      console.log(`[이전 회차 오답 조회] topicId=${topicId}, 오답 수=${incorrectQuestions.length}`);
+    } catch (err) {
+      console.warn('이전 오답 로딩 실패 (무시하고 신규 생성):', err);
+    }
+
+    const carryOverCount = Math.min(incorrectQuestions.length, 5);
+    carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
+    const neededAiMcCount = 8 - carryOverQuestions.length;
+
     let fileText = '';
     if (topic.pdf_data) {
       const isHtml = topic.pdf_name && (
@@ -2644,17 +2679,35 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 `;
     }
 
+    let weaknessPrompt = '';
+    if (carryOverQuestions.length > 0) {
+      weaknessPrompt = `
+[이전 회차 오답 정보 (참고사항 및 출제 집중 대상)]:
+사용자가 이전 회차에서 틀린 문제입니다. 새로 생성할 객관식(${neededAiMcCount}개) 문제는 아래 오답 문제들의 개념/주제/취약점을 집중적으로 보완하고 평가할 수 있는 문제들로 출제해 주십시오. (동일한 문제를 그대로 복제하여 출제하지 마시고, 오답 문제들의 약점 개념을 다루는 유사/변형 문제나 보완 이론 문제를 출제해 주십시오.)
+${carryOverQuestions.map((q, idx) => `
+오답 문제 ${idx + 1}:
+- 질문: ${q.question}
+- 보기: ${JSON.stringify(q.options)}
+- 정답: ${q.answer}
+- 해설: ${q.explanation || ''}
+`).join('\n')}
+`;
+    }
+
+    const totalAiQuestionsCount = 2 + neededAiMcCount;
+
     const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
-아래 제공되는 [토픽 제목], [핵심 키워드], 그리고 [첨부파일 본문 텍스트]를 심층 분석하여, 총 10개의 예상문제를 생성해 주십시오.
+아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트] 그리고 [이전 회차 오답 정보]를 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
 ${specialInstructions}
+${weaknessPrompt}
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
-1. 반드시 총 10개의 문제를 다음과 같이 구성하여 출제하십시오:
+1. 반드시 총 ${totalAiQuestionsCount}개의 문제를 다음과 같이 구성하여 출제하십시오:
 
    [1번 문제] 주관식 (개요):
    - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
@@ -2672,9 +2725,10 @@ ${specialInstructions}
    - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
    - "structure": 반드시 빈 문자열 ""
 
-   [3번~10번 문제] 객관식 (4지선다):
-   - 목적: 토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
+   [3번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
+   - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
    - "type" 값: 반드시 "객관식 (4지선다)"
+   - 개수: 반드시 정확히 ${neededAiMcCount}개의 객관식 문제를 출제해야 합니다.
    - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
    - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
@@ -2686,7 +2740,7 @@ ${specialInstructions}
    - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.
 
 3. 중복 질문 및 꼬임 금지:
-   - 10개 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
+   - 각 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
 
 4. 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
 
@@ -2713,7 +2767,7 @@ ${specialInstructions}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 10개가 되도록 객관식 계속)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 객관식 계속)
 ]
 `;
 
@@ -2737,7 +2791,35 @@ try {
           throw new Error('AI 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.');
         }
 
-        const cleanedQuestions = questions.map(q => healQuizQuestionObject({
+        const subjs = questions.filter(q => !q.options || q.options.length === 0);
+        const mcs = questions.filter(q => q.options && q.options.length > 0);
+
+        // 이전 회차 오답과 새로 생성된 객관식을 합쳐서 정확히 8개의 객관식으로 구성
+        let finalMcs = [...carryOverQuestions, ...mcs].slice(0, 8);
+        if (finalMcs.length < 8) {
+          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+          const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0);
+          for (const fQ of fallbackMcs) {
+            if (finalMcs.length >= 8) break;
+            if (!finalMcs.some(q => q.question === fQ.question)) {
+              finalMcs.push(fQ);
+            }
+          }
+          while (finalMcs.length < 8 && fallbackMcs.length > 0) {
+            finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
+          }
+        }
+
+        // 주관식도 정확히 2개(개요, 공식)로 구성
+        let finalSubjs = subjs.slice(0, 2);
+        if (finalSubjs.length < 2) {
+          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+          const fallbackSubjs = fallbackQs.filter(q => !q.options || q.options.length === 0);
+          finalSubjs = [...finalSubjs, ...fallbackSubjs].slice(0, 2);
+        }
+
+        const finalQuestions = [...finalSubjs, ...finalMcs];
+        const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           question: cleanQuizQuestion(q.question)
         }));
@@ -2758,8 +2840,14 @@ try {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
+      
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
+      const subjs = fallbackQuestions.filter(q => !q.options || q.options.length === 0);
+      const mcs = fallbackQuestions.filter(q => q.options && q.options.length > 0);
+      const finalMcs = [...carryOverQuestions, ...mcs].slice(0, 8);
+      const finalQuestions = [...subjs.slice(0, 2), ...finalMcs];
+      
+      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         question: cleanQuizQuestion(q.question)
       }));
@@ -4979,7 +5067,7 @@ app.post('/api/question/option-explanation', async (req, res) => {
 - **④ ${options[3]}** : [정답/오답 핵심 분석] ...
 `;
 
-    const responseText = await callLLMWithFailover(null, prompt);
+    const responseText = await callLLMWithFailover(null, prompt, null, 'option-explanation');
     const healedText = healLatexFormulas(responseText.trim());
     res.json({ text: healedText });
   } catch (err) {
