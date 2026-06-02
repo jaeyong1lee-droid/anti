@@ -4140,13 +4140,18 @@ export default function App() {
                                 <td key={round} className="py-4 px-2 text-center">
                                   {sched ? (
                                     <div className="flex flex-col items-center">
-                                      {sched.status === 'completed' ? (
+                                      {sched.status === 'completed' || sched.status === 'failed' ? (
                                         <button
                                           onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                          className="inline-flex items-center gap-0.5 text-xs text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none"
-                                          title="클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다."
+                                          className={`inline-flex items-center gap-0.5 text-xs border px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none ${
+                                            sched.status === 'completed'
+                                              ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
+                                              : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
+                                          }`}
+                                          title={`클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다. ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
                                         >
-                                          완료
+                                          {sched.status === 'completed' ? '완료' : '실패'}
+                                          {sched.score !== null && sched.score !== undefined ? ` (${sched.score}점)` : ''}
                                         </button>
                                       ) : (
                                         <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
@@ -4677,21 +4682,45 @@ export default function App() {
                   {aiQuestions.length > 0 && (
                     <div className="text-center py-6">
                       {selectedTopic?.isReadOnly ? (
-                        <button
-                          onClick={() => {
-                            setSelectedTopic(null);
-                            setAiQuestions([]);
-                            setRevealedQuestions({});
-                            setSelectedAnswers({});
-                            setReviewOptionExplanations({});
-                            lastQuizTopicId.current = null;
-                          }}
-                          className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                          title="풀이 결과 확인 완료"
-                        >
-                          <Award size={20} className="text-emerald-400" />
-                          <span>확인 및 닫기</span>
-                        </button>
+                        <div className="flex justify-center gap-3 flex-wrap">
+                          <button
+                            onClick={() => {
+                              setSelectedTopic(null);
+                              setAiQuestions([]);
+                              setRevealedQuestions({});
+                              setSelectedAnswers({});
+                              setReviewOptionExplanations({});
+                              lastQuizTopicId.current = null;
+                            }}
+                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                            title="풀이 결과 확인 완료"
+                          >
+                            <Award size={20} className="text-emerald-400" />
+                            <span>확인 및 닫기</span>
+                          </button>
+                          {selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999 && (
+                            <button
+                              onClick={() => {
+                                setSelectedTopic(null);
+                                setAiQuestions([]);
+                                setRevealedQuestions({});
+                                setSelectedAnswers({});
+                                setReviewOptionExplanations({});
+                                lastQuizTopicId.current = null;
+                                setResetConfirmTarget({
+                                  scheduleId: selectedTopic.schedule_id,
+                                  topicTitle: selectedTopic.title,
+                                  round: selectedTopic.review_round
+                                });
+                              }}
+                              className="inline-flex items-center gap-3 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-500/30 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg font-bold text-amber-300 text-xs"
+                              title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                            >
+                              <RefreshCw size={14} className="text-amber-400" />
+                              <span>이 복습 회차 초기화 (다시 풀기)</span>
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <button
                           onClick={handleQuizCompleteClick}

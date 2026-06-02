@@ -2155,7 +2155,7 @@ app.get('/api/topics', async (req, res) => {
     const topicsWithSchedules = [];
     for (const topic of topics) {
       const scheduleSql = `
-        SELECT id, review_round, planned_date, completed_at, status
+        SELECT id, review_round, planned_date, completed_at, status, score, correct_count, total_count
         FROM schedules
         WHERE topic_id = ?
         ORDER BY review_round ASC
