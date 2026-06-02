@@ -4273,17 +4273,30 @@ export default function App() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <h4 
-                                    onClick={() => {
-                                      setEditingTopicId(topic.id);
-                                      setEditingTitleText(topic.title);
-                                    }}
-                                    ref={isFirstMatch ? firstMatchRef : null}
-                                    className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline"
-                                    title="클릭 시 제목을 수정합니다."
-                                  >
-                                    {topic.title}
-                                  </h4>
+                                  <div className="flex items-center gap-2 w-full min-w-0">
+                                    <h4 
+                                      onClick={() => {
+                                        setEditingTopicId(topic.id);
+                                        setEditingTitleText(topic.title);
+                                      }}
+                                      ref={isFirstMatch ? firstMatchRef : null}
+                                      className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                      title="클릭 시 제목을 수정합니다."
+                                    >
+                                      {topic.title}
+                                    </h4>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-[11px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+                                      title="소스 + Gemini AI로 고난도 문제 생성"
+                                    >
+                                      <Brain size={11} />
+                                      <span>복습</span>
+                                    </button>
+                                  </div>
                                 )}
                                 {topic.pdf_name ? (
                                   <p className="text-[10px] text-slate-500 flex items-center gap-1">
@@ -4313,8 +4326,7 @@ export default function App() {
                                           }`}
                                           title={`클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다. ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
                                         >
-                                          {sched.status === 'completed' ? '완료' : '실패'}
-                                          {sched.score !== null && sched.score !== undefined ? ` (${sched.score}점)` : ''}
+                                          {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                         </button>
                                       ) : (
                                         <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
@@ -4333,14 +4345,6 @@ export default function App() {
                             {/* Instant Quiz & Delete Buttons */}
                             <td className="py-4 px-2 text-center">
                               <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai')}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  title="소스 + Gemini AI로 고난도 문제 생성"
-                                >
-                                  <Brain size={12} />
-                                  🧠 복습하기
-                                </button>
                                 <button
                                   onClick={() => handleDeleteTopic(topic.id, topic.title)}
                                   className="p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
