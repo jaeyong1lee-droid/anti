@@ -2404,7 +2404,7 @@ export default function App() {
       }
     }
 
-    cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    quizBodyRef.current?.scrollTo({ top: cards[targetIndex].offsetTop, behavior: 'smooth' });
   };
 
   // ── Scroll Exam Question Up/Down for Desktop Split-View ────────────
@@ -2445,7 +2445,7 @@ export default function App() {
       }
     }
 
-    cards[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    examBodyRef.current?.scrollTo({ top: cards[targetIndex].offsetTop, behavior: 'smooth' });
   };
 
   // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
@@ -4527,7 +4527,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -4662,7 +4662,7 @@ export default function App() {
                                         setTimeout(() => {
                                           const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
                                           if (cards && cards[idx + 1]) {
-                                            cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            quizBodyRef.current?.scrollTo({ top: cards[idx + 1].offsetTop, behavior: 'smooth' });
                                           }
                                         }, 600);
                                       }
@@ -5214,7 +5214,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5345,7 +5345,7 @@ export default function App() {
                                       setTimeout(() => {
                                         const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
                                         if (cards && cards[idx + 1]) {
-                                          cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                          examBodyRef.current?.scrollTo({ top: cards[idx + 1].offsetTop, behavior: 'smooth' });
                                         }
                                       }, 600);
                                     }
