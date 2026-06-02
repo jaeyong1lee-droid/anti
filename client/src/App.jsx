@@ -1564,12 +1564,14 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false) => {
+    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${scheduleId}, reviewRound=${reviewRound}, isBonus=${isBonus}`);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
+      console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
       setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound, isBonus });
       // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
@@ -1592,8 +1594,11 @@ export default function App() {
       const url = mode === 'local'
         ? `${API_BASE}/api/topics/${topicId}/ai-questions?local=true`
         : `${API_BASE}/api/topics/${topicId}/ai-questions`;
+      console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
       const res = await fetch(url, { method: 'POST' });
+      console.log(`[handleOpenAIQuestions] Response status: ${res.status} (${res.statusText})`);
       const data = await res.json();
+      console.log(`[handleOpenAIQuestions] Parsed response data:`, data);
 
       if (res.ok) {
         setAiQuestions(data.questions || []);
@@ -3505,6 +3510,7 @@ export default function App() {
     : 0;
   const totalScheduleCount = Array.isArray(allTopics) ? allTopics.length * 6 : 0;
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
+  const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
@@ -4104,7 +4110,7 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Review Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -4236,7 +4242,7 @@ export default function App() {
 
             {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[60%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -4616,7 +4622,7 @@ export default function App() {
           </div>
 
           {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-          <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+          <div className="hidden md:flex landscape-hide md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
               className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -4642,7 +4648,7 @@ export default function App() {
 
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            className="w-full md:w-[30%] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className="w-full md:w-[30%] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
@@ -4777,7 +4783,7 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Exam Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -4927,7 +4933,7 @@ export default function App() {
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full md:w-[60%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[60%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -5278,7 +5284,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -5304,7 +5310,7 @@ export default function App() {
 
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              className="w-full md:w-[30%] min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[30%] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
@@ -5397,7 +5403,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Formula Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5549,7 +5555,7 @@ export default function App() {
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
-              className="w-full md:w-[68%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full md:w-[68%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -5861,7 +5867,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -5886,7 +5892,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Formula */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-rose-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
@@ -5978,7 +5984,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
       {showTheoryExam && (
-        <div className="fixed inset-y-0 right-0 left-0 md:left-28 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -6129,7 +6135,7 @@ export default function App() {
           >
             
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
-            <div className="w-full md:w-[68%] min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            <div className="w-full md:w-[68%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5">
@@ -6395,7 +6401,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6420,7 +6426,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
@@ -6508,99 +6514,101 @@ export default function App() {
         </div>
       )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
-      <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
-        <button
-          onClick={() => {
-            setViewMode('dashboard');
-            setSelectedTopic(null);
-            setShowExam(false);
-            setShowFormulaExam(false);
-            setShowTheoryExam(false);
-          }}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
-              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-          }`}
-          title="오늘의 복습"
-        >
-          <Calendar size={20} />
-          <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
-        </button>
-        <button
-          onClick={() => {
-            setViewMode('all_topics');
-            setSelectedTopic(null);
-            setShowExam(false);
-            setShowFormulaExam(false);
-            setShowTheoryExam(false);
-          }}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
-              ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-          }`}
-          title={`토픽 진행현황 (${allTopics.length})`}
-        >
-          <List size={20} />
-          <span className="text-[10px] font-bold tracking-tight">진행현황</span>
-          <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
-        </button>
-        {/* 종합평가 버튼 */}
-        <button
-          onClick={() => {
-            setSelectedTopic(null);
-            setShowFormulaExam(false);
-            setShowTheoryExam(false);
-            handleOpenExam();
-          }}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            showExam
-              ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white shadow-lg glow-amber'
-              : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/40'
-          }`}
-          title="전체 소스 기반 70문항 종합평가"
-        >
-          <Award size={20} />
-          <span className="text-[10px] font-bold tracking-tight">종합평가</span>
-        </button>
-        {/* 필수공식 버튼 */}
-        <button
-          onClick={() => {
-            setSelectedTopic(null);
-            setShowExam(false);
-            setShowTheoryExam(false);
-            handleOpenFormulaExam();
-          }}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            showFormulaExam
-              ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
-              : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
-          }`}
-          title="전공 필수 공식 집중 평가 (주관식 인출)"
-        >
-          <Sigma size={20} />
-          <span className="text-[10px] font-bold tracking-tight">필수공식</span>
-        </button>
-        {/* 이론유도 버튼 */}
-        <button
-          onClick={() => {
-            setSelectedTopic(null);
-            setShowExam(false);
-            setShowFormulaExam(false);
-            handleOpenTheoryExam();
-          }}
-          className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            showTheoryExam
-              ? 'bg-gradient-to-tr from-indigo-600 to-purple-500 text-white shadow-lg glow-indigo'
-              : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40'
-          }`}
-          title="전공 필수 공식 이론 유도 및 상세 증명 학습"
-        >
-          <Brain size={20} />
-          <span className="text-[10px] font-bold tracking-tight">이론유도</span>
-        </button>
-      </div>
+      {!isModalOpen && (
+        <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
+          <button
+            onClick={() => {
+              setViewMode('dashboard');
+              setSelectedTopic(null);
+              setShowExam(false);
+              setShowFormulaExam(false);
+              setShowTheoryExam(false);
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+                ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+            }`}
+            title="오늘의 복습"
+          >
+            <Calendar size={20} />
+            <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
+          </button>
+          <button
+            onClick={() => {
+              setViewMode('all_topics');
+              setSelectedTopic(null);
+              setShowExam(false);
+              setShowFormulaExam(false);
+              setShowTheoryExam(false);
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam
+                ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+            }`}
+            title={`토픽 진행현황 (${allTopics.length})`}
+          >
+            <List size={20} />
+            <span className="text-[10px] font-bold tracking-tight">진행현황</span>
+            <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
+          </button>
+          {/* 종합평가 버튼 */}
+          <button
+            onClick={() => {
+              setSelectedTopic(null);
+              setShowFormulaExam(false);
+              setShowTheoryExam(false);
+              handleOpenExam();
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              showExam
+                ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white shadow-lg glow-amber'
+                : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/40'
+            }`}
+            title="전체 소스 기반 70문항 종합평가"
+          >
+            <Award size={20} />
+            <span className="text-[10px] font-bold tracking-tight">종합평가</span>
+          </button>
+          {/* 필수공식 버튼 */}
+          <button
+            onClick={() => {
+              setSelectedTopic(null);
+              setShowExam(false);
+              setShowTheoryExam(false);
+              handleOpenFormulaExam();
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              showFormulaExam
+                ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
+                : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
+            }`}
+            title="전공 필수 공식 집중 평가 (주관식 인출)"
+          >
+            <Sigma size={20} />
+            <span className="text-[10px] font-bold tracking-tight">필수공식</span>
+          </button>
+          {/* 이론유도 버튼 */}
+          <button
+            onClick={() => {
+              setSelectedTopic(null);
+              setShowExam(false);
+              setShowFormulaExam(false);
+              handleOpenTheoryExam();
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              showTheoryExam
+                ? 'bg-gradient-to-tr from-indigo-600 to-purple-500 text-white shadow-lg glow-indigo'
+                : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40'
+            }`}
+            title="전공 필수 공식 이론 유도 및 상세 증명 학습"
+          >
+            <Brain size={20} />
+            <span className="text-[10px] font-bold tracking-tight">이론유도</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

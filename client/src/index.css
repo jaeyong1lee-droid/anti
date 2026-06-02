@@ -121,3 +121,21 @@
   }
 }
 
+/* 📱 Mobile Landscape Layout Optimizations (height <= 600px in landscape orientation) */
+@media (orientation: landscape) and (max-height: 600px) {
+  .landscape-hide {
+    display: none !important;
+  }
+  .landscape-w-60 {
+    width: 60% !important;
+    max-width: 60% !important;
+    flex-shrink: 0 !important;
+  }
+  .landscape-w-40 {
+    width: 40% !important;
+    max-width: 40% !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+  }
+}
+

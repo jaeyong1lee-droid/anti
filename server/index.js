@@ -2176,7 +2176,7 @@ app.get('/api/topics', async (req, res) => {
 
 // 5. Delete Topic and associated Schedules
 app.delete('/api/topics/:id', async (req, res) => {
-  const topicId = req.params.id;
+  const topicId = Number(req.params.id) || req.params.id;
 
   try {
     const checkSql = `SELECT * FROM topics WHERE id = ?`;
@@ -2364,15 +2364,19 @@ app.get('/api/debug-env', async (req, res) => {
 
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
-  const topicId = req.params.id;
+  const topicId = Number(req.params.id) || req.params.id;
+  console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
 
   try {
     const topicSql = `SELECT * FROM topics WHERE id = ?`;
+    console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
     const topic = await dbQuery.get(topicSql, [topicId]);
 
     if (!topic) {
+      console.warn(`[POST /api/topics/:id/ai-questions] Topic NOT found in DB for topicId=${topicId}`);
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
     }
+    console.log(`[POST /api/topics/:id/ai-questions] Found topic in DB: title="${topic.title}", keywords="${topic.keywords}", pdf_name="${topic.pdf_name}"`);
 
     // 캐싱된 복습 세션 문제 복원
     await ensureSessionTable();
