@@ -4642,7 +4642,7 @@ export default function App() {
                               } else if (opt === selectedAnswers[idx] && opt !== q.answer) {
                                 cls += "bg-rose-950/70 border-rose-500 text-rose-200";
                               } else {
-                                cls += "bg-slate-800/30 border-slate-800 text-slate-500 opacity-60";
+                                cls += "bg-slate-800/30 border-slate-800/50 text-slate-300";
                               }
                               return (
                                 <button
@@ -5348,7 +5348,7 @@ export default function App() {
                             } else if (normalizeAns(opt) === normalizeAns(examAnswers[idx]) && normalizeAns(opt) !== normalizeAns(q.answer)) {
                               cls += "bg-rose-950/70 border-rose-500 text-rose-200";
                             } else {
-                              cls += "bg-slate-800/30 border-slate-800 text-slate-500 opacity-60";
+                              cls += "bg-slate-800/30 border-slate-800/50 text-slate-300";
                             }
                             return (
                               <button
