@@ -4851,14 +4851,7 @@ function healLatexFormulas(text) {
     }).join('');
   }
 
-  // 6. Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
-  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
-  healed = healed.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
-    if (p1.includes('\\left') || p1.includes('\\right')) {
-      return match;
-    }
-    return '($' + p1.trim() + '$)';
-  });
+  // 6. [Moved to STEP 1.5 to protect valid math blocks from global injection]
 
   // --- Multi-Step Tokenization & Wrapping Architecture ---
 
@@ -4889,6 +4882,26 @@ function healLatexFormulas(text) {
       t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
       t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
 
+      token.content = t;
+    }
+  });
+
+  // Re-assemble and re-tokenize after STEP 1 to convert wrapped math blocks into actual math tokens
+  let reassembledAfterStep1 = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembledAfterStep1);
+
+  // STEP 1.5: Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
+  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
+  // Running this only on text tokens prevents injecting $ inside pre-existing math blocks.
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+      t = t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+        if (p1.includes('\\left') || p1.includes('\\right')) {
+          return match;
+        }
+        return '($' + p1.trim() + '$)';
+      });
       token.content = t;
     }
   });

@@ -424,7 +424,6 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   const healFormulas = (val) => {
     if (!val) return val;
     let healed = val;
-    healed = healed.replace(/\\+/g, '\\');
     
     // 0.1) If the entire text starts and ends with $ or $$ and contains Korean, strip the outer delimiters.
     let trimmed = healed.trim();
@@ -437,38 +436,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       }
     }
 
-    // 1) Heal invalid \y commands used for gamma
-    healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
-      if (suffix.startsWith('cdot')) {
-        return '\\gamma \\cdot ' + suffix.substring(4);
-      }
-      return '\\gamma ' + suffix;
-    });
-    healed = healed.replace(/\\y\\b/g, '\\gamma');
-
-    // 2) Inside LaTeX math blocks, convert bare 'y' used as gamma to '\gamma'
-    healed = healed.replace(/\$([^\$]+)\$/g, (match, math) => {
-      let replaced = math;
-      replaced = replaced.replace(/\\by_([a-zA-Z0-9]+)\\b/g, '\\gamma_$1');
-      replaced = replaced.replace(/\\by\\s*D_f\\b/g, '\\gamma D_f');
-      replaced = replaced.replace(/\\byD_f\\b/g, '\\gamma D_f');
-      replaced = replaced.replace(/\\by\\s*\\\\?cdot\\b/g, '\\gamma \\cdot');
-      return `$${replaced}$`;
-    });
-
-    // 3) Wrap geotech variables and equations (like M_w < 7.5, MSF > 1.0) in $ if they aren't already wrapped
-    healed = healed.replace(/\\b(M_w|MSF|F_s|K_h|K_{30})\\s*([<>=]=?)\\s*([0-9\\.]+)\\b/g, (match, v, op, num) => {
-      return `$${v} ${op} ${num}$`;
-    });
-
-    // 4) Heal misplaced dollar sign typos like M_w$=7.5 or MSF$=1.0
-    healed = healed.replace(/\\b([a-zA-Z0-9_]+)\\$=\\s*([0-9\\.]+)\\b/g, (match, v, num) => {
-      return `$${v} = ${num}$`;
-    });
-
-    // 5) Wrap Greek letters and subscripts (like K_0, K_a, f_{ck}) in $ for partial LaTeX rendering
-    const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
-    
+    // Tokenize first to protect valid math blocks from global regex wrapping rules
     const tokens = [];
     let lastIndex = 0;
     const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
@@ -487,23 +455,58 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     }
 
     const processedTokens = tokens.map(tok => {
-      if (tok.type !== 'text') return tok.content;
+      if (tok.type !== 'text') {
+        // 2) Inside LaTeX math blocks, convert bare 'y' used as gamma to '\gamma'
+        let math = tok.content;
+        const isBlock = math.startsWith('$$');
+        let inside = isBlock 
+          ? math.substring(2, math.length - 2).trim()
+          : math.substring(1, math.length - 1).trim();
+        
+        inside = inside.replace(/\\by_([a-zA-Z0-9]+)\\b/g, '\\gamma_$1');
+        inside = inside.replace(/\\by\\s*D_f\\b/g, '\\gamma D_f');
+        inside = inside.replace(/\\byD_f\\b/g, '\\gamma D_f');
+        inside = inside.replace(/\\by\\s*\\\\?cdot\\b/g, '\\gamma \\cdot');
+        
+        return isBlock ? `$$${inside}$$` : `$${inside}$`;
+      }
+
       let t = tok.content;
+
+      // 1) Heal invalid \y commands used for gamma
+      t = t.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
+        if (suffix.startsWith('cdot')) {
+          return '\\gamma \\cdot ' + suffix.substring(4);
+        }
+        return '\\gamma ' + suffix;
+      });
+      t = t.replace(/\\y\\b/g, '\\gamma');
+
+      // 3) Wrap geotech variables and equations (like M_w < 7.5, MSF > 1.0) in $ if they aren't already wrapped
+      t = t.replace(/\\b(M_w|MSF|F_s|K_h|K_{30})\\s*([<>=]=?)\\s*([0-9\\.]+)\\b/g, (match, v, op, num) => {
+        return `$${v} ${op} ${num}$`;
+      });
+
+      // 4) Heal misplaced dollar sign typos like M_w$=7.5 or MSF$=1.0
+      t = t.replace(/\\b([a-zA-Z0-9_]+)\\$=\\s*([0-9\\.]+)\\b/g, (match, v, num) => {
+        return `$${v} = ${num}$`;
+      });
+
+      // 5) Wrap Greek letters and subscripts (like K_0, K_a, f_{ck}) in $ for partial LaTeX rendering
+      const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
       
-      // Wrap greek letters
       symbols.forEach(sym => {
         const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
         t = t.replace(regex, `\\${sym}`);
       });
-      // Wrap greek letters with subscripts
+      
       const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
       const greekPattern = new RegExp(`(\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
       t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
       
-      // Wrap plain variable subscripts like K_0, f_{ck}, i_{cor}, P_{max}, P_w, C_v, m_v, q_{ult}, N_c, N_q, N_{\gamma}, J_n, J_r, J_a, J_w, q_a, D_f
       const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
       t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
-      
+
       return t;
     });
 
@@ -4659,7 +4662,7 @@ export default function App() {
                                         setTimeout(() => {
                                           const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
                                           if (cards && cards[idx + 1]) {
-                                            cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
                                           }
                                         }, 600);
                                       }
@@ -5342,7 +5345,7 @@ export default function App() {
                                       setTimeout(() => {
                                         const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
                                         if (cards && cards[idx + 1]) {
-                                          cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                          cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
                                         }
                                       }, 600);
                                     }
