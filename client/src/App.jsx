@@ -3798,57 +3798,59 @@ export default function App() {
       <main className="max-w-7xl w-full mx-auto px-6 md:px-12 md:pl-28 mt-8 flex-grow">
         
         {/* Statistics Dashboard Banner */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-          <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4 glow-purple">
-            <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl">
-              <Clock size={24} />
+        {(isDesktop || viewMode !== 'all_topics') && (
+          <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+            <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4 glow-purple">
+              <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl">
+                <Clock size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400">오늘 복습 대상 토픽</p>
+                <h3 className="text-2xl font-black text-white mt-1">
+                  {loadingReviews ? '-' : `${todayReviews.length}개`}
+                </h3>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400">오늘 복습 대상 토픽</p>
-              <h3 className="text-2xl font-black text-white mt-1">
-                {loadingReviews ? '-' : `${todayReviews.length}개`}
-              </h3>
-            </div>
-          </div>
 
-          <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
-            <div className="p-3 bg-emerald-950/60 text-emerald-400 rounded-xl">
-              <CheckCircle size={24} />
+            <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
+              <div className="p-3 bg-emerald-950/60 text-emerald-400 rounded-xl">
+                <CheckCircle size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400">학습 시작한 토픽</p>
+                <h3 className="text-2xl font-black text-white mt-1">
+                  {allTopics.length}개
+                </h3>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400">학습 시작한 토픽</p>
-              <h3 className="text-2xl font-black text-white mt-1">
-                {allTopics.length}개
-              </h3>
-            </div>
-          </div>
 
-          <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
-            <div className="p-3 bg-brand-950/60 text-brand-400 rounded-xl">
-              <Award size={24} />
+            <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
+              <div className="p-3 bg-brand-950/60 text-brand-400 rounded-xl">
+                <Award size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400">총 복습 완료 세션</p>
+                <h3 className="text-2xl font-black text-white mt-1">
+                  {totalCompletedCount}회 / {totalScheduleCount}회
+                </h3>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400">총 복습 완료 세션</p>
-              <h3 className="text-2xl font-black text-white mt-1">
-                {totalCompletedCount}회 / {totalScheduleCount}회
-              </h3>
-            </div>
-          </div>
 
-          <div className="glass-panel rounded-2xl p-5 border border-slate-800">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-xs font-medium text-slate-400">전체 스케줄 완료율</p>
-              <span className="text-xs font-black text-brand-400">{overallProgressPercent}%</span>
+            <div className="glass-panel rounded-2xl p-5 border border-slate-800">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-xs font-medium text-slate-400">전체 스케줄 완료율</p>
+                <span className="text-xs font-black text-brand-400">{overallProgressPercent}%</span>
+              </div>
+              <div className="w-full bg-slateCustom-900 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-brand-600 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out" 
+                  style={{ width: `${overallProgressPercent}%` }}
+                ></div>
+              </div>
+               <p className="text-[10px] text-slate-500 mt-2">각 토픽의 1일, 4일, 7일, 14일, 35일, 60일 복습 달성률</p>
             </div>
-            <div className="w-full bg-slateCustom-900 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-brand-600 to-indigo-500 h-2 rounded-full transition-all duration-500 ease-out" 
-                style={{ width: `${overallProgressPercent}%` }}
-              ></div>
-            </div>
-             <p className="text-[10px] text-slate-500 mt-2">각 토픽의 1일, 4일, 7일, 14일, 35일, 60일 복습 달성률</p>
-          </div>
-        </section>
+          </section>
+        )}
 
         {viewMode === 'dashboard' ? (
           /* DASHBOARD VIEW (Two Column) */
@@ -4134,7 +4136,7 @@ export default function App() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
-                <h2 className="text-lg font-bold text-white">등록한 모든 토픽 스케줄링 테이블</h2>
+                <h2 className="text-lg font-bold text-white">복습 토픽</h2>
               </div>
               
               {/* Search bar inside allTopics view */}
