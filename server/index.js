@@ -295,6 +295,63 @@ function decodeHtmlBuffer(buffer) {
   return decodedText;
 }
 
+// Safe LaTeX-preserving backslash escaper for LLM JSON responses
+function escapeJsonBackslashes(str) {
+  if (!str) return str;
+  let result = '';
+  let inString = false;
+  let i = 0;
+  
+  const latexCommands = [
+    'newline', 'nabla', 'nu', 'theta', 'tau', 'tan', 'times', 'tilde', 'text', 
+    'rho', 'right', 'mathrm', 'rule', 'beta', 'bar', 'begin', 'frac', 'phi', 'varphi', 'forall'
+  ];
+
+  while (i < str.length) {
+    const char = str[i];
+    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+      inString = !inString;
+      result += char;
+      i++;
+    } else if (inString && char === '\\') {
+      const next = str[i + 1];
+      
+      if (next === '"' || next === '/' || next === '\\') {
+        result += char + next;
+        i += 2;
+      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
+        let tempIndex = i + 1;
+        let commandWord = '';
+        while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
+          commandWord += str[tempIndex];
+          tempIndex++;
+        }
+        
+        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
+        if (isLatex) {
+          result += '\\\\';
+          i++;
+        } else {
+          result += char + next;
+          i += 2;
+        }
+      } else {
+        result += '\\\\';
+        i++;
+      }
+    } else {
+      result += char;
+      i++;
+    }
+  }
+  return result;
+}
+
+function parseLlmJson(text) {
+  const escaped = escapeJsonBackslashes(text);
+  return JSON.parse(escaped);
+}
+
 // Helper: Extract JSON array from string robustly
 function extractJsonArray(str) {
   if (!str) return null;
@@ -303,14 +360,14 @@ function extractJsonArray(str) {
   if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
     const jsonSub = str.substring(startIdx, endIdx + 1);
     try {
-      return JSON.parse(jsonSub);
+      return parseLlmJson(jsonSub);
     } catch (e) {
       console.warn('Failed parsing extracted JSON substring, trying aggressive cleanup:', e);
       const cleanSub = jsonSub
         .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
         .trim();
       try {
-        return JSON.parse(cleanSub);
+        return parseLlmJson(cleanSub);
       } catch (e2) {
         console.error('Aggressive JSON cleanup failed:', e2);
         return null;
@@ -2793,7 +2850,7 @@ try {
         
         let questions = null;
         try {
-          questions = JSON.parse(text);
+          questions = parseLlmJson(text);
         } catch (parseErr) {
           console.warn('[단일토픽퀴즈] JSON.parse 실패로 인해 정규식 배열 추출을 시도합니다:', parseErr);
           questions = extractJsonArray(responseText);
@@ -3088,7 +3145,7 @@ ${formatRequirement}
 
       let parsedQuestion = null;
       try {
-        parsedQuestion = JSON.parse(text);
+        parsedQuestion = parseLlmJson(text);
       } catch (parseErr) {
         console.warn('[단일문제재생성] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
         const extracted = extractJsonArray('[' + text + ']');
@@ -3304,7 +3361,7 @@ ${formatRequirement}
 
       let parsedQuestion = null;
       try {
-        parsedQuestion = JSON.parse(text);
+        parsedQuestion = parseLlmJson(text);
       } catch (parseErr) {
         console.warn('[종합평가단일재생성] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
         const extracted = extractJsonArray('[' + text + ']');
@@ -3497,7 +3554,7 @@ ${formatRequirement}
 
       let parsedQuestion = null;
       try {
-        parsedQuestion = JSON.parse(text);
+        parsedQuestion = parseLlmJson(text);
       } catch (parseErr) {
         console.warn('[단일문제조정] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
         const extracted = extractJsonArray('[' + text + ']');
@@ -3661,7 +3718,7 @@ ${formatRequirement}
 
       let parsedQuestion = null;
       try {
-        parsedQuestion = JSON.parse(text);
+        parsedQuestion = parseLlmJson(text);
       } catch (parseErr) {
         console.warn('[종합평가단일조정] JSON.parse 실패로 정규식 추출을 시도합니다:', parseErr);
         const extracted = extractJsonArray('[' + text + ']');
@@ -3797,7 +3854,7 @@ ${combinedText}
 
         let batchQuestions = null;
         try {
-          batchQuestions = JSON.parse(text);
+          batchQuestions = parseLlmJson(text);
         } catch {
           batchQuestions = extractJsonArray(rawText);
         }
@@ -4157,7 +4214,7 @@ app.post('/api/exam/additional', async (req, res) => {
 
         let batchQuestions = null;
         try {
-          batchQuestions = JSON.parse(text);
+          batchQuestions = parseLlmJson(text);
         } catch {
           batchQuestions = extractJsonArray(rawText);
         }
@@ -4491,7 +4548,7 @@ JSON 형식:
       }
       
       try {
-        const result = JSON.parse(cleanJsonText);
+        const result = parseLlmJson(cleanJsonText)
         let structure = result.structure || '';
         structure = structure
           .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
@@ -5142,6 +5199,151 @@ app.post('/api/session/formula', async (req, res) => {
 });
 
 // GET /api/session/theory → 저장된 이론유도 상태 반환
+// GET /api/session/answersheet → 저장된 답안지 상태 반환
+app.get('/api/session/answersheet', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['answersheet_questions']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      res.json({ data: JSON.parse(rows[0].value) });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/answersheet error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/answersheet → 답안지 상태 저장
+app.post('/api/session/answersheet', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { answersheetQuestions } = req.body;
+    const value = JSON.stringify({ answersheetQuestions });
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['answersheet_questions']);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ['answersheet_questions', value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/answersheet error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
+app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
+    }
+    let fileText = '';
+    const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
+    const pdfNameLower = pdfName.toLowerCase();
+    const isHtml = pdfNameLower.endsWith('.html') || pdfNameLower.endsWith('.htm') || isBufferHtml(req.file.buffer);
+
+    if (isHtml) {
+      fileText = htmlToPlainText(req.file.buffer.toString('utf-8'));
+    } else {
+      const parsedPdf = await pdfParse(req.file.buffer);
+      fileText = parsedPdf.text || '';
+    }
+
+    fileText = mergeVerticalText(fileText);
+
+    if (!fileText || fileText.trim().length < 20) {
+      return res.status(400).json({ error: '파일에서 텍스트를 추출할 수 없습니다.' });
+    }
+
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) {
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    if (fileText.length > 20000) {
+      fileText = fileText.substring(0, 20000) + '...[중략]';
+    }
+
+    const systemInstruction = `당신은 지반공학 및 토목구조/시공 전 분야 최고의 권위자이자 기술사 시험 전문 설계/시공 보고서 출제위원입니다. 
+제공된 공학 전공 PDF/HTML 텍스트(설계보고서, 시방서, 기술 기준, 모범 답안지 등)를 정밀 분석하여 핵심 설계/해설 정보들을 발췌 및 요약하여 **여러 개의 모범 답안지 세트**로 구성한 JSON 형식으로 작성해 주세요.
+
+JSON 규격:
+{
+  "theories": [
+    {
+      "title": "답안지/보고서 항목 명칭 (예: 테르자기 압밀 보고서)",
+      "concept": "이 항목의 직관적인 요약 및 공학적 의미 설명",
+      "assumptions": "필요한 전제 조건이나 설계 인자들 (있다면 번호 매겨 서술, 없으면 생략)",
+      "answer": "핵심 설계 내용, 유도 공식, 시공 지침, 구체적인 계산 또는 모범 해설 내용 전체를 처음부터 끝까지 완전하게 기술. (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 깊이 있게 구성)"
+    }
+  ]
+}
+
+반드시 다른 군더더기 텍스트나 마크다운 블록 없이 오직 지정된 JSON 구조로만 반환해 주세요.`;
+
+    const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
+
+    try {
+      const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+      let cleanJsonText = responseText.trim();
+      const startIdx = cleanJsonText.indexOf('{');
+      const endIdx = cleanJsonText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+      } else if (cleanJsonText.startsWith('```')) {
+        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+
+      const result = parseLlmJson(cleanJsonText)
+      let theories = [];
+      if (result.theories && Array.isArray(result.theories)) {
+        theories = result.theories;
+      } else if (result.title && result.answer) {
+        theories = [result];
+      } else {
+        throw new Error('AI 추출 정보 누락');
+      }
+
+      res.json({
+        theories: theories.map(t => ({
+          title: healLatexFormulas((t.title || '실시간 추출 공식').trim()),
+          concept: healLatexFormulas((t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim()),
+          assumptions: healLatexFormulas((t.assumptions || '').trim()),
+          answer: healLatexFormulas((t.answer || '상세 유도 과정이 존재하지 않습니다.').trim())
+        }))
+      });
+    } catch (llmErr) {
+      console.warn('[Upload AI Fallback] Gemini analysis failed. Falling back to local parser:', llmErr);
+      const theories = generateLocalTheoryQuestions(pdfName, fileText);
+      res.json({
+        theories: theories.map(t => ({
+          title: t.title.trim(),
+          concept: '업로드한 본문 문서를 기반으로 분석한 로컬 마이닝 결과식입니다.',
+          assumptions: '본 문서의 물리적 관계식을 기반으로 추출됨',
+          answer: t.answer.trim()
+        }))
+      });
+    }
+  } catch (err) {
+    console.error('POST /api/session/answersheet/upload error:', err);
+    res.status(500).json({ error: err.message || 'PDF/HTML 분석에 실패했습니다.' });
+  }
+});
+
 app.get('/api/session/theory', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -5257,7 +5459,7 @@ JSON 규격:
         cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
       }
 
-      const result = JSON.parse(cleanJsonText);
+      const result = parseLlmJson(cleanJsonText)
       let theories = [];
       if (result.theories && Array.isArray(result.theories)) {
         theories = result.theories;
@@ -5493,7 +5695,7 @@ JSON 규격:
       cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
     }
 
-    const result = JSON.parse(cleanJsonText);
+    const result = parseLlmJson(cleanJsonText)
     if (!result.title || !result.answer) {
       throw new Error('AI 분석 결과 누락');
     }

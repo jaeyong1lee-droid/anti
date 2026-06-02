@@ -738,26 +738,25 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
             </div>
           );
         } else {
-          // 일반 텍스트 내 inline math $ ... $ 처리
-          let htmlContent = part.content;
-          try {
-            htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
-              // 한글이 포함된 경우 단순 텍스트로 취급하여 수식 오작동 방지 (달러 기호 오탈자 구제)
-              if (/[\uAC00-\uD7A3]/.test(math)) {
-                return m;
-              }
-              try {
-                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-              } catch (e) {
-                return m;
-              }
-            });
-          } catch (e) {
-            console.warn(e);
-          }
-
           const isInline = className.includes('inline');
           if (isInline) {
+            // 일반 텍스트 내 inline math $ ... $ 처리
+            let htmlContent = part.content;
+            try {
+              htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
+                // 한글이 포함된 경우 단순 텍스트로 취급하여 수식 오작동 방지 (달러 기호 오탈자 구제)
+                if (/[\uAC00-\uD7A3]/.test(math)) {
+                  return m;
+                }
+                try {
+                  return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
+                } catch (e) {
+                  return m;
+                }
+              });
+            } catch (e) {
+              console.warn(e);
+            }
             return (
               <span 
                 key={idx}
@@ -768,13 +767,30 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
           }
 
           // 비인라인 일반 텍스트의 경우, 빈 행을 제거하고 단락 숫자(1., 2. 등)가 있는 줄만 위아래 여백 적용
-          const textLines = htmlContent.split('\n');
+          // KaTeX HTML이 개행 기호 split으로 인해 깨지는 것을 막기 위해 개행으로 먼저 쪼갠 후 각 라인별 수식 치환 적용
+          const textLines = part.content.split('\n');
           const activeLines = textLines.filter(line => line.trim() !== '');
 
           return (
             <div key={idx} className="select-text">
               {activeLines.map((line, lIdx) => {
-                const cleanLine = line.trim();
+                let htmlLine = line;
+                try {
+                  htmlLine = htmlLine.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
+                    if (/[\uAC00-\uD7A3]/.test(math)) {
+                      return m;
+                    }
+                    try {
+                      return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
+                    } catch (e) {
+                      return m;
+                    }
+                  });
+                } catch (e) {
+                  console.warn(e);
+                }
+
+                const cleanLine = htmlLine.trim();
                 // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
                 const isHeading = /^\s*\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
                 
@@ -783,7 +799,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                     <div 
                       key={lIdx}
                       className={`${lIdx === 0 ? 'pt-2' : 'pt-6'} pb-2 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text block`}
-                      dangerouslySetInnerHTML={{ __html: line }}
+                      dangerouslySetInnerHTML={{ __html: htmlLine }}
                     />
                   );
                 }
@@ -792,7 +808,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                   <div 
                     key={lIdx}
                     className="py-0.5 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text block"
-                    dangerouslySetInnerHTML={{ __html: line }}
+                    dangerouslySetInnerHTML={{ __html: htmlLine }}
                   />
                 );
               })}
@@ -1022,7 +1038,7 @@ export default function App() {
 
   // Disable body scroll when any full-screen modal is open to eliminate the redundant far-right browser scrollbar on PC
   useEffect(() => {
-    const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
+    const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet);
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
       document.documentElement.classList.add('modal-open');
@@ -1296,7 +1312,10 @@ export default function App() {
     if (selectedTopic && selectedTopic.id) {
       if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0) {
         try {
-          localStorage.setItem(`anti_review_progress_${selectedTopic.id}`, JSON.stringify({
+          const key = selectedTopic.schedule_id 
+            ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+            : `anti_review_progress_${selectedTopic.id}`;
+          localStorage.setItem(key, JSON.stringify({
             revealedQuestions,
             selectedAnswers
           }));
@@ -1485,7 +1504,11 @@ export default function App() {
         : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
       fetch(deleteUrl, { method: 'DELETE' })
         .catch(e => console.warn('복습 완료 시 세션 리셋 실패:', e));
-      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 복습 완료 시 로컬 진행률 초기화
+      
+      const progressKey = selectedTopic.schedule_id 
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+        : `anti_review_progress_${selectedTopic.id}`;
+      localStorage.removeItem(progressKey); // 복습 완료 시 로컬 진행률 초기화
     }
 
     try {
@@ -1778,7 +1801,10 @@ export default function App() {
           }
         } else {
           try {
-            const savedProgress = localStorage.getItem(`anti_review_progress_${topicId}`);
+            const key = finalScheduleId 
+              ? `anti_review_progress_sched_${finalScheduleId}`
+              : `anti_review_progress_${topicId}`;
+            const savedProgress = localStorage.getItem(key);
             if (savedProgress) {
               const { revealedQuestions: savedRevealed, selectedAnswers: savedSelected } = JSON.parse(savedProgress);
               if (savedRevealed) setRevealedQuestions(savedRevealed);
@@ -1877,7 +1903,11 @@ export default function App() {
         : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
       await fetch(deleteUrl, { method: 'DELETE' })
         .catch(e => console.warn('복습 세션 초기화 실패:', e));
-      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 전체 재생성 시 로컬 복습 기록도 제거
+      
+      const progressKey = selectedTopic.schedule_id 
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+        : `anti_review_progress_${selectedTopic.id}`;
+      localStorage.removeItem(progressKey); // 전체 재생성 시 로컬 복습 기록도 제거
         
       // 2. 실시간 AI 생성 요청
       let url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
@@ -3133,7 +3163,219 @@ export default function App() {
       });
   };
 
-  // ── 마운트 시 필수공식 및 이론유도 최우선 서버 동기화 로딩
+    const loadAnswersheetQuestions = async () => {
+    setLoadingAnswersheet(true);
+    let loadedData = null;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/answersheet?t=${Date.now()}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.answersheetQuestions) && body.data.answersheetQuestions.length > 0) {
+          loadedData = body.data.answersheetQuestions;
+          console.log('[Sync] Loaded answersheet questions from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database answersheet loading failed:', err);
+    }
+
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_answersheet_questions');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedData = parsed;
+            console.log('[Fallback] Loaded answersheet questions from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 답안지 복원 실패:', err);
+      }
+    }
+
+    if (!loadedData) {
+      const defaultAnswersheets = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 답안지 보고서",
+          concept: "압밀 지배방정식의 경계조건 수립 및 삼각함수 급수 전개를 통한 과잉간극수압 압밀도 공식 유도 모범 답안",
+          formula: "<h3>1. 지배방정식의 경계조건</h3>\n<p>압밀도 계산을 위한 초기조건 및 경계조건은 다음과 같습니다:</p>\n<ul>\n<li>초기조건 (t = 0): $u = u_i$ (일정한 과잉간극수압 분포)</li>\n<li>경계조건 (z = 0 및 z = 2d): $u = 0$ (양면 배수 조건)</li>\n</ul>\n<h3>2. 급수 전개 유도</h3>\n<p>Fourier 급수 해법을 적용하여 정리하면 다음의 간극수압 분포식을 얻습니다:</p>\n$u(z, t) = \\sum_{m=0}^{\\infty} \\frac{4 u_i}{\\pi (2m+1)} \\sin\\left(\\frac{(2m+1)\\pi z}{2d}\\right) e^{-(2m+1)^2 \\pi^2 T_v / 4}$"
+        }
+      ];
+      loadedData = defaultAnswersheets;
+    }
+
+    latestAnswersheetQuestionsRef.current = loadedData;
+    setAnswersheetQuestions(loadedData);
+    localStorage.setItem('anti_answersheet_questions', JSON.stringify(loadedData));
+    setAnswersheetRevealed({});
+    setLoadingAnswersheet(false);
+    return loadedData;
+  };
+
+  const handleSaveAnswersheetQuestions = async (qs = answersheetQuestions, showToast = true) => {
+    try {
+      localStorage.setItem('anti_answersheet_questions', JSON.stringify(qs));
+      
+      const res = await fetch(`${API_BASE}/api/session/answersheet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answersheetQuestions: qs })
+      });
+
+      if (!res.ok) {
+        throw new Error('Database sync returned non-OK status');
+      }
+
+      if (showToast) {
+        showNotification('답안지 리스트가 성공적으로 저장되었습니다!', 'success');
+      }
+    } catch (err) {
+      console.warn('답안지 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
+    }
+  };
+
+  const handleUploadAnswersheetPdf = async (file) => {
+    if (!file) return;
+    const fileNameLower = file.name.toLowerCase();
+    const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+    const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
+    
+    if (!isPdf && !isHtml) {
+      showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    setUploadingAnswersheetPdf(true);
+    showNotification(`[${file.name}] 문서를 업로드하여 답안지 AI 분석을 시작합니다...`, 'info');
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('fileNameUtf8', file.name);
+
+      const res = await fetch(`${API_BASE}/api/session/answersheet/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || '답안지 분석 실패');
+      }
+
+      const data = await res.json();
+      const theories = data.theories || [];
+      if (theories.length === 0) {
+        throw new Error('AI 분석 결과에서 답안지 문항을 생성하지 못했습니다.');
+      }
+
+      setAnswersheetQuestions(prev => {
+        const newItems = theories.map(t => ({
+          title: t.title,
+          concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          assumptions: t.assumptions || '',
+          formula: t.answer
+        }));
+        const updated = [...newItems, ...prev];
+        latestAnswersheetQuestionsRef.current = updated;
+        handleSaveAnswersheetQuestions(updated, false);
+        return updated;
+      });
+
+      showNotification(`총 ${theories.length}개의 핵심 답안지 문항이 성공적으로 생성되어 리스트 맨 위에 추가되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Answersheet upload failed:', err);
+      showNotification(err.message || 'PDF/HTML 분석 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setUploadingAnswersheetPdf(false);
+    }
+  };
+
+  const handleRefreshAnswersheet = (idx) => {
+    if (idx === null || idx === undefined) return;
+    const q = answersheetQuestions[idx];
+    if (!q) return;
+
+    setRefreshingAnswersheetIdx(idx);
+    showNotification(`[${q.title || `Q${idx + 1}`}] 답안을 AI가 정밀 고도화하여 갱신하고 있습니다...`);
+
+    fetch(`${API_BASE}/api/theory/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: q.title,
+        answer: q.formula
+      })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('AI 고도화 실패');
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.title && data.answer) {
+          setAnswersheetQuestions(prev => {
+            const updated = prev.map((item, i) => {
+              if (i === idx) {
+                return {
+                  ...item,
+                  title: data.title,
+                  concept: data.concept || item.concept,
+                  assumptions: data.assumptions || '',
+                  formula: data.answer
+                };
+              }
+              return item;
+            });
+            latestAnswersheetQuestionsRef.current = updated;
+            handleSaveAnswersheetQuestions(updated, false);
+            return updated;
+          });
+          showNotification(`[${data.title}] 답안이 성공적으로 갱신되었습니다!`, 'success');
+        }
+      })
+      .catch(err => {
+        console.error('Answersheet refresh error:', err);
+        showNotification('답안 갱신에 실패했습니다.', 'error');
+      })
+      .finally(() => {
+        setRefreshingAnswersheetIdx(null);
+      });
+  };
+
+  const scrollToAnswersheetCard = (idx) => {
+    const container = answersheetBodyRef.current;
+    if (!container) return;
+    const cards = container.querySelectorAll('.formula-card-item');
+    if (cards && cards[idx]) {
+      const offsetTop = cards[idx].offsetTop;
+      container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenAnswerSheet = async () => {
+    setShowAnswerSheet(true);
+    setShowExam(false);
+    setShowFormulaExam(false);
+    setShowTheoryExam(false);
+    setChatHistory([]); // Clear chat history for answer sheet study
+    setAnswersheetMobileTab('list');
+    requestAnimationFrame(() => {
+      if (answersheetSplitContainerRef.current) answersheetSplitContainerRef.current.scrollLeft = 0;
+    });
+
+    await loadAnswersheetQuestions();
+
+    requestAnimationFrame(() => {
+      if (answersheetBodyRef.current) answersheetBodyRef.current.scrollTop = savedAnswersheetScroll.current;
+    });
+  };
+
+// ── 마운트 시 필수공식 및 이론유도 최우선 서버 동기화 로딩
   useEffect(() => {
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
@@ -3764,7 +4006,7 @@ export default function App() {
                 }`}
               >
                 <List size={14} />
-                진행현황 ({allTopics.length})
+                복습토픽 ({allTopics.length})
               </button>
               <button
                 onClick={handleOpenExam}
@@ -3790,6 +4032,17 @@ export default function App() {
               >
                 <Brain size={14} />
                 이론유도
+              </button>
+              <button
+                onClick={handleOpenAnswerSheet}
+                className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
+                  showAnswerSheet
+                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg'
+                    : 'bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/40'
+                }`}
+              >
+                <FileText size={14} />
+                답안지
               </button>
             </div>
           </div>
@@ -5910,9 +6163,9 @@ export default function App() {
                       return (
                       <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
-                        <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-3">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                           {/* Row 1: Q badge & Title */}
-                          <div className="flex items-start gap-2.5 w-full min-w-0">
+                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                             {/* Q 번호 배지 */}
                             <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
                               Q{idx + 1}
@@ -5997,7 +6250,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Action Buttons (정답확인, 리프레쉬, 삭제) */}
-                          <div className="flex flex-wrap items-center gap-2.5 w-full mt-1.5">
+                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {/* 정답확인/정답접기 button */}
                                                         {!isNewEmptyCard && (
                               !isOutputVisible ? (
@@ -6486,9 +6739,9 @@ export default function App() {
                     return (
                       <div key={idx} id={`theory-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
-                        <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-3">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                           {/* Row 1: Q badge & Title */}
-                          <div className="flex items-start gap-2.5 w-full min-w-0">
+                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                             {/* 이론 번호 배지 */}
                             <span className="text-[11px] font-black bg-indigo-950/80 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 select-none">
                               이론 {idx + 1}
@@ -6573,7 +6826,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Action Buttons (정답확인, 수정하기, 삭제) */}
-                          <div className="flex flex-wrap items-center gap-2.5 w-full mt-1.5">
+                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {/* 정답확인/정답접기 button */}
                                                         {!isNewEmptyCard && (
                               !isOutputVisible ? (
@@ -6823,6 +7076,551 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
+      {showAnswerSheet && (
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-emerald-500/20 flex-shrink-0 gap-4">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-emerald-950/80 text-emerald-400 rounded-xl flex-shrink-0 mt-0.5 animate-pulse glow-emerald">
+                <FileText size={20} />
+              </div>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider whitespace-nowrap">모범 답안지 및 보고서</span>
+                  {answersheetQuestions.length > 0 && (
+                    <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {answersheetQuestions.length}개 항목
+                    </span>
+                  )}
+                  {/* Mobile Swipe Hint */}
+                  <span className="inline-flex md:hidden text-[9px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                    ← 좌우 쓸어 넘겨 튜터 대화 보기
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                    전공 기술 보고서 및 모범 답안 정밀 분석 학습
+                  </h3>
+                  {/* Centered Add / Upload Buttons */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        const newItem = {
+                          title: "",
+                          concept: "",
+                          assumptions: "",
+                          formula: "",
+                          isDirectlyAdded: true
+                        };
+                        const updated = [...answersheetQuestions, newItem];
+                        latestAnswersheetQuestionsRef.current = updated;
+                        setAnswersheetQuestions(updated);
+                        localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                        showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                        setTimeout(() => {
+                          if (answersheetBodyRef.current) {
+                            answersheetBodyRef.current.scrollTo({
+                              top: answersheetBodyRef.current.scrollHeight,
+                              behavior: 'smooth'
+                            });
+                          }
+                        }, 80);
+                      }}
+                      className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
+                    >
+                      <PlusCircle size={11} />
+                      <span>새로운 답안 추가 (빈표 생성)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.html,.htm,.pdf';
+                        input.onchange = (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadAnswersheetPdf(file);
+                        };
+                        input.click();
+                      }}
+                      className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
+                    >
+                      <UploadCloud size={11} />
+                      <span>HTML/PDF 보고서 업로드</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+              <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+                <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="답안 제목 검색..."
+                  value={answersheetSearchQuery}
+                  onChange={(e) => setAnswersheetSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-emerald-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                />
+                {answersheetSearchQuery && (
+                  <button
+                    onClick={() => setAnswersheetSearchQuery('')}
+                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={async () => {
+                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                  savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
+                  setAnswersheetSearchQuery('');
+                  setShowAnswerSheet(false);
+                }}
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="저장 후 닫기"
+              >
+                닫기
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
+                }}
+                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                title="답안 변경사항 실시간 저장"
+              >
+                <Save size={12} />
+                저장
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-header tabs for Mobile */}
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+              <button
+                onClick={() => {
+                  setAnswersheetMobileTab('list');
+                  answersheetSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  answersheetMobileTab === 'list'
+                    ? 'bg-emerald-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                답안지 리스트
+              </button>
+              <button
+                onClick={() => {
+                  setAnswersheetMobileTab('tutor');
+                  const containerWidth = answersheetSplitContainerRef.current?.clientWidth || 0;
+                  answersheetSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                }}
+                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  answersheetMobileTab === 'tutor'
+                    ? 'bg-emerald-650 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                제미나이 AI 튜터
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Container */}
+          <div 
+            ref={answersheetSplitContainerRef}
+            onScroll={(e) => {
+              if (!isDesktop) {
+                const scrollLeft = e.currentTarget.scrollLeft;
+                const clientWidth = e.currentTarget.clientWidth;
+                if (clientWidth > 0) {
+                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                  setAnswersheetMobileTab(activeTab);
+                }
+              }
+            }}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+          >
+            
+            {/* Left: Answersheet List */}
+            <div className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+              <div ref={answersheetBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
+                <div className="w-full space-y-5 pb-32">
+                
+                {/* No Search Results Fallback */}
+                {answersheetQuestions.filter(q => {
+                  const titleMatch = (q.title || '').toLowerCase().includes(answersheetSearchQuery.toLowerCase());
+                  const formulaMatch = (q.formula || '').toLowerCase().includes(answersheetSearchQuery.toLowerCase());
+                  return titleMatch || formulaMatch;
+                }).length === 0 && (
+                  <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                    <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                      <Search size={32} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                      <p className="text-xs text-slate-400 mt-1">다른 답안지 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
+                    </div>
+                    <button
+                      onClick={() => setAnswersheetSearchQuery('')}
+                      className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                    >
+                      검색 필터 초기화
+                    </button>
+                  </div>
+                )}
+
+                {/* Answersheet Questions Map */}
+                {answersheetQuestions
+                  .map((q, originalIdx) => ({ ...q, originalIdx }))
+                  .filter(q => {
+                    const titleMatch = (q.title || '').toLowerCase().includes(answersheetSearchQuery.toLowerCase());
+                    const formulaMatch = (q.formula || '').toLowerCase().includes(answersheetSearchQuery.toLowerCase());
+                    return titleMatch || formulaMatch;
+                  })
+                  .map((q) => {
+                    const idx = q.originalIdx;
+                    const isNewEmptyCard = !q.title && !q.formula;
+                    const isOutputVisible = isNewEmptyCard || !!answersheetRevealed[idx];
+                    const isInputVisible = isNewEmptyCard || !!answersheetInputRevealed[idx];
+
+                    return (
+                      <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
+                        {/* Title Row */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                          {/* Row 1: Badge & Title */}
+                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
+                            <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
+                              답안 {idx + 1}
+                            </span>
+                            
+                            <div className="flex-grow min-w-0">
+                              {editingAnswersheetIdx === idx ? (
+                                <div className="flex items-center gap-2 w-full">
+                                  <input
+                                    type="text"
+                                    value={editAnswersheetTitle}
+                                    onChange={(e) => setEditAnswersheetTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const trimmed = editAnswersheetTitle.trim();
+                                        if (trimmed) {
+                                          setAnswersheetQuestions(prev => {
+                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                            handleSaveAnswersheetQuestions(updated, false);
+                                            return updated;
+                                          });
+                                          setEditingAnswersheetIdx(null);
+                                          showNotification('답안지 제목이 저장되었습니다.', 'success');
+                                        }
+                                      } else if (e.key === 'Escape') {
+                                        setEditingAnswersheetIdx(null);
+                                      }
+                                    }}
+                                    className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-emerald-500 w-full max-w-[360px]"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const trimmed = editAnswersheetTitle.trim();
+                                      if (trimmed) {
+                                        setAnswersheetQuestions(prev => {
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                          handleSaveAnswersheetQuestions(updated, false);
+                                          return updated;
+                                        });
+                                        setEditingAnswersheetIdx(null);
+                                        showNotification('답안지 제목이 저장되었습니다.', 'success');
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                  >
+                                    저장
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingAnswersheetIdx(null)}
+                                    className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                  <span 
+                                    onClick={() => {
+                                      setEditingAnswersheetIdx(idx);
+                                      setEditAnswersheetTitle(q.title || '');
+                                    }}
+                                    className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                    title="클릭하여 답안 제목 수정"
+                                  >
+                                    <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setEditingAnswersheetIdx(idx);
+                                      setEditAnswersheetTitle(q.title || '');
+                                    }}
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)]"
+                                    title="답안 제목 수정"
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Row 2: Action Buttons */}
+                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
+                            {!isNewEmptyCard && (
+                              !isOutputVisible ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isHeavyHtml(q.formula)) {
+                                      handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
+                                    }
+                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: true }));
+                                    scrollToAnswersheetCard(idx);
+                                  }}
+                                  className="py-1 px-3 bg-emerald-650 hover:bg-emerald-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-650/10 hover:shadow-emerald-650/20 border border-emerald-500/20 flex items-center justify-center gap-1"
+                                  title="정답 확인하기"
+                                >
+                                  <span>정답확인</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }));
+                                  }}
+                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
+                                  title="정답 접기"
+                                >
+                                  <span>정답접기</span>
+                                </button>
+                              )
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setAnswersheetInputRevealed(prev => ({
+                                  ...prev,
+                                  [idx]: !prev[idx]
+                                }));
+                              }}
+                              className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
+                                isInputVisible 
+                                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+                                  : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 border-slate-700/50 bg-slate-800/40'
+                              }`}
+                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                            >
+                              <Edit2 size={12} />
+                              <span>수정하기</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`[${q.title || `답안 ${idx + 1}`}] 답안 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
+                                  const updated = answersheetQuestions.filter((_, i) => i !== idx);
+                                  latestAnswersheetQuestionsRef.current = updated;
+                                  setAnswersheetQuestions(updated);
+                                  handleSaveAnswersheetQuestions(updated, false);
+                                  setAnswersheetRevealed(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[idx];
+                                    return updated;
+                                  });
+                                  setAnswersheetInputRevealed(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[idx];
+                                    return updated;
+                                  });
+                                  showNotification('선택한 답안이 성공적으로 삭제되었습니다.', 'info');
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
+                              title="답안 삭제"
+                            >
+                              <Trash2 size={12} />
+                              <span>삭제</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Output Display */}
+                        {isOutputVisible && (
+                          <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                              {!isNewEmptyCard && (
+                                <button
+                                  onClick={() => setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }))}
+                                  className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
+                                >
+                                  접기 ✕
+                                </button>
+                              )}
+                            </div>
+                            {q.formula ? (
+                              <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `답안 ${idx + 1}`} />
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 또는 HTML 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Input Area */}
+                        {isInputVisible && (
+                          <div className="space-y-1 pt-1 animate-fade-in">
+                            <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트, HTML 및 LaTeX 수식 복사-붙여넣기)</span>
+                            <textarea
+                              value={q.formula || ''}
+                              onChange={(e) => {
+                                const updated = [...answersheetQuestions];
+                                updated[idx] = { ...updated[idx], formula: e.target.value };
+                                latestAnswersheetQuestionsRef.current = updated;
+                                setAnswersheetQuestions(updated);
+                                localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-emerald-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                              placeholder="여기에 LaTeX 블록($ ... $), 인라인 수식($ ... $), 또는 HTML 문서를 입력하거나 복사-붙여넣기 하세요."
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Middle Gutter */}
+            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+              <div 
+                className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-emerald-500/10 hover:border-emerald-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
+                title="답안 위/아래 이동"
+              >
+                <button 
+                  onClick={(e) => { e.stopPropagation(); }}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-emerald-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-emerald-500 hover:shadow-emerald-650/30 cursor-pointer flex items-center justify-center group/btn"
+                  title="이전 공식으로 이동"
+                >
+                  <ChevronUp size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
+                </button>
+                
+                <button 
+                  onClick={(e) => { e.stopPropagation(); }}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-emerald-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-emerald-500 hover:shadow-emerald-650/30 cursor-pointer flex items-center justify-center group/btn"
+                  title="다음 공식으로 이동"
+                >
+                  <ChevronDown size={14} className="group-hover/btn:translate-y-0.5 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right: AI Tutor */}
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <Brain size={16} className="text-emerald-500" />
+                <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
+              </div>
+              
+              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">학습하고 싶으신 답안을 왼쪽에서 선택하여<br/>유도 및 상세 설명을 요청해 보세요!</p>
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-emerald-400 mr-1' : 'text-emerald-400 ml-1'}`}>
+                        {msg.role === 'user' ? '나' : 'Gemini'}
+                      </div>
+                      <div className={
+                        msg.role === 'user' 
+                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-emerald-600 text-white rounded-br-sm' 
+                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                      }>
+                        {msg.role === 'user' ? (
+                          <div className="flex flex-col gap-2">
+                            {msg.image && (
+                              <img 
+                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                alt="첨부 이미지" 
+                                className="max-w-full max-h-48 rounded-xl object-contain border border-emerald-455 shadow-md"
+                              />
+                            )}
+                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                          </div>
+                        ) : (
+                          <LatexRenderer 
+                            text={msg.text} 
+                            katexLoaded={katexLoaded} 
+                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isChatLoading && (
+                  <div className="flex flex-col items-start w-full">
+                    <div className="text-[10px] mb-1 font-bold text-emerald-400 ml-1">Gemini</div>
+                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></div>
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
+                >
+                  <div className="flex-grow">
+                    <textarea
+                      rows={isDesktop ? 3 : 1}
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
+                      placeholder="보고서 내용 및 개념 질문..."
+                      disabled={isChatLoading}
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isChatLoading}
+                    className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/10 active:scale-95 flex-shrink-0"
+                  >
+                    <Send size={12} className="text-white" />
+                  </button>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
       {(!isModalOpen || isDesktop) && (
         <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
@@ -6857,10 +7655,10 @@ export default function App() {
                 ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
             }`}
-            title={`토픽 진행현황 (${allTopics.length})`}
+            title={`복습토픽 (${allTopics.length})`}
           >
             <List size={20} />
-            <span className="text-[10px] font-bold tracking-tight">진행현황</span>
+            <span className="text-[10px] font-bold tracking-tight">복습토픽</span>
             <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
           </button>
           {/* 종합평가 버튼 */}
@@ -6916,6 +7714,26 @@ export default function App() {
           >
             <Brain size={20} />
             <span className="text-[10px] font-bold tracking-tight">이론유도</span>
+          </button>
+          
+          {/* 답안지 버튼 */}
+          <button
+            onClick={() => {
+              setSelectedTopic(null);
+              setShowExam(false);
+              setShowFormulaExam(false);
+              setShowTheoryExam(false);
+              handleOpenAnswerSheet();
+            }}
+            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              showAnswerSheet
+                ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg glow-emerald'
+                : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/40'
+            }`}
+            title="모범 답안지 및 기술 보고서 학습"
+          >
+            <FileText size={20} />
+            <span className="text-[10px] font-bold tracking-tight">답안지</span>
           </button>
         </div>
       )}

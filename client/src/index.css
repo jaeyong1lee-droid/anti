@@ -26,6 +26,19 @@
 .glow-purple {
   box-shadow: 0 0 40px -10px rgba(139, 92, 246, 0.2);
 }
+.glow-emerald {
+  box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.25);
+}
+.glow-rose {
+  box-shadow: 0 0 40px -10px rgba(244, 63, 94, 0.25);
+}
+.glow-amber {
+  box-shadow: 0 0 40px -10px rgba(245, 158, 11, 0.25);
+}
+.glow-indigo {
+  box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.25);
+}
+
 
 .glow-purple-hover:hover {
   box-shadow: 0 0 30px -5px rgba(139, 92, 246, 0.25);
