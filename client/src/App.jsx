@@ -1477,7 +1477,10 @@ export default function App() {
 
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
-      fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+      const deleteUrl = sId 
+        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${sId}`
+        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+      fetch(deleteUrl, { method: 'DELETE' })
         .catch(e => console.warn('복습 완료 시 세션 리셋 실패:', e));
       localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 복습 완료 시 로컬 진행률 초기화
     }
@@ -1805,8 +1808,8 @@ export default function App() {
       fetch(`${API_BASE}/api/session/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicId: selectedTopic?.id, questions: aiQuestions })
-      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+        body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: aiQuestions })
+      }).catch(e => console.warn('복습 세화 동기화 실패:', e));
       return copy;
     });
     setReviewOptionExplanations(prev => {
@@ -1866,12 +1869,18 @@ export default function App() {
     
     try {
       // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
-      await fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+      const deleteUrl = selectedTopic.schedule_id
+        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+      await fetch(deleteUrl, { method: 'DELETE' })
         .catch(e => console.warn('복습 세션 초기화 실패:', e));
       localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`); // 전체 재생성 시 로컬 복습 기록도 제거
         
       // 2. 실시간 AI 생성 요청
-      const url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
+      let url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
+      if (selectedTopic.schedule_id) {
+        url += `?scheduleId=${selectedTopic.schedule_id}`;
+      }
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       
@@ -2121,7 +2130,7 @@ export default function App() {
             fetch(`${API_BASE}/api/session/review`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topicId: selectedTopic?.id, questions: updated })
+              body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: updated })
             }).catch(e => console.warn('복습 세션 동기화 실패:', e));
             return updated;
           });
@@ -2224,7 +2233,7 @@ export default function App() {
             fetch(`${API_BASE}/api/session/review`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topicId: selectedTopic?.id, questions: updated })
+              body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: updated })
             }).catch(e => console.warn('복습 세션 동기화 실패:', e));
             return updated;
           });
@@ -4419,7 +4428,10 @@ export default function App() {
                 <button
                   onClick={() => { 
                     if (selectedTopic?.id) {
-                      fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
+                      const deleteUrl = selectedTopic.schedule_id
+                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                      fetch(deleteUrl, { method: 'DELETE' })
                         .catch(e => console.warn('세션 초기화 실패:', e));
                     }
                     setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 

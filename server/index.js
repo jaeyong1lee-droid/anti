@@ -2107,6 +2107,17 @@ app.post('/api/quiz/submit', async (req, res) => {
   }
 });
 
+// Admin backfill trigger
+app.post('/api/admin/backfill-scores', async (req, res) => {
+  try {
+    await backfillPastScheduleScores();
+    res.json({ success: true, message: '과거 복습 이력 점수 백필 완료' });
+  } catch (err) {
+    console.error('Admin backfill error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 3.5. Reset/Cancel Review Round Completion (Change back from completed to pending)
 app.post('/api/schedules/:id/reset', async (req, res) => {
   const scheduleId = req.params.id;
@@ -5542,11 +5553,65 @@ async function migrateSpacedIntervals() {
   }
 }
 
+// 과거에 풀이했던 복습 일정 중 성적(score, correct_count, total_count)이 누락되었거나 불일치하지만 app_session에 풀이 이력이 존재하는 경우 채점하여 백필
+async function backfillPastScheduleScores() {
+  console.log('[Backfill] Checking and backfilling past schedule scores from app_session...');
+  try {
+    const rows = await dbQuery.all(`SELECT key, value FROM app_session WHERE key LIKE 'completed_review_schedule_%'`);
+    console.log(`[Backfill] Found ${rows.length} completed review session records.`);
+    
+    let updatedCount = 0;
+    for (const row of rows) {
+      const scheduleIdStr = row.key.replace('completed_review_schedule_', '');
+      const scheduleId = parseInt(scheduleIdStr, 10);
+      if (isNaN(scheduleId)) continue;
+      
+      try {
+        const parsed = JSON.parse(row.value);
+        if (parsed && Array.isArray(parsed.questions)) {
+          const sched = await dbQuery.get('SELECT id, score, correct_count, total_count FROM schedules WHERE id = ?', [scheduleId]);
+          if (sched) {
+            // 객관식 문제 추출 및 채점
+            const totalMC = parsed.questions.filter(q => q.options && q.options.length > 0).length;
+            const correctMC = Object.keys(parsed.selectedAnswers || {}).filter(
+              (i) => {
+                const qIdx = parseInt(i, 10);
+                const q = parsed.questions[qIdx];
+                const selected = parsed.selectedAnswers[i];
+                if (!q || !selected) return false;
+                const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                return normalizeAns(selected) === normalizeAns(q.answer);
+              }
+            ).length;
+            const computedScore = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : 100;
+            
+            // 데이터베이스의 현재 값과 비교하여 다르면 업데이트 진행
+            if (sched.score === null || sched.correct_count === null || sched.total_count === null || sched.score !== computedScore) {
+              await dbQuery.run(
+                'UPDATE schedules SET score = ?, correct_count = ?, total_count = ? WHERE id = ?',
+                [computedScore, correctMC, totalMC, scheduleId]
+              );
+              updatedCount++;
+              console.log(`[Backfill] Updated schedule ${scheduleId} with computed score ${computedScore} (${correctMC}/${totalMC})`);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[Backfill] Error parsing JSON or updating schedule for key ${row.key}:`, err);
+      }
+    }
+    console.log(`[Backfill] Completed. Backfilled ${updatedCount} schedules with score data.`);
+  } catch (error) {
+    console.error('[Backfill] Error backfilling schedule scores:', error);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
     console.log('Database schema initialization completed.');
     await migrateSpacedIntervals();
+    await backfillPastScheduleScores();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -5575,6 +5640,7 @@ if (!process.env.VERCEL) {
   initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
     await migrateSpacedIntervals();
+    await backfillPastScheduleScores();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;
