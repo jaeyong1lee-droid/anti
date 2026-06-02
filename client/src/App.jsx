@@ -4985,17 +4985,23 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-end gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={3}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
                       placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
                     />
                   </div>
 
@@ -5657,17 +5663,23 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-end gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={3}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
                       placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                      className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
                     />
                   </div>
 
@@ -6238,17 +6250,23 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-end gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={3}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
                       placeholder="공식 유도 및 개념 질문..."
                       disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
                     />
                   </div>
 
@@ -6772,16 +6790,22 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-end gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
                   <div className="flex-grow">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={3}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
                       placeholder="공식 유도 및 개념 질문..."
                       disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0"
+                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
                     />
                   </div>
 
