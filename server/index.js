@@ -4626,7 +4626,9 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
     );
     if (isHtml) {
       // Decode HTML buffer cleanly and stream it natively with UTF-8 encoding
-      const htmlContent = decodeHtmlBuffer(topic.pdf_data);
+      let htmlContent = decodeHtmlBuffer(topic.pdf_data);
+      // Remove any script tag containing polyfill.io to prevent malicious loads and credential prompts
+      htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {
