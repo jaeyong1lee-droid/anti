@@ -2199,6 +2199,38 @@ app.delete('/api/topics/:id', async (req, res) => {
   }
 });
 
+// 5.1. Update Topic Title
+app.put('/api/topics/:id/title', async (req, res) => {
+  const topicId = Number(req.params.id) || req.params.id;
+  const { title } = req.body;
+
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: '제목은 필수입니다.' });
+  }
+
+  try {
+    const checkSql = `SELECT * FROM topics WHERE id = ?`;
+    const topic = await dbQuery.get(checkSql, [topicId]);
+
+    if (!topic) {
+      return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+    }
+
+    const updateSql = `UPDATE topics SET title = ? WHERE id = ?`;
+    await dbQuery.run(updateSql, [title.trim(), topicId]);
+
+    console.log(`[PUT /api/topics/:id/title] Successfully updated title to "${title.trim()}" for topicId=${topicId}`);
+
+    res.json({
+      success: true,
+      message: '토픽 제목이 성공적으로 수정되었습니다.'
+    });
+  } catch (error) {
+    console.error('Error updating topic title:', error);
+    res.status(500).json({ error: '서버 오류로 토픽 제목 수정에 실패했습니다.' });
+  }
+});
+
 // Force DB table initialization route
 app.get('/api/init-db', async (req, res) => {
   try {

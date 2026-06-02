@@ -793,6 +793,8 @@ export default function App() {
   // Lists
   const [todayReviews, setTodayReviews] = useState([]);
   const [allTopics, setAllTopics] = useState([]);
+  const [editingTopicId, setEditingTopicId] = useState(null);
+  const [editingTitleText, setEditingTitleText] = useState('');
   
   // Loadings
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -1560,6 +1562,33 @@ export default function App() {
     } catch (err) {
       console.error('Delete topic error:', err);
       showNotification('서버 오류로 토픽 삭제에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleSaveTopicTitle = async (topicId) => {
+    if (!editingTitleText || !editingTitleText.trim()) {
+      showNotification('제목은 비워둘 수 없습니다.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}/title`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editingTitleText.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotification('토픽 제목이 수정되었습니다.', 'success');
+        setEditingTopicId(null);
+        // Refresh
+        fetchTodayReviews(referenceDate);
+        fetchAllTopics();
+      } else {
+        showNotification(data.error || '제목 수정에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Update topic title error:', err);
+      showNotification('서버 통신 오류로 제목 수정에 실패했습니다.', 'error');
     }
   };
 
@@ -3754,9 +3783,44 @@ export default function App() {
                           )}
                         </div>
 
-                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight">
-                          {item.title}
-                        </h3>
+                        {editingTopicId === item.topic_id ? (
+                          <div className="flex items-center gap-1.5 w-full select-text max-w-md" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editingTitleText}
+                              onChange={(e) => setEditingTitleText(e.target.value)}
+                              className="flex-grow bg-slate-950 border border-violet-500 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveTopicTitle(item.topic_id);
+                                else if (e.key === 'Escape') setEditingTopicId(null);
+                              }}
+                            />
+                            <button
+                              onClick={() => handleSaveTopicTitle(item.topic_id)}
+                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              저장
+                            </button>
+                            <button
+                              onClick={() => setEditingTopicId(null)}
+                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        ) : (
+                          <h3 
+                            onClick={() => {
+                              setEditingTopicId(item.topic_id);
+                              setEditingTitleText(item.title);
+                            }}
+                            className="text-base md:text-lg font-bold text-white tracking-tight cursor-pointer hover:text-violet-400 decoration-dotted hover:underline"
+                            title="클릭 시 제목을 수정합니다."
+                          >
+                            {item.title}
+                          </h3>
+                        )}
 
                         {/* Keyword list */}
                         {item.keywords && (
@@ -4019,13 +4083,45 @@ export default function App() {
                           >
                             <td className="py-4 px-4 max-w-xs">
                               <div className="space-y-1">
-                                <h4 
-                                  ref={isFirstMatch ? firstMatchRef : null}
-                                  className="font-bold text-white text-sm truncate transition-colors"
-                                  title="제목"
-                                >
-                                  {topic.title}
-                                </h4>
+                                {editingTopicId === topic.id ? (
+                                  <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="text"
+                                      value={editingTitleText}
+                                      onChange={(e) => setEditingTitleText(e.target.value)}
+                                      className="flex-grow bg-slate-950 border border-violet-500 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveTopicTitle(topic.id);
+                                        else if (e.key === 'Escape') setEditingTopicId(null);
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleSaveTopicTitle(topic.id)}
+                                      className="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-[10px] font-bold cursor-pointer transition-colors"
+                                    >
+                                      저장
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingTopicId(null)}
+                                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold cursor-pointer transition-colors"
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <h4 
+                                    onClick={() => {
+                                      setEditingTopicId(topic.id);
+                                      setEditingTitleText(topic.title);
+                                    }}
+                                    ref={isFirstMatch ? firstMatchRef : null}
+                                    className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline"
+                                    title="클릭 시 제목을 수정합니다."
+                                  >
+                                    {topic.title}
+                                  </h4>
+                                )}
                                 {topic.pdf_name ? (
                                   <p className="text-[10px] text-slate-500 flex items-center gap-1">
                                     {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
