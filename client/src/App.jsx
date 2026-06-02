@@ -877,8 +877,11 @@ export default function App() {
 
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
+  const wasModalOpenRef = useRef(false);
 
   useEffect(() => {
+    const isMobileDevice = window.innerWidth < 768;
+
     if (selectedTopic) {
       activeModalRef.current = 'review';
     } else if (showExam) {
@@ -890,16 +893,34 @@ export default function App() {
     } else {
       activeModalRef.current = null;
     }
+
+    const isCurrentlyOpen = activeModalRef.current !== null;
+
+    if (isMobileDevice) {
+      if (isCurrentlyOpen && !wasModalOpenRef.current) {
+        // 모달이 닫혀있다가 처음 열리는 시점 -> history push
+        window.history.pushState({ home: true, modalOpen: true }, "");
+        console.log("[History] Push state for modal open");
+      } else if (!isCurrentlyOpen && wasModalOpenRef.current) {
+        // 모달이 열려있다가 UI 닫기 버튼 등으로 닫히는 시점 -> 히스토리 백을 해줘서 push된 모달 히스토리를 꺼냄
+        const state = window.history.state;
+        if (state && state.modalOpen) {
+          window.history.back();
+          console.log("[History] Back triggered for modal close via UI button");
+        }
+      }
+    }
+    
+    wasModalOpenRef.current = isCurrentlyOpen;
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam]);
 
   useEffect(() => {
     const handlePopState = (event) => {
-      // Only intercept on mobile viewport (under 768px width)
       const isMobileDevice = window.innerWidth < 768;
       if (!isMobileDevice) return;
 
       if (activeModalRef.current) {
-        // Close the active modal acting as hardware back button
+        // 뒤로가기를 눌러서 모달이 닫히는 경우
         if (activeModalRef.current === 'review') {
           setSelectedTopic(null);
         } else if (activeModalRef.current === 'exam') {
@@ -912,15 +933,14 @@ export default function App() {
           setShowTheoryExam(false);
           localStorage.setItem('anti_show_theory_exam', 'false');
         }
-        // Re-push state so we can intercept the next back button
-        window.history.pushState({ home: true }, "");
+        console.log("[History] Back button pressed, closed modal: " + activeModalRef.current);
       } else {
-        // If on the home dashboard, prompt before exiting the web application
+        // 메인 화면에서 뒤로가기 누른 경우 앱 종료 여부 팝업 출력
         if (window.confirm("앱을 끄시겠습니까?")) {
           window.close();
           window.location.href = "about:blank";
         } else {
-          // Re-push state so we can intercept the next back button
+          // 취소 시 다시 home 방어막 형성
           window.history.pushState({ home: true }, "");
         }
       }
@@ -1125,7 +1145,11 @@ export default function App() {
       const saved = localStorage.getItem('anti_app_state');
       if (saved) {
         const s = JSON.parse(saved);
-        if (s.viewMode) setViewMode(s.viewMode);
+        if (s.viewMode) {
+          // PC에서 열었을 때는 무조건 오늘의 복습('dashboard') 화면이 메인화면이 되도록 설정
+          const isPC = window.innerWidth >= 768;
+          setViewMode(isPC ? 'dashboard' : s.viewMode);
+        }
         if (s.selectedTopic) setSelectedTopic(s.selectedTopic);
         if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions);
         if (s.revealedQuestions) setRevealedQuestions(s.revealedQuestions);
