@@ -932,6 +932,7 @@ export default function App() {
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
   const wasModalOpenRef = useRef(false);
+  const ignoreNextPopState = useRef(false);
 
   useEffect(() => {
     const isMobileDevice = window.innerWidth < 768;
@@ -959,6 +960,7 @@ export default function App() {
         // 모달이 열려있다가 UI 닫기 버튼 등으로 닫히는 시점 -> 히스토리 백을 해줘서 push된 모달 히스토리를 꺼냄
         const state = window.history.state;
         if (state && state.modalOpen) {
+          ignoreNextPopState.current = true;
           window.history.back();
           console.log("[History] Back triggered for modal close via UI button");
         }
@@ -972,6 +974,12 @@ export default function App() {
     const handlePopState = (event) => {
       const isMobileDevice = window.innerWidth < 768;
       if (!isMobileDevice) return;
+
+      if (ignoreNextPopState.current) {
+        ignoreNextPopState.current = false;
+        console.log("[History] Ignored popstate event because it was triggered by UI close");
+        return;
+      }
 
       if (activeModalRef.current) {
         // 뒤로가기를 눌러서 모달이 닫히는 경우
