@@ -4392,7 +4392,28 @@ export default function App() {
                       <span>원 보고서 보기</span>
                     </button>
                   )}
-
+                  {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+                    <button
+                      onClick={() => {
+                        setSelectedTopic(null);
+                        setAiQuestions([]);
+                        setRevealedQuestions({});
+                        setSelectedAnswers({});
+                        setReviewOptionExplanations({});
+                        lastQuizTopicId.current = null;
+                        setResetConfirmTarget({
+                          scheduleId: selectedTopic.schedule_id,
+                          topicTitle: selectedTopic.title,
+                          round: selectedTopic.review_round
+                        });
+                      }}
+                      className="px-5 py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-xs sm:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-2"
+                      title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                    >
+                      <RefreshCw size={14} className="text-amber-400" />
+                      <span>이 복습 회차 초기화 (다시 풀기)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

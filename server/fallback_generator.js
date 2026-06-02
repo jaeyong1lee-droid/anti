@@ -2101,12 +2101,12 @@ function getDynamicSourceExpertQuestions(title, keywords, fileText) {
 // Stage 1: Strict Title-First Strategy
 // Stage 2: Secondary Keyword-Match Strategy
 // ============================================================================
-function padTo10Questions(questions, title, keywords) {
-  if (!Array.isArray(questions) || questions.length >= 10) {
+function padTo12Questions(questions, title, keywords) {
+  if (!Array.isArray(questions) || questions.length >= 12) {
     return questions;
   }
   
-  console.log(`[Padding] Current questions length: ${questions.length}. Padding up to 10 questions...`);
+  console.log(`[Padding] Current questions length: ${questions.length}. Padding up to 12 questions...`);
   const padded = [...questions];
   const generalPool = getGeneralGeotechExpertQuestions(title, keywords);
   
@@ -2114,7 +2114,7 @@ function padTo10Questions(questions, title, keywords) {
   const existingQuestions = new Set(questions.map(q => q.question.trim()));
   
   for (const gq of generalPool) {
-    if (padded.length >= 10) break;
+    if (padded.length >= 12) break;
     if (!existingQuestions.has(gq.question.trim())) {
       padded.push(gq);
       existingQuestions.add(gq.question.trim());
@@ -2123,7 +2123,7 @@ function padTo10Questions(questions, title, keywords) {
   
   // Just in case we are still short, pull anything from generalPool
   for (const gq of generalPool) {
-    if (padded.length >= 10) break;
+    if (padded.length >= 12) break;
     if (padded.indexOf(gq) === -1) {
       padded.push(gq);
     }
@@ -2135,7 +2135,7 @@ function padTo10Questions(questions, title, keywords) {
 
 function generateFallbackQuestions(title, keywords, fileText = '') {
   const rawQuestions = routeFallbackQuestions(title, keywords, fileText);
-  return padTo10Questions(rawQuestions, title, keywords);
+  return padTo12Questions(rawQuestions, title, keywords);
 }
 
 function routeFallbackQuestions(title, keywords, fileText = '') {

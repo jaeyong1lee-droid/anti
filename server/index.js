@@ -2547,7 +2547,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 8 - carryOverQuestions.length;
+    const neededAiMcCount = 10 - carryOverQuestions.length;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -2744,6 +2744,7 @@ ${weaknessPrompt}
    - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
    - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
+   - 중요 특화 출제 사항: 객관식 문제 중 **최소 3문제 이상은 반드시 토픽과 관련된 핵심 공학 공식 자체의 수식 형태(예: 계수 산정식, 토압 공식, 침하량 공식 등)나 특정 조건에서의 간이 수치 계산을 요구하는 문제**로 출제하십시오. 모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
 
 2. 수식 및 기호 표기:
    - 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다.
@@ -2806,17 +2807,17 @@ try {
         const mcs = questions.filter(q => q.options && q.options.length > 0);
 
         // 이전 회차 오답과 새로 생성된 객관식을 합쳐서 정확히 8개의 객관식으로 구성
-        let finalMcs = [...carryOverQuestions, ...mcs].slice(0, 8);
-        if (finalMcs.length < 8) {
+        let finalMcs = [...carryOverQuestions, ...mcs].slice(0, 10);
+        if (finalMcs.length < 10) {
           const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
           const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0);
           for (const fQ of fallbackMcs) {
-            if (finalMcs.length >= 8) break;
+            if (finalMcs.length >= 10) break;
             if (!finalMcs.some(q => q.question === fQ.question)) {
               finalMcs.push(fQ);
             }
           }
-          while (finalMcs.length < 8 && fallbackMcs.length > 0) {
+          while (finalMcs.length < 10 && fallbackMcs.length > 0) {
             finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
           }
         }
@@ -2855,7 +2856,7 @@ try {
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const subjs = fallbackQuestions.filter(q => !q.options || q.options.length === 0);
       const mcs = fallbackQuestions.filter(q => q.options && q.options.length > 0);
-      const finalMcs = [...carryOverQuestions, ...mcs].slice(0, 8);
+      const finalMcs = [...carryOverQuestions, ...mcs].slice(0, 10);
       const finalQuestions = [...subjs.slice(0, 2), ...finalMcs];
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
