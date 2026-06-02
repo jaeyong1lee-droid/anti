@@ -139,3 +139,20 @@
   }
 }
 
+/* PC version font size enlargement (1.2x) for modals */
+@media (min-width: 768px) {
+  .pc-enlarged-text .text-\[10px\] { font-size: calc(10px * 1.2) !important; }
+  .pc-enlarged-text .text-\[11px\] { font-size: calc(11px * 1.2) !important; }
+  .pc-enlarged-text .text-\[12px\] { font-size: calc(12px * 1.2) !important; }
+  .pc-enlarged-text .text-xs { font-size: calc(0.75rem * 1.2) !important; }
+  .pc-enlarged-text .text-sm { font-size: calc(0.875rem * 1.2) !important; }
+  .pc-enlarged-text .text-base { font-size: calc(1rem * 1.2) !important; }
+  .pc-enlarged-text .text-lg { font-size: calc(1.125rem * 1.2) !important; }
+  .pc-enlarged-text .text-xl { font-size: calc(1.25rem * 1.2) !important; }
+  .pc-enlarged-text .text-2xl { font-size: calc(1.5rem * 1.2) !important; }
+  .pc-enlarged-text .text-\[17px\] { font-size: calc(17px * 1.2) !important; }
+  .pc-enlarged-text {
+    font-size: 1.2rem;
+  }
+}
+

@@ -4362,7 +4362,7 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
           {/* Review Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -4519,7 +4519,7 @@ export default function App() {
 
             {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full md:w-[60%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -4895,7 +4895,7 @@ export default function App() {
           </div>
 
           {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-          <div className="hidden md:flex landscape-hide md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+          <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
               className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -4921,7 +4921,7 @@ export default function App() {
 
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            className="w-full md:w-[30%] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
@@ -5056,7 +5056,7 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
           {/* Exam Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5206,7 +5206,7 @@ export default function App() {
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full md:w-[60%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -5567,7 +5567,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[10%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -5593,7 +5593,7 @@ export default function App() {
 
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              className="w-full md:w-[30%] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
@@ -5686,7 +5686,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
           {/* Formula Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -5838,7 +5838,7 @@ export default function App() {
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
-              className="w-full md:w-[68%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -6150,7 +6150,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6175,7 +6175,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Formula */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-rose-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
@@ -6267,7 +6267,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
       {showTheoryExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
@@ -6418,7 +6418,7 @@ export default function App() {
           >
             
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
-            <div className="w-full md:w-[68%] landscape-w-60 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            <div className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5 pb-32">
@@ -6684,7 +6684,7 @@ export default function App() {
             </div>
 
             {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[2%] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6709,7 +6709,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30%] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
@@ -6797,7 +6797,7 @@ export default function App() {
         </div>
       )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
-      {!isModalOpen && (
+      {(!isModalOpen || isDesktop) && (
         <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
           <button
             onClick={() => {
