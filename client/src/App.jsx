@@ -1539,6 +1539,41 @@ export default function App() {
     }
   };
 
+  // 이 회차의 복습 점수를 직접 키보드로 입력하여 강제 성적 부여 및 갱신
+  const handleManualScoreInput = async () => {
+    if (!selectedTopic?.schedule_id) return;
+    const rawScore = window.prompt("이 복습 회차의 점수를 직접 입력해 주세요. (0 ~ 100 사이의 정수)", "");
+    if (rawScore === null) return; // 취소됨
+    
+    const parsed = parseInt(rawScore, 10);
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      showNotification("점수는 0에서 100 사이의 정수여야 합니다.", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/score`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: parsed })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotification(`성적이 ${parsed}점으로 성공적으로 저장되었습니다!`, 'success');
+        // 모달 상태의 selectedTopic 성적 갱신
+        setSelectedTopic(prev => prev ? { ...prev, score: parsed } : null);
+        // 리스트 새로고침
+        fetchTodayReviews(referenceDate);
+        fetchAllTopics();
+      } else {
+        showNotification(data.error || '성적 갱신에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Manual score error:', err);
+      showNotification('서버 통신 오류로 성적을 입력하지 못했습니다.', 'error');
+    }
+  };
+
   // Delete specific Topic (includes prompt safety confirm)
   const handleDeleteTopic = async (topicId, topicTitle) => {
     if (!window.confirm(`[${topicTitle}] 토픽과 관련된 모든 4회차 복습 스케줄이 영구 삭제됩니다.\n정말 삭제하시겠습니까?`)) {
@@ -4241,6 +4276,16 @@ export default function App() {
                       <span>원 보고서 보기</span>
                     </button>
                   )}
+                  {selectedTopic?.schedule_id && (
+                    <button
+                      onClick={handleManualScoreInput}
+                      className="px-5 py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-xs sm:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center gap-2"
+                      title="이 복습 회차의 성적 점수를 직접 기입하여 저장합니다."
+                    >
+                      <CheckCircle size={18} />
+                      <span>점수 직접 입력</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -4381,6 +4426,29 @@ export default function App() {
                           </p>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {selectedTopic?.isReadOnly && Object.keys(selectedAnswers).length === 0 && !loadingAI && aiQuestions.length > 0 && (
+                    <div className="p-5 rounded-2xl bg-violet-950/40 border border-violet-500/30 text-violet-200 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-xl animate-fade-in">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-violet-900/50 text-violet-400 rounded-xl mt-0.5">
+                          <Info size={16} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-violet-400 mb-0.5">이전 풀이 상세 기록 없음</h4>
+                          <p className="text-xs text-violet-300/90 leading-relaxed">
+                            이 복습 회차는 퀴즈 없이 간편 완료 처리되었거나 이전 상세 마킹 데이터가 존재하지 않습니다.<br/>
+                            지금 즉시 복습 퀴즈를 직접 풀고 이 회차의 점수 성적을 정확하게 새로 등록하시겠습니까?
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null)}
+                        className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-violet-950/50"
+                      >
+                        <Brain size={13} />
+                        <span>퀴즈 풀고 점수 저장</span>
+                      </button>
                     </div>
                   )}
                   {aiQuestions.map((q, idx) => {

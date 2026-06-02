@@ -2142,6 +2142,51 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
   }
 });
 
+// 3.6. Update Completed Review Schedule Score manually
+app.put('/api/schedules/:id/score', async (req, res) => {
+  const scheduleId = Number(req.params.id) || req.params.id;
+  const { score } = req.body;
+
+  if (score === undefined || score === null || isNaN(Number(score)) || Number(score) < 0 || Number(score) > 100) {
+    return res.status(400).json({ error: '점수는 0에서 100 사이의 올바른 숫자여야 합니다.' });
+  }
+
+  try {
+    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    if (schedule.status !== 'completed' && schedule.status !== 'failed') {
+      return res.status(400).json({ error: '완료 또는 실패 상태인 항목만 점수를 입력할 수 있습니다.' });
+    }
+
+    const targetScore = Math.round(Number(score));
+    
+    // Status is updated: if score >= 60, status = 'completed'; else status = 'failed'
+    const newStatus = targetScore >= 60 ? 'completed' : 'failed';
+
+    const updateSql = `
+      UPDATE schedules 
+      SET score = ?, status = ?
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [targetScore, newStatus, scheduleId]);
+
+    res.json({
+      success: true,
+      message: `${schedule.review_round}회차 복습 점수가 ${targetScore}점으로 업데이트되었습니다.`,
+      score: targetScore,
+      status: newStatus
+    });
+  } catch (error) {
+    console.error('Error updating manual score:', error);
+    res.status(500).json({ error: '서버 오류로 점수를 업데이트하지 못했습니다.' });
+  }
+});
+
 // 4. Retrieve All Topics with Spaced Schedules
 app.get('/api/topics', async (req, res) => {
   try {
