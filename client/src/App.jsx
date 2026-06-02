@@ -426,6 +426,17 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     let healed = val;
     healed = healed.replace(/\\+/g, '\\');
     
+    // 0.1) If the entire text starts and ends with $ or $$ and contains Korean, strip the outer delimiters.
+    let trimmed = healed.trim();
+    const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
+    if (hasKorean) {
+      if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+        healed = trimmed.substring(2, trimmed.length - 2).trim();
+      } else if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
+        healed = trimmed.substring(1, trimmed.length - 1).trim();
+      }
+    }
+
     // 1) Heal invalid \y commands used for gamma
     healed = healed.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
       if (suffix.startsWith('cdot')) {
@@ -454,6 +465,49 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     healed = healed.replace(/\\b([a-zA-Z0-9_]+)\\$=\\s*([0-9\\.]+)\\b/g, (match, v, num) => {
       return `$${v} = ${num}$`;
     });
+
+    // 5) Wrap Greek letters and subscripts (like K_0, K_a, f_{ck}) in $ for partial LaTeX rendering
+    const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
+    
+    const tokens = [];
+    let lastIndex = 0;
+    const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+    let match;
+    while ((match = regex.exec(healed)) !== null) {
+      const before = healed.substring(lastIndex, match.index);
+      if (before) {
+        tokens.push({ type: 'text', content: before });
+      }
+      tokens.push({ type: 'math', content: match[0] });
+      lastIndex = regex.lastIndex;
+    }
+    const after = healed.substring(lastIndex);
+    if (after) {
+      tokens.push({ type: 'text', content: after });
+    }
+
+    const processedTokens = tokens.map(tok => {
+      if (tok.type !== 'text') return tok.content;
+      let t = tok.content;
+      
+      // Wrap greek letters
+      symbols.forEach(sym => {
+        const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
+        t = t.replace(regex, `\\${sym}`);
+      });
+      // Wrap greek letters with subscripts
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
+      
+      // Wrap plain variable subscripts like K_0, f_{ck}, i_{cor}, P_{max}, P_w, C_v, m_v, q_{ult}, N_c, N_q, N_{\gamma}, J_n, J_r, J_a, J_w, q_a, D_f
+      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
+      
+      return t;
+    });
+
+    healed = processedTokens.join('');
     
     return healed;
   };
@@ -1263,6 +1317,28 @@ export default function App() {
     }
   }, [examQuestions, examRevealed, examAnswers, examTopic]);
 
+  // ── Auto-sync Review Quiz state to server on changes
+  useEffect(() => {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      const delayDebounceFn = setTimeout(() => {
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            questions: aiQuestions,
+            selectedAnswers,
+            revealedQuestions,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
+      }, 1000); // 1.0-second debounce
+
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions]);
+
 
   // Load PDF.js dynamically when switching to image view
   useEffect(() => {
@@ -1652,22 +1728,35 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false) => {
-    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${scheduleId}, reviewRound=${reviewRound}, isBonus=${isBonus}`);
+    let finalScheduleId = scheduleId;
+    let finalReviewRound = reviewRound;
+    if (!finalScheduleId) {
+      const topicObj = allTopics.find(t => t.id === topicId);
+      if (topicObj && topicObj.schedules) {
+        const pendingSched = topicObj.schedules.find(s => s.status === 'pending');
+        if (pendingSched) {
+          finalScheduleId = pendingSched.id;
+          finalReviewRound = pendingSched.review_round;
+        }
+      }
+    }
+
+    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}`);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
-    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0) {
+    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && selectedTopic?.schedule_id === finalScheduleId) {
       console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
-      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound, isBonus });
+      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus });
       // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
         if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
       });
       return;
     }
-    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: scheduleId, review_round: reviewRound, isBonus });
+    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus });
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
@@ -1679,9 +1768,13 @@ export default function App() {
     setReportText('');
 
     try {
-      const url = mode === 'local'
-        ? `${API_BASE}/api/topics/${topicId}/ai-questions?local=true`
-        : `${API_BASE}/api/topics/${topicId}/ai-questions`;
+      let url = `${API_BASE}/api/topics/${topicId}/ai-questions`;
+      const queryParams = [];
+      if (mode === 'local') queryParams.push('local=true');
+      if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
+      if (queryParams.length > 0) {
+        url += '?' + queryParams.join('&');
+      }
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
       const res = await fetch(url, { method: 'POST' });
       console.log(`[handleOpenAIQuestions] Response status: ${res.status} (${res.statusText})`);
@@ -1694,19 +1787,30 @@ export default function App() {
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
         
-        // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 localStorage에서 복원
-        try {
-          const savedProgress = localStorage.getItem(`anti_review_progress_${topicId}`);
-          if (savedProgress) {
-            const { revealedQuestions: savedRevealed, selectedAnswers: savedSelected } = JSON.parse(savedProgress);
-            if (savedRevealed) setRevealedQuestions(savedRevealed);
-            if (savedSelected) setSelectedAnswers(savedSelected);
-          } else {
-            setRevealedQuestions({});
-            setSelectedAnswers({});
+        // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
+        if (data.isCached && (data.selectedAnswers || data.revealedQuestions)) {
+          setSelectedAnswers(data.selectedAnswers || {});
+          setRevealedQuestions(data.revealedQuestions || {});
+          if (data.savedQuizScroll) {
+            savedQuizScroll.current = data.savedQuizScroll;
+            requestAnimationFrame(() => {
+              if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
+            });
           }
-        } catch (e) {
-          console.warn('복습 진행률 복원 실패:', e);
+        } else {
+          try {
+            const savedProgress = localStorage.getItem(`anti_review_progress_${topicId}`);
+            if (savedProgress) {
+              const { revealedQuestions: savedRevealed, selectedAnswers: savedSelected } = JSON.parse(savedProgress);
+              if (savedRevealed) setRevealedQuestions(savedRevealed);
+              if (savedSelected) setSelectedAnswers(savedSelected);
+            } else {
+              setRevealedQuestions({});
+              setSelectedAnswers({});
+            }
+          } catch (e) {
+            console.warn('복습 진행률 복원 실패:', e);
+          }
         }
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
@@ -4452,29 +4556,7 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                  {selectedTopic?.isReadOnly && Object.keys(selectedAnswers).length === 0 && !loadingAI && aiQuestions.length > 0 && (
-                    <div className="p-5 rounded-2xl bg-violet-950/40 border border-violet-500/30 text-violet-200 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 shadow-xl animate-fade-in">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-violet-900/50 text-violet-400 rounded-xl mt-0.5">
-                          <Info size={16} />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black uppercase tracking-wider text-violet-400 mb-0.5">이전 풀이 상세 기록 없음</h4>
-                          <p className="text-xs text-violet-300/90 leading-relaxed">
-                            이 복습 회차는 퀴즈 없이 간편 완료 처리되었거나 이전 상세 마킹 데이터가 존재하지 않습니다.<br/>
-                            지금 즉시 복습 퀴즈를 직접 풀고 이 회차의 점수 성적을 정확하게 새로 등록하시겠습니까?
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null)}
-                        className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-md shadow-violet-950/50"
-                      >
-                        <Brain size={13} />
-                        <span>퀴즈 풀고 점수 저장</span>
-                      </button>
-                    </div>
-                  )}
+
                   {aiQuestions.map((q, idx) => {
                     const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
                     const isSubj = !isMC;
@@ -4565,10 +4647,22 @@ export default function App() {
                               return (
                                 <button
                                   key={oIdx}
-                                  disabled={answered}
+                                  disabled={selectedTopic?.isReadOnly}
                                   onClick={() => {
-                                    setSelectedAnswers(prev => ({ ...prev, [idx]: opt }));
-                                    handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
+                                    setSelectedAnswers(prev => {
+                                      const updated = { ...prev, [idx]: opt };
+                                      const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                                      if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                        setTimeout(() => {
+                                          const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
+                                          if (cards && cards[idx + 1]) {
+                                            cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                          }
+                                        }, 600);
+                                      }
+                                      return updated;
+                                    });
+                                    handleRequestOptionExplanation('review', idx, q.question, q.options, q.answer);
                                   }}
                                   className={cls}
                                 >
@@ -4773,8 +4867,23 @@ export default function App() {
 
                   {aiQuestions.length > 0 && (
                     <div className="text-center py-6">
-                      {selectedTopic?.isReadOnly ? (
-                        <div className="flex justify-center gap-3 flex-wrap">
+                      <div className="flex justify-center gap-3 flex-wrap">
+                        <button
+                          onClick={selectedTopic?.isReadOnly ? () => {
+                            setSelectedTopic(null);
+                            setAiQuestions([]);
+                            setRevealedQuestions({});
+                            setSelectedAnswers({});
+                            setReviewOptionExplanations({});
+                            lastQuizTopicId.current = null;
+                          } : handleQuizCompleteClick}
+                          className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                          title={selectedTopic?.isReadOnly ? "풀이 결과 확인 완료" : "복습 완료 처리 및 점수 저장"}
+                        >
+                          <Award size={20} className="text-emerald-400" />
+                          <span>확인 및 닫기</span>
+                        </button>
+                        {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
                           <button
                             onClick={() => {
                               setSelectedTopic(null);
@@ -4783,54 +4892,20 @@ export default function App() {
                               setSelectedAnswers({});
                               setReviewOptionExplanations({});
                               lastQuizTopicId.current = null;
+                              setResetConfirmTarget({
+                                scheduleId: selectedTopic.schedule_id,
+                                topicTitle: selectedTopic.title,
+                                round: selectedTopic.review_round
+                              });
                             }}
-                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                            title="풀이 결과 확인 완료"
+                            className="inline-flex items-center gap-3 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-500/30 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg font-bold text-amber-300 text-xs"
+                            title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
                           >
-                            <Award size={20} className="text-emerald-400" />
-                            <span>확인 및 닫기</span>
+                            <RefreshCw size={14} className="text-amber-400" />
+                            <span>이 복습 회차 초기화 (다시 풀기)</span>
                           </button>
-                          {selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999 && (
-                            <button
-                              onClick={() => {
-                                setSelectedTopic(null);
-                                setAiQuestions([]);
-                                setRevealedQuestions({});
-                                setSelectedAnswers({});
-                                setReviewOptionExplanations({});
-                                lastQuizTopicId.current = null;
-                                setResetConfirmTarget({
-                                  scheduleId: selectedTopic.schedule_id,
-                                  topicTitle: selectedTopic.title,
-                                  round: selectedTopic.review_round
-                                });
-                              }}
-                              className="inline-flex items-center gap-3 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-500/30 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg font-bold text-amber-300 text-xs"
-                              title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
-                            >
-                              <RefreshCw size={14} className="text-amber-400" />
-                              <span>이 복습 회차 초기화 (다시 풀기)</span>
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={handleQuizCompleteClick}
-                          className="inline-flex items-center gap-3 bg-violet-950 hover:bg-violet-900/90 border border-violet-500/40 hover:border-violet-400 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-950/50 hover:shadow-violet-900/30 group"
-                          title="복습 완료 처리 및 대시보드로 돌아가기"
-                        >
-                          <Award size={22} className="text-violet-400 group-hover:animate-bounce-slow" />
-                          <div className="text-left">
-                            <div className="text-xs text-violet-300 font-black">복습 완료하기</div>
-                            <div className="text-sm text-white font-extrabold">
-                              객관식 정답률: {Math.round(
-                                Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length /
-                                Math.max(aiQuestions.filter(q => q.options?.length > 0).length, 1) * 100
-                              )}%
-                            </div>
-                          </div>
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -5278,10 +5353,21 @@ export default function App() {
                             return (
                               <button
                                 key={oIdx}
-                                disabled={answered}
                                 onClick={() => {
-                                  setExamAnswers(prev => ({ ...prev, [idx]: opt }));
-                                  handleRequestOptionExplanation(idx, q.question, q.options, q.answer);
+                                  setExamAnswers(prev => {
+                                    const updated = { ...prev, [idx]: opt };
+                                    const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                                    if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                      setTimeout(() => {
+                                        const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
+                                        if (cards && cards[idx + 1]) {
+                                          cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }
+                                      }, 600);
+                                    }
+                                    return updated;
+                                  });
+                                  handleRequestOptionExplanation('exam', idx, q.question, q.options, q.answer);
                                 }}
                                 className={cls}
                               >

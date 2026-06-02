@@ -326,7 +326,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 5월 30일 업그레이드 완료된 다중 API 키 순환, 지수 백오프(Exponential Backoff), 3단계 모델 폴백 시스템
  * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
-async function callLLMWithFailover(systemInstruction, userPrompt, image = null) {
+async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default') {
   const keys = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_SECONDARY,
@@ -507,14 +507,28 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null) 
     } else {
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
-      const MODELS = [
-        'gemini-3.5-flash',
-        'gemini-3.1-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash'
-      ];
+      let MODELS = [];
+      if (scenario === 'tutor') {
+        MODELS = ['gemini-3.1-flash-lite'];
+      } else if (scenario === 'question') {
+        MODELS = [
+          'gemini-3.5-flash',
+          'gemini-2.5-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-2.5-flash-lite',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash'
+        ];
+      } else {
+        MODELS = [
+          'gemini-3.5-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-lite',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash'
+        ];
+      }
       
       let basicModelFailedCount = 0;
 
@@ -2052,8 +2066,14 @@ app.post('/api/quiz/submit', async (req, res) => {
 
     // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
     await ensureSessionTable();
-    const sessionKey = `review_questions_topic_${topic_id}`;
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKey]);
+    const sessionKeyTopic = `review_questions_topic_${topic_id}`;
+    const sessionKeySchedule = targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999'
+      ? `review_questions_schedule_${targetScheduleId}`
+      : null;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeyTopic]);
+    if (sessionKeySchedule) {
+      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeySchedule]);
+    }
 
     // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
     if (isPassed && schedule.review_round >= 6 && !isBonus) {
@@ -2457,14 +2477,26 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     // 캐싱된 복습 세션 문제 복원
     await ensureSessionTable();
-    const key = `review_questions_topic_${topicId}`;
+    const scheduleId = req.query.scheduleId;
+    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+      ? `review_questions_schedule_${scheduleId}`
+      : `review_questions_topic_${topicId}`;
     const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (cached && cached.value) {
-      console.log(`[Cache Hit] Serving saved review questions for topic ${topicId}`);
+      console.log(`[Cache Hit] Serving saved review questions for key ${key}`);
       try {
         const parsed = JSON.parse(cached.value);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return res.json({ questions: parsed, isFallback: false, isCached: true });
+        } else if (parsed && Array.isArray(parsed.questions)) {
+          return res.json({
+            questions: parsed.questions,
+            selectedAnswers: parsed.selectedAnswers || {},
+            revealedQuestions: parsed.revealedQuestions || {},
+            savedQuizScroll: parsed.savedQuizScroll || 0,
+            isFallback: false,
+            isCached: true
+          });
         }
       } catch (e) {
         console.warn('Failed to parse cached review questions:', e);
@@ -2686,7 +2718,7 @@ ${specialInstructions}
 `;
 
 try {
-        const responseText = await callLLMWithFailover(null, prompt);
+        const responseText = await callLLMWithFailover(null, prompt, null, 'question');
         
         let text = responseText.trim();
         if (text.startsWith('```')) {
@@ -2948,7 +2980,7 @@ ${typeRequirement}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt);
+      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3164,7 +3196,7 @@ ${typeRequirement}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt);
+      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3357,7 +3389,7 @@ ${typeRequirement}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt);
+      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3521,7 +3553,7 @@ ${typeRequirement}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt);
+      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -3657,7 +3689,7 @@ ${combinedText}
 
       try {
         console.log(`[종합평가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt);
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4017,7 +4049,7 @@ app.post('/api/exam/additional', async (req, res) => {
 
       try {
         console.log(`[종합평가 추가 생성] (\${i + 1}/\${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt);
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4204,7 +4236,7 @@ app.post('/api/chat', async (req, res) => {
    - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.
    - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.
    - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.`;
-      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image);
+      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText);
       res.json({ text: healedText });
     } catch (err) {
@@ -4376,8 +4408,8 @@ JSON 형식:
         structure = filterStructureLines(mathContent, structure);
 
         res.json({
-          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '') : (bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식'),
-          concept: result.concept ? result.concept.trim() : (bestLocalMatch ? bestLocalMatch.concept : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
+          title: result.title ? healLatexFormulas(result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.title.trim()) : '실시간 추출 공식'),
+          concept: result.concept ? healLatexFormulas(result.concept.trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.concept.trim()) : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
           structure: structure
         });
       } catch (parseErr) {
@@ -4399,8 +4431,8 @@ JSON 형식:
         fallbackStructure = filterStructureLines(mathContent, fallbackStructure);
 
         res.json({
-          title: fallbackTitle,
-          concept: fallbackConcept,
+          title: healLatexFormulas(fallbackTitle),
+          concept: healLatexFormulas(fallbackConcept),
           structure: fallbackStructure
         });
       }
@@ -4411,8 +4443,8 @@ JSON 형식:
       let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
       fallbackStructure = filterStructureLines(mathContent, fallbackStructure);
       res.json({
-        title: fallbackTitle,
-        concept: fallbackConcept,
+        title: healLatexFormulas(fallbackTitle),
+        concept: healLatexFormulas(fallbackConcept),
         structure: fallbackStructure
       });
     }
@@ -4580,12 +4612,19 @@ app.delete('/api/session/exam', async (req, res) => {
 app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, questions } = req.body;
+    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, savedQuizScroll } = req.body;
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
-    const key = `review_questions_topic_${topicId}`;
-    const value = JSON.stringify(questions);
+    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+      ? `review_questions_schedule_${scheduleId}`
+      : `review_questions_topic_${topicId}`;
+    const value = JSON.stringify({
+      questions,
+      selectedAnswers: selectedAnswers || {},
+      revealedQuestions: revealedQuestions || {},
+      savedQuizScroll: savedQuizScroll || 0
+    });
     
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
     await dbQuery.run(
@@ -4604,7 +4643,10 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
   try {
     await ensureSessionTable();
     const topicId = req.params.id;
-    const key = `review_questions_topic_${topicId}`;
+    const scheduleId = req.query.scheduleId;
+    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+      ? `review_questions_schedule_${scheduleId}`
+      : `review_questions_topic_${topicId}`;
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
     res.json({ ok: true });
   } catch (err) {
@@ -4648,15 +4690,18 @@ function healLatexFormulas(text) {
 
   const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
                             /[_^{<>=]/.test(trimmed);
-  const isPlainSentence = /[\uAC00-\uD7A3]/.test(trimmed) && trimmed.split(/\s+/).length > 6;
+  const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
 
-  if (hasMathIndicators && !isPlainSentence && trimmed.length < 150) {
+  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
     const cleanedMath = trimmed.replace(/\$/g, '');
     return `$${cleanedMath}$`;
   }
   
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let healed = text;
+  if (hasKorean && ((text.trim().startsWith('$$') && text.trim().endsWith('$$')) || (text.trim().startsWith('$') && text.trim().endsWith('$')))) {
+    healed = trimmed;
+  }
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
 
