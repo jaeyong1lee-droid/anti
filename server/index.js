@@ -6444,6 +6444,44 @@ async function startServer() {
   }
 }
 
+app.post('/api/restore-answersheet-endpoint', async (req, res) => {
+  try {
+    await ensureAnswersheetReportsTable();
+    const reports = await dbQuery.all("SELECT id, pdf_name FROM answersheet_reports ORDER BY id ASC");
+    if (reports.length === 0) {
+      return res.json({ success: true, restored_count: 0, message: "No reports found in answersheet_reports" });
+    }
+    
+    const answersheetQuestions = reports.map((row) => {
+      return {
+        title: row.pdf_name.replace(/\.[^/.]+$/, ""), // remove extension
+        concept: '업로드한 본문 보고서가 연동되었습니다.',
+        assumptions: '',
+        formula: '',
+        answer: '',
+        answersheet_report_id: row.id,
+        pdf_name: row.pdf_name
+      };
+    });
+    
+    const value = JSON.stringify({ answersheetQuestions });
+    await dbQuery.run("DELETE FROM app_session WHERE key = 'answersheet_questions'");
+    await dbQuery.run(
+      "INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+      ['answersheet_questions', value]
+    );
+    
+    res.json({
+      success: true,
+      restored_count: answersheetQuestions.length,
+      topics: answersheetQuestions.map(q => q.title)
+    });
+  } catch (err) {
+    console.error('POST /api/restore-answersheet-endpoint error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/debug-db-status', async (req, res) => {
   try {
     const connectionString = process.env.DATABASE_URL || 

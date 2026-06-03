@@ -2358,20 +2358,19 @@ export default function App() {
         throw new Error('답안지 문항을 생성하지 못했습니다.');
       }
 
-      setAnswersheetQuestions(prev => {
-        const newItems = theories.map(t => ({
-          title: t.title,
-          concept: t.concept || '연동된 원보고서입니다.',
-          assumptions: t.assumptions || '',
-          formula: t.formula || t.answer || '',
-          answersheet_report_id: t.answersheet_report_id,
-          pdf_name: t.pdf_name
-        }));
-        const updated = [...newItems, ...prev];
-        latestAnswersheetQuestionsRef.current = updated;
-        handleSaveAnswersheetQuestions(updated, false);
-        return updated;
-      });
+      const currentQs = await loadAnswersheetQuestions();
+      const newItems = theories.map(t => ({
+        title: t.title,
+        concept: t.concept || '연동된 원보고서입니다.',
+        assumptions: t.assumptions || '',
+        formula: t.formula || t.answer || '',
+        answersheet_report_id: t.answersheet_report_id,
+        pdf_name: t.pdf_name
+      }));
+      const updated = [...newItems, ...currentQs];
+      latestAnswersheetQuestionsRef.current = updated;
+      setAnswersheetQuestions(updated);
+      await handleSaveAnswersheetQuestions(updated, false);
 
       showNotification(`[${topicTitle}] 원보고서가 성공적으로 연동되어 답안지 탭에 추가되었습니다!`, 'success');
     } catch (err) {
@@ -4032,20 +4031,19 @@ export default function App() {
         throw new Error('답안지 문항을 생성하지 못했습니다.');
       }
 
-      setAnswersheetQuestions(prev => {
-        const newItems = theories.map(t => ({
-          title: t.title,
-          concept: t.concept || '업로드된 원보고서입니다.',
-          assumptions: t.assumptions || '',
-          formula: t.formula || t.answer || '',
-          answersheet_report_id: t.answersheet_report_id,
-          pdf_name: t.pdf_name
-        }));
-        const updated = [...newItems, ...prev];
-        latestAnswersheetQuestionsRef.current = updated;
-        handleSaveAnswersheetQuestions(updated, false);
-        return updated;
-      });
+      const currentQs = await loadAnswersheetQuestions();
+      const newItems = theories.map(t => ({
+        title: t.title,
+        concept: t.concept || '업로드된 원보고서입니다.',
+        assumptions: t.assumptions || '',
+        formula: t.formula || t.answer || '',
+        answersheet_report_id: t.answersheet_report_id,
+        pdf_name: t.pdf_name
+      }));
+      const updated = [...newItems, ...currentQs];
+      latestAnswersheetQuestionsRef.current = updated;
+      setAnswersheetQuestions(updated);
+      await handleSaveAnswersheetQuestions(updated, false);
 
       showNotification(`[${file.name}] 보고서가 성공적으로 답안지 탭에 연동 추가되었습니다!`, 'success');
     } catch (err) {
@@ -4122,7 +4120,6 @@ export default function App() {
     setShowExam(false);
     setShowFormulaExam(false);
     setShowTheoryExam(false);
-    setChatHistory([]); // Clear chat history for answer sheet study
     setAnswersheetMobileTab('list');
     requestAnimationFrame(() => {
       if (answersheetSplitContainerRef.current) answersheetSplitContainerRef.current.scrollLeft = 0;
@@ -4160,7 +4157,6 @@ export default function App() {
 
   const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
-    setChatHistory([]); // Clear chat history to start fresh for theory study
     setTheoryMobileTab('list');
     requestAnimationFrame(() => {
       if (theorySplitContainerRef.current) theorySplitContainerRef.current.scrollLeft = 0;
@@ -4721,10 +4717,8 @@ export default function App() {
       console.warn('[Mount Restore] Failed to parse saved state for AI questions:', e);
     }
 
-    if (localStorage.getItem('anti_show_answersheet') === 'true') {
-      console.log('[Mount Restore] Restoring answersheet questions');
-      loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
-    }
+    // Unconditionally load answersheet questions on mount to prevent state desync and subsequent data loss
+    loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
   }, []);
 
   return (
