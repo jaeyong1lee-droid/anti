@@ -1239,33 +1239,12 @@ export default function App() {
 
   useEffect(() => {
     const handleResize = () => {
-      const isL = window.innerWidth >= 768 && window.innerHeight <= 600;
       setIsDesktop(window.innerWidth >= 768);
-      setIsMobileLandscape(isL);
-      if (!isL && document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
+      setIsMobileLandscape(window.innerWidth >= 768 && window.innerHeight <= 600);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  useEffect(() => {
-    const handleGlobalClick = () => {
-      if (isMobileLandscape && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(err => {
-          console.log("Error entering fullscreen on interaction:", err);
-        });
-      }
-    };
-    
-    window.addEventListener('click', handleGlobalClick);
-    window.addEventListener('touchstart', handleGlobalClick);
-    return () => {
-      window.removeEventListener('click', handleGlobalClick);
-      window.removeEventListener('touchstart', handleGlobalClick);
-    };
-  }, [isMobileLandscape]);
 
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
@@ -4673,7 +4652,7 @@ export default function App() {
 
       {/* Top Premium Navbar */}
       <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 landscape-hide">
           <div className="p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple">
             <Brain className="text-white" size={28} />
           </div>
@@ -4738,7 +4717,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="flex md:hidden flex-col gap-2 w-full">
+          <div className="flex md:hidden landscape-flex-important flex-col gap-2 w-full">
             {/* 첫 번째 줄 */}
             <div className="flex gap-2 w-full">
               <button
@@ -4807,9 +4786,10 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem] w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow">
-        
-        {/* Statistics Dashboard Banner */}
-        {(isDesktop || viewMode !== 'all_topics') && (
+        <div className="flex flex-col landscape-dashboard-row gap-0">
+          <div className="landscape-dashboard-left">
+            {/* Statistics Dashboard Banner */}
+            {(isDesktop || viewMode !== 'all_topics') && (
           <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
             <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4 glow-purple">
               <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl">
@@ -4875,8 +4855,10 @@ export default function App() {
             </div>
           </section>
         )}
-
-        {viewMode === 'dashboard' ? (
+          </div>
+          
+          <div className="landscape-dashboard-right">
+            {viewMode === 'dashboard' ? (
           /* DASHBOARD VIEW (Two Column) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
@@ -5238,11 +5220,11 @@ export default function App() {
                 : -1;
               
               return (
-                <div className="overflow-x-auto md:overflow-x-visible">
+                <div className="overflow-x-auto md:overflow-x-visible landscape-overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
-                        <th className={`py-2.5 px-3 ${isDesktop ? '' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>토픽 정보</th>
+                        <th className={`py-2.5 px-3 ${(isDesktop && !isMobileLandscape) ? '' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>토픽 정보</th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
@@ -5264,7 +5246,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className={`py-2.5 px-3 ${isDesktop ? 'max-w-xs md:max-w-md' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>
+                            <td className={`py-2.5 px-3 ${(isDesktop && !isMobileLandscape) ? 'max-w-xs md:max-w-md' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
@@ -5293,7 +5275,7 @@ export default function App() {
                                     </button>
                                   </div>
                                 ) : (
-                                  isDesktop ? (
+                                  (isDesktop && !isMobileLandscape) ? (
                                     /* PC: Single Line (title + review button inline) */
                                     <div className="flex items-center gap-3 w-full min-w-0">
                                       <h4 
@@ -5432,6 +5414,8 @@ export default function App() {
             })()}
           </section>
         )}
+          </div>
+        </div>
       </main>
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
