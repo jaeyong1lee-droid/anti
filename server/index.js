@@ -2106,17 +2106,28 @@ app.post('/api/quiz/submit', async (req, res) => {
     const correctVal = correctCount !== undefined ? correctCount : null;
     const totalVal = total !== undefined ? total : null;
 
-    if (isPassed) {
+    const today = getLocalDateString();
+    const isEarlyReview = !isBonus && (schedule.planned_date > today);
+
+    if (isEarlyReview) {
+      // 예정일 전 조기 복습인 경우: 상태는 pending 유지, completed_at은 NULL로 기록하되 성적 데이터만 세이브 (통계 카운트에서 제외됨)
       await dbQuery.run(
-        `UPDATE schedules SET status = 'completed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [now, scoreVal, correctVal, totalVal, targetScheduleId]
+        `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [scoreVal, correctVal, totalVal, targetScheduleId]
       );
     } else {
-      // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
-      await dbQuery.run(
-        `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
-        [now, scoreVal, correctVal, totalVal, targetScheduleId]
-      );
+      if (isPassed) {
+        await dbQuery.run(
+          `UPDATE schedules SET status = 'completed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+          [now, scoreVal, correctVal, totalVal, targetScheduleId]
+        );
+      } else {
+        // 실패 시 failed 마킹 → 다음 날 대시보드에 다시 pending으로 조회되지 않도록 상태 갱신
+        await dbQuery.run(
+          `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+          [now, scoreVal, correctVal, totalVal, targetScheduleId]
+        );
+      }
     }
 
     // [핵심] 복습 완료 시, 풀이한 문제 세트, 객관식 마킹 내역, 주관식 풀이 열람 이력을 기기 간 완벽 복원하기 위해 세션 테이블에 세이브

@@ -2150,6 +2150,44 @@ export default function App() {
     }
   };
 
+  // Long press or normal click helper for round badges in grid
+  const createRoundBadgeHandlers = (schedId, topicId, topicTitle, round, keywords, pdfName) => {
+    let pressTimer = null;
+    let isLong = false;
+
+    const start = (e) => {
+      isLong = false;
+      pressTimer = setTimeout(() => {
+        isLong = true;
+        if (window.confirm(`[${topicTitle}] ${round}회차 복습을 취소하고 대기 상태로 되돌리시겠습니까?`)) {
+          handleResetReview(schedId, topicTitle, round);
+        }
+      }, 700);
+    };
+
+    const cancel = (e) => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    const click = (e) => {
+      if (!isLong) {
+        handleOpenCompletedReview(schedId, topicId, topicTitle, round, keywords, pdfName);
+      }
+    };
+
+    return {
+      onMouseDown: start,
+      onTouchStart: start,
+      onMouseUp: cancel,
+      onTouchEnd: cancel,
+      onMouseLeave: cancel,
+      onClick: click
+    };
+  };
+
   // Delete specific Topic (includes prompt safety confirm)
   const handleDeleteTopic = async (topicId, topicTitle) => {
     if (!window.confirm(`[${topicTitle}] 토픽과 관련된 모든 4회차 복습 스케줄이 영구 삭제됩니다.\n정말 삭제하시겠습니까?`)) {
@@ -5277,10 +5315,10 @@ export default function App() {
                                     <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                       {sched.status === 'completed' || sched.status === 'failed' ? (
                                         <button
-                                          onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
+                                          {...createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
                                           className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
                                             sched.status === 'completed'
-                                              ? (sched.score === 100 || sched.score === null || sched.score === undefined
+                                              ? (sched.score === 100
                                                   ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
                                                   : sched.score >= 80
                                                     ? 'text-blue-400 bg-blue-950/40 hover:bg-blue-900/60 hover:text-blue-200 border-blue-500/30'
@@ -5288,7 +5326,7 @@ export default function App() {
                                                 )
                                               : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
                                           }`}
-                                          title={`클릭 시 이전 풀이 확인 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
+                                          title={`클릭 시 복습 내용 보기 / 길게 누르면 복습 취소 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
                                         >
                                           {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                         </button>
