@@ -5807,7 +5807,7 @@ export default function App() {
 
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
               <div 
-                className="w-full shrink-0 md:flex-1 md:shrink landscape-w-55 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+                className="w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
               >
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -6305,7 +6305,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
                   className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg`}
@@ -6605,7 +6605,7 @@ export default function App() {
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 landscape-bg-slate-900"
             >
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -7080,7 +7080,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
                   className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}

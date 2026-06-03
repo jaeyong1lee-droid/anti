@@ -246,7 +246,21 @@
   .landscape-flex-important {
     display: flex !important;
   }
-  /* Independent scroll for dashboard columns in landscape */
+  /* Solid slate background for question list wrapper to prevent underlying bleed */
+  .landscape-bg-slate-900 {
+    background-color: #0f172a !important;
+  }
+  
+  /* Flatten the Gemini tutor input panel wrapper and remove border */
+  .landscape-tutor-input-wrapper {
+    background-color: transparent !important;
+    border-top: none !important;
+    padding: 6px 8px !important;
+    margin-top: -4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Independent scroll for dashboard columns in landscape with hidden scrollbars */
   body, html {
     overflow: hidden !important;
   }
@@ -263,17 +277,44 @@
   }
   .landscape-dashboard-left {
     height: 100vh !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
     position: sticky !important;
     top: 0 !important;
     padding-top: 12px !important;
-    padding-bottom: 12px !important;
+    padding-bottom: 48px !important;
+  }
+  .landscape-dashboard-left::-webkit-scrollbar {
+    display: none !important;
   }
   .landscape-dashboard-right {
     height: 100vh !important;
     overflow-y: auto !important;
+    scrollbar-width: none !important;
     padding-top: 12px !important;
-    padding-bottom: 60px !important;
+    padding-bottom: 80px !important;
+  }
+  .landscape-dashboard-right::-webkit-scrollbar {
+    display: none !important;
+  }
+  .landscape-overflow-x-auto {
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .landscape-overflow-x-auto::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Hide scrollbars inside modals for clean landscape look */
+  .landscape-quiz-body,
+  .landscape-split-container,
+  div[class*="overflow-y-auto"] {
+    scrollbar-width: none !important;
+  }
+  .landscape-quiz-body::-webkit-scrollbar,
+  .landscape-split-container::-webkit-scrollbar,
+  div[class*="overflow-y-auto"]::-webkit-scrollbar {
+    display: none !important;
   }
 }
 
