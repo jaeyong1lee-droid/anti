@@ -5,6 +5,7 @@ import pdfParse from 'pdf-parse';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { initDatabase, dbQuery, isPostgres } from './database.js';
+import { startBackupScheduler } from './backupManager.js';
 import { generateFallbackQuestions as generateFallbackQuestionsModule } from './fallback_generator.js';
 import fs from 'fs';
 import path from 'path';
@@ -6122,6 +6123,9 @@ async function startServer() {
       console.log(`Spaced Repetition Backend is running!`);
       console.log(`Server Port: ${PORT}`);
       console.log(`============================================`);
+      
+      // Start automatic 3-day backup scheduler for Neon PostgreSQL
+      startBackupScheduler();
     });
   } catch (err) {
     console.error('Failed to start application server listener:', err);

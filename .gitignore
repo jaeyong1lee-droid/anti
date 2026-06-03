@@ -12,6 +12,7 @@ yarn-error.log*
 *.db-journal
 *.sqlite
 server/spaced_repetition.db
+server/backups/
 
 # Environment variables & secrets
 .env
