@@ -400,10 +400,22 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   if (!text) return null;
 
   const pressTimer = useRef(null);
-  const isLongPress = useRef(false);
+  const pressTarget = useRef(null);
 
   const startPress = (e) => {
-    // "이 공식을 퀴즈에 추가" 기능 삭제에 따라 롱프레스 비활성화
+    // Find the nearest katex formula wrapper
+    const katexEl = e.target.closest('.katex, .katex-display');
+    if (!katexEl) return;
+    
+    pressTarget.current = katexEl;
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    
+    pressTimer.current = setTimeout(() => {
+      if (pressTarget.current) {
+        triggerFormulaPopup();
+      }
+      pressTarget.current = null;
+    }, 600); // 600ms long press threshold
   };
 
   const endPress = () => {
@@ -417,6 +429,27 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     if (pressTimer.current) {
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
+    }
+    pressTarget.current = null;
+  };
+
+  const triggerFormulaPopup = () => {
+    const el = pressTarget.current;
+    if (!el) return;
+    
+    const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+    if (!annotation) return;
+    
+    const mathTex = annotation.textContent || annotation.innerText;
+    if (!mathTex) return;
+    
+    const cleanMath = mathTex.trim();
+    if (window.confirm(`[${cleanMath}] 공식을 필수공식 리스트에 추가하시겠습니까?`)) {
+      if (typeof window.__handleAddSpecificFormula === 'function') {
+        window.__handleAddSpecificFormula(cleanMath, text);
+      } else if (typeof onAddFormula === 'function') {
+        onAddFormula(cleanMath);
+      }
     }
   };
 
@@ -3772,6 +3805,8 @@ export default function App() {
         console.warn('AI 타이틀 추천 반영 실패 (로컬 기본값 보존):', err);
       });
   };
+
+  window.__handleAddSpecificFormula = handleAddSpecificFormula;
 
   // 필수공식 개별 리프레쉬 (AI 분석 재요청 및 갱신)
   const handleRefreshFormula = (idx) => {
