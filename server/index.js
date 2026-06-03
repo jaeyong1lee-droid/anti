@@ -5307,6 +5307,7 @@ app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, re
 // GET /api/session/answersheet/report/:id → 저장된 답안지 원본 문서 스트리밍
 app.get('/api/session/answersheet/report/:id', async (req, res) => {
   const reportId = req.params.id;
+  const forceDownload = req.query.download === 'true';
   try {
     await ensureAnswersheetReportsTable();
     const reportSql = `SELECT pdf_name, pdf_data FROM answersheet_reports WHERE id = ?`;
@@ -5329,7 +5330,11 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
       res.send(htmlContent);
     } else {
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(report.pdf_name)}"`);
+      if (forceDownload) {
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(report.pdf_name)}"`);
+      } else {
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(report.pdf_name)}"`);
+      }
       res.send(report.pdf_data);
     }
   } catch (error) {

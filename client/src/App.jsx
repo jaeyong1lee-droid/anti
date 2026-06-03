@@ -4529,7 +4529,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className="bg-transparent md:glass-panel rounded-none md:rounded-3xl p-0 md:p-6 border-0 md:border border-slate-800/80 shadow-none md:shadow-xl">
+          <section className="bg-transparent md:glass-panel rounded-none md:rounded-3xl p-0 md:p-6 border-0 md:border md:!border-r-0 border-slate-800/80 shadow-none md:shadow-xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
@@ -4662,7 +4662,7 @@ export default function App() {
                                           setEditingTitleText(topic.title);
                                         }}
                                         ref={isFirstMatch ? firstMatchRef : null}
-                                        className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                        className="font-bold text-white text-sm md:text-[17px] truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
                                         title="클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
@@ -4672,10 +4672,10 @@ export default function App() {
                                           e.stopPropagation();
                                           handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
                                         }}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs md:text-[14px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
                                         title="소스 + Gemini AI로 고난도 문제 생성"
                                       >
-                                        <Brain size={12} />
+                                        <Brain size={14} />
                                         <span>복습</span>
                                       </button>
                                     </div>
@@ -4774,7 +4774,7 @@ export default function App() {
                                       {sched.status === 'completed' || sched.status === 'failed' ? (
                                         <button
                                           onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                          className={`inline-flex items-center gap-0.5 text-[11px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
+                                          className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
                                             sched.status === 'completed'
                                               ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
                                               : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
@@ -4784,7 +4784,7 @@ export default function App() {
                                           {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                         </button>
                                       ) : (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
                                           대기
                                         </span>
                                       )}
@@ -4805,11 +4805,10 @@ export default function App() {
                                       e.stopPropagation();
                                       handleCopyReportToAnswersheet(topic.id, topic.title);
                                     }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-xs font-bold transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
-                                    title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
+                                    className="inline-flex items-center justify-center p-1.5 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+                                    title="답안지 추가 (이 토픽의 원보고서 보기를 답안지탭에 추가합니다)"
                                   >
-                                    <Copy size={12} />
-                                    <span>답안추가</span>
+                                    <Copy size={14} />
                                   </button>
                                 )}
                                 <button
@@ -4817,11 +4816,10 @@ export default function App() {
                                     e.stopPropagation();
                                     handleDeleteTopic(topic.id, topic.title);
                                   }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
-                                  title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
+                                  className="inline-flex items-center justify-center p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+                                  title="삭제 (이 토픽과 모든 복습 일정을 영구 삭제합니다)"
                                 >
-                                  <Trash2 size={12} />
-                                  <span>삭제</span>
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </td>
@@ -7626,7 +7624,17 @@ export default function App() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
-                                  window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+                                  const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
+                                  if (isPdf) {
+                                    const link = document.createElement('a');
+                                    link.href = `${url}?download=true`;
+                                    link.download = q.pdf_name;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  } else {
+                                    window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+                                  }
                                 }}
                                 className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-1"
                                 title="원본 보고서 파일(HTML/PDF) 팝업 열기"
