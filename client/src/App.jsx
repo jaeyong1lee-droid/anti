@@ -2266,6 +2266,21 @@ export default function App() {
         setAiError(data.error || '');
         lastQuizTopicId.current = selectedTopic.id;
         setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
+        
+        // 공부중 버튼 캐시 및 상태 연동 업데이트
+        const activeInfo = {
+          topicId: selectedTopic.id,
+          title: selectedTopic.title,
+          keywords: selectedTopic.keywords || '',
+          pdfName: selectedTopic.pdf_name || '',
+          mode: 'ai',
+          scheduleId: selectedTopic.schedule_id,
+          reviewRound: selectedTopic.review_round,
+          isReadOnly: false
+        };
+        localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+        setLastActiveReview(activeInfo);
+
         if (isReadOnly) {
           fetchTodayReviews(referenceDate);
           fetchAllTopics();
