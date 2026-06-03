@@ -1442,6 +1442,12 @@ export default function App() {
 
       if (res.ok) {
         showNotification('새로운 토픽 등록 및 6개 회차 복습 스케줄 생성이 완료되었습니다!');
+        
+        // 공부 토픽 등록 성공 시 업로드한 파일이 있으면 답안지에도 자동 업로드/AI 분석 수행
+        if (pdfFile) {
+          handleUploadAnswersheetPdf(pdfFile);
+        }
+
         setTitle('');
         setKeywords('');
         setPdfFile(null);
