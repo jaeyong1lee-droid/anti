@@ -16,7 +16,7 @@ const connectionString = process.env.DATABASE_URL ||
                          process.env.SUPABASE_DATABASE_URL ||
                          '';
 
-let isPostgres = !!connectionString;
+export const isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
 
 let db = null;
@@ -219,6 +219,16 @@ export async function initDatabase() {
           )
         `);
 
+        // answersheet_reports table: stores original documents for answersheets
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS answersheet_reports (
+            id SERIAL PRIMARY KEY,
+            pdf_name TEXT,
+            pdf_data BYTEA,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
         // 2. schedules table: maps spaced repetition intervals for each topic
         await pgPool.query(`
           CREATE TABLE IF NOT EXISTS schedules (
@@ -270,6 +280,15 @@ async function initSQLiteTables() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       keywords TEXT,
+      pdf_name TEXT,
+      pdf_data BLOB,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS answersheet_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       pdf_name TEXT,
       pdf_data BLOB,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP

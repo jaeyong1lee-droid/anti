@@ -4,7 +4,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { initDatabase, dbQuery } from './database.js';
+import { initDatabase, dbQuery, isPostgres } from './database.js';
 import { generateFallbackQuestions as generateFallbackQuestionsModule } from './fallback_generator.js';
 import fs from 'fs';
 import path from 'path';
@@ -5241,14 +5241,25 @@ app.post('/api/session/answersheet', async (req, res) => {
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
-    await dbQuery.run(`
-      CREATE TABLE IF NOT EXISTS answersheet_reports (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pdf_name TEXT,
-        pdf_data BLOB,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    if (isPostgres) {
+      await dbQuery.run(`
+        CREATE TABLE IF NOT EXISTS answersheet_reports (
+          id SERIAL PRIMARY KEY,
+          pdf_name TEXT,
+          pdf_data BYTEA,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } else {
+      await dbQuery.run(`
+        CREATE TABLE IF NOT EXISTS answersheet_reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          pdf_name TEXT,
+          pdf_data BLOB,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    }
   } catch (e) {
     console.warn('ensureAnswersheetReportsTable warning:', e.message);
   }
