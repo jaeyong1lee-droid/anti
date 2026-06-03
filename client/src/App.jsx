@@ -7832,12 +7832,14 @@ export default function App() {
                                   const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
                                   const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
                                   if (isPdf) {
-                                    const link = document.createElement('a');
-                                    link.href = `${url}?download=true`;
-                                    link.download = q.pdf_name;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
+                                    if (window.confirm(`[${q.pdf_name || '원 보고서'}] 파일을 다운로드하시겠습니까?`)) {
+                                      const link = document.createElement('a');
+                                      link.href = `${url}?download=true`;
+                                      link.download = q.pdf_name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }
                                   } else {
                                     window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
                                   }
