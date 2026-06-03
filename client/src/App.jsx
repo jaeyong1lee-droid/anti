@@ -1657,6 +1657,11 @@ export default function App() {
             showNotification('이미 모든 약점 보완 토픽이 복습 목록에 추가되어 있습니다.', 'info');
             return prev;
           }
+          
+          // 새로 추가되는 약점 추천 토픽은 숨김(hiddenBonusTopicIds) 목록에서 제외시켜 화면에 즉시 렌더링되도록 함
+          const newTopicIds = newPoints.map(w => w.topic_id);
+          setHiddenBonusTopicIds(prevHidden => prevHidden.filter(id => !newTopicIds.includes(id)));
+
           showNotification(`약점 보완 추천 토픽 ${newPoints.length}개가 오늘의 복습 목록에 성공적으로 추가되었습니다!`, 'success');
           return [...newPoints, ...prev]; // 보너스를 상단에 노출하기 위해 앞에 붙임
         });
