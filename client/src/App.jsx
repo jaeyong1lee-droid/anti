@@ -5652,7 +5652,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 landscape-quiz-body scroll-smooth relative"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -6085,7 +6085,9 @@ export default function App() {
           <div 
             className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
-              {isDesktop && <ScientificCalculator />}
+              <div className="landscape-hide w-full flex-shrink-0">
+                {isDesktop && <ScientificCalculator />}
+              </div>
 
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
@@ -6792,7 +6794,9 @@ export default function App() {
             <div 
               className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
-              {isDesktop && <ScientificCalculator />}
+              <div className="landscape-hide w-full flex-shrink-0">
+                {isDesktop && <ScientificCalculator />}
+              </div>
 
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />

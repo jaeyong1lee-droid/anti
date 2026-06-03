@@ -164,6 +164,21 @@
     overflow-x: hidden !important;
     scrollbar-width: none !important;
   }
+  .landscape-quiz-body {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    padding-top: 8px !important;
+  }
+  .quiz-card-item {
+    background: transparent !important;
+    border: none !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+    margin-bottom: 16px !important;
+  }
 }
 
 /* PC version font size enlargement (1.2x) for modals */
