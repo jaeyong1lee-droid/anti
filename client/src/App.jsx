@@ -7124,7 +7124,7 @@ export default function App() {
       {showFormulaExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Formula Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
               <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Sigma size={20} />
@@ -7224,7 +7224,7 @@ export default function App() {
           </div>
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0">
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
               <button
                 onClick={() => {
@@ -7269,8 +7269,66 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
           >
+            
+            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
+              <button
+                onClick={() => {
+                  const newFormula = {
+                    title: "",
+                    concept: "",
+                    assumptions: "",
+                    formula: "",
+                    isDirectlyAdded: true
+                  };
+                  const updated = [...formulaQuestions, newFormula];
+                  latestFormulaQuestionsRef.current = updated;
+                  setFormulaQuestions(updated);
+                  localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                  showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                  setTimeout(() => {
+                    if (formulaBodyRef.current) {
+                      formulaBodyRef.current.scrollTo({
+                        top: formulaBodyRef.current.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }, 80);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-rose-950/80 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="새로운 공식 추가"
+              >
+                <PlusCircle size={14} className="text-rose-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">공식추가</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, true);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="공식 변경사항 실시간 저장"
+              >
+                <Save size={14} className="text-emerald-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">저장</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                  savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
+                  setFormulaSearchQuery('');
+                  setShowFormulaExam(false);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="저장 후 닫기"
+              >
+                <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
+              </button>
+            </div>
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
@@ -7420,12 +7478,12 @@ export default function App() {
                           {/* Row 2: Action Buttons (정답확인, 리프레쉬, 삭제) */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {/* 정답확인/정답접기 button */}
-                                                        {!isNewEmptyCard && (
-                              (isHeavyHtml(q.formula) || !isOutputVisible) ? (
+                            {!isNewEmptyCard && (
+                              (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (isHeavyHtml(q.formula)) {
+                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
                                     } else {
                                       setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
@@ -7473,13 +7531,25 @@ export default function App() {
                             {q.isDirectlyAdded && (
                               <button
                                 onClick={() => {
-                                  setFormulaInputRevealed(prev => ({
-                                    ...prev,
-                                    [idx]: !prev[idx]
-                                  }));
+                                  if (isMobileLandscape) {
+                                    const val = window.prompt("LaTeX 공식을 입력하세요:", q.formula || "");
+                                    if (val !== null) {
+                                      const updated = [...formulaQuestions];
+                                      updated[idx] = { ...updated[idx], formula: val };
+                                      latestFormulaQuestionsRef.current = updated;
+                                      setFormulaQuestions(updated);
+                                      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                                      handleSaveFormulaQuestions(updated, false);
+                                    }
+                                  } else {
+                                    setFormulaInputRevealed(prev => ({
+                                      ...prev,
+                                      [idx]: !prev[idx]
+                                    }));
+                                  }
                                 }}
                                 className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
-                                  isInputVisible 
+                                  !isMobileLandscape && isInputVisible 
                                     ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
                                     : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border-slate-700/50 bg-slate-800/40'
                                 }`}
@@ -7521,7 +7591,7 @@ export default function App() {
                         </div>
 
                         {/* Real-time LaTeX rendered Output Display Window */}
-                        {isOutputVisible && (
+                        {!isMobileLandscape && isOutputVisible && (
                           <div className="space-y-3 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
@@ -7558,7 +7628,7 @@ export default function App() {
                         )}
 
                         {/* Input Textarea Area for Paste / Typing LaTeX */}
-                        {isInputVisible && (
+                        {!isMobileLandscape && isInputVisible && (
                           <div className="space-y-1 pt-1 animate-fade-in">
                             <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
                             <textarea
@@ -7712,7 +7782,7 @@ export default function App() {
       {showTheoryExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4 landscape-hide">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
               <div className="p-2 bg-indigo-950/80 text-indigo-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Brain size={20} />
@@ -7812,7 +7882,7 @@ export default function App() {
           </div>
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0">
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
               <button
                 onClick={() => {
@@ -7857,8 +7927,66 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
           >
+            
+            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
+              <button
+                onClick={() => {
+                  const newTheory = {
+                    title: "",
+                    concept: "",
+                    assumptions: "",
+                    formula: "",
+                    isDirectlyAdded: true
+                  };
+                  const updated = [...theoryQuestions, newTheory];
+                  latestTheoryQuestionsRef.current = updated;
+                  setTheoryQuestions(updated);
+                  localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                  showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                  setTimeout(() => {
+                    if (theoryBodyRef.current) {
+                      theoryBodyRef.current.scrollTo({
+                        top: theoryBodyRef.current.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }, 80);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="새로운 이론 추가"
+              >
+                <PlusCircle size={14} className="text-indigo-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">이론추가</span>
+              </button>
+              
+              <button
+                onClick={async () => {
+                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="이론 변경사항 실시간 저장"
+              >
+                <Save size={14} className="text-emerald-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">저장</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                  savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
+                  setTheorySearchQuery('');
+                  setShowTheoryExam(false);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="저장 후 닫기"
+              >
+                <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
+              </button>
+            </div>
             
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
@@ -8002,7 +8130,7 @@ export default function App() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (isHeavyHtml(q.formula)) {
+                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `이론 ${idx + 1}`, q.formula);
                                     } else {
                                       setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
@@ -8031,13 +8159,25 @@ export default function App() {
                             {/* Toggle Input Editor */}
                             <button
                               onClick={() => {
-                                setTheoryInputRevealed(prev => ({
-                                  ...prev,
-                                  [idx]: !prev[idx]
-                                }));
+                                if (isMobileLandscape) {
+                                  const val = window.prompt("이론 유도 LaTeX 내용을 입력하세요:", q.formula || "");
+                                  if (val !== null) {
+                                    const updated = [...theoryQuestions];
+                                    updated[idx] = { ...updated[idx], formula: val };
+                                    latestTheoryQuestionsRef.current = updated;
+                                    setTheoryQuestions(updated);
+                                    localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                                    handleSaveTheoryQuestions(updated, false);
+                                  }
+                                } else {
+                                  setTheoryInputRevealed(prev => ({
+                                    ...prev,
+                                    [idx]: !prev[idx]
+                                  }));
+                                }
                               }}
                               className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
-                                isInputVisible 
+                                !isMobileLandscape && isInputVisible 
                                   ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' 
                                   : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 border-slate-700/50 bg-slate-800/40'
                               }`}
@@ -8078,7 +8218,7 @@ export default function App() {
                         </div>
 
                         {/* Real-time LaTeX rendered Output Display Window */}
-                        {isOutputVisible && (
+                        {!isMobileLandscape && isOutputVisible && (
                           <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
@@ -8103,7 +8243,7 @@ export default function App() {
                         )}
 
                         {/* Input Textarea Area for Paste / Typing LaTeX */}
-                        {isInputVisible && (
+                        {!isMobileLandscape && isInputVisible && (
                           <div className="space-y-1 pt-1 animate-fade-in">
                             <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
                             <textarea
@@ -8250,7 +8390,7 @@ export default function App() {
       {showAnswerSheet && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-emerald-500/20 flex-shrink-0 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-emerald-500/20 flex-shrink-0 gap-4 landscape-hide">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
               <div className="p-2 bg-emerald-950/80 text-emerald-400 rounded-xl flex-shrink-0 mt-0.5 animate-pulse glow-emerald">
                 <FileText size={20} />
@@ -8368,7 +8508,7 @@ export default function App() {
           </div>
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0">
+          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
               <button
                 onClick={() => {
@@ -8413,8 +8553,66 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
           >
+            
+            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
+              <button
+                onClick={() => {
+                  const newItem = {
+                    title: "",
+                    concept: "",
+                    assumptions: "",
+                    formula: "",
+                    isDirectlyAdded: true
+                  };
+                  const updated = [...answersheetQuestions, newItem];
+                  latestAnswersheetQuestionsRef.current = updated;
+                  setAnswersheetQuestions(updated);
+                  localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                  showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                  setTimeout(() => {
+                    if (answersheetBodyRef.current) {
+                      answersheetBodyRef.current.scrollTo({
+                        top: answersheetBodyRef.current.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }
+                  }, 80);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="새로운 답안 추가"
+              >
+                <PlusCircle size={14} className="text-emerald-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">답안추가</span>
+              </button>
+              
+              <button
+                onClick={async () => {
+                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="답안 변경사항 실시간 저장"
+              >
+                <Save size={14} className="text-emerald-400" />
+                <span className="text-[9px] font-black tracking-tight leading-tight">저장</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                  savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
+                  setAnswersheetSearchQuery('');
+                  setShowAnswerSheet(false);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="저장 후 닫기"
+              >
+                <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
+              </button>
+            </div>
             
             {/* Left: Answersheet List */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
@@ -8556,6 +8754,68 @@ export default function App() {
 
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
+                            {/* 정답확인/정답접기 button */}
+                            {!isNewEmptyCard && (
+                              (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
+                                      handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
+                                    } else {
+                                      setAnswersheetRevealed(prev => ({ ...prev, [idx]: true }));
+                                    }
+                                  }}
+                                  className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 border border-emerald-500/20 flex items-center justify-center gap-1"
+                                  title="정답 확인하기"
+                                >
+                                  <span>정답확인</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }));
+                                  }}
+                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
+                                  title="정답 접기"
+                                >
+                                  <span>정답접기</span>
+                                </button>
+                              )
+                            )}
+
+                            {/* Toggle Input Editor / 수정하기 */}
+                            <button
+                              onClick={() => {
+                                if (isMobileLandscape) {
+                                  const val = window.prompt("답안 LaTeX/HTML 내용을 입력하세요:", q.formula || "");
+                                  if (val !== null) {
+                                    const updated = [...answersheetQuestions];
+                                    updated[idx] = { ...updated[idx], formula: val };
+                                    latestAnswersheetQuestionsRef.current = updated;
+                                    setAnswersheetQuestions(updated);
+                                    localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                                    handleSaveAnswersheetQuestions(updated, false);
+                                  }
+                                } else {
+                                  setAnswersheetInputRevealed(prev => ({
+                                    ...prev,
+                                    [idx]: !prev[idx]
+                                  }));
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1.5 ${
+                                !isMobileLandscape && isInputVisible 
+                                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+                                  : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 border-slate-700/50 bg-slate-800/40'
+                              }`}
+                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                            >
+                              <Edit2 size={10} />
+                              <span>수정하기</span>
+                            </button>
+
                             {q.answersheet_report_id && (
                               <button
                                 onClick={(e) => {
@@ -8613,7 +8873,7 @@ export default function App() {
                         </div>
 
                         {/* Output Display */}
-                        {isOutputVisible && (
+                        {!isMobileLandscape && isOutputVisible && (
                           <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
@@ -8637,7 +8897,7 @@ export default function App() {
                         )}
 
                         {/* Input Area */}
-                        {isInputVisible && (
+                        {!isMobileLandscape && isInputVisible && (
                           <div className="space-y-1 pt-1 animate-fade-in">
                             <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트, HTML 및 LaTeX 수식 복사-붙여넣기)</span>
                             <textarea

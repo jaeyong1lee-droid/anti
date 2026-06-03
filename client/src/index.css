@@ -270,6 +270,12 @@
     overflow: hidden !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+    padding-left: 8px !important;
+    padding-right: 4px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
   .landscape-dashboard-row {
     height: 100vh !important;
@@ -315,6 +321,69 @@
   .landscape-split-container::-webkit-scrollbar,
   div[class*="overflow-y-auto"]::-webkit-scrollbar {
     display: none !important;
+  }
+
+  /* Compact landscape row styling for formula/theory/answersheet cards */
+  .formula-card-item {
+    background: transparent !important;
+    border: none !important;
+    padding: 6px 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+    margin-bottom: 8px !important;
+  }
+  .formula-card-item > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0 !important;
+    margin-top: 0 !important;
+  }
+  .formula-card-item > div:first-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  /* Ensure title container is horizontal and doesn't wrap unnecessarily */
+  .formula-card-item > div:first-child > div:first-child {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-grow: 1 !important;
+    min-width: 0 !important;
+  }
+  /* Ensure button container is single-line flex-row without wrap */
+  .formula-card-item > div:first-child > div:last-child {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-top: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  /* Scale buttons down slightly for compact landscape row */
+  .formula-card-item button {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    font-size: 10px !important;
+    border-radius: 6px !important;
+  }
+  /* Condense collapsible inputs/outputs */
+  .formula-card-item .space-y-3,
+  .formula-card-item .space-y-2,
+  .formula-card-item .space-y-1 {
+    margin-top: 4px !important;
+    padding: 8px !important;
+    background-color: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 8px !important;
+  }
+  .formula-card-item textarea {
+    height: 60px !important;
   }
 }
 
