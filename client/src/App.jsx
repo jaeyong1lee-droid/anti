@@ -5573,8 +5573,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-          <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+          {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+          <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
               className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -5598,9 +5598,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
+          {/* Right: Gemini Chat Sidebar (Takes exactly 35% width on Desktop) */}
           <div 
-            className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className="w-full md:w-[35vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
@@ -6277,8 +6277,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6302,9 +6302,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
+            {/* Right: Gemini Sidebar (Takes exactly 35% width on Desktop) */}
             <div 
-              className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[35vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
@@ -6867,8 +6867,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6893,7 +6893,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Formula */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-rose-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
@@ -7408,8 +7408,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -7434,7 +7434,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
@@ -7942,8 +7942,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle Gutter (Takes exactly 10% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle Gutter (Takes exactly 50px width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-emerald-500/10 hover:border-emerald-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
                 title="답안 위/아래 이동"
@@ -7967,7 +7967,7 @@ export default function App() {
             </div>
 
             {/* Right: AI Tutor */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[30vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-emerald-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
