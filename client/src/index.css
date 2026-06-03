@@ -169,7 +169,7 @@
     padding-right: 8px !important;
     padding-top: 8px !important;
   }
-  .quiz-card-item {
+  .quiz-card-item, .exam-card-item {
     background: transparent !important;
     border: none !important;
     padding-left: 4px !important;
@@ -249,7 +249,7 @@
 }
 
 /* PC version font size enlargement (1.2x) for modals */
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 601px) {
   .pc-enlarged-text .text-\[10px\] { font-size: calc(10px * 1.2) !important; }
   .pc-enlarged-text .text-\[11px\] { font-size: calc(11px * 1.2) !important; }
   .pc-enlarged-text .text-\[12px\] { font-size: calc(12px * 1.2) !important; }
