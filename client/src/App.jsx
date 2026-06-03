@@ -4651,7 +4651,7 @@ export default function App() {
       )}
 
       {/* Top Premium Navbar */}
-      <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40">
+      <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 landscape-hide">
         <div className="flex items-center gap-4 landscape-hide">
           <div className="p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple">
             <Brain className="text-white" size={28} />
@@ -4788,9 +4788,162 @@ export default function App() {
       <main className="max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem] w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow">
         <div className="flex flex-col landscape-dashboard-row gap-0">
           <div className="landscape-dashboard-left">
+            {isMobileLandscape && (
+              <div className="flex flex-col gap-2.5 w-full">
+                {/* 오늘의 복습 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setViewMode('dashboard');
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowFormulaExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
+                      ? 'bg-brand-600 text-white border-brand-500 shadow-md glow-purple'
+                      : 'bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Calendar size={16} />
+                  <span>오늘의 복습</span>
+                </button>
+
+                {/* 복습토픽 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setViewMode('all_topics');
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowFormulaExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
+                      ? 'bg-brand-600 text-white border-brand-500 shadow-md glow-purple'
+                      : 'bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <List size={16} />
+                  <span>복습토픽</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black ml-auto">{allTopics.length}</span>
+                </button>
+
+                {/* 종합평가 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowFormulaExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                    handleOpenExam();
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    showExam
+                      ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-lg glow-amber'
+                      : 'bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40'
+                  }`}
+                >
+                  <Award size={16} />
+                  <span>종합평가</span>
+                </button>
+
+                {/* 필수공식 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                    handleOpenFormulaExam();
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    showFormulaExam
+                      ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-lg glow-rose'
+                      : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40'
+                  }`}
+                >
+                  <Sigma size={16} />
+                  <span>필수공식</span>
+                </button>
+
+                {/* 이론유도 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowFormulaExam(false);
+                    setShowAnswerSheet(false);
+                    handleOpenTheoryExam();
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    showTheoryExam
+                      ? 'bg-gradient-to-tr from-indigo-600 to-blue-500 text-white border-indigo-500 shadow-lg glow-indigo'
+                      : 'bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40'
+                  }`}
+                >
+                  <Brain size={16} />
+                  <span>이론유도</span>
+                </button>
+
+                {/* 답안지 */}
+                <button
+                  onClick={() => {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowFormulaExam(false);
+                    setShowTheoryExam(false);
+                    handleOpenAnswerSheet();
+                  }}
+                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                    showAnswerSheet
+                      ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border-emerald-500 shadow-lg glow-emerald'
+                      : 'bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40'
+                  }`}
+                >
+                  <FileText size={16} />
+                  <span>답안지</span>
+                </button>
+              </div>
+            )}
+
+            {/* Card 3 (공부중) inside the landscape left menu */}
+            {lastActiveReview && isMobileLandscape && (
+              <button
+                onClick={handleOpenLastActiveReview}
+                className="flex bg-yellow-50 border border-yellow-200/80 rounded-2xl p-4 items-center gap-3 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left hover:bg-yellow-100 shadow-[0_4px_20px_rgba(253,224,71,0.1)] relative overflow-hidden group select-none w-full mt-4"
+                title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="p-2 bg-slate-950/10 text-slate-900 rounded-lg group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
+                  <Clock size={18} className="text-slate-950" />
+                </div>
+                <div className="min-w-0 flex-grow relative text-slate-950">
+                  <p className="text-[9px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping mr-1"></span>
+                    공부중
+                  </p>
+                  <h3 className="text-xs font-black text-slate-950 mt-0.5 truncate leading-tight">
+                    {lastActiveReview.title}
+                  </h3>
+                  <p className="text-[9px] text-slate-800 mt-0.5 font-bold truncate">
+                    {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
+                  </p>
+                </div>
+              </button>
+            )}
+
             {/* Statistics Dashboard Banner */}
-            {(isDesktop || viewMode !== 'all_topics') && (
-          <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+            {(isDesktop || viewMode !== 'all_topics') && !isMobileLandscape && (
+              <section className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
             <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4 glow-purple">
               <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl">
                 <Clock size={24} />
