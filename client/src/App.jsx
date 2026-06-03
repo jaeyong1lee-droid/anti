@@ -7700,7 +7700,7 @@ export default function App() {
                                       setEditingFormulaIdx(idx);
                                       setEditingFormulaText(q.title || q.question || '');
                                     }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
                                     title="공식 제목 수정"
                                   >
                                     <Edit2 size={12} />
@@ -8378,7 +8378,7 @@ export default function App() {
                                       setEditingTheoryIdx(idx);
                                       setEditTheoryTitle(q.title || '');
                                     }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
                                     title="이론 제목 수정"
                                   >
                                     <Edit2 size={12} />
@@ -9039,7 +9039,7 @@ export default function App() {
                                       setEditingAnswersheetIdx(idx);
                                       setEditAnswersheetTitle(q.title || '');
                                     }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 mt-0.5 landscape-hide"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 mt-0.5 landscape-hide mobile-portrait-hide"
                                     title="답안 제목 수정"
                                   >
                                     <Edit2 size={10} />

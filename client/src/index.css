@@ -410,6 +410,11 @@
     padding-left: 8px !important;
     padding-right: 8px !important;
   }
+
+  /* Hide pencil title edit buttons in mobile portrait */
+  .mobile-portrait-hide {
+    display: none !important;
+  }
 }
 
 
