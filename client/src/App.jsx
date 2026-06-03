@@ -3286,7 +3286,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/session/answersheet?t=${Date.now()}`);
       if (res.ok) {
         const body = await res.json();
-        if (body && body.data && Array.isArray(body.data.answersheetQuestions) && body.data.answersheetQuestions.length > 0) {
+        if (body && body.data && Array.isArray(body.data.answersheetQuestions)) {
           loadedData = body.data.answersheetQuestions;
           console.log('[Sync] Loaded answersheet questions from database.');
         }
@@ -3295,12 +3295,12 @@ export default function App() {
       console.warn('[Sync] Database answersheet loading failed:', err);
     }
 
-    if (!loadedData) {
+    if (loadedData === null) {
       try {
         const savedStr = localStorage.getItem('anti_answersheet_questions');
         if (savedStr) {
           const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             loadedData = parsed;
             console.log('[Fallback] Loaded answersheet questions from LocalStorage.');
           }
@@ -3310,15 +3310,8 @@ export default function App() {
       }
     }
 
-    if (!loadedData) {
-      const defaultAnswersheets = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 답안지 보고서",
-          concept: "압밀 지배방정식의 경계조건 수립 및 삼각함수 급수 전개를 통한 과잉간극수압 압밀도 공식 유도 모범 답안",
-          formula: "<h3>1. 지배방정식의 경계조건</h3>\n<p>압밀도 계산을 위한 초기조건 및 경계조건은 다음과 같습니다:</p>\n<ul>\n<li>초기조건 (t = 0): $u = u_i$ (일정한 과잉간극수압 분포)</li>\n<li>경계조건 (z = 0 및 z = 2d): $u = 0$ (양면 배수 조건)</li>\n</ul>\n<h3>2. 급수 전개 유도</h3>\n<p>Fourier 급수 해법을 적용하여 정리하면 다음의 간극수압 분포식을 얻습니다:</p>\n$u(z, t) = \\sum_{m=0}^{\\infty} \\frac{4 u_i}{\\pi (2m+1)} \\sin\\left(\\frac{(2m+1)\\pi z}{2d}\\right) e^{-(2m+1)^2 \\pi^2 T_v / 4}$"
-        }
-      ];
-      loadedData = defaultAnswersheets;
+    if (loadedData === null) {
+      loadedData = [];
     }
 
     latestAnswersheetQuestionsRef.current = loadedData;
@@ -7547,36 +7540,7 @@ export default function App() {
                               </button>
                             )}
 
-                            {!isNewEmptyCard && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
-                                }}
-                                className="py-1 px-3 bg-emerald-650 hover:bg-emerald-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-650/10 hover:shadow-emerald-650/20 border border-emerald-500/20 flex items-center justify-center gap-1"
-                                title="정답 확인하기"
-                              >
-                                <span>정답확인</span>
-                              </button>
-                            )}
 
-                            <button
-                              onClick={() => {
-                                setAnswersheetInputRevealed(prev => ({
-                                  ...prev,
-                                  [idx]: !prev[idx]
-                                }));
-                              }}
-                              className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
-                                isInputVisible 
-                                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
-                                  : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 border-slate-700/50 bg-slate-800/40'
-                              }`}
-                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
-                            >
-                              <Edit2 size={12} />
-                              <span>수정하기</span>
-                            </button>
 
                             <button
                               onClick={() => {
