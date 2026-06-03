@@ -1285,9 +1285,7 @@ export default function App() {
       if (saved) {
         const s = JSON.parse(saved);
         if (s.viewMode) {
-          // PC에서 열었을 때는 무조건 오늘의 복습('dashboard') 화면이 메인화면이 되도록 설정
-          const isPC = window.innerWidth >= 768;
-          setViewMode(isPC ? 'dashboard' : s.viewMode);
+          setViewMode(s.viewMode);
         }
         if (s.selectedTopic) setSelectedTopic(s.selectedTopic);
         if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions);
@@ -4044,6 +4042,36 @@ export default function App() {
   const overallProgressPercent = totalScheduleCount > 0 ? Math.round((totalCompletedCount / totalScheduleCount) * 100) : 0;
   const isModalOpen = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
 
+  // ── Restore active modal data on mount after all functions are defined
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.selectedTopic) {
+          console.log('[Mount Restore] Restoring selected topic AI questions:', s.selectedTopic);
+          handleOpenAIQuestions(
+            s.selectedTopic.id, 
+            s.selectedTopic.title, 
+            s.selectedTopic.keywords, 
+            s.selectedTopic.pdf_name, 
+            s.selectedTopic.mode || 'ai', 
+            s.selectedTopic.schedule_id, 
+            s.selectedTopic.review_round, 
+            s.selectedTopic.isBonus
+          ).catch(e => console.warn('[Mount Restore] Failed to load AI questions:', e));
+        }
+      }
+    } catch (e) {
+      console.warn('[Mount Restore] Failed to parse saved state for AI questions:', e);
+    }
+
+    if (localStorage.getItem('anti_show_answersheet') === 'true') {
+      console.log('[Mount Restore] Restoring answersheet questions');
+      loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
       {/* Toast Notification */}
@@ -4377,7 +4405,7 @@ export default function App() {
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="hidden md:block lg:col-span-5 glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
+            <section className="w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
@@ -4574,15 +4602,13 @@ export default function App() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
-                        <th className="py-4 px-4">토픽 정보 (클릭 시 퀴즈)</th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (14일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (35일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (60일 뒤)</span></th>
-                        <th className="py-4 px-2 text-center">도구</th>
-                        <th className="py-4 px-4 text-right">등록 일시</th>
+                        <th className="py-2.5 px-3">토픽 정보</th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (14일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (35일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (60일 뒤)</span></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
@@ -4597,7 +4623,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className="py-4 px-4 max-w-xs">
+                            <td className="py-2.5 px-3 max-w-xs">
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
@@ -4626,39 +4652,81 @@ export default function App() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center gap-2 w-full min-w-0">
-                                    <h4 
-                                      onClick={() => {
-                                        setEditingTopicId(topic.id);
-                                        setEditingTitleText(topic.title);
-                                      }}
-                                      ref={isFirstMatch ? firstMatchRef : null}
-                                      className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
-                                      title="클릭 시 제목을 수정합니다."
-                                    >
-                                      {topic.title}
-                                    </h4>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
-                                      }}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-[11px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
-                                      title="소스 + Gemini AI로 고난도 문제 생성"
-                                    >
-                                      <Brain size={11} />
-                                      <span>복습</span>
-                                    </button>
+                                  <div className="flex flex-col gap-1 w-full min-w-0">
+                                    <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                                      <h4 
+                                        onClick={() => {
+                                          setEditingTopicId(topic.id);
+                                          setEditingTitleText(topic.title);
+                                        }}
+                                        ref={isFirstMatch ? firstMatchRef : null}
+                                        className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                        title="클릭 시 제목을 수정합니다."
+                                      >
+                                        {topic.title}
+                                      </h4>
+                                    </div>
+                                    
+                                    {/* Action Buttons inside first column */}
+                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                        title="소스 + Gemini AI로 고난도 문제 생성"
+                                      >
+                                        <Brain size={10} />
+                                        <span>복습</span>
+                                      </button>
+                                      
+                                      {topic.pdf_name && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCopyReportToAnswersheet(topic.id, topic.title);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                          title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
+                                        >
+                                          <Copy size={10} />
+                                          <span>답안추가</span>
+                                        </button>
+                                      )}
+
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteTopic(topic.id, topic.title);
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                        title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
+                                      >
+                                        <Trash2 size={10} />
+                                        <span>삭제</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 )}
-                                {topic.pdf_name ? (
-                                  <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                                    {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
-                                    {topic.pdf_name}
-                                  </p>
-                                ) : (
-                                  <p className="text-[10px] text-slate-600">직접 수기 등록</p>
-                                )}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {topic.pdf_name ? (
+                                    <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                                      {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
+                                      {topic.pdf_name}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[10px] text-slate-600">직접 수기 등록</p>
+                                  )}
+                                  <span className="text-[10px] text-slate-500 font-mono">
+                                    • {new Date(topic.created_at).toLocaleDateString('ko-KR', {
+                                      month: '2-digit',
+                                      day: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
                               </div>
                             </td>
                             
@@ -4666,27 +4734,26 @@ export default function App() {
                             {[1, 2, 3, 4, 5, 6].map((round) => {
                               const sched = topic.schedules?.find(s => s.review_round === round);
                               return (
-                                <td key={round} className="py-4 px-2 text-center">
+                                <td key={round} className="py-2.5 px-2 text-center">
                                   {sched ? (
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                       {sched.status === 'completed' || sched.status === 'failed' ? (
                                         <button
                                           onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                          className={`inline-flex items-center gap-0.5 text-xs border px-1.5 md:px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
+                                          className={`inline-flex items-center gap-0.5 text-[11px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
                                             sched.status === 'completed'
                                               ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
                                               : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
                                           }`}
-                                          title={`클릭 시 이 복습의 이전 풀이 및 정답 상세 결과를 확인합니다. ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
+                                          title={`클릭 시 이전 풀이 확인 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
                                         >
                                           {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                         </button>
                                       ) : (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-1.5 md:px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
                                           대기
                                         </span>
                                       )}
-                                      <span className="text-[10px] text-slate-500 mt-1 hidden md:block font-mono">{sched.planned_date}</span>
                                     </div>
                                   ) : (
                                     <span className="text-xs text-slate-600">-</span>
@@ -4694,38 +4761,6 @@ export default function App() {
                                 </td>
                               );
                             })}
-
-                            {/* Instant Quiz & Delete Buttons */}
-                            <td className="py-4 px-2 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {topic.pdf_name && (
-                                  <button
-                                    onClick={() => handleCopyReportToAnswersheet(topic.id, topic.title)}
-                                    className="p-1.5 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 mr-1"
-                                    title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
-                                  >
-                                    <Copy size={12} />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleDeleteTopic(topic.id, topic.title)}
-                                  className="p-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </td>
-
-                            <td className="py-4 px-4 text-right text-xs text-slate-500 font-mono">
-                              {new Date(topic.created_at).toLocaleString('ko-KR', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </td>
                           </tr>
                         );
                       })}
