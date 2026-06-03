@@ -7713,9 +7713,9 @@ export default function App() {
                     return (
                       <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
-                        <div className="flex flex-col gap-1.5 pb-2 border-b border-slate-800/40">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2 border-b border-slate-800/40 w-full min-w-0">
                           {/* Row 1: Number & Title inline */}
-                          <div className="flex items-start gap-2.5 w-full min-w-0">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
                             <span className="text-[15px] font-black text-emerald-400 shrink-0 select-none pt-0.5">
                               {idx + 1}.
                             </span>
@@ -7779,7 +7779,7 @@ export default function App() {
                                     }}
                                     style={{
                                       display: '-webkit-box',
-                                      WebkitLineClamp: 2,
+                                      WebkitLineClamp: isDesktop ? 1 : 2,
                                       WebkitBoxOrient: 'vertical',
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
@@ -7807,7 +7807,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-2 mt-1 select-none shrink-0 w-full justify-start">
+                          <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
                             {q.answersheet_report_id && (
                               <button
                                 onClick={(e) => {
