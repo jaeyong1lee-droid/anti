@@ -3311,7 +3311,9 @@ export default function App() {
           title: t.title,
           concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
           assumptions: t.assumptions || '',
-          formula: t.answer
+          formula: t.answer,
+          answersheet_report_id: t.answersheet_report_id,
+          pdf_name: t.pdf_name
         }));
         const updated = [...newItems, ...prev];
         latestAnswersheetQuestionsRef.current = updated;
@@ -7334,6 +7336,15 @@ export default function App() {
                             <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
                               답안 {idx + 1}
                             </span>
+                            {q.pdf_name && (
+                              <span 
+                                className="text-[11px] font-bold bg-slateCustom-950/80 text-slate-400 px-2.5 py-1 rounded-lg border border-slate-800/80 shrink-0 flex items-center gap-1 select-none max-w-[150px] truncate"
+                                title={q.pdf_name}
+                              >
+                                <Paperclip size={10} className="shrink-0 text-slate-500" />
+                                <span className="truncate">{q.pdf_name}</span>
+                              </span>
+                            )}
                             
                             <div className="flex-grow min-w-0">
                               {editingAnswersheetIdx === idx ? (
@@ -7414,6 +7425,21 @@ export default function App() {
 
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
+                            {q.answersheet_report_id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
+                                  window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+                                }}
+                                className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-1"
+                                title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                              >
+                                <FileText size={12} />
+                                <span>원 보고서 보기</span>
+                              </button>
+                            )}
+
                             {!isNewEmptyCard && (
                               <button
                                 onClick={(e) => {

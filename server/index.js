@@ -5238,6 +5238,22 @@ app.post('/api/session/answersheet', async (req, res) => {
 });
 
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
+async function ensureAnswersheetReportsTable() {
+  try {
+    await dbQuery.run(`
+      CREATE TABLE IF NOT EXISTS answersheet_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pdf_name TEXT,
+        pdf_data BLOB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) {
+    console.warn('ensureAnswersheetReportsTable warning:', e.message);
+  }
+}
+
+// POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성 (원본 보관 추가)
 app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
@@ -5260,6 +5276,18 @@ app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, re
     if (!fileText || fileText.trim().length < 20) {
       return res.status(400).json({ error: '파일에서 텍스트를 추출할 수 없습니다.' });
     }
+
+    // Save the original file to SQLite db
+    await ensureAnswersheetReportsTable();
+    const insertReportSql = `
+      INSERT INTO answersheet_reports (pdf_name, pdf_data)
+      VALUES (?, ?)
+    `;
+    const reportResult = await dbQuery.run(insertReportSql, [
+      pdfName,
+      req.file.buffer
+    ]);
+    const reportId = reportResult.id;
 
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
@@ -5323,7 +5351,9 @@ JSON 규격:
           title: healLatexFormulas((t.title || '실시간 추출 공식').trim()),
           concept: healLatexFormulas((t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim()),
           assumptions: healLatexFormulas((t.assumptions || '').trim()),
-          answer: healLatexFormulas((t.answer || '상세 유도 과정이 존재하지 않습니다.').trim())
+          formula: healLatexFormulas((t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()),
+          answersheet_report_id: reportId,
+          pdf_name: pdfName
         }))
       });
     } catch (llmErr) {
@@ -5334,13 +5364,49 @@ JSON 규격:
           title: t.title.trim(),
           concept: '업로드한 본문 문서를 기반으로 분석한 로컬 마이닝 결과식입니다.',
           assumptions: '본 문서의 물리적 관계식을 기반으로 추출됨',
-          answer: t.answer.trim()
+          answer: t.answer.trim(),
+          answersheet_report_id: reportId,
+          pdf_name: pdfName
         }))
       });
     }
   } catch (err) {
     console.error('POST /api/session/answersheet/upload error:', err);
     res.status(500).json({ error: err.message || 'PDF/HTML 분석에 실패했습니다.' });
+  }
+});
+
+// GET /api/session/answersheet/report/:id → 저장된 답안지 원본 문서 스트리밍
+app.get('/api/session/answersheet/report/:id', async (req, res) => {
+  const reportId = req.params.id;
+  try {
+    await ensureAnswersheetReportsTable();
+    const reportSql = `SELECT pdf_name, pdf_data FROM answersheet_reports WHERE id = ?`;
+    const report = await dbQuery.get(reportSql, [reportId]);
+
+    if (!report || !report.pdf_data) {
+      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+    }
+
+    const isHtml = report.pdf_name && (
+      report.pdf_name.toLowerCase().endsWith('.html') || 
+      report.pdf_name.toLowerCase().endsWith('.htm') || 
+      isBufferHtml(report.pdf_data)
+    );
+    if (isHtml) {
+      let htmlContent = decodeHtmlBuffer(report.pdf_data);
+      // Remove polyfill scripts if they exist
+      htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(htmlContent);
+    } else {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(report.pdf_name)}"`);
+      res.send(report.pdf_data);
+    }
+  } catch (error) {
+    console.error('Error streaming answersheet report:', error);
+    res.status(500).send('서버 오류로 파일을 스트리밍하지 못했습니다.');
   }
 });
 
