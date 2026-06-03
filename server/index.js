@@ -1866,11 +1866,11 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
       return res.json({ weakPoints: [] });
     }
 
-    // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받았던 토픽 목록
+    // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 실제 점수를 획득해 완료한 토픽 목록
     const excludedRows = await dbQuery.all(
       `SELECT DISTINCT topic_id FROM schedules 
        WHERE (status = 'pending' AND planned_date <= ?) 
-          OR (review_round = 99 AND planned_date = ?)`,
+          OR (review_round = 99 AND planned_date = ? AND status = 'completed' AND score IS NOT NULL)`,
       [queryDate, queryDate]
     );
     const excludedTopicIds = excludedRows.map(r => r.topic_id);
@@ -1964,9 +1964,10 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
 
     if (existing) {
       // 이미 추천 단계를 통해 pending 상태로 존재하는 보너스 레코드가 있으므로 completed로 업데이트
+      // (그냥 복습완료 버튼을 누른 경우 score 데이터가 없으므로 score=null 처리하여 당일 재추천이 가능하도록 함)
       await dbQuery.run(
         `UPDATE schedules 
-         SET status = 'completed', completed_at = ?, score = COALESCE(?, score) 
+         SET status = 'completed', completed_at = ?, score = ?, correct_count = NULL, total_count = NULL 
          WHERE id = ?`,
         [now, score !== undefined ? score : null, existing.id]
       );
