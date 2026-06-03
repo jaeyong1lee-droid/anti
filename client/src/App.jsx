@@ -1818,10 +1818,9 @@ export default function App() {
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions]);
 
   const getCurrentTabIndex = () => {
-    if (showAnswerSheet) return 4;
-    if (showTheoryExam) return 3;
-    if (showFormulaExam) return 2;
-    if (viewMode === 'all_topics') return 1;
+    if (showAnswerSheet) return 3;
+    if (showTheoryExam) return 2;
+    if (showFormulaExam) return 1;
     return 0; // dashboard
   };
 
@@ -1833,19 +1832,14 @@ export default function App() {
       setShowAnswerSheet(false);
       setViewMode('dashboard');
     } else if (index === 1) {
-      setShowFormulaExam(false);
-      setShowTheoryExam(false);
-      setShowAnswerSheet(false);
-      setViewMode('all_topics');
-    } else if (index === 2) {
       setShowFormulaExam(true);
       setShowTheoryExam(false);
       setShowAnswerSheet(false);
-    } else if (index === 3) {
+    } else if (index === 2) {
       setShowFormulaExam(false);
       setShowTheoryExam(true);
       setShowAnswerSheet(false);
-    } else if (index === 4) {
+    } else if (index === 3) {
       setShowFormulaExam(false);
       setShowTheoryExam(false);
       setShowAnswerSheet(true);
@@ -1879,16 +1873,24 @@ export default function App() {
         // If swipe horizontal delta is high and vertical is low
         if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40) {
           const currentIndex = getCurrentTabIndex();
+          if (viewMode === 'all_topics') {
+            // If they are on the excluded Review Topics tab, swipe shifts to adjacent allowed tabs
+            if (deltaX < 0) {
+              navigateToTabByIndex(1); // Swipe Left -> Essential Formulas
+            } else {
+              navigateToTabByIndex(0); // Swipe Right -> Today's Review
+            }
+            return;
+          }
+
           if (deltaX < 0) {
-            // Swipe Left -> Go Next Tab (Index increases)
-            if (currentIndex < 4) {
-              navigateToTabByIndex(currentIndex + 1);
-            }
+            // Swipe Left -> Go Next Tab (Index increases, loops to 0 at 3)
+            const nextIndex = (currentIndex + 1) % 4;
+            navigateToTabByIndex(nextIndex);
           } else {
-            // Swipe Right -> Go Prev Tab (Index decreases)
-            if (currentIndex > 0) {
-              navigateToTabByIndex(currentIndex - 1);
-            }
+            // Swipe Right -> Go Prev Tab (Index decreases, loops to 3 at 0)
+            const prevIndex = (currentIndex - 1 + 4) % 4;
+            navigateToTabByIndex(prevIndex);
           }
         }
       }
