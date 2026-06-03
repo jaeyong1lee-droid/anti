@@ -677,14 +677,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       return (
         <span 
           className={`${className} select-text`}
-          onMouseDown={startPress}
-          onMouseUp={endPress}
-          onMouseMove={cancelPress}
-          onMouseLeave={cancelPress}
-          onTouchStart={startPress}
-          onTouchEnd={endPress}
-          onTouchMove={cancelPress}
-          onTouchCancel={cancelPress}
+          onMouseDown={onAddFormula ? startPress : undefined}
+          onMouseUp={onAddFormula ? endPress : undefined}
+          onMouseMove={onAddFormula ? cancelPress : undefined}
+          onMouseLeave={onAddFormula ? cancelPress : undefined}
+          onTouchStart={onAddFormula ? startPress : undefined}
+          onTouchEnd={onAddFormula ? endPress : undefined}
+          onTouchMove={onAddFormula ? cancelPress : undefined}
+          onTouchCancel={onAddFormula ? cancelPress : undefined}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
@@ -692,14 +692,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     return (
       <div 
         className={`${className} select-text w-full overflow-x-auto`}
-        onMouseDown={startPress}
-        onMouseUp={endPress}
-        onMouseMove={cancelPress}
-        onMouseLeave={cancelPress}
-        onTouchStart={startPress}
-        onTouchEnd={endPress}
-        onTouchMove={cancelPress}
-        onTouchCancel={cancelPress}
+        onMouseDown={onAddFormula ? startPress : undefined}
+        onMouseUp={onAddFormula ? endPress : undefined}
+        onMouseMove={onAddFormula ? cancelPress : undefined}
+        onMouseLeave={onAddFormula ? cancelPress : undefined}
+        onTouchStart={onAddFormula ? startPress : undefined}
+        onTouchEnd={onAddFormula ? endPress : undefined}
+        onTouchMove={onAddFormula ? cancelPress : undefined}
+        onTouchCancel={onAddFormula ? cancelPress : undefined}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
@@ -739,14 +739,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   return (
     <div 
       className={`${className} space-y-1.5 select-text`}
-      onMouseDown={startPress}
-      onMouseUp={endPress}
-      onMouseMove={cancelPress}
-      onMouseLeave={cancelPress}
-      onTouchStart={startPress}
-      onTouchEnd={endPress}
-      onTouchMove={cancelPress}
-      onTouchCancel={cancelPress}
+      onMouseDown={onAddFormula ? startPress : undefined}
+      onMouseUp={onAddFormula ? endPress : undefined}
+      onMouseMove={onAddFormula ? cancelPress : undefined}
+      onMouseLeave={onAddFormula ? cancelPress : undefined}
+      onTouchStart={onAddFormula ? startPress : undefined}
+      onTouchEnd={onAddFormula ? endPress : undefined}
+      onTouchMove={onAddFormula ? cancelPress : undefined}
+      onTouchCancel={onAddFormula ? cancelPress : undefined}
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
@@ -5169,7 +5169,7 @@ export default function App() {
                                   }}
                                   className={cls}
                                 >
-                                  <span className="flex gap-2 items-start pointer-events-none">
+                                  <span className="flex gap-2 items-start">
                                     <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
                                     <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
                                   </span>
@@ -5858,7 +5858,7 @@ export default function App() {
                                 }}
                                 className={cls}
                               >
-                                <span className="flex gap-2 items-start pointer-events-none">
+                                <span className="flex gap-2 items-start">
                                   <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
                                   <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
                                 </span>
