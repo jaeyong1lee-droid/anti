@@ -4598,7 +4598,7 @@ export default function App() {
                 : -1;
               
               return (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto md:overflow-x-visible">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
