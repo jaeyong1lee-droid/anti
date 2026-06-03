@@ -4761,7 +4761,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className="py-2.5 px-3 max-w-xs md:max-w-md">
+                            <td className={`py-2.5 px-3 ${isDesktop ? 'max-w-xs md:max-w-md' : 'max-w-[120px] w-[120px]'}`}>
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
@@ -4817,7 +4817,7 @@ export default function App() {
                                       </button>
                                     </div>
                                   ) : (
-                                    /* Mobile: Single Line title only */
+                                    /* Mobile: Double line title with ellipsis */
                                     <div className="flex items-center justify-between gap-2 w-full min-w-0">
                                       <h4 
                                         onClick={() => {
@@ -4825,7 +4825,16 @@ export default function App() {
                                           setEditingTitleText(topic.title);
                                         }}
                                         ref={isFirstMatch ? firstMatchRef : null}
-                                        className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                        style={{
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 2,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          wordBreak: 'break-all',
+                                          whiteSpace: 'normal'
+                                        }}
+                                        className="font-bold text-white text-xs transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
                                         title="클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
