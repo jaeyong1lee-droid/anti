@@ -1834,9 +1834,6 @@ export default function App() {
       });
 
       showNotification(`[${topicTitle}] 원보고서가 성공적으로 연동되어 답안지 탭에 추가되었습니다!`, 'success');
-      
-      // Switch view and scroll
-      await handleOpenAnswerSheet();
     } catch (err) {
       console.error('Copy report to answersheet failed:', err);
       showNotification(err.message || '보고서 연동 중 오류가 발생했습니다.', 'error');
