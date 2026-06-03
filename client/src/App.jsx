@@ -4792,25 +4792,11 @@ export default function App() {
             {lastActiveReview && isMobileLandscape && (
               <button
                 onClick={handleOpenLastActiveReview}
-                className="flex bg-yellow-50 border border-yellow-200/80 rounded-2xl p-4 items-center gap-3 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left hover:bg-yellow-100 shadow-[0_4px_20px_rgba(253,224,71,0.1)] relative overflow-hidden group select-none w-full mb-4"
+                className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none mb-3"
                 title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
               >
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="p-2 bg-slate-950/10 text-slate-900 rounded-lg group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
-                  <Clock size={18} className="text-slate-950" />
-                </div>
-                <div className="min-w-0 flex-grow relative text-slate-950">
-                  <p className="text-[9px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping mr-1"></span>
-                    공부중
-                  </p>
-                  <h3 className="text-xs font-black text-slate-950 mt-0.5 truncate leading-tight">
-                    {lastActiveReview.title}
-                  </h3>
-                  <p className="text-[9px] text-slate-800 mt-0.5 font-bold truncate">
-                    {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
-                  </p>
-                </div>
+                <Clock size={12} className="text-slate-950 shrink-0" />
+                <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
               </button>
             )}
 
@@ -4827,7 +4813,7 @@ export default function App() {
                     setShowTheoryExam(false);
                     setShowAnswerSheet(false);
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                       ? 'bg-brand-600 text-white border-brand-500 shadow-md glow-purple'
                       : 'bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50'
@@ -4848,7 +4834,7 @@ export default function App() {
                     setShowTheoryExam(false);
                     setShowAnswerSheet(false);
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                       ? 'bg-brand-600 text-white border-brand-500 shadow-md glow-purple'
                       : 'bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50'
@@ -4869,7 +4855,7 @@ export default function App() {
                     setShowAnswerSheet(false);
                     handleOpenExam();
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     showExam
                       ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-lg glow-amber'
                       : 'bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40'
@@ -4889,7 +4875,7 @@ export default function App() {
                     setShowAnswerSheet(false);
                     handleOpenFormulaExam();
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     showFormulaExam
                       ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-lg glow-rose'
                       : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40'
@@ -4909,7 +4895,7 @@ export default function App() {
                     setShowAnswerSheet(false);
                     handleOpenTheoryExam();
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     showTheoryExam
                       ? 'bg-gradient-to-tr from-indigo-600 to-blue-500 text-white border-indigo-500 shadow-lg glow-indigo'
                       : 'bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40'
@@ -4929,7 +4915,7 @@ export default function App() {
                     setShowTheoryExam(false);
                     handleOpenAnswerSheet();
                   }}
-                  className={`flex items-center gap-2.5 w-full text-xs font-black py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     showAnswerSheet
                       ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border-emerald-500 shadow-lg glow-emerald'
                       : 'bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40'
@@ -5720,73 +5706,164 @@ export default function App() {
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
-               {selectedTopic.pdf_name && (
-                 <button
-                   onClick={handleOpenOriginalReport}
-                   className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
-                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                 >
-                   <FileText size={16} className="flex-shrink-0" />
-                   <span className="text-[9px] font-black tracking-tight leading-tight">원보고서</span>
-                 </button>
-               )}
-               {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
-                 <button
-                   onClick={() => {
-                     setSelectedTopic(null);
-                     setAiQuestions([]);
-                     setRevealedQuestions({});
-                     setSelectedAnswers({});
-                     setReviewOptionExplanations({});
-                     lastQuizTopicId.current = null;
-                     setResetConfirmTarget({
-                       scheduleId: selectedTopic.schedule_id,
-                       topicTitle: selectedTopic.title,
-                       round: selectedTopic.review_round
-                     });
-                   }}
-                   className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
-                   title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
-                 >
-                   <RefreshCw size={14} className="text-amber-400 flex-shrink-0" />
-                   <span className="text-[9px] font-black tracking-tight leading-tight">다시풀기</span>
-                 </button>
-               )}
-               {selectedTopic && (
-                 <button
-                   onClick={handleRefreshReviewQuestions}
-                   disabled={loadingAI}
-                   className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
-                 >
-                   {loadingAI ? (
-                     <svg className="animate-spin h-4 w-4 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                     </svg>
-                   ) : (
-                     <span className="text-xs flex-shrink-0">🔄</span>
-                   )}
-                   <span className="text-[9px] font-black tracking-tight leading-tight">리프레쉬</span>
-                 </button>
-               )}
-               <button
-                 onClick={() => { 
-                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                   if (selectedTopic?.isReadOnly) {
-                     setSelectedTopic(null); 
-                   } else {
-                     forceSaveActiveSessions();
-                     setSelectedTopic(null); 
-                   }
-                 }}
-                 className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
-                 title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
-               >
-                 <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
-                 <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
-               </button>
+                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
+              {lastActiveReview && (
+                <button
+                  onClick={() => {
+                    handleOpenLastActiveReview();
+                  }}
+                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  title="공부중 복습 이어서 진행"
+                >
+                  <Clock size={12} className="text-slate-950 shrink-0" />
+                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  setViewMode('dashboard');
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
+              >
+                <Calendar size={12} />
+                <span>오늘의 복습</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  setViewMode('all_topics');
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
+              >
+                <List size={12} />
+                <span>복습토픽</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  handleOpenExam();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40 transition-all cursor-pointer"
+              >
+                <Award size={12} />
+                <span>종합평가</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  handleOpenFormulaExam();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
+              >
+                <Sigma size={12} />
+                <span>필수공식</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  handleOpenTheoryExam();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
+              >
+                <Brain size={12} />
+                <span>이론유도</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  handleOpenAnswerSheet();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
+              >
+                <FileText size={12} />
+                <span>답안지</span>
+              </button>
+
+              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
+
+              {selectedTopic?.pdf_name && (
+                <button
+                  onClick={handleOpenOriginalReport}
+                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border-violet-500/40 transition-all cursor-pointer active:scale-95"
+                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                >
+                  <FileText size={12} className="text-violet-400" />
+                  <span>원보고서</span>
+                </button>
+              )}
+
+              {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+                <button
+                  onClick={() => {
+                    setSelectedTopic(null);
+                    setAiQuestions([]);
+                    setRevealedQuestions({});
+                    setSelectedAnswers({});
+                    setReviewOptionExplanations({});
+                    lastQuizTopicId.current = null;
+                    setResetConfirmTarget({
+                      scheduleId: selectedTopic.schedule_id,
+                      topicTitle: selectedTopic.title,
+                      round: selectedTopic.review_round
+                    });
+                  }}
+                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border-amber-500/40 transition-all cursor-pointer active:scale-95"
+                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                >
+                  <RefreshCw size={12} className="text-amber-400" />
+                  <span>다시풀기</span>
+                </button>
+              )}
+
+              {selectedTopic && (
+                <button
+                  onClick={handleRefreshReviewQuestions}
+                  disabled={loadingAI}
+                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                >
+                  {loadingAI ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <span className="text-xs">🔄</span>
+                  )}
+                  <span>리프레쉬</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => { 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  if (selectedTopic?.isReadOnly) {
+                    setSelectedTopic(null); 
+                  } else {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null); 
+                  }
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
+                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
+              >
+                <span className="text-[10px]">❌</span>
+                <span>닫기</span>
+              </button>
             </div>
 
             {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
@@ -6524,25 +6601,140 @@ export default function App() {
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
+                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
+              {lastActiveReview && (
+                <button
+                  onClick={() => {
+                    savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                    fetch(`${API_BASE}/api/session/exam`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                    }).catch(e => console.warn('세션 저장 실패:', e));
+                    setShowExam(false);
+                    handleOpenLastActiveReview();
+                  }}
+                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  title="공부중 복습 이어서 진행"
+                >
+                  <Clock size={12} className="text-slate-950 shrink-0" />
+                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                  setViewMode('dashboard');
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
+              >
+                <Calendar size={12} />
+                <span>오늘의 복습</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                  setViewMode('all_topics');
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
+              >
+                <List size={12} />
+                <span>복습토픽</span>
+              </button>
+
+              <button
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-lg select-none cursor-default"
+              >
+                <Award size={12} />
+                <span>종합평가</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                  handleOpenFormulaExam();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
+              >
+                <Sigma size={12} />
+                <span>필수공식</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                  handleOpenTheoryExam();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
+              >
+                <Brain size={12} />
+                <span>이론유도</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
+                  }).catch(e => console.warn('세션 저장 실패:', e));
+                  setShowExam(false);
+                  handleOpenAnswerSheet();
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
+              >
+                <FileText size={12} />
+                <span>답안지</span>
+              </button>
+
+              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
+
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
-                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0 disabled:opacity-50"
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border-indigo-500/40 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 title="종합평가에 신규 AI 문제 10문항 추가"
               >
-                <span className="text-slate-350 flex-shrink-0 font-bold text-[10px]">➕</span>
-                <span className="text-[9px] font-black tracking-tight leading-tight">문제추가</span>
+                <span className="text-[10px]">➕</span>
+                <span>문제 추가</span>
               </button>
               
               <button
                 onClick={handleRefreshExamQuestions}
                 disabled={loadingExam}
-                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0 disabled:opacity-50"
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 title="종합평가 전체 문제 실시간 AI 재출제"
               >
-                <span className="text-xs flex-shrink-0">🔄</span>
-                <span className="text-[9px] font-black tracking-tight leading-tight">리프레쉬</span>
+                <span className="text-xs">🔄</span>
+                <span>리프레쉬</span>
               </button>
 
               <button
@@ -6566,24 +6758,26 @@ export default function App() {
                   }
                   setShowExam(false);
                 }}
-                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
-                <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
-                <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
+                <span className="text-[10px]">❌</span>
+                <span>닫기</span>
               </button>
 
               <button
                 onClick={() => {
-                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                    .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                  if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
+                    fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                      .catch(e => console.warn('세션 삭제 실패:', e));
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                  }
                 }}
-                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
                 title="종합평가 종료"
               >
-                <span className="text-xs flex-shrink-0">⏹️</span>
-                <span className="text-[9px] font-black tracking-tight leading-tight">종료</span>
+                <span className="text-xs">⏹️</span>
+                <span>종료</span>
               </button>
             </div>
 

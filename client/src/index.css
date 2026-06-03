@@ -204,8 +204,8 @@
     width: 100% !important;
   }
   .landscape-dashboard-left {
-    width: 240px !important;
-    min-width: 240px !important;
+    width: 160px !important;
+    min-width: 160px !important;
     flex-shrink: 0 !important;
   }
   .landscape-dashboard-left > section {
@@ -215,11 +215,10 @@
     width: 100% !important;
     margin-bottom: 0 !important;
   }
-  .landscape-dashboard-left .glass-panel,
   .landscape-dashboard-left button {
-    padding: 10px 14px !important;
+    padding: 8px 10px !important;
     border-radius: 12px !important;
-    gap: 10px !important;
+    gap: 8px !important;
   }
   .landscape-dashboard-left h3 {
     font-size: 16px !important;
