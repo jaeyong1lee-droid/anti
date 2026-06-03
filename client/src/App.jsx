@@ -5187,7 +5187,7 @@ export default function App() {
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                              {isMC ? '객관식' : `주관식·${q.type?.replace('구조 인출 (단락별 리콜)', '개요') || '서술'}`}
+                              {isMC ? '객관식' : '주관식'}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -5235,28 +5235,26 @@ export default function App() {
                               </button>
                             )}
                             
-                            {!selectedTopic?.isReadOnly && (
-                              <button
-                                disabled={regeneratingReview[idx]}
-                                onClick={() => handleRegenerateQuestion('review', idx, q)}
-                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
-                                  regeneratingReview[idx]
-                                    ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
-                                }`}
+                            <button
+                              disabled={regeneratingReview[idx]}
+                              onClick={() => handleRegenerateQuestion('review', idx, q)}
+                              className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                                regeneratingReview[idx]
+                                  ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
+                              }`}
+                            >
+                              <svg
+                                className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
                               >
-                                <svg
-                                  className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                </svg>
-                                {regeneratingReview[idx] ? '변환 중...' : '변환'}
-                              </button>
-                            )}
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                              </svg>
+                              {regeneratingReview[idx] ? '변환 중...' : '변환'}
+                            </button>
                           </div>
                         </div>
 
@@ -5905,7 +5903,7 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                            {isMC ? '객관식' : `주관식·${q.subtype || '서술'}`}
+                            {isMC ? '객관식' : '주관식'}
                           </span>
                         </div>
                         
@@ -5960,7 +5958,7 @@ export default function App() {
                             className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
                               regeneratingExam[idx]
                                 ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95'
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
                             }`}
                           >
                             <svg
