@@ -1235,14 +1235,37 @@ export default function App() {
 
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(window.innerWidth >= 768 && window.innerHeight <= 600);
 
   useEffect(() => {
     const handleResize = () => {
+      const isL = window.innerWidth >= 768 && window.innerHeight <= 600;
       setIsDesktop(window.innerWidth >= 768);
+      setIsMobileLandscape(isL);
+      if (!isL && document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      if (isMobileLandscape && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log("Error entering fullscreen on interaction:", err);
+        });
+      }
+    };
+    
+    window.addEventListener('click', handleGlobalClick);
+    window.addEventListener('touchstart', handleGlobalClick);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('touchstart', handleGlobalClick);
+    };
+  }, [isMobileLandscape]);
 
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
@@ -5647,7 +5670,7 @@ export default function App() {
 
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
               <div 
-                className="w-full shrink-0 md:flex-1 md:shrink landscape-w-60 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+                className="w-full shrink-0 md:flex-1 md:shrink landscape-w-55 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
               >
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -6083,7 +6106,7 @@ export default function App() {
 
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
               <div className="landscape-hide w-full flex-shrink-0">
                 {isDesktop && <ScientificCalculator />}
@@ -6148,12 +6171,12 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg`}
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg`}
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
-                      rows={isDesktop ? 3 : 1}
+                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -6792,7 +6815,7 @@ export default function App() {
 
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="landscape-hide w-full flex-shrink-0">
                 {isDesktop && <ScientificCalculator />}
@@ -6857,12 +6880,12 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
-                      rows={isDesktop ? 3 : 1}
+                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -7385,7 +7408,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Formula */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+            <div className="w-full max-w-full landscape-w-45 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-rose-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
@@ -7445,12 +7468,12 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg`}
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg`}
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
-                      rows={isDesktop ? 3 : 1}
+                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -7926,7 +7949,7 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-45 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-indigo-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
@@ -7986,11 +8009,11 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
                 >
                   <div className="flex-grow">
                     <textarea
-                      rows={isDesktop ? 3 : 1}
+                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -8459,7 +8482,7 @@ export default function App() {
             </div>
 
             {/* Right: AI Tutor */}
-            <div className="w-full max-w-full landscape-w-40 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+            <div className="w-full max-w-full landscape-w-45 min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-emerald-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
@@ -8519,11 +8542,11 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${isDesktop ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
+                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
                 >
                   <div className="flex-grow">
                     <textarea
-                      rows={isDesktop ? 3 : 1}
+                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {

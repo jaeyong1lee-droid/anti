@@ -143,14 +143,14 @@
   .landscape-hide {
     display: none !important;
   }
-  .landscape-w-60 {
-    width: 60% !important;
-    max-width: 60% !important;
+  .landscape-w-55 {
+    width: 55% !important;
+    max-width: 55% !important;
     flex-shrink: 0 !important;
   }
-  .landscape-w-40 {
-    width: 40% !important;
-    max-width: 40% !important;
+  .landscape-w-45 {
+    width: 45% !important;
+    max-width: 45% !important;
     flex-shrink: 0 !important;
     display: flex !important;
   }
@@ -178,6 +178,20 @@
     box-shadow: none !important;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
     margin-bottom: 16px !important;
+  }
+  /* Revert font size enlargement in mobile landscape to match mobile portrait */
+  .pc-enlarged-text .text-\[10px\] { font-size: 10px !important; }
+  .pc-enlarged-text .text-\[11px\] { font-size: 11px !important; }
+  .pc-enlarged-text .text-\[12px\] { font-size: 12px !important; }
+  .pc-enlarged-text .text-xs { font-size: 0.75rem !important; }
+  .pc-enlarged-text .text-sm { font-size: 0.875rem !important; }
+  .pc-enlarged-text .text-base { font-size: 1rem !important; }
+  .pc-enlarged-text .text-lg { font-size: 1.125rem !important; }
+  .pc-enlarged-text .text-xl { font-size: 1.25rem !important; }
+  .pc-enlarged-text .text-2xl { font-size: 1.5rem !important; }
+  .pc-enlarged-text .text-\[17px\] { font-size: 17px !important; }
+  .pc-enlarged-text {
+    font-size: 1rem !important;
   }
 }
 
