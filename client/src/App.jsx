@@ -5016,9 +5016,16 @@ export default function App() {
                 </button>
               )}
               <button
-                onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
+                onClick={() => { 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  if (selectedTopic?.isReadOnly) {
+                    handleQuizCompleteClick();
+                  } else {
+                    setSelectedTopic(null); 
+                  }
+                }}
                 className="px-2 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 flex-1 md:hidden whitespace-nowrap min-w-0"
-                title="화면만 숨김 (재개 시 문제 유지)"
+                title={selectedTopic?.isReadOnly ? "풀이 결과를 저장하고 닫습니다." : "화면만 숨김 (재개 시 문제 유지)"}
               >
                 <X size={14} className="flex-shrink-0" />
                 <span className="whitespace-nowrap text-[11px] sm:text-xs">닫기</span>
@@ -5048,9 +5055,16 @@ export default function App() {
                 </button>
               )}
               <button
-                onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
+                onClick={() => { 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  if (selectedTopic?.isReadOnly) {
+                    handleQuizCompleteClick();
+                  } else {
+                    setSelectedTopic(null); 
+                  }
+                }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow md:flex-grow-0 text-center"
-                title="화면만 숨김 (재개 시 문제 유지)"
+                title={selectedTopic?.isReadOnly ? "풀이 결과를 저장하고 닫습니다." : "화면만 숨김 (재개 시 문제 유지)"}
               >
                 닫기
               </button>
@@ -5131,7 +5145,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className={`flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative ${isDesktop ? '' : 'snap-y snap-mandatory'}`}
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5181,7 +5195,7 @@ export default function App() {
                       'bg-amber-700';
 
                     return (
-                      <div key={idx} className={`quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${isDesktop ? '' : 'snap-start snap-always'}`}>
+                      <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Header */}
                         <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                           <div className="flex items-center gap-2">
@@ -5502,18 +5516,11 @@ export default function App() {
                         {selectedTopic?.isReadOnly ? (
                           <>
                             <button
-                              onClick={() => {
-                                setSelectedTopic(null);
-                                setAiQuestions([]);
-                                setRevealedQuestions({});
-                                setSelectedAnswers({});
-                                setReviewOptionExplanations({});
-                                lastQuizTopicId.current = null;
-                              }}
+                              onClick={handleQuizCompleteClick}
                               className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                              title="기존 복습 기록을 유지하고 닫습니다."
+                              title="현재 복습 풀이 점수 및 진행 상황을 저장하고 닫습니다."
                             >
-                              <span>닫기</span>
+                              <span>저장 후 닫기</span>
                             </button>
                             <button
                               onClick={handleQuizCompleteClick}
@@ -5865,7 +5872,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className={`flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative ${isDesktop ? '' : 'snap-y snap-mandatory'}`}
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5897,7 +5904,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className={`exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${isDesktop ? '' : 'snap-start snap-always'}`}>
+                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                       {/* Q Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                         <div className="flex items-center gap-2">
