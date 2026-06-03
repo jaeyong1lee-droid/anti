@@ -2402,17 +2402,6 @@ app.put('/api/topics/:id/title', async (req, res) => {
   }
 });
 
-app.all('/api/admin/run-sql', async (req, res) => {
-  const sql = req.query.sql || req.body.sql;
-  const params = req.query.params || req.body.params;
-  try {
-    const results = await dbQuery.all(sql, params ? (typeof params === 'string' ? JSON.parse(params) : params) : []);
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Force DB table initialization route
 app.get('/api/init-db', async (req, res) => {
   try {
