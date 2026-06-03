@@ -4184,7 +4184,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
+            <div className="hidden md:flex glass-panel rounded-2xl p-5 border border-slate-800 items-center gap-4">
               <div className="p-3 bg-emerald-950/60 text-emerald-400 rounded-xl">
                 <CheckCircle size={24} />
               </div>
@@ -4196,7 +4196,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="glass-panel rounded-2xl p-5 border border-slate-800 flex items-center gap-4">
+            <div className="hidden md:flex glass-panel rounded-2xl p-5 border border-slate-800 items-center gap-4">
               <div className="p-3 bg-brand-950/60 text-brand-400 rounded-xl">
                 <Award size={24} />
               </div>
@@ -4208,7 +4208,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="glass-panel rounded-2xl p-5 border border-slate-800">
+            <div className="hidden md:block glass-panel rounded-2xl p-5 border border-slate-800">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-medium text-slate-400">전체 스케줄 완료율</p>
                 <span className="text-xs font-black text-brand-400">{overallProgressPercent}%</span>
