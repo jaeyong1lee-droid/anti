@@ -2146,7 +2146,12 @@ export default function App() {
   // ── Refresh All Review Questions (복습하기 전체 문제 재생성) ──────────────────
   const handleRefreshReviewQuestions = async () => {
     if (!selectedTopic?.id) return;
-    if (!window.confirm("현재 생성된 복습 문제들이 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.")) {
+    const isReadOnly = !!selectedTopic.isReadOnly;
+    const confirmMsg = isReadOnly
+      ? "이 완료된 복습 회차를 초기화하고, 새로운 실시간 AI 문제들로 다시 구성하여 처음부터 푸시겠습니까?"
+      : "현재 생성된 복습 문제들이 토픽의 본래 주제와 어긋납니까? 전체 문제를 삭제하고 실시간 AI로 다시 구성하겠습니다.";
+
+    if (!window.confirm(confirmMsg)) {
       return;
     }
     
@@ -2159,6 +2164,17 @@ export default function App() {
     setAiError('');
     
     try {
+      if (isReadOnly && selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999) {
+        const resetRes = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/reset`, {
+          method: 'POST',
+        });
+        if (!resetRes.ok) {
+          showNotification('복습 상태 초기화에 실패했습니다.', 'error');
+          setLoadingAI(false);
+          return;
+        }
+      }
+
       // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
       const deleteUrl = selectedTopic.schedule_id
         ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
@@ -2184,6 +2200,11 @@ export default function App() {
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = selectedTopic.id;
+        setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
+        if (isReadOnly) {
+          fetchTodayReviews(referenceDate);
+          fetchAllTopics();
+        }
         showNotification('복습 문제가 성공적으로 다시 구성되었습니다.', 'success');
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
@@ -2396,6 +2417,9 @@ export default function App() {
 
   // Regenerate a single question (mode: 'review' or 'exam')
   const handleRegenerateQuestion = async (mode, idx, currentQ) => {
+    if (!window.confirm('이 문제를 새로운 다른 문제로 변환(재생성)하시겠습니까?')) {
+      return;
+    }
     const isReview = mode === 'review';
     const setRegenerating = isReview ? setRegeneratingReview : setRegeneratingExam;
     
@@ -4980,9 +5004,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className={`flex flex-row items-stretch md:items-center gap-2 w-full md:w-auto justify-between md:justify-end ${
-              (!selectedTopic.pdf_name && !(selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999)) ? 'md:hidden' : ''
-            }`}>
+            <div className="flex flex-row items-stretch md:items-center gap-2 w-full md:w-auto justify-between md:justify-end">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
@@ -5015,6 +5037,24 @@ export default function App() {
                   <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">다시풀기</span>
                 </button>
               )}
+              {selectedTopic && (
+                <button
+                  onClick={handleRefreshReviewQuestions}
+                  disabled={loadingAI}
+                  className="px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 flex-1 md:flex-none whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                >
+                  {loadingAI ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <span className="text-violet-300 flex-shrink-0">🔄</span>
+                  )}
+                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">리프레쉬</span>
+                </button>
+              )}
               <button
                 onClick={() => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
@@ -5037,22 +5077,6 @@ export default function App() {
                 <span className="text-[10px] text-slate-400 mr-auto md:hidden font-bold">
                   정답: {Object.keys(selectedAnswers).filter(i => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer).length}/{aiQuestions.filter(q => q.options?.length > 0).length}
                 </span>
-              )}
-              {selectedTopic && !selectedTopic.isReadOnly && (
-                <button
-                  onClick={handleRefreshReviewQuestions}
-                  disabled={loadingAI}
-                  className="px-4 py-2 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow md:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
-                >
-                  {loadingAI ? (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : "🔄"}
-                  <span>리프레쉬</span>
-                </button>
               )}
               <button
                 onClick={() => { 
