@@ -6838,8 +6838,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -7379,8 +7379,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle: Empty Gutter (Takes exactly 2% width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle: Empty Gutter (Takes exactly 10% width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -7913,8 +7913,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Middle Gutter */}
-            <div className="hidden md:flex landscape-hide md:w-[2vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            {/* Middle Gutter (Takes exactly 10% width on Desktop) */}
+            <div className="hidden md:flex landscape-hide md:w-[10vw] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-emerald-500/10 hover:border-emerald-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
                 title="답안 위/아래 이동"
