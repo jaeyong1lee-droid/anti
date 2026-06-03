@@ -405,27 +405,12 @@
 
 /* 📱 Mobile Portrait Layout Optimizations for Review and Comprehensive Exam Modals */
 @media (max-width: 767px) and (orientation: portrait) {
-  /* Extreme minimization of left/right padding around the problem window container */
-  .landscape-quiz-body {
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-    padding-top: 8px !important;
-  }
-
-  /* Minimization of left/right padding inside the card items */
-  .quiz-card-item, .exam-card-item {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-    border-radius: 12px !important;
-  }
-
   /* Minimize horizontal padding of options lists buttons inside cards for maximum text width */
   .quiz-card-item button.w-full, .exam-card-item button.w-full {
     padding-left: 8px !important;
     padding-right: 8px !important;
   }
 }
+
 
 
