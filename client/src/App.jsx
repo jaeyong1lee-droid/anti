@@ -1992,11 +1992,13 @@ export default function App() {
     setSelectedAnswers(prev => {
       const copy = { ...prev };
       delete copy[idx];
-      fetch(`${API_BASE}/api/session/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: aiQuestions })
-      }).catch(e => console.warn('복습 세화 동기화 실패:', e));
+      if (!selectedTopic?.isReadOnly) {
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: aiQuestions })
+        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      }
       return copy;
     });
     setReviewOptionExplanations(prev => {
@@ -5121,7 +5123,7 @@ export default function App() {
                           </div>
                           
                           <div className="flex items-center gap-2">
-                            {answered && isMC && !selectedTopic?.isReadOnly && (
+                            {answered && isMC && (
                               <button
                                 onClick={() => handleResetSingleReviewAnswer(idx)}
                                 className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-violet-950/40 hover:border-violet-500/50 hover:text-violet-400 active:scale-95 transition-all duration-300"
@@ -5405,22 +5407,41 @@ export default function App() {
                   {aiQuestions.length > 0 && (
                     <div className="text-center py-6">
                       <div className="flex justify-center gap-3 flex-wrap">
-                        <button
-                          onClick={selectedTopic?.isReadOnly ? () => {
-                            setSelectedTopic(null);
-                            setAiQuestions([]);
-                            setRevealedQuestions({});
-                            setSelectedAnswers({});
-                            setReviewOptionExplanations({});
-                            lastQuizTopicId.current = null;
-                          } : handleQuizCompleteClick}
-                          className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                          title={selectedTopic?.isReadOnly ? "풀이 결과 확인 완료" : "복습 완료 처리 및 점수 저장"}
-                        >
-                          <Award size={20} className="text-emerald-400" />
-                          <span>확인 및 닫기</span>
-                        </button>
-
+                        {selectedTopic?.isReadOnly ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedTopic(null);
+                                setAiQuestions([]);
+                                setRevealedQuestions({});
+                                setSelectedAnswers({});
+                                setReviewOptionExplanations({});
+                                lastQuizTopicId.current = null;
+                              }}
+                              className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              title="기존 복습 기록을 유지하고 닫습니다."
+                            >
+                              <span>닫기</span>
+                            </button>
+                            <button
+                              onClick={handleQuizCompleteClick}
+                              className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 hover:border-emerald-450 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              title="다시 풀이한 내용과 성적으로 DB 기록을 업데이트합니다."
+                            >
+                              <Award size={20} className="text-emerald-200" />
+                              <span>다시 푼 성적으로 업데이트</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={handleQuizCompleteClick}
+                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                            title="복습 완료 처리 및 점수 저장"
+                          >
+                            <Award size={20} className="text-emerald-400" />
+                            <span>확인 및 완료</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
