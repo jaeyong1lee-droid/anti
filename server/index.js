@@ -1796,6 +1796,23 @@ app.get('/api/dashboard', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
+    // --- 아침 8시 KST 자동 약점 보완 추천 처리 ---
+    const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const kstHour = kstDate.getUTCHours();
+    const todayKstStr = kstDate.toISOString().split('T')[0];
+
+    if (queryDate === todayKstStr && kstHour >= 8) {
+      const existingTodayBonus = await dbQuery.get(
+        `SELECT id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
+        [todayKstStr]
+      );
+      if (!existingTodayBonus) {
+        console.log(`[Auto-WeakPoint] Automatically generating 8 AM KST weak-point recommendation for ${todayKstStr}`);
+        await generateWeakPointRecommendation(todayKstStr);
+      }
+    }
+    // ----------------------------------------
+
     // [수정] review_round ASC 정렬 → 당장 처리해야 하는 낮은 차수 일정을 우선 표시
     // 동일 토픽에 여러 pending이 쌓여 있을 때 가장 낮은(오래된) 차수가 Map에 먼저 삽입됨
     const sql = `
@@ -1849,96 +1866,101 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
+// Helper: Generate exactly 1 weak-point review schedule (round = 99) for the specified date
+async function generateWeakPointRecommendation(queryDate) {
+  const hasAnyAiKey = !!(
+    process.env.GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY_SECONDARY ||
+    process.env.GEMINI_API_KEY_TERTIARY ||
+    process.env.XAI_API_KEY ||
+    process.env.GROK_API_KEY ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.OPENAI_API_KEY
+  );
+  if (!hasAnyAiKey) {
+    return null;
+  }
+
+  // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 실제 점수를 획득해 완료한 토픽 목록
+  const excludedRows = await dbQuery.all(
+    `SELECT DISTINCT topic_id FROM schedules 
+     WHERE (status = 'pending' AND planned_date <= ?) 
+        OR (review_round = 99 AND planned_date = ? AND status = 'completed' AND score IS NOT NULL)`,
+    [queryDate, queryDate]
+  );
+  const excludedTopicIds = excludedRows.map(r => r.topic_id);
+
+  // 2. 각 토픽의 모든 완료된 복습 세션(일반 복습 및 약점 복습 포함)의 평균 성적이 100점 미만인 항목을 최저 평균 점수 순 정렬
+  const scoreHistory = await dbQuery.all(
+    `SELECT topic_id, AVG(score) as avg_score
+     FROM schedules
+     WHERE status = 'completed' AND score IS NOT NULL
+     GROUP BY topic_id
+     HAVING AVG(score) < 100
+     ORDER BY avg_score ASC`
+  );
+
+  // 제외 대상 제외
+  let candidates = scoreHistory.filter(h => !excludedTopicIds.includes(h.topic_id));
+
+  // 3. 하위 5개 토픽 내에서 1개 무작위 선택
+  const bottomFive = candidates.slice(0, 5);
+
+  if (bottomFive.length === 0) {
+    return null;
+  }
+
+  const selectedCandidate = bottomFive[Math.floor(Math.random() * bottomFive.length)];
+
+  const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
+  if (topic) {
+    // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
+    const existingBonus = await dbQuery.get(
+      `SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?`,
+      [topic.id, queryDate]
+    );
+
+    let scheduleId;
+    const scoreVal = Math.round(selectedCandidate.avg_score);
+    if (existingBonus) {
+      scheduleId = existingBonus.id;
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ? WHERE id = ?`,
+        [scoreVal, scheduleId]
+      );
+    } else {
+      const insertRes = await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status, score)
+         VALUES (?, 99, ?, 'pending', ?)`,
+        [topic.id, queryDate, scoreVal]
+      );
+      scheduleId = insertRes.id;
+    }
+
+    return {
+      schedule_id: scheduleId,
+      topic_id: topic.id,
+      title: topic.title,
+      keywords: topic.keywords,
+      pdf_name: topic.pdf_name,
+      review_round: 1,
+      planned_date: queryDate,
+      status: 'pending',
+      completed_at: null,
+      score: scoreVal,
+      isBonus: true
+    };
+  }
+  return null;
+}
+
 // 2-8-2. Get Weak-Point Bonus Reviews for Manual Trigger (한도 없는 실시간 약점 추천 버전)
 app.get('/api/dashboard/weak-points', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
-    const hasAnyAiKey = !!(
-      process.env.GEMINI_API_KEY ||
-      process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY
-    );
-    if (!hasAnyAiKey) {
-      return res.json({ weakPoints: [] });
-    }
-
-    // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 실제 점수를 획득해 완료한 토픽 목록
-    const excludedRows = await dbQuery.all(
-      `SELECT DISTINCT topic_id FROM schedules 
-       WHERE (status = 'pending' AND planned_date <= ?) 
-          OR (review_round = 99 AND planned_date = ? AND status = 'completed' AND score IS NOT NULL)`,
-      [queryDate, queryDate]
-    );
-    const excludedTopicIds = excludedRows.map(r => r.topic_id);
-
-    // 2. 각 토픽의 모든 완료된 복습 세션(일반 복습 및 약점 복습 포함)의 평균 성적이 100점 미만인 항목을 최저 평균 점수 순 정렬
-    const scoreHistory = await dbQuery.all(
-      `SELECT topic_id, AVG(score) as avg_score
-       FROM schedules
-       WHERE status = 'completed' AND score IS NOT NULL
-       GROUP BY topic_id
-       HAVING AVG(score) < 100
-       ORDER BY avg_score ASC`
-    );
-
-    // 제외 대상 제외
-    let candidates = scoreHistory.filter(h => !excludedTopicIds.includes(h.topic_id));
-
-    // 3. 하위 5개 토픽 내에서 1개 무작위 선택
-    const bottomFive = candidates.slice(0, 5);
-
-    if (bottomFive.length === 0) {
-      return res.json({ weakPoints: [] });
-    }
-
-    const selectedCandidate = bottomFive[Math.floor(Math.random() * bottomFive.length)];
-    const weakPoints = [];
-
-    const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
-    if (topic) {
-      // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
-      const existingBonus = await dbQuery.get(
-        `SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?`,
-        [topic.id, queryDate]
-      );
-
-      let scheduleId;
-      const scoreVal = Math.round(selectedCandidate.avg_score);
-      if (existingBonus) {
-        scheduleId = existingBonus.id;
-        await dbQuery.run(
-          `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ? WHERE id = ?`,
-          [scoreVal, scheduleId]
-        );
-      } else {
-        const insertRes = await dbQuery.run(
-          `INSERT INTO schedules (topic_id, review_round, planned_date, status, score)
-           VALUES (?, 99, ?, 'pending', ?)`,
-          [topic.id, queryDate, scoreVal]
-        );
-        scheduleId = insertRes.id;
-      }
-
-      weakPoints.push({
-        schedule_id: scheduleId,
-        topic_id: topic.id,
-        title: topic.title,
-        keywords: topic.keywords,
-        pdf_name: topic.pdf_name,
-        review_round: 1,
-        planned_date: queryDate,
-        status: 'pending',
-        completed_at: null,
-        score: scoreVal,
-        isBonus: true
-      });
-    }
-
+    const recommended = await generateWeakPointRecommendation(queryDate);
+    const weakPoints = recommended ? [recommended] : [];
     res.json({ weakPoints });
   } catch (error) {
     console.error('Error fetching weak points:', error);
@@ -2213,15 +2235,10 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
 
     const todayDateStr = getLocalDateString();
     let newPlannedDate = schedule.planned_date;
-    
-    // If the planned date was in the future, bring it back to today so it immediately shows in Today's Review
-    if (schedule.planned_date > todayDateStr) {
-      newPlannedDate = todayDateStr;
-    }
 
     const updateSql = `
       UPDATE schedules 
-      SET status = 'pending', completed_at = NULL, planned_date = ?
+      SET status = 'pending', completed_at = NULL, planned_date = ?, score = NULL, correct_count = NULL, total_count = NULL
       WHERE id = ?
     `;
     await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
