@@ -4752,7 +4752,7 @@ export default function App() {
       {selectedTopic && (
         <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 pc-enlarged-text">
           {/* Review Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
+          <div className="flex flex-col items-stretch md:flex-row md:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4">
             <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
               <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Brain size={20} />
@@ -4770,52 +4770,53 @@ export default function App() {
                   <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
                     {selectedTopic.title}
                   </h3>
-                  <div className={`flex flex-row items-center gap-2 mt-2 w-full md:w-auto ${
-                    (!selectedTopic.pdf_name && !(selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999)) ? 'md:hidden' : ''
-                  }`}>
-                    {selectedTopic.pdf_name && (
-                      <button
-                        onClick={handleOpenOriginalReport}
-                        className="px-3 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 flex-1 md:flex-initial"
-                        title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                      >
-                        <FileText size={15} />
-                        <span>원보고서</span>
-                      </button>
-                    )}
-                    {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
-                      <button
-                        onClick={() => {
-                          setSelectedTopic(null);
-                          setAiQuestions([]);
-                          setRevealedQuestions({});
-                          setSelectedAnswers({});
-                          setReviewOptionExplanations({});
-                          lastQuizTopicId.current = null;
-                          setResetConfirmTarget({
-                            scheduleId: selectedTopic.schedule_id,
-                            topicTitle: selectedTopic.title,
-                            round: selectedTopic.review_round
-                          });
-                        }}
-                        className="px-3 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 flex-1 md:flex-initial"
-                        title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
-                      >
-                        <RefreshCw size={13} className="text-amber-400" />
-                        <span>다시풀기</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
-                      className="px-3 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 flex-1 md:hidden"
-                      title="화면만 숨김 (재개 시 문제 유지)"
-                    >
-                      <X size={15} />
-                      <span>닫기</span>
-                    </button>
-                  </div>
                 </div>
               </div>
+            </div>
+
+            <div className={`flex flex-row items-stretch md:items-center gap-2 w-full md:w-auto justify-between md:justify-end ${
+              (!selectedTopic.pdf_name && !(selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999)) ? 'md:hidden' : ''
+            }`}>
+              {selectedTopic.pdf_name && (
+                <button
+                  onClick={handleOpenOriginalReport}
+                  className="px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 flex-1 md:flex-none whitespace-nowrap min-w-0"
+                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                >
+                  <FileText size={14} className="flex-shrink-0" />
+                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">원보고서</span>
+                </button>
+              )}
+              {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+                <button
+                  onClick={() => {
+                    setSelectedTopic(null);
+                    setAiQuestions([]);
+                    setRevealedQuestions({});
+                    setSelectedAnswers({});
+                    setReviewOptionExplanations({});
+                    lastQuizTopicId.current = null;
+                    setResetConfirmTarget({
+                      scheduleId: selectedTopic.schedule_id,
+                      topicTitle: selectedTopic.title,
+                      round: selectedTopic.review_round
+                    });
+                  }}
+                  className="px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 flex-1 md:flex-none whitespace-nowrap min-w-0"
+                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                >
+                  <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">다시풀기</span>
+                </button>
+              )}
+              <button
+                onClick={() => { savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; setSelectedTopic(null); }}
+                className="px-2 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 flex-1 md:hidden whitespace-nowrap min-w-0"
+                title="화면만 숨김 (재개 시 문제 유지)"
+              >
+                <X size={14} className="flex-shrink-0" />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">닫기</span>
+              </button>
             </div>
 
             <div className="hidden md:flex items-center gap-2 flex-shrink-0 w-full md:w-auto justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
