@@ -4658,11 +4658,13 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-              기술사 Spaced Repetition 복습 시스템
+              {(!isDesktop && !isMobileLandscape) ? '토질및기초기술사' : '기술사 Spaced Repetition 복습 시스템'}
             </h1>
-            <p className="text-xs md:text-sm text-slate-400 font-medium">
-              에빙하우스 망각곡선 기반 스케줄링 & AI 기출 예상문제 출제 비서
-            </p>
+            {(!(!isDesktop && !isMobileLandscape)) && (
+              <p className="text-xs md:text-sm text-slate-400 font-medium">
+                에빙하우스 망각곡선 기반 스케줄링 & AI 기출 예상문제 출제 비서
+              </p>
+            )}
           </div>
         </div>
 
@@ -4695,26 +4697,28 @@ export default function App() {
               </button>
             ) : null
           ) : (
-            /* Normal 복습 기준일 control */
-            <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
-              <Calendar size={16} className="text-brand-400" />
-              <label className="text-xs font-semibold text-slate-400 whitespace-nowrap">복습 기준일:</label>
-              <input 
-                type="date" 
-                value={referenceDate}
-                onChange={(e) => setReferenceDate(e.target.value)}
-                className="bg-transparent text-sm font-bold text-white border-0 focus:ring-0 focus:outline-none cursor-pointer w-full"
-              />
-              {referenceDate !== getTodayString() && (
-                <button 
-                  onClick={() => setReferenceDate(getTodayString())}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors flex-shrink-0"
-                  title="오늘 날짜로 리셋"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              )}
-            </div>
+            /* Normal 복습 기준일 control (hidden on mobile portrait) */
+            (!isDesktop && !isMobileLandscape) ? null : (
+              <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
+                <Calendar size={16} className="text-brand-400" />
+                <label className="text-xs font-semibold text-slate-400 whitespace-nowrap">복습 기준일:</label>
+                <input 
+                  type="date" 
+                  value={referenceDate}
+                  onChange={(e) => setReferenceDate(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-white border-0 focus:ring-0 focus:outline-none cursor-pointer w-full"
+                />
+                {referenceDate !== getTodayString() && (
+                  <button 
+                    onClick={() => setReferenceDate(getTodayString())}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors flex-shrink-0"
+                    title="오늘 날짜로 리셋"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                )}
+              </div>
+            )
           )}
 
           <div className="flex md:hidden landscape-flex-important flex-col gap-2 w-full">
@@ -5018,9 +5022,11 @@ export default function App() {
                     {loadingWeakPoints ? '⏳ 불러오는 중...' : '💡 약점 추천 받기'}
                   </button>
                 </div>
-                <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
-                  총 {todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length}개 대기 중
-                </span>
+                {(!(!isDesktop && !isMobileLandscape)) && (
+                  <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
+                    총 {todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length}개 대기 중
+                  </span>
+                )}
               </div>
 
               {loadingReviews ? (
