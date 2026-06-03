@@ -1795,11 +1795,11 @@ export default function App() {
   };
 
   const handleCopyReportToAnswersheet = async (topicId, topicTitle) => {
-    if (!window.confirm(`[${topicTitle}] 토픽의 원보고서 보기를 답안지 탭에 추가하시겠습니까?\n(답안지 환경에 맞는 전공 공식/이론 카드가 새롭게 추출 및 생성됩니다)`)) {
+    if (!window.confirm(`[${topicTitle}] 토픽의 원보고서 보기를 답안지 탭에 추가하시겠습니까?`)) {
       return;
     }
 
-    showNotification(`[${topicTitle}] 보고서를 답안지 탭에 연동 및 AI 분석 중...`, 'info');
+    showNotification(`[${topicTitle}] 보고서를 답안지 탭에 연동 중...`, 'info');
     try {
       const res = await fetch(`${API_BASE}/api/session/answersheet/add-from-topic`, {
         method: 'POST',
@@ -1815,15 +1815,15 @@ export default function App() {
       const data = await res.json();
       const theories = data.theories || [];
       if (theories.length === 0) {
-        throw new Error('AI 분석 결과에서 답안지 문항을 생성하지 못했습니다.');
+        throw new Error('답안지 문항을 생성하지 못했습니다.');
       }
 
       setAnswersheetQuestions(prev => {
         const newItems = theories.map(t => ({
           title: t.title,
-          concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          concept: t.concept || '연동된 원보고서입니다.',
           assumptions: t.assumptions || '',
-          formula: t.answer,
+          formula: t.formula || t.answer || '',
           answersheet_report_id: t.answersheet_report_id,
           pdf_name: t.pdf_name
         }));
@@ -1833,7 +1833,7 @@ export default function App() {
         return updated;
       });
 
-      showNotification(`총 ${theories.length}개의 핵심 답안지 문항이 성공적으로 연동되어 답안지 탭에 추가되었습니다!`, 'success');
+      showNotification(`[${topicTitle}] 원보고서가 성공적으로 연동되어 답안지 탭에 추가되었습니다!`, 'success');
       
       // Switch view and scroll
       await handleOpenAnswerSheet();
@@ -3366,7 +3366,7 @@ export default function App() {
     }
 
     setUploadingAnswersheetPdf(true);
-    showNotification(`[${file.name}] 문서를 업로드하여 답안지 AI 분석을 시작합니다...`, 'info');
+    showNotification(`[${file.name}] 문서를 업로드하여 답안지에 추가 중...`, 'info');
 
     try {
       const formData = new FormData();
@@ -3380,21 +3380,21 @@ export default function App() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || '답안지 분석 실패');
+        throw new Error(errData.error || '답안지 업로드 실패');
       }
 
       const data = await res.json();
       const theories = data.theories || [];
       if (theories.length === 0) {
-        throw new Error('AI 분석 결과에서 답안지 문항을 생성하지 못했습니다.');
+        throw new Error('답안지 문항을 생성하지 못했습니다.');
       }
 
       setAnswersheetQuestions(prev => {
         const newItems = theories.map(t => ({
           title: t.title,
-          concept: t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.',
+          concept: t.concept || '업로드된 원보고서입니다.',
           assumptions: t.assumptions || '',
-          formula: t.answer,
+          formula: t.formula || t.answer || '',
           answersheet_report_id: t.answersheet_report_id,
           pdf_name: t.pdf_name
         }));
@@ -3404,10 +3404,10 @@ export default function App() {
         return updated;
       });
 
-      showNotification(`총 ${theories.length}개의 핵심 답안지 문항이 성공적으로 생성되어 리스트 맨 위에 추가되었습니다!`, 'success');
+      showNotification(`[${file.name}] 보고서가 성공적으로 답안지 탭에 연동 추가되었습니다!`, 'success');
     } catch (err) {
       console.error('Answersheet upload failed:', err);
-      showNotification(err.message || 'PDF/HTML 분석 중 오류가 발생했습니다.', 'error');
+      showNotification(err.message || 'PDF/HTML 업로드 중 오류가 발생했습니다.', 'error');
     } finally {
       setUploadingAnswersheetPdf(false);
     }
