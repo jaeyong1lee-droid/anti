@@ -5132,6 +5132,102 @@ app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
   }
 });
 
+// GET /api/session/last-active-review → 가장 최근 공부 중이거나 완료했던 복습 세션 정보 반환
+app.get('/api/session/last-active-review', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    // Query all matching session keys
+    const row = await dbQuery.get(
+      `SELECT key FROM app_session 
+       WHERE key LIKE 'review_questions_schedule_%' 
+          OR key LIKE 'review_questions_topic_%' 
+          OR key LIKE 'completed_review_schedule_%' 
+       ORDER BY updated_at DESC LIMIT 1`
+    );
+
+    if (!row) {
+      return res.json({ success: true, lastActive: null });
+    }
+
+    const key = row.key;
+    if (key.startsWith('completed_review_schedule_')) {
+      const scheduleId = parseInt(key.replace('completed_review_schedule_', ''), 10);
+      const sched = await dbQuery.get(
+        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name 
+         FROM schedules s 
+         JOIN topics t ON s.topic_id = t.id 
+         WHERE s.id = ?`,
+        [scheduleId]
+      );
+      if (sched) {
+        return res.json({
+          success: true,
+          lastActive: {
+            topicId: sched.topic_id,
+            title: sched.title,
+            keywords: sched.keywords || '',
+            pdfName: sched.pdf_name || '',
+            mode: 'completed',
+            scheduleId: sched.id,
+            reviewRound: sched.review_round,
+            isReadOnly: true
+          }
+        });
+      }
+    } else if (key.startsWith('review_questions_schedule_')) {
+      const scheduleId = parseInt(key.replace('review_questions_schedule_', ''), 10);
+      const sched = await dbQuery.get(
+        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name 
+         FROM schedules s 
+         JOIN topics t ON s.topic_id = t.id 
+         WHERE s.id = ?`,
+        [scheduleId]
+      );
+      if (sched) {
+        return res.json({
+          success: true,
+          lastActive: {
+            topicId: sched.topic_id,
+            title: sched.title,
+            keywords: sched.keywords || '',
+            pdfName: sched.pdf_name || '',
+            mode: 'ai',
+            scheduleId: sched.id,
+            reviewRound: sched.review_round,
+            isReadOnly: false
+          }
+        });
+      }
+    } else if (key.startsWith('review_questions_topic_')) {
+      const topicId = parseInt(key.replace('review_questions_topic_', ''), 10);
+      const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name FROM topics WHERE id = ?`, [topicId]);
+      if (topicObj) {
+        // Find any pending schedule
+        const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
+        return res.json({
+          success: true,
+          lastActive: {
+            topicId: topicObj.id,
+            title: topicObj.title,
+            keywords: topicObj.keywords || '',
+            pdfName: topicObj.pdf_name || '',
+            mode: 'ai',
+            scheduleId: sched ? sched.id : null,
+            reviewRound: sched ? sched.review_round : null,
+            isReadOnly: false
+          }
+        });
+      }
+    }
+
+    res.json({ success: true, lastActive: null });
+  } catch (err) {
+    console.error('GET /api/session/last-active-review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
 function healLatexFormulas(text) {
   if (!text) return text;

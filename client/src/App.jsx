@@ -928,6 +928,17 @@ export default function App() {
         setLastActiveReview(JSON.parse(saved));
       } catch (e) {}
     }
+
+    // Always fetch last active review from database to sync in real-time
+    fetch(`${API_BASE}/api/session/last-active-review`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.lastActive) {
+          setLastActiveReview(data.lastActive);
+          localStorage.setItem('anti_last_active_review', JSON.stringify(data.lastActive));
+        }
+      })
+      .catch(err => console.warn('마지막 복습 내역 로드 실패:', err));
   }, []);
   const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
   const [editingFormulaText, setEditingFormulaText] = useState("");
@@ -4453,23 +4464,23 @@ export default function App() {
 
             <button
               onClick={handleOpenLastActiveReview}
-              className="hidden md:flex glass-panel rounded-2xl p-5 border border-slate-800 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:border-violet-500/50 hover:shadow-violet-500/10 hover:bg-violet-950/10 relative overflow-hidden group select-none w-full"
+              className="hidden md:flex bg-amber-400 border border-amber-300 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:bg-amber-350 shadow-[0_4px_20px_rgba(251,191,36,0.15)] relative overflow-hidden group select-none w-full"
               title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl group-hover:bg-violet-900/50 group-hover:text-violet-300 transition-all duration-300 flex-shrink-0 relative">
-                <Clock size={24} className="animate-pulse-slow" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
+                <Clock size={24} className="animate-pulse-slow text-slate-950" />
               </div>
-              <div className="min-w-0 flex-grow relative">
-                <p className="text-xs font-black text-violet-400 tracking-wide uppercase flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <div className="min-w-0 flex-grow relative text-slate-950">
+                <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
                   공부중
                 </p>
-                <h3 className="text-sm font-extrabold text-white mt-1.5 truncate leading-tight group-hover:text-violet-200 transition-colors">
+                <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
                   {lastActiveReview ? lastActiveReview.title : '최근 복습 내역 없음'}
                 </h3>
                 {lastActiveReview && (
-                  <p className="text-[10px] text-slate-400 mt-1 font-bold truncate">
+                  <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
                     {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
                   </p>
                 )}
