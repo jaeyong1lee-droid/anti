@@ -5681,15 +5681,15 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap flex-shrink-0 w-full md:w-auto justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
+            <div className="flex items-center gap-2 w-full md:w-auto justify-stretch md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
                   <FileText size={14} className="flex-shrink-0" />
-                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">원보고서</span>
+                  <span className="whitespace-nowrap">원보고서</span>
                 </button>
               )}
               {isDesktop && selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
@@ -5707,18 +5707,18 @@ export default function App() {
                       round: selectedTopic.review_round
                     });
                   }}
-                  className="px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
                   title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
                 >
                   <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">다시풀기</span>
+                  <span className="whitespace-nowrap">다시풀기</span>
                 </button>
               )}
               {selectedTopic && (
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
-                  className="px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                 >
                   {loadingAI ? (
@@ -5729,7 +5729,7 @@ export default function App() {
                   ) : (
                     <span className="text-violet-300 flex-shrink-0">🔄</span>
                   )}
-                  <span className="whitespace-nowrap text-[11px] sm:text-xs md:text-sm">리프레쉬</span>
+                  <span className="whitespace-nowrap">리프레쉬</span>
                 </button>
               )}
               <button
@@ -5742,7 +5742,7 @@ export default function App() {
                     setSelectedTopic(null); 
                   }
                 }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                 title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
               >
                 닫기
@@ -5759,7 +5759,7 @@ export default function App() {
                     }
                     setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
                   }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                   title="문제 초기화 (재개 시 새 문제 생성)"
                 >
                   종료
