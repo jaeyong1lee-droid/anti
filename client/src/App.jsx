@@ -5186,7 +5186,6 @@ export default function App() {
                               return (
                                 <button
                                   key={oIdx}
-                                  disabled={selectedTopic?.isReadOnly}
                                   onClick={() => {
                                     setSelectedAnswers(prev => {
                                       const updated = { ...prev, [idx]: opt };
