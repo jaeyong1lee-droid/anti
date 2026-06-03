@@ -2124,6 +2124,12 @@ export default function App() {
   // ── Open Original Report (복습하기 원 보고서 팝업 띄우기) ──────────────────
   const handleOpenOriginalReport = () => {
     if (!selectedTopic?.id) return;
+    const isPdf = selectedTopic.pdf_name && selectedTopic.pdf_name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      if (!window.confirm(`[${selectedTopic.pdf_name}] 파일을 다운로드하시겠습니까?`)) {
+        return;
+      }
+    }
     const url = `${API_BASE}/api/topics/${selectedTopic.id}/pdf`;
     window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
   };
