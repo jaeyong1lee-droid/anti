@@ -1852,15 +1852,15 @@ export default function App() {
 
   useEffect(() => {
     const handleTouchStart = (e) => {
-      // Only track in mobile portrait and when no quiz/exam modals are open
-      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam) {
+      // Only track in mobile portrait and when no quiz/exam modals are open, and not in 'all_topics' view
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && viewMode !== 'all_topics') {
         globalTouchStartX.current = e.touches[0].clientX;
         globalTouchStartY.current = e.touches[0].clientY;
       }
     };
 
     const handleTouchEnd = (e) => {
-      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam) {
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && viewMode !== 'all_topics') {
         // Exclude inputs, textareas, etc.
         const target = e.target;
         if (target && target.closest('input, textarea, [contenteditable="true"], button, a, select')) {
@@ -1873,16 +1873,6 @@ export default function App() {
         // If swipe horizontal delta is high and vertical is low
         if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40) {
           const currentIndex = getCurrentTabIndex();
-          if (viewMode === 'all_topics') {
-            // If they are on the excluded Review Topics tab, swipe shifts to adjacent allowed tabs
-            if (deltaX < 0) {
-              navigateToTabByIndex(1); // Swipe Left -> Essential Formulas
-            } else {
-              navigateToTabByIndex(0); // Swipe Right -> Today's Review
-            }
-            return;
-          }
-
           if (deltaX < 0) {
             // Swipe Left -> Go Next Tab (Index increases, loops to 0 at 3)
             const nextIndex = (currentIndex + 1) % 4;
