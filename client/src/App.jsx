@@ -5162,7 +5162,7 @@ export default function App() {
               >
                 닫기
               </button>
-              {selectedTopic && !selectedTopic.isReadOnly && (
+              {selectedTopic && (
                 <button
                   onClick={() => { 
                     if (selectedTopic?.id) {
