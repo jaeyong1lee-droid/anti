@@ -891,6 +891,175 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   );
 }
 
+// ── 공학용 계산기 컴포넌트 ──────────────────
+function ScientificCalculator() {
+  const [calcInput, setCalcInput] = useState('');
+  const [calcResult, setCalcResult] = useState('');
+  const [calcAngleMode, setCalcAngleMode] = useState('deg'); // deg / rad
+  const [lastAns, setLastAns] = useState('');
+
+  const appendToInput = (val) => {
+    setCalcInput(prev => prev + val);
+  };
+
+  const handleClear = () => {
+    setCalcInput('');
+    setCalcResult('');
+  };
+
+  const handleBackspace = () => {
+    setCalcInput(prev => prev.slice(0, -1));
+  };
+
+  const evaluateExpr = (expr, angleMode) => {
+    try {
+      // Normalize mathematical symbols
+      let sanitized = expr
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/π/g, 'Math.PI')
+        .replace(/\be\b/g, 'Math.E')
+        .replace(/Ans/g, `(${lastAns || '0'})`);
+
+      let preProcessed = sanitized;
+
+      // Handle trigonometry angle modes (Degrees vs Radians)
+      if (angleMode === 'deg') {
+        preProcessed = preProcessed
+          .replace(/sin\(/g, 'Math.sin((Math.PI/180)*')
+          .replace(/cos\(/g, 'Math.cos((Math.PI/180)*')
+          .replace(/tan\(/g, 'Math.tan((Math.PI/180)*')
+          .replace(/asin\(/g, '((180/Math.PI)*Math.asin(')
+          .replace(/acos\(/g, '((180/Math.PI)*Math.acos(')
+          .replace(/atan\(/g, '((180/Math.PI)*Math.atan(');
+      } else {
+        preProcessed = preProcessed
+          .replace(/sin\(/g, 'Math.sin(')
+          .replace(/cos\(/g, 'Math.cos(')
+          .replace(/tan\(/g, 'Math.tan(')
+          .replace(/asin\(/g, 'Math.asin(')
+          .replace(/acos\(/g, 'Math.acos(')
+          .replace(/atan\(/g, 'Math.atan(');
+      }
+
+      preProcessed = preProcessed
+        .replace(/ln\(/g, 'Math.log(')
+        .replace(/log\(/g, 'Math.log10(')
+        .replace(/sqrt\(/g, 'Math.sqrt(')
+        .replace(/exp\(/g, 'Math.exp(')
+        .replace(/\^/g, '**');
+
+      const result = new Function(`return (${preProcessed})`)();
+      if (typeof result === 'number' && !isNaN(result)) {
+        if (!isFinite(result)) return 'Infinity';
+        if (Number.isInteger(result)) return result.toString();
+        return parseFloat(result.toFixed(6)).toString();
+      }
+      return 'Error';
+    } catch (err) {
+      return 'Error';
+    }
+  };
+
+  const handleEqual = () => {
+    if (!calcInput.trim()) return;
+    const res = evaluateExpr(calcInput, calcAngleMode);
+    setCalcResult(res);
+    if (res !== 'Error') {
+      setLastAns(res);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleEqual();
+    }
+  };
+
+  const btnClass = "flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700/80 active:scale-95 text-center text-xs text-slate-200 font-bold border border-slate-700/50 transition-all select-none cursor-pointer";
+  const opBtnClass = "flex-1 py-1 rounded bg-slate-700/70 hover:bg-slate-600/80 active:scale-95 text-center text-xs text-amber-400 font-black border border-slate-600/50 transition-all select-none cursor-pointer";
+  const fnBtnClass = "flex-1 py-1 rounded bg-slate-900 hover:bg-slate-800/80 active:scale-95 text-center text-[10px] text-violet-400 font-black border border-slate-800/80 transition-all select-none cursor-pointer";
+
+  return (
+    <div className="w-full bg-slateCustom-950 border-b border-slate-800 p-2.5 flex flex-col gap-1.5 flex-shrink-0 shadow-lg select-none">
+      <div className="flex justify-between items-center bg-slate-900 border border-slate-800/60 rounded-xl p-2">
+        <div className="flex flex-col w-full text-right overflow-hidden">
+          <div className="text-[9px] text-slate-500 font-bold flex justify-between select-none">
+            <span className="text-violet-500 uppercase tracking-widest text-[8px] font-black">{calcAngleMode} mode</span>
+            <span className="truncate max-w-[180px]">{calcInput || '0'}</span>
+          </div>
+          <input
+            type="text"
+            value={calcInput}
+            onChange={(e) => setCalcInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="공식/수치 입력..."
+            className="w-full text-right bg-transparent text-xs text-white font-extrabold border-0 outline-none p-0 mt-0.5 placeholder-slate-600"
+          />
+          {calcResult && (
+            <div className="text-[11px] text-emerald-400 font-extrabold mt-0.5 truncate select-all">
+              = {calcResult}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-5 gap-1 select-none">
+        {/* Row 1 */}
+        <button 
+          onClick={() => setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg')}
+          className="py-1 rounded bg-violet-950/65 hover:bg-violet-900/65 text-violet-300 border border-violet-500/20 text-[9px] font-black cursor-pointer uppercase active:scale-95"
+          title="Degree / Radian 각도 모드 변경"
+        >
+          {calcAngleMode}
+        </button>
+        <button onClick={() => appendToInput('(')} className={fnBtnClass}>(</button>
+        <button onClick={() => appendToInput(')')} className={fnBtnClass}>)</button>
+        <button onClick={handleBackspace} className="py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[9px] font-black cursor-pointer active:scale-95">DEL</button>
+        <button onClick={handleClear} className="py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[9px] font-black cursor-pointer active:scale-95">AC</button>
+
+        {/* Row 2 */}
+        <button onClick={() => appendToInput('sin(')} className={fnBtnClass}>sin</button>
+        <button onClick={() => appendToInput('cos(')} className={fnBtnClass}>cos</button>
+        <button onClick={() => appendToInput('tan(')} className={fnBtnClass}>tan</button>
+        <button onClick={() => appendToInput('^')} className={fnBtnClass}>xʸ</button>
+        <button onClick={() => appendToInput('sqrt(')} className={fnBtnClass}>√</button>
+
+        {/* Row 3 */}
+        <button onClick={() => appendToInput('ln(')} className={fnBtnClass}>ln</button>
+        <button onClick={() => appendToInput('log(')} className={fnBtnClass}>log</button>
+        <button onClick={() => appendToInput('π')} className={fnBtnClass}>π</button>
+        <button onClick={() => appendToInput('e')} className={fnBtnClass}>e</button>
+        <button onClick={() => appendToInput('÷')} className={opBtnClass}>÷</button>
+
+        {/* Row 4 */}
+        <button onClick={() => appendToInput('7')} className={btnClass}>7</button>
+        <button onClick={() => appendToInput('8')} className={btnClass}>8</button>
+        <button onClick={() => appendToInput('9')} className={btnClass}>9</button>
+        <button onClick={() => appendToInput('exp(')} className={fnBtnClass}>exp</button>
+        <button onClick={() => appendToInput('×')} className={opBtnClass}>×</button>
+
+        {/* Row 5 */}
+        <button onClick={() => appendToInput('4')} className={btnClass}>4</button>
+        <button onClick={() => appendToInput('5')} className={btnClass}>5</button>
+        <button onClick={() => appendToInput('6')} className={btnClass}>6</button>
+        <button onClick={() => appendToInput('Ans')} className={fnBtnClass} title="이전 결과 불러오기">Ans</button>
+        <button onClick={() => appendToInput('-')} className={opBtnClass}>-</button>
+
+        {/* Row 6 */}
+        <button onClick={() => appendToInput('1')} className={btnClass}>1</button>
+        <button onClick={() => appendToInput('2')} className={btnClass}>2</button>
+        <button onClick={() => appendToInput('3')} className={btnClass}>3</button>
+        <button onClick={handleEqual} className="row-span-2 col-span-2 py-2 rounded bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/20 text-xs font-black text-emerald-300 cursor-pointer active:scale-95 flex items-center justify-center">=</button>
+
+        {/* Row 7 */}
+        <button onClick={() => appendToInput('0')} className="col-span-2 py-1 rounded bg-slate-800 hover:bg-slate-700/80 active:scale-95 text-center text-xs text-slate-200 font-bold border border-slate-700/50 cursor-pointer">0</button>
+        <button onClick={() => appendToInput('.')} className={btnClass}>.</button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -2150,22 +2319,42 @@ export default function App() {
             });
           }
         } else {
+          let initialSelectedAnswers = {};
+          let initialRevealedQuestions = {};
           try {
             const key = finalScheduleId 
               ? `anti_review_progress_sched_${finalScheduleId}`
               : `anti_review_progress_${topicId}`;
             const savedProgress = localStorage.getItem(key);
             if (savedProgress) {
-              const { revealedQuestions: savedRevealed, selectedAnswers: savedSelected } = JSON.parse(savedProgress);
-              if (savedRevealed) setRevealedQuestions(savedRevealed);
-              if (savedSelected) setSelectedAnswers(savedSelected);
+              const parsed = JSON.parse(savedProgress);
+              if (parsed.revealedQuestions) initialRevealedQuestions = parsed.revealedQuestions;
+              if (parsed.selectedAnswers) initialSelectedAnswers = parsed.selectedAnswers;
+              if (parsed.revealedQuestions) setRevealedQuestions(parsed.revealedQuestions);
+              if (parsed.selectedAnswers) setSelectedAnswers(parsed.selectedAnswers);
             } else {
               setRevealedQuestions({});
               setSelectedAnswers({});
             }
           } catch (e) {
             console.warn('복습 진행률 복원 실패:', e);
+            setRevealedQuestions({});
+            setSelectedAnswers({});
           }
+
+          // 즉시 DB 저장
+          fetch(`${API_BASE}/api/session/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicId: topicId,
+              scheduleId: finalScheduleId,
+              questions: data.questions || [],
+              selectedAnswers: initialSelectedAnswers,
+              revealedQuestions: initialRevealedQuestions,
+              savedQuizScroll: 0
+            })
+          }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
         }
       } else {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
@@ -2311,7 +2500,8 @@ export default function App() {
       const data = await res.json();
       
       if (res.ok) {
-        setAiQuestions(data.questions || []);
+        const newQuestions = data.questions || [];
+        setAiQuestions(newQuestions);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = selectedTopic.id;
@@ -2330,6 +2520,20 @@ export default function App() {
         };
         localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
         setLastActiveReview(activeInfo);
+
+        // 즉시 DB 저장
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            questions: newQuestions,
+            selectedAnswers: {},
+            revealedQuestions: {},
+            savedQuizScroll: 0
+          })
+        }).catch(e => console.warn('복습 세션 전체 재생성 즉시 저장 실패:', e));
 
         if (isReadOnly) {
           fetchTodayReviews(referenceDate);
@@ -2573,28 +2777,17 @@ export default function App() {
 
       if (res.ok && data.question) {
         if (isReview) {
-          // 1. 해당 인덱스 문항 교체 및 서버 세션 동기화 저장
-          setAiQuestions(prev => {
-            const updated = prev.map((q, i) => i === idx ? data.question : q);
-            fetch(`${API_BASE}/api/session/review`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ topicId: selectedTopic?.id, scheduleId: selectedTopic?.schedule_id, questions: updated })
-            }).catch(e => console.warn('복습 세션 동기화 실패:', e));
-            return updated;
-          });
-          // 2. 해당 인덱스의 선택 답안, 정답 확인 여부 초기화
-          setSelectedAnswers(prev => {
-            const copy = { ...prev };
-            delete copy[idx];
-            return copy;
-          });
-          setRevealedQuestions(prev => {
-            const copy = { ...prev };
-            delete copy[idx];
-            return copy;
-          });
-          // 3. 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
+          const updated = aiQuestions.map((q, i) => i === idx ? data.question : q);
+          const nextSelectedAnswers = { ...selectedAnswers };
+          delete nextSelectedAnswers[idx];
+          const nextRevealedQuestions = { ...revealedQuestions };
+          delete nextRevealedQuestions[idx];
+
+          setAiQuestions(updated);
+          setSelectedAnswers(nextSelectedAnswers);
+          setRevealedQuestions(nextRevealedQuestions);
+
+          // 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
           setOpenSections(prev => {
             const copy = { ...prev };
             Object.keys(copy).forEach(key => {
@@ -2604,33 +2797,43 @@ export default function App() {
             });
             return copy;
           });
+
+          // 즉시 DB 저장
+          fetch(`${API_BASE}/api/session/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicId: selectedTopic?.id,
+              scheduleId: selectedTopic?.schedule_id,
+              questions: updated,
+              selectedAnswers: nextSelectedAnswers,
+              revealedQuestions: nextRevealedQuestions,
+              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+            })
+          }).catch(e => console.warn('복습 세션 동기화 실패:', e));
         } else {
-          // 종합평가인 경우 문항 교체 및 서버 세션 동기화 저장
-          setExamQuestions(prev => {
-            const updated = prev.map((q, i) => i === idx ? data.question : q);
-            fetch(`${API_BASE}/api/session/exam`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                examQuestions: updated, 
-                examRevealed, 
-                examAnswers, 
-                examTopic,
-                savedExamScroll: examBodyRef.current?.scrollTop || 0 
-              })
-            }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
-            return updated;
-          });
-          setExamAnswers(prev => {
-            const copy = { ...prev };
-            delete copy[idx];
-            return copy;
-          });
-          setExamRevealed(prev => {
-            const copy = { ...prev };
-            delete copy[idx];
-            return copy;
-          });
+          const updated = examQuestions.map((q, i) => i === idx ? data.question : q);
+          const nextExamAnswers = { ...examAnswers };
+          delete nextExamAnswers[idx];
+          const nextExamRevealed = { ...examRevealed };
+          delete nextExamRevealed[idx];
+
+          setExamQuestions(updated);
+          setExamAnswers(nextExamAnswers);
+          setExamRevealed(nextExamRevealed);
+
+          // 즉시 DB 저장
+          fetch(`${API_BASE}/api/session/exam`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              examQuestions: updated, 
+              examRevealed: nextExamRevealed, 
+              examAnswers: nextExamAnswers, 
+              examTopic,
+              savedExamScroll: examBodyRef.current?.scrollTop || 0 
+            })
+          }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
         }
         showNotification('해당 문제를 성공적으로 변환했습니다.', 'success');
       } else {
@@ -5719,10 +5922,12 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right: Gemini Chat Sidebar (Takes exactly 35% width on Desktop) */}
+          {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            className="w-full md:w-[35vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
+              {isDesktop && <ScientificCalculator />}
+
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
@@ -6423,10 +6628,12 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar (Takes exactly 35% width on Desktop) */}
+            {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              className="w-full md:w-[35vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className="w-full md:w-[30vw] landscape-w-40 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
+              {isDesktop && <ScientificCalculator />}
+
               <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
