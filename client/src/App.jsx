@@ -4739,7 +4739,7 @@ export default function App() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
-                        <th className="py-2.5 px-3">토픽 정보</th>
+                        <th className={`py-2.5 px-3 ${isDesktop ? '' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>토픽 정보</th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
@@ -4761,7 +4761,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className={`py-2.5 px-3 ${isDesktop ? 'max-w-xs md:max-w-md' : 'max-w-[120px] w-[120px]'}`}>
+                            <td className={`py-2.5 px-3 ${isDesktop ? 'max-w-xs md:max-w-md' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
