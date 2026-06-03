@@ -949,6 +949,7 @@ export default function App() {
   const [title, setTitle] = useState('');
   const [keywords, setKeywords] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
+  const [htmlContent, setHtmlContent] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -1582,9 +1583,16 @@ export default function App() {
     formData.append('title', title);
     formData.append('keywords', keywords);
     formData.append('baseDate', referenceDate); // Fixes midnight timezone shifts
-    if (pdfFile) {
-      formData.append('pdf', pdfFile);
-      formData.append('fileNameUtf8', pdfFile.name);
+    
+    let fileToUpload = pdfFile;
+    if (htmlContent.trim()) {
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      fileToUpload = new File([blob], `${title.trim()}.html`, { type: 'text/html' });
+    }
+
+    if (fileToUpload) {
+      formData.append('pdf', fileToUpload);
+      formData.append('fileNameUtf8', fileToUpload.name);
     }
 
     try {
@@ -1598,13 +1606,14 @@ export default function App() {
         showNotification('새로운 토픽 등록 및 6개 회차 복습 스케줄 생성이 완료되었습니다!');
         
         // 공부 토픽 등록 성공 시 업로드한 파일이 있으면 답안지에도 자동 업로드/AI 분석 수행
-        if (pdfFile) {
-          handleUploadAnswersheetPdf(pdfFile);
+        if (fileToUpload) {
+          handleUploadAnswersheetPdf(fileToUpload);
         }
 
         setTitle('');
         setKeywords('');
         setPdfFile(null);
+        setHtmlContent('');
         if (fileInputRef.current) fileInputRef.current.value = '';
         
         // Refresh
@@ -4648,6 +4657,19 @@ export default function App() {
                       </>
                     )}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    또는 HTML 코딩 직접 입력
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={htmlContent}
+                    onChange={(e) => setHtmlContent(e.target.value)}
+                    placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
+                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
+                  />
                 </div>
 
                 <button 
