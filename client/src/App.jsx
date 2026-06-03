@@ -4464,7 +4464,7 @@ export default function App() {
 
             <button
               onClick={handleOpenLastActiveReview}
-              className="hidden md:flex bg-amber-400 border border-amber-300 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:bg-amber-350 shadow-[0_4px_20px_rgba(251,191,36,0.15)] relative overflow-hidden group select-none w-full"
+              className="hidden md:flex bg-yellow-50 border border-yellow-200/80 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:bg-yellow-100 shadow-[0_4px_20px_rgba(253,224,71,0.1)] relative overflow-hidden group select-none w-full"
               title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
