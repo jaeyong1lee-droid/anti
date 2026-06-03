@@ -4167,7 +4167,7 @@ export default function App() {
 
 
       {/* Main Content Area */}
-      <main className="max-w-7xl w-full mx-auto px-6 md:px-12 md:pl-28 mt-8 flex-grow">
+      <main className="max-w-7xl w-full mx-auto px-3 md:px-12 md:pl-28 mt-8 flex-grow">
         
         {/* Statistics Dashboard Banner */}
         {(isDesktop || viewMode !== 'all_topics') && (
@@ -4504,7 +4504,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className="glass-panel rounded-3xl p-6 border border-slate-800/80 shadow-xl">
+          <section className="bg-transparent md:glass-panel rounded-none md:rounded-3xl p-0 md:p-6 border-0 md:border border-slate-800/80 shadow-none md:shadow-xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
