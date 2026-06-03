@@ -4653,12 +4653,16 @@ export default function App() {
       {/* Top Premium Navbar */}
       <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 landscape-hide">
         <div className="flex items-center gap-4 landscape-hide">
-          <div className="p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple">
-            <Brain className="text-white" size={28} />
+          <div className="p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple flex items-center justify-center">
+            {(!isDesktop && !isMobileLandscape) ? (
+              <span className="text-2xl select-none leading-none">👦👧</span>
+            ) : (
+              <Brain className="text-white" size={28} />
+            )}
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-              {(!isDesktop && !isMobileLandscape) ? '토질및기초기술사' : '기술사 Spaced Repetition 복습 시스템'}
+              {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
             </h1>
             {(!(!isDesktop && !isMobileLandscape)) && (
               <p className="text-xs md:text-sm text-slate-400 font-medium">
