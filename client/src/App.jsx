@@ -6673,15 +6673,16 @@ export default function App() {
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {/* 정답확인/정답접기 button */}
                                                         {!isNewEmptyCard && (
-                              !isOutputVisible ? (
+                              (isHeavyHtml(q.formula) || !isOutputVisible) ? (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
+                                    } else {
+                                      setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
+                                      scrollToFormulaCard(idx);
                                     }
-                                    setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
-                                    scrollToFormulaCard(idx);
                                   }}
                                   className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 border border-rose-500/20 flex items-center justify-center gap-1"
                                   title="정답 확인하기"
