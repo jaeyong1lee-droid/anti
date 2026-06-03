@@ -461,6 +461,21 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     if (!val) return val;
     let healed = val;
     
+    // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 및 처리 전 최우선 수행)
+    const safeLatexCommands = [
+      'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
+      'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
+      'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
+      'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
+      'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
+      'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
+      'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+    ];
+    healed = healed.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
+      if (safeLatexCommands.includes(p1)) return '\\' + p1;
+      return match;
+    });
+    
     // 0.1) If the entire text starts and ends with $ or $$ and contains Korean, strip the outer delimiters.
     let trimmed = healed.trim();
     const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
