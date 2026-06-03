@@ -4794,13 +4794,13 @@ export default function App() {
                                     /* PC: Single Line (title + review button inline) */
                                     <div className="flex items-center gap-3 w-full min-w-0">
                                       <h4 
-                                        onClick={() => {
+                                        onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
                                           setEditingTitleText(topic.title);
                                         }}
                                         ref={isFirstMatch ? firstMatchRef : null}
                                         className="font-bold text-white text-sm md:text-[17px] truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
-                                        title="클릭 시 제목을 수정합니다."
+                                        title="더블클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
                                       </h4>
@@ -4817,10 +4817,10 @@ export default function App() {
                                       </button>
                                     </div>
                                   ) : (
-                                    /* Mobile: Double line title with ellipsis */
-                                    <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                                    /* Mobile: Double line title with ellipsis + inline review button */
+                                    <div className="flex items-center gap-2 w-full min-w-0">
                                       <h4 
-                                        onClick={() => {
+                                        onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
                                           setEditingTitleText(topic.title);
                                         }}
@@ -4835,10 +4835,20 @@ export default function App() {
                                           whiteSpace: 'normal'
                                         }}
                                         className="font-bold text-white text-xs transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
-                                        title="클릭 시 제목을 수정합니다."
+                                        title="더블클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
                                       </h4>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
+                                        }}
+                                        className="inline-flex items-center justify-center p-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer shrink-0"
+                                        title="소스 + Gemini AI로 고난도 문제 생성"
+                                      >
+                                        <Brain size={12} />
+                                      </button>
                                     </div>
                                   )
                                 )}
@@ -4880,19 +4890,6 @@ export default function App() {
                             {/* Column 8: 작업/도구 */}
                             <td className="py-2.5 px-2 text-center">
                               <div className="flex items-center justify-center gap-1.5">
-                                {/* 모바일에서만 노출되는 복습 버튼 (PC는 컬럼1에 있으므로) */}
-                                {!isDesktop && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
-                                    }}
-                                    className="inline-flex items-center justify-center p-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
-                                    title="소스 + Gemini AI로 고난도 문제 생성"
-                                  >
-                                    <Brain size={14} />
-                                  </button>
-                                )}
                                 {topic.pdf_name && (
                                   <button
                                     onClick={(e) => {
