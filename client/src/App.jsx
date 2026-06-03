@@ -1502,16 +1502,24 @@ export default function App() {
   // Mark specific schedule round as complete
   const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
     if (isBonus && topicId) {
-      // 약점극복학습(보너스 추천)은 클라이언트단에서 즉시 리스트에서 숨김 처리
-      setHiddenBonusTopicIds(prev => [...prev, topicId]);
-      showNotification(`[${topicTitle}] 약점극복 복습 완료 처리가 완료되었습니다!`);
-      
-      // 백엔드로 보너스 완료 이력을 가볍게 전송 (하루 최대 2개 추천 한도 동기화용)
-      fetch(`${API_BASE}/api/schedules/bonus/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicId })
-      }).catch(e => console.warn('보너스 완료 이력 기록 실패:', e));
+      try {
+        const res = await fetch(`${API_BASE}/api/schedules/bonus/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topicId })
+        });
+        if (res.ok) {
+          setHiddenBonusTopicIds(prev => [...prev, topicId]);
+          showNotification(`[${topicTitle}] 약점극복 복습 완료 처리가 완료되었습니다!`);
+          fetchTodayReviews(referenceDate);
+          fetchAllTopics();
+        } else {
+          showNotification('약점극복 복습 완료 처리에 실패했습니다.', 'error');
+        }
+      } catch (e) {
+        console.warn('보너스 완료 이력 기록 실패:', e);
+        showNotification('서버 오류로 약점극복 복습 완료 처리에 실패했습니다.', 'error');
+      }
       return;
     }
 

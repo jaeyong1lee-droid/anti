@@ -1962,7 +1962,15 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
       [topicId, today]
     );
 
-    if (!existing) {
+    if (existing) {
+      // 이미 추천 단계를 통해 pending 상태로 존재하는 보너스 레코드가 있으므로 completed로 업데이트
+      await dbQuery.run(
+        `UPDATE schedules 
+         SET status = 'completed', completed_at = ?, score = COALESCE(?, score) 
+         WHERE id = ?`,
+        [now, score !== undefined ? score : null, existing.id]
+      );
+    } else {
       await dbQuery.run(
         `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
          VALUES (?, 99, ?, 'completed', ?, ?, NULL, NULL)`,
