@@ -920,6 +920,15 @@ export default function App() {
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
+  const [lastActiveReview, setLastActiveReview] = useState(null);
+  useEffect(() => {
+    const saved = localStorage.getItem('anti_last_active_review');
+    if (saved) {
+      try {
+        setLastActiveReview(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
   const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
   const [editingFormulaText, setEditingFormulaText] = useState("");
   const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
@@ -1832,6 +1841,19 @@ export default function App() {
 
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
   const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
+    const activeInfo = {
+      topicId,
+      title: topicTitle,
+      keywords,
+      pdfName,
+      mode: 'completed',
+      scheduleId,
+      reviewRound: round,
+      isReadOnly: true
+    };
+    localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+    setLastActiveReview(activeInfo);
+
     setShowAnswerSheet(false);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
@@ -1997,6 +2019,19 @@ export default function App() {
       }
     }
 
+    const activeInfo = {
+      topicId,
+      title,
+      keywords,
+      pdfName,
+      mode,
+      scheduleId: finalScheduleId,
+      reviewRound: finalReviewRound,
+      isBonus
+    };
+    localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+    setLastActiveReview(activeInfo);
+
     console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}`);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
@@ -2080,6 +2115,25 @@ export default function App() {
       setAiError(err.message || '서버 통신 오류');
     } finally {
       setLoadingAI(false);
+    }
+  };
+
+  const handleOpenLastActiveReview = () => {
+    const saved = localStorage.getItem('anti_last_active_review');
+    if (!saved) {
+      showNotification('최근 진행 중이었던 복습 내역이 없습니다.', 'info');
+      return;
+    }
+    try {
+      const info = JSON.parse(saved);
+      if (info.isReadOnly || info.mode === 'completed') {
+        handleOpenCompletedReview(info.scheduleId, info.topicId, info.title, info.reviewRound, info.keywords, info.pdfName);
+      } else {
+        handleOpenAIQuestions(info.topicId, info.title, info.keywords, info.pdfName, info.mode || 'ai', info.scheduleId, info.reviewRound, info.isBonus);
+      }
+    } catch (err) {
+      console.error('Error opening last active review:', err);
+      showNotification('복습 내역을 불러오는 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -4397,17 +4451,30 @@ export default function App() {
               </div>
             </div>
 
-            <div className="hidden md:flex glass-panel rounded-2xl p-5 border border-slate-800 items-center gap-4">
-              <div className="p-3 bg-brand-950/60 text-brand-400 rounded-xl">
-                <Award size={24} />
+            <button
+              onClick={handleOpenLastActiveReview}
+              className="hidden md:flex glass-panel rounded-2xl p-5 border border-slate-800 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:border-violet-500/50 hover:shadow-violet-500/10 hover:bg-violet-950/10 relative overflow-hidden group select-none w-full"
+              title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="p-3 bg-violet-950/60 text-violet-400 rounded-xl group-hover:bg-violet-900/50 group-hover:text-violet-300 transition-all duration-300 flex-shrink-0 relative">
+                <Clock size={24} className="animate-pulse-slow" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-slate-400">총 복습 완료 세션</p>
-                <h3 className="text-2xl font-black text-white mt-1">
-                  {totalCompletedCount}회 / {totalScheduleCount}회
+              <div className="min-w-0 flex-grow relative">
+                <p className="text-xs font-black text-violet-400 tracking-wide uppercase flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                  공부중
+                </p>
+                <h3 className="text-sm font-extrabold text-white mt-1.5 truncate leading-tight group-hover:text-violet-200 transition-colors">
+                  {lastActiveReview ? lastActiveReview.title : '최근 복습 내역 없음'}
                 </h3>
+                {lastActiveReview && (
+                  <p className="text-[10px] text-slate-400 mt-1 font-bold truncate">
+                    {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
+                  </p>
+                )}
               </div>
-            </div>
+            </button>
 
             <div className="hidden md:block glass-panel rounded-2xl p-5 border border-slate-800">
               <div className="flex justify-between items-center mb-2">
