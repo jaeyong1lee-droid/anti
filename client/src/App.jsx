@@ -4578,12 +4578,12 @@ export default function App() {
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
                         <th className="py-4 px-4">토픽 정보 (클릭 시 퀴즈)</th>
-                        <th className="py-4 px-2 text-center">1회차 복습 (1일 뒤)</th>
-                        <th className="py-4 px-2 text-center">2회차 복습 (4일 뒤)</th>
-                        <th className="py-4 px-2 text-center">3회차 복습 (7일 뒤)</th>
-                        <th className="py-4 px-2 text-center">4회차 복습 (14일 뒤)</th>
-                        <th className="py-4 px-2 text-center">5회차 복습 (35일 뒤)</th>
-                        <th className="py-4 px-2 text-center">6회차 복습 (60일 뒤)</th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (14일 뒤)</span></th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (35일 뒤)</span></th>
+                        <th className="py-4 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (60일 뒤)</span></th>
                         <th className="py-4 px-2 text-center">도구</th>
                         <th className="py-4 px-4 text-right">등록 일시</th>
                       </tr>
@@ -4675,7 +4675,7 @@ export default function App() {
                                       {sched.status === 'completed' || sched.status === 'failed' ? (
                                         <button
                                           onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                          className={`inline-flex items-center gap-0.5 text-xs border px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none ${
+                                          className={`inline-flex items-center gap-0.5 text-xs border px-1.5 md:px-2.5 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
                                             sched.status === 'completed'
                                               ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
                                               : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
@@ -4685,11 +4685,11 @@ export default function App() {
                                           {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                         </button>
                                       ) : (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium">
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-1.5 md:px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
                                           대기
                                         </span>
                                       )}
-                                      <span className="text-[10px] text-slate-500 mt-1 block font-mono">{sched.planned_date}</span>
+                                      <span className="text-[10px] text-slate-500 mt-1 hidden md:block font-mono">{sched.planned_date}</span>
                                     </div>
                                   ) : (
                                     <span className="text-xs text-slate-600">-</span>
