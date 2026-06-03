@@ -2055,21 +2055,42 @@ app.post('/api/quiz/submit', async (req, res) => {
   try {
     let targetScheduleId = schedule_id;
 
-    // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
-    if (schedule_id === 9999 || String(schedule_id) === '9999' || !schedule_id) {
-      const lastCompleted = await dbQuery.get(
-        `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
-        [topic_id]
+    if (isBonus) {
+      const today = getLocalDateString();
+      const existingBonus = await dbQuery.get(
+        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+        [topic_id, today]
       );
-      if (lastCompleted) {
-        targetScheduleId = lastCompleted.id;
+      if (!existingBonus) {
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, 'pending')`,
+          [topic_id, today]
+        );
+        const newlyCreated = await dbQuery.get(
+          'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+          [topic_id, today]
+        );
+        targetScheduleId = newlyCreated.id;
       } else {
-        const anySchedule = await dbQuery.get(
-          `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+        targetScheduleId = existingBonus.id;
+      }
+    } else {
+      // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
+      if (schedule_id === 9999 || String(schedule_id) === '9999' || !schedule_id) {
+        const lastCompleted = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
           [topic_id]
         );
-        if (anySchedule) {
-          targetScheduleId = anySchedule.id;
+        if (lastCompleted) {
+          targetScheduleId = lastCompleted.id;
+        } else {
+          const anySchedule = await dbQuery.get(
+            `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+            [topic_id]
+          );
+          if (anySchedule) {
+            targetScheduleId = anySchedule.id;
+          }
         }
       }
     }
@@ -2096,30 +2117,6 @@ app.post('/api/quiz/submit', async (req, res) => {
         `UPDATE schedules SET status = 'failed', completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
         [now, scoreVal, correctVal, totalVal, targetScheduleId]
       );
-    }
-
-    // 만약 보너스인 경우 오늘 날짜의 보너스 레코드(review_round = 99)도 함께 세이브하여 동기화
-    if (isBonus) {
-      const today = getLocalDateString();
-      const existingBonus = await dbQuery.get(
-        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-        [topic_id, today]
-      );
-      if (!existingBonus) {
-        await dbQuery.run(
-          `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
-           VALUES (?, 99, ?, 'completed', ?, ?, ?, ?)`,
-          [topic_id, today, now, scoreVal, correctVal, totalVal]
-        );
-      } else {
-        // 이미 추천 단계에서 pending 상태로 존재하는 보너스 레코드가 있다면 completed/failed로 일괄 업데이트
-        await dbQuery.run(
-          `UPDATE schedules 
-           SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ?
-           WHERE id = ?`,
-          [isPassed ? 'completed' : 'failed', now, scoreVal, correctVal, totalVal, existingBonus.id]
-        );
-      }
     }
 
     // [핵심] 복습 완료 시, 풀이한 문제 세트, 객관식 마킹 내역, 주관식 풀이 열람 이력을 기기 간 완벽 복원하기 위해 세션 테이블에 세이브
@@ -5004,6 +5001,43 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       let htmlContent = decodeHtmlBuffer(topic.pdf_data);
       // Remove any script tag containing polyfill.io to prevent malicious loads and credential prompts
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
+      
+      const responsiveStyle = `
+<style>
+@media (max-width: 768px) {
+  html, body {
+    margin: 0 !important;
+    padding: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+  }
+  div, section, article, table, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content, [class*="page"], [id*="page"], [class*="container"], [id*="container"], [class*="wrapper"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    padding: 4px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    height: auto !important;
+  }
+  img, svg, table {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  body {
+    overflow-x: hidden !important;
+  }
+}
+</style>
+`;
+      htmlContent = htmlContent + responsiveStyle;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {
@@ -5776,6 +5810,43 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
       let htmlContent = decodeHtmlBuffer(report.pdf_data);
       // Remove polyfill scripts if they exist
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
+      
+      const responsiveStyle = `
+<style>
+@media (max-width: 768px) {
+  html, body {
+    margin: 0 !important;
+    padding: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+  }
+  div, section, article, table, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content, [class*="page"], [id*="page"], [class*="container"], [id*="container"], [class*="wrapper"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    padding: 4px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    height: auto !important;
+  }
+  img, svg, table {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  body {
+    overflow-x: hidden !important;
+  }
+}
+</style>
+`;
+      htmlContent = htmlContent + responsiveStyle;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {
@@ -6294,7 +6365,7 @@ async function backfillPastScheduleScores() {
                 return normalizeAns(selected) === normalizeAns(q.answer);
               }
             ).length;
-            const computedScore = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : 100;
+            const computedScore = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : null;
             
             // 데이터베이스의 현재 값과 비교하여 다르면 업데이트 진행
             if (sched.score === null || sched.correct_count === null || sched.total_count === null || sched.score !== computedScore) {

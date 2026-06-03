@@ -1950,7 +1950,7 @@ export default function App() {
     const correctMC = Object.keys(selectedAnswers).filter(
       (i) => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer
     ).length;
-    const scoreMC = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : 100;
+    const scoreMC = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : null;
 
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
@@ -4558,7 +4558,7 @@ export default function App() {
   const totalCompletedCount = Array.isArray(allTopics) 
     ? allTopics.reduce((acc, topic) => {
         if (!topic) return acc;
-        const completedForTopic = topic.schedules?.filter(s => s && s.status === 'completed').length || 0;
+        const completedForTopic = topic.schedules?.filter(s => s && s.status === 'completed' && s.review_round !== 99).length || 0;
         return acc + completedForTopic;
       }, 0)
     : 0;
@@ -4942,7 +4942,7 @@ export default function App() {
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
+            <section className="hidden lg:block w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
@@ -5280,7 +5280,12 @@ export default function App() {
                                           onClick={() => handleOpenCompletedReview(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
                                           className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
                                             sched.status === 'completed'
-                                              ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
+                                              ? (sched.score === 100 || sched.score === null || sched.score === undefined
+                                                  ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
+                                                  : sched.score >= 80
+                                                    ? 'text-blue-400 bg-blue-950/40 hover:bg-blue-900/60 hover:text-blue-200 border-blue-500/30'
+                                                    : 'text-orange-400 bg-orange-950/40 hover:bg-orange-900/60 hover:text-orange-200 border-orange-500/30'
+                                                )
                                               : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
                                           }`}
                                           title={`클릭 시 이전 풀이 확인 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
@@ -5420,14 +5425,14 @@ export default function App() {
                 onClick={() => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                   if (selectedTopic?.isReadOnly) {
-                    handleQuizCompleteClick();
+                    setSelectedTopic(null); 
                   } else {
                     forceSaveActiveSessions();
                     setSelectedTopic(null); 
                   }
                 }}
                 className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                title={selectedTopic?.isReadOnly ? "풀이 결과를 저장하고 닫습니다." : "화면만 숨김 (재개 시 문제 유지)"}
+                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
               >
                 닫기
               </button>
