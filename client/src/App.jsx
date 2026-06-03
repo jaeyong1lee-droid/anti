@@ -5068,7 +5068,7 @@ export default function App() {
                                   }}
                                   className={cls}
                                 >
-                                  <span className="flex gap-2 items-start">
+                                  <span className="flex gap-2 items-start pointer-events-none">
                                     <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
                                     <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
                                   </span>
@@ -5757,7 +5757,7 @@ export default function App() {
                                 }}
                                 className={cls}
                               >
-                                <span className="flex gap-2 items-start">
+                                <span className="flex gap-2 items-start pointer-events-none">
                                   <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
                                   <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
                                 </span>
