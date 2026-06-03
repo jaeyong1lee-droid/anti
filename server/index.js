@@ -6444,6 +6444,67 @@ async function startServer() {
   }
 }
 
+app.get('/api/debug-db-status', async (req, res) => {
+  try {
+    const connectionString = process.env.DATABASE_URL || 
+                             process.env.POSTGRES_URL || 
+                             process.env.POSTGRES_PRISMA_URL ||
+                             process.env.SUPABASE_DATABASE_URL ||
+                             '';
+    const maskedUrl = connectionString ? connectionString.replace(/:([^@:]+)@/, ':****@') : 'NOT SET';
+    
+    let topicsCount = -1;
+    let schedulesCount = -1;
+    let sessionCount = -1;
+    let reportsCount = -1;
+    let answersheetQuestionsLength = -1;
+    let answersheetQuestionsPreview = '';
+    
+    try {
+      const tRes = await dbQuery.all("SELECT COUNT(*) as count FROM topics");
+      topicsCount = tRes[0]?.count || 0;
+    } catch (e) { console.error('topics query error:', e.message); }
+    
+    try {
+      const sRes = await dbQuery.all("SELECT COUNT(*) as count FROM schedules");
+      schedulesCount = sRes[0]?.count || 0;
+    } catch (e) { console.error('schedules query error:', e.message); }
+    
+    try {
+      const sessRes = await dbQuery.all("SELECT COUNT(*) as count FROM app_session");
+      sessionCount = sessRes[0]?.count || 0;
+    } catch (e) { console.error('app_session query error:', e.message); }
+    
+    try {
+      const rRes = await dbQuery.all("SELECT COUNT(*) as count FROM answersheet_reports");
+      reportsCount = rRes[0]?.count || 0;
+    } catch (e) { console.error('answersheet_reports query error:', e.message); }
+
+    try {
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'answersheet_questions'");
+      if (row && row.value) {
+        const parsed = JSON.parse(row.value);
+        answersheetQuestionsLength = parsed.answersheetQuestions?.length || 0;
+        answersheetQuestionsPreview = JSON.stringify(parsed.answersheetQuestions).substring(0, 300);
+      }
+    } catch (e) { console.error('answersheet_questions query error:', e.message); }
+    
+    res.json({
+      db_type: isPostgres ? 'PostgreSQL' : 'SQLite',
+      connection_string: maskedUrl,
+      topics_count: topicsCount,
+      schedules_count: schedulesCount,
+      sessions_count: sessionCount,
+      reports_count: reportsCount,
+      answersheet_questions_length: answersheetQuestionsLength,
+      answersheet_questions_preview: answersheetQuestionsPreview,
+      env_keys: Object.keys(process.env).filter(k => k.includes('DB') || k.includes('POSTGRES'))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Vercel Serverless 환경 대응: Vercel이 아닌 로컬 구동 시에만 포트 리스너(app.listen)를 시작합니다.
 export default app;
 
