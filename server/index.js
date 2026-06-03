@@ -2279,9 +2279,10 @@ app.put('/api/schedules/:id/score', async (req, res) => {
 app.get('/api/topics', async (req, res) => {
   try {
     const sql = `
-      SELECT id, title, keywords, pdf_name, created_at
-      FROM topics
-      ORDER BY created_at DESC
+      SELECT t.id, t.title, t.keywords, t.pdf_name, t.created_at,
+             COALESCE((SELECT MAX(completed_at) FROM schedules WHERE topic_id = t.id AND completed_at IS NOT NULL), t.created_at) AS last_active
+      FROM topics t
+      ORDER BY last_active DESC
     `;
     const topics = await dbQuery.all(sql);
 
