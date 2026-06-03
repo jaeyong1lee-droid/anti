@@ -2540,6 +2540,24 @@ app.get('/api/debug-env', async (req, res) => {
   });
 });
 
+// Helper to shuffle multiple choice options and update the correct answer reference
+function shuffleMultipleChoice(q) {
+  if (!q || !q.options || q.options.length === 0) return q;
+  const originalAnswer = q.answer;
+  const shuffledOptions = [...q.options];
+  for (let i = shuffledOptions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+  }
+  const normalize = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+  const matchedOption = shuffledOptions.find(opt => normalize(opt) === normalize(originalAnswer)) || originalAnswer;
+  return {
+    ...q,
+    options: shuffledOptions,
+    answer: matchedOption
+  };
+}
+
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
@@ -2617,7 +2635,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 10 - carryOverQuestions.length;
+    const neededAiMcCount = 10;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -2765,8 +2783,16 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     let weaknessPrompt = '';
     if (carryOverQuestions.length > 0) {
       weaknessPrompt = `
-[이전 회차 오답 정보 (참고사항 및 출제 집중 대상)]:
-사용자가 이전 회차에서 틀린 문제입니다. 새로 생성할 객관식(${neededAiMcCount}개) 문제는 아래 오답 문제들의 개념/주제/취약점을 집중적으로 보완하고 평가할 수 있는 문제들로 출제해 주십시오. (동일한 문제를 그대로 복제하여 출제하지 마시고, 오답 문제들의 약점 개념을 다루는 유사/변형 문제나 보완 이론 문제를 출제해 주십시오.)
+[이전 회차 오답 정보 및 출제 지침 - 매우 중요]:
+아래 오답들은 사용자가 이전 회차에서 틀린 문제입니다.
+이번에 생성할 10개의 객관식 문제 중, **앞의 ${carryOverQuestions.length}개 문제(3번부터 ${2 + carryOverQuestions.length}번 문제)는 반드시 아래 오답 문제들의 변형 문제로 출제**하십시오.
+변형 출제 시 다음 지침을 엄격히 따르십시오:
+1. 문제를 절대로 그대로 내지 마십시오. (보기 내용 교체, 질문의 긍정/부정 전환 등)
+2. 원래 문제가 "옳은 것/맞는 것"을 고르는 문제였다면, 변형 문제는 "옳지 않은 것/틀린 것"을 고르는 문제로 변형하여 출제하고 해설도 그에 맞게 수정하십시오. 반대의 경우도 마찬가지입니다.
+3. 보기(options)의 구성과 순서를 완전히 교체하십시오.
+4. 나머지 ${10 - carryOverQuestions.length}개 객관식 문제는 [첨부파일 본문 텍스트] 및 토픽 개념에 기반한 새로운 고난도 문제로 출제하십시오.
+
+틀린 오답 문제 리스트:
 ${carryOverQuestions.map((q, idx) => `
 오답 문제 ${idx + 1}:
 - 질문: ${q.question}
@@ -2925,11 +2951,24 @@ try {
         const subjs = questions.filter(q => !q.options || q.options.length === 0);
         const mcs = questions.filter(q => q.options && q.options.length > 0);
 
-        // 이전 회차 오답과 새로 생성된 객관식을 합쳐서 정확히 8개의 객관식으로 구성
-        let finalMcs = [...carryOverQuestions, ...mcs].slice(0, 10);
+        // Gemini가 직접 오답 변형 문제를 포함하여 10개를 생성했으므로 그대로 사용하되, 부족한 경우만 채워줍니다.
+        let finalMcs = [...mcs].slice(0, 10);
+        
+        // 만약 AI가 문제 생성에 실패하거나 일부 유실되어 10개 미만인 경우, 이전 오답의 보기를 프로그램적으로 셔플하여 보완적으로 채워줍니다.
+        if (finalMcs.length < 10) {
+          const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
+          shuffledCarryOvers.forEach(q => {
+            if (finalMcs.length >= 10) return;
+            if (!finalMcs.some(existing => existing.question === q.question)) {
+              finalMcs.push(q);
+            }
+          });
+        }
+
+        // 그래도 부족하면 fallback generator에서 채움
         if (finalMcs.length < 10) {
           const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-          const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0);
+          const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
           for (const fQ of fallbackMcs) {
             if (finalMcs.length >= 10) break;
             if (!finalMcs.some(q => q.question === fQ.question)) {

@@ -5103,7 +5103,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
+                className={`flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative ${isDesktop ? '' : 'snap-y snap-mandatory'}`}
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5153,7 +5153,7 @@ export default function App() {
                       'bg-amber-700';
 
                     return (
-                      <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                      <div key={idx} className={`quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${isDesktop ? '' : 'snap-start snap-always'}`}>
                         {/* Q Header */}
                         <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                           <div className="flex items-center gap-2">
@@ -5839,7 +5839,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
+                className={`flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative ${isDesktop ? '' : 'snap-y snap-mandatory'}`}
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -5871,7 +5871,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                    <div key={idx} className={`exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${isDesktop ? '' : 'snap-start snap-always'}`}>
                       {/* Q Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                         <div className="flex items-center gap-2">
@@ -7682,23 +7682,14 @@ export default function App() {
                     const isOutputVisible = isNewEmptyCard || !!answersheetRevealed[idx] || isInputVisible;
 
                     return (
-                      <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
+                      <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all duration-300 hover:border-slate-700/50">
                         {/* Title Row */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                          {/* Row 1: Badge & Title */}
-                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
-                            <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
-                              답안 {idx + 1}
+                        <div className="flex flex-col gap-1.5 pb-2 border-b border-slate-800/40">
+                          {/* Row 1: Number & Title inline */}
+                          <div className="flex items-start gap-2.5 w-full min-w-0">
+                            <span className="text-[15px] font-black text-emerald-400 shrink-0 select-none pt-0.5">
+                              {idx + 1}.
                             </span>
-                            {q.pdf_name && (
-                              <span 
-                                className="text-[11px] font-bold bg-slateCustom-950/80 text-slate-400 px-2.5 py-1 rounded-lg border border-slate-800/80 shrink-0 flex items-center gap-1 select-none max-w-[150px] truncate"
-                                title={q.pdf_name}
-                              >
-                                <Paperclip size={10} className="shrink-0 text-slate-500" />
-                                <span className="truncate">{q.pdf_name}</span>
-                              </span>
-                            )}
                             
                             <div className="flex-grow min-w-0">
                               {editingAnswersheetIdx === idx ? (
@@ -7723,7 +7714,7 @@ export default function App() {
                                         setEditingAnswersheetIdx(null);
                                       }
                                     }}
-                                    className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-emerald-500 w-full max-w-[360px]"
+                                    className="bg-slateCustom-950 border border-slate-700 text-white text-[15px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-emerald-500 w-full max-w-[360px]"
                                     autoFocus
                                   />
                                   <button
@@ -7739,25 +7730,34 @@ export default function App() {
                                         showNotification('답안지 제목이 저장되었습니다.', 'success');
                                       }
                                     }}
-                                    className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                    className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
                                   >
                                     저장
                                   </button>
                                   <button
                                     onClick={() => setEditingAnswersheetIdx(null)}
-                                    className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                    className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
                                   >
                                     취소
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                <div className="flex items-start gap-1.5 w-full min-w-0">
                                   <span 
                                     onClick={() => {
                                       setEditingAnswersheetIdx(idx);
                                       setEditAnswersheetTitle(q.title || '');
                                     }}
-                                    className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                    style={{
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      wordBreak: 'break-all',
+                                      whiteSpace: 'normal',
+                                    }}
+                                    className="text-[15px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all min-w-0 flex-grow"
                                     title="클릭하여 답안 제목 수정"
                                   >
                                     <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
@@ -7767,10 +7767,10 @@ export default function App() {
                                       setEditingAnswersheetIdx(idx);
                                       setEditAnswersheetTitle(q.title || '');
                                     }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)]"
+                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 mt-0.5"
                                     title="답안 제목 수정"
                                   >
-                                    <Edit2 size={12} />
+                                    <Edit2 size={10} />
                                   </button>
                                 </div>
                               )}
@@ -7778,7 +7778,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
+                          <div className="flex flex-wrap items-center gap-2 mt-1 select-none shrink-0 w-full justify-start">
                             {q.answersheet_report_id && (
                               <button
                                 onClick={(e) => {
@@ -7798,15 +7798,13 @@ export default function App() {
                                     window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
                                   }
                                 }}
-                                className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-1"
+                                className="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-1"
                                 title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                               >
-                                <FileText size={12} />
+                                <FileText size={10} />
                                 <span>원 보고서 보기</span>
                               </button>
                             )}
-
-
 
                             <button
                               onClick={() => {
@@ -7828,10 +7826,10 @@ export default function App() {
                                   showNotification('선택한 답안이 성공적으로 삭제되었습니다.', 'info');
                                 }
                               }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
+                              className="p-1 px-2.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1.5"
                               title="답안 삭제"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={10} />
                               <span>삭제</span>
                             </button>
                           </div>
