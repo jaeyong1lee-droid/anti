@@ -6492,6 +6492,21 @@ if (!process.env.VERCEL) {
   // Vercel 서버리스 환경에서는 데이터베이스 연결 및 테이블 자동 생성을 비동기로 조용히 가동합니다.
   initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
+    try {
+      const topics = await dbQuery.all('SELECT id, title FROM topics');
+      console.log(`[Startup DB Diagnosis] Topics count: ${topics.length}`);
+      topics.forEach(t => console.log(`  Topic: ${t.id} - ${t.title}`));
+      
+      const appSession = await dbQuery.all('SELECT key, length(value) as len FROM app_session');
+      console.log(`[Startup DB Diagnosis] Session rows: ${appSession.length}`);
+      appSession.forEach(s => console.log(`  Session: ${s.key} - length: ${s.len}`));
+      
+      const reports = await dbQuery.all('SELECT id, pdf_name FROM answersheet_reports');
+      console.log(`[Startup DB Diagnosis] Reports rows: ${reports.length}`);
+      reports.forEach(r => console.log(`  Report: ${r.id} - ${r.pdf_name}`));
+    } catch (e) {
+      console.error('[Startup DB Diagnosis] Query failed:', e.message);
+    }
     await migrateSpacedIntervals();
     await backfillPastScheduleScores();
   }).catch(dbErr => {
