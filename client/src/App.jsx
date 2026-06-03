@@ -7553,59 +7553,7 @@ export default function App() {
                 <span>답안지</span>
               </button>
 
-              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
-
-              <button
-                onClick={() => {
-                  const newFormula = {
-                    title: "",
-                    concept: "",
-                    formula: "",
-                    isDirectlyAdded: true
-                  };
-                  const updated = [...formulaQuestions, newFormula];
-                  latestFormulaQuestionsRef.current = updated;
-                  setFormulaQuestions(updated);
-                  localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                  showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                  setTimeout(() => {
-                    if (formulaBodyRef.current) {
-                      formulaBodyRef.current.scrollTo({
-                        top: formulaBodyRef.current.scrollHeight,
-                        behavior: 'smooth'
-                      });
-                    }
-                  }, 80);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/80 hover:bg-rose-900 text-rose-300 hover:text-white border-rose-500/40 transition-all cursor-pointer active:scale-95"
-              >
-                <PlusCircle size={12} className="text-rose-400" />
-                <span>공식 추가</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, true);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border-emerald-500/20 transition-all cursor-pointer active:scale-95"
-              >
-                <Save size={12} className="text-emerald-400" />
-                <span>실시간 저장</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
-                  setFormulaSearchQuery('');
-                  setShowFormulaExam(false);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
-              >
-                <span className="text-[10px]">❌</span>
-                <span>닫기</span>
-              </button>
-            </div>
+              </div>
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
@@ -8294,60 +8242,7 @@ export default function App() {
                 <span>답안지</span>
               </button>
 
-              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
-
-              <button
-                onClick={() => {
-                  const newTheory = {
-                    title: "",
-                    concept: "",
-                    assumptions: "",
-                    formula: "",
-                    isDirectlyAdded: true
-                  };
-                  const updated = [...theoryQuestions, newTheory];
-                  latestTheoryQuestionsRef.current = updated;
-                  setTheoryQuestions(updated);
-                  localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                  showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                  setTimeout(() => {
-                    if (theoryBodyRef.current) {
-                      theoryBodyRef.current.scrollTo({
-                        top: theoryBodyRef.current.scrollHeight,
-                        behavior: 'smooth'
-                      });
-                    }
-                  }, 80);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-indigo-950/80 hover:bg-indigo-905 text-indigo-300 hover:text-white border-indigo-500/40 transition-all cursor-pointer active:scale-95"
-              >
-                <PlusCircle size={12} className="text-indigo-400" />
-                <span>이론 추가</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border-emerald-500/20 transition-all cursor-pointer active:scale-95"
-              >
-                <Save size={12} className="text-emerald-400" />
-                <span>실시간 저장</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
-                  setTheorySearchQuery('');
-                  setShowTheoryExam(false);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
-              >
-                <span className="text-[10px]">❌</span>
-                <span>닫기</span>
-              </button>
-            </div>
+              </div>
             
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
@@ -9004,60 +8899,7 @@ export default function App() {
                 <span>답안지</span>
               </button>
 
-              <div className="h-px bg-slate-800/60 my-1 shrink-0" />
-
-              <button
-                onClick={() => {
-                  const newItem = {
-                    title: "",
-                    concept: "",
-                    assumptions: "",
-                    formula: "",
-                    isDirectlyAdded: true
-                  };
-                  const updated = [...answersheetQuestions, newItem];
-                  latestAnswersheetQuestionsRef.current = updated;
-                  setAnswersheetQuestions(updated);
-                  localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
-                  showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                  setTimeout(() => {
-                    if (answersheetBodyRef.current) {
-                      answersheetBodyRef.current.scrollTo({
-                        top: answersheetBodyRef.current.scrollHeight,
-                        behavior: 'smooth'
-                      });
-                    }
-                  }, 80);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/80 hover:bg-emerald-905 text-emerald-300 hover:text-white border-emerald-500/40 transition-all cursor-pointer active:scale-95"
-              >
-                <PlusCircle size={12} className="text-emerald-400" />
-                <span>답안 추가</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border-emerald-500/20 transition-all cursor-pointer active:scale-95"
-              >
-                <Save size={12} className="text-emerald-400" />
-                <span>실시간 저장</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
-                  setAnswersheetSearchQuery('');
-                  setShowAnswerSheet(false);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
-              >
-                <span className="text-[10px]">❌</span>
-                <span>닫기</span>
-              </button>
-            </div>
+              </div>
             
             {/* Left: Answersheet List */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
