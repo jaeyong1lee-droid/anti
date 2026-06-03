@@ -5987,7 +5987,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:px-12 landscape-quiz-body scroll-smooth relative"
+                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -6902,7 +6902,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative landscape-quiz-body"
+                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -6934,7 +6934,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                       {/* Q Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                         <div className="flex items-center gap-2">
