@@ -6075,7 +6075,7 @@ export default function App() {
                         }
                       }, 80);
                     }}
-                    className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
+                    className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
                   >
                     <PlusCircle size={11} />
                     <span>새로운 공식 추가 (빈표 생성)</span>
@@ -6662,7 +6662,7 @@ export default function App() {
                         }
                       }, 80);
                     }}
-                    className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
+                    className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
                   >
                     <PlusCircle size={11} />
                     <span>새로운 이론 공식 추가 (빈표 생성)</span>
@@ -7201,7 +7201,7 @@ export default function App() {
                           }
                         }, 80);
                       }}
-                      className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
+                      className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
                     >
                       <PlusCircle size={11} />
                       <span>새로운 답안 추가 (빈표 생성)</span>
@@ -7217,7 +7217,7 @@ export default function App() {
                         };
                         input.click();
                       }}
-                      className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
+                      className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
                     >
                       <UploadCloud size={11} />
                       <span>HTML/PDF 보고서 업로드</span>
