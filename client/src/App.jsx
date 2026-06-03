@@ -6769,8 +6769,8 @@ export default function App() {
                   .map((q) => {
                     const idx = q.originalIdx;
                     const isNewEmptyCard = !q.title && !q.formula;
-                    const isOutputVisible = isNewEmptyCard || !!theoryRevealed[idx];
                     const isInputVisible = isNewEmptyCard || !!theoryInputRevealed[idx];
+                    const isOutputVisible = isNewEmptyCard || !!theoryRevealed[idx] || isInputVisible;
 
                     return (
                       <div key={idx} id={`theory-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
@@ -6865,15 +6865,16 @@ export default function App() {
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {/* 정답확인/정답접기 button */}
                                                         {!isNewEmptyCard && (
-                              !isOutputVisible ? (
+                              (isHeavyHtml(q.formula) || !isOutputVisible) ? (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `이론 ${idx + 1}`, q.formula);
+                                    } else {
+                                      setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
+                                      scrollToTheoryCard(idx);
                                     }
-                                    setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
-                                    scrollToTheoryCard(idx);
                                   }}
                                   className="py-1 px-3 bg-indigo-650 hover:bg-indigo-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-indigo-650/10 hover:shadow-indigo-650/20 border border-indigo-500/20 flex items-center justify-center gap-1"
                                   title="정답 확인하기"
@@ -7321,8 +7322,8 @@ export default function App() {
                   .map((q) => {
                     const idx = q.originalIdx;
                     const isNewEmptyCard = !q.title && !q.formula;
-                    const isOutputVisible = isNewEmptyCard || !!answersheetRevealed[idx];
                     const isInputVisible = isNewEmptyCard || !!answersheetInputRevealed[idx];
+                    const isOutputVisible = isNewEmptyCard || !!answersheetRevealed[idx] || isInputVisible;
 
                     return (
                       <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
@@ -7414,33 +7415,16 @@ export default function App() {
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
                             {!isNewEmptyCard && (
-                              !isOutputVisible ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isHeavyHtml(q.formula)) {
-                                      handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
-                                    }
-                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: true }));
-                                    scrollToAnswersheetCard(idx);
-                                  }}
-                                  className="py-1 px-3 bg-emerald-650 hover:bg-emerald-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-650/10 hover:shadow-emerald-650/20 border border-emerald-500/20 flex items-center justify-center gap-1"
-                                  title="정답 확인하기"
-                                >
-                                  <span>정답확인</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }));
-                                  }}
-                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
-                                  title="정답 접기"
-                                >
-                                  <span>정답접기</span>
-                                </button>
-                              )
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
+                                }}
+                                className="py-1 px-3 bg-emerald-650 hover:bg-emerald-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-650/10 hover:shadow-emerald-650/20 border border-emerald-500/20 flex items-center justify-center gap-1"
+                                title="정답 확인하기"
+                              >
+                                <span>정답확인</span>
+                              </button>
                             )}
 
                             <button
