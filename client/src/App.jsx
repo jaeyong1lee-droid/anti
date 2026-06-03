@@ -736,6 +736,70 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   const lastMathBlockIdx = mathBlockIndices.length > 0 ? mathBlockIndices[mathBlockIndices.length - 1] : -1;
 
   // 각 파트별 렌더링
+  const isInline = className.includes('inline');
+
+  if (isInline) {
+    return (
+      <span 
+        className={`${className} select-text`}
+        onMouseDown={onAddFormula ? startPress : undefined}
+        onMouseUp={onAddFormula ? endPress : undefined}
+        onMouseMove={onAddFormula ? cancelPress : undefined}
+        onMouseLeave={onAddFormula ? cancelPress : undefined}
+        onTouchStart={onAddFormula ? startPress : undefined}
+        onTouchEnd={onAddFormula ? endPress : undefined}
+        onTouchMove={onAddFormula ? cancelPress : undefined}
+        onTouchCancel={onAddFormula ? cancelPress : undefined}
+      >
+        {parts.map((part, idx) => {
+          if (part.type === 'math-block') {
+            let mathHtml = part.content;
+            try {
+              mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false }).replace(/\n/g, '');
+            } catch (e) {
+              console.warn(e);
+              mathHtml = `$$${part.content}$$`;
+            }
+            return (
+              <span 
+                key={idx} 
+                className="my-1 md:my-2 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+              >
+                <span 
+                  className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
+                  dangerouslySetInnerHTML={{ __html: mathHtml }} 
+                />
+              </span>
+            );
+          } else {
+            let htmlContent = part.content;
+            try {
+              htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
+                if (/[\uAC00-\uD7A3]/.test(math)) {
+                  return m;
+                }
+                try {
+                  return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
+                } catch (e) {
+                  return m;
+                }
+              });
+            } catch (e) {
+              console.warn(e);
+            }
+            return (
+              <span 
+                key={idx}
+                className="leading-relaxed whitespace-pre-line select-text"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            );
+          }
+        })}
+      </span>
+    );
+  }
+
   return (
     <div 
       className={`${className} space-y-1.5 select-text`}
@@ -768,38 +832,9 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                 className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-              {/* "이 공식을 퀴즈에 추가" 기능 삭제 */}
             </div>
           );
         } else {
-          const isInline = className.includes('inline');
-          if (isInline) {
-            // 일반 텍스트 내 inline math $ ... $ 처리
-            let htmlContent = part.content;
-            try {
-              htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
-                // 한글이 포함된 경우 단순 텍스트로 취급하여 수식 오작동 방지 (달러 기호 오탈자 구제)
-                if (/[\uAC00-\uD7A3]/.test(math)) {
-                  return m;
-                }
-                try {
-                  return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-                } catch (e) {
-                  return m;
-                }
-              });
-            } catch (e) {
-              console.warn(e);
-            }
-            return (
-              <span 
-                key={idx}
-                className="leading-relaxed whitespace-pre-line select-text"
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
-              />
-            );
-          }
-
           // 비인라인 일반 텍스트의 경우, 빈 행을 제거하고 단락 숫자(1., 2. 등)가 있는 줄만 위아래 여백 적용
           // KaTeX HTML이 개행 기호 split으로 인해 깨지는 것을 막기 위해 개행으로 먼저 쪼갠 후 각 라인별 수식 치환 적용
           const textLines = part.content.split('\n');
