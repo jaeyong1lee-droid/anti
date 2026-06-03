@@ -4952,8 +4952,8 @@ export default function App() {
                                       if (normalizeAns(opt) === normalizeAns(q.answer)) {
                                         setTimeout(() => {
                                           const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
-                                          if (cards && cards[idx + 1]) {
-                                            quizBodyRef.current?.scrollTo({ top: cards[idx + 1].offsetTop, behavior: 'smooth' });
+                                          if (cards && cards[idx]) {
+                                            quizBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
                                           }
                                         }, 600);
                                       }
@@ -5641,8 +5641,8 @@ export default function App() {
                                     if (normalizeAns(opt) === normalizeAns(q.answer)) {
                                       setTimeout(() => {
                                         const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
-                                        if (cards && cards[idx + 1]) {
-                                          examBodyRef.current?.scrollTo({ top: cards[idx + 1].offsetTop, behavior: 'smooth' });
+                                        if (cards && cards[idx]) {
+                                          examBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
                                         }
                                       }, 600);
                                     }
