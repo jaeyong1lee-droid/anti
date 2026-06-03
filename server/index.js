@@ -6456,6 +6456,40 @@ app.get('/api/diagnose-prod-db', async (req, res) => {
   }
 });
 
+app.post('/api/restore-answersheet-endpoint', async (req, res) => {
+  try {
+    const reports = await dbQuery.all('SELECT id, pdf_name FROM answersheet_reports ORDER BY id ASC');
+    if (reports.length === 0) {
+      return res.json({ success: false, message: 'No reports found to restore.' });
+    }
+    
+    const answersheetQuestions = reports.map((row) => ({
+      title: row.pdf_name.replace(/\.[^/.]+$/, ""), // remove extension
+      concept: '업로드한 본문 보고서가 연동되었습니다.',
+      assumptions: '',
+      formula: '',
+      answer: '',
+      answersheet_report_id: row.id,
+      pdf_name: row.pdf_name
+    }));
+    
+    const value = JSON.stringify({ answersheetQuestions });
+    await dbQuery.run("DELETE FROM app_session WHERE key = 'answersheet_questions'");
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ['answersheet_questions', value]
+    );
+    
+    res.json({
+      success: true,
+      restored_count: answersheetQuestions.length,
+      topics: answersheetQuestions.map(q => q.title)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 async function startServer() {
   try {
     await initDatabase();
