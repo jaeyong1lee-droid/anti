@@ -5304,7 +5304,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className="bg-transparent md:glass-panel rounded-none md:rounded-3xl p-0 md:p-6 border-0 md:border md:!border-r-0 border-slate-800/80 shadow-none md:shadow-xl">
+          <section className={`bg-transparent ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 border md:!border-r-0 border-slate-800/80 shadow-xl' : 'rounded-none p-0 border-0 shadow-none'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
