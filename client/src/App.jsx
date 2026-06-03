@@ -5338,7 +5338,7 @@ export default function App() {
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
                                    <div className="flex flex-wrap items-center gap-2 mb-2">
                                      {/* 문제조정 버튼 */}
-                                      {adjustingInputKey !== `r_${idx}` && !selectedTopic?.isReadOnly && (
+                                      {adjustingInputKey !== `r_${idx}` && (
                                         <button
                                           onClick={() => setAdjustingInputKey(`r_${idx}`)}
                                           className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
@@ -5465,7 +5465,7 @@ export default function App() {
                               )}
 
                               {/* 문제조정 입력 및 결과 보드 */}
-                              {!selectedTopic?.isReadOnly && (
+                              {true && (
                                 <div className="mt-3 pt-2 border-t border-slate-700/50">
                                   {adjustingInputKey !== `r_${idx}` ? (
                                     <button

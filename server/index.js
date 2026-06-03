@@ -2293,7 +2293,7 @@ app.get('/api/topics', async (req, res) => {
       SELECT t.id, t.title, t.keywords, t.pdf_name, t.created_at,
              COALESCE((SELECT MAX(completed_at) FROM schedules WHERE topic_id = t.id AND completed_at IS NOT NULL), t.created_at) AS last_active
       FROM topics t
-      ORDER BY last_active DESC
+      ORDER BY t.id ASC
     `;
     const topics = await dbQuery.all(sql);
 
@@ -2801,12 +2801,35 @@ ${downvotes.map((q, i) => `   - 비추천 질문 ${i + 1}: ${q}`).join('\n')}
       console.warn('사용자 피드백 로드 실패:', fbErr);
     }
 
+    let adjustmentsPrompt = '';
+    try {
+      const adjustments = await dbQuery.all(
+        'SELECT question_text, adjusted_text, user_feedback FROM question_adjustments WHERE topic_id = ? ORDER BY created_at DESC LIMIT 10',
+        [topicId]
+      );
+      if (adjustments.length > 0) {
+        adjustmentsPrompt = `
+[사용자 이전 문제 조정(피드백) 내역 - 출제 시 반드시 참고하여 반영하십시오]:
+사용자가 이전에 이 토픽의 문제들을 다음과 같이 조정해 줄 것을 요청하여 반영된 이력이 있습니다. 이번 출제 시 사용자의 피드백 성향(예: 특정 수치 범위 선호, 난이도 조절, 특정 설명 추가 등)을 적극 참고하여 문제를 구성해 주십시오:
+${adjustments.map((a, idx) => `
+조정 이력 ${idx + 1}:
+- 기존 문제: "${a.question_text}"
+- 사용자의 피드백 요구사항: "${a.user_feedback}"
+- 반영된 최종 문제: "${a.adjusted_text}"
+`).join('\n')}
+`;
+      }
+    } catch (adjErr) {
+      console.warn('문제 조정 이력 로드 실패:', adjErr);
+    }
+
     const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
-아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보] 그리고 [사용자 피드백 지침]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
+아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
 ${specialInstructions}
 ${weaknessPrompt}
 ${feedbackPrompt}
+${adjustmentsPrompt}
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
@@ -3667,9 +3690,24 @@ ${formatRequirement}
         throw new Error('AI 조정 문항 파싱에 실패했습니다.');
       }
 
+      const finalTopicId = Number(topicId || currentQuestion?.topic_id);
+      if (finalTopicId) {
+        try {
+          await dbQuery.run(
+            `INSERT INTO question_adjustments (topic_id, question_text, adjusted_text, user_feedback) 
+             VALUES (?, ?, ?, ?)`,
+            [finalTopicId, sourceQuestionText.trim(), parsedQuestion.question.trim(), userFeedback.trim()]
+          );
+          console.log(`[DB] Saved review question adjustment for topic_id ${finalTopicId}`);
+        } catch (dbErr) {
+          console.warn('Failed to save review question adjustment to DB:', dbErr);
+        }
+      }
+
       return res.json({
         question: healQuizQuestionObject({
           ...parsedQuestion,
+          topic_id: finalTopicId,
           question: cleanQuizQuestion(parsedQuestion.question)
         })
       });
@@ -3831,9 +3869,24 @@ ${formatRequirement}
         throw new Error('AI 종합평가 조정 문항 파싱에 실패했습니다.');
       }
 
+      const finalTopicId = Number(topicId || currentQuestion?.topic_id || (topics && topics[0] ? topics[0].id : null));
+      if (finalTopicId) {
+        try {
+          await dbQuery.run(
+            `INSERT INTO question_adjustments (topic_id, question_text, adjusted_text, user_feedback) 
+             VALUES (?, ?, ?, ?)`,
+            [finalTopicId, sourceQuestionText.trim(), parsedQuestion.question.trim(), userFeedback.trim()]
+          );
+          console.log(`[DB] Saved exam question adjustment for topic_id ${finalTopicId}`);
+        } catch (dbErr) {
+          console.warn('Failed to save exam question adjustment to DB:', dbErr);
+        }
+      }
+
       return res.json({
         question: healQuizQuestionObject({
           ...parsedQuestion,
+          topic_id: finalTopicId,
           question: cleanQuizQuestion(parsedQuestion.question)
         })
       });
@@ -3919,6 +3972,30 @@ ${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join(
       console.warn('종합평가 피드백 로드 실패 (무시하고 진행):', fbErr);
     }
 
+    let adjustmentsPrompt = '';
+    try {
+      const adjustments = await dbQuery.all(
+        `SELECT t.title, qa.question_text, qa.adjusted_text, qa.user_feedback 
+         FROM question_adjustments qa 
+         JOIN topics t ON qa.topic_id = t.id 
+         ORDER BY qa.created_at DESC LIMIT 15`
+      );
+      if (adjustments.length > 0) {
+        adjustmentsPrompt = `
+[사용자 이전 문제 조정(피드백) 내역 - 출제 시 반드시 참고하여 반영하십시오]:
+사용자가 이전에 종합평가/복습 시 문제를 다음과 같이 조정 요청하여 반영된 이력이 있습니다. 향후 출제 시 아래 피드백 경향을 분석하여 반영해 주십시오:
+${adjustments.map((a, idx) => `
+조정 이력 ${idx + 1} [토픽: ${a.title}]:
+- 기존 문제: "${a.question_text}"
+- 사용자의 피드백 요구사항: "${a.user_feedback}"
+- 반영된 최종 문제: "${a.adjusted_text}"
+`).join('\n')}
+`;
+      }
+    } catch (adjErr) {
+      console.warn('종합평가 문제 조정 이력 로드 실패:', adjErr);
+    }
+
     // 💡 5문제씩 분할 생성 아키텍처 가동
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 12; // 12회 * 5문제 = 60문제 AI 생성 + 로컬 10문제 = 총 70문제 완성
@@ -3944,6 +4021,8 @@ ${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join(
 ${combinedText}
 
 ${feedbackPrompt}
+
+${adjustmentsPrompt}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:

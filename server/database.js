@@ -261,6 +261,17 @@ export async function initDatabase() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
+        // 5. question_adjustments table: stores user adjustments/feedbacks for questions
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS question_adjustments (
+            id SERIAL PRIMARY KEY,
+            topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+            question_text TEXT NOT NULL,
+            adjusted_text TEXT NOT NULL,
+            user_feedback TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
         console.log('Cloud PostgreSQL database tables initialized successfully.');
         await migrateSchedulesTable();
       } catch (pgInitError) {
@@ -332,6 +343,17 @@ async function initSQLiteTables() {
       topic_id INTEGER NOT NULL,
       question_text TEXT NOT NULL,
       feedback_type TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
+    )
+  `);
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS question_adjustments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic_id INTEGER NOT NULL,
+      question_text TEXT NOT NULL,
+      adjusted_text TEXT NOT NULL,
+      user_feedback TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
     )
