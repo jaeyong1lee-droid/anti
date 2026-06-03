@@ -97,40 +97,20 @@
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Block LaTeX (KaTeX) horizontal scrolling & custom mini scrollbars - Mobile Only */
-@media (max-width: 767px) {
+/* Block LaTeX (KaTeX) horizontal scrolling & hide scrollbars - Mobile Portrait & Landscape */
+@media (max-width: 767px), (orientation: landscape) and (max-height: 600px) {
   .katex-display,
   .overflow-x-auto {
     max-width: 100%;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(234, 179, 8, 0.4) transparent;
+    scrollbar-width: none !important;  /* Firefox */
+    -ms-overflow-style: none;         /* IE and Edge */
   }
 
-  /* Mini-scrollbar override for KaTeX block formulas and horizontal overflow boxes */
   .katex-display::-webkit-scrollbar,
   .overflow-x-auto::-webkit-scrollbar {
-    width: 4px !important;
-    height: 4px !important;
-  }
-
-  .katex-display::-webkit-scrollbar-track,
-  .overflow-x-auto::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.3) !important;
-    border-radius: 2px !important;
-  }
-
-  .katex-display::-webkit-scrollbar-thumb,
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: rgba(234, 179, 8, 0.5) !important; /* Amber / Yellow thumb */
-    border: none !important;
-    border-radius: 2px !important;
-  }
-
-  .katex-display::-webkit-scrollbar-thumb:hover,
-  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-    background: rgba(234, 179, 8, 0.8) !important;
+    display: none !important;         /* Chrome, Safari and Opera */
   }
 }
 
