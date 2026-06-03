@@ -1866,74 +1866,76 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
       return res.json({ weakPoints: [] });
     }
 
-    // 1. 이미 에빙하우스 복습 대상(pending)에 올라와 있는 토픽 목록 추출하여 중복 방지
-    const pendingRows = await dbQuery.all(
-      `SELECT DISTINCT topic_id FROM schedules WHERE status = 'pending' AND planned_date <= ?`,
-      [queryDate]
+    // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받았던 토픽 목록
+    const excludedRows = await dbQuery.all(
+      `SELECT DISTINCT topic_id FROM schedules 
+       WHERE (status = 'pending' AND planned_date <= ?) 
+          OR (review_round = 99 AND planned_date = ?)`,
+      [queryDate, queryDate]
     );
-    const pendingTopicIds = pendingRows.map(r => r.topic_id);
+    const excludedTopicIds = excludedRows.map(r => r.topic_id);
 
-    // 2. 완료된 복습 세션 중, 각 토픽별로 '가장 최근에 완료된 복습'의 객관식 성적을 가져와 100점 미만인 항목을 최저 점수 순 정렬 (하위 5개)
-    // ROW_NUMBER() OVER를 사용하여 각 토픽의 가장 최신 완료 이력(review_round <> 99) 1건만 안전하게 추출합니다.
-    const completedHistory = await dbQuery.all(
-      `SELECT topic_id, score as min_score
-       FROM (
-         SELECT topic_id, score,
-                ROW_NUMBER() OVER (PARTITION BY topic_id ORDER BY completed_at DESC) as rn
-         FROM schedules
-         WHERE status = 'completed' AND score IS NOT NULL AND review_round <> 99
-       ) t
-       WHERE rn = 1 AND score < 100
-       ORDER BY score ASC
-       LIMIT 5`
+    // 2. 각 토픽의 모든 완료된 복습 세션(일반 복습 및 약점 복습 포함)의 평균 성적이 100점 미만인 항목을 최저 평균 점수 순 정렬
+    const scoreHistory = await dbQuery.all(
+      `SELECT topic_id, AVG(score) as avg_score
+       FROM schedules
+       WHERE status = 'completed' AND score IS NOT NULL
+       GROUP BY topic_id
+       HAVING AVG(score) < 100
+       ORDER BY avg_score ASC`
     );
 
-    let candidates = completedHistory.filter(h => !pendingTopicIds.includes(h.topic_id));
+    // 제외 대상 제외
+    let candidates = scoreHistory.filter(h => !excludedTopicIds.includes(h.topic_id));
 
-    // 셔플하여 하위 5개 중 랜덤 매치 (최대 한도 슬라이스 없이 모든 후보 복습 추천 제공)
-    const shuffledBonus = candidates.sort(() => 0.5 - Math.random());
+    // 3. 하위 5개 토픽 내에서 1개 무작위 선택
+    const bottomFive = candidates.slice(0, 5);
 
+    if (bottomFive.length === 0) {
+      return res.json({ weakPoints: [] });
+    }
+
+    const selectedCandidate = bottomFive[Math.floor(Math.random() * bottomFive.length)];
     const weakPoints = [];
-    for (const item of shuffledBonus) {
-      const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [item.topic_id]);
-      if (topic) {
-        // [중요] 새로고침 시에도 추천된 약점 카드가 유지되도록 DB에 pending 상태의 보너스 스케줄(round=99)을 직접 등록합니다.
-        // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
-        const existingBonus = await dbQuery.get(
-          `SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?`,
-          [topic.id, queryDate]
+
+    const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
+    if (topic) {
+      // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
+      const existingBonus = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?`,
+        [topic.id, queryDate]
+      );
+
+      let scheduleId;
+      const scoreVal = Math.round(selectedCandidate.avg_score);
+      if (existingBonus) {
+        scheduleId = existingBonus.id;
+        await dbQuery.run(
+          `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ? WHERE id = ?`,
+          [scoreVal, scheduleId]
         );
-
-        let scheduleId;
-        if (existingBonus) {
-          scheduleId = existingBonus.id;
-          await dbQuery.run(
-            `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ? WHERE id = ?`,
-            [Math.round(item.min_score), scheduleId]
-          );
-        } else {
-          const insertRes = await dbQuery.run(
-            `INSERT INTO schedules (topic_id, review_round, planned_date, status, score)
-             VALUES (?, 99, ?, 'pending', ?)`,
-            [topic.id, queryDate, Math.round(item.min_score)]
-          );
-          scheduleId = insertRes.id;
-        }
-
-        weakPoints.push({
-          schedule_id: scheduleId,
-          topic_id: topic.id,
-          title: topic.title,
-          keywords: topic.keywords,
-          pdf_name: topic.pdf_name,
-          review_round: 1,
-          planned_date: queryDate,
-          status: 'pending',
-          completed_at: null,
-          score: Math.round(item.min_score),
-          isBonus: true
-        });
+      } else {
+        const insertRes = await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status, score)
+           VALUES (?, 99, ?, 'pending', ?)`,
+          [topic.id, queryDate, scoreVal]
+        );
+        scheduleId = insertRes.id;
       }
+
+      weakPoints.push({
+        schedule_id: scheduleId,
+        topic_id: topic.id,
+        title: topic.title,
+        keywords: topic.keywords,
+        pdf_name: topic.pdf_name,
+        review_round: 1,
+        planned_date: queryDate,
+        status: 'pending',
+        completed_at: null,
+        score: scoreVal,
+        isBonus: true
+      });
     }
 
     res.json({ weakPoints });
