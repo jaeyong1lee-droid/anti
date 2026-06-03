@@ -4192,7 +4192,7 @@ export default function App() {
 
 
       {/* Main Content Area */}
-      <main className="max-w-7xl w-full mx-auto px-3 md:px-12 md:pl-28 mt-8 flex-grow">
+      <main className="max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem] w-full mx-auto px-3 md:px-12 md:pl-28 mt-8 flex-grow">
         
         {/* Statistics Dashboard Banner */}
         {(isDesktop || viewMode !== 'all_topics') && (
@@ -4609,6 +4609,7 @@ export default function App() {
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (14일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (35일 뒤)</span></th>
                         <th className="py-2.5 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (60일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center hidden md:table-cell">도구</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
@@ -4623,7 +4624,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className="py-2.5 px-3 max-w-xs">
+                            <td className="py-2.5 px-3 max-w-xs md:max-w-md">
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
@@ -4652,8 +4653,9 @@ export default function App() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="flex flex-col gap-1 w-full min-w-0">
-                                    <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                                  isDesktop ? (
+                                    /* PC: Single Line (title + review button inline) */
+                                    <div className="flex items-center gap-3 w-full min-w-0">
                                       <h4 
                                         onClick={() => {
                                           setEditingTopicId(topic.id);
@@ -4665,68 +4667,100 @@ export default function App() {
                                       >
                                         {topic.title}
                                       </h4>
-                                    </div>
-                                    
-                                    {/* Action Buttons inside first column */}
-                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
                                         }}
-                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
                                         title="소스 + Gemini AI로 고난도 문제 생성"
                                       >
-                                        <Brain size={10} />
+                                        <Brain size={12} />
                                         <span>복습</span>
                                       </button>
+                                    </div>
+                                  ) : (
+                                    /* Mobile: Stacked layout with subtext */
+                                    <div className="flex flex-col gap-1 w-full min-w-0">
+                                      <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                                        <h4 
+                                          onClick={() => {
+                                            setEditingTopicId(topic.id);
+                                            setEditingTitleText(topic.title);
+                                          }}
+                                          ref={isFirstMatch ? firstMatchRef : null}
+                                          className="font-bold text-white text-sm truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                          title="클릭 시 제목을 수정합니다."
+                                        >
+                                          {topic.title}
+                                        </h4>
+                                      </div>
                                       
-                                      {topic.pdf_name && (
+                                      {/* Action Buttons inside first column for Mobile */}
+                                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleCopyReportToAnswersheet(topic.id, topic.title);
+                                            handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
                                           }}
-                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
-                                          title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                          title="소스 + Gemini AI로 고난도 문제 생성"
                                         >
-                                          <Copy size={10} />
-                                          <span>답안추가</span>
+                                          <Brain size={10} />
+                                          <span>복습</span>
                                         </button>
-                                      )}
+                                        
+                                        {topic.pdf_name && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCopyReportToAnswersheet(topic.id, topic.title);
+                                            }}
+                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                            title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
+                                          >
+                                            <Copy size={10} />
+                                            <span>답안추가</span>
+                                          </button>
+                                        )}
 
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteTopic(topic.id, topic.title);
-                                        }}
-                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
-                                        title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
-                                      >
-                                        <Trash2 size={10} />
-                                        <span>삭제</span>
-                                      </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteTopic(topic.id, topic.title);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[10px] font-bold transition-all duration-200 cursor-pointer"
+                                          title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
+                                        >
+                                          <Trash2 size={10} />
+                                          <span>삭제</span>
+                                        </button>
+                                      </div>
                                     </div>
+                                  )
+                                )}
+                                
+                                {/* 3번째 줄 회색 작게 쓰여있는 글자 (모바일 환경에서만 노출, PC 환경에서는 완벽 삭제) */}
+                                {!isDesktop && (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {topic.pdf_name ? (
+                                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                                        {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
+                                        {topic.pdf_name}
+                                      </p>
+                                    ) : (
+                                      <p className="text-[10px] text-slate-600">직접 수기 등록</p>
+                                    )}
+                                    <span className="text-[10px] text-slate-500 font-mono">
+                                      • {new Date(topic.created_at).toLocaleDateString('ko-KR', {
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {topic.pdf_name ? (
-                                    <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                                      {topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
-                                      {topic.pdf_name}
-                                    </p>
-                                  ) : (
-                                    <p className="text-[10px] text-slate-600">직접 수기 등록</p>
-                                  )}
-                                  <span className="text-[10px] text-slate-500 font-mono">
-                                    • {new Date(topic.created_at).toLocaleDateString('ko-KR', {
-                                      month: '2-digit',
-                                      day: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
                               </div>
                             </td>
                             
@@ -4761,6 +4795,36 @@ export default function App() {
                                 </td>
                               );
                             })}
+
+                            {/* Column 8: 작업/도구 (PC 전용, 6회차 대기 버튼 오른쪽) */}
+                            <td className="py-2.5 px-2 text-center hidden md:table-cell">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {topic.pdf_name && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyReportToAnswersheet(topic.id, topic.title);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border border-teal-500/20 text-xs font-bold transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
+                                    title="이 토픽의 원보고서 보기를 답안지탭에 추가합니다."
+                                  >
+                                    <Copy size={12} />
+                                    <span>답안추가</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTopic(topic.id, topic.title);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-xs font-bold transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap"
+                                  title="이 토픽과 모든 복습 일정을 영구 삭제합니다."
+                                >
+                                  <Trash2 size={12} />
+                                  <span>삭제</span>
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
