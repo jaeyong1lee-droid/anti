@@ -1117,8 +1117,10 @@ export default function App() {
       if (activeModalRef.current) {
         // 뒤로가기를 눌러서 모달이 닫히는 경우
         if (activeModalRef.current === 'review') {
+          forceSaveActiveSessions();
           setSelectedTopic(null);
         } else if (activeModalRef.current === 'exam') {
+          forceSaveActiveSessions();
           setShowExam(false);
           localStorage.setItem('anti_show_exam', 'false');
         } else if (activeModalRef.current === 'formula') {
@@ -1545,6 +1547,54 @@ export default function App() {
       return () => clearTimeout(delayDebounceFn);
     }
   }, [examQuestions, examRevealed, examAnswers, examTopic]);
+
+  const forceSaveActiveSessions = () => {
+    // 1) Save active review session immediately
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      console.log('[forceSaveActiveSessions] Immediately saving active review session');
+      fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          scheduleId: selectedTopic.schedule_id,
+          questions: aiQuestions,
+          selectedAnswers,
+          revealedQuestions,
+          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+        })
+      }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
+    }
+
+    // 2) Save active exam session immediately
+    if (examQuestions.length > 0 && !loadingExam) {
+      console.log('[forceSaveActiveSessions] Immediately saving active exam session');
+      fetch(`${API_BASE}/api/session/exam`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examQuestions,
+          examRevealed,
+          examAnswers,
+          examTopic,
+          savedExamScroll: examBodyRef.current?.scrollTop || 0
+        })
+      }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
+    }
+  };
+
+  // ── Auto-save active sessions when leaving/reloading the page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      forceSaveActiveSessions();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic]);
 
   // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
@@ -4384,7 +4434,7 @@ export default function App() {
             {/* 첫 번째 줄 */}
             <div className="flex gap-2 w-full">
               <button
-                onClick={() => setViewMode('dashboard')}
+                onClick={() => { forceSaveActiveSessions(); setViewMode('dashboard'); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'dashboard'
                     ? 'bg-brand-600 text-white shadow-md'
@@ -4395,7 +4445,7 @@ export default function App() {
                 오늘의 복습
               </button>
               <button
-                onClick={() => setViewMode('all_topics')}
+                onClick={() => { forceSaveActiveSessions(); setViewMode('all_topics'); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'all_topics'
                     ? 'bg-brand-600 text-white shadow-md'
@@ -4406,7 +4456,7 @@ export default function App() {
                 복습토픽 ({allTopics.length})
               </button>
               <button
-                onClick={handleOpenExam}
+                onClick={() => { forceSaveActiveSessions(); handleOpenExam(); }}
                 className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 hover:bg-amber-950/40 rounded-xl transition-all duration-200 cursor-pointer"
               >
                 <Award size={14} />
@@ -4417,21 +4467,21 @@ export default function App() {
             {/* 두 번째 줄 */}
             <div className="flex gap-2 w-full">
               <button
-                onClick={handleOpenFormulaExam}
+                onClick={() => { forceSaveActiveSessions(); handleOpenFormulaExam(); }}
                 className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 hover:bg-rose-950/40 rounded-xl transition-all duration-200 cursor-pointer"
               >
                 <Sigma size={14} />
                 필수공식
               </button>
               <button
-                onClick={handleOpenTheoryExam}
+                onClick={() => { forceSaveActiveSessions(); handleOpenTheoryExam(); }}
                 className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 hover:bg-indigo-950/40 rounded-xl transition-all duration-200 cursor-pointer"
               >
                 <Brain size={14} />
                 이론유도
               </button>
               <button
-                onClick={handleOpenAnswerSheet}
+                onClick={() => { forceSaveActiveSessions(); handleOpenAnswerSheet(); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
                   showAnswerSheet
                     ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg'
@@ -5154,6 +5204,7 @@ export default function App() {
                   if (selectedTopic?.isReadOnly) {
                     handleQuizCompleteClick();
                   } else {
+                    forceSaveActiveSessions();
                     setSelectedTopic(null); 
                   }
                 }}
@@ -8135,6 +8186,7 @@ export default function App() {
         <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in">
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setViewMode('dashboard');
               setSelectedTopic(null);
               setShowExam(false);
@@ -8154,6 +8206,7 @@ export default function App() {
           </button>
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setViewMode('all_topics');
               setSelectedTopic(null);
               setShowExam(false);
@@ -8175,6 +8228,7 @@ export default function App() {
           {/* 종합평가 버튼 */}
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setSelectedTopic(null);
               setShowFormulaExam(false);
               setShowTheoryExam(false);
@@ -8194,6 +8248,7 @@ export default function App() {
           {/* 필수공식 버튼 */}
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setSelectedTopic(null);
               setShowExam(false);
               setShowTheoryExam(false);
@@ -8213,6 +8268,7 @@ export default function App() {
           {/* 이론유도 버튼 */}
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setSelectedTopic(null);
               setShowExam(false);
               setShowFormulaExam(false);
@@ -8233,6 +8289,7 @@ export default function App() {
           {/* 답안지 버튼 */}
           <button
             onClick={() => {
+              forceSaveActiveSessions();
               setSelectedTopic(null);
               setShowExam(false);
               setShowFormulaExam(false);
