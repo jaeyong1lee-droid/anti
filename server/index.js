@@ -6416,6 +6416,46 @@ async function backfillPastScheduleScores() {
   }
 }
 
+app.get('/api/diagnose-prod-db', async (req, res) => {
+  try {
+    const topics = await dbQuery.all('SELECT id, title, created_at FROM topics');
+    
+    let appSession = [];
+    try {
+      appSession = await dbQuery.all('SELECT key, length(value) as len, updated_at FROM app_session');
+    } catch (e) {
+      console.warn('app_session query failed:', e.message);
+    }
+
+    let answersheetReports = [];
+    try {
+      answersheetReports = await dbQuery.all('SELECT id, pdf_name, created_at FROM answersheet_reports');
+    } catch (e) {
+      console.warn('answersheet_reports query failed:', e.message);
+    }
+    
+    const connectionStringPreview = (process.env.DATABASE_URL || 
+                                     process.env.POSTGRES_URL || 
+                                     process.env.POSTGRES_PRISMA_URL ||
+                                     process.env.SUPABASE_DATABASE_URL ||
+                                     'SQLite/Local')
+                                    .substring(0, 50) + '...';
+
+    res.json({
+      db_type: process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite',
+      connection_string: connectionStringPreview,
+      topics_count: topics.length,
+      topics: topics,
+      sessions_count: appSession.length,
+      sessions: appSession,
+      reports_count: answersheetReports.length,
+      reports: answersheetReports
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 async function startServer() {
   try {
     await initDatabase();
