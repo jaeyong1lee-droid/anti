@@ -2693,6 +2693,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const cleanedCore = coreQuestions.map(q => healQuizQuestionObject({
         ...q,
+        topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -2722,6 +2723,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
       const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
         ...q,
+        topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -2776,11 +2778,35 @@ ${carryOverQuestions.map((q, idx) => `
 
     const totalAiQuestionsCount = 2 + neededAiMcCount;
 
+    let feedbackPrompt = '';
+    try {
+      const feedbacks = await dbQuery.all(
+        'SELECT question_text, feedback_type FROM question_feedback WHERE topic_id = ?',
+        [topicId]
+      );
+      if (feedbacks.length > 0) {
+        const upvotes = feedbacks.filter(f => f.feedback_type === 'upvote').map(f => f.question_text);
+        const downvotes = feedbacks.filter(f => f.feedback_type === 'downvote').map(f => f.question_text);
+        
+        feedbackPrompt = `
+[사용자 피드백 지침 - 출제 빈도 반영 및 조정 필수]:
+1. 추천(Upvoted) 목록 (사용자가 아래 질문들과 유사한 내용, 개념, 공식, 메커니즘을 다루는 문제를 선호합니다. 아래 관련 문제의 출제 빈도를 대폭 높이거나 유사한 문제를 적극 출제해 주십시오):
+${upvotes.map((q, i) => `   - 추천 질문 ${i + 1}: ${q}`).join('\n')}
+
+2. 비추천(Downvoted) 목록 (사용자가 아래 질문들을 기피합니다. 아래 질문들과 동일하거나 유사한 문제는 절대로 출제하지 마시고 출제 빈도를 대폭 낮추거나 다른 새로운 주제로 대체하십시오):
+${downvotes.map((q, i) => `   - 비추천 질문 ${i + 1}: ${q}`).join('\n')}
+`;
+      }
+    } catch (fbErr) {
+      console.warn('사용자 피드백 로드 실패:', fbErr);
+    }
+
     const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
-아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트] 그리고 [이전 회차 오답 정보]를 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
+아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보] 그리고 [사용자 피드백 지침]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
 ${specialInstructions}
 ${weaknessPrompt}
+${feedbackPrompt}
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
@@ -2902,6 +2928,7 @@ try {
         const finalQuestions = [...finalSubjs, ...finalMcs];
         const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
+          topic_id: Number(topicId),
           question: cleanQuizQuestion(q.question)
         }));
 
@@ -2930,6 +2957,7 @@ try {
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
+        topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -2949,6 +2977,66 @@ try {
   } catch (error) {
     console.error('Error in AI question generation route:', error);
     res.status(500).json({ error: '서버 오류로 AI 기출문제를 생성하지 못했습니다.' });
+  }
+});
+
+// 6-2-1. GET /api/topics/:id/question-feedback → 특정 토픽의 문제 추천/비추천 피드백 목록 반환
+app.get('/api/topics/:id/question-feedback', async (req, res) => {
+  const topicId = Number(req.params.id);
+  try {
+    const rows = await dbQuery.all(
+      'SELECT question_text, feedback_type FROM question_feedback WHERE topic_id = ?',
+      [topicId]
+    );
+    res.json({ success: true, feedback: rows });
+  } catch (err) {
+    console.error('GET /api/topics/:id/question-feedback error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6-2-2. POST /api/topics/:id/question-feedback → 특정 토픽의 문제 추천/비추천 설정 및 토글
+app.post('/api/topics/:id/question-feedback', async (req, res) => {
+  const topicId = Number(req.params.id);
+  const { question_text, feedback_type } = req.body;
+
+  if (!question_text || !feedback_type) {
+    return res.status(400).json({ error: 'question_text와 feedback_type은 필수입니다.' });
+  }
+
+  try {
+    const trimmedQ = question_text.trim();
+    // 1. 기존의 동일 질문 피드백 제거
+    await dbQuery.run(
+      'DELETE FROM question_feedback WHERE topic_id = ? AND question_text = ?',
+      [topicId, trimmedQ]
+    );
+
+    // 2. 피드백 타입이 upvote 또는 downvote 인 경우에만 새로 등록
+    if (feedback_type === 'upvote' || feedback_type === 'downvote') {
+      await dbQuery.run(
+        'INSERT INTO question_feedback (topic_id, question_text, feedback_type) VALUES (?, ?, ?)',
+        [topicId, trimmedQ, feedback_type]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/topics/:id/question-feedback error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6-2-3. GET /api/question-feedback/all → 전체 토픽의 추천/비추천 피드백 목록 반환 (종합평가 등에서 활용)
+app.get('/api/question-feedback/all', async (req, res) => {
+  try {
+    const rows = await dbQuery.all(
+      'SELECT topic_id, question_text, feedback_type FROM question_feedback'
+    );
+    res.json({ success: true, feedback: rows });
+  } catch (err) {
+    console.error('GET /api/question-feedback/all error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -3384,9 +3472,11 @@ ${formatRequirement}
         throw new Error('AI 종합평가 재생성 문항 파싱에 실패했습니다.');
       }
 
+      const finalTopicId = topicId || currentQuestion?.topic_id;
       return res.json({
         question: healQuizQuestionObject({
           ...parsedQuestion,
+          topic_id: finalTopicId ? Number(finalTopicId) : null,
           question: cleanQuizQuestion(parsedQuestion.question)
         }),
         isFallback: false
@@ -3804,6 +3894,31 @@ app.post('/api/exam/all', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
+    // Fetch all user feedbacks (upvoted / downvoted) to adjust frequency in exam prompt
+    let feedbackPrompt = '';
+    try {
+      const feedbacks = await dbQuery.all(
+        `SELECT t.title, qf.question_text, qf.feedback_type 
+         FROM question_feedback qf 
+         JOIN topics t ON qf.topic_id = t.id`
+      );
+      if (feedbacks.length > 0) {
+        const upvotes = feedbacks.filter(f => f.feedback_type === 'upvote');
+        const downvotes = feedbacks.filter(f => f.feedback_type === 'downvote');
+        
+        feedbackPrompt = `
+[사용자 피드백 지침 - 출제 빈도 조정에 반영 필수]:
+- 아래 질문들과 연관된 주제/개념의 문제를 적극 출제해 주십시오 (출제 빈도 증가 대상):
+${upvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+
+- 아래 질문들과 동일하거나 유사한 문제는 절대 출제하지 말고 출제 빈도를 대폭 낮추거나 다른 문제로 대체해 주십시오 (출제 빈도 감소/제외 대상):
+${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+`;
+      }
+    } catch (fbErr) {
+      console.warn('종합평가 피드백 로드 실패 (무시하고 진행):', fbErr);
+    }
+
     // 💡 5문제씩 분할 생성 아키텍처 가동
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 12; // 12회 * 5문제 = 60문제 AI 생성 + 로컬 10문제 = 총 70문제 완성
@@ -3828,6 +3943,8 @@ app.post('/api/exam/all', async (req, res) => {
 [통합 소스 텍스트]:
 ${combinedText}
 
+${feedbackPrompt}
+
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
@@ -3842,12 +3959,14 @@ ${combinedText}
   {
     "type": "주관식",
     "subtype": "개요",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
     "question": "질문 내용",
     "answer": "2~3줄 명품 모범답안",
     "concept": "핵심 개념 1줄 요약"
   },
   {
     "type": "객관식",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
     "question": "공학적 현상 분석 질문",
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
@@ -3942,11 +4061,34 @@ ${combinedText}
       ];
     }
 
-    // Clean generated questions
-    const cleanedQuestions = aggregatedAiQuestions.map(q => ({
-      ...q,
-      question: cleanQuizQuestion(q.question)
-    }));
+    // Clean generated questions & Map topic_title to topic_id
+    const topicMap = {};
+    topics.forEach(t => {
+      topicMap[t.title.toLowerCase().trim()] = t.id;
+    });
+
+    const cleanedQuestions = aggregatedAiQuestions.map(q => {
+      let topicId = null;
+      if (q.topic_title) {
+        const cleanedTitle = q.topic_title.toLowerCase().trim();
+        if (topicMap[cleanedTitle]) {
+          topicId = topicMap[cleanedTitle];
+        } else {
+          const matchedKey = Object.keys(topicMap).find(k => k.includes(cleanedTitle) || cleanedTitle.includes(k));
+          if (matchedKey) topicId = topicMap[matchedKey];
+        }
+      }
+      if (!topicId && topics.length > 0) {
+        // Try to guess from question text
+        const matchedTopic = topics.find(t => q.question.includes(t.title) || (t.keywords && t.keywords.split(',').some(k => q.question.includes(k.trim()))));
+        topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
+      }
+      return {
+        ...q,
+        topic_id: topicId,
+        question: cleanQuizQuestion(q.question)
+      };
+    });
 
     // Retrieve custom formula questions and theory questions from database
     let customFormulas = [];
@@ -4003,21 +4145,29 @@ ${combinedText}
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
     const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
     
-    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => ({
-      type: "주관식",
-      subtype: "공식",
-      question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-      answer: f.formula,
-      concept: f.concept
-    }));
+    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => {
+      const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
+      return {
+        type: "주관식",
+        subtype: "공식",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula,
+        concept: f.concept
+      };
+    });
     
-    const selectedTheories = shuffledTheories.slice(0, 5).map(t => ({
-      type: "주관식",
-      subtype: "서술",
-      question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-      answer: t.formula,
-      concept: t.concept
-    }));
+    const selectedTheories = shuffledTheories.slice(0, 5).map(t => {
+      const matchedTopic = topics.find(tp => t.title && (tp.title.includes(t.title) || t.title.includes(tp.title)));
+      return {
+        type: "주관식",
+        subtype: "서술",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula,
+        concept: t.concept
+      };
+    });
 
     const customSubjs = [...selectedFormulas, ...selectedTheories];
 

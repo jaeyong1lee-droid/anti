@@ -31,7 +31,9 @@ import {
   Search,
   X,
   Paperclip,
-  Copy
+  Copy,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -959,6 +961,7 @@ export default function App() {
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
+  const [questionFeedback, setQuestionFeedback] = useState({}); // Stores upvotes/downvotes of questions { `${topic_id}_${questionText}`: 'upvote' | 'downvote' }
   
   // Exam mode state
   const [examQuestions, setExamQuestions] = useState([]);
@@ -1286,6 +1289,89 @@ export default function App() {
     }
   };
 
+  // Fetch all question feedbacks
+  const fetchAllFeedback = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/question-feedback/all`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const feedbackMap = {};
+        data.feedback.forEach(f => {
+          feedbackMap[`${f.topic_id}_${f.question_text.trim()}`] = f.feedback_type;
+        });
+        setQuestionFeedback(feedbackMap);
+      }
+    } catch (err) {
+      console.warn('피드백 데이터를 로드하는 중 오류가 발생했습니다:', err);
+    }
+  };
+
+  // Toggle upvote/downvote for a question
+  const handleToggleFeedback = async (topicId, questionText, type) => {
+    if (!topicId) {
+      showNotification('토픽 정보를 식별할 수 없어 피드백을 반영하지 못했습니다.', 'warning');
+      return;
+    }
+    const trimmedQ = questionText.trim();
+    const key = `${topicId}_${trimmedQ}`;
+    const current = questionFeedback[key];
+    const newFeedbackType = current === type ? 'none' : type;
+
+    // Optimistically update UI
+    setQuestionFeedback(prev => {
+      const updated = { ...prev };
+      if (newFeedbackType === 'none') {
+        delete updated[key];
+      } else {
+        updated[key] = newFeedbackType;
+      }
+      return updated;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${topicId}/question-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_text: trimmedQ, feedback_type: newFeedbackType })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        // Rollback on failure
+        setQuestionFeedback(prev => {
+          const rolledBack = { ...prev };
+          if (current) {
+            rolledBack[key] = current;
+          } else {
+            delete rolledBack[key];
+          }
+          return rolledBack;
+        });
+        showNotification('피드백 저장에 실패했습니다.', 'error');
+      } else {
+        if (newFeedbackType === 'upvote') {
+          showNotification('해당 문제의 출제 추천 피드백을 반영했습니다. (출제 빈도 증가)', 'success');
+        } else if (newFeedbackType === 'downvote') {
+          showNotification('해당 문제의 출제 비추천 피드백을 반영했습니다. (출제 빈도 감소)', 'info');
+        } else {
+          showNotification('피드백을 해제했습니다.', 'info');
+        }
+      }
+    } catch (err) {
+      console.error('피드백 연동 중 오류 발생:', err);
+      // Rollback
+      setQuestionFeedback(prev => {
+        const rolledBack = { ...prev };
+        if (current) {
+          rolledBack[key] = current;
+        } else {
+          delete rolledBack[key];
+        }
+        return rolledBack;
+      });
+      showNotification('서버 통신 오류로 피드백을 반영하지 못했습니다.', 'error');
+    }
+  };
+
   // Fetch all registered topics
   const fetchAllTopics = async () => {
     setLoadingTopics(true);
@@ -1310,6 +1396,7 @@ export default function App() {
   useEffect(() => {
     fetchTodayReviews(referenceDate);
     fetchAllTopics();
+    fetchAllFeedback();
   }, [referenceDate]);
 
   // ── Restore state from localStorage on mount (껐다 켜도 이어서 보기)
@@ -5121,8 +5208,33 @@ export default function App() {
                               {isMC ? '객관식' : `주관식·${q.type?.replace('구조 인출 (단락별 리콜)', '개요') || '서술'}`}
                             </span>
                           </div>
-                          
                           <div className="flex items-center gap-2">
+                            {/* 추천/비추천 피드백 버튼 */}
+                            <button
+                              onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
+                              className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                                questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
+                                  ? 'bg-emerald-950/60 border-emerald-500 text-emerald-450 font-black' 
+                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
+                              }`}
+                              title="추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 높입니다."
+                            >
+                              <ThumbsUp size={12} />
+                              <span>추천</span>
+                            </button>
+                            <button
+                              onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
+                              className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                                questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
+                                  ? 'bg-rose-950/60 border-rose-500 text-rose-450 font-black' 
+                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
+                              }`}
+                              title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
+                            >
+                              <ThumbsDown size={12} />
+                              <span>비추천</span>
+                            </button>
+
                             {answered && isMC && (
                               <button
                                 onClick={() => handleResetSingleReviewAnswer(idx)}
@@ -5816,6 +5928,32 @@ export default function App() {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          {/* 추천/비추천 피드백 버튼 */}
+                          <button
+                            onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                              questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
+                                ? 'bg-emerald-950/60 border-emerald-500 text-emerald-450 font-black' 
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
+                            }`}
+                            title="추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 높깁니다."
+                          >
+                            <ThumbsUp size={12} />
+                            <span>추천</span>
+                          </button>
+                          <button
+                            onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                              questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
+                                ? 'bg-rose-950/60 border-rose-500 text-rose-450 font-black' 
+                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
+                            }`}
+                            title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
+                          >
+                            <ThumbsDown size={12} />
+                            <span>비추천</span>
+                          </button>
+
                           {answered && isMC && (
                             <button
                               onClick={() => handleResetSingleExamAnswer(idx)}

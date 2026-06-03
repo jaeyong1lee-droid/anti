@@ -251,6 +251,16 @@ export async function initDatabase() {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
+        // 4. question_feedback table: stores recommendations and non-recommendations
+        await pgPool.query(`
+          CREATE TABLE IF NOT EXISTS question_feedback (
+            id SERIAL PRIMARY KEY,
+            topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+            question_text TEXT NOT NULL,
+            feedback_type TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
         console.log('Cloud PostgreSQL database tables initialized successfully.');
         await migrateSchedulesTable();
       } catch (pgInitError) {
@@ -314,6 +324,16 @@ async function initSQLiteTables() {
       key TEXT PRIMARY KEY,
       value TEXT,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS question_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic_id INTEGER NOT NULL,
+      question_text TEXT NOT NULL,
+      feedback_type TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE
     )
   `);
   console.log('Local SQLite database tables initialized successfully.');
