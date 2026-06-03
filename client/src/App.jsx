@@ -1237,6 +1237,19 @@ export default function App() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [isMobileLandscape, setIsMobileLandscape] = useState(window.innerWidth >= 768 && window.innerHeight <= 600);
 
+  // States and refs for modal pull-to-refresh
+  const [formulaPull, setFormulaPull] = useState(0);
+  const [formulaRefreshing, setFormulaRefreshing] = useState(false);
+  const formulaTouchStartY = useRef(0);
+
+  const [theoryPull, setTheoryPull] = useState(0);
+  const [theoryRefreshing, setTheoryRefreshing] = useState(false);
+  const theoryTouchStartY = useRef(0);
+
+  const [answersheetPull, setAnswersheetPull] = useState(0);
+  const [answersheetRefreshing, setAnswersheetRefreshing] = useState(false);
+  const answersheetTouchStartY = useRef(0);
+
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 768);
@@ -1803,6 +1816,92 @@ export default function App() {
       return () => clearTimeout(delayDebounceFn);
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions]);
+
+  const getCurrentTabIndex = () => {
+    if (showAnswerSheet) return 4;
+    if (showTheoryExam) return 3;
+    if (showFormulaExam) return 2;
+    if (viewMode === 'all_topics') return 1;
+    return 0; // dashboard
+  };
+
+  const navigateToTabByIndex = (index) => {
+    forceSaveActiveSessions();
+    if (index === 0) {
+      setShowFormulaExam(false);
+      setShowTheoryExam(false);
+      setShowAnswerSheet(false);
+      setViewMode('dashboard');
+    } else if (index === 1) {
+      setShowFormulaExam(false);
+      setShowTheoryExam(false);
+      setShowAnswerSheet(false);
+      setViewMode('all_topics');
+    } else if (index === 2) {
+      setShowFormulaExam(true);
+      setShowTheoryExam(false);
+      setShowAnswerSheet(false);
+    } else if (index === 3) {
+      setShowFormulaExam(false);
+      setShowTheoryExam(true);
+      setShowAnswerSheet(false);
+    } else if (index === 4) {
+      setShowFormulaExam(false);
+      setShowTheoryExam(false);
+      setShowAnswerSheet(true);
+    }
+  };
+
+  // Handle swipe gestures for mobile portrait view navigation
+  const globalTouchStartX = useRef(0);
+  const globalTouchStartY = useRef(0);
+
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      // Only track in mobile portrait and when no quiz/exam modals are open
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam) {
+        globalTouchStartX.current = e.touches[0].clientX;
+        globalTouchStartY.current = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam) {
+        // Exclude inputs, textareas, etc.
+        const target = e.target;
+        if (target && target.closest('input, textarea, [contenteditable="true"], button, a, select')) {
+          return;
+        }
+
+        const deltaX = e.changedTouches[0].clientX - globalTouchStartX.current;
+        const deltaY = e.changedTouches[0].clientY - globalTouchStartY.current;
+
+        // If swipe horizontal delta is high and vertical is low
+        if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40) {
+          const currentIndex = getCurrentTabIndex();
+          if (deltaX < 0) {
+            // Swipe Left -> Go Next Tab (Index increases)
+            if (currentIndex < 4) {
+              navigateToTabByIndex(currentIndex + 1);
+            }
+          } else {
+            // Swipe Right -> Go Prev Tab (Index decreases)
+            if (currentIndex > 0) {
+              navigateToTabByIndex(currentIndex - 1);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape]);
 
 
   // Load PDF.js dynamically when switching to image view
@@ -7676,8 +7775,64 @@ export default function App() {
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                onTouchStart={(e) => {
+                  if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0) {
+                    formulaTouchStartY.current = e.touches[0].clientY;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0 && !formulaRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - formulaTouchStartY.current;
+                    if (deltaY > 0) {
+                      const dist = Math.min(deltaY * 0.4, 80);
+                      setFormulaPull(dist);
+                      if (dist > 10 && e.cancelable) {
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={async () => {
+                  if (!isDesktop && !isMobileLandscape && !formulaRefreshing) {
+                    if (formulaPull >= 60) {
+                      setFormulaRefreshing(true);
+                      setFormulaPull(40);
+                      try {
+                        await loadFormulaQuestions();
+                        showNotification('필수공식이 성공적으로 새로고침되었습니다.', 'success');
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setFormulaRefreshing(false);
+                        setFormulaPull(0);
+                      }
+                    } else {
+                      setFormulaPull(0);
+                    }
+                  }
+                }}
               >
+              {/* Pull to Refresh Indicator */}
+              {(formulaPull > 0 || formulaRefreshing) && (
+                <div 
+                  style={{ height: `${formulaPull}px` }} 
+                  className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
+                >
+                  {formulaRefreshing ? (
+                    <div className="flex items-center gap-2">
+                      <RefreshCw size={14} className="animate-spin text-brand-400" />
+                      <span>새로고침 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${formulaPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
+                      <span>{formulaPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {loadingFormula ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -8467,7 +8622,66 @@ export default function App() {
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
-              <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
+              <div 
+                ref={theoryBodyRef} 
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                onTouchStart={(e) => {
+                  if (!isDesktop && !isMobileLandscape && theoryBodyRef.current && theoryBodyRef.current.scrollTop === 0) {
+                    theoryTouchStartY.current = e.touches[0].clientY;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (!isDesktop && !isMobileLandscape && theoryBodyRef.current && theoryBodyRef.current.scrollTop === 0 && !theoryRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - theoryTouchStartY.current;
+                    if (deltaY > 0) {
+                      const dist = Math.min(deltaY * 0.4, 80);
+                      setTheoryPull(dist);
+                      if (dist > 10 && e.cancelable) {
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={async () => {
+                  if (!isDesktop && !isMobileLandscape && !theoryRefreshing) {
+                    if (theoryPull >= 60) {
+                      setTheoryRefreshing(true);
+                      setTheoryPull(40);
+                      try {
+                        await loadTheoryQuestions();
+                        showNotification('이론유도가 성공적으로 새로고침되었습니다.', 'success');
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setTheoryRefreshing(false);
+                        setTheoryPull(0);
+                      }
+                    } else {
+                      setTheoryPull(0);
+                    }
+                  }
+                }}
+              >
+                {/* Pull to Refresh Indicator */}
+                {(theoryPull > 0 || theoryRefreshing) && (
+                  <div 
+                    style={{ height: `${theoryPull}px` }} 
+                    className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
+                  >
+                    {theoryRefreshing ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-brand-400" />
+                        <span>새로고침 중...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ChevronDown size={14} className={`transition-transform duration-200 ${theoryPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
+                        <span>{theoryPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="w-full space-y-5 pb-32">
                 
 
@@ -9229,7 +9443,66 @@ export default function App() {
             
             {/* Left: Answersheet List */}
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
-              <div ref={answersheetBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
+              <div 
+                ref={answersheetBodyRef} 
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                onTouchStart={(e) => {
+                  if (!isDesktop && !isMobileLandscape && answersheetBodyRef.current && answersheetBodyRef.current.scrollTop === 0) {
+                    answersheetTouchStartY.current = e.touches[0].clientY;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (!isDesktop && !isMobileLandscape && answersheetBodyRef.current && answersheetBodyRef.current.scrollTop === 0 && !answersheetRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - answersheetTouchStartY.current;
+                    if (deltaY > 0) {
+                      const dist = Math.min(deltaY * 0.4, 80);
+                      setAnswersheetPull(dist);
+                      if (dist > 10 && e.cancelable) {
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={async () => {
+                  if (!isDesktop && !isMobileLandscape && !answersheetRefreshing) {
+                    if (answersheetPull >= 60) {
+                      setAnswersheetRefreshing(true);
+                      setAnswersheetPull(40);
+                      try {
+                        await loadAnswersheetQuestions();
+                        showNotification('답안지가 성공적으로 새로고침되었습니다.', 'success');
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setAnswersheetRefreshing(false);
+                        setAnswersheetPull(0);
+                      }
+                    } else {
+                      setAnswersheetPull(0);
+                    }
+                  }
+                }}
+              >
+                {/* Pull to Refresh Indicator */}
+                {(answersheetPull > 0 || answersheetRefreshing) && (
+                  <div 
+                    style={{ height: `${answersheetPull}px` }} 
+                    className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
+                  >
+                    {answersheetRefreshing ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-brand-400" />
+                        <span>새로고침 중...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ChevronDown size={14} className={`transition-transform duration-200 ${answersheetPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
+                        <span>{answersheetPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="w-full space-y-5 pb-32">
                 
                 {/* No Search Results Fallback */}
