@@ -6249,7 +6249,7 @@ export default function App() {
                 {isDesktop && <ScientificCalculator />}
               </div>
 
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
                 <Brain size={16} className="text-violet-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
               </div>
@@ -6391,7 +6391,7 @@ export default function App() {
       {showExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Exam Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4 landscape-hide">
             <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
               <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Award size={20} />
@@ -6521,21 +6521,87 @@ export default function App() {
             </div>
           </div>
 
-          {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
-          <div 
-            ref={examSplitContainerRef}
-            onScroll={(e) => {
-              if (!isDesktop) {
-                const scrollLeft = e.currentTarget.scrollLeft;
-                const clientWidth = e.currentTarget.clientWidth;
-                if (clientWidth > 0) {
-                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                  setExamMobileTab(activeTab);
+          {/* Main Layout Area */}
+          <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
+            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-24 flex-shrink-0 items-stretch justify-start overflow-y-auto">
+              <button
+                onClick={handleAddExamQuestions}
+                disabled={loadingExam}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0 disabled:opacity-50"
+                title="종합평가에 신규 AI 문제 10문항 추가"
+              >
+                <span className="text-slate-350 flex-shrink-0 font-bold text-[10px]">➕</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">문제추가</span>
+              </button>
+              
+              <button
+                onClick={handleRefreshExamQuestions}
+                disabled={loadingExam}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0 disabled:opacity-50"
+                title="종합평가 전체 문제 실시간 AI 재출제"
+              >
+                <span className="text-xs flex-shrink-0">🔄</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">리프레쉬</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  try {
+                    const r = await fetch(`${API_BASE}/api/session/exam`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        examQuestions, 
+                        examRevealed, 
+                        examAnswers, 
+                        examTopic,
+                        savedExamScroll: savedExamScroll.current 
+                      }),
+                    });
+                    if (!r.ok) throw new Error('서버 응답 오류');
+                  } catch (e) {
+                    console.warn('세션 저장 실패:', e);
+                  }
+                  setShowExam(false);
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="화면만 숨김 (재개 시 문제 유지)"
+              >
+                <span className="text-slate-300 flex-shrink-0 font-bold text-[10px]">❌</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">닫기</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                    .catch(e => console.warn('세션 삭제 실패:', e));
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                }}
+                className="flex flex-col items-center justify-center gap-1 p-2 py-3 bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 text-center min-w-0"
+                title="종합평가 종료"
+              >
+                <span className="text-xs flex-shrink-0">⏹️</span>
+                <span className="text-[9px] font-black tracking-tight leading-tight">종료</span>
+              </button>
+            </div>
+
+            {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+            <div 
+              ref={examSplitContainerRef}
+              onScroll={(e) => {
+                if (!isDesktop) {
+                  const scrollLeft = e.currentTarget.scrollLeft;
+                  const clientWidth = e.currentTarget.clientWidth;
+                  if (clientWidth > 0) {
+                    const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
+                    setExamMobileTab(activeTab);
+                  }
                 }
-              }
-            }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
-          >
+              }}
+              className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+            >
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
@@ -6544,7 +6610,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative"
+                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-12 scroll-smooth relative landscape-quiz-body"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -6958,7 +7024,7 @@ export default function App() {
                 {isDesktop && <ScientificCalculator />}
               </div>
 
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
                 <Brain size={16} className="text-amber-500" />
                 <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
               </div>
@@ -7049,6 +7115,7 @@ export default function App() {
               </div>
             </div>
 
+          </div>
           </div>
         </div>
       )}

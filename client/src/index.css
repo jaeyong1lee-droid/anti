@@ -246,6 +246,35 @@
   .landscape-flex-important {
     display: flex !important;
   }
+  /* Independent scroll for dashboard columns in landscape */
+  body, html {
+    overflow: hidden !important;
+  }
+  main {
+    margin-top: 0 !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .landscape-dashboard-row {
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+  .landscape-dashboard-left {
+    height: 100vh !important;
+    overflow: hidden !important;
+    position: sticky !important;
+    top: 0 !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+  .landscape-dashboard-right {
+    height: 100vh !important;
+    overflow-y: auto !important;
+    padding-top: 12px !important;
+    padding-bottom: 60px !important;
+  }
 }
 
 /* PC version font size enlargement (1.2x) for modals */
