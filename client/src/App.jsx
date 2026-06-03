@@ -6741,12 +6741,12 @@ export default function App() {
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
                                   <span 
-                                    onClick={() => {
+                                    onDoubleClick={() => {
                                       setEditingFormulaIdx(idx);
                                       setEditingFormulaText(q.title || q.question || '');
                                     }}
                                     className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
-                                    title="클릭하여 공식 제목 수정"
+                                    title="더블클릭하여 공식 제목 수정"
                                   >
                                     <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
                                   </span>
@@ -7318,12 +7318,12 @@ export default function App() {
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
                                   <span 
-                                    onClick={() => {
+                                    onDoubleClick={() => {
                                       setEditingTheoryIdx(idx);
                                       setEditTheoryTitle(q.title || '');
                                     }}
                                     className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-indigo-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
-                                    title="클릭하여 이론 제목 수정"
+                                    title="더블클릭하여 이론 제목 수정"
                                   >
                                     <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
                                   </span>
@@ -7869,7 +7869,7 @@ export default function App() {
                               ) : (
                                 <div className="flex items-start gap-1.5 w-full min-w-0">
                                   <span 
-                                    onClick={() => {
+                                    onDoubleClick={() => {
                                       setEditingAnswersheetIdx(idx);
                                       setEditAnswersheetTitle(q.title || '');
                                     }}
@@ -7883,7 +7883,7 @@ export default function App() {
                                       whiteSpace: 'normal',
                                     }}
                                     className="text-[15px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all min-w-0 flex-grow"
-                                    title="클릭하여 답안 제목 수정"
+                                    title="더블클릭하여 답안 제목 수정"
                                   >
                                     <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
                                   </span>
