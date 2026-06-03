@@ -4811,7 +4811,7 @@ export default function App() {
 
             {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -5504,7 +5504,7 @@ export default function App() {
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -6142,7 +6142,7 @@ export default function App() {
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
             <div 
-              className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
             >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -6728,7 +6728,7 @@ export default function App() {
           >
             
             {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
-            <div className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div ref={theoryBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5 pb-32">
@@ -7284,7 +7284,7 @@ export default function App() {
           >
             
             {/* Left: Answersheet List */}
-            <div className="w-full flex-1 min-w-0 shrink-0 md:shrink snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
+            <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               <div ref={answersheetBodyRef} className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 space-y-4 scroll-smooth">
                 <div className="w-full space-y-5 pb-32">
                 
