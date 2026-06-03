@@ -7328,70 +7328,94 @@ export default function App() {
       {showFormulaExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Formula Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-              <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Sigma size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider whitespace-nowrap">필수공식 집중 복습</span>
-                  {!loadingFormula && formulaQuestions.length > 0 && (
-                    <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {formulaQuestions.length}개 공식
-                    </span>
-                  )}
-                  {/* Mobile Swipe Hint */}
-                  <span className="inline-flex md:hidden text-[9px] bg-rose-950/60 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                    ← 좌우 쓸어 넘겨 튜터 대화 보기
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                    전공 필수 공식 집중 평가 (주관식 인출)
-                  </h3>
-                  {/* Centered Add Question/Formula Button (Header Position next to title) */}
+          {(!isDesktop && !isMobileLandscape) ? (
+            /* Mobile Portrait Header for Formulas Modal */
+            <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
+              {/* Title Line */}
+              <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                필수공식
+              </h1>
+              
+              {/* 6 Category Switcher Buttons */}
+              <div className="flex flex-col gap-2 w-full">
+                {/* 첫 번째 줄 */}
+                <div className="flex gap-2 w-full">
                   <button
                     onClick={() => {
-                      const newFormula = {
-                        title: "",
-                        concept: "",
-                        assumptions: "",
-                        formula: "",
-                        isDirectlyAdded: true
-                      };
-                      const updated = [...formulaQuestions, newFormula];
-                      latestFormulaQuestionsRef.current = updated;
-                      setFormulaQuestions(updated);
-                      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                      showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                      setTimeout(() => {
-                        if (formulaBodyRef.current) {
-                          formulaBodyRef.current.scrollTo({
-                            top: formulaBodyRef.current.scrollHeight,
-                            behavior: 'smooth'
-                          });
-                        }
-                      }, 80);
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      setViewMode('dashboard');
                     }}
-                    className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
                   >
-                    <PlusCircle size={11} />
-                    <span>새로운 공식 추가 (빈표 생성)</span>
+                    <Calendar size={14} />
+                    오늘의 복습
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      setViewMode('all_topics');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                  >
+                    <List size={14} />
+                    복습토픽
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      handleOpenExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Award size={14} />
+                    종합평가
+                  </button>
+                </div>
+                {/* 두 번째 줄 */}
+                <div className="flex gap-2 w-full">
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-rose-500 bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-lg rounded-xl"
+                  >
+                    <Sigma size={14} />
+                    필수공식
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      handleOpenTheoryExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Brain size={14} />
+                    이론유도
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      handleOpenAnswerSheet();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <FileText size={14} />
+                    답안지
                   </button>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-              <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+
+              {/* Topic Search Box */}
+              <div className="relative flex items-center w-full mt-1">
                 <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="공식 제목 검색..."
                   value={formulaSearchQuery}
                   onChange={(e) => setFormulaSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
                 />
                 {formulaSearchQuery && (
                   <button
@@ -7402,63 +7426,143 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
-                  savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
-                  setFormulaSearchQuery('');
-                  setShowFormulaExam(false);
-                }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="저장 후 닫기"
-              >
-                닫기
-              </button>
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, true); // 저장 버튼: 저장만 하고 닫지는 않음
-                }}
-                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
-                title="공식 변경사항 실시간 저장"
-              >
-                <Save size={13} />
-                저장
-              </button>
             </div>
-          </div>
+          ) : (
+            /* Desktop/Landscape Header for Formulas Modal */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
+              <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+                <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
+                  <Sigma size={20} />
+                </div>
+                <div className="min-w-0 flex-grow">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider whitespace-nowrap">필수공식 집중 복습</span>
+                    {!loadingFormula && formulaQuestions.length > 0 && (
+                      <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
+                        {formulaQuestions.length}개 공식
+                      </span>
+                    )}
+                    {/* Mobile Swipe Hint */}
+                    <span className="inline-flex md:hidden text-[9px] bg-rose-950/60 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                      ← 좌우 쓸어 넘겨 튜터 대화 보기
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                      전공 필수 공식 집중 평가 (주관식 인출)
+                    </h3>
+                    {/* Centered Add Question/Formula Button (Header Position next to title) */}
+                    <button
+                      onClick={() => {
+                        const newFormula = {
+                          title: "",
+                          concept: "",
+                          assumptions: "",
+                          formula: "",
+                          isDirectlyAdded: true
+                        };
+                        const updated = [...formulaQuestions, newFormula];
+                        latestFormulaQuestionsRef.current = updated;
+                        setFormulaQuestions(updated);
+                        localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
+                        showNotification('새로운 필수 공식 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                        setTimeout(() => {
+                          if (formulaBodyRef.current) {
+                            formulaBodyRef.current.scrollTo({
+                              top: formulaBodyRef.current.scrollHeight,
+                              behavior: 'smooth'
+                            });
+                          }
+                        }, 80);
+                      }}
+                      className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 cursor-pointer border border-rose-500/20 select-none whitespace-nowrap"
+                    >
+                      <PlusCircle size={11} />
+                      <span>새로운 공식 추가 (빈표 생성)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+                <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="공식 제목 검색..."
+                    value={formulaSearchQuery}
+                    onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  />
+                  {formulaSearchQuery && (
+                    <button
+                      onClick={() => setFormulaSearchQuery('')}
+                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
+                    savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
+                    setFormulaSearchQuery('');
+                    setShowFormulaExam(false);
+                  }}
+                  className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                  title="저장 후 닫기"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={() => {
+                    handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, true); // 저장 버튼: 저장만 하고 닫지는 않음
+                  }}
+                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  title="공식 변경사항 실시간 저장"
+                >
+                  <Save size={13} />
+                  저장
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setFormulaMobileTab('list');
-                  formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  formulaMobileTab === 'list'
-                    ? 'bg-rose-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                공식 리스트
-              </button>
-              <button
-                onClick={() => {
-                  setFormulaMobileTab('tutor');
-                  const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
-                  formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  formulaMobileTab === 'tutor'
-                    ? 'bg-rose-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
+          {(isDesktop || isMobileLandscape) && (
+            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
+              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+                <button
+                  onClick={() => {
+                    setFormulaMobileTab('list');
+                    formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    formulaMobileTab === 'list'
+                      ? 'bg-rose-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  공식 리스트
+                </button>
+                <button
+                  onClick={() => {
+                    setFormulaMobileTab('tutor');
+                    const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
+                    formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    formulaMobileTab === 'tutor'
+                      ? 'bg-rose-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  제미나이 AI 튜터
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
           <div 
@@ -7917,97 +8021,99 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Formula */}
-            <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                <Brain size={16} className="text-rose-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
-              </div>
-              
-              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                {chatHistory.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
-                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">공식 유도 과정이나 실제 계산 문제 등<br/>무엇이든 실시간으로 설명해 드립니다!</p>
-                  </div>
-                ) : (
-                  chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
-                        {msg.role === 'user' ? '나' : 'Gemini'}
+            {(isDesktop || isMobileLandscape) && (
+              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                  <Brain size={16} className="text-rose-500" />
+                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
+                </div>
+                
+                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                  {chatHistory.length === 0 ? (
+                    <div className="text-center py-10 opacity-50">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                      <p className="text-[11px] text-slate-400">공식 유도 과정이나 실제 계산 문제 등<br/>무엇이든 실시간으로 설명해 드립니다!</p>
+                    </div>
+                  ) : (
+                    chatHistory.map((msg, i) => (
+                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
+                          {msg.role === 'user' ? '나' : 'Gemini'}
+                        </div>
+                        <div className={
+                          msg.role === 'user' 
+                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                        }>
+                          {msg.role === 'user' ? (
+                            <div className="flex flex-col gap-2">
+                              {msg.image && (
+                                <img 
+                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                  alt="첨부 이미지" 
+                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                                />
+                              )}
+                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                            </div>
+                          ) : (
+                            <LatexRenderer 
+                              text={msg.text} 
+                              katexLoaded={katexLoaded} 
+                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div className={
-                        msg.role === 'user' 
-                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                      }>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img 
-                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                alt="첨부 이미지" 
-                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                              />
-                            )}
-                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                          </div>
-                        ) : (
-                          <LatexRenderer 
-                            text={msg.text} 
-                            katexLoaded={katexLoaded} 
-                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
-                          />
-                        )}
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex flex-col items-start w-full">
+                      <div className="text-[10px] mb-1 font-bold text-rose-400 ml-1">Gemini</div>
+                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-75"></div>
+                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-150"></div>
                       </div>
                     </div>
-                  ))
-                )}
-                {isChatLoading && (
-                  <div className="flex flex-col items-start w-full">
-                    <div className="text-[10px] mb-1 font-bold text-rose-400 ml-1">Gemini</div>
-                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
-                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-75"></div>
-                      <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-150"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg`}
-                >
-                  {/* 텍스트 입력창 */}
-                  <div className="flex-grow">
-                    <textarea
-                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendChat();
-                        }
-                      }}
-                      placeholder="공식 유도 및 개념 질문..."
-                      disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                    />
-                  </div>
-
-                  {/* 전송 버튼 */}
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="w-8 h-8 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95 flex-shrink-0"
+                  )}
+                </div>
+  
+                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg`}
                   >
-                    <Send size={12} className="text-white" />
-                  </button>
-                </form>
+                    {/* 텍스트 입력창 */}
+                    <div className="flex-grow">
+                      <textarea
+                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendChat();
+                          }
+                        }}
+                        placeholder="공식 유도 및 개념 질문..."
+                        disabled={isChatLoading}
+                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
+                      />
+                    </div>
+  
+                    {/* 전송 버튼 */}
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim() || isChatLoading}
+                      className="w-8 h-8 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95 flex-shrink-0"
+                    >
+                      <Send size={12} className="text-white" />
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>
@@ -8017,70 +8123,94 @@ export default function App() {
       {showTheoryExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-              <div className="p-2 bg-indigo-950/80 text-indigo-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Brain size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider whitespace-nowrap">공식 이론유도</span>
-                  {formulaQuestions.length > 0 && (
-                    <span className="text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {formulaQuestions.length}개 핵심공식
-                    </span>
-                  )}
-                  {/* Mobile Swipe Hint */}
-                  <span className="inline-flex md:hidden text-[9px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                    ← 좌우 쓸어 넘겨 튜터 대화 보기
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                    전공 필수 공식 이론 유도 및 상세 증명 학습
-                  </h3>
-                  {/* Centered Add Question/Theory Button (Header Position next to title) */}
+          {(!isDesktop && !isMobileLandscape) ? (
+            /* Mobile Portrait Header for Theory Modal */
+            <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
+              {/* Title Line */}
+              <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                이론유도
+              </h1>
+              
+              {/* 6 Category Switcher Buttons */}
+              <div className="flex flex-col gap-2 w-full">
+                {/* 첫 번째 줄 */}
+                <div className="flex gap-2 w-full">
                   <button
-                    onClick={() => {
-                      const newTheory = {
-                        title: "",
-                        concept: "",
-                        assumptions: "",
-                        formula: "",
-                        isDirectlyAdded: true
-                      };
-                      const updated = [...theoryQuestions, newTheory];
-                      latestTheoryQuestionsRef.current = updated;
-                      setTheoryQuestions(updated);
-                      localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                      showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                      setTimeout(() => {
-                        if (theoryBodyRef.current) {
-                          theoryBodyRef.current.scrollTo({
-                            top: theoryBodyRef.current.scrollHeight,
-                            behavior: 'smooth'
-                          });
-                        }
-                      }, 80);
+                    onClick={async () => {
+                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                      setShowTheoryExam(false);
+                      setViewMode('dashboard');
                     }}
-                    className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
                   >
-                    <PlusCircle size={11} />
-                    <span>새로운 이론 공식 추가 (빈표 생성)</span>
+                    <Calendar size={14} />
+                    오늘의 복습
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                      setShowTheoryExam(false);
+                      setViewMode('all_topics');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                  >
+                    <List size={14} />
+                    복습토픽
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                      setShowTheoryExam(false);
+                      handleOpenExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Award size={14} />
+                    종합평가
+                  </button>
+                </div>
+                {/* 두 번째 줄 */}
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={async () => {
+                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                      setShowTheoryExam(false);
+                      handleOpenFormulaExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Sigma size={14} />
+                    필수공식
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-indigo-500 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white shadow-lg rounded-xl"
+                  >
+                    <Brain size={14} />
+                    이론유도
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                      setShowTheoryExam(false);
+                      handleOpenAnswerSheet();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <FileText size={14} />
+                    답안지
                   </button>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-              <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+
+              {/* Topic Search Box */}
+              <div className="relative flex items-center w-full mt-1">
                 <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="이론 제목 검색..."
                   value={theorySearchQuery}
                   onChange={(e) => setTheorySearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-indigo-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-indigo-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
                 />
                 {theorySearchQuery && (
                   <button
@@ -8091,63 +8221,143 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <button
-                onClick={async () => {
-                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장 완료후 닫음
-                  savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
-                  setTheorySearchQuery('');
-                  setShowTheoryExam(false);
-                }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="저장 후 닫기"
-              >
-                닫기
-              </button>
-              <button
-                onClick={async () => {
-                  await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장 완료후 토스트 출력
-                }}
-                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
-                title="이론 변경사항 실시간 저장"
-              >
-                <Save size={12} />
-                저장
-              </button>
             </div>
-          </div>
+          ) : (
+            /* Desktop/Landscape Header for Theory Modal */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4 landscape-hide">
+              <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+                <div className="p-2 bg-indigo-950/80 text-indigo-400 rounded-xl flex-shrink-0 mt-0.5">
+                  <Brain size={20} />
+                </div>
+                <div className="min-w-0 flex-grow">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider whitespace-nowrap">공식 이론유도</span>
+                    {formulaQuestions.length > 0 && (
+                      <span className="text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
+                        {formulaQuestions.length}개 핵심공식
+                      </span>
+                    )}
+                    {/* Mobile Swipe Hint */}
+                    <span className="inline-flex md:hidden text-[9px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                      ← 좌우 쓸어 넘겨 튜터 대화 보기
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                      전공 필수 공식 이론 유도 및 상세 증명 학습
+                    </h3>
+                    {/* Centered Add Question/Theory Button (Header Position next to title) */}
+                    <button
+                      onClick={() => {
+                        const newTheory = {
+                          title: "",
+                          concept: "",
+                          assumptions: "",
+                          formula: "",
+                          isDirectlyAdded: true
+                        };
+                        const updated = [...theoryQuestions, newTheory];
+                        latestTheoryQuestionsRef.current = updated;
+                        setTheoryQuestions(updated);
+                        localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
+                        showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                        setTimeout(() => {
+                          if (theoryBodyRef.current) {
+                            theoryBodyRef.current.scrollTo({
+                              top: theoryBodyRef.current.scrollHeight,
+                              behavior: 'smooth'
+                            });
+                          }
+                        }, 80);
+                      }}
+                      className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
+                    >
+                      <PlusCircle size={11} />
+                      <span>새로운 이론 공식 추가 (빈표 생성)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+                <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="이론 제목 검색..."
+                    value={theorySearchQuery}
+                    onChange={(e) => setTheorySearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-indigo-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  />
+                  {theorySearchQuery && (
+                    <button
+                      onClick={() => setTheorySearchQuery('')}
+                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={async () => {
+                    await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장 완료후 닫음
+                    savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
+                    setTheorySearchQuery('');
+                    setShowTheoryExam(false);
+                  }}
+                  className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                  title="저장 후 닫기"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장 완료후 토스트 출력
+                  }}
+                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  title="이론 변경사항 실시간 저장"
+                >
+                  <Save size={12} />
+                  저장
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0 landscape-hide">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setTheoryMobileTab('list');
-                  theorySplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  theoryMobileTab === 'list'
-                    ? 'bg-indigo-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                공식 리스트
-              </button>
-              <button
-                onClick={() => {
-                  setTheoryMobileTab('tutor');
-                  const containerWidth = theorySplitContainerRef.current?.clientWidth || 0;
-                  theorySplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  theoryMobileTab === 'tutor'
-                    ? 'bg-indigo-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
+          {(isDesktop || isMobileLandscape) && (
+            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0 landscape-hide">
+              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+                <button
+                  onClick={() => {
+                    setTheoryMobileTab('list');
+                    theorySplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    theoryMobileTab === 'list'
+                      ? 'bg-indigo-650 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  공식 리스트
+                </button>
+                <button
+                  onClick={() => {
+                    setTheoryMobileTab('tutor');
+                    const containerWidth = theorySplitContainerRef.current?.clientWidth || 0;
+                    theorySplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    theoryMobileTab === 'tutor'
+                      ? 'bg-indigo-650 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  제미나이 AI 튜터
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Modal Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
           <div 
@@ -8559,95 +8769,97 @@ export default function App() {
             </div>
 
             {/* Right: Gemini Sidebar for Theory */}
-            <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                <Brain size={16} className="text-indigo-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
-              </div>
-              
-              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                {chatHistory.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
-                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">학습하고 싶으신 공식을 왼쪽에서 선택하여<br/>이론 유도 및 상세 증명을 요청해 보세요!</p>
-                  </div>
-                ) : (
-                  chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
-                        {msg.role === 'user' ? '나' : 'Gemini'}
+            {(isDesktop || isMobileLandscape) && (
+              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                  <Brain size={16} className="text-indigo-500" />
+                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
+                </div>
+                
+                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                  {chatHistory.length === 0 ? (
+                    <div className="text-center py-10 opacity-50">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                      <p className="text-[11px] text-slate-400">학습하고 싶으신 공식을 왼쪽에서 선택하여<br/>이론 유도 및 상세 증명을 요청해 보세요!</p>
+                    </div>
+                  ) : (
+                    chatHistory.map((msg, i) => (
+                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
+                          {msg.role === 'user' ? '나' : 'Gemini'}
+                        </div>
+                        <div className={
+                          msg.role === 'user' 
+                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                        }>
+                          {msg.role === 'user' ? (
+                            <div className="flex flex-col gap-2">
+                              {msg.image && (
+                                <img 
+                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                  alt="첨부 이미지" 
+                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                                />
+                              )}
+                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                            </div>
+                          ) : (
+                            <LatexRenderer 
+                              text={msg.text} 
+                              katexLoaded={katexLoaded} 
+                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div className={
-                        msg.role === 'user' 
-                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                      }>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img 
-                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                alt="첨부 이미지" 
-                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                              />
-                            )}
-                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                          </div>
-                        ) : (
-                          <LatexRenderer 
-                            text={msg.text} 
-                            katexLoaded={katexLoaded} 
-                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
-                          />
-                        )}
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex flex-col items-start w-full">
+                      <div className="text-[10px] mb-1 font-bold text-indigo-400 ml-1">Gemini</div>
+                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
                       </div>
                     </div>
-                  ))
-                )}
-                {isChatLoading && (
-                  <div className="flex flex-col items-start w-full">
-                    <div className="text-[10px] mb-1 font-bold text-indigo-400 ml-1">Gemini</div>
-                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
-                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
-                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
-                >
-                  <div className="flex-grow">
-                    <textarea
-                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendChat();
-                        }
-                      }}
-                      placeholder="공식 유도 및 개념 질문..."
-                      disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
+                  )}
+                </div>
+  
+                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
                   >
-                    <Send size={12} className="text-white" />
-                  </button>
-                </form>
+                    <div className="flex-grow">
+                      <textarea
+                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendChat();
+                          }
+                        }}
+                        placeholder="공식 유도 및 개념 질문..."
+                        disabled={isChatLoading}
+                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
+                      />
+                    </div>
+  
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim() || isChatLoading}
+                      className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
+                    >
+                      <Send size={12} className="text-white" />
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>
@@ -8656,88 +8868,94 @@ export default function App() {
       {showAnswerSheet && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-emerald-500/20 flex-shrink-0 gap-4 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-              <div className="p-2 bg-emerald-950/80 text-emerald-400 rounded-xl flex-shrink-0 mt-0.5 animate-pulse glow-emerald">
-                <FileText size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider whitespace-nowrap">모범 답안지 및 보고서</span>
-                  {answersheetQuestions.length > 0 && (
-                    <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {answersheetQuestions.length}개 항목
-                    </span>
-                  )}
-                  {/* Mobile Swipe Hint */}
-                  <span className="inline-flex md:hidden text-[9px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                    ← 좌우 쓸어 넘겨 튜터 대화 보기
-                  </span>
+          {(!isDesktop && !isMobileLandscape) ? (
+            /* Mobile Portrait Header for Answersheet Modal */
+            <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
+              {/* Title Line */}
+              <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                답안지
+              </h1>
+              
+              {/* 6 Category Switcher Buttons */}
+              <div className="flex flex-col gap-2 w-full">
+                {/* 첫 번째 줄 */}
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={async () => {
+                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      setShowAnswerSheet(false);
+                      setViewMode('dashboard');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                  >
+                    <Calendar size={14} />
+                    오늘의 복습
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      setShowAnswerSheet(false);
+                      setViewMode('all_topics');
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                  >
+                    <List size={14} />
+                    복습토픽
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      setShowAnswerSheet(false);
+                      handleOpenExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Award size={14} />
+                    종합평가
+                  </button>
                 </div>
-                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                    전공 기술 보고서 및 모범 답안 정밀 분석 학습
-                  </h3>
-                  {/* Centered Add / Upload Buttons */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => {
-                        const newItem = {
-                          title: "",
-                          concept: "",
-                          assumptions: "",
-                          formula: "",
-                          isDirectlyAdded: true
-                        };
-                        const updated = [...answersheetQuestions, newItem];
-                        latestAnswersheetQuestionsRef.current = updated;
-                        setAnswersheetQuestions(updated);
-                        localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
-                        showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                        setTimeout(() => {
-                          if (answersheetBodyRef.current) {
-                            answersheetBodyRef.current.scrollTo({
-                              top: answersheetBodyRef.current.scrollHeight,
-                              behavior: 'smooth'
-                            });
-                          }
-                        }, 80);
-                      }}
-                      className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
-                    >
-                      <PlusCircle size={11} />
-                      <span>새로운 답안 추가 (빈표 생성)</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = '.html,.htm,.pdf';
-                        input.onchange = (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadAnswersheetPdf(file);
-                        };
-                        input.click();
-                      }}
-                      className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
-                    >
-                      <UploadCloud size={11} />
-                      <span>HTML/PDF 보고서 업로드</span>
-                    </button>
-                  </div>
+                {/* 두 번째 줄 */}
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={async () => {
+                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      setShowAnswerSheet(false);
+                      handleOpenFormulaExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Sigma size={14} />
+                    필수공식
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                      setShowAnswerSheet(false);
+                      handleOpenTheoryExam();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 rounded-xl"
+                  >
+                    <Brain size={14} />
+                    이론유도
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-emerald-500 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg rounded-xl"
+                  >
+                    <FileText size={14} />
+                    답안지
+                  </button>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-              <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+
+              {/* Topic Search Box */}
+              <div className="relative flex items-center w-full mt-1">
                 <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="답안 제목 검색..."
                   value={answersheetSearchQuery}
                   onChange={(e) => setAnswersheetSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-emerald-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-emerald-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
                 />
                 {answersheetSearchQuery && (
                   <button
@@ -8748,63 +8966,161 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <button
-                onClick={async () => {
-                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
-                  setAnswersheetSearchQuery('');
-                  setShowAnswerSheet(false);
-                }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="저장 후 닫기"
-              >
-                닫기
-              </button>
-              <button
-                onClick={async () => {
-                  await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
-                }}
-                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
-                title="답안 변경사항 실시간 저장"
-              >
-                <Save size={12} />
-                저장
-              </button>
             </div>
-          </div>
+          ) : (
+            /* Desktop/Landscape Header for Answersheet Modal */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-emerald-500/20 flex-shrink-0 gap-4 landscape-hide">
+              <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+                <div className="p-2 bg-emerald-950/80 text-emerald-400 rounded-xl flex-shrink-0 mt-0.5 animate-pulse glow-emerald">
+                  <FileText size={20} />
+                </div>
+                <div className="min-w-0 flex-grow">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider whitespace-nowrap">모범 답안지 및 보고서</span>
+                    {answersheetQuestions.length > 0 && (
+                      <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                        {answersheetQuestions.length}개 항목
+                      </span>
+                    )}
+                    {/* Mobile Swipe Hint */}
+                    <span className="inline-flex md:hidden text-[9px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
+                      ← 좌우 쓸어 넘겨 튜터 대화 보기
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
+                      전공 기술 보고서 및 모범 답안 정밀 분석 학습
+                    </h3>
+                    {/* Centered Add / Upload Buttons */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => {
+                          const newItem = {
+                            title: "",
+                            concept: "",
+                            assumptions: "",
+                            formula: "",
+                            isDirectlyAdded: true
+                          };
+                          const updated = [...answersheetQuestions, newItem];
+                          latestAnswersheetQuestionsRef.current = updated;
+                          setAnswersheetQuestions(updated);
+                          localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                          showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
+                          setTimeout(() => {
+                            if (answersheetBodyRef.current) {
+                              answersheetBodyRef.current.scrollTo({
+                                top: answersheetBodyRef.current.scrollHeight,
+                                behavior: 'smooth'
+                              });
+                            }
+                          }, 80);
+                        }}
+                        className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
+                      >
+                        <PlusCircle size={11} />
+                        <span>새로운 답안 추가 (빈표 생성)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.html,.htm,.pdf';
+                          input.onchange = (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadAnswersheetPdf(file);
+                          };
+                          input.click();
+                        }}
+                        className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
+                      >
+                        <UploadCloud size={11} />
+                        <span>HTML/PDF 보고서 업로드</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+                <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
+                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="답안 제목 검색..."
+                    value={answersheetSearchQuery}
+                    onChange={(e) => setAnswersheetSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-emerald-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  />
+                  {answersheetSearchQuery && (
+                    <button
+                      onClick={() => setAnswersheetSearchQuery('')}
+                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={async () => {
+                    await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                    savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
+                    setAnswersheetSearchQuery('');
+                    setShowAnswerSheet(false);
+                  }}
+                  className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                  title="저장 후 닫기"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
+                  }}
+                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  title="답안 변경사항 실시간 저장"
+                >
+                  <Save size={12} />
+                  저장
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0 landscape-hide">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setAnswersheetMobileTab('list');
-                  answersheetSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  answersheetMobileTab === 'list'
-                    ? 'bg-emerald-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                답안지 리스트
-              </button>
-              <button
-                onClick={() => {
-                  setAnswersheetMobileTab('tutor');
-                  const containerWidth = answersheetSplitContainerRef.current?.clientWidth || 0;
-                  answersheetSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                  answersheetMobileTab === 'tutor'
-                    ? 'bg-emerald-650 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
+          {(isDesktop || isMobileLandscape) && (
+            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-emerald-500/10 justify-center flex-shrink-0 landscape-hide">
+              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+                <button
+                  onClick={() => {
+                    setAnswersheetMobileTab('list');
+                    answersheetSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    answersheetMobileTab === 'list'
+                      ? 'bg-emerald-650 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  답안지 리스트
+                </button>
+                <button
+                  onClick={() => {
+                    setAnswersheetMobileTab('tutor');
+                    const containerWidth = answersheetSplitContainerRef.current?.clientWidth || 0;
+                    answersheetSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                  }}
+                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                    answersheetMobileTab === 'tutor'
+                      ? 'bg-emerald-650 text-white shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  제미나이 AI 튜터
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Modal Container */}
           <div 
@@ -9243,95 +9559,97 @@ export default function App() {
             </div>
 
             {/* Right: AI Tutor */}
-            <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                <Brain size={16} className="text-emerald-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
-              </div>
-              
-              <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                {chatHistory.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
-                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">학습하고 싶으신 답안을 왼쪽에서 선택하여<br/>유도 및 상세 설명을 요청해 보세요!</p>
-                  </div>
-                ) : (
-                  chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-emerald-400 mr-1' : 'text-emerald-400 ml-1'}`}>
-                        {msg.role === 'user' ? '나' : 'Gemini'}
+            {(isDesktop || isMobileLandscape) && (
+              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                  <Brain size={16} className="text-emerald-500" />
+                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
+                </div>
+                
+                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                  {chatHistory.length === 0 ? (
+                    <div className="text-center py-10 opacity-50">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                      <p className="text-[11px] text-slate-400">학습하고 싶으신 답안을 왼쪽에서 선택하여<br/>유도 및 상세 설명을 요청해 보세요!</p>
+                    </div>
+                  ) : (
+                    chatHistory.map((msg, i) => (
+                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-emerald-400 mr-1' : 'text-emerald-400 ml-1'}`}>
+                          {msg.role === 'user' ? '나' : 'Gemini'}
+                        </div>
+                        <div className={
+                          msg.role === 'user' 
+                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-emerald-600 text-white rounded-br-sm' 
+                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
+                        }>
+                          {msg.role === 'user' ? (
+                            <div className="flex flex-col gap-2">
+                              {msg.image && (
+                                <img 
+                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                  alt="첨부 이미지" 
+                                  className="max-w-full max-h-48 rounded-xl object-contain border border-emerald-455 shadow-md"
+                                />
+                              )}
+                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                            </div>
+                          ) : (
+                            <LatexRenderer 
+                              text={msg.text} 
+                              katexLoaded={katexLoaded} 
+                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div className={
-                        msg.role === 'user' 
-                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-emerald-600 text-white rounded-br-sm' 
-                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                      }>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img 
-                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                alt="첨부 이미지" 
-                                className="max-w-full max-h-48 rounded-xl object-contain border border-emerald-455 shadow-md"
-                              />
-                            )}
-                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                          </div>
-                        ) : (
-                          <LatexRenderer 
-                            text={msg.text} 
-                            katexLoaded={katexLoaded} 
-                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
-                          />
-                        )}
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex flex-col items-start w-full">
+                      <div className="text-[10px] mb-1 font-bold text-emerald-400 ml-1">Gemini</div>
+                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></div>
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></div>
                       </div>
                     </div>
-                  ))
-                )}
-                {isChatLoading && (
-                  <div className="flex flex-col items-start w-full">
-                    <div className="text-[10px] mb-1 font-bold text-emerald-400 ml-1">Gemini</div>
-                    <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></div>
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
-                >
-                  <div className="flex-grow">
-                    <textarea
-                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendChat();
-                        }
-                      }}
-                      placeholder="보고서 내용 및 개념 질문..."
-                      disabled={isChatLoading}
-                      className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
-                    className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/10 active:scale-95 flex-shrink-0"
+                  )}
+                </div>
+  
+                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
+                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
                   >
-                    <Send size={12} className="text-white" />
-                  </button>
-                </form>
+                    <div className="flex-grow">
+                      <textarea
+                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendChat();
+                          }
+                        }}
+                        placeholder="보고서 내용 및 개념 질문..."
+                        disabled={isChatLoading}
+                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
+                      />
+                    </div>
+  
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim() || isChatLoading}
+                      className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/10 active:scale-95 flex-shrink-0"
+                    >
+                      <Send size={12} className="text-white" />
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>
