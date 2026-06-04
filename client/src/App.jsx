@@ -2003,14 +2003,17 @@ export default function App() {
         // If swipe horizontal delta is high and vertical is low
         if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40) {
           const currentIndex = getCurrentTabIndex();
+          
+          // Swipe on today's dashboard tab with active review session -> Open the active review
+          if (viewMode === 'dashboard' && !showFormulaExam && !showTheoryExam && !showAnswerSheet && lastActiveReview) {
+            handleOpenLastActiveReview();
+            return;
+          }
+
           if (deltaX < 0) {
-            // Swipe Left -> Go to last active review if on today's dashboard tab, otherwise Go Next Tab
-            if (viewMode === 'dashboard' && !showFormulaExam && !showTheoryExam && !showAnswerSheet && lastActiveReview) {
-              handleOpenLastActiveReview();
-            } else {
-              const nextIndex = (currentIndex + 1) % 4;
-              navigateToTabByIndex(nextIndex);
-            }
+            // Swipe Left -> Go Next Tab (Index increases, loops to 0 at 3)
+            const nextIndex = (currentIndex + 1) % 4;
+            navigateToTabByIndex(nextIndex);
           } else {
             // Swipe Right -> Go Prev Tab (Index decreases, loops to 3 at 0)
             const prevIndex = (currentIndex - 1 + 4) % 4;
