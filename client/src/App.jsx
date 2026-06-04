@@ -6095,22 +6095,42 @@ export default function App() {
                 닫기
               </button>
               {selectedTopic && (
-                <button
-                  onClick={() => { 
-                    if (selectedTopic?.id) {
-                      const deleteUrl = selectedTopic.schedule_id
-                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
-                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                      fetch(deleteUrl, { method: 'DELETE' })
-                        .catch(e => console.warn('세션 초기화 실패:', e));
-                    }
-                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
-                  }}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                  title="문제 초기화 (재개 시 새 문제 생성)"
-                >
-                  종료
-                </button>
+                <>
+                  <button
+                    onClick={() => { 
+                      if (selectedTopic?.id) {
+                        const deleteUrl = selectedTopic.schedule_id
+                          ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                          : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                        fetch(deleteUrl, { method: 'DELETE' })
+                          .catch(e => console.warn('세션 초기화 실패:', e));
+                      }
+                      setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                    title="문제 초기화 (재개 시 새 문제 생성)"
+                  >
+                    종료
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                        setChatHistory([]);
+                        if (typeof setCurrentAttachedImage === 'function') {
+                          setCurrentAttachedImage(null);
+                        }
+                        setTimeout(() => {
+                          forceSaveActiveSessions();
+                        }, 50);
+                        alert("튜터 데이터가 초기화되었습니다.");
+                      }
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0 shadow-lg shadow-rose-950/20"
+                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                  >
+                    튜터클린
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -6917,6 +6937,26 @@ export default function App() {
                 <span className="text-xs">⏹️</span>
                 <span>종료</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                    setChatHistory([]);
+                    if (typeof setCurrentAttachedImage === 'function') {
+                      setCurrentAttachedImage(null);
+                    }
+                    setTimeout(() => {
+                      forceSaveActiveSessions();
+                    }, 50);
+                    alert("튜터 데이터가 초기화되었습니다.");
+                  }
+                }}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border-rose-800/80 hover:border-rose-700/80 transition-all cursor-pointer active:scale-95"
+                title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+              >
+                <span className="text-xs">🧹</span>
+                <span>튜터클린</span>
+              </button>
             </div>
 
             {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
@@ -7022,7 +7062,7 @@ export default function App() {
               >
                 닫기
               </button>
-              <button
+               <button
                 onClick={() => {
                   // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
@@ -7033,6 +7073,24 @@ export default function App() {
                 title="종합평가 종료 (재개 시 새 문제 생성)"
               >
                 종료
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                    setChatHistory([]);
+                    if (typeof setCurrentAttachedImage === 'function') {
+                      setCurrentAttachedImage(null);
+                    }
+                    setTimeout(() => {
+                      forceSaveActiveSessions();
+                    }, 50);
+                    alert("튜터 데이터가 초기화되었습니다.");
+                  }
+                }}
+                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center shadow-lg shadow-rose-950/20"
+                title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+              >
+                튜터클린
               </button>
             </div>
           </div>
