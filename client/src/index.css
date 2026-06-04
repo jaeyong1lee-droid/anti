@@ -397,39 +397,38 @@
   }
 }
 
-@keyframes lightRainbowShift {
-  0%, 100% { 
-    background-color: hsl(0, 85%, 96%); 
-    border-color: hsla(0, 80%, 80%, 0.8); 
+@keyframes rainbowBackgroundShift {
+  0% {
+    background-position: 0% 50%;
   }
-  14.28% { 
-    background-color: hsl(35, 85%, 96%); 
-    border-color: hsla(35, 80%, 80%, 0.8); 
+  50% {
+    background-position: 100% 50%;
   }
-  28.57% { 
-    background-color: hsl(60, 85%, 96%); 
-    border-color: hsla(60, 80%, 75%, 0.8); 
+  100% {
+    background-position: 0% 50%;
   }
-  42.85% { 
-    background-color: hsl(120, 85%, 96%); 
-    border-color: hsla(120, 80%, 80%, 0.8); 
+}
+
+@keyframes rainbowGlowShadow {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(255, 154, 158, 0.35), 0 0 12px rgba(255, 154, 158, 0.15);
+    border-color: rgba(255, 154, 158, 0.6);
   }
-  57.14% { 
-    background-color: hsl(200, 85%, 96%); 
-    border-color: hsla(200, 80%, 80%, 0.8); 
+  33% {
+    box-shadow: 0 4px 20px rgba(167, 243, 208, 0.35), 0 0 12px rgba(167, 243, 208, 0.15);
+    border-color: rgba(167, 243, 208, 0.6);
   }
-  71.42% { 
-    background-color: hsl(240, 85%, 96%); 
-    border-color: hsla(240, 80%, 80%, 0.8); 
-  }
-  85.71% { 
-    background-color: hsl(280, 85%, 96%); 
-    border-color: hsla(280, 80%, 80%, 0.8); 
+  66% {
+    box-shadow: 0 4px 20px rgba(192, 132, 252, 0.35), 0 0 12px rgba(192, 132, 252, 0.15);
+    border-color: rgba(192, 132, 252, 0.6);
   }
 }
 
 .bg-light-rainbow-animate {
-  animation: lightRainbowShift 14s linear infinite;
+  background: linear-gradient(135deg, #ff9a9e, #fecfef, #fef08a, #a7f3d0, #bfdbfe, #c084fc, #ff9a9e) !important;
+  background-size: 300% 300% !important;
+  animation: rainbowBackgroundShift 8s ease infinite, rainbowGlowShadow 8s ease infinite !important;
+  border-width: 1px !important;
 }
 
 
