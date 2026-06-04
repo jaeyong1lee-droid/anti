@@ -5564,6 +5564,20 @@ function healLatexFormulas(text) {
   // 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
   text = text.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
 
+  // 전처리 토큰 패스: 텍스트 세그먼트에서만 괄호 내 LaTeX 명령어 래핑
+  // e.g. (\sigma_v) -> ($\sigma_v$), (\phi) -> ($\phi$)
+  // 기존 $...$ 블록 내부는 건드리지 않음 (text 토큰만 처리)
+  {
+    const preToks = tokenizeForHealing(text);
+    text = preToks.map(tok => {
+      if (tok.type !== 'text') return tok.content;
+      return tok.content.replace(
+        /\(\s*(\\(?:sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|Delta|Sigma|Gamma|Phi|Theta|Omega|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\{[a-zA-Z0-9_]+\}))?(?:')?\s*)\)/g,
+        (match, cmd) => `($${cmd.trim()}$)`
+      );
+    }).join('');
+  }
+
 
   // 💡 [단일 공식/수식형 전체 감싸기 최적화]
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
