@@ -2004,9 +2004,13 @@ export default function App() {
         if (Math.abs(deltaX) > 80 && Math.abs(deltaY) < 40) {
           const currentIndex = getCurrentTabIndex();
           if (deltaX < 0) {
-            // Swipe Left -> Go Next Tab (Index increases, loops to 0 at 3)
-            const nextIndex = (currentIndex + 1) % 4;
-            navigateToTabByIndex(nextIndex);
+            // Swipe Left -> Go to last active review if on today's dashboard tab, otherwise Go Next Tab
+            if (viewMode === 'dashboard' && !showFormulaExam && !showTheoryExam && !showAnswerSheet && lastActiveReview) {
+              handleOpenLastActiveReview();
+            } else {
+              const nextIndex = (currentIndex + 1) % 4;
+              navigateToTabByIndex(nextIndex);
+            }
           } else {
             // Swipe Right -> Go Prev Tab (Index decreases, loops to 3 at 0)
             const prevIndex = (currentIndex - 1 + 4) % 4;
@@ -2023,7 +2027,7 @@ export default function App() {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape]);
+  }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape, lastActiveReview]);
 
 
   // Load PDF.js dynamically when switching to image view
@@ -4974,8 +4978,8 @@ export default function App() {
               </button>
             </div>
 
-            {/* 공부중 버튼 instead of 복습기준일 on mobile portrait under all_topics, placed under the 6 switcher buttons */}
-            {!isDesktop && !isMobileLandscape && viewMode === 'all_topics' && lastActiveReview && (
+            {/* 공부중 버튼 instead of 복습기준일 on mobile portrait under all_topics and dashboard, placed under the 6 switcher buttons */}
+            {!isDesktop && !isMobileLandscape && (viewMode === 'all_topics' || viewMode === 'dashboard') && lastActiveReview && (
               <button
                 onClick={handleOpenLastActiveReview}
                 className="flex bg-light-rainbow-animate border rounded-2xl p-4 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full mt-2"
