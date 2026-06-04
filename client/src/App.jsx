@@ -1983,14 +1983,14 @@ export default function App() {
   useEffect(() => {
     const handleTouchStart = (e) => {
       // Only track in mobile portrait and when no quiz/exam modals are open, and not in 'all_topics' view
-      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && viewMode !== 'all_topics') {
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && viewMode !== 'all_topics') {
         globalTouchStartX.current = e.touches[0].clientX;
         globalTouchStartY.current = e.touches[0].clientY;
       }
     };
 
     const handleTouchEnd = (e) => {
-      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && viewMode !== 'all_topics') {
+      if (!isDesktop && !isMobileLandscape && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && viewMode !== 'all_topics') {
         // Exclude inputs, textareas, etc.
         const target = e.target;
         if (target && target.closest('input, textarea, [contenteditable="true"], button, a, select')) {
@@ -5998,7 +5998,7 @@ export default function App() {
                   }
                 }
               }}
-              className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden landscape-split-container overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+              className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} landscape-split-container overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none`}
             >
 
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
@@ -6993,7 +6993,7 @@ export default function App() {
                   }
                 }
               }}
-              className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none"
+              className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none`}
             >
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
