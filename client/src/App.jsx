@@ -9891,7 +9891,7 @@ export default function App() {
                           </div>
 
                           {/* Row 2: Action Buttons */}
-                          <div className="flex flex-wrap items-center gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
                             {/* 정답확인/정답접기 button */}
                             {!isNewEmptyCard && (
                               (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
@@ -9904,10 +9904,10 @@ export default function App() {
                                       setAnswersheetRevealed(prev => ({ ...prev, [idx]: true }));
                                     }
                                   }}
-                                  className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 border border-emerald-500/20 flex items-center justify-center gap-1"
+                                  className="py-1 px-2 sm:px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 border border-emerald-500/20 flex items-center justify-center gap-0.5 sm:gap-1"
                                   title="정답 확인하기"
                                 >
-                                  <span>정답확인</span>
+                                  <span>{(!isDesktop && !isMobileLandscape) ? "정답" : "정답확인"}</span>
                                 </button>
                               ) : (
                                 <button
@@ -9915,10 +9915,10 @@ export default function App() {
                                     e.stopPropagation();
                                     setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }));
                                   }}
-                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
+                                  className="py-1 px-2 sm:px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[10px] sm:text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1"
                                   title="정답 접기"
                                 >
-                                  <span>정답접기</span>
+                                  <span>{(!isDesktop && !isMobileLandscape) ? "접기" : "정답접기"}</span>
                                 </button>
                               )
                             )}
@@ -9926,24 +9926,24 @@ export default function App() {
                             {/* Toggle Input Editor / 수정하기 */}
                             <button
                               onClick={() => {
-                                if (isMobileLandscape) {
-                                  const val = window.prompt("답안 LaTeX/HTML 내용을 입력하세요:", q.formula || "");
-                                  if (val !== null) {
-                                    const updated = [...answersheetQuestions];
-                                    updated[idx] = { ...updated[idx], formula: val };
-                                    latestAnswersheetQuestionsRef.current = updated;
-                                    setAnswersheetQuestions(updated);
-                                    localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
-                                    handleSaveAnswersheetQuestions(updated, false);
+                                  if (isMobileLandscape) {
+                                    const val = window.prompt("답안 LaTeX/HTML 내용을 입력하세요:", q.formula || "");
+                                    if (val !== null) {
+                                      const updated = [...answersheetQuestions];
+                                      updated[idx] = { ...updated[idx], formula: val };
+                                      latestAnswersheetQuestionsRef.current = updated;
+                                      setAnswersheetQuestions(updated);
+                                      localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                                      handleSaveAnswersheetQuestions(updated, false);
+                                    }
+                                  } else {
+                                    setAnswersheetInputRevealed(prev => ({
+                                      ...prev,
+                                      [idx]: !prev[idx]
+                                    }));
                                   }
-                                } else {
-                                  setAnswersheetInputRevealed(prev => ({
-                                    ...prev,
-                                    [idx]: !prev[idx]
-                                  }));
-                                }
                               }}
-                              className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1.5 ${
+                              className={`py-1 px-1.5 sm:px-2.5 rounded-lg border transition-all cursor-pointer text-[10px] font-bold flex items-center gap-0.5 sm:gap-1.5 ${
                                 !isMobileLandscape && isInputVisible 
                                   ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
                                   : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 border-slate-700/50 bg-slate-800/40'
@@ -9951,7 +9951,7 @@ export default function App() {
                               title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
                             >
                               <Edit2 size={10} />
-                              <span>수정하기</span>
+                              <span>{(!isDesktop && !isMobileLandscape) ? "수정" : "수정하기"}</span>
                             </button>
 
                             {q.answersheet_report_id && (
@@ -9973,11 +9973,11 @@ export default function App() {
                                     window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
                                   }
                                 }}
-                                className="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-1"
+                                className="py-1 px-1.5 sm:px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-0.5 sm:gap-1"
                                 title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                               >
                                 <FileText size={10} />
-                                <span>원 보고서 보기</span>
+                                <span>{(!isDesktop && !isMobileLandscape) ? "원보고서" : "원 보고서 보기"}</span>
                               </button>
                             )}
 
@@ -10001,7 +10001,7 @@ export default function App() {
                                   showNotification('선택한 답안이 성공적으로 삭제되었습니다.', 'info');
                                 }
                               }}
-                              className="p-1 px-2.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1.5"
+                              className="py-1 px-1.5 sm:px-2.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[10px] font-bold flex items-center gap-0.5 sm:gap-1.5"
                               title="답안 삭제"
                             >
                               <Trash2 size={10} />
