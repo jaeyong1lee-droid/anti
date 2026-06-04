@@ -397,5 +397,40 @@
   }
 }
 
+@keyframes lightRainbowShift {
+  0%, 100% { 
+    background-color: hsl(0, 85%, 96%); 
+    border-color: hsla(0, 80%, 80%, 0.8); 
+  }
+  14.28% { 
+    background-color: hsl(35, 85%, 96%); 
+    border-color: hsla(35, 80%, 80%, 0.8); 
+  }
+  28.57% { 
+    background-color: hsl(60, 85%, 96%); 
+    border-color: hsla(60, 80%, 75%, 0.8); 
+  }
+  42.85% { 
+    background-color: hsl(120, 85%, 96%); 
+    border-color: hsla(120, 80%, 80%, 0.8); 
+  }
+  57.14% { 
+    background-color: hsl(200, 85%, 96%); 
+    border-color: hsla(200, 80%, 80%, 0.8); 
+  }
+  71.42% { 
+    background-color: hsl(240, 85%, 96%); 
+    border-color: hsla(240, 80%, 80%, 0.8); 
+  }
+  85.71% { 
+    background-color: hsl(280, 85%, 96%); 
+    border-color: hsla(280, 80%, 80%, 0.8); 
+  }
+}
+
+.bg-light-rainbow-animate {
+  animation: lightRainbowShift 14s linear infinite;
+}
+
 
 

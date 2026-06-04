@@ -4848,7 +4848,7 @@ export default function App() {
             {!isDesktop && !isMobileLandscape && viewMode === 'all_topics' && lastActiveReview && (
               <button
                 onClick={handleOpenLastActiveReview}
-                className="flex bg-yellow-50 border border-yellow-200/80 rounded-2xl p-4 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left hover:bg-yellow-100 shadow-[0_4px_20px_rgba(253,224,71,0.1)] relative overflow-hidden group select-none w-full mt-2"
+                className="flex bg-light-rainbow-animate border rounded-2xl p-4 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full mt-2"
                 title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
               >
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -4882,7 +4882,7 @@ export default function App() {
             {lastActiveReview && isMobileLandscape && (
               <button
                 onClick={handleOpenLastActiveReview}
-                className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none mb-3"
+                className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none mb-3"
                 title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
               >
                 <Clock size={12} className="text-slate-950 shrink-0" />
@@ -5046,7 +5046,7 @@ export default function App() {
 
             <button
               onClick={handleOpenLastActiveReview}
-              className="hidden md:flex bg-yellow-50 border border-yellow-200/80 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left hover:bg-yellow-100 shadow-[0_4px_20px_rgba(253,224,71,0.1)] relative overflow-hidden group select-none w-full"
+              className="hidden md:flex bg-light-rainbow-animate border rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full"
               title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
             >
               <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -5805,7 +5805,7 @@ export default function App() {
                   onClick={() => {
                     handleOpenLastActiveReview();
                   }}
-                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
                   title="공부중 복습 이어서 진행"
                 >
                   <Clock size={12} className="text-slate-950 shrink-0" />
@@ -6707,7 +6707,7 @@ export default function App() {
                     setShowExam(false);
                     handleOpenLastActiveReview();
                   }}
-                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
                   title="공부중 복습 이어서 진행"
                 >
                   <Clock size={12} className="text-slate-950 shrink-0" />
@@ -7672,7 +7672,7 @@ export default function App() {
                     setShowFormulaExam(false);
                     handleOpenLastActiveReview();
                   }}
-                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
                   title="공부중 복습 이어서 진행"
                 >
                   <Clock size={12} className="text-slate-950 shrink-0" />
@@ -8523,7 +8523,7 @@ export default function App() {
                     setShowTheoryExam(false);
                     handleOpenLastActiveReview();
                   }}
-                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
                   title="공부중 복습 이어서 진행"
                 >
                   <Clock size={12} className="text-slate-950 shrink-0" />
@@ -9345,7 +9345,7 @@ export default function App() {
                     setShowAnswerSheet(false);
                     handleOpenLastActiveReview();
                   }}
-                  className="flex bg-yellow-50 border border-yellow-200/80 rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
+                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
                   title="공부중 복습 이어서 진행"
                 >
                   <Clock size={12} className="text-slate-950 shrink-0" />
