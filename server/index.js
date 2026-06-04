@@ -5668,7 +5668,7 @@ function healLatexFormulas(text) {
   }
 
   // STEP 1: Wrap larger formulas (equations containing =, <, >)
-  const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9\'\{\}\[\]\(\)\+\-\*\/\.\\\\/ \t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9\'_ \t\-+\/\{\}\(\)\[\],\.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9\'\)\}]))/g;
+  const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9\'\{\}\[\]\(\)\+\-\*\/\.\\\\/ Contrast\t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9\'_ \t\-+\/\{\}\(\)\[\],\.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9\'\)\}]))/g;
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type === 'text') {
@@ -5677,8 +5677,10 @@ function healLatexFormulas(text) {
         const hasGreek = symbols.some(sym => g1.includes(sym));
         const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
         if (hasBackslash || hasGreek || hasMathContext) {
-          const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
-          return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
+          let content = g1.trim();
+          if (content.endsWith('\\')) content = content.slice(0, -1).trim();
+          const isComplex = content.includes('\\frac') || content.includes('\\log') || content.length > 40;
+          return isComplex ? '$$' + content + '$$' : '$' + content + '$';
         }
         return match;
       });
@@ -5695,8 +5697,10 @@ function healLatexFormulas(text) {
   tokens.forEach(tok => {
     if (tok.type === 'text') {
       tok.content = tok.content.replace(mathExprPattern, (match, g1) => {
-        const isComplex = g1.includes('\\frac') || g1.includes('\\partial') || g1.length > 40;
-        return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
+        let content = g1.trim();
+        if (content.endsWith('\\')) content = content.slice(0, -1).trim();
+        const isComplex = content.includes('\\frac') || content.includes('\\partial') || content.length > 40;
+        return isComplex ? '$$' + content + '$$' : '$' + content + '$';
       });
     }
   });
@@ -5739,7 +5743,7 @@ function healLatexFormulas(text) {
       const wrapAllowedWords = [
         'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
       ];
-      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))?`;
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
       const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
       t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
 
@@ -5780,7 +5784,7 @@ function healLatexFormulas(text) {
         return match;
       });
 
-      tok.content = isBlock ? `$$${math}$$` : `$${math}$`;
+      tok.content = isBlock ? `$$${math}$$` : `$$${math}$`;
     }
   });
   healed = tokens.map(t => t.content).join('');

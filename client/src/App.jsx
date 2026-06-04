@@ -536,8 +536,10 @@ function healLatexFormulas(text) {
         const hasGreek = symbols.some(sym => g1.includes(sym));
         const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
         if (hasBackslash || hasGreek || hasMathContext) {
-          const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
-          return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
+          let content = g1.trim();
+          if (content.endsWith('\\')) content = content.slice(0, -1).trim();
+          const isComplex = content.includes('\\frac') || content.includes('\\log') || content.length > 40;
+          return isComplex ? '$$' + content + '$$' : '$' + content + '$';
         }
         return match;
       });
@@ -554,8 +556,10 @@ function healLatexFormulas(text) {
   tokens.forEach(tok => {
     if (tok.type === 'text') {
       tok.content = tok.content.replace(mathExprPattern, (match, g1) => {
-        const isComplex = g1.includes('\\frac') || g1.includes('\\partial') || g1.length > 40;
-        return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
+        let content = g1.trim();
+        if (content.endsWith('\\')) content = content.slice(0, -1).trim();
+        const isComplex = content.includes('\\frac') || content.includes('\\partial') || content.length > 40;
+        return isComplex ? '$$' + content + '$$' : '$' + content + '$';
       });
     }
   });
@@ -705,6 +709,61 @@ function healLatexFormulas(text) {
   return result;
 }
 
+function convertMarkdownToHtml(mdText) {
+  const mathBlocks = [];
+  let placeholderIndex = 0;
+  let tempText = mdText;
+
+  // Protect $$ ... $$
+  tempText = tempText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match) => {
+    const placeholder = `___BLOCK_MATH_${placeholderIndex}___`;
+    mathBlocks.push({ placeholder, content: match });
+    placeholderIndex++;
+    return placeholder;
+  });
+
+  // Protect $ ... $
+  tempText = tempText.replace(/\$([^\$\n]+?)\$/g, (match) => {
+    const placeholder = `___INLINE_MATH_${placeholderIndex}___`;
+    mathBlocks.push({ placeholder, content: match });
+    placeholderIndex++;
+    return placeholder;
+  });
+
+  // 1. Unify newlines
+  tempText = tempText.replace(/\r\n/g, '\n');
+
+  // 2. Headings on same line: "Text ### Title" -> "Text\n\n### Title"
+  tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
+
+  // 3. Bold text
+  tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, '<strong style="color: #f1f5f9; font-weight: 700;">$1</strong>');
+
+  // 4. Render headings to styled HTML
+  tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
+    return `<h3 style="margin-top: 1.6rem; margin-bottom: 0.6rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+  });
+  tempText = tempText.replace(/^(##)\s+(.*?)$/gm, (match, hashes, title) => {
+    return `<h2 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+  });
+
+  // 5. Render list items (both bullet points * and - and numbered lists)
+  tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
+  tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
+  tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">$1. $2</div>');
+
+  // 6. Spacers for paragraph gaps
+  tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
+  tempText = tempText.replace(/\n/g, '<br/>');
+
+  // Restore math blocks
+  mathBlocks.forEach(block => {
+    tempText = tempText.replace(block.placeholder, block.content);
+  });
+
+  return tempText;
+}
+
 // Dynamic KaTeX loader & Math text renderer
 function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "" }) {
   if (!text) return null;
@@ -774,6 +833,10 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   let cleanedText = isHeavy
     ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
     : healFormulas(text).replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+
+  if (!isHeavy) {
+    cleanedText = convertMarkdownToHtml(cleanedText);
+  }
 
   if (isHeavy) {
     if (placeholderIfHeavy) {
