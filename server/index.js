@@ -5828,10 +5828,13 @@ function healLatexFormulas(text) {
     }
   }
 
-  return result;
-}
+  // 🚨 [최종 정리] 3개 이상 중복 생성되거나 잘못 매칭된 달러 기호의 대칭 정상화
+  result = result.replace(/\$\$\$(\$?)/g, (match, p1) => '$$' + p1);
+  result = result.replace(/\$\$([^\$]+?)\$(?!\$)/g, (match, p1) => '$' + p1 + '$');
+  result = result.replace(/(?<!\$)\$([^\$]+?)\$\$/g, (match, p1) => '$' + p1 + '$');
 
-function healQuizQuestionObject(q) {
+  return result;
+}function healQuizQuestionObject(q) {
   if (!q) return q;
   const healed = { ...q };
   if (healed.question) healed.question = healLatexFormulas(healed.question);
