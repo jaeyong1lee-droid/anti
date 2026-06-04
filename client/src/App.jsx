@@ -777,9 +777,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
     tempText = tempText.replace(/\n/g, '<br/>');
   }
 
-  // Restore math blocks
+  // Restore math blocks — MUST use function replacer to prevent $ from being treated as special pattern ($1, $&, etc.)
   mathBlocks.forEach(block => {
-    tempText = tempText.replace(block.placeholder, block.content);
+    tempText = tempText.replace(block.placeholder, () => block.content);
   });
 
   return tempText;
