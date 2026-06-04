@@ -401,7 +401,8 @@ const handleOpenHtmlAnswerPopup = (title, text) => {
 function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  // Use [^\$\n] to prevent inline math from matching across newlines
+  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]+?\$)/gs;
   let match;
   while ((match = regex.exec(text)) !== null) {
     const before = text.substring(lastIndex, match.index);
@@ -459,16 +460,13 @@ function healLatexFormulas(text) {
   
   text = text.replace(/\$([가-힣]{1,10})\$/g, '$1');
 
+  // Strip outer dollars containing Korean text to prevent mismatched groups
   text = text.replace(/\$\$([^$]+?)\$\$/g, (match, content) => {
-    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
-      return content;
-    }
+    if (/[\uAC00-\uD7A3]/.test(content)) return content;
     return match;
   });
   text = text.replace(/\$([^$]+?)\$/g, (match, content) => {
-    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
-      return content;
-    }
+    if (/[\uAC00-\uD7A3]/.test(content)) return content;
     return match;
   });
   
@@ -528,38 +526,46 @@ function healLatexFormulas(text) {
     }).join('');
   }
 
+  // STEP 1: Wrap larger formulas (equations containing =, <, >)
+  const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9'\{\}\[\]\(\)\+\-\*\/\.\\\\/ \t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
   let tokens = tokenizeForHealing(healed);
-  tokens.forEach(token => {
-    if (token.type === 'text') {
-      let t = token.content;
-      const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9'\{\}\[\]\(\)\+\-\*\/\.\\\\/ \t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
-      t = t.replace(formulaPattern, (match, g1) => {
-        if (g1) {
-          const hasBackslash = g1.includes('\\');
-          const hasGreek = symbols.some(sym => g1.includes(sym));
-          const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
-          if (hasBackslash || hasGreek || hasMathContext) {
-            const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
-            return isComplex ? `$$${g1.trim()}$$` : `$${g1.trim()}$`;
-          }
+  tokens.forEach(tok => {
+    if (tok.type === 'text') {
+      tok.content = tok.content.replace(formulaPattern, (match, g1) => {
+        const hasBackslash = g1.includes('\\');
+        const hasGreek = symbols.some(sym => g1.includes(sym));
+        const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
+        if (hasBackslash || hasGreek || hasMathContext) {
+          const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
+          return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
         }
         return match;
       });
-
-      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
-      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
-      t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
-
-      token.content = t;
+      tok.content = tok.content.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+      tok.content = tok.content.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
+      tok.content = tok.content.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
     }
   });
+  healed = tokens.map(t => t.content).join('');
 
-  let reassembledAfterStep1 = tokens.map(t => t.content).join('');
-  tokens = tokenizeForHealing(reassembledAfterStep1);
+  // STEP 2: Re-tokenize and wrap backslash math expressions (even without =, <, >)
+  const mathExprPattern = /((?:\b[a-zA-Z0-9_\-\+\*\/\(\)\[\] \t=<>]*)?\\[a-zA-Z_]+(?:[a-zA-Z0-9_\-\+\*\/\(\)\[\ ']|[ \t=<>\\\\\^]|\{[^}]*\})*)/g;
+  tokens = tokenizeForHealing(healed);
+  tokens.forEach(tok => {
+    if (tok.type === 'text') {
+      tok.content = tok.content.replace(mathExprPattern, (match, g1) => {
+        const isComplex = g1.includes('\\frac') || g1.includes('\\partial') || g1.length > 40;
+        return isComplex ? '$$' + g1.trim() + '$$' : '$' + g1.trim() + '$';
+      });
+    }
+  });
+  healed = tokens.map(t => t.content).join('');
 
-  tokens.forEach(token => {
-    if (token.type === 'text') {
-      let t = token.content;
+  // STEP 3: Re-tokenize and wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
+  tokens = tokenizeForHealing(healed);
+  tokens.forEach(tok => {
+    if (tok.type === 'text') {
+      let t = tok.content;
       t = t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
         if (p1.includes('\\left') || p1.includes('\\right')) {
           return match;
@@ -569,16 +575,16 @@ function healLatexFormulas(text) {
         }
         return '($' + p1.trim() + '$)';
       });
-      token.content = t;
+      tok.content = t;
     }
   });
+  healed = tokens.map(t => t.content).join('');
 
-  let reassembled = tokens.map(t => t.content).join('');
-  tokens = tokenizeForHealing(reassembled);
-
-  tokens.forEach(token => {
-    if (token.type === 'text') {
-      let t = token.content;
+  // STEP 4: Re-tokenize and wrap smaller Greek variables and subscripts
+  tokens = tokenizeForHealing(healed);
+  tokens.forEach(tok => {
+    if (tok.type === 'text') {
+      let t = tok.content;
 
       const mathWords = [
         'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
@@ -599,16 +605,16 @@ function healLatexFormulas(text) {
       const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
       t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
 
-      token.content = t;
+      tok.content = t;
     }
   });
+  healed = tokens.map(t => t.content).join('');
 
-  reassembled = tokens.map(t => t.content).join('');
-  tokens = tokenizeForHealing(reassembled);
-
-  tokens.forEach(token => {
-    if (token.type !== 'text') {
-      let inside = token.content;
+  // STEP 5: Re-tokenize and perform inner math block formatting
+  tokens = tokenizeForHealing(healed);
+  tokens.forEach(tok => {
+    if (tok.type !== 'text') {
+      let inside = tok.content;
       const isBlock = inside.startsWith('$$');
       let math = isBlock 
         ? inside.substring(2, inside.length - 2).trim()
@@ -633,14 +639,13 @@ function healLatexFormulas(text) {
         return match;
       });
 
-      token.content = isBlock ? `$$${math}$$` : `$${math}$`;
+      tok.content = isBlock ? `$$${math}$$` : `$${math}$`;
     }
   });
+  healed = tokens.map(t => t.content).join('');
 
-  reassembled = tokens.map(t => t.content).join('');
-
-  const finalTokens = tokenizeForHealing(reassembled);
-
+  // STEP 6: Final spacing and redundancy formatting
+  const finalTokens = tokenizeForHealing(healed);
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
       let inside = token.content.substring(1, token.content.length - 1).trim();
@@ -652,11 +657,11 @@ function healLatexFormulas(text) {
     }
   });
 
-  reassembled = finalTokens.map(t => t.content).join('');
-  reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
-  reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+  healed = finalTokens.map(t => t.content).join('');
+  healed = healed.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
+  healed = healed.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
 
-  const processedTokens = tokenizeForHealing(reassembled);
+  const processedTokens = tokenizeForHealing(healed);
   let result = '';
   for (let i = 0; i < processedTokens.length; i++) {
     const current = processedTokens[i];
