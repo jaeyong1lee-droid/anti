@@ -6117,20 +6117,21 @@ export default function App() {
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ";
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ";
                               if (!answered) {
-                                cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
+                                cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                               } else if (opt === q.answer) {
-                                cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold";
+                                cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold cursor-default select-text";
                               } else if (opt === selectedAnswers[idx] && opt !== q.answer) {
-                                cls += "bg-rose-950/70 border-rose-500 text-rose-200";
+                                cls += "bg-rose-950/70 border-rose-500 text-rose-200 cursor-default select-text";
                               } else {
-                                cls += "bg-slate-800/30 border-slate-800/50 text-slate-300";
+                                cls += "bg-slate-800/30 border-slate-800/50 text-slate-300 cursor-default select-text";
                               }
                               return (
-                                <button
+                                <div
                                   key={oIdx}
                                   onClick={() => {
+                                    if (answered) return;
                                     setSelectedAnswers(prev => {
                                       const updated = { ...prev, [idx]: opt };
                                       const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
@@ -6147,11 +6148,11 @@ export default function App() {
                                   }}
                                   className={cls}
                                 >
-                                  <span className="flex gap-2 items-start">
-                                    <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
-                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
+                                  <span className="flex gap-2 items-start select-text">
+                                    <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
+                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" />
                                   </span>
-                                </button>
+                                </div>
                               );
                             })}
                             {answered && (
@@ -7034,20 +7035,21 @@ export default function App() {
                       {isMC && (
                         <div className="space-y-2">
                           {q.options?.map((opt, oIdx) => {
-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ";
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ";
                             if (!answered) {
-                              cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600";
+                              cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                             } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
-                              cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold";
+                              cls += "bg-emerald-950/70 border-emerald-500 text-emerald-200 font-extrabold cursor-default select-text";
                             } else if (normalizeAns(opt) === normalizeAns(examAnswers[idx]) && normalizeAns(opt) !== normalizeAns(q.answer)) {
-                              cls += "bg-rose-950/70 border-rose-500 text-rose-200";
+                              cls += "bg-rose-950/70 border-rose-500 text-rose-200 cursor-default select-text";
                             } else {
-                              cls += "bg-slate-800/30 border-slate-800/50 text-slate-300";
+                              cls += "bg-slate-800/30 border-slate-800/50 text-slate-300 cursor-default select-text";
                             }
                             return (
-                              <button
+                              <div
                                 key={oIdx}
                                 onClick={() => {
+                                  if (answered) return; // 한번 선택하면 끝, 다시 선택 불가
                                   setExamAnswers(prev => {
                                     const updated = { ...prev, [idx]: opt };
                                     const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
@@ -7064,11 +7066,11 @@ export default function App() {
                                 }}
                                 className={cls}
                               >
-                                <span className="flex gap-2 items-start">
-                                  <span className="font-black text-[10px] mt-0.5 flex-shrink-0">{['①','②','③','④'][oIdx]}</span>
-                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline" />
+                                <span className="flex gap-2 items-start select-text">
+                                  <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
+                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" />
                                 </span>
-                              </button>
+                              </div>
                             );
                           })}
                           {answered && (
