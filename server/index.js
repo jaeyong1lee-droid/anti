@@ -108,7 +108,7 @@ const LOCAL_FORMULA_DICTIONARY = [
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
     title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
     concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
-    structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적변화계수 (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`
+    structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`
   },
   {
     keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
@@ -4950,7 +4950,7 @@ function extractVariablesFromMath(mathContent) {
   return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
 }
 
-function filterStructureLines(mathContent, structure) {
+function filterStructureLines(mathContent, structure, extraAllowed = []) {
   if (!structure) return '';
   
   const layoutCommands = [
@@ -4962,6 +4962,20 @@ function filterStructureLines(mathContent, structure) {
   let cleanedFormula = mathContent;
   for (const cmd of layoutCommands) {
     cleanedFormula = cleanedFormula.split(cmd).join(' ');
+  }
+
+  // C_v 압밀계수 감지 시 k, m_v, gamma_w 도 허용 처리
+  const lowerContent = mathContent.toLowerCase();
+  if (lowerContent.includes('c_v') || lowerContent.includes('c_{v}')) {
+    cleanedFormula += ' k m_v gamma_w';
+  }
+  // K_a, K_p 토압계수 및 p_a 주동토압 감지 시 c, gamma, z, q 도 허용 처리
+  if (lowerContent.includes('k_a') || lowerContent.includes('k_{a}') || lowerContent.includes('k_p') || lowerContent.includes('k_{p}') || lowerContent.includes('p_a')) {
+    cleanedFormula += ' c gamma z q';
+  }
+  // k_h 수평지반반력계수 감지 시 E_0, N 도 허용 처리
+  if (lowerContent.includes('k_h') || lowerContent.includes('k_{h}')) {
+    cleanedFormula += ' e_0 n e';
   }
 
   const tokenRegex = /[a-zA-Z0-9_]+/g;
@@ -4976,6 +4990,11 @@ function filterStructureLines(mathContent, structure) {
   };
 
   const formulaTokenSet = new Set(formulaTokens.map(t => normalize(t)).filter(Boolean));
+  if (extraAllowed && Array.isArray(extraAllowed)) {
+    extraAllowed.forEach(word => {
+      formulaTokenSet.add(normalize(word));
+    });
+  }
 
   const lines = structure.split('\n');
   const filteredLines = lines.filter(line => {
@@ -5089,8 +5108,16 @@ JSON 형식:
           structure = extractVariablesFromMath(mathContent);
         }
 
-        // Apply strict filter
-        structure = filterStructureLines(mathContent, structure);
+        // Apply strict filter with extra allowed variables from the local match if available
+        const extraAllowed = [];
+        if (bestLocalMatch) {
+          extraAllowed.push(...bestLocalMatch.keywords);
+          const symbolTokens = bestLocalMatch.structure.match(/\$([^\$]+?)\$/g) || [];
+          symbolTokens.forEach(sym => {
+            extraAllowed.push(sym.replace(/\$/g, ''));
+          });
+        }
+        structure = filterStructureLines(mathContent, structure, extraAllowed);
 
         res.json({
           title: result.title ? healLatexFormulas(result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.title.trim()) : '실시간 추출 공식'),
@@ -5113,7 +5140,15 @@ JSON 형식:
         }
 
         let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
-        fallbackStructure = filterStructureLines(mathContent, fallbackStructure);
+        const extraAllowed2 = [];
+        if (bestLocalMatch) {
+          extraAllowed2.push(...bestLocalMatch.keywords);
+          const symbolTokens = bestLocalMatch.structure.match(/\$([^\$]+?)\$/g) || [];
+          symbolTokens.forEach(sym => {
+            extraAllowed2.push(sym.replace(/\$/g, ''));
+          });
+        }
+        fallbackStructure = filterStructureLines(mathContent, fallbackStructure, extraAllowed2);
 
         res.json({
           title: healLatexFormulas(fallbackTitle),
@@ -5126,7 +5161,15 @@ JSON 형식:
       let fallbackTitle = bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식';
       let fallbackConcept = bestLocalMatch ? bestLocalMatch.concept : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.';
       let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
-      fallbackStructure = filterStructureLines(mathContent, fallbackStructure);
+      const extraAllowed3 = [];
+      if (bestLocalMatch) {
+        extraAllowed3.push(...bestLocalMatch.keywords);
+        const symbolTokens = bestLocalMatch.structure.match(/\$([^\$]+?)\$/g) || [];
+        symbolTokens.forEach(sym => {
+          extraAllowed3.push(sym.replace(/\$/g, ''));
+        });
+      }
+      fallbackStructure = filterStructureLines(mathContent, fallbackStructure, extraAllowed3);
       res.json({
         title: healLatexFormulas(fallbackTitle),
         concept: healLatexFormulas(fallbackConcept),
