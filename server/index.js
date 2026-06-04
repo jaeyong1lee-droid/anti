@@ -5441,6 +5441,19 @@ app.get('/api/session/last-active-review', async (req, res) => {
 
 // Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
 function healLatexFormulas(text) {
+  if (!text) return text;
+
+  // ── [치명적 오류 해결] K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
+  // 문장 중에 깨져서 들어오거나 뒤섞인 $현장의$K_0$ 혹은 $현장의$K_0$응력$ 구조를 기술사 표준 인라인 LaTeX 서식으로 정상화합니다.
+  text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
+  text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
+  text = text.replace(/K_0응력/g, '$K_0$ 응력');
+  
+  // 날것의 K0나 k0가 공백 없이 텍스트에 붙어 수식 프로세서를 교란하는 것을 방지
+  text = text.replace(/([가-힣])([Kk]0|[Kk]_0)/g, '$1 $2');
+  text = text.replace(/([Kk]0|[Kk]_0)([가-힣])/g, '$1 $2');
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
