@@ -5921,7 +5921,16 @@ app.get('/api/session/formula', async (req, res) => {
       ['formula_questions']
     );
     if (rows.length > 0 && rows[0].value) {
-      res.json({ data: JSON.parse(rows[0].value) });
+      const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.formulaQuestions)) {
+        parsed.formulaQuestions = parsed.formulaQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
+        }));
+      }
+      res.json({ data: parsed });
     } else {
       res.json({ data: null });
     }
@@ -5960,7 +5969,16 @@ app.get('/api/session/answersheet', async (req, res) => {
       ['answersheet_questions']
     );
     if (rows.length > 0 && rows[0].value) {
-      res.json({ data: JSON.parse(rows[0].value) });
+      const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.answersheetQuestions)) {
+        parsed.answersheetQuestions = parsed.answersheetQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
+        }));
+      }
+      res.json({ data: parsed });
     } else {
       res.json({ data: null });
     }
@@ -6212,7 +6230,17 @@ app.get('/api/session/theory', async (req, res) => {
       ['theory_questions']
     );
     if (rows.length > 0 && rows[0].value) {
-      res.json({ data: JSON.parse(rows[0].value) });
+      const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.theoryQuestions)) {
+        parsed.theoryQuestions = parsed.theoryQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula,
+          assumptions: q.assumptions ? healLatexFormulas(q.assumptions) : q.assumptions
+        }));
+      }
+      res.json({ data: parsed });
     } else {
       res.json({ data: null });
     }

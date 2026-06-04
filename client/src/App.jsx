@@ -398,6 +398,308 @@ const handleOpenHtmlAnswerPopup = (title, text) => {
   }
 };
 
+function tokenizeForHealing(text) {
+  const tokens = [];
+  let lastIndex = 0;
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const before = text.substring(lastIndex, match.index);
+    if (before) {
+      tokens.push({ type: 'text', content: before });
+    }
+    const mathContent = match[0];
+    if (mathContent.startsWith('$$')) {
+      tokens.push({ type: 'block-math', content: mathContent });
+    } else {
+      tokens.push({ type: 'inline-math', content: mathContent });
+    }
+    lastIndex = regex.lastIndex;
+  }
+  const after = text.substring(lastIndex);
+  if (after) {
+    tokens.push({ type: 'text', content: after });
+  }
+  return tokens;
+}
+
+function healLatexFormulas(text) {
+  if (!text) return text;
+
+  // ── [치명적 오류 해결] K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
+  text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
+  text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
+  text = text.replace(/K_0응력/g, '$K_0$ 응력');
+  text = text.replace(/([가-힣])([Kk]0|[Kk]_0)/g, '$1 $2');
+  text = text.replace(/([Kk]0|[Kk]_0)([가-힣])/g, '$1 $2');
+
+  const safeLatexCommands = [
+    'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
+    'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
+    'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
+    'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
+    'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
+    'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
+    'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+  ];
+  if (text) {
+    text = text.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
+      if (safeLatexCommands.includes(p1)) return '\\' + p1;
+      return match;
+    });
+
+    text = text.replace(/\\text\{\s*([가-힣]+)\s*\}/g, ' $1 ');
+    text = text.replace(/\$([0-9.,]+)([가-힣]+)\$/g, '$1$2');
+    text = text.replace(/\$([0-9.,]+)\s+([가-힣]+)\$/g, '$1 $2');
+    text = text.replace(/([가-힣:])(\\[a-zA-Z]+)/g, '$1 $2');
+    text = text.replace(/([a-zA-Z0-9_])\$([\}]+)/g, '$1$2$');
+    text = text.replace(/\$([\}]+)/g, '$1$');
+  }
+  if (!text) return text;
+  
+  text = text.replace(/\$([가-힣]{1,10})\$/g, '$1');
+
+  text = text.replace(/\$\$([^$]+?)\$\$/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
+      return content;
+    }
+    return match;
+  });
+  text = text.replace(/\$([^$]+?)\$/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
+      return content;
+    }
+    return match;
+  });
+  
+  let trimmed = text.trim();
+  if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
+    trimmed = trimmed.substring(2, trimmed.length - 2).trim();
+  } else if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
+    trimmed = trimmed.substring(1, trimmed.length - 1).trim();
+  }
+
+  const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
+                            /[_^{<>=]/.test(trimmed);
+  const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
+
+  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
+    const cleanedMath = trimmed.replace(/\$/g, '');
+    return `$${cleanedMath}$`;
+  }
+  
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
+  let healed = text;
+  if (hasKorean && ((text.trim().startsWith('$$') && text.trim().endsWith('$$')) || (text.trim().startsWith('$') && text.trim().endsWith('$')))) {
+    healed = trimmed;
+  }
+
+  const lines = healed.split('\n');
+  const processedLines = lines.map(line => {
+    const dollarCount = (line.match(/\$/g) || []).length;
+    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
+    if (dollarCount === 1) {
+      if (isFormulaLine) {
+        return line.replace(/\$/g, '');
+      }
+    }
+    return line;
+  });
+  healed = processedLines.join('\n');
+
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+    const hasBackslash = p1.includes('\\') || p2.includes('\\');
+    const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
+    if (hasBackslash || hasGreek) {
+      return start + '$' + p1 + p2 + '$';
+    }
+    return match;
+  });
+
+  healed = healed.replace(/\\frac\s*\{\s*\$([^\$]+?)\}/g, '\\frac{$1}');
+  healed = healed.replace(/\{\s*\$([^\$]+?)\s*\}/g, '{$1}');
+  healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
+
+  {
+    const rule5Tokens = tokenizeForHealing(healed);
+    healed = rule5Tokens.map(tok => {
+      if (tok.type !== 'text') return tok.content;
+      return tok.content.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    }).join('');
+  }
+
+  let tokens = tokenizeForHealing(healed);
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+      const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9'\{\}\[\]\(\)\+\-\*\/\.\\\\/ \t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+      t = t.replace(formulaPattern, (match, g1) => {
+        if (g1) {
+          const hasBackslash = g1.includes('\\');
+          const hasGreek = symbols.some(sym => g1.includes(sym));
+          const hasMathContext = /[<>=]/.test(g1) && (hasBackslash || hasGreek || /\b[cuq]\b/.test(g1));
+          if (hasBackslash || hasGreek || hasMathContext) {
+            const isComplex = g1.includes('\\frac') || g1.includes('\\log') || g1.length > 40;
+            return isComplex ? `$$${g1.trim()}$$` : `$${g1.trim()}$`;
+          }
+        }
+        return match;
+      });
+
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
+      t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
+    }
+  });
+
+  let reassembledAfterStep1 = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembledAfterStep1);
+
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+      t = t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+        if (p1.includes('\\left') || p1.includes('\\right')) {
+          return match;
+        }
+        if (/[\uAC00-\uD7A3]/.test(p1)) {
+          return match;
+        }
+        return '($' + p1.trim() + '$)';
+      });
+      token.content = t;
+    }
+  });
+
+  let reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
+
+  tokens.forEach(token => {
+    if (token.type === 'text') {
+      let t = token.content;
+
+      const mathWords = [
+        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
+        'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
+      ];
+      mathWords.forEach(word => {
+        const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
+        t = t.replace(regex, `\\${word}`);
+      });
+
+      const wrapAllowedWords = [
+        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
+      ];
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
+
+      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
+
+      token.content = t;
+    }
+  });
+
+  reassembled = tokens.map(t => t.content).join('');
+  tokens = tokenizeForHealing(reassembled);
+
+  tokens.forEach(token => {
+    if (token.type !== 'text') {
+      let inside = token.content;
+      const isBlock = inside.startsWith('$$');
+      let math = isBlock 
+        ? inside.substring(2, inside.length - 2).trim()
+        : inside.substring(1, inside.length - 1).trim();
+
+      math = math.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
+      math = math.replace(/\by\s*D_f\b/g, '\\gamma D_f');
+      math = math.replace(/\byD_f\b/g, '\\gamma D_f');
+      math = math.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
+
+      const safeLatexCommands = [
+        'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
+        'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
+        'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
+        'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
+        'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
+        'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
+        'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+      ];
+      math = math.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
+        if (safeLatexCommands.includes(p1)) return '\\' + p1;
+        return match;
+      });
+
+      token.content = isBlock ? `$$${math}$$` : `$${math}$`;
+    }
+  });
+
+  reassembled = tokens.map(t => t.content).join('');
+
+  const finalTokens = tokenizeForHealing(reassembled);
+
+  finalTokens.forEach(token => {
+    if (token.type === 'inline-math') {
+      let inside = token.content.substring(1, token.content.length - 1).trim();
+      inside = inside.replace(/\r?\n/g, ' ').trim();
+      token.content = `$${inside}$`;
+    } else if (token.type === 'block-math') {
+      const inside = token.content.substring(2, token.content.length - 2).trim();
+      token.content = `$$${inside}$$`;
+    }
+  });
+
+  reassembled = finalTokens.map(t => t.content).join('');
+  reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
+  reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
+
+  const processedTokens = tokenizeForHealing(reassembled);
+  let result = '';
+  for (let i = 0; i < processedTokens.length; i++) {
+    const current = processedTokens[i];
+    if (i === 0) {
+      result += current.content;
+      continue;
+    }
+
+    const prev = processedTokens[i - 1];
+    let needSpace = false;
+
+    if (prev.type === 'text' && (current.type === 'inline-math' || current.type === 'block-math')) {
+      const lastChar = prev.content[prev.content.length - 1];
+      if (lastChar && !/\s/.test(lastChar)) {
+        if (!/[\(\[\{\'\"]/.test(lastChar)) {
+          needSpace = true;
+        }
+      }
+    } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && current.type === 'text') {
+      const firstChar = current.content[0];
+      if (firstChar && !/\s/.test(firstChar)) {
+        if (!/[\)\]\}\'\"]/.test(firstChar)) {
+          needSpace = true;
+        }
+      }
+    } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && (current.type === 'inline-math' || current.type === 'block-math')) {
+      needSpace = true;
+    }
+
+    if (needSpace) {
+      result += ' ' + current.content;
+    } else {
+      result += current.content;
+    }
+  }
+
+  result = result.replace(/\$\$\$(\$?)/g, (match, p1) => '$$' + p1);
+  result = result.replace(/\$\$([^\$]+?)\$(?!\$)/g, (match, p1) => '$' + p1 + '$');
+  result = result.replace(/(?<!\$)\$([^\$]+?)\$\$/g, (match, p1) => '$' + p1 + '$');
+
+  return result;
+}
+
 // Dynamic KaTeX loader & Math text renderer
 function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "" }) {
   if (!text) return null;
@@ -458,38 +760,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
 
   // 0.5) 필수공식/이론유도 내 지반 단위중량 기호 y(\y) 그리스 감마(\gamma) 자가치유 규칙 탑재
   const healFormulas = (val) => {
-    if (!val) return val;
-    let healed = val;
-
-    // 1. 중괄호 { } 내부에 잘못 들어간 파편화된 수식 기호 $ 제거
-    for (let i = 0; i < 3; i++) {
-      healed = healed.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
-    }
-
-    // 2. 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거 (최대 10글자 제한, 공백/기호 비허용으로 다중 공식 침범 차단)
-    healed = healed.replace(/\$([가-힣]{1,10})\$/g, '$1');
-
-    // 3. AI 응답 시 역슬래시가 4개 또는 2개로 과도하게 이스케이프된 명령어 복구
-    const safeLatexCommands = [
-      'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
-      'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
-      'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
-      'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
-      'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'infty'
-    ];
-    
-    healed = healed.replace(/\\\\+([a-zA-Z]+)/g, (match, p1) => {
-      if (safeLatexCommands.includes(p1)) return '\\' + p1;
-      return match;
-    });
-
-    // 4. \text{한글} 형태로 수식 안에 억지로 갇힌 한글 구조 해제
-    healed = healed.replace(/\\text\{\s*([가-힣\s0-9배차]+)\s*\}/g, ' $1 ');
-
-    // 5. 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
-    healed = healed.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
-
-    return healed;
+    return healLatexFormulas(val);
   };
 
   const isHeavy = isHeavyHtml(text);
@@ -3774,7 +4045,6 @@ export default function App() {
     latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
     localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
-    setFormulaRevealed({});
     setLoadingFormula(false);
     return cleaned;
   };
@@ -3838,7 +4108,6 @@ export default function App() {
     latestTheoryQuestionsRef.current = loadedData;
     setTheoryQuestions(loadedData);
     localStorage.setItem('anti_theory_questions', JSON.stringify(loadedData));
-    setTheoryRevealed({});
     setLoadingTheory(false);
     return loadedData;
   };
@@ -4017,7 +4286,6 @@ export default function App() {
     latestAnswersheetQuestionsRef.current = loadedData;
     setAnswersheetQuestions(loadedData);
     localStorage.setItem('anti_answersheet_questions', JSON.stringify(loadedData));
-    setAnswersheetRevealed({});
     setLoadingAnswersheet(false);
     return loadedData;
   };
