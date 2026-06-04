@@ -5544,11 +5544,26 @@ function healLatexFormulas(text) {
   // 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
   text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
 
+  // $수식변수 한글텍스트$ 패턴 분리: AI가 수식 변수와 한글 문장을 같은 $ 안에 묶는 경우
+  // e.g. "$dV_w 는 흙 요소의 전체 체적 감소량 dV 와 완벽히 일치해야 합니다.$" 
+  //   → "$dV_w$ 는 흙 요소의 전체 체적 감소량 dV 와 완벽히 일치해야 합니다."
+  // (분리된 두 번째 $ 는 그 다음 수식 "$dV_w = dV$" 의 여는 기호로 재활용됨)
+  text = text.replace(/\$([a-zA-Z_\\][a-zA-Z0-9_{}\\']*(?:_\{?[a-zA-Z0-9_]+\}?)?)\s+([가-힣][^$]*?)\$/g,
+    (match, mathPart, koreanPart) => `$${mathPart.trim()}$ ${koreanPart}`
+  );
+
+  // $한글텍스트 수식변수$ 패턴 분리 (반대 순서): 
+  // e.g. "$흙의 전체 체적 V$" → "흙의 전체 체적 $V$"
+  text = text.replace(/\$([가-힣][^$]*?)\s+([a-zA-Z_\\][a-zA-Z0-9_{}\\']*(?:_\{?[a-zA-Z0-9_]+\}?)?)\$/g,
+    (match, koreanPart, mathPart) => `${koreanPart} $${mathPart.trim()}$`
+  );
+
   // \text{한글} 형태로 수식 안에 억지로 갇힌 한글 구조 해제
   text = text.replace(/\\text\{\s*([가-힣\s0-9배차]+)\s*\}/g, ' $1 ');
 
   // 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
   text = text.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
+
 
   // 💡 [단일 공식/수식형 전체 감싸기 최적화]
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
