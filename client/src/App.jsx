@@ -460,6 +460,51 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   const healFormulas = (val) => {
     if (!val) return val;
     let healed = val;
+
+    // [클라이언트 사이드 예외 방어]: 단순 수치/단위 + 한글/기호가 수식 기호($)로 잘못 감싸진 케이스 자가치유
+    // 예: $4배$, $10m$, $20%$, $0.5배$, $4 배$ 등
+    healed = healed.replace(/\$([0-9\.]+)\s*(배|m|%|초|개|원|배로|배가|배의|배보다|배만큼|배가량)\$/g, '$1 $2');
+    
+    // [클라이언트 사이드 예외 방어]: \text{한글} 혹은 \text{한글+수치} 패턴 자가치유
+    // KaTeX 파싱 에러를 근본적으로 방지하기 위해 한글이 포함된 \text{...}는 \text를 완전히 지우고 내용물만 노출
+    healed = healed.replace(/\\text\s*\{\s*([가-힣a-zA-Z0-9\s%\/\.\-\+]+)\s*\}/g, (match, p1) => {
+      if (/[\uAC00-\uD7A3]/.test(p1)) {
+        return p1;
+      }
+      return match;
+    });
+
+    // [클라이언트 사이드 예외 방어]: 수식 내부에 남은 한글을 찾아 수식 바깥으로 꺼내는 추가 보정
+    // 예: $B 배$ -> $B$ 배, $A 와 B$ -> $A$ 와 $B$, $30% 증가$ -> 30% 증가 등
+    healed = healed.replace(/\$([^\$]+?)\$/g, (match, math) => {
+      const trimmedMath = math.trim();
+      // 수식 내부 전체가 한글이거나 숫자+한글(예: $4배$)인 경우 통째로 $ 제거
+      if (/^[0-9\.\s]*[가-힣\s%배m]+$/.test(trimmedMath)) {
+        return trimmedMath;
+      }
+      
+      let cleaned = math;
+      // 끝부분의 한글 분리 (예: "B 배" -> "B$ 배")
+      cleaned = cleaned.replace(/([\s\S]*?)\s*([가-힣]+)\s*$/, (m, left, right) => {
+        if (left.trim()) {
+          return left.trim() + '$ ' + right;
+        }
+        return right;
+      });
+      
+      // 앞부분의 한글 분리 (예: "배 B" -> "배 $B")
+      cleaned = cleaned.replace(/^\s*([가-힣]+)\s*([\s\S]*)/, (m, left, right) => {
+        if (right.trim()) {
+          return left + ' $' + right.trim();
+        }
+        return left;
+      });
+      
+      if (cleaned !== math) {
+        return `$${cleaned}$`.replace(/\$\s*\$/g, '');
+      }
+      return match;
+    });
     
     // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 및 처리 전 최우선 수행)
     const safeLatexCommands = [
