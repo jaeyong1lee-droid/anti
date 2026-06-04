@@ -744,9 +744,9 @@ function convertHtmlTablesToMarkdown(html) {
 // Helper: Extract clean plain text from HTML with table preservation
 function htmlToPlainText(html) {
   if (!html) return '';
-  // 1. Remove script and style tags and their contents
-  let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // 1. Remove script and style tags and their contents safely (avoiding catastrophic backtracking)
+  let text = html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<style\b[\s\S]*?<\/style>/gi, '');
   
   // 2. Convert tables to Markdown before stripping block tags
   text = convertHtmlTablesToMarkdown(text);
@@ -1901,6 +1901,56 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
   } catch (error) {
     console.error('Error registering topic and creating schedules:', error);
     res.status(500).json({ error: '서버 오류로 토픽 등록에 실패했습니다.' });
+  }
+});
+
+// 1-2. Replace Topic Source Material (PDF/HTML or Text Content)
+app.post('/api/topics/:id/replace-source', upload.single('pdf'), async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    let pdfName = req.body.fileNameUtf8 || (req.file ? req.file.originalname : null);
+    let pdfData = req.file ? req.file.buffer : null;
+
+    if (!req.body.fileNameUtf8 && req.file) {
+      const name = req.file.originalname;
+      if (/[가-힣]/.test(name)) {
+        pdfName = name;
+      } else {
+        try {
+          const decoded = Buffer.from(name, 'latin1').toString('utf-8');
+          pdfName = /[가-힣]/.test(decoded) ? decoded : name;
+        } catch (e) {
+          pdfName = name;
+        }
+      }
+    }
+
+    if (req.file) {
+      const fileOrigNameLower = req.file.originalname.toLowerCase();
+      const pdfNameLower = pdfName ? pdfName.toLowerCase() : '';
+      const isHtml = fileOrigNameLower.endsWith('.html') || 
+                     fileOrigNameLower.endsWith('.htm') || 
+                     req.file.mimetype === 'text/html' || 
+                     pdfNameLower.endsWith('.html') || 
+                     pdfNameLower.endsWith('.htm') ||
+                     isBufferHtml(req.file.buffer);
+      if (isHtml) {
+        pdfData = req.file.buffer;
+      }
+    }
+
+    // Update topic pdf_name and pdf_data
+    const updateSql = `
+      UPDATE topics 
+      SET pdf_name = ?, pdf_data = ?
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [pdfName, pdfData, topicId]);
+
+    res.json({ success: true, message: '소스 자료가 성공적으로 교체되었습니다.' });
+  } catch (error) {
+    console.error('Error replacing topic source:', error);
+    res.status(500).json({ error: '서버 오류로 소스 자료를 교체하지 못했습니다.' });
   }
 });
 
@@ -3433,6 +3483,8 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
   1. 수치적 조건 변경 및 공학적 실무 시나리오(예: 특정 지반 유형, 벽체 거동 조건 등 구체적인 실무 문제) 적용
   2. 질문의 방향성 전환 (예: 원인을 묻던 것을 대책이나 메커니즘을 묻는 방향으로, 또는 변수 $X$를 구하는 공식 대신 다른 연관 변수 $Y$의 거동 영향도를 분석하도록 변형)
   3. 객관식의 경우, 다른 핵심적인 오답 지문이나 다른 성격의 정답 문항으로 재구성하여 더 참신한 공학적 판단력을 요구하도록 변경
+- [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하거나 극히 유사한 패턴을 단순히 재출제하는 것을 지양하고, 다양한 학술적/실무적 관점을 고르게 평가할 수 있도록 출제하십시오.
+- 제공된 본문 소스 텍스트 자료에 구체적인 수치 한계치나 정량적 가이드라인이 명시되어 있는 경우, 해당 기준 값을 바탕으로 계산하거나 비교하는 문제를 우선적으로 출제해 주십시오.
 - [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
@@ -3655,6 +3707,8 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
   1. 수치적 조건 변경 및 공학적 실무 시나리오(예: 특정 지반 유형, 벽체 거동 조건 등 구체적인 실무 문제) 적용
   2. 질문의 방향성 전환 (예: 원인을 묻던 것을 대책이나 메커니즘을 묻는 방향으로, 또는 변수 $X$를 구하는 공식 대신 다른 연관 변수 $Y$의 거동 영향도를 분석하도록 변형)
   3. 객관식의 경우, 다른 핵심적인 오답 지문이나 다른 성격의 정답 문항으로 재구성하여 더 참신한 공학적 판단력을 요구하도록 변경
+- [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하거나 극히 유사한 패턴을 단순히 재출제하는 것을 지양하고, 다양한 학술적/실무적 관점을 고르게 평가할 수 있도록 출제하십시오.
+- 제공된 본문 소스 텍스트 자료에 구체적인 수치 한계치나 정량적 가이드라인이 명시되어 있는 경우, 해당 기준 값을 바탕으로 계산하거나 비교하는 문제를 우선적으로 출제해 주십시오.
 - [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
@@ -3853,6 +3907,7 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 반드시 위의 **[기초 소스 문제]**를 기반으로 하되, **[사용자 조정 요청]** 사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 **새로운 단 1개의 문제**를 재출제해 주십시오.
 - 사용자의 아이디어/피드백에 맞게 질문, 정답, 보기 목록, 공식, 핵심 개념 요약, 해설 등을 전면 조율하십시오.
 - 예를 들어 "난이도를 낮춰줘" 라면 개념을 더 기본적이고 직관적인 내용으로 바꾸고, "수치를 변경해줘" 라면 공식의 매개변수와 계산 값을 변경하십시오.
+- 사용자의 요구에 특별히 반하지 않는 한, 기출/예상 문제 패턴의 단순 반복을 지양하고 새롭고 참신한 학술적/실무적 관점을 고르게 평가하도록 구성하십시오. 또한 본문 소스 텍스트 자료 내에 존재하는 구체적인 수치 한계나 기준 파라미터가 있다면, 문제 출제 및 변경 시 이를 적극적이고 정량적으로 반영해 주십시오.
 - 출력 형식은 기존과 완전히 동일해야 합니다.
 
 ${typeRequirement}
@@ -4038,6 +4093,7 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 [출제 요구사항 - 중요]:
 반드시 위의 **[기초 소스 문제]**를 기반으로 하되, **[사용자 조정 요청]** 사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 **새로운 단 1개의 문제**를 재출제해 주십시오.
 - 사용자의 아이디어/피드백에 맞게 질문, 정답, 보기 목록, 공식, 핵심 개념 요약, 해설 등을 전면 조율하십시오.
+- 사용자의 요구에 특별히 반하지 않는 한, 기출/예상 문제 패턴의 단순 반복을 지양하고 새롭고 참신한 학술적/실무적 관점을 고르게 평가하도록 구성하십시오. 또한 본문 소스 텍스트 자료 내에 존재하는 구체적인 수치 한계나 기준 파라미터가 있다면, 문제 출제 및 변경 시 이를 적극적이고 정량적으로 반영해 주십시오.
 - 출력 형식은 기존과 완전히 동일해야 합니다.
 
 ${typeRequirement}
