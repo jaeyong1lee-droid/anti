@@ -6112,24 +6112,26 @@ export default function App() {
                   >
                     종료
                   </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                        setChatHistory([]);
-                        if (typeof setCurrentAttachedImage === 'function') {
-                          setCurrentAttachedImage(null);
+                  {isDesktop && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                          setChatHistory([]);
+                          if (typeof setCurrentAttachedImage === 'function') {
+                            setCurrentAttachedImage(null);
+                          }
+                          setTimeout(() => {
+                            forceSaveActiveSessions();
+                          }, 50);
+                          alert("튜터 데이터가 초기화되었습니다.");
                         }
-                        setTimeout(() => {
-                          forceSaveActiveSessions();
-                        }, 50);
-                        alert("튜터 데이터가 초기화되었습니다.");
-                      }
-                    }}
-                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0 shadow-lg shadow-rose-950/20"
-                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-                  >
-                    튜터클린
-                  </button>
+                      }}
+                      className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0 shadow-lg shadow-rose-950/20"
+                      title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                    >
+                      튜터클린
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -6581,9 +6583,28 @@ export default function App() {
               </div>
 
               {!isDesktop && (
-                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
-                  <Brain size={16} className="text-violet-500" />
-                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
+                <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide">
+                  <div className="flex items-center gap-2">
+                    <Brain size={16} className="text-violet-500" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                        setChatHistory([]);
+                        if (typeof setCurrentAttachedImage === 'function') {
+                          setCurrentAttachedImage(null);
+                        }
+                        setTimeout(() => {
+                          forceSaveActiveSessions();
+                        }, 50);
+                        alert("튜터 데이터가 초기화되었습니다.");
+                      }
+                    }}
+                    className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                  >
+                    <span>🧹 튜터클린</span>
+                  </button>
                 </div>
               )}
 
@@ -7074,24 +7095,26 @@ export default function App() {
               >
                 종료
               </button>
-              <button
-                onClick={() => {
-                  if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                    setChatHistory([]);
-                    if (typeof setCurrentAttachedImage === 'function') {
-                      setCurrentAttachedImage(null);
+              {isDesktop && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                      setChatHistory([]);
+                      if (typeof setCurrentAttachedImage === 'function') {
+                        setCurrentAttachedImage(null);
+                      }
+                      setTimeout(() => {
+                        forceSaveActiveSessions();
+                      }, 50);
+                      alert("튜터 데이터가 초기화되었습니다.");
                     }
-                    setTimeout(() => {
-                      forceSaveActiveSessions();
-                    }, 50);
-                    alert("튜터 데이터가 초기화되었습니다.");
-                  }
-                }}
-                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center shadow-lg shadow-rose-950/20"
-                title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-              >
-                튜터클린
-              </button>
+                  }}
+                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center shadow-lg shadow-rose-950/20"
+                  title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                >
+                  튜터클린
+                </button>
+              )}
             </div>
           </div>
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
@@ -7518,9 +7541,28 @@ export default function App() {
               </div>
 
               {!isDesktop && (
-                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
-                  <Brain size={16} className="text-amber-500" />
-                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
+                <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide">
+                  <div className="flex items-center gap-2">
+                    <Brain size={16} className="text-amber-500" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                        setChatHistory([]);
+                        if (typeof setCurrentAttachedImage === 'function') {
+                          setCurrentAttachedImage(null);
+                        }
+                        setTimeout(() => {
+                          forceSaveActiveSessions();
+                        }, 50);
+                        alert("튜터 데이터가 초기화되었습니다.");
+                      }
+                    }}
+                    className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                  >
+                    <span>🧹 튜터클린</span>
+                  </button>
                 </div>
               )}
               
