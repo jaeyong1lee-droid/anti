@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Brain, 
   UploadCloud, 
@@ -1180,6 +1180,50 @@ export default function App() {
 
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
+
+  // Sidebar resizing state & handlers for Desktop
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
+    return Math.max(300, Math.min(800, Math.round(window.innerWidth * 0.3)));
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResize = useCallback((e) => {
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      return;
+    }
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (e) => {
+      const newWidth = window.innerWidth - e.clientX - 25;
+      const minWidth = 250;
+      const maxWidth = window.innerWidth * 0.7;
+      setRightSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
   const [regeneratingExam, setRegeneratingExam] = useState({});
   // Question adjustment (AI 피드백) states
   const [adjustingInputKey, setAdjustingInputKey] = useState(null);
@@ -6386,7 +6430,11 @@ export default function App() {
           </div>
 
           {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
-          <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+          <div 
+            onMouseDown={startResize}
+            className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
+          >
+            <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
               className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -6412,6 +6460,7 @@ export default function App() {
 
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
+            style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
             className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
           >
               <div className="landscape-hide w-full flex-shrink-0">
@@ -7280,7 +7329,11 @@ export default function App() {
             </div>
 
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div 
+              onMouseDown={startResize}
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
+            >
+              <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-amber-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-amber-500/10 hover:border-amber-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -7306,6 +7359,7 @@ export default function App() {
 
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
+              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
               className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="landscape-hide w-full flex-shrink-0">
@@ -8138,7 +8192,11 @@ export default function App() {
             </div>
 
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div 
+              onMouseDown={startResize}
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
+            >
+              <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-rose-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-rose-500/10 hover:border-rose-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -8164,7 +8222,10 @@ export default function App() {
 
             {/* Right: Gemini Sidebar for Formula */}
             {(isDesktop || isMobileLandscape) && (
-              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
+              <div 
+                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              >
                 {!isDesktop && (
                   <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                     <Brain size={16} className="text-rose-500" />
@@ -8947,7 +9008,11 @@ export default function App() {
             </div>
 
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div 
+              onMouseDown={startResize}
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-indigo-500/10 transition-colors group"
+            >
+              <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-indigo-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
@@ -8973,7 +9038,10 @@ export default function App() {
 
             {/* Right: Gemini Sidebar for Theory */}
             {(isDesktop || isMobileLandscape) && (
-              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+              <div 
+                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col"
+              >
                 {!isDesktop && (
                   <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                     <Brain size={16} className="text-indigo-500" />
@@ -9799,7 +9867,11 @@ export default function App() {
             </div>
 
             {/* Middle Gutter (Takes exactly 50px width on Desktop) */}
-            <div className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20">
+            <div 
+              onMouseDown={startResize}
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-emerald-500/10 transition-colors group"
+            >
+              <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-emerald-500/50 transition-colors pointer-events-none" />
               <div 
                 className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-emerald-500/10 hover:border-emerald-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
                 title="답안 위/아래 이동"
@@ -9824,7 +9896,10 @@ export default function App() {
 
             {/* Right: AI Tutor */}
             {(isDesktop || isMobileLandscape) && (
-              <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
+              <div 
+                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col"
+              >
                 {!isDesktop && (
                   <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
                     <Brain size={16} className="text-emerald-500" />
