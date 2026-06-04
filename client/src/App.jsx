@@ -1199,6 +1199,35 @@ export default function App() {
     localStorage.setItem('anti_right_sidebar_width', rightSidebarWidth.toString());
   }, [rightSidebarWidth]);
 
+  // Load rightSidebarWidth from server database on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/api/options/right_sidebar_width`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value) {
+          const parsed = parseInt(data.value, 10);
+          if (!isNaN(parsed) && parsed >= 200 && parsed <= window.innerWidth * 0.9) {
+            setRightSidebarWidth(parsed);
+            localStorage.setItem('anti_right_sidebar_width', parsed.toString());
+          }
+        }
+      })
+      .catch(err => console.warn('Failed to load right_sidebar_width from database:', err));
+  }, []);
+
+  // Save sidebar width to server database when resizing stops
+  const prevIsResizing = useRef(false);
+  useEffect(() => {
+    if (prevIsResizing.current && !isResizing) {
+      fetch(`${API_BASE}/api/options/right_sidebar_width`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: rightSidebarWidth.toString() })
+      }).catch(err => console.warn('Failed to save right_sidebar_width to database:', err));
+    }
+    prevIsResizing.current = isResizing;
+  }, [isResizing, rightSidebarWidth]);
+
   const startResize = useCallback((e) => {
     if (e.target.closest('button')) return;
     e.preventDefault();

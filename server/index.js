@@ -5752,6 +5752,37 @@ app.post('/api/session/answersheet', async (req, res) => {
   }
 });
 
+// GET /api/options/:key → Get generic option by key (e.g. right_sidebar_width)
+app.get('/api/options/:key', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const key = `option_${req.params.key}`;
+    const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    res.json({ value: row ? row.value : null });
+  } catch (err) {
+    console.error(`GET /api/options/${req.params.key} error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/options/:key → Set generic option by key
+app.post('/api/options/:key', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const key = `option_${req.params.key}`;
+    const { value } = req.body;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [key, value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`POST /api/options/${req.params.key} error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
