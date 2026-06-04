@@ -1183,9 +1183,21 @@ export default function App() {
 
   // Sidebar resizing state & handlers for Desktop
   const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('anti_right_sidebar_width');
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 200 && parsed <= window.innerWidth * 0.9) {
+        return parsed;
+      }
+    }
     return Math.max(300, Math.min(800, Math.round(window.innerWidth * 0.3)));
   });
   const [isResizing, setIsResizing] = useState(false);
+
+  // Sync rightSidebarWidth to localStorage
+  useEffect(() => {
+    localStorage.setItem('anti_right_sidebar_width', rightSidebarWidth.toString());
+  }, [rightSidebarWidth]);
 
   const startResize = useCallback((e) => {
     if (e.target.closest('button')) return;
