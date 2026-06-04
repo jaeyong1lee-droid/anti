@@ -466,8 +466,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       healed = healed.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
     }
 
-    // 2. 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
-    healed = healed.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
+    // 2. 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거 (최대 10글자 제한, 공백/기호 비허용으로 다중 공식 침범 차단)
+    healed = healed.replace(/\$([가-힣]{1,10})\$/g, '$1');
 
     // 3. AI 응답 시 역슬래시가 4개 또는 2개로 과도하게 이스케이프된 명령어 복구
     const safeLatexCommands = [
