@@ -6418,10 +6418,12 @@ export default function App() {
                 {isDesktop && <ScientificCalculator />}
               </div>
 
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
-                <Brain size={16} className="text-violet-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
-              </div>
+              {!isDesktop && (
+                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
+                  <Brain size={16} className="text-violet-500" />
+                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
+                </div>
+              )}
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
@@ -6477,12 +6479,12 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg`}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
-                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                      rows={1}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -7310,10 +7312,12 @@ export default function App() {
                 {isDesktop && <ScientificCalculator />}
               </div>
 
-              <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
-                <Brain size={16} className="text-amber-500" />
-                <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
-              </div>
+              {!isDesktop && (
+                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide">
+                  <Brain size={16} className="text-amber-500" />
+                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 튜터 (Flash 2.0)</span>
+                </div>
+              )}
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
@@ -7369,12 +7373,12 @@ export default function App() {
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
-                      rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                      rows={1}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => {
@@ -8161,10 +8165,12 @@ export default function App() {
             {/* Right: Gemini Sidebar for Formula */}
             {(isDesktop || isMobileLandscape) && (
               <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col">
-                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                  <Brain size={16} className="text-rose-500" />
-                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
-                </div>
+                {!isDesktop && (
+                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                    <Brain size={16} className="text-rose-500" />
+                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
+                  </div>
+                )}
                 
                 <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                   {chatHistory.length === 0 ? (
@@ -8220,12 +8226,12 @@ export default function App() {
                 <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                   <form 
                     onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg`}
+                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
                   >
                     {/* 텍스트 입력창 */}
                     <div className="flex-grow">
                       <textarea
-                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        rows={1}
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={e => {
@@ -8968,10 +8974,12 @@ export default function App() {
             {/* Right: Gemini Sidebar for Theory */}
             {(isDesktop || isMobileLandscape) && (
               <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
-                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                  <Brain size={16} className="text-indigo-500" />
-                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
-                </div>
+                {!isDesktop && (
+                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                    <Brain size={16} className="text-indigo-500" />
+                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
+                  </div>
+                )}
                 
                 <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                   {chatHistory.length === 0 ? (
@@ -9027,11 +9035,11 @@ export default function App() {
                 <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                   <form 
                     onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg`}
+                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                   >
                     <div className="flex-grow">
                       <textarea
-                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        rows={1}
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={e => {
@@ -9817,10 +9825,12 @@ export default function App() {
             {/* Right: AI Tutor */}
             {(isDesktop || isMobileLandscape) && (
               <div className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:w-[35vw] md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col">
-                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                  <Brain size={16} className="text-emerald-500" />
-                  <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
-                </div>
+                {!isDesktop && (
+                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                    <Brain size={16} className="text-emerald-500" />
+                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
+                  </div>
+                )}
                 
                 <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                   {chatHistory.length === 0 ? (
@@ -9876,11 +9886,11 @@ export default function App() {
                 <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
                   <form 
                     onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className={`bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex ${(isDesktop && !isMobileLandscape) ? 'items-end' : 'items-center'} gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg`}
+                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg"
                   >
                     <div className="flex-grow">
                       <textarea
-                        rows={isMobileLandscape ? 1 : (isDesktop ? 3 : 1)}
+                        rows={1}
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={e => {
