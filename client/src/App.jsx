@@ -765,7 +765,7 @@ function convertMarkdownToHtml(mdText) {
 }
 
 // Dynamic KaTeX loader & Math text renderer
-function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "" }) {
+function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
   const pressTimer = useRef(null);
@@ -834,7 +834,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
     : healFormulas(text).replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
 
-  if (!isHeavy) {
+  if (!isHeavy && isMarkdown) {
     cleanedText = convertMarkdownToHtml(cleanedText);
   }
 
@@ -6903,6 +6903,7 @@ export default function App() {
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
                             onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            isMarkdown={true}
                           />
                         )}
                       </div>
@@ -7861,6 +7862,7 @@ export default function App() {
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
                             onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            isMarkdown={true}
                           />
                         )}
                       </div>
@@ -8721,6 +8723,7 @@ export default function App() {
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
                               onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              isMarkdown={true}
                             />
                           )}
                         </div>
@@ -9525,6 +9528,7 @@ export default function App() {
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
                               onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              isMarkdown={true}
                             />
                           )}
                         </div>
@@ -10383,6 +10387,7 @@ export default function App() {
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
                               onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              isMarkdown={true}
                             />
                           )}
                         </div>
