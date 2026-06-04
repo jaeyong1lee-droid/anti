@@ -709,10 +709,15 @@ function healLatexFormulas(text) {
   return result;
 }
 
-function convertMarkdownToHtml(mdText) {
+function convertMarkdownToHtml(mdText, isMarkdown = false) {
   const mathBlocks = [];
   let placeholderIndex = 0;
-  let tempText = mdText;
+  
+  // 0. Normalize escaped and actual newlines
+  let tempText = mdText
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n');
 
   // Protect $$ ... $$
   tempText = tempText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match) => {
@@ -722,16 +727,13 @@ function convertMarkdownToHtml(mdText) {
     return placeholder;
   });
 
-  // Protect $ ... $
-  tempText = tempText.replace(/\$([^\$\n]+?)\$/g, (match) => {
+  // Protect $ ... $ (Allowing newlines inside inline math blocks so they don't break during split)
+  tempText = tempText.replace(/\$([^\$]+?)\$/g, (match) => {
     const placeholder = `___INLINE_MATH_${placeholderIndex}___`;
     mathBlocks.push({ placeholder, content: match });
     placeholderIndex++;
     return placeholder;
   });
-
-  // 1. Unify newlines
-  tempText = tempText.replace(/\r\n/g, '\n');
 
   // 2. Headings on same line: "Text ### Title" -> "Text\n\n### Title"
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
@@ -741,20 +743,39 @@ function convertMarkdownToHtml(mdText) {
 
   // 4. Render headings to styled HTML
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
-    return `<h3 style="margin-top: 1.6rem; margin-bottom: 0.6rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+    if (isMarkdown) {
+      return `<h3 style="margin-top: 1.6rem; margin-bottom: 0.6rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+    } else {
+      return `<h3 style="margin-top: 0.8rem; margin-bottom: 0.4rem; font-weight: 800; color: #f1f5f9; font-size: 1rem; border-bottom: 1px solid rgba(51, 65, 85, 0.3); padding-bottom: 0.2rem;">${title}</h3>`;
+    }
   });
   tempText = tempText.replace(/^(##)\s+(.*?)$/gm, (match, hashes, title) => {
-    return `<h2 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+    if (isMarkdown) {
+      return `<h2 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+    } else {
+      return `<h2 style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 900; color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.3rem;">${title}</h2>`;
+    }
   });
 
   // 5. Render list items (both bullet points * and - and numbered lists)
-  tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
-  tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
-  tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">$1. $2</div>');
+  if (isMarkdown) {
+    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">$1. $2</div>');
+  } else {
+    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">$1. $2</div>');
+  }
 
   // 6. Spacers for paragraph gaps
-  tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
-  tempText = tempText.replace(/\n/g, '<br/>');
+  if (isMarkdown) {
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
+    tempText = tempText.replace(/\n/g, '<br/>');
+  } else {
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.4rem;"></div>');
+    tempText = tempText.replace(/\n/g, '<br/>');
+  }
 
   // Restore math blocks
   mathBlocks.forEach(block => {
@@ -834,8 +855,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
     : healFormulas(text).replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
 
-  if (!isHeavy && isMarkdown) {
-    cleanedText = convertMarkdownToHtml(cleanedText);
+  if (!isHeavy) {
+    cleanedText = convertMarkdownToHtml(cleanedText, isMarkdown);
   }
 
   if (isHeavy) {
