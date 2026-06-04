@@ -5653,7 +5653,7 @@ function healLatexFormulas(text) {
 
       // Match and wrap comparison/equality formulas containing greek letters or backslashes
       // We restrict the right-side match to typical mathematical characters, stopping at Korean or markdown formatting
-      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+      const formulaPattern = /((?:[\\a-zA-Z0-9_\-\+\(\{\[\'][a-zA-Z_0-9'\{\}\[\]\(\)\+\-\*\/\.\\\\/ \t\^]*(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
       t = t.replace(formulaPattern, (match, g1) => {
         if (g1) {
           const hasBackslash = g1.includes('\\');

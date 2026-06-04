@@ -709,7 +709,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                 className="my-1 md:my-2 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
               >
                 <span 
-                  className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
+                  className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
                   dangerouslySetInnerHTML={{ __html: mathHtml }} 
                 />
               </span>
@@ -772,7 +772,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
             >
               {/* KaTeX 수식 */}
               <div 
-                className="flex-grow overflow-x-auto flex justify-start sm:justify-center py-1.5 min-w-0 select-text" 
+                className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
             </div>
@@ -811,6 +811,18 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
                     <div 
                       key={lIdx}
                       className={`${lIdx === 0 ? 'pt-2' : 'pt-6'} pb-2 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text block`}
+                      dangerouslySetInnerHTML={{ __html: htmlLine }}
+                    />
+                  );
+                }
+
+                const isStandaloneMath = line.trim().startsWith('$') && line.trim().endsWith('$') && (line.trim().match(/\$/g) || []).length === 2;
+
+                if (isStandaloneMath) {
+                  return (
+                    <div 
+                      key={lIdx}
+                      className="py-1 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text flex justify-center text-center w-full"
                       dangerouslySetInnerHTML={{ __html: htmlLine }}
                     />
                   );
