@@ -461,6 +461,22 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     if (!val) return val;
     let healed = val;
 
+    // 🚨 [클라이언트 사이드 예외 방어]: 중괄호 { } 내부에 잘못 들어간 수식 기호 $ 기호를 제거
+    // 예: \frac{\partial $v_z$}{\partial z} -> \frac{\partial v_z}{\partial z}
+    // 예: \frac{k}{$\gamma_w$} -> \frac{k}{\gamma_w}
+    for (let i = 0; i < 3; i++) {
+      healed = healed.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
+    }
+
+    // 🚨 [클라이언트 사이드 예외 방어]: 수식 구분자($) 내부가 순수 한글 및 띄어쓰기, 문장부호 등으로만 구성된 경우 달러 기호 강제 제거
+    // 예: $흐름만 존재하므로, 하부에서 유입되는$ -> 흐름만 존재하므로, 하부에서 유입되는
+    healed = healed.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
+
+    // 🚨 [클라이언트 사이드 예외 방어]: 변수 끝이나 시작 부분에 혼자 매칭 안 된 채 붙어있는 단일 달러 기호 정상화
+    // 예: v_z$ -> v_z, $q_{in} -> q_{in} (이후 변수 래핑 로직이 정교하게 감쌀 수 있도록 함)
+    healed = healed.replace(/([a-zA-Z0-9_{\}\(\)\[\]\^]+)\$/g, '$1');
+    healed = healed.replace(/\$([a-zA-Z0-9_{\}\(\)\[\]\^]+)/g, '$1');
+
     // [클라이언트 사이드 예외 방어]: 단순 수치/단위 + 한글/기호가 수식 기호($)로 잘못 감싸진 케이스 자가치유
     // 예: $4배$, $10m$, $20%$, $0.5배$, $4 배$ 등
     healed = healed.replace(/\$([0-9\.]+)\s*(배|m|%|초|개|원|배로|배가|배의|배보다|배만큼|배가량)\$/g, '$1 $2');

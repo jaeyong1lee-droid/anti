@@ -5499,6 +5499,22 @@ app.get('/api/session/last-active-review', async (req, res) => {
 function healLatexFormulas(text) {
   if (!text) return text;
 
+  // 🚨 [서버 사이드 예외 방어]: 중괄호 { } 내부에 잘못 들어간 수식 기호 $ 기호를 제거
+  // 예: \frac{\partial $v_z$}{\partial z} -> \frac{\partial v_z}{\partial z}
+  // 예: \frac{k}{$\gamma_w$} -> \frac{k}{\gamma_w}
+  for (let i = 0; i < 3; i++) {
+    text = text.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
+  }
+
+  // 🚨 [서버 사이드 예외 방어]: 수식 구분자($) 내부가 순수 한글 및 띄어쓰기, 문장부호 등으로만 구성된 경우 달러 기호 강제 제거
+  // 예: $흐름만 존재하므로, 하부에서 유입되는$ -> 흐름만 존재하므로, 하부에서 유입되는
+  text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
+
+  // 🚨 [서버 사이드 예외 방어]: 변수 끝이나 시작 부분에 혼자 매칭 안 된 채 붙어있는 단일 달러 기호 정상화
+  // 예: v_z$ -> v_z, $q_{in} -> q_{in} (이후 변수 래핑 로직이 정교하게 감쌀 수 있도록 함)
+  text = text.replace(/([a-zA-Z0-9_{\}\(\)\[\]\^]+)\$/g, '$1');
+  text = text.replace(/\$([a-zA-Z0-9_{\}\(\)\[\]\^]+)/g, '$1');
+
   // ── [치명적 오류 해결] K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
   // 문장 중에 깨져서 들어오거나 뒤섞인 $현장의$K_0$ 혹은 $현장의$K_0$응력$ 구조를 기술사 표준 인라인 LaTeX 서식으로 정상화합니다.
   text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
