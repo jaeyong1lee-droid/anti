@@ -5652,117 +5652,7 @@ export default function App() {
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
         <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
-          {/* Review Header */}
-          <div className="flex flex-col items-stretch md:flex-row md:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
-              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Brain size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 10문항)</span>
-                  {!loadingAI && aiQuestions.length > 0 && (
-                    <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {aiQuestions.length}문항
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1.5 mt-1">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
-                    {selectedTopic.title}
-                  </h3>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto justify-stretch md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
-              {selectedTopic.pdf_name && (
-                <button
-                  onClick={handleOpenOriginalReport}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
-                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                >
-                  <FileText size={14} className="flex-shrink-0" />
-                  <span className="whitespace-nowrap">원보고서</span>
-                </button>
-              )}
-              {isDesktop && selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
-                <button
-                  onClick={() => {
-                    setSelectedTopic(null);
-                    setAiQuestions([]);
-                    setRevealedQuestions({});
-                    setSelectedAnswers({});
-                    setReviewOptionExplanations({});
-                    lastQuizTopicId.current = null;
-                    setResetConfirmTarget({
-                      scheduleId: selectedTopic.schedule_id,
-                      topicTitle: selectedTopic.title,
-                      round: selectedTopic.review_round
-                    });
-                  }}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
-                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
-                >
-                  <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap">다시풀기</span>
-                </button>
-              )}
-              {selectedTopic && (
-                <button
-                  onClick={handleRefreshReviewQuestions}
-                  disabled={loadingAI}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
-                >
-                  {loadingAI ? (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <span className="text-violet-300 flex-shrink-0">🔄</span>
-                  )}
-                  <span className="whitespace-nowrap">리프레쉬</span>
-                </button>
-              )}
-              <button
-                onClick={() => { 
-                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                  if (selectedTopic?.isReadOnly) {
-                    setSelectedTopic(null); 
-                  } else {
-                    forceSaveActiveSessions();
-                    setSelectedTopic(null); 
-                  }
-                }}
-                className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
-              >
-                닫기
-              </button>
-              {selectedTopic && (
-                <button
-                  onClick={() => { 
-                    if (selectedTopic?.id) {
-                      const deleteUrl = selectedTopic.schedule_id
-                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
-                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                      fetch(deleteUrl, { method: 'DELETE' })
-                        .catch(e => console.warn('세션 초기화 실패:', e));
-                    }
-                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
-                  }}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                  title="문제 초기화 (재개 시 새 문제 생성)"
-                >
-                  종료
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Sub-header tabs for Mobile */}
+{/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
               <button
@@ -5978,6 +5868,115 @@ export default function App() {
               <div 
                 className="w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
               >
+          {/* Review Header */}
+          <div className="w-full flex flex-col items-stretch md:flex-row md:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 md:gap-8 landscape-hide">
+            <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
+              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
+                <Brain size={20} />
+              </div>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 10문항)</span>
+                  {!loadingAI && aiQuestions.length > 0 && (
+                    <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {aiQuestions.length}문항
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5 mt-1">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
+                    {selectedTopic.title}
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-stretch md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
+              {selectedTopic.pdf_name && (
+                <button
+                  onClick={handleOpenOriginalReport}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                >
+                  <FileText size={14} className="flex-shrink-0" />
+                  <span className="whitespace-nowrap">원보고서</span>
+                </button>
+              )}
+              {isDesktop && selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+                <button
+                  onClick={() => {
+                    setSelectedTopic(null);
+                    setAiQuestions([]);
+                    setRevealedQuestions({});
+                    setSelectedAnswers({});
+                    setReviewOptionExplanations({});
+                    lastQuizTopicId.current = null;
+                    setResetConfirmTarget({
+                      scheduleId: selectedTopic.schedule_id,
+                      topicTitle: selectedTopic.title,
+                      round: selectedTopic.review_round
+                    });
+                  }}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                >
+                  <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">다시풀기</span>
+                </button>
+              )}
+              {selectedTopic && (
+                <button
+                  onClick={handleRefreshReviewQuestions}
+                  disabled={loadingAI}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                >
+                  {loadingAI ? (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <span className="text-violet-300 flex-shrink-0">🔄</span>
+                  )}
+                  <span className="whitespace-nowrap">리프레쉬</span>
+                </button>
+              )}
+              <button
+                onClick={() => { 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  if (selectedTopic?.isReadOnly) {
+                    setSelectedTopic(null); 
+                  } else {
+                    forceSaveActiveSessions();
+                    setSelectedTopic(null); 
+                  }
+                }}
+                className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
+              >
+                닫기
+              </button>
+              {selectedTopic && (
+                <button
+                  onClick={() => { 
+                    if (selectedTopic?.id) {
+                      const deleteUrl = selectedTopic.schedule_id
+                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                      fetch(deleteUrl, { method: 'DELETE' })
+                        .catch(e => console.warn('세션 초기화 실패:', e));
+                    }
+                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                  }}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                  title="문제 초기화 (재개 시 새 문제 생성)"
+                >
+                  종료
+                </button>
+              )}
+            </div>
+          </div>
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
@@ -6562,105 +6561,7 @@ export default function App() {
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
-          {/* Exam Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Award size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider whitespace-nowrap">종합평가 (Gemini AI)</span>
-                  {!loadingExam && examQuestions.length > 0 && (
-                    <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {examQuestions.length}문항
-                    </span>
-                  )}
-                </div>
-                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
-                  {examTopic?.title}
-                </h3>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-              {!loadingExam && examQuestions.length > 0 && (
-                <span className="text-[10px] text-slate-400 mr-auto sm:hidden font-bold">
-                  정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
-                </span>
-              )}
-              <button
-                onClick={handleAddExamQuestions}
-                disabled={loadingExam}
-                className="px-4 py-2 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed mr-1"
-                title="종합평가에 신규 AI 문제 10문항 추가 (기존 풀이 보존)"
-              >
-                {loadingExam ? (
-                  <svg className="animate-spin h-3.5 w-3.5 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : "➕"}
-                <span>문제추가</span>
-              </button>
-              <button
-                onClick={handleRefreshExamQuestions}
-                disabled={loadingExam}
-                className="px-4 py-2 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="종합평가 전체 문제 실시간 AI 재출제"
-              >
-                {loadingExam ? (
-                  <svg className="animate-spin h-3.5 w-3.5 text-amber-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : "🔄"}
-                <span>리프레쉬</span>
-              </button>
-              <button
-                onClick={async () => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  // 서버에 현재 상태 저장 (기기 간 공유) - 완료 확인 후 닫기
-                  try {
-                    const r = await fetch(`${API_BASE}/api/session/exam`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        examQuestions, 
-                        examRevealed, 
-                        examAnswers, 
-                        examTopic,
-                        savedExamScroll: savedExamScroll.current 
-                      }),
-                    });
-                    if (!r.ok) throw new Error('서버 응답 오류');
-                  } catch (e) {
-                    console.warn('세션 저장 실패:', e);
-                    showNotification('다른 기기와 동기화에 실패했습니다. 로컬에만 저장됩니다.', 'error');
-                  }
-                  setShowExam(false);
-                }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="화면만 숨김 (재개 시 문제 유지)"
-              >
-                닫기
-              </button>
-              <button
-                onClick={() => {
-                  // 서버 세션 삭제 (종료 = 새로 시작)
-                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                    .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
-                }}
-                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                title="종합평가 종료 (재개 시 새 문제 생성)"
-              >
-                종료
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-header tabs for Mobile */}
+{/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
               <button
@@ -6896,6 +6797,103 @@ export default function App() {
             <div 
               className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 landscape-bg-slate-900"
             >
+          {/* Exam Header */}
+          <div className="w-full flex flex-col sm:flex-row sm:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4 sm:gap-8 landscape-hide">
+            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
+                <Award size={20} />
+              </div>
+              <div className="min-w-0 flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider whitespace-nowrap">종합평가 (Gemini AI)</span>
+                  {!loadingExam && examQuestions.length > 0 && (
+                    <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                      {examQuestions.length}문항
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
+                  {examTopic?.title}
+                </h3>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+              {!loadingExam && examQuestions.length > 0 && (
+                <span className="text-[10px] text-slate-400 mr-auto sm:hidden font-bold">
+                  정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
+                </span>
+              )}
+              <button
+                onClick={handleAddExamQuestions}
+                disabled={loadingExam}
+                className="px-4 py-2 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed mr-1"
+                title="종합평가에 신규 AI 문제 10문항 추가 (기존 풀이 보존)"
+              >
+                {loadingExam ? (
+                  <svg className="animate-spin h-3.5 w-3.5 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : "➕"}
+                <span>문제추가</span>
+              </button>
+              <button
+                onClick={handleRefreshExamQuestions}
+                disabled={loadingExam}
+                className="px-4 py-2 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="종합평가 전체 문제 실시간 AI 재출제"
+              >
+                {loadingExam ? (
+                  <svg className="animate-spin h-3.5 w-3.5 text-amber-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : "🔄"}
+                <span>리프레쉬</span>
+              </button>
+              <button
+                onClick={async () => {
+                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                  // 서버에 현재 상태 저장 (기기 간 공유) - 완료 확인 후 닫기
+                  try {
+                    const r = await fetch(`${API_BASE}/api/session/exam`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        examQuestions, 
+                        examRevealed, 
+                        examAnswers, 
+                        examTopic,
+                        savedExamScroll: savedExamScroll.current 
+                      }),
+                    });
+                    if (!r.ok) throw new Error('서버 응답 오류');
+                  } catch (e) {
+                    console.warn('세션 저장 실패:', e);
+                    showNotification('다른 기기와 동기화에 실패했습니다. 로컬에만 저장됩니다.', 'error');
+                  }
+                  setShowExam(false);
+                }}
+                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="화면만 숨김 (재개 시 문제 유지)"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => {
+                  // 서버 세션 삭제 (종료 = 새로 시작)
+                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                    .catch(e => console.warn('세션 삭제 실패:', e));
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                }}
+                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                title="종합평가 종료 (재개 시 새 문제 생성)"
+              >
+                종료
+              </button>
+            </div>
+          </div>
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
