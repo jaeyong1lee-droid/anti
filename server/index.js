@@ -3651,13 +3651,13 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "개요"
 - "question": 공학적 중요 정의와 핵심 메커니즘을 서술형으로 묻는 핵심 질문
-- "answer": 2~3줄 명품 모범답안 (\\n 구분)
+- "answer": 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분). 지나치게 1~2줄로 축약하거나 불필요하게 장황하지 않도록 적절한 학술적 깊이를 확보해야 합니다.
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
   "subtype": "개요",
   "question": "샌드매트(Sand Mat)의 공학적 목적...",
-  "answer": "배수경로 단축으로 압밀 촉진, 건설 장비의 주행성(Trafficability) 확보...",
+  "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명...",
   "concept": "연약지반 상부 모래 배수층 역할"
 }`;
         }
@@ -4038,13 +4038,13 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "개요"
 - "question": 공학적 중요 정의와 핵심 메커니즘을 서술형으로 묻는 핵심 질문
-- "answer": 2~3줄 명품 모범답안 (\\n 구분)
+- "answer": 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분). 지나치게 1~2줄로 축약하거나 불필요하게 장황하지 않도록 적절한 학술적 깊이를 확보해야 합니다.
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
   "subtype": "개요",
   "question": "샌드매트(Sand Mat)의 공학적 목적...",
-  "answer": "배수경로 단축으로 압밀 촉진, 건설 장비의 주행성(Trafficability) 확보...",
+  "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명...",
   "concept": "연약지반 상부 모래 배수층 역할"
 }`;
         }
@@ -4287,7 +4287,7 @@ ${adjustmentsPrompt}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
-   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
    - 객관식 (type: "객관식"): 4문제 (4지선다형)
 2. 객관식 문제의 유형 및 계산/정량 문제 최우선 출제 지침 (극도로 중요):
    - 만약 출제 대상 토픽이 수식 계산, 정량적 조건 대입, 설계 수치 계산, 혹은 거동 분석(예: 토압 계수, 침하량 계산, 투수량, 투수 계수, 액상화 안전율, 락볼트 인장력, Q 지수 산정, 버팀대 강성 및 모멘트 등)이 단 한 줄이라도 가능한 공학/역학 토픽이라면, **출제되는 객관식 문항들 중 최소 70% 이상을 구체적인 조건 수치(예: 지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량적인 결과를 묻는 '수치 계산 예제문제 및 공식 대입 응용문제'로 출제하십시오.**
@@ -4313,7 +4313,7 @@ ${adjustmentsPrompt}
     "subtype": "개요",
     "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
     "question": "질문 내용",
-    "answer": "2~3줄 명품 모범답안",
+    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
     "concept": "핵심 개념 1줄 요약"
   },
   {
@@ -4693,7 +4693,7 @@ app.post('/api/exam/additional', async (req, res) => {
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
-   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 2~3줄 서술)
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
    - 객관식 (type: "객관식"): 3문제 (4지선다형)
 2. 객관식 문제의 유형 및 계산/정량 문제 최우선 출제 지침 (극도로 중요):
    - 만약 출제 대상 토픽이 수식 계산, 정량적 조건 대입, 설계 수치 계산, 혹은 거동 분석(예: 토압 계수, 침하량 계산, 투수량, 투수 계수, 액상화 안전율, 락볼트 인장력, Q 지수 산정, 버팀대 강성 및 모멘트 등)이 단 한 줄이라도 가능한 공학/역학 토픽이라면, **출제되는 객관식 문항들 중 최소 70% 이상을 구체적인 조건 수치(예: 지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량적인 결과를 묻는 '수치 계산 예제문제 및 공식 대입 응용문제'로 출제하십시오.**
@@ -4718,7 +4718,7 @@ app.post('/api/exam/additional', async (req, res) => {
     "type": "주관식",
     "subtype": "개요",
     "question": "질문 내용",
-    "answer": "2~3줄 명품 모범답안",
+    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
     "concept": "핵심 개념 1줄 요약"
   },
   {
@@ -5496,37 +5496,34 @@ app.get('/api/session/last-active-review', async (req, res) => {
 
 
 // Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
-function healLatexFormulas(text) {
-  if (!text) return text;
-
-  // 🚨 [서버 사이드 예외 방어]: 중괄호 { } 내부에 잘못 들어간 수식 기호 $ 기호를 제거
-  // 예: \frac{\partial $v_z$}{\partial z} -> \frac{\partial v_z}{\partial z}
-  // 예: \frac{k}{$\gamma_w$} -> \frac{k}{\gamma_w}
-  for (let i = 0; i < 3; i++) {
-    text = text.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
+// Helper tokenization for healLatexFormulas
+function tokenizeForHealing(text) {
+  const tokens = [];
+  let lastIndex = 0;
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const before = text.substring(lastIndex, match.index);
+    if (before) {
+      tokens.push({ type: 'text', content: before });
+    }
+    const mathContent = match[0];
+    if (mathContent.startsWith('$$')) {
+      tokens.push({ type: 'block-math', content: mathContent });
+    } else {
+      tokens.push({ type: 'inline-math', content: mathContent });
+    }
+    lastIndex = regex.lastIndex;
   }
+  const after = text.substring(lastIndex);
+  if (after) {
+    tokens.push({ type: 'text', content: after });
+  }
+  return tokens;
+}
 
-  // 🚨 [서버 사이드 예외 방어]: 수식 구분자($) 내부가 순수 한글 및 띄어쓰기, 문장부호 등으로만 구성된 경우 달러 기호 강제 제거
-  // 예: $흐름만 존재하므로, 하부에서 유입되는$ -> 흐름만 존재하므로, 하부에서 유입되는
-  text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
-
-  // 🚨 [서버 사이드 예외 방어]: 변수 끝이나 시작 부분에 혼자 매칭 안 된 채 붙어있는 단일 달러 기호 정상화
-  // 예: v_z$ -> v_z, $q_{in} -> q_{in} (이후 변수 래핑 로직이 정교하게 감쌀 수 있도록 함)
-  text = text.replace(/([a-zA-Z0-9_{\}\(\)\[\]\^]+)\$/g, '$1');
-  text = text.replace(/\$([a-zA-Z0-9_{\}\(\)\[\]\^]+)/g, '$1');
-
-  // ── [치명적 오류 해결] K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
-  // 문장 중에 깨져서 들어오거나 뒤섞인 $현장의$K_0$ 혹은 $현장의$K_0$응력$ 구조를 기술사 표준 인라인 LaTeX 서식으로 정상화합니다.
-  text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
-  text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
-  text = text.replace(/K_0응력/g, '$K_0$ 응력');
-  
-  // 날것의 K0나 k0가 공백 없이 텍스트에 붙어 수식 프로세서를 교란하는 것을 방지
-  text = text.replace(/([가-힣])([Kk]0|[Kk]_0)/g, '$1 $2');
-  text = text.replace(/([Kk]0|[Kk]_0)([가-힣])/g, '$1 $2');
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
+function healLatexFormulas(text) {
+  // AI의 이중 이스케이프 오류(예: \\frac -> \frac) 강제 복구 (최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
     'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
@@ -5541,25 +5538,20 @@ function healLatexFormulas(text) {
       if (safeLatexCommands.includes(p1)) return '\\' + p1;
       return match;
     });
-
-    // 🚨 [추가된 로직]: LLM이 강제로 넣은 \text{ 한글 } 패턴 해제
-    text = text.replace(/\\text\{\s*([가-힣]+)\s*\}/g, ' $1 ');
-    
-    // 🚨 [추가된 로직]: $0.50배$, $4배$ 처럼 숫자와 한글이 달러 기호 안에 묶인 경우 강제 분리
-    text = text.replace(/\$([0-9.,]+)([가-힣]+)\$/g, '$1$2');
-    text = text.replace(/\$([0-9.,]+)\s+([가-힣]+)\$/g, '$1 $2');
-
-    // 🚨 [새로 추가할 로직 1]: 텍스트와 백슬래시 수식이 공백 없이 붙어 있는 경우 강제 분리 (예: 전개됩니다:\frac -> 전개됩니다: \frac)
-    text = text.replace(/([가-힣:])(\\[a-zA-Z]+)/g, '$1 $2');
-
-    // 🚨 [새로 추가할 로직 2]: 중괄호 내부에 잘못 갇힌 $ 기호 밖으로 구출 (예: {0.3k_{h1}$}} -> {0.3k_{h1}}$)
-    text = text.replace(/([a-zA-Z0-9_])\$([\}]+)/g, '$1$2$');
-    text = text.replace(/\$([\}]+)/g, '$1$');
   }
   if (!text) return text;
-  
-  // 💡 [단일 공식/수식형 전체 감싸기 최적화]: 단일 공식이나 객관식 보기 등 짧은 수식형 문장은
-  // 굳이 잘게 쪼개서 파편화하지 않고, 전체를 단일 $...$ 로 감싸 KaTeX가 한 번에 미려하게 렌더링하도록 합니다.
+
+  // 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
+  text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
+
+  // \text{한글} 형태로 수식 안에 억지로 갇힌 한글 구조 해제
+  text = text.replace(/\\text\{\s*([가-힣\s0-9배차]+)\s*\}/g, ' $1 ');
+
+  // 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
+  text = text.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
+
+  // 💡 [단일 공식/수식형 전체 감싸기 최적화]
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let trimmed = text.trim();
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     trimmed = trimmed.substring(2, trimmed.length - 2).trim();
@@ -5576,7 +5568,6 @@ function healLatexFormulas(text) {
     return `$${cleanedMath}$`;
   }
   
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let healed = text;
   if (hasKorean && ((text.trim().startsWith('$$') && text.trim().endsWith('$$')) || (text.trim().startsWith('$') && text.trim().endsWith('$')))) {
     healed = trimmed;
@@ -5584,26 +5575,21 @@ function healLatexFormulas(text) {
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
 
-  // 1. Line-by-line recovery for formulas with a single missing delimiter
-  // If a line starts with a formula variable/command and an equals sign, but has exactly one dollar sign,
-  // we strip the single dollar sign so that the formulaPattern can wrap the whole equation cleanly.
+  // 1. 줄 단위로 달러 기호가 1개인 수식 줄(등호가 있는 경우)에서 달러 기호 제거
   const lines = healed.split('\n');
   const processedLines = lines.map(line => {
     const dollarCount = (line.match(/\$/g) || []).length;
-    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
-    if (dollarCount === 1) {
-      if (isFormulaLine) {
-        return line.replace(/\$/g, '');
-      }
+    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}()\[\],.\\\/]*?[<>=]+/.test(line);
+    if (dollarCount === 1 && isFormulaLine) {
+      return line.replace(/\$/g, '');
     }
     return line;
   });
   healed = processedLines.join('\n');
 
-  // 2. Repair formulas starting with LaTeX commands but having fragmented dollars mid-way and at the end
+  // 2. LaTeX 명령어로 시작하지만 달러 기호가 파편화된 수식 복구
   // e.g. \theta = \frac{$\delta}{L}$ -> $\theta = \frac{\delta}{L}$
-  // e.g. \theta = 1$/300$ -> $\theta = 1/300$
-  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}()\[\],.\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
     const hasBackslash = p1.includes('\\') || p2.includes('\\');
     const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
     if (hasBackslash || hasGreek) {
@@ -5612,14 +5598,14 @@ function healLatexFormulas(text) {
     return match;
   });
 
-  // 3. Clean up split fractions in curly braces like \frac{$\delta}{L} -> \frac{\delta}{L}
+  // 3. 중괄호 안의 파편화된 달러 기호 제거: \frac{$\delta}{L} -> \frac{\delta}{L}
   healed = healed.replace(/\\frac\s*\{\s*\$([^\$]+?)\}/g, '\\frac{$1}');
   healed = healed.replace(/\{\s*\$([^\$]+?)\s*\}/g, '{$1}');
 
-  // 4. Clean up arithmetic split dollars like 1$/300$ -> 1/300$
+  // 4. 산술 파편화된 달러 제거: 1$/300$ -> 1/300$
   healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
 
-  // 5. Clean up double-backslash command names - applied only on TEXT segments to preserve \\  inside valid math blocks
+  // 5. TEXT 토큰에서만 이중 역슬래시 복구
   {
     const rule5Tokens = tokenizeForHealing(healed);
     healed = rule5Tokens.map(tok => {
@@ -5628,19 +5614,15 @@ function healLatexFormulas(text) {
     }).join('');
   }
 
-  // 6. [Moved to STEP 1.5 to protect valid math blocks from global injection]
-
   // --- Multi-Step Tokenization & Wrapping Architecture ---
 
-  // STEP 1: Wrap larger formulas (equations and specific arithmetic expressions) on text tokens
+  // STEP 1: 텍스트 토큰에서 비교/등식 수식 감싸기
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
 
-      // Match and wrap comparison/equality formulas containing greek letters or backslashes
-      // We restrict the right-side match to typical mathematical characters, stopping at Korean or markdown formatting
-      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}()\[\],.\\\/<>:;!?^~&|%]*[a-zA-Z0-9')\}]))/g;
       t = t.replace(formulaPattern, (match, g1) => {
         if (g1) {
           const hasBackslash = g1.includes('\\');
@@ -5654,7 +5636,6 @@ function healLatexFormulas(text) {
         return match;
       });
 
-      // Wrap specific arithmetic equations like \sigma' = \sigma - P_w
       t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
       t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
       t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
@@ -5663,13 +5644,10 @@ function healLatexFormulas(text) {
     }
   });
 
-  // Re-assemble and re-tokenize after STEP 1 to convert wrapped math blocks into actual math tokens
   let reassembledAfterStep1 = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembledAfterStep1);
 
-  // STEP 1.5: Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
-  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
-  // Running this only on text tokens prevents injecting $ inside pre-existing math blocks.
+  // STEP 1.5: 괄호 안의 LaTeX 명령어/그리스 변수 감싸기
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
@@ -5683,7 +5661,7 @@ function healLatexFormulas(text) {
     }
   });
 
-  // STEP 2: Re-tokenize and wrap smaller Greek variables and subscripts
+  // STEP 2: 그리스 변수와 첨자 감싸기 (⚠️ mathWords.forEach 루프 제거 - 한글 텍스트 오염 방지)
   let reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
 
@@ -5691,26 +5669,15 @@ function healLatexFormulas(text) {
     if (token.type === 'text') {
       let t = token.content;
 
-      // Wrap bare Greek letters and standard math commands with backslashes
-      const mathWords = [
-        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-        'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
-      ];
-      mathWords.forEach(word => {
-        const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
-        t = t.replace(regex, `\\${word}`);
-      });
-
-      // Wrap individual Greek variables like \alpha_p, \alpha_f, \phi
-      // 주의: frac, text 등 인자를 받는 명령어는 개별 $ $ 감싸기에서 제외합니다.
+      // \sigma, \phi 등 역슬래시가 이미 붙은 그리스 변수만 $...$ 로 감싸기
       const wrapAllowedWords = [
         'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
       ];
-      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+      const subscriptPat = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPat}(?![a-zA-Z0-9_]))`, 'g');
       t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
 
-      // Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w)
+      // 변수 첨자 패턴 감싸기 (f_{ck}, P_{max} 등)
       const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
       t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
 
@@ -5718,7 +5685,7 @@ function healLatexFormulas(text) {
     }
   });
 
-  // STEP 3: Re-tokenize and perform inner math block formatting
+  // STEP 3: 수식 블록 내부 포맷 정리
   reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
 
@@ -5730,22 +5697,12 @@ function healLatexFormulas(text) {
         ? inside.substring(2, inside.length - 2).trim()
         : inside.substring(1, inside.length - 1).trim();
 
-      // Convert bare 'y' to '\gamma' inside math blocks
       math = math.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
       math = math.replace(/\by\s*D_f\b/g, '\\gamma D_f');
       math = math.replace(/\byD_f\b/g, '\\gamma D_f');
       math = math.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
 
-      // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구
-      const safeLatexCommands = [
-        'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
-        'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
-        'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
-        'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
-        'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
-        'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
-        'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
-      ];
+      // 수식 블록 내 이중 역슬래시 복구
       math = math.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
         if (safeLatexCommands.includes(p1)) return '\\' + p1;
         return match;
@@ -5755,13 +5712,11 @@ function healLatexFormulas(text) {
     }
   });
 
-  // Reassemble and perform final spacing formatting
+  // 최종 조립 및 간격 정규화
   reassembled = tokens.map(t => t.content).join('');
 
-  // Re-tokenize to ensure perfect spacing
   const finalTokens = tokenizeForHealing(reassembled);
 
-  // Process Rule 1: Remove spaces inside math blocks
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
       const inside = token.content.substring(1, token.content.length - 1).trim();
@@ -5773,11 +5728,9 @@ function healLatexFormulas(text) {
   });
 
   reassembled = finalTokens.map(t => t.content).join('');
-  // Ensure space before/after brackets
   reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
   reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
 
-  // Process Rule 2: Ensure external spacing
   const processedTokens = tokenizeForHealing(reassembled);
   let result = '';
   for (let i = 0; i < processedTokens.length; i++) {
@@ -5816,32 +5769,6 @@ function healLatexFormulas(text) {
   }
 
   return result;
-}
-
-// Helper tokenization for healLatexFormulas
-function tokenizeForHealing(text) {
-  const tokens = [];
-  let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const before = text.substring(lastIndex, match.index);
-    if (before) {
-      tokens.push({ type: 'text', content: before });
-    }
-    const mathContent = match[0];
-    if (mathContent.startsWith('$$')) {
-      tokens.push({ type: 'block-math', content: mathContent });
-    } else {
-      tokens.push({ type: 'inline-math', content: mathContent });
-    }
-    lastIndex = regex.lastIndex;
-  }
-  const after = text.substring(lastIndex);
-  if (after) {
-    tokens.push({ type: 'text', content: after });
-  }
-  return tokens;
 }
 
 function healQuizQuestionObject(q) {

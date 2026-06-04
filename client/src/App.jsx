@@ -461,169 +461,34 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     if (!val) return val;
     let healed = val;
 
-    // 🚨 [클라이언트 사이드 예외 방어]: 중괄호 { } 내부에 잘못 들어간 수식 기호 $ 기호를 제거
-    // 예: \frac{\partial $v_z$}{\partial z} -> \frac{\partial v_z}{\partial z}
-    // 예: \frac{k}{$\gamma_w$} -> \frac{k}{\gamma_w}
+    // 1. 중괄호 { } 내부에 잘못 들어간 파편화된 수식 기호 $ 제거
     for (let i = 0; i < 3; i++) {
       healed = healed.replace(/\{([^{}]+?)\}/g, (match, p1) => '{' + p1.replace(/\$/g, '') + '}');
     }
 
-    // 🚨 [클라이언트 사이드 예외 방어]: 수식 구분자($) 내부가 순수 한글 및 띄어쓰기, 문장부호 등으로만 구성된 경우 달러 기호 강제 제거
-    // 예: $흐름만 존재하므로, 하부에서 유입되는$ -> 흐름만 존재하므로, 하부에서 유입되는
+    // 2. 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
     healed = healed.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
 
-    // 🚨 [클라이언트 사이드 예외 방어]: 변수 끝이나 시작 부분에 혼자 매칭 안 된 채 붙어있는 단일 달러 기호 정상화
-    // 예: v_z$ -> v_z, $q_{in} -> q_{in} (이후 변수 래핑 로직이 정교하게 감쌀 수 있도록 함)
-    healed = healed.replace(/([a-zA-Z0-9_{\}\(\)\[\]\^]+)\$/g, '$1');
-    healed = healed.replace(/\$([a-zA-Z0-9_{\}\(\)\[\]\^]+)/g, '$1');
-
-    // [클라이언트 사이드 예외 방어]: 단순 수치/단위 + 한글/기호가 수식 기호($)로 잘못 감싸진 케이스 자가치유
-    // 예: $4배$, $10m$, $20%$, $0.5배$, $4 배$ 등
-    healed = healed.replace(/\$([0-9\.]+)\s*(배|m|%|초|개|원|배로|배가|배의|배보다|배만큼|배가량)\$/g, '$1 $2');
-    
-    // [클라이언트 사이드 예외 방어]: \text{한글} 혹은 \text{한글+수치} 패턴 자가치유
-    // KaTeX 파싱 에러를 근본적으로 방지하기 위해 한글이 포함된 \text{...}는 \text를 완전히 지우고 내용물만 노출
-    healed = healed.replace(/\\text\s*\{\s*([가-힣a-zA-Z0-9\s%\/\.\-\+]+)\s*\}/g, (match, p1) => {
-      if (/[\uAC00-\uD7A3]/.test(p1)) {
-        return p1;
-      }
-      return match;
-    });
-
-    // [클라이언트 사이드 예외 방어]: 수식 내부에 남은 한글을 찾아 수식 바깥으로 꺼내는 추가 보정
-    // 예: $B 배$ -> $B$ 배, $A 와 B$ -> $A$ 와 $B$, $30% 증가$ -> 30% 증가 등
-    healed = healed.replace(/\$([^\$]+?)\$/g, (match, math) => {
-      const trimmedMath = math.trim();
-      // 수식 내부 전체가 한글이거나 숫자+한글(예: $4배$)인 경우 통째로 $ 제거
-      if (/^[0-9\.\s]*[가-힣\s%배m]+$/.test(trimmedMath)) {
-        return trimmedMath;
-      }
-      
-      let cleaned = math;
-      // 끝부분의 한글 분리 (예: "B 배" -> "B$ 배")
-      cleaned = cleaned.replace(/([\s\S]*?)\s*([가-힣]+)\s*$/, (m, left, right) => {
-        if (left.trim()) {
-          return left.trim() + '$ ' + right;
-        }
-        return right;
-      });
-      
-      // 앞부분의 한글 분리 (예: "배 B" -> "배 $B")
-      cleaned = cleaned.replace(/^\s*([가-힣]+)\s*([\s\S]*)/, (m, left, right) => {
-        if (right.trim()) {
-          return left + ' $' + right.trim();
-        }
-        return left;
-      });
-      
-      if (cleaned !== math) {
-        return `$${cleaned}$`.replace(/\$\s*\$/g, '');
-      }
-      return match;
-    });
-    
-    // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 및 처리 전 최우선 수행)
+    // 3. AI 응답 시 역슬래시가 4개 또는 2개로 과도하게 이스케이프된 명령어 복구
     const safeLatexCommands = [
       'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
       'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
       'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
       'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
-      'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
-      'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
-      'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+      'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'infty'
     ];
-    healed = healed.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
+    
+    healed = healed.replace(/\\\\+([a-zA-Z]+)/g, (match, p1) => {
       if (safeLatexCommands.includes(p1)) return '\\' + p1;
       return match;
     });
-    
-    // 0.1) If the entire text starts and ends with $ or $$ and contains Korean, strip the outer delimiters.
-    let trimmed = healed.trim();
-    const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
-    if (hasKorean) {
-      if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
-        healed = trimmed.substring(2, trimmed.length - 2).trim();
-      } else if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
-        healed = trimmed.substring(1, trimmed.length - 1).trim();
-      }
-    }
 
-    // Tokenize first to protect valid math blocks from global regex wrapping rules
-    const tokens = [];
-    let lastIndex = 0;
-    const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
-    let match;
-    while ((match = regex.exec(healed)) !== null) {
-      const before = healed.substring(lastIndex, match.index);
-      if (before) {
-        tokens.push({ type: 'text', content: before });
-      }
-      tokens.push({ type: 'math', content: match[0] });
-      lastIndex = regex.lastIndex;
-    }
-    const after = healed.substring(lastIndex);
-    if (after) {
-      tokens.push({ type: 'text', content: after });
-    }
+    // 4. \text{한글} 형태로 수식 안에 억지로 갇힌 한글 구조 해제
+    healed = healed.replace(/\\text\{\s*([가-힣\s0-9배차]+)\s*\}/g, ' $1 ');
 
-    const processedTokens = tokens.map(tok => {
-      if (tok.type !== 'text') {
-        // 2) Inside LaTeX math blocks, convert bare 'y' used as gamma to '\gamma'
-        let math = tok.content;
-        const isBlock = math.startsWith('$$');
-        let inside = isBlock 
-          ? math.substring(2, math.length - 2).trim()
-          : math.substring(1, math.length - 1).trim();
-        
-        inside = inside.replace(/\\by_([a-zA-Z0-9]+)\\b/g, '\\gamma_$1');
-        inside = inside.replace(/\\by\\s*D_f\\b/g, '\\gamma D_f');
-        inside = inside.replace(/\\byD_f\\b/g, '\\gamma D_f');
-        inside = inside.replace(/\\by\\s*\\\\?cdot\\b/g, '\\gamma \\cdot');
-        
-        return isBlock ? `$$${inside}$$` : `$${inside}$`;
-      }
+    // 5. 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
+    healed = healed.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
 
-      let t = tok.content;
-
-      // 1) Heal invalid \y commands used for gamma
-      t = t.replace(/\\y([a-zA-Z0-9'_]+)/g, (match, suffix) => {
-        if (suffix.startsWith('cdot')) {
-          return '\\gamma \\cdot ' + suffix.substring(4);
-        }
-        return '\\gamma ' + suffix;
-      });
-      t = t.replace(/\\y\\b/g, '\\gamma');
-
-      // 3) Wrap geotech variables and equations (like M_w < 7.5, MSF > 1.0) in $ if they aren't already wrapped
-      t = t.replace(/\\b(M_w|MSF|F_s|K_h|K_{30})\\s*([<>=]=?)\\s*([0-9\\.]+)\\b/g, (match, v, op, num) => {
-        return `$${v} ${op} ${num}$`;
-      });
-
-      // 4) Heal misplaced dollar sign typos like M_w$=7.5 or MSF$=1.0
-      t = t.replace(/\\b([a-zA-Z0-9_]+)\\$=\\s*([0-9\\.]+)\\b/g, (match, v, num) => {
-        return `$${v} = ${num}$`;
-      });
-
-      // 5) Wrap Greek letters and subscripts (like K_0, K_a, f_{ck}) in $ for partial LaTeX rendering
-      const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
-      
-      symbols.forEach(sym => {
-        const regex = new RegExp(`(?<!\\\\)\\b${sym}\\b`, 'g');
-        t = t.replace(regex, `\\${sym}`);
-      });
-      
-      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-      const greekPattern = new RegExp(`(\\\\\\b(?:${symbols.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
-      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
-      
-      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
-      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
-
-      return t;
-    });
-
-    healed = processedTokens.join('');
-    
     return healed;
   };
 
