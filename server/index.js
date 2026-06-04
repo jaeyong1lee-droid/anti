@@ -5523,8 +5523,20 @@ function tokenizeForHealing(text) {
 }
 
 function healLatexFormulas(text) {
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
-  // AI의 이중 이스케이프 오류(예: \\frac -> \frac) 강제 복구 (최우선 수행)
+  if (!text) return text;
+
+  // ── [치명적 오류 해결] K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
+  // 문장 중에 깨져서 들어오거나 뒤섞인 $현장의$K_0$ 혹은 $현장의$K_0$응력$ 구조를 기술사 표준 인라인 LaTeX 서식으로 정상화합니다.
+  text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
+  text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
+  text = text.replace(/K_0응력/g, '$K_0$ 응력');
+  
+  // 날것의 K0나 k0가 공백 없이 텍스트에 붙어 수식 프로세서를 교란하는 것을 방지
+  text = text.replace(/([가-힣])([Kk]0|[Kk]_0)/g, '$1 $2');
+  text = text.replace(/([Kk]0|[Kk]_0)([가-힣])/g, '$1 $2');
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
     'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
@@ -5539,103 +5551,25 @@ function healLatexFormulas(text) {
       if (safeLatexCommands.includes(p1)) return '\\' + p1;
       return match;
     });
+
+    // 🚨 [추가된 로직]: LLM이 강제로 넣은 \text{ 한글 } 패턴 해제
+    text = text.replace(/\\text\{\s*([가-힣]+)\s*\}/g, ' $1 ');
+    
+    // 🚨 [추가된 로직]: $0.50배$, $4배$ 처럼 숫자와 한글이 달러 기호 안에 묶인 경우 강제 분리
+    text = text.replace(/\$([0-9.,]+)([가-힣]+)\$/g, '$1$2');
+    text = text.replace(/\$([0-9.,]+)\s+([가-힣]+)\$/g, '$1 $2');
+
+    // 🚨 [새로 추가할 로직 1]: 텍스트와 백슬래시 수식이 공백 없이 붙어 있는 경우 강제 분리 (예: 전개됩니다:\frac -> 전개됩니다: \frac)
+    text = text.replace(/([가-힣:])(\\[a-zA-Z]+)/g, '$1 $2');
+
+    // 🚨 [새로 추가할 로직 2]: 중괄호 내부에 잘못 갇힌 $ 기호 밖으로 구출 (예: {0.3k_{h1}$}} -> {0.3k_{h1}}$)
+    text = text.replace(/([a-zA-Z0-9_])\$([\}]+)/g, '$1$2$');
+    text = text.replace(/\$([\}]+)/g, '$1$');
   }
   if (!text) return text;
-
-  // --- NEW PRE-PROCESSING: Fix mismatched / fragmented dollar signs on variables ---
-  // Rule A: Missing leading dollar for Greek variable (e.g. \sigma_v$ -> $\sigma_v$)
-  const missingLeadingRegex = new RegExp(
-    `(?<!\\$)\\\\(?:${symbols.join('|')}|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\\{[a-zA-Z0-9_]+\\}))?(?:')?\\$`,
-    'g'
-  );
-  text = text.replace(missingLeadingRegex, (match) => `$${match}`);
-
-  // Rule B: Missing trailing dollar for Greek variable (e.g. $\phi -> $\phi$)
-  const missingTrailingRegex = new RegExp(
-    `\\$(?:\\\\(?:${symbols.join('|')}|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\\{[a-zA-Z0-9_]+\\}))?(?:')?)(?![a-zA-Z0-9_$])`,
-    'g'
-  );
-  text = text.replace(missingTrailingRegex, (match) => `${match}$`);
-
-  // Rule C: Line-by-line formula healing
-  const fileLines = text.split('\n');
-  const preProcessedLines = fileLines.map(line => {
-    let trimmed = line.trim();
-    if (!trimmed) return line;
-
-    // Check if the line matches a math formula followed by non-math text/headers
-    // e.g. \sigma_v$ = ... $**[변수 설명]***
-    // We use [^\uAC00-\uD7A3]* to match all non-Korean characters up to the last $ before the first Korean character
-    const formulaSplitRegex = /^([^\uAC00-\uD7A3]*\$)\s*([^\uAC00-\uD7A3]*[\uAC00-\uD7A3].*)$/;
-    const splitMatch = trimmed.match(formulaSplitRegex);
-    if (splitMatch) {
-      let mathPart = splitMatch[1];
-      const descPart = splitMatch[2];
-      // Heal the math part
-      const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(mathPart) || 
-                                /[_^{<>=]/.test(mathPart);
-      if (hasMathIndicators) {
-        mathPart = mathPart.replace(/\$/g, '').trim();
-        // Return single wrapped math block + descPart
-        return `\$${mathPart}\$ ${descPart}`;
-      }
-    }
-
-    // If the entire line is a formula with no Korean characters and has math indicators
-    const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
-                              /[_^{<>=]/.test(trimmed);
-    const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
-    const isHeader = trimmed.startsWith('#');
-
-    if (hasMathIndicators && !hasKorean && !isHeader) {
-      const cleaned = trimmed.replace(/\$/g, '').trim();
-      return `\$${cleaned}\$`;
-    }
-
-    return line;
-  });
-  text = preProcessedLines.join('\n');
-  // --- END OF NEW PRE-PROCESSING ---
-
-  // 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
-  text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
-
-  // $수식변수 한글텍스트$ 패턴 분리: AI가 수식 변수와 한글 문장을 같은 $ 안에 묶는 경우
-  // e.g. "$dV_w 는 흙 요소의 전체 체적 감소량 dV 와 완벽히 일치해야 합니다.$" 
-  //   → "$dV_w$ 는 흙 요소의 전체 체적 감소량 dV 와 완벽히 일치해야 합니다."
-  // (분리된 두 번째 $ 는 그 다음 수식 "$dV_w = dV$" 의 여는 기호로 재활용됨)
-  text = text.replace(/\$([a-zA-Z_\\][a-zA-Z0-9_{}\\']*(?:_\{?[a-zA-Z0-9_]+\}?)?)\s+([가-힣][^$]*?)\$/g,
-    (match, mathPart, koreanPart) => `$${mathPart.trim()}$ ${koreanPart}`
-  );
-
-  // $한글텍스트 수식변수$ 패턴 분리 (반대 순서): 
-  // e.g. "$흙의 전체 체적 V$" → "흙의 전체 체적 $V$"
-  text = text.replace(/\$([가-힣][^$]*?)\s+([a-zA-Z_\\][a-zA-Z0-9_{}\\']*(?:_\{?[a-zA-Z0-9_]+\}?)?)\$/g,
-    (match, koreanPart, mathPart) => `${koreanPart} $${mathPart.trim()}$`
-  );
-
-  // \text{한글} 형태로 수식 안에 억지로 갇힌 한글 구조 해제
-  text = text.replace(/\\text\{\s*([가-힣\s0-9배차]+)\s*\}/g, ' $1 ');
-
-  // 단순 수치 단위가 달러 기호에 묶인 경우 해제 ($10m$ -> 10m)
-  text = text.replace(/\$([0-9.,\-\+]+)\s*([가-힣a-zA-Z%]+)\$/g, '$1$2');
-
-  // 전처리 토큰 패스: 텍스트 세그먼트에서만 괄호 내 LaTeX 명령어 래핑
-  // e.g. (\sigma_v) -> ($\sigma_v$), (\phi) -> ($\phi$)
-  // 기존 $...$ 블록 내부는 건드리지 않음 (text 토큰만 처리)
-  {
-    const preToks = tokenizeForHealing(text);
-    text = preToks.map(tok => {
-      if (tok.type !== 'text') return tok.content;
-      return tok.content.replace(
-        /\(\s*(\\(?:sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|Delta|Sigma|Gamma|Phi|Theta|Omega|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\{[a-zA-Z0-9_]+\}))?(?:')?\s*)\)/g,
-        (match, cmd) => `($${cmd.trim()}$)`
-      );
-    }).join('');
-  }
-
-
-  // 💡 [단일 공식/수식형 전체 감싸기 최적화]
+  
+  // 💡 [단일 공식/수식형 전체 감싸기 최적화]: 단일 공식이나 객관식 보기 등 짧은 수식형 문장은
+  // 굳이 잘게 쪼개서 파편화하지 않고, 전체를 단일 $...$ 로 감싸 KaTeX가 한 번에 미려하게 렌더링하도록 합니다.
   let trimmed = text.trim();
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     trimmed = trimmed.substring(2, trimmed.length - 2).trim();
@@ -5652,6 +5586,7 @@ function healLatexFormulas(text) {
     return `$${cleanedMath}$`;
   }
   
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let healed = text;
   if (hasKorean && ((text.trim().startsWith('$$') && text.trim().endsWith('$$')) || (text.trim().startsWith('$') && text.trim().endsWith('$')))) {
     healed = trimmed;
@@ -5659,21 +5594,26 @@ function healLatexFormulas(text) {
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
 
-  // 1. 줄 단위로 달러 기호가 1개인 수식 줄(등호가 있는 경우)에서 달러 기호 제거
+  // 1. Line-by-line recovery for formulas with a single missing delimiter
+  // If a line starts with a formula variable/command and an equals sign, but has exactly one dollar sign,
+  // we strip the single dollar sign so that the formulaPattern can wrap the whole equation cleanly.
   const lines = healed.split('\n');
   const processedLines = lines.map(line => {
     const dollarCount = (line.match(/\$/g) || []).length;
-    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}()\[\],.\\\/]*?[<>=]+/.test(line);
-    if (dollarCount === 1 && isFormulaLine) {
-      return line.replace(/\$/g, '');
+    const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
+    if (dollarCount === 1) {
+      if (isFormulaLine) {
+        return line.replace(/\$/g, '');
+      }
     }
     return line;
   });
   healed = processedLines.join('\n');
 
-  // 2. LaTeX 명령어로 시작하지만 달러 기호가 파편화된 수식 복구
+  // 2. Repair formulas starting with LaTeX commands but having fragmented dollars mid-way and at the end
   // e.g. \theta = \frac{$\delta}{L}$ -> $\theta = \frac{\delta}{L}$
-  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}()\[\],.\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+  // e.g. \theta = 1$/300$ -> $\theta = 1/300$
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
     const hasBackslash = p1.includes('\\') || p2.includes('\\');
     const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
     if (hasBackslash || hasGreek) {
@@ -5682,14 +5622,14 @@ function healLatexFormulas(text) {
     return match;
   });
 
-  // 3. 중괄호 안의 파편화된 달러 기호 제거: \frac{$\delta}{L} -> \frac{\delta}{L}
+  // 3. Clean up split fractions in curly braces like \frac{$\delta}{L} -> \frac{\delta}{L}
   healed = healed.replace(/\\frac\s*\{\s*\$([^\$]+?)\}/g, '\\frac{$1}');
   healed = healed.replace(/\{\s*\$([^\$]+?)\s*\}/g, '{$1}');
 
-  // 4. 산술 파편화된 달러 제거: 1$/300$ -> 1/300$
+  // 4. Clean up arithmetic split dollars like 1$/300$ -> 1/300$
   healed = healed.replace(/(\d+)\s*\$\s*([\/+\-*])\s*(\d+)/g, '$1$2$3');
 
-  // 5. TEXT 토큰에서만 이중 역슬래시 복구
+  // 5. Clean up double-backslash command names - applied only on TEXT segments to preserve \\  inside valid math blocks
   {
     const rule5Tokens = tokenizeForHealing(healed);
     healed = rule5Tokens.map(tok => {
@@ -5698,15 +5638,19 @@ function healLatexFormulas(text) {
     }).join('');
   }
 
+  // 6. [Moved to STEP 1.5 to protect valid math blocks from global injection]
+
   // --- Multi-Step Tokenization & Wrapping Architecture ---
 
-  // STEP 1: 텍스트 토큰에서 비교/등식 수식 감싸기
+  // STEP 1: Wrap larger formulas (equations and specific arithmetic expressions) on text tokens
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
 
-      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}()\[\],.\\\/<>:;!?^~&|%]*[a-zA-Z0-9')\}]))/g;
+      // Match and wrap comparison/equality formulas containing greek letters or backslashes
+      // We restrict the right-side match to typical mathematical characters, stopping at Korean or markdown formatting
+      const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?[ \t]*[<>=]+[ \t]*[a-zA-Z0-9'_ \t\-+\/{}\(\)\[\],.\\\\/<>=:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
       t = t.replace(formulaPattern, (match, g1) => {
         if (g1) {
           const hasBackslash = g1.includes('\\');
@@ -5720,6 +5664,7 @@ function healLatexFormulas(text) {
         return match;
       });
 
+      // Wrap specific arithmetic equations like \sigma' = \sigma - P_w
       t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
       t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
       t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
@@ -5728,15 +5673,21 @@ function healLatexFormulas(text) {
     }
   });
 
+  // Re-assemble and re-tokenize after STEP 1 to convert wrapped math blocks into actual math tokens
   let reassembledAfterStep1 = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembledAfterStep1);
 
-  // STEP 1.5: 괄호 안의 LaTeX 명령어/그리스 변수 감싸기
+  // STEP 1.5: Wrap parenthesized expressions that contain LaTeX commands/Greek variables but lack delimiters
+  // e.g. (0.5 \gamma B N_{\gamma}) -> ( $0.5 \gamma B N_{\gamma}$ )
+  // Running this only on text tokens prevents injecting $ inside pre-existing math blocks.
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
       t = t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
         if (p1.includes('\\left') || p1.includes('\\right')) {
+          return match;
+        }
+        if (/[\uAC00-\uD7A3]/.test(p1)) {
           return match;
         }
         return '($' + p1.trim() + '$)';
@@ -5745,7 +5696,7 @@ function healLatexFormulas(text) {
     }
   });
 
-  // STEP 2: 그리스 변수와 첨자 감싸기 (⚠️ mathWords.forEach 루프 제거 - 한글 텍스트 오염 방지)
+  // STEP 2: Re-tokenize and wrap smaller Greek variables and subscripts
   let reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
 
@@ -5753,15 +5704,26 @@ function healLatexFormulas(text) {
     if (token.type === 'text') {
       let t = token.content;
 
-      // \sigma, \phi 등 역슬래시가 이미 붙은 그리스 변수만 $...$ 로 감싸기
+      // Wrap bare Greek letters and standard math commands with backslashes
+      const mathWords = [
+        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
+        'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
+      ];
+      mathWords.forEach(word => {
+        const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
+        t = t.replace(regex, `\\${word}`);
+      });
+
+      // Wrap individual Greek variables like \alpha_p, \alpha_f, \phi
+      // 주의: frac, text 등 인자를 받는 명령어는 개별 $ $ 감싸기에서 제외합니다.
       const wrapAllowedWords = [
         'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
       ];
-      const subscriptPat = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPat}(?![a-zA-Z0-9_]))`, 'g');
+      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
       t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
 
-      // 변수 첨자 패턴 감싸기 (f_{ck}, P_{max} 등)
+      // Wrap plain variable subscripts (like f_{ck}, i_{cor}, P_{max}, P_w)
       const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
       t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
 
@@ -5769,7 +5731,7 @@ function healLatexFormulas(text) {
     }
   });
 
-  // STEP 3: 수식 블록 내부 포맷 정리
+  // STEP 3: Re-tokenize and perform inner math block formatting
   reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
 
@@ -5781,12 +5743,22 @@ function healLatexFormulas(text) {
         ? inside.substring(2, inside.length - 2).trim()
         : inside.substring(1, inside.length - 1).trim();
 
+      // Convert bare 'y' to '\gamma' inside math blocks
       math = math.replace(/\by_([a-zA-Z0-9]+)\b/g, '\\gamma_$1');
       math = math.replace(/\by\s*D_f\b/g, '\\gamma D_f');
       math = math.replace(/\byD_f\b/g, '\\gamma D_f');
       math = math.replace(/\by\s*\\?cdot\b/g, '\\gamma \\cdot');
 
-      // 수식 블록 내 이중 역슬래시 복구
+      // AI의 이중 이스케이프 오류(예: \\frac -> \frac, \\text -> \text) 강제 복구
+      const safeLatexCommands = [
+        'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
+        'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
+        'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
+        'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
+        'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
+        'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
+        'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+      ];
       math = math.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
         if (safeLatexCommands.includes(p1)) return '\\' + p1;
         return match;
@@ -5796,11 +5768,13 @@ function healLatexFormulas(text) {
     }
   });
 
-  // 최종 조립 및 간격 정규화
+  // Reassemble and perform final spacing formatting
   reassembled = tokens.map(t => t.content).join('');
 
+  // Re-tokenize to ensure perfect spacing
   const finalTokens = tokenizeForHealing(reassembled);
 
+  // Process Rule 1: Remove spaces inside math blocks
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
       const inside = token.content.substring(1, token.content.length - 1).trim();
@@ -5812,9 +5786,11 @@ function healLatexFormulas(text) {
   });
 
   reassembled = finalTokens.map(t => t.content).join('');
+  // Ensure space before/after brackets
   reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
   reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
 
+  // Process Rule 2: Ensure external spacing
   const processedTokens = tokenizeForHealing(reassembled);
   let result = '';
   for (let i = 0; i < processedTokens.length; i++) {
