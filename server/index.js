@@ -5570,6 +5570,20 @@ function healLatexFormulas(text) {
   
   // 🚨 [추가 조치]: 수식 구분자($) 내부가 순수 한글(공백 없음, 최대 10자)인 오염된 래핑 제거
   text = text.replace(/\$([가-힣]{1,10})\$/g, '$1');
+
+  // 🚨 [추가 조치 2]: 수식 구분자($) 내부가 한글을 포함하고 백슬래시(\)가 없는 오염된 래핑 제거 (예: $따라서...$)
+  text = text.replace(/\$\$([^$]+?)\$\$/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
+      return content;
+    }
+    return match;
+  });
+  text = text.replace(/\$([^$]+?)\$/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content) && !content.includes('\\')) {
+      return content;
+    }
+    return match;
+  });
   
   // 💡 [단일 공식/수식형 전체 감싸기 최적화]: 단일 공식이나 객관식 보기 등 짧은 수식형 문장은
   // 굳이 잘게 쪼개서 파편화하지 않고, 전체를 단일 $...$ 로 감싸 KaTeX가 한 번에 미려하게 렌더링하도록 합니다.
@@ -5780,7 +5794,8 @@ function healLatexFormulas(text) {
   // Process Rule 1: Remove spaces inside math blocks
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
-      const inside = token.content.substring(1, token.content.length - 1).trim();
+      let inside = token.content.substring(1, token.content.length - 1).trim();
+      inside = inside.replace(/\r?\n/g, ' ').trim(); // Replace inner newlines with spaces
       token.content = `$${inside}$`;
     } else if (token.type === 'block-math') {
       const inside = token.content.substring(2, token.content.length - 2).trim();
@@ -5816,7 +5831,7 @@ function healLatexFormulas(text) {
     } else if ((prev.type === 'inline-math' || prev.type === 'block-math') && current.type === 'text') {
       const firstChar = current.content[0];
       if (firstChar && !/\s/.test(firstChar)) {
-        if (!/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) {
+        if (!/[\)\]\}\'\"]/.test(firstChar)) {
           needSpace = true;
         }
       }

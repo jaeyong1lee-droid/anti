@@ -1224,7 +1224,14 @@ export default function App() {
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
-  const [formulaRevealed, setFormulaRevealed] = useState({});
+  const [formulaRevealed, setFormulaRevealed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_formula_revealed');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [formulaSearchQuery, setFormulaSearchQuery] = useState('');
   const formulaBodyRef = useRef(null);
   const savedFormulaScroll = useRef(0);
@@ -1241,7 +1248,14 @@ export default function App() {
   const [showAnswerSheet, setShowAnswerSheet] = useState(() => localStorage.getItem('anti_show_answersheet') === 'true');
   const [answersheetQuestions, setAnswersheetQuestions] = useState([]);
   const [loadingAnswersheet, setLoadingAnswersheet] = useState(false);
-  const [answersheetRevealed, setAnswersheetRevealed] = useState({});
+  const [answersheetRevealed, setAnswersheetRevealed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_answersheet_revealed');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [answersheetSearchQuery, setAnswersheetSearchQuery] = useState('');
   const [refreshingAnswersheetIdx, setRefreshingAnswersheetIdx] = useState(null);
   const [uploadingAnswersheetPdf, setUploadingAnswersheetPdf] = useState(false);
@@ -1454,7 +1468,14 @@ export default function App() {
   // Theory questions states (independent of formulas)
   const [theoryQuestions, setTheoryQuestions] = useState([]);
   const [loadingTheory, setLoadingTheory] = useState(false);
-  const [theoryRevealed, setTheoryRevealed] = useState({});
+  const [theoryRevealed, setTheoryRevealed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_theory_revealed');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [theorySearchQuery, setTheorySearchQuery] = useState('');
   const [refreshingTheoryIdx, setRefreshingTheoryIdx] = useState(null);
   const [uploadingTheoryPdf, setUploadingTheoryPdf] = useState(false);
@@ -4184,6 +4205,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('anti_show_answersheet', showAnswerSheet ? 'true' : 'false');
   }, [showAnswerSheet]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_formula_revealed', JSON.stringify(formulaRevealed));
+  }, [formulaRevealed]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_theory_revealed', JSON.stringify(theoryRevealed));
+  }, [theoryRevealed]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_answersheet_revealed', JSON.stringify(answersheetRevealed));
+  }, [answersheetRevealed]);
 
   const handleOpenTheoryExam = async () => {
     setShowTheoryExam(true);
@@ -9045,21 +9078,9 @@ export default function App() {
 
                         {/* Real-time LaTeX rendered Output Display Window */}
                         {!isMobileLandscape && isOutputVisible && (
-                          <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-indigo-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                              {/* Hide Output/Answer Button */}
-                              {!isNewEmptyCard && (
-                                <button
-                                  onClick={() => setTheoryRevealed(prev => ({ ...prev, [idx]: false }))}
-                                  className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
-                                >
-                                  접기 ✕
-                                </button>
-                              )}
-                            </div>
-                                                        {q.formula ? (
-                              <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                          <div className="space-y-1 py-1 px-0 min-h-0 relative select-text w-full">
+                            {q.formula ? (
+                              <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text w-full">
                                 <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `이론 ${idx + 1}`} />
                               </div>
                             ) : (
