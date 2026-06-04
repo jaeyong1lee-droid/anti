@@ -5523,6 +5523,7 @@ function tokenizeForHealing(text) {
 }
 
 function healLatexFormulas(text) {
+  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   // AI의 이중 이스케이프 오류(예: \\frac -> \frac) 강제 복구 (최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
@@ -5540,6 +5541,61 @@ function healLatexFormulas(text) {
     });
   }
   if (!text) return text;
+
+  // --- NEW PRE-PROCESSING: Fix mismatched / fragmented dollar signs on variables ---
+  // Rule A: Missing leading dollar for Greek variable (e.g. \sigma_v$ -> $\sigma_v$)
+  const missingLeadingRegex = new RegExp(
+    `(?<!\\$)\\\\(?:${symbols.join('|')}|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\\{[a-zA-Z0-9_]+\\}))?(?:')?\\$`,
+    'g'
+  );
+  text = text.replace(missingLeadingRegex, (match) => `$${match}`);
+
+  // Rule B: Missing trailing dollar for Greek variable (e.g. $\phi -> $\phi$)
+  const missingTrailingRegex = new RegExp(
+    `\\$(?:\\\\(?:${symbols.join('|')}|nabla|partial)(?:_(?:[a-zA-Z0-9]+|\\{[a-zA-Z0-9_]+\\}))?(?:')?)(?![a-zA-Z0-9_$])`,
+    'g'
+  );
+  text = text.replace(missingTrailingRegex, (match) => `${match}$`);
+
+  // Rule C: Line-by-line formula healing
+  const fileLines = text.split('\n');
+  const preProcessedLines = fileLines.map(line => {
+    let trimmed = line.trim();
+    if (!trimmed) return line;
+
+    // Check if the line matches a math formula followed by non-math text/headers
+    // e.g. \sigma_v$ = ... $**[변수 설명]***
+    // We use [^\uAC00-\uD7A3]* to match all non-Korean characters up to the last $ before the first Korean character
+    const formulaSplitRegex = /^([^\uAC00-\uD7A3]*\$)\s*([^\uAC00-\uD7A3]*[\uAC00-\uD7A3].*)$/;
+    const splitMatch = trimmed.match(formulaSplitRegex);
+    if (splitMatch) {
+      let mathPart = splitMatch[1];
+      const descPart = splitMatch[2];
+      // Heal the math part
+      const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(mathPart) || 
+                                /[_^{<>=]/.test(mathPart);
+      if (hasMathIndicators) {
+        mathPart = mathPart.replace(/\$/g, '').trim();
+        // Return single wrapped math block + descPart
+        return `\$${mathPart}\$ ${descPart}`;
+      }
+    }
+
+    // If the entire line is a formula with no Korean characters and has math indicators
+    const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
+                              /[_^{<>=]/.test(trimmed);
+    const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
+    const isHeader = trimmed.startsWith('#');
+
+    if (hasMathIndicators && !hasKorean && !isHeader) {
+      const cleaned = trimmed.replace(/\$/g, '').trim();
+      return `\$${cleaned}\$`;
+    }
+
+    return line;
+  });
+  text = preProcessedLines.join('\n');
+  // --- END OF NEW PRE-PROCESSING ---
 
   // 수식 구분자($) 내부가 순수 한글/공백으로만 된 오염된 래핑 강제 제거
   text = text.replace(/\$([가-힣\s,\.\?\!\(\)\[\]]+?)\$/g, '$1');
@@ -5580,7 +5636,6 @@ function healLatexFormulas(text) {
 
 
   // 💡 [단일 공식/수식형 전체 감싸기 최적화]
-  const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let trimmed = text.trim();
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     trimmed = trimmed.substring(2, trimmed.length - 2).trim();
