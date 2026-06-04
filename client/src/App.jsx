@@ -8111,8 +8111,8 @@ export default function App() {
                     .map((q) => {
                       const idx = q.originalIdx;
                       const isNewEmptyCard = !q.title && !q.formula;
-                      const isOutputVisible = isNewEmptyCard || !!formulaRevealed[idx];
                       const isInputVisible = isNewEmptyCard || !!formulaInputRevealed[idx];
+                      const isOutputVisible = isNewEmptyCard || (!!formulaRevealed[idx] && !isInputVisible);
 
                       return (
                       <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
@@ -8371,7 +8371,7 @@ export default function App() {
                               onBlur={() => {
                                 handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                               }}
-                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-80 md:h-[450px]"
                               placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
                             />
                           </div>
@@ -8964,7 +8964,7 @@ export default function App() {
                     const idx = q.originalIdx;
                     const isNewEmptyCard = !q.title && !q.formula;
                     const isInputVisible = isNewEmptyCard || !!theoryInputRevealed[idx];
-                    const isOutputVisible = isNewEmptyCard || !!theoryRevealed[idx] || isInputVisible;
+                    const isOutputVisible = isNewEmptyCard || (!!theoryRevealed[idx] && !isInputVisible);
 
                     return (
                       <div key={idx} id={`theory-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
@@ -9188,7 +9188,7 @@ export default function App() {
                                 setTheoryQuestions(updated);
                                 localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
                               }}
-                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
+                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-80 md:h-[450px]"
                               placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
                             />
                           </div>
