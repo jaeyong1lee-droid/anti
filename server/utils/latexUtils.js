@@ -328,20 +328,20 @@ export function healQuizQuestionObject(q) {
 export function healTheoryQuestionObject(t) {
   if (!t) return t;
   const healed = { ...t };
-  if (healed.title) healed.title = healLatexFormulas(healed.title);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.assumptions) healed.assumptions = healLatexFormulas(healed.assumptions);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
+  if (healed.title !== undefined) healed.title = healLatexFormulas(String(healed.title || '').trim());
+  if (healed.concept !== undefined) healed.concept = healLatexFormulas(String(healed.concept || '').trim());
+  if (healed.assumptions !== undefined) healed.assumptions = healLatexFormulas(String(healed.assumptions || '').trim());
+  if (healed.formula !== undefined) healed.formula = healLatexFormulas(String(healed.formula || '').trim());
+  if (healed.answer !== undefined) healed.answer = healLatexFormulas(String(healed.answer || '').trim());
   return healed;
 }
 
 export function healFormulaQuestionObject(f) {
   if (!f) return f;
   const healed = { ...f };
-  if (healed.title) healed.title = healLatexFormulas(healed.title);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
+  if (healed.title !== undefined) healed.title = healLatexFormulas(String(healed.title || '').trim());
+  if (healed.concept !== undefined) healed.concept = healLatexFormulas(String(healed.concept || '').trim());
+  if (healed.formula !== undefined) healed.formula = healLatexFormulas(String(healed.formula || '').trim());
   return healed;
 }
 

@@ -4635,7 +4635,7 @@ app.post('/api/exam/additional', async (req, res) => {
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
 
-    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 \${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
 
     for (let i = 0; i < TOTAL_BATCHES; i++) {
       const randomSeed = Math.floor(Math.random() * 10000);
@@ -4643,7 +4643,7 @@ app.post('/api/exam/additional', async (req, res) => {
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
 아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
-(현재 분할 출제 회차: \${i + 1} / \${TOTAL_BATCHES}, 랜덤 시드: \${randomSeed})
+(현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
 1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 각 '<Topic>...</Topic>' 태그, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
@@ -4653,13 +4653,13 @@ app.post('/api/exam/additional', async (req, res) => {
 5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
 
 [평가 범위 토픽 목록 및 본문]:
-\${combinedText}
+${combinedText}
 
 [저장된 필수공식 목록]:
-\${formulasText || '저장된 내용 없음'}
+${formulasText || '저장된 내용 없음'}
 
 [저장된 이론유도 목록]:
-\${theoriesText || '저장된 내용 없음'}
+${theoriesText || '저장된 내용 없음'}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
@@ -4701,7 +4701,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
       try {
-        console.log(`[종합평가 추가 생성] (\${i + 1}/\${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
+        console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
         const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
         let text = rawText.trim();
         if (text.startsWith('```')) {
@@ -4717,14 +4717,14 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 
         if (batchQuestions && Array.isArray(batchQuestions)) {
           aggregatedAiQuestions.push(...batchQuestions);
-          console.log(`[종합평가 추가 배치 성공] (\${i + 1}/\${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: \${aggregatedAiQuestions.length}`);
+          console.log(`[종합평가 추가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
         }
 
         if (i < TOTAL_BATCHES - 1) {
           await sleep(1200);
         }
       } catch (batchError) {
-        console.warn(`[추가 배치 우회 경고] \${i + 1}회차 생성 중 에러 발생:`, batchError.message);
+        console.warn(`[추가 배치 우회 경고] ${i + 1}회차 생성 중 에러 발생:`, batchError.message);
       }
     }
 
@@ -5038,7 +5038,7 @@ app.post('/api/formula/suggest-title', async (req, res) => {
  
 JSON 형식:
 {
-  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [중요 규칙]: 1) 공식에 학자/사람이름(예: 테르자기, 바톤, 랭킹, 쿨롱 등)이 연관된 경우 반드시 '테르자기 1차 압밀방정식', '바톤 암반 Q분류', '랭킹 주동토압계수'와 같이 사람이름을 최전방 한글명에 무조건 추가해 작명하시오. 2) '고착력 계산식', '설계수압' 등과 같이 대상이나 주어가 불분명한 수식은 반드시 '락볼트 고착력 계산식', '싱글쉘 터널 설계수압'처럼 주어를 확실히 명시하여 작명하시오. [작명 예시]: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, \\$C_v\\$)', '락볼트 고착력 계산식(Rockbolt Bond Strength, \\$P\\$)', '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, \\$K_a\\$)', '바톤 암반 Q분류(Barton Q-system, \\$Q\\$)', '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, \\$q_{ult}\\$)'",
+  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [중요 규칙]: 1) 공식에 학자/사람이름(예: 테르자기, 바톤, 랭킹, 쿨롱 등)이 연관된 경우 반드시 '테르자기 1차 압밀방정식', '바톤 암반 Q분류', '랭킹 주동토압계수'와 같이 사람이름을 최전방 한글명에 무조건 추가해 작명하시오. 2) '고착력 계산식', '설계수압' 등과 같이 대상이나 주어가 불분명한 수식은 반드시 '락볼트 고착력 계산식', '싱글쉘 터널 설계수압'처럼 주어를 확실히 명시하여 작명하시오. [작명 예시]: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, Cv)', '락볼트 고착력 계산식(Rockbolt Bond Strength, P)', '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, Ka)', '바톤 암반 Q분류(Barton Q-system, Q)', '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, q_ult)'",
   "concept": "이 공식이 상징하는 공학적/물리적 의미를 수험생이 머릿속에 아주 쉽게 직관적으로 이해할 수 있도록 설명하는 극도로 직관적이고 친절한 1~2문장의 명품 공학 개념 설명입니다. 기호의 나열이나 딱딱한 학술 사전 정의를 복사하는 것은 절대 엄금합니다. 수식의 본질적 존재 이유와 실무 공학적 대조(비유)를 섞어 쉽고 흥미롭게 작성하십시오. [개념 설명 작성 예시 (압밀계수 Cv 관련 수식 유입 시)]: '압밀계수 : \"물이 빠져나가며 흙이 압축되는 속도(Speed)\" 입니다. 즉시침하 공식들이 \"침하가 최종적으로 얼마나(침하량) 일어나는가?\" 를 묻는 것이라면, 압밀계수는 그 침하가 \"얼마나 빨리(시간) 끝나는가?\" 를 결정하는 핵심 지표입니다.' 이와 같이 다른 모든 전공 공식(지지력, Q분류, 토압 등)에 대해서도 '실무적으로 이 공식이 결정해주는 진짜 물리적 의의가 무엇인지'를 이해하기 쉬운 비유와 대조를 섞어 반드시 작성하십시오.",
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. [매우 중요 규칙]: 1) 반드시 제공된 [수식]에 명시적으로 표기된 기호와 상수들에 한해서만 기호 정의 목록을 작성하십시오. 공식에 포함되지 않은 엉뚱한 변수나 다른 공식의 기호를 리스트에 포함하는 것은 절대 엄금합니다. 수식에 등장하지 않는 기호(예: 수식에는 c나 B가 없는데 Terzaghi 공식을 상상해 c나 B를 적는 행위 등)가 단 하나라도 포함되면 절대 안 됩니다. 2) 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX 수식 기호를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오.'"
 }
@@ -6208,12 +6208,7 @@ JSON 규격:
       throw new Error('AI 분석 결과 누락');
     }
 
-    res.json(healTheoryQuestionObject({
-      title: result.title.trim(),
-      concept: (result.concept || '').trim(),
-      assumptions: (result.assumptions || '').trim(),
-      answer: result.answer.trim()
-    }));
+    res.json(healTheoryQuestionObject(result));
 
   } catch (err) {
     console.error('POST /api/theory/refresh error:', err);
