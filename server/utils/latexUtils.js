@@ -325,6 +325,31 @@ export function healQuizQuestionObject(q) {
   return healed;
 }
 
+export function healTheoryQuestionObject(t) {
+  if (!t) return t;
+  const healed = { ...t };
+  if (healed.title) healed.title = healLatexFormulas(healed.title);
+  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
+  if (healed.assumptions) healed.assumptions = healLatexFormulas(healed.assumptions);
+  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
+  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
+  return healed;
+}
+
+export function healFormulaQuestionObject(f) {
+  if (!f) return f;
+  const healed = { ...f };
+  if (healed.title) healed.title = healLatexFormulas(healed.title);
+  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
+  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
+  return healed;
+}
+
+export function healAnswersheetQuestionObject(a) {
+  return healFormulaQuestionObject(a);
+}
+
+
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [수식 및 기호 표기 규칙 (LaTeX)]:
 1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$, $u$, $z_c$, $F.S.$ 등)는 반드시 인라인 LaTeX 기호($변수명$)로 감싸주십시오.

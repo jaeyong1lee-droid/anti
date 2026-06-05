@@ -1,5 +1,5 @@
 import express from 'express';
-import { healLatexFormulas, healQuizQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
@@ -4808,8 +4808,9 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 위 내용을 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
 다음 규칙을 엄격히 따르십시오:
 1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
-2. 수식이나 공식이 있다면 반드시 LaTeX 형식($수식$ 또는 $$수식$$)을 사용하십시오.
-3. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+2. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+
+${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
     try {
@@ -5037,9 +5038,9 @@ app.post('/api/formula/suggest-title', async (req, res) => {
  
 JSON 형식:
 {
-  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [중요 규칙]: 1) 공식에 학자/사람이름(예: 테르자기, 바톤, 랭킹, 쿨롱 등)이 연관된 경우 반드시 '테르자기 1차 압밀방정식', '바톤 암반 Q분류', '랭킹 주동토압계수'와 같이 사람이름을 최전방 한글명에 무조건 추가해 작명하시오. 2) '고착력 계산식', '설계수압' 등과 같이 대상이나 주어가 불분명한 수식은 반드시 '락볼트 고착력 계산식', '싱글쉘 터널 설계수압'처럼 주어를 확실히 명시하여 작명하시오. [작명 예시]: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)', '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)', '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)', '바톤 암반 Q분류(Barton Q-system, $Q$)', '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)'",
+  "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 '한글(영어 전공명, LaTeX 수식 기호)'의 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어, '산정 공식' 등 미사여구는 일체 빼고 명사형 위주로 극도로 콤팩트하게 작성하십시오. [중요 규칙]: 1) 공식에 학자/사람이름(예: 테르자기, 바톤, 랭킹, 쿨롱 등)이 연관된 경우 반드시 '테르자기 1차 압밀방정식', '바톤 암반 Q분류', '랭킹 주동토압계수'와 같이 사람이름을 최전방 한글명에 무조건 추가해 작명하시오. 2) '고착력 계산식', '설계수압' 등과 같이 대상이나 주어가 불분명한 수식은 반드시 '락볼트 고착력 계산식', '싱글쉘 터널 설계수압'처럼 주어를 확실히 명시하여 작명하시오. [작명 예시]: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, \\$C_v\\$)', '락볼트 고착력 계산식(Rockbolt Bond Strength, \\$P\\$)', '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, \\$K_a\\$)', '바톤 암반 Q분류(Barton Q-system, \\$Q\\$)', '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, \\$q_{ult}\\$)'",
   "concept": "이 공식이 상징하는 공학적/물리적 의미를 수험생이 머릿속에 아주 쉽게 직관적으로 이해할 수 있도록 설명하는 극도로 직관적이고 친절한 1~2문장의 명품 공학 개념 설명입니다. 기호의 나열이나 딱딱한 학술 사전 정의를 복사하는 것은 절대 엄금합니다. 수식의 본질적 존재 이유와 실무 공학적 대조(비유)를 섞어 쉽고 흥미롭게 작성하십시오. [개념 설명 작성 예시 (압밀계수 Cv 관련 수식 유입 시)]: '압밀계수 : \"물이 빠져나가며 흙이 압축되는 속도(Speed)\" 입니다. 즉시침하 공식들이 \"침하가 최종적으로 얼마나(침하량) 일어나는가?\" 를 묻는 것이라면, 압밀계수는 그 침하가 \"얼마나 빨리(시간) 끝나는가?\" 를 결정하는 핵심 지표입니다.' 이와 같이 다른 모든 전공 공식(지지력, Q분류, 토압 등)에 대해서도 '실무적으로 이 공식이 결정해주는 진짜 물리적 의의가 무엇인지'를 이해하기 쉬운 비유와 대조를 섞어 반드시 작성하십시오.",
-  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. [매우 중요 규칙]: 1) 반드시 제공된 [수식]에 명시적으로 표기된 기호와 상수들에 한해서만 기호 정의 목록을 작성하십시오. 공식에 포함되지 않은 엉뚱한 변수나 다른 공식의 기호를 리스트에 포함하는 것은 절대 엄금합니다. 수식에 등장하지 않는 기호(예: 수식에는 c나 B가 없는데 Terzaghi 공식을 상상해 c나 B를 적는 행위 등)가 단 하나라도 포함되면 절대 안 됩니다. 2) 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오."
+  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. [매우 중요 규칙]: 1) 반드시 제공된 [수식]에 명시적으로 표기된 기호와 상수들에 한해서만 기호 정의 목록을 작성하십시오. 공식에 포함되지 않은 엉뚱한 변수나 다른 공식의 기호를 리스트에 포함하는 것은 절대 엄금합니다. 수식에 등장하지 않는 기호(예: 수식에는 c나 B가 없는데 Terzaghi 공식을 상상해 c나 B를 적는 행위 등)가 단 하나라도 포함되면 절대 안 됩니다. 2) 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX 수식 기호를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오.'"
 }
 
 반드시 다른 잡설 없이 오직 JSON 객체만 반환하시오. 마크다운 코드 블록(\`\`\`json) 등은 감싸지 말고 순수 JSON만 반환하시오.`;
@@ -5530,7 +5531,7 @@ app.post('/api/question/option-explanation', async (req, res) => {
 
 [요구사항]:
 1. ①, ②, ③, ④ 각 보기별 오답/정답 요인 분석을 한눈에 들어오도록 콤팩트하게 작성하십시오 (각 보기당 1~2줄 이내 권장).
-2. 수식이나 단위 기호는 반드시 LaTeX 문법(인라인 $...$, 블록 $$...$$)을 활용하여 주십시오.
+2. ${LATEX_PROMPT_INSTRUCTIONS}
 3. 마크다운의 '\`\`\`' 등의 특수 기호는 감싸지 말고 다음의 문자열 형식으로만 곧바로 반환해 주십시오:
 
 - **① ${options[0]}** : [정답/오답 핵심 분석] (여기에 명확하고 압축된 공학적 해설 기재)
@@ -5574,12 +5575,7 @@ app.post('/api/session/formula', async (req, res) => {
     await ensureSessionTable();
     const { formulaQuestions } = req.body;
     const healedQuestions = Array.isArray(formulaQuestions)
-      ? formulaQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
-        }))
+      ? formulaQuestions.map(healFormulaQuestionObject)
       : formulaQuestions;
     const value = JSON.stringify({ formulaQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['formula_questions']);
@@ -5621,12 +5617,7 @@ app.post('/api/session/answersheet', async (req, res) => {
     await ensureSessionTable();
     const { answersheetQuestions } = req.body;
     const healedQuestions = Array.isArray(answersheetQuestions)
-      ? answersheetQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
-        }))
+      ? answersheetQuestions.map(healAnswersheetQuestionObject)
       : answersheetQuestions;
     const value = JSON.stringify({ answersheetQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['answersheet_questions']);
@@ -5882,14 +5873,7 @@ app.post('/api/session/theory', async (req, res) => {
     await ensureSessionTable();
     const { theoryQuestions } = req.body;
     const healedQuestions = Array.isArray(theoryQuestions)
-      ? theoryQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula,
-          assumptions: q.assumptions ? healLatexFormulas(q.assumptions) : q.assumptions,
-          answer: q.answer ? healLatexFormulas(q.answer) : q.answer
-        }))
+      ? theoryQuestions.map(healTheoryQuestionObject)
       : theoryQuestions;
     const value = JSON.stringify({ theoryQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['theory_questions']);
@@ -5993,11 +5977,12 @@ JSON 규격:
       }
 
       res.json({
-        theories: theories.map(t => ({
-          title: healLatexFormulas((t.title || '실시간 추출 공식').trim()),
-          concept: healLatexFormulas((t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim()),
-          assumptions: healLatexFormulas((t.assumptions || '').trim()),
-          answer: healLatexFormulas((t.answer || '상세 유도 과정이 존재하지 않습니다.').trim())
+        theories: theories.map(t => healTheoryQuestionObject({
+          ...t,
+          title: (t.title || '실시간 추출 공식').trim(),
+          concept: (t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim(),
+          assumptions: (t.assumptions || '').trim(),
+          answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
         }))
       });
     } catch (llmErr) {
@@ -6223,12 +6208,12 @@ JSON 규격:
       throw new Error('AI 분석 결과 누락');
     }
 
-    res.json({
-      title: healLatexFormulas(result.title.trim()),
-      concept: healLatexFormulas((result.concept || '').trim()),
-      assumptions: healLatexFormulas((result.assumptions || '').trim()),
-      answer: healLatexFormulas(result.answer.trim())
-    });
+    res.json(healTheoryQuestionObject({
+      title: result.title.trim(),
+      concept: (result.concept || '').trim(),
+      assumptions: (result.assumptions || '').trim(),
+      answer: result.answer.trim()
+    }));
 
   } catch (err) {
     console.error('POST /api/theory/refresh error:', err);
