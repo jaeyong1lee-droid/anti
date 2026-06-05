@@ -2961,7 +2961,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 2. Vesic(1973)이 제안한 모래 지반에서의 파괴형태 예측 도표의 특징.
 3. 기초 강성(연성기초 vs 강성기초)과 흙의 종류(사질토 vs 점성토)의 4가지 조합에 따른 접지압(Contact Pressure) 분포 패턴 및 침하 형상(등분포 여부, 가장자리/중심 최대 여부 등).
 4. 하중-침하량($q - S$) 곡선의 파괴형태별(전반, 국부, 관입) 비교 특징 및 피크(Peak) 존재 여부.
-5. 국부전단파괴나 관입전단파괴 예상 시 지반 강도정수 저감 방법($c' = \\\\frac{2}{3}c$, $\\\\tan\\\\phi' = \\\\frac{2}{3}\\\\tan\\\\phi$) 및 KDS 11 50 15(얕은기초 설계기준), KDS 14 20 50(콘크리트구조 기초설계기준)의 교차검증 내용.
+5. 국부전단파괴나 관입전단파괴 예상 시 지반 강도정수 저감 방법($c' = \\frac{2}{3}c$, $\\tan\\phi' = \\frac{2}{3}\\tan\\phi$) 및 KDS 11 50 15(얕은기초 설계기준), KDS 14 20 50(콘크리트구조 기초설계기준)의 교차검증 내용.
 ※ '프란틀의 지지력 공식 이론'이나 '테르자기 연속기초 극한지지력 공식' 자체를 단독으로 묻는 단순 암기식 문제는 출제하지 마십시오. 흙의 실제 변형 거동과 전단 파괴 메커니즘, 접지압에 완전히 특화된 고급 주관식/객관식 문제를 출제해주십시오.
 `;
     }
@@ -3064,7 +3064,7 @@ ${adjustmentsPrompt}
    - "type" 값: 반드시 "주관식 (공식)"
    - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
+   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
    - "structure": 반드시 빈 문자열 ""
 
    [3번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
@@ -3075,11 +3075,13 @@ ${adjustmentsPrompt}
    - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
    - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-   - 중요 특화 출제 사항 (계산/정량 문제 최우선 및 공식 은닉 원칙 - 극도로 중요):
-      1. 만약 이 토픽이 수식 계산, 정량적 조건 대입, 설계 수치 계산, 혹은 거동 분석(예: 토압 계수, 침하량 계산, 투수량, 투수 계수, 액상화 안전율, 락볼트 인장력, Q 지수 산정, 버팀대 강성 및 모멘트 등)이 단 한 줄이라도 가능한 공학/역학 토픽이라면, **전체 객관식 10문제 중 최소 7문제 이상(70% 이상)을 구체적인 조건 수치(예: 지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량적인 결과를 묻는 '수치 계산 예제문제 및 공식 대입 응용문제'로 출제하십시오.**
-      단순한 텍스트 위주의 정성적인 설명 일치/불일치 문제는 가급적 최소화하고, 기술사 실무 및 수리 해석 계산 능력을 다각도로 검증할 수 있는 정량적인 계산 문제를 극도로 우선하여 위주로 출제해 주시기 바랍니다. 모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+   - 중요 특화 출제 사항 (문제 구성 비율 및 공식 은닉 원칙 - 극도로 중요):
+      1. 전체 객관식 10문제는 반드시 아래 비율을 준수하여 구성하십시오:
+          - **기본 기초 개념 문제 (40%, 약 4문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?", "○○○이 발생하는 조건은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+          - **정량 계산 문제 (30%, 약 3문제)**: 구체적인 조건 수치(지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+          - **심화 원리·비교 문제 (30%, 약 3문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+      모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
       2. **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
-      3. 특히 **수치 해석법이나 가설 구조물 해석(예: 탄소성보법의 굴착 단계별 누적 해석 메커니즘, 지반 반력계수 산정 등)과 같이 정밀 거동 분석이 필요한 토픽의 경우, 단순히 정성적인 서술형 지문 대신 "벽체 휨모멘트 $M_1 = 150 \\\\text{ kN}\\\\cdot\\\\text{m}$, 선행하중 $P_0 = 200 \\\\text{ kN}$, 수평지지강성 $k_s = 5,000 \\\\text{ kN/m}$ 등의 구체적인 임의의 실무 설계 파라미터(수치 조건)를 가상으로 부여한 뒤, 다음 시공 단계에서의 최종 누적 휨모멘트나 변위 증분, 혹은 반력 등을 정량적으로 분석하거나 계산해내는 고품격 예제문제 형식"**을 적극 구성하여 출제하십시오.
 
 2. 수식 및 기호 표기 (LaTeX 수식 기법 철저 준용):
    - 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\phi$, $\sigma$, $\tau$, $u$, $z_c$, $F.S.$ 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 합니다. 절대 변수를 일반 텍스트(예: Ks, kh, e, c, u 등)로 날것으로 기재하지 마십시오.
@@ -3368,7 +3370,7 @@ app.post('/api/question/regenerate', async (req, res) => {
         searchTarget.includes('소일내일') || searchTarget.includes('소일네일') || searchTarget.includes('soil nail') || searchTarget.includes('어스앵커') || searchTarget.includes('어스 앵커') || searchTarget.includes('earth anchor') || searchTarget.includes('네일') || searchTarget.includes('앵커') ||
         searchTarget.includes('프란틀') || searchTarget.includes('prandtl') ||
         searchTarget.includes('여굴') || searchTarget.includes('overbreak') || searchTarget.includes('제어발파') || searchTarget.includes('제어 발파') || searchTarget.includes('contour hole') || searchTarget.includes('외곽공') || searchTarget.includes('smooth blasting') || searchTarget.includes('스무드 블라스팅') || searchTarget.includes('스무드블라스팅') || searchTarget.includes('line drilling') || searchTarget.includes('라인 드릴링') || searchTarget.includes('presplitting') || searchTarget.includes('프리스플리팅') || searchTarget.includes('디커플링') || searchTarget.includes('decoupling') ||
-        searchTarget.includes('사면안정') || searchTarget.includes('사면 안정') || searchTarget.includes('slope stability') || searchTarget.includes('slope') || searchTarget.includes('사면 붕괴') || searchTarget.includes('사면붕괴') || searchTarget.includes('원호파괴') || searchTarget.includes('평면파괴') || searchTarget.includes('쐐기파괴') || searchTarget.includes('전도파괴') || searchTarget.includes('절편법') || searchTarget.includes('fellenius') || searchTarget.includes('펠레니우스') || searchTarget.includes('bishop') || searchTarget.includes('비숍') ||
+        searchTarget.includes('사면안정') || searchTarget.includes('사면 안정') || searchTarget.includes('slope stability') || searchTarget.includes('slope') || searchTarget.includes('사면 붕괴') || searchTarget.includes('사면붕괴') || searchTarget.includes('원호파괴') || searchTarget.includes('평면파괴') || searchTarget.includes('쐐기파괴') || searchTarget.includes('전도파괴') || searchTarget.includes('절편법') || searchTarget.includes('fellenius') ||
         searchTarget.includes('토압') || searchTarget.includes('옹벽') || searchTarget.includes('earth pressure') || searchTarget.includes('retaining wall') || searchTarget.includes('주동토압') || searchTarget.includes('수동토압') || searchTarget.includes('정지토압') || searchTarget.includes('주동 토압') || searchTarget.includes('수동 토압') || searchTarget.includes('정지 토압') || searchTarget.includes('랭킨') || searchTarget.includes('rankine') || searchTarget.includes('쿨롱') || searchTarget.includes('coulomb') ||
         searchTarget.includes('전단강도') || searchTarget.includes('전단 강도') || searchTarget.includes('shear strength') || searchTarget.includes('삼축압축') || searchTarget.includes('삼축 압축') || searchTarget.includes('uu 시험') || searchTarget.includes('cu 시험') || searchTarget.includes('cd 시험') || searchTarget.includes('uu시험') || searchTarget.includes('cu시험') || searchTarget.includes('cd시험') || searchTarget.includes('비배수') || searchTarget.includes('mohr-coulomb') || searchTarget.includes('모어 쿨롱') || searchTarget.includes('모어-쿨롱') ||
         searchTarget.includes('투수') || searchTarget.includes('침투') || searchTarget.includes('보일링') || searchTarget.includes('boiling') || searchTarget.includes('분사현상') || searchTarget.includes('분사 현상') || searchTarget.includes('piping') || searchTarget.includes('파이핑') || searchTarget.includes('seepage') || searchTarget.includes('permeability') || searchTarget.includes('darcy') || searchTarget.includes('다르시') || searchTarget.includes('임계동수경사') || searchTarget.includes('동수경사') || searchTarget.includes('유선망') || searchTarget.includes('flow net') ||
@@ -4289,9 +4291,12 @@ ${adjustmentsPrompt}
 1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
    - 객관식 (type: "객관식"): 4문제 (4지선다형)
-2. 객관식 문제의 유형 및 계산/정량 문제 최우선 출제 지침 (극도로 중요):
-   - 만약 출제 대상 토픽이 수식 계산, 정량적 조건 대입, 설계 수치 계산, 혹은 거동 분석(예: 토압 계수, 침하량 계산, 투수량, 투수 계수, 액상화 안전율, 락볼트 인장력, Q 지수 산정, 버팀대 강성 및 모멘트 등)이 단 한 줄이라도 가능한 공학/역학 토픽이라면, **출제되는 객관식 문항들 중 최소 70% 이상을 구체적인 조건 수치(예: 지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량적인 결과를 묻는 '수치 계산 예제문제 및 공식 대입 응용문제'로 출제하십시오.**
-     단순한 텍스트 위주의 정성적인 설명 일치/불일치 문제는 가급적 배제/최소화하고, 기술사 실무 및 수리 해석 계산 능력을 다각도로 검증할 수 있는 정량적인 계산 문제를 극도로 우선하여 위주로 출제해 주시기 바랍니다. 모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
+   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
+     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+   모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
    - 특히 **수치 해석법이나 가설 구조물 해석(예: 탄소성보법의 굴착 단계별 누적 해석 메커니즘, 지반 반력계수 산정 등)과 같이 정밀 거동 분석이 필요한 토픽의 경우, 단순히 정성적인 서술형 지문 대신 "벽체 휨모멘트 $M_1 = 150 \\\\text{ kN}\\\\cdot\\\\text{m}$, 선행하중 $P_0 = 200 \\\\text{ kN}$, 수평지지강성 $k_s = 5,000 \\\\text{ kN/m}$ 등의 구체적인 임의의 실무 설계 파라미터(수치 조건)를 가상 부여한 뒤, 다음 시공 단계에서의 최종 누적 휨모멘트나 변위 증분, 혹은 반력 등을 정량적으로 분석하거나 계산해내는 고품격 예제문제 형식"**을 적극 구성하여 출제하십시오.
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
@@ -4695,9 +4700,12 @@ app.post('/api/exam/additional', async (req, res) => {
 1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
    - 객관식 (type: "객관식"): 3문제 (4지선다형)
-2. 객관식 문제의 유형 및 계산/정량 문제 최우선 출제 지침 (극도로 중요):
-   - 만약 출제 대상 토픽이 수식 계산, 정량적 조건 대입, 설계 수치 계산, 혹은 거동 분석(예: 토압 계수, 침하량 계산, 투수량, 투수 계수, 액상화 안전율, 락볼트 인장력, Q 지수 산정, 버팀대 강성 및 모멘트 등)이 단 한 줄이라도 가능한 공학/역학 토픽이라면, **출제되는 객관식 문항들 중 최소 70% 이상을 구체적인 조건 수치(예: 지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량적인 결과를 묻는 '수치 계산 예제문제 및 공식 대입 응용문제'로 출제하십시오.**
-     단순한 텍스트 위주의 정성적인 설명 일치/불일치 문제는 가급적 배제/최소화하고, 기술사 실무 및 수리 해석 계산 능력을 다각도로 검증할 수 있는 정량적인 계산 문제를 극도로 우선하여 위주로 출제해 주시기 바랍니다. 모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
+   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
+     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+   모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
    - 특히 **수치 해석법이나 가설 구조물 해석(예: 탄소성보법의 굴착 단계별 누적 해석 메커니즘, 지반 반력계수 산정 등)과 같이 정밀 거동 분석이 필요한 토픽의 경우, 단순히 정성적인 서술형 지문 대신 "벽체 휨모멘트 $M_1 = 150 \\\\text{ kN}\\\\cdot\\\\text{m}$, 선행하중 $P_0 = 200 \\\\text{ kN}$, 수평지지강성 $k_s = 5,000 \\\\text{ kN/m}$ 등의 구체적인 임의의 실무 설계 파라미터(수치 조건)를 가상 부여한 뒤, 다음 시공 단계에서의 최종 누적 휨모멘트나 변위 증분, 혹은 반력 등을 정량적으로 분석하거나 계산해내는 고품격 예제문제 형식"**을 적극 구성하여 출제하십시오.
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.

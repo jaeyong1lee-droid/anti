@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Brain, 
   UploadCloud, 
@@ -850,13 +850,20 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
 
   const isHeavy = isHeavyHtml(text);
 
-  // 1) 불필요한 연속 빈 행(3개 이상 연속 개행)을 최대 2개로 압축하여 컴팩트하게 정리 (HTML 보고서인 경우 백슬래시 보호를 위해 자가치유 스킵)
+  // 1) 불필요한 연속 빈 행을 최대 2개로 압축하여 컴팩트하게 정리
   let cleanedText = isHeavy
     ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
-    : healFormulas(text).replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+    : healFormulas(text)
+        .replace(/\\r\\n/g, '\n')  // escaped \r\n → real newline
+        .replace(/\\n/g, '\n')      // escaped \n → real newline
+        .replace(/\r\n/g, '\n')     // CR+LF → LF
+        .replace(/\n{3,}/g, '\n\n') // max 2 consecutive newlines
+        .trim();
 
-  if (!isHeavy) {
-    cleanedText = convertMarkdownToHtml(cleanedText, isMarkdown);
+  // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
+  // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
+  if (!isHeavy && isMarkdown) {
+    cleanedText = convertMarkdownToHtml(cleanedText, true);
   }
 
   if (isHeavy) {
@@ -6604,7 +6611,7 @@ export default function App() {
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
 
                                                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -6717,23 +6724,23 @@ export default function App() {
                               {q.concept && (
                                 <div className="space-y-1">
                                   <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.concept)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.concept)} /></div>
                                 </div>
                               )}
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.formula)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.formula)} /></div>
                                 </div>
                               )}
                               {q.structure && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.structure)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.structure)} /></div>
                                 </div>
                               )}
                               {!q.concept && !q.formula && !q.structure && (
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} /></div>
                               )}
 
                               {/* 문제조정 입력 및 결과 보드 */}
@@ -7586,7 +7593,7 @@ export default function App() {
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -7697,7 +7704,7 @@ export default function App() {
                               </button>
                             </div>
                             <div className="text-sm text-slate-200 leading-relaxed">
-                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} />
+                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} />
                             </div>
                             {q.concept && (
                               <div className="pt-2 border-t border-amber-500/10">
