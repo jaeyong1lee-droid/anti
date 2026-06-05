@@ -129,7 +129,7 @@ export function healLatexFormulas(text) {
   }
 
   // STEP 1: 예전 코딩의 검증된 수식 패턴 정규식으로 복구 (Contrast 이물질 단어 제거 완료)
-  const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+  const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/=<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type === 'text') {
@@ -294,8 +294,17 @@ export function healLatexFormulas(text) {
   }
 
   // 잔여 기호 비대칭 패턴 안전 보정 처리
-  result = result.replace(/\$\$([^\$]+?)\$(?!\$)/g, (match, p1) => '$' + p1 + '$');
-  result = result.replace(/(?<!\$)\$([^\$]+?)\$\$/g, (match, p1) => '$' + p1 + '$');
+  result = result.replace(/\$\$([^\$\n]+?)\$(?!\$)/g, (match, p1) => {
+    if (/[\uAC00-\uD7A3]/.test(p1)) return match;
+    return '$' + p1 + '$';
+  });
+  result = result.replace(/(?<!\$)\$([^\$\n]+?)\$\$/g, (match, p1) => {
+    if (/[\uAC00-\uD7A3]/.test(p1)) return match;
+    return '$' + p1 + '$';
+  });
+
+  // 공식 기호 설명행 사이 빈행 삭제
+  result = result.replace(/(^\s*[•\-*\u2022]\s*[^\n]+)\n\s*\n(?=\s*[•\-*\u2022]\s*)/gm, '$1\n');
 
   return result;
 }
