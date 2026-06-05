@@ -458,6 +458,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">$1. $2</div>');
   }
 
+  // 5.5. Remove extra newlines around list divs to prevent spacers/br from adding huge gaps
+  tempText = tempText.replace(/(<\/div>)\n+(<div style="[^"]*">(?:•|\d+\.))/g, '$1$2');
+
   // 6. Spacers for paragraph gaps
   if (isMarkdown) {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
@@ -657,7 +660,8 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       // Render block math $$ ... $$
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
         try {
-          return window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false }).replace(/\n/g, '');
+          const rendered = window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false }).replace(/\n/g, '');
+          return `<div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
         } catch (e) {
           return m;
         }
@@ -763,7 +767,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
             return (
               <span 
                 key={idx} 
-                className="my-1 md:my-2 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+                className="my-4 md:my-6 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
               >
                 <span 
                   className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
@@ -825,7 +829,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
           return (
             <div 
               key={idx} 
-              className="my-1 md:my-2 flex flex-col md:flex-row items-center justify-between gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+              className="my-4 md:my-6 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
             >
               {/* KaTeX 수식 */}
               <div 
