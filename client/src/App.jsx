@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Brain, 
   UploadCloud, 
@@ -461,7 +461,7 @@ function healLatexFormulas(text) {
   
   text = text.replace(/\$([가-힣]{1,10})\$/g, '$1');
 
-  // 한글이 포함된 잘못된 달러 묶음 해제
+  // 외곽 한글 포함 달러 기호 오염 방지
   text = text.replace(/\$\$([^$]+?)\$\$/g, (match, content) => {
     if (/[\uAC00-\uD7A3]/.test(content)) return content;
     return match;
@@ -527,7 +527,7 @@ function healLatexFormulas(text) {
     }).join('');
   }
 
-  // STEP 1: 예전 코드의 검증된 formulaPattern 정규식으로 롤백 (Contrast 이물질 제거)
+  // STEP 1: 예전 코딩의 검증된 수식 패턴 정규식으로 복구 (Contrast 이물질 단어 제거 완료)
   const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
@@ -551,7 +551,22 @@ function healLatexFormulas(text) {
   });
   healed = tokens.map(t => t.content).join('');
 
-  // STEP 2: 수식 내 괄호 및 명령어 밸런스 래핑
+  // STEP 2: 백슬래시 수식 감지 래핑
+  const mathExprPattern = /((?:\b[a-zA-Z0-9_\-\+\*\/\(\)\[\] \t=<>]*)?\\[a-zA-Z_]+(?:[a-zA-Z0-9_\-\+\*\/\(\)\[\|\ ']|[ \t=<>\\\\\^]|\{[^}]*\})*)/g;
+  tokens = tokenizeForHealing(healed);
+  tokens.forEach(tok => {
+    if (tok.type === 'text') {
+      tok.content = tok.content.replace(mathExprPattern, (match, g1) => {
+        let content = g1.trim();
+        if (content.endsWith('\\')) content = content.slice(0, -1).trim();
+        const isComplex = content.includes('\\frac') || content.includes('\\partial') || content.length > 40;
+        return isComplex ? '$$' + content + '$$' : '$' + content + '$';
+      });
+    }
+  });
+  healed = tokens.map(t => t.content).join('');
+
+  // STEP 3: 괄호 내 미해제 수식 해소
   tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type === 'text') {
@@ -567,7 +582,7 @@ function healLatexFormulas(text) {
   });
   healed = tokens.map(t => t.content).join('');
 
-  // STEP 3: 백슬래시 누락 복구 및 단독 그리스 문자 처리
+  // STEP 4: 그리스 단독 변수 인라인화 보정
   tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type === 'text') {
@@ -596,7 +611,7 @@ function healLatexFormulas(text) {
   });
   healed = tokens.map(t => t.content).join('');
 
-  // STEP 4: 내부 수학 블록 포맷 및 기호 복원 (대칭 정상화 수정)
+  // STEP 5: 흙의 단위중량 변수 정리 및 인라인 수식 비대칭 버그 수정 완료
   tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type !== 'text') {
@@ -616,13 +631,13 @@ function healLatexFormulas(text) {
         return match;
       });
 
-      // [수정 완료] 인라인 수식일 때 깨지던 대칭($$) 버그 원천 해결
+      // [수정] 인라인 수식 앞뒤 달러 매칭 정상화 ($ 와 $ 대칭 완비)
       tok.content = isBlock ? `$$${math}$$` : `$${math}$`;
     }
   });
   healed = tokens.map(t => t.content).join('');
 
-  // STEP 5: 최종 공백 마감 처리 (가독성 확보 및 오타 수정)
+  // STEP 6: 수식 기호 정밀 클리닝 및 외부 공백 가독성 마감
   const finalTokens = tokenizeForHealing(healed);
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
@@ -631,7 +646,7 @@ function healLatexFormulas(text) {
       token.content = `$${inside}$`;
     } else if (token.type === 'block-math') {
       const inside = token.content.substring(2, token.content.length - 2).trim();
-      // [수정 완료] 과도하게 쌓이던 수식 기호 정리
+      // [수정] 과도하게 파편화되던 디스플레이 수식 진입 기호 정상 자릿수 확보
       token.content = `$$${inside}$$`;
     }
   });
@@ -677,7 +692,7 @@ function healLatexFormulas(text) {
     }
   }
 
-  // 잔여 찌꺼기 예외 기호 정리 보정
+  // 잔여 기호 비대칭 패턴 안전 보정 처리
   result = result.replace(/\$\$([^\$]+?)\$(?!\$)/g, (match, p1) => '$' + p1 + '$');
   result = result.replace(/(?<!\$)\$([^\$]+?)\$\$/g, (match, p1) => '$' + p1 + '$');
 
