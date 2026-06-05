@@ -29,6 +29,12 @@ export function tokenizeForHealing(text) {
 export function healLatexFormulas(text) {
   if (!text) return text;
 
+  // Preprocess: Remove single newlines inside inline math blocks (avoiding empty lines and Korean)
+  text = text.replace(/(?<!\$)\$(?!\$)([^$\n]+(?:\r?\n[^$\n]+)+)(?<!\$)\$(?!\$)/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content)) return match;
+    return `$${content.replace(/\r?\n/g, ' ')}$`;
+  });
+
   // ── K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
   text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
   text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
@@ -63,7 +69,7 @@ export function healLatexFormulas(text) {
   text = text.replace(/\$([가-힣]{1,10})\$/g, '$1');
 
   // 외곽 한글 포함 달러 기호 오염 방지
-  text = text.replace(/\$\$([^$]+?)\$\$/g, (match, content) => {
+  text = text.replace(/\$$([^$]+?)\$\$/g, (match, content) => {
     if (/[\uAC00-\uD7A3]/.test(content)) return content;
     return match;
   });
@@ -244,11 +250,22 @@ export function healLatexFormulas(text) {
     if (token.type === 'inline-math') {
       let inside = token.content.substring(1, token.content.length - 1).trim();
       inside = inside.replace(/\r?\n/g, ' ').trim();
+      inside = inside.replace(/\bz\s+c\b/g, 'z_c');
+      inside = inside.replace(/ z c /g, ' z_c ');
+      inside = inside.replace(/\s*([\+\-\=\<\>\·])\s*/g, '$1');
+      inside = inside.replace(/\\\s+([a-zA-Z{}])/g, '\\$1');
+      inside = inside.replace(/\\_/g, '_');
+      inside = inside.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
       token.content = `$${inside}$`;
     } else if (token.type === 'block-math') {
-      const inside = token.content.substring(2, token.content.length - 2).trim();
-      // [수정] 과도하게 파편화되던 디스플레이 수식 진입 기호 정상 자릿수 확보
-      token.content = `$$${inside}$$`;
+      let inside = token.content.substring(2, token.content.length - 2).trim();
+      inside = inside.replace(/\bz\s+c\b/g, 'z_c');
+      inside = inside.replace(/ z c /g, ' z_c ');
+      inside = inside.replace(/\s*([\+\-\=\<\>\·])\s*/g, '$1');
+      inside = inside.replace(/\\\s+([a-zA-Z{}])/g, '\\$1');
+      inside = inside.replace(/\\_/g, '_');
+      inside = inside.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
+      token.content = `\n\n$$${inside}$$\n\n`;
     }
   });
 
@@ -294,7 +311,7 @@ export function healLatexFormulas(text) {
   }
 
   // 잔여 기호 비대칭 패턴 안전 보정 처리
-  result = result.replace(/\$$([^\$\n]+?)\$(?!\$)/g, (match, p1) => {
+  result = result.replace(/\$\$([^\$\n]+?)\$(?!\$)/g, (match, p1) => {
     if (/[\uAC00-\uD7A3]/.test(p1)) return match;
     return '$' + p1 + '$';
   });
@@ -306,7 +323,10 @@ export function healLatexFormulas(text) {
   // 공식 기호 설명행 사이 빈행 삭제
   result = result.replace(/(^\s*[•\-*\u2022]\s*[^\n]+)\n\s*\n(?=\s*[•\-*\u2022]\s*)/gm, '$1\n');
 
-  return result;
+  // Clean up 3 or more consecutive newlines
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result.trim();
 }
 
 
@@ -351,12 +371,16 @@ export function healAnswersheetQuestionObject(a) {
 
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
-[수식 및 기호 표기 규칙 (LaTeX)]:
-1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$, $u$, $z_c$, $F.S.$ 등)는 반드시 인라인 LaTeX 기호($변수명$)로 감싸주십시오.
+[🚨 극도로 중요한 LaTeX 수식 및 변수 표기 절대 준수 수칙]:
+1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$, $u$, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기는 엄격히 금지합니다.
 2. 모든 LaTeX 명령어의 역슬래시(\\)는 JSON 파싱 에러 방지를 위해 반드시 이중 역슬래시(\\\\)로 작성하십시오. (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등)
-3. 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않는 단일 덩어리여야 합니다.
-4. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
-5. 수식 내부에 한글을 넣기 위한 \\\\text{한글} 사용을 금합니다. 수식 외부에서 표현하십시오. (예: $B$가 4배로 증가)
-6. 분수(\\\\frac)나 제곱근(\\\\sqrt)이 포함된 복잡한 수식은 반드시 독립된 행에 디스플레이 수식 블록($$수식$$)으로 분리하여 작성하십시오.
-7. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에 위치시켜 중괄호 내에 침투하지 않게 하십시오.
+3. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
+4. 외부 공백 필수 조건: $ 기호의 앞과 뒤가 한글, 숫자, 문장 부호와 맞닿을 경우 반드시 앞뒤로 '한 칸의 공백(스페이스)'을 명시적으로 두어 격리하십시오. 한국어 조사('가', '는', '입니다' 등)와 결합할 때도 예외 없이 한 칸 띄우고 조사를 작성하십시오. (예: $B$ 가 4배로 증가 (O) / $B$가 4배로 증가 (X))
+5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+6. 분수(\\\\frac), 거듭제곱근(\\\\sqrt), 미분방정식 항이 중첩된 복잡한 전개 수식은 문장 중간에 절대 섞어 쓰지 말고, 반드시 수식 블록 위아래로 빈 줄을 한 칸씩 띄운 뒤 디스플레이 수식 블록($$수식$$)으로 완벽히 독립시켜 독자 단락으로 분리 출력하십시오.
+7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
+8. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
+9. 아래첨자('_')나 괄호 기호 앞에 마크다운 렌더링 충돌 방지라는 핑계로 임의의 역슬래시(\\)를 붙여 시스템 깨짐(₩)을 유발하는 거동을 절대 하지 마십시오.
+10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
+11. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다.
 `;

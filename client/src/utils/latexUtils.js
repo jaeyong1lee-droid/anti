@@ -29,6 +29,12 @@ export function tokenizeForHealing(text) {
 export function healLatexFormulas(text) {
   if (!text) return text;
 
+  // Preprocess: Remove single newlines inside inline math blocks (avoiding empty lines and Korean)
+  text = text.replace(/(?<!\$)\$(?!\$)([^$\n]+(?:\r?\n[^$\n]+)+)(?<!\$)\$(?!\$)/g, (match, content) => {
+    if (/[\uAC00-\uD7A3]/.test(content)) return match;
+    return `$${content.replace(/\r?\n/g, ' ')}$`;
+  });
+
   // ── K0, K_0, k0 관련 문자열 깨짐 및 달러 기호 꼬임 방지 선제 조치 ──
   text = text.replace(/\$현장의\$K_0\$응력\$/g, '현장의 $K_0$ 응력');
   text = text.replace(/\$현장의\$K_0\$/g, '현장의 $K_0$');
@@ -244,11 +250,22 @@ export function healLatexFormulas(text) {
     if (token.type === 'inline-math') {
       let inside = token.content.substring(1, token.content.length - 1).trim();
       inside = inside.replace(/\r?\n/g, ' ').trim();
+      inside = inside.replace(/\bz\s+c\b/g, 'z_c');
+      inside = inside.replace(/ z c /g, ' z_c ');
+      inside = inside.replace(/\s*([\+\-\=\<\>\·])\s*/g, '$1');
+      inside = inside.replace(/\\\s+([a-zA-Z{}])/g, '\\$1');
+      inside = inside.replace(/\\_/g, '_');
+      inside = inside.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
       token.content = `$${inside}$`;
     } else if (token.type === 'block-math') {
-      const inside = token.content.substring(2, token.content.length - 2).trim();
-      // [수정] 과도하게 파편화되던 디스플레이 수식 진입 기호 정상 자릿수 확보
-      token.content = `$$${inside}$$`;
+      let inside = token.content.substring(2, token.content.length - 2).trim();
+      inside = inside.replace(/\bz\s+c\b/g, 'z_c');
+      inside = inside.replace(/ z c /g, ' z_c ');
+      inside = inside.replace(/\s*([\+\-\=\<\>\·])\s*/g, '$1');
+      inside = inside.replace(/\\\s+([a-zA-Z{}])/g, '\\$1');
+      inside = inside.replace(/\\_/g, '_');
+      inside = inside.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
+      token.content = `\n\n$$${inside}$$\n\n`;
     }
   });
 
@@ -306,5 +323,8 @@ export function healLatexFormulas(text) {
   // 공식 기호 설명행 사이 빈행 삭제
   result = result.replace(/(^\s*[•\-*\u2022]\s*[^\n]+)\n\s*\n(?=\s*[•\-*\u2022]\s*)/gm, '$1\n');
 
-  return result;
+  // Clean up 3 or more consecutive newlines
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result.trim();
 }
