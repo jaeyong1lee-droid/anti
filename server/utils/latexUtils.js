@@ -299,3 +299,19 @@ export function healLatexFormulas(text) {
 
   return result;
 }
+
+
+export function healQuizQuestionObject(q) {
+  if (!q) return q;
+  const healed = { ...q };
+  if (healed.question) healed.question = healLatexFormulas(healed.question);
+  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
+  if (healed.explanation) healed.explanation = healLatexFormulas(healed.explanation);
+  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
+  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
+  if (healed.structure) healed.structure = healLatexFormulas(healed.structure);
+  if (healed.options && Array.isArray(healed.options)) {
+    healed.options = healed.options.map(opt => healLatexFormulas(opt));
+  }
+  return healed;
+}

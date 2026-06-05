@@ -1,5 +1,5 @@
 import express from 'express';
-import { healLatexFormulas } from './utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
@@ -5547,22 +5547,7 @@ app.get('/api/session/last-active-review', async (req, res) => {
 });
 
 
-// Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
-// Helper tokenization for healLatexFormulas
-function healQuizQuestionObject(q) {
-  if (!q) return q;
-  const healed = { ...q };
-  if (healed.question) healed.question = healLatexFormulas(healed.question);
-  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
-  if (healed.explanation) healed.explanation = healLatexFormulas(healed.explanation);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.structure) healed.structure = healLatexFormulas(healed.structure);
-  if (healed.options && Array.isArray(healed.options)) {
-    healed.options = healed.options.map(opt => healLatexFormulas(opt));
-  }
-  return healed;
-}
+
 
 
 
