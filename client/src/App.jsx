@@ -472,8 +472,13 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 
   // Restore math blocks — MUST use function replacer to prevent $ from being treated as special pattern ($1, $&, etc.)
   mathBlocks.forEach(block => {
-    tempText = tempText.replace(block.placeholder, () => block.content);
+    while (tempText.includes(block.placeholder)) {
+      tempText = tempText.replace(block.placeholder, () => block.content);
+    }
   });
+
+  // Final guard: remove any leaked placeholders that couldn't be restored
+  tempText = tempText.replace(/___(BLOCK|INLINE)_MATH_\d+___/g, '');
 
   return tempText;
 }
