@@ -129,7 +129,7 @@ export function healLatexFormulas(text) {
   }
 
   // STEP 1: 예전 코딩의 검증된 수식 패턴 정규식으로 복구 (Contrast 이물질 단어 제거 완료)
-  const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
+  const formulaPattern = /((?:\\?[a-zA-Z_0-9']+(?:_[a-zA-Z0-9{}]+)?\s*[<>=]+\s*[a-zA-Z0-9_'\s\-+\/{}\(\)\[\],.\\\\/=<>:;!?^~&|%]*[a-zA-Z0-9'\)\}]))/g;
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(tok => {
     if (tok.type === 'text') {
@@ -294,8 +294,17 @@ export function healLatexFormulas(text) {
   }
 
   // 잔여 기호 비대칭 패턴 안전 보정 처리
-  result = result.replace(/\$\$([^\$]+?)\$(?!\$)/g, (match, p1) => '$' + p1 + '$');
-  result = result.replace(/(?<!\$)\$([^\$]+?)\$\$/g, (match, p1) => '$' + p1 + '$');
+  result = result.replace(/\$$([^\$\n]+?)\$(?!\$)/g, (match, p1) => {
+    if (/[\uAC00-\uD7A3]/.test(p1)) return match;
+    return '$' + p1 + '$';
+  });
+  result = result.replace(/(?<!\$)\$([^\$\n]+?)\$\$/g, (match, p1) => {
+    if (/[\uAC00-\uD7A3]/.test(p1)) return match;
+    return '$' + p1 + '$';
+  });
+
+  // 공식 기호 설명행 사이 빈행 삭제
+  result = result.replace(/(^\s*[•\-*\u2022]\s*[^\n]+)\n\s*\n(?=\s*[•\-*\u2022]\s*)/gm, '$1\n');
 
   return result;
 }
@@ -315,3 +324,14 @@ export function healQuizQuestionObject(q) {
   }
   return healed;
 }
+
+export const LATEX_PROMPT_INSTRUCTIONS = `
+[수식 및 기호 표기 규칙 (LaTeX)]:
+1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\\phi$, $\\sigma$, $\\tau$, $u$, $z_c$, $F.S.$ 등)는 반드시 인라인 LaTeX 기호($변수명$)로 감싸주십시오.
+2. 모든 LaTeX 명령어의 역슬래시(\\)는 JSON 파싱 에러 방지를 위해 반드시 이중 역슬래시(\\\\)로 작성하십시오. (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등)
+3. 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않는 단일 덩어리여야 합니다.
+4. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
+5. 수식 내부에 한글을 넣기 위한 \\\\text{한글} 사용을 금합니다. 수식 외부에서 표현하십시오. (예: $B$가 4배로 증가)
+6. 분수(\\\\frac)나 제곱근(\\\\sqrt)이 포함된 복잡한 수식은 반드시 독립된 행에 디스플레이 수식 블록($$수식$$)으로 분리하여 작성하십시오.
+7. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에 위치시켜 중괄호 내에 침투하지 않게 하십시오.
+`;

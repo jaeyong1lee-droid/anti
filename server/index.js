@@ -1,5 +1,5 @@
 import express from 'express';
-import { healLatexFormulas, healQuizQuestionObject } from './utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
@@ -3084,15 +3084,7 @@ ${adjustmentsPrompt}
       모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
       2. **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
 
-2. 수식 및 기호 표기 (LaTeX 수식 기법 철저 준용):
-   - 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, $\phi$, $\sigma$, $\tau$, $u$, $z_c$, $F.S.$ 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 합니다. 절대 변수를 일반 텍스트(예: Ks, kh, e, c, u 등)로 날것으로 기재하지 마십시오.
-   - 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기하며, JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\ 기호)는 반드시 이중 역슬래시(\\ 기호)로 이중 이스케이프해야 합니다 (예: \\frac{a}{b}, \\sigma, \\cdot 등).
-   - LaTeX 명령어의 중괄호 {} 기호는 절대로 누락하지 말고 완전하게 기재하십시오 (예: \\frac{A}{B}, \\text{m} 등).
-   - 중요: 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않도록 완벽한 '단일 덩어리'로 감싸서 작성하십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\')를 임의로 주입하여 구문 오류를 만들지 마십시오.
-   - 🚨 [단순 수치 및 단위 표기 금지]: 0.50배, 4배, 10m, 20% 등 단순한 숫자나 한글이 포함된 단위에는 절대로 LaTeX 기호($...$)를 적용하지 말고 일반 텍스트로 작성하십시오.
-   - 🚨 [한글 \\text{} 사용 엄금]: LaTeX 수식 내부에 한글을 넣기 위해 \\text{배} 와 같이 작성하는 것을 엄격히 금지합니다. 수식과 한글이 만날 때는 반드시 수식을 닫고 한 칸 띄운 후 한글을 작성하십시오. (예: $B$ 가 4배로 증가)
-   - 🚨 [복잡한 수식 분리]: 분수(\\frac), 거듭제곱근(\\sqrt) 등이 중첩된 복잡한 전개 식은 문장 중간에 섞어 쓰지 말고, 반드시 앞뒤로 빈 줄을 띄운 후 디스플레이 수식 블록($$수식$$)으로 완전히 독립시켜 작성하십시오.
-   - 🚨 [달러 기호 위치 엄수]: 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 합니다. 절대 중괄호({}) 내부에 달러 기호가 침투하지 않도록 하십시오. (잘못된 예: \\sqrt[4]{\\frac{4EI}{0.3k_{h1}$}}, 올바른 예: $\\sqrt[4]{\\frac{4EI}{0.3k_{h1}}}$)
+${LATEX_PROMPT_INSTRUCTIONS}
 
 3. 중복 질문 및 꼬임 금지:
    - 각 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
@@ -3492,14 +3484,7 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 
 ${typeRequirement}
 
-- 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기합니다. 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $y_p$, $p_p$, $p_0$, $K_s$, $k_h$, $e$, $c$, $\phi$, $\sigma$, $\tau$, $u$ 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 하며, 절대 일반 텍스트로 날것으로 기재하지 마십시오.
-- JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다 (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등).
-- LaTeX 명령어의 중괄호 {} 기호는 절대로 누락하지 말고 완전하게 기재하십시오 (예: \\\\frac{A}{B}, \\\\text{m} 등).
-- 중요: 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않도록 완벽한 '단일 덩어리'로 감싸서 작성하십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 주입하여 구문 오류를 만들지 마십시오.
-- 🚨 [단순 수치 및 단위 표기 금지]: 0.50배, 4배, 10m, 20% 등 단순한 숫자나 한글이 포함된 단위에는 절대로 LaTeX 기호($...$)를 적용하지 말고 일반 텍스트로 작성하십시오.
-- 🚨 [한글 \\\\text{} 사용 엄금]: LaTeX 수식 내부에 한글을 넣기 위해 \\\\text{배} 와 같이 작성하는 것을 엄격히 금지합니다. 수식과 한글이 만날 때는 반드시 수식을 닫고 한 칸 띄운 후 한글을 작성하십시오. (예: $B$ 가 4배로 증가)
-- 🚨 [복잡한 수식 분리]: 분수(\\\\frac), 거듭제곱근(\\\\sqrt) 등이 중첩된 복잡한 전개 식은 문장 중간에 섞어 쓰지 말고, 반드시 앞뒤로 빈 줄을 띄운 후 디스플레이 수식 블록($$수식$$)으로 완전히 독립시켜 작성하십시오.
-- 🚨 [달러 기호 위치 엄수]: 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 합니다. 절대 중괄호({}) 내부에 달러 기호가 침투하지 않도록 하십시오. (잘못된 예: \\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}$}}, 올바른 예: $\\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}}}$)
+${LATEX_PROMPT_INSTRUCTIONS}
 - 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
 
 [응답 JSON 포맷]:
@@ -3716,12 +3701,7 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 
 ${typeRequirement}
 
-- 수식 기호는 반드시 LaTeX 문법($수식$)을 준수하여 작성하십시오.
-- JSON 파싱을 위해 LaTeX 백슬래시는 반드시 이중 백슬래시(\\\\ 기호)로 작성하십시오.
-- 🚨 [단순 수치 및 단위 표기 금지]: 0.50배, 4배, 10m, 20% 등 단순한 숫자나 한글이 포함된 단위에는 절대로 LaTeX 기호($...$)를 적용하지 말고 일반 텍스트로 작성하십시오.
-- 🚨 [한글 \\\\text{} 사용 엄금]: LaTeX 수식 내부에 한글을 넣기 위해 \\\\text{배} 와 같이 작성하는 것을 엄격히 금지합니다. 수식과 한글이 만날 때는 반드시 수식을 닫고 한 칸 띄운 후 한글을 작성하십시오. (예: $B$ 가 4배로 증가)
-- 🚨 [복잡한 수식 분리]: 분수(\\\\frac), 거듭제곱근(\\\\sqrt) 등이 중첩된 복잡한 전개 식은 문장 중간에 섞어 쓰지 말고, 반드시 앞뒤로 빈 줄을 띄운 후 디스플레이 수식 블록($$수식$$)으로 완전히 독립시켜 작성하십시오.
-- 🚨 [달러 기호 위치 엄수]: 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 합니다. 절대 중괄호({}) 내부에 달러 기호가 침투하지 않도록 하십시오. (잘못된 예: \\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}$}}, 올바른 예: $\\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}}}$)
+${LATEX_PROMPT_INSTRUCTIONS}
 - 추가 설명 텍스트 없이 오직 순수 JSON 데이터만 반환하십시오.
 
 [JSON 포맷]:
@@ -3915,14 +3895,7 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 
 ${typeRequirement}
 
-- 모든 수식이나 변수 기호는 LaTeX 문법($수식$)으로 표기합니다. 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $y_p$, $p_p$, $p_0$, $K_s$, $k_h$, $e$, $c$, $\phi$, $\sigma$, $\tau$, $u$ 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 하며, 절대 일반 텍스트로 날것으로 기재하지 마십시오.
-- JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다 (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등).
-- LaTeX 명령어의 중괄호 {} 기호는 절대로 누락하지 말고 완전하게 기재하십시오 (예: \\\\frac{A}{B}, \\\\text{m} 등).
-- 중요: 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않도록 완벽한 '단일 덩어리'로 감싸서 작성하십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 주입하여 구문 오류를 만들지 마십시오.
-- 🚨 [단순 수치 및 단위 표기 금지]: 0.50배, 4배, 10m, 20% 등 단순한 숫자나 한글이 포함된 단위에는 절대로 LaTeX 기호($...$)를 적용하지 말고 일반 텍스트로 작성하십시오.
-- 🚨 [한글 \\\\text{} 사용 엄금]: LaTeX 수식 내부에 한글을 넣기 위해 \\\\text{배} 와 같이 작성하는 것을 엄격히 금지합니다. 수식과 한글이 만날 때는 반드시 수식을 닫고 한 칸 띄운 후 한글을 작성하십시오. (예: $B$ 가 4배로 증가)
-- 🚨 [복잡한 수식 분리]: 분수(\\\\frac), 거듭제곱근(\\\\sqrt) 등이 중첩된 복잡한 전개 식은 문장 중간에 섞어 쓰지 말고, 반드시 앞뒤로 빈 줄을 띄운 후 디스플레이 수식 블록($$수식$$)으로 완전히 독립시켜 작성하십시오.
-- 🚨 [달러 기호 위치 엄수]: 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 합니다. 절대 중괄호({}) 내부에 달러 기호가 침투하지 않도록 하십시오. (잘못된 예: \\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}$}}, 올바른 예: $\\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}}}$)
+${LATEX_PROMPT_INSTRUCTIONS}
 - 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
 
 [응답 JSON 포맷]:
@@ -4101,12 +4074,7 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 
 ${typeRequirement}
 
-- 수식 기호는 반드시 LaTeX 문법($수식$)을 준수하여 작성하십시오.
-- JSON 파싱을 위해 LaTeX 백슬래시는 반드시 이중 백슬래시(\\\\ 기호)로 작성하십시오.
-- 🚨 [단순 수치 및 단위 표기 금지]: 0.50배, 4배, 10m, 20% 등 단순한 숫자나 한글이 포함된 단위에는 절대로 LaTeX 기호($...$)를 적용하지 말고 일반 텍스트로 작성하십시오.
-- 🚨 [한글 \\\\text{} 사용 엄금]: LaTeX 수식 내부에 한글을 넣기 위해 \\\\text{배} 와 같이 작성하는 것을 엄격히 금지합니다. 수식과 한글이 만날 때는 반드시 수식을 닫고 한 칸 띄운 후 한글을 작성하십시오. (예: $B$ 가 4배로 증가)
-- 🚨 [복잡한 수식 분리]: 분수(\\\\frac), 거듭제곱근(\\\\sqrt) 등이 중첩된 복잡한 전개 식은 문장 중간에 섞어 쓰지 말고, 반드시 앞뒤로 빈 줄을 띄운 후 디스플레이 수식 블록($$수식$$)으로 완전히 독립시켜 작성하십시오.
-- 🚨 [달러 기호 위치 엄수]: 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 합니다. 절대 중괄호({}) 내부에 달러 기호가 침투하지 않도록 하십시오. (잘못된 예: \\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}$}}, 올바른 예: $\\\\sqrt[4]{\\\\frac{4EI}{0.3k_{h1}}}$)
+${LATEX_PROMPT_INSTRUCTIONS}
 - 추가 설명 텍스트 없이 오직 순수 JSON 데이터만 반환하십시오.
 
 [JSON 포맷]:
@@ -4305,11 +4273,7 @@ ${adjustmentsPrompt}
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
 4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
-5. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
-   - 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, u, z_c, F.S. 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 하며, 절대 일반 텍스트로 날것으로 기재하지 마십시오.
-   - JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다 (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등).
-   - LaTeX 명령어의 중괄호 {} 기호는 절대로 누락하지 말고 완전하게 기재하십시오 (예: \\\\frac{A}{B}, \\\\text{m} 등).
-   - 중요: 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않도록 완벽한 '단일 덩어리'로 감싸서 작성하십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 주입하여 구문 오류를 만들지 마십시오.
+${LATEX_PROMPT_INSTRUCTIONS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -4714,11 +4678,7 @@ app.post('/api/exam/additional', async (req, res) => {
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
 4. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
-5. 모든 수식과 변수 기호 표기 시 반드시 LaTeX 형식($수식$)을 준수하십시오.
-   - 공식뿐만 아니라 모든 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, u, z_c, F.S. 등)도 단독으로 올 때 무조건 인라인 LaTeX 기호인 $변수명$ 형태로 감싸야 하며, 절대 일반 텍스트로 날것으로 기재하지 마십시오.
-   - JSON 파싱 에러를 유발하지 않도록 모든 LaTeX 명령어의 역슬래시(\\ 기호)는 반드시 이중 역슬래시(\\\\ 기호)로 이중 이스케이프해야 합니다 (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등).
-   - LaTeX 명령어의 중괄호 {} 기호는 절대로 누락하지 말고 완전하게 기재하십시오 (예: \\\\frac{A}{B}, \\\\text{m} 등).
-   - 중요: 수식 기호( $ 또는 $$ ) 바로 안쪽에는 공백이 없어야 하며, 수식은 마크다운과 섞이지 않도록 완벽한 '단일 덩어리'로 감싸서 작성하십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 주입하여 구문 오류를 만들지 마십시오.
+${LATEX_PROMPT_INSTRUCTIONS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -4854,8 +4814,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 
     try {
       const responseText = await callLLMWithFailover(null, prompt);
-      const healedText = healLatexFormulas(responseText.trim()); // 수식 정제 추가
-      res.json({ text: healedText });
+      res.json({ text: responseText.trim() });
     } catch (err) {
       console.error('Detailed answer route error:', err);
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
@@ -4926,13 +4885,9 @@ app.post('/api/chat', async (req, res) => {
    - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
 5. 기술사 수준의 고품격 서술형 구조:
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
-6. 수식 및 기호 표기:
-   - 수식이나 물리량 기호는 반드시 LaTeX 포맷($...$ 또는 $$...$$)으로 미려하게 표현하십시오.
-   - [경고]: LaTeX 수식을 작성할 때, 문장이나 단어 중간에 $ 기호를 쪼개서 넣지 마십시오. 무조건 $\\sigma'_v$ 와 같이 알파벳 전체를 감싸야 하며, 아래첨자(_)나 인용부호(') 앞에 절대로 불필요한 역슬래시(\\)를 붙여 문법을 깨뜨리지 마십시오. 시작 $ 와 끝 $ 의 대칭을 완벽히 사수하십시오.
-   - 🚨 [수식 절대 엄금 경고]: 문장 중간이나 수식 명령어 내부(예: \\\\frac 뒤쪽 등)에 마크다운 기호 '$'를 파편화하여 쪼개 넣는 행위를 절대 금지합니다. 수식은 무조건 문장과 분리하여 완벽한 '단일 덩어리'로만 감싸십시오. 아래첨자('_')나 괄호 앞뒤에 불필요한 역슬래시('\\\\')를 임의로 우회 주입하여 구문 오류를 만들지 마십시오.`;
+${LATEX_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
-      const healedText = healLatexFormulas(responseText);
-      res.json({ text: healedText });
+      res.json({ text: responseText });
     } catch (err) {
       console.error('Chat route error:', err);
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
@@ -5129,8 +5084,8 @@ JSON 형식:
         structure = filterStructureLines(mathContent, structure, extraAllowed);
 
         res.json({
-          title: result.title ? healLatexFormulas(result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.title.trim()) : '실시간 추출 공식'),
-          concept: result.concept ? healLatexFormulas(result.concept.trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.concept.trim()) : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
+          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim() : (bestLocalMatch ? bestLocalMatch.title.trim() : '실시간 추출 공식'),
+          concept: result.concept ? result.concept.trim() : (bestLocalMatch ? bestLocalMatch.concept.trim() : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
           structure: structure
         });
       } catch (parseErr) {
@@ -5160,8 +5115,8 @@ JSON 형식:
         fallbackStructure = filterStructureLines(mathContent, fallbackStructure, extraAllowed2);
 
         res.json({
-          title: healLatexFormulas(fallbackTitle),
-          concept: healLatexFormulas(fallbackConcept),
+          title: fallbackTitle,
+          concept: fallbackConcept,
           structure: fallbackStructure
         });
       }
@@ -5180,8 +5135,8 @@ JSON 형식:
       }
       fallbackStructure = filterStructureLines(mathContent, fallbackStructure, extraAllowed3);
       res.json({
-        title: healLatexFormulas(fallbackTitle),
-        concept: healLatexFormulas(fallbackConcept),
+        title: fallbackTitle,
+        concept: fallbackConcept,
         structure: fallbackStructure
       });
     }
@@ -5585,8 +5540,7 @@ app.post('/api/question/option-explanation', async (req, res) => {
 `;
 
     const responseText = await callLLMWithFailover(null, prompt, null, 'option-explanation');
-    const healedText = healLatexFormulas(responseText.trim());
-    res.json({ text: healedText });
+    res.json({ text: responseText.trim() });
   } catch (err) {
     console.error('Error generating option explanation:', err);
     res.status(500).json({ error: 'AI 보기별 분석 해설을 생성하지 못했습니다.' });
@@ -5604,14 +5558,6 @@ app.get('/api/session/formula', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      if (parsed && Array.isArray(parsed.formulaQuestions)) {
-        parsed.formulaQuestions = parsed.formulaQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
-        }));
-      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -5627,7 +5573,15 @@ app.post('/api/session/formula', async (req, res) => {
   try {
     await ensureSessionTable();
     const { formulaQuestions } = req.body;
-    const value = JSON.stringify({ formulaQuestions });
+    const healedQuestions = Array.isArray(formulaQuestions)
+      ? formulaQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
+        }))
+      : formulaQuestions;
+    const value = JSON.stringify({ formulaQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['formula_questions']);
     await dbQuery.run(
       'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
@@ -5640,7 +5594,6 @@ app.post('/api/session/formula', async (req, res) => {
   }
 });
 
-// GET /api/session/theory → 저장된 이론유도 상태 반환
 // GET /api/session/answersheet → 저장된 답안지 상태 반환
 app.get('/api/session/answersheet', async (req, res) => {
   try {
@@ -5652,14 +5605,6 @@ app.get('/api/session/answersheet', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      if (parsed && Array.isArray(parsed.answersheetQuestions)) {
-        parsed.answersheetQuestions = parsed.answersheetQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
-        }));
-      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -5675,7 +5620,15 @@ app.post('/api/session/answersheet', async (req, res) => {
   try {
     await ensureSessionTable();
     const { answersheetQuestions } = req.body;
-    const value = JSON.stringify({ answersheetQuestions });
+    const healedQuestions = Array.isArray(answersheetQuestions)
+      ? answersheetQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula
+        }))
+      : answersheetQuestions;
+    const value = JSON.stringify({ answersheetQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['answersheet_questions']);
     await dbQuery.run(
       'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
@@ -5913,15 +5866,6 @@ app.get('/api/session/theory', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      if (parsed && Array.isArray(parsed.theoryQuestions)) {
-        parsed.theoryQuestions = parsed.theoryQuestions.map(q => ({
-          ...q,
-          title: q.title ? healLatexFormulas(q.title) : q.title,
-          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
-          formula: q.formula ? healLatexFormulas(q.formula) : q.formula,
-          assumptions: q.assumptions ? healLatexFormulas(q.assumptions) : q.assumptions
-        }));
-      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -5937,7 +5881,17 @@ app.post('/api/session/theory', async (req, res) => {
   try {
     await ensureSessionTable();
     const { theoryQuestions } = req.body;
-    const value = JSON.stringify({ theoryQuestions });
+    const healedQuestions = Array.isArray(theoryQuestions)
+      ? theoryQuestions.map(q => ({
+          ...q,
+          title: q.title ? healLatexFormulas(q.title) : q.title,
+          concept: q.concept ? healLatexFormulas(q.concept) : q.concept,
+          formula: q.formula ? healLatexFormulas(q.formula) : q.formula,
+          assumptions: q.assumptions ? healLatexFormulas(q.assumptions) : q.assumptions,
+          answer: q.answer ? healLatexFormulas(q.answer) : q.answer
+        }))
+      : theoryQuestions;
+    const value = JSON.stringify({ theoryQuestions: healedQuestions });
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['theory_questions']);
     await dbQuery.run(
       'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
