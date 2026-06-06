@@ -1,4 +1,4 @@
-// Technical and high-quality PE questions offline fallback generator
+﻿// Technical and high-quality PE questions offline fallback generator
 // Developed to support dynamic source document based quiz generation
 
 // Helper to shuffle choices

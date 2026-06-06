@@ -280,6 +280,7 @@ const buildHtmlDocument = (text, isPopup = false) => {
         }
       }
 
+      let initRetries = 0;
       function initKaTeX() {
         if (typeof renderMathInElement === 'function') {
           triggerRender();
@@ -299,7 +300,12 @@ const buildHtmlDocument = (text, isPopup = false) => {
             setTimeout(triggerRender, delay);
           });
         } else {
-          setTimeout(initKaTeX, 50);
+          if (initRetries < 100) {
+            initRetries++;
+            setTimeout(initKaTeX, 50);
+          } else {
+            console.warn("KaTeX did not load after 5 seconds. Giving up.");
+          }
         }
       }
 
@@ -484,7 +490,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 }
 
 // Dynamic KaTeX loader & Math text renderer
-function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
   const pressTimer = useRef(null);
@@ -535,8 +541,6 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     if (window.confirm(`[${cleanMath}] 공식을 필수공식 리스트에 추가하시겠습니까?`)) {
       if (typeof window.__handleAddSpecificFormula === 'function') {
         window.__handleAddSpecificFormula(cleanMath, text);
-      } else if (typeof onAddFormula === 'function') {
-        onAddFormula(cleanMath);
       }
     }
   };
@@ -686,14 +690,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       return (
         <span 
           className={`${className} select-text`}
-          onMouseDown={onAddFormula ? startPress : undefined}
-          onMouseUp={onAddFormula ? endPress : undefined}
-          onMouseMove={onAddFormula ? cancelPress : undefined}
-          onMouseLeave={onAddFormula ? cancelPress : undefined}
-          onTouchStart={onAddFormula ? startPress : undefined}
-          onTouchEnd={onAddFormula ? endPress : undefined}
-          onTouchMove={onAddFormula ? cancelPress : undefined}
-          onTouchCancel={onAddFormula ? cancelPress : undefined}
+          onMouseDown={enableAddFormula ? startPress : undefined}
+          onMouseUp={enableAddFormula ? endPress : undefined}
+          onMouseMove={enableAddFormula ? cancelPress : undefined}
+          onMouseLeave={enableAddFormula ? cancelPress : undefined}
+          onTouchStart={enableAddFormula ? startPress : undefined}
+          onTouchEnd={enableAddFormula ? endPress : undefined}
+          onTouchMove={enableAddFormula ? cancelPress : undefined}
+          onTouchCancel={enableAddFormula ? cancelPress : undefined}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
@@ -701,14 +705,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     return (
       <div 
         className={`${className} select-text w-full overflow-x-auto`}
-        onMouseDown={onAddFormula ? startPress : undefined}
-        onMouseUp={onAddFormula ? endPress : undefined}
-        onMouseMove={onAddFormula ? cancelPress : undefined}
-        onMouseLeave={onAddFormula ? cancelPress : undefined}
-        onTouchStart={onAddFormula ? startPress : undefined}
-        onTouchEnd={onAddFormula ? endPress : undefined}
-        onTouchMove={onAddFormula ? cancelPress : undefined}
-        onTouchCancel={onAddFormula ? cancelPress : undefined}
+        onMouseDown={enableAddFormula ? startPress : undefined}
+        onMouseUp={enableAddFormula ? endPress : undefined}
+        onMouseMove={enableAddFormula ? cancelPress : undefined}
+        onMouseLeave={enableAddFormula ? cancelPress : undefined}
+        onTouchStart={enableAddFormula ? startPress : undefined}
+        onTouchEnd={enableAddFormula ? endPress : undefined}
+        onTouchMove={enableAddFormula ? cancelPress : undefined}
+        onTouchCancel={enableAddFormula ? cancelPress : undefined}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
@@ -751,14 +755,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
     return (
       <span 
         className={`${className} select-text`}
-        onMouseDown={onAddFormula ? startPress : undefined}
-        onMouseUp={onAddFormula ? endPress : undefined}
-        onMouseMove={onAddFormula ? cancelPress : undefined}
-        onMouseLeave={onAddFormula ? cancelPress : undefined}
-        onTouchStart={onAddFormula ? startPress : undefined}
-        onTouchEnd={onAddFormula ? endPress : undefined}
-        onTouchMove={onAddFormula ? cancelPress : undefined}
-        onTouchCancel={onAddFormula ? cancelPress : undefined}
+        onMouseDown={enableAddFormula ? startPress : undefined}
+        onMouseUp={enableAddFormula ? endPress : undefined}
+        onMouseMove={enableAddFormula ? cancelPress : undefined}
+        onMouseLeave={enableAddFormula ? cancelPress : undefined}
+        onTouchStart={enableAddFormula ? startPress : undefined}
+        onTouchEnd={enableAddFormula ? endPress : undefined}
+        onTouchMove={enableAddFormula ? cancelPress : undefined}
+        onTouchCancel={enableAddFormula ? cancelPress : undefined}
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
@@ -812,14 +816,14 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
   return (
     <div 
       className={`${className} space-y-1.5 select-text`}
-      onMouseDown={onAddFormula ? startPress : undefined}
-      onMouseUp={onAddFormula ? endPress : undefined}
-      onMouseMove={onAddFormula ? cancelPress : undefined}
-      onMouseLeave={onAddFormula ? cancelPress : undefined}
-      onTouchStart={onAddFormula ? startPress : undefined}
-      onTouchEnd={onAddFormula ? endPress : undefined}
-      onTouchMove={onAddFormula ? cancelPress : undefined}
-      onTouchCancel={onAddFormula ? cancelPress : undefined}
+      onMouseDown={enableAddFormula ? startPress : undefined}
+      onMouseUp={enableAddFormula ? endPress : undefined}
+      onMouseMove={enableAddFormula ? cancelPress : undefined}
+      onMouseLeave={enableAddFormula ? cancelPress : undefined}
+      onTouchStart={enableAddFormula ? startPress : undefined}
+      onTouchEnd={enableAddFormula ? endPress : undefined}
+      onTouchMove={enableAddFormula ? cancelPress : undefined}
+      onTouchCancel={enableAddFormula ? cancelPress : undefined}
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
@@ -908,7 +912,7 @@ function LatexRenderer({ text, katexLoaded, className = "", onAddFormula = null,
       })}
     </div>
   );
-}
+});
 
 // ── 공학용 계산기 컴포넌트 ──────────────────
 function ScientificCalculator() {
@@ -4605,7 +4609,8 @@ export default function App() {
                   title: suggestedTitle,
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
-                  formula: suggestedStructure ? `$$${mathContent}$$\n\n${suggestedStructure}` : `$$${mathContent}$$`
+                  formula: `$$${mathContent}$$`,
+                  structure: suggestedStructure || f.structure
                 };
               }
               return f;
@@ -4663,7 +4668,8 @@ export default function App() {
                   title: suggestedTitle,
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
-                  formula: suggestedStructure ? `$$${mathContent}$$\n\n${suggestedStructure}` : `$$${mathContent}$$`
+                  formula: `$$${mathContent}$$`,
+                  structure: suggestedStructure || f.structure
                 };
               }
               return f;
@@ -6310,7 +6316,7 @@ export default function App() {
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
 
                                                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -6389,7 +6395,7 @@ export default function App() {
                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
                                        <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                        <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                         <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, reviewOptionExplanations[idx].text)} />
+                                         <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
                                        </div>
                                      </div>
                                    )}
@@ -6423,23 +6429,23 @@ export default function App() {
                               {q.concept && (
                                 <div className="space-y-1">
                                   <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.concept)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.formula)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
                               {q.structure && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.structure)} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
                               {!q.concept && !q.formula && !q.structure && (
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} /></div>
+                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                               )}
 
                               {/* 문제조정 입력 및 결과 보드 */}
@@ -6629,7 +6635,7 @@ export default function App() {
                           <LatexRenderer 
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
-                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            enableAddFormula={true}
                             isMarkdown={true}
                           />
                         )}
@@ -7292,7 +7298,7 @@ export default function App() {
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.explanation)} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -7371,7 +7377,7 @@ export default function App() {
                                   <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
                                     <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                     <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                      <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, examOptionExplanations[idx].text)} />
+                                      <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
                                     </div>
                                   </div>
                                 )}
@@ -7403,7 +7409,7 @@ export default function App() {
                               </button>
                             </div>
                             <div className="text-sm text-slate-200 leading-relaxed">
-                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, q.answer || '')} />
+                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                             </div>
                             {q.concept && (
                               <div className="pt-2 border-t border-amber-500/10">
@@ -7588,7 +7594,7 @@ export default function App() {
                           <LatexRenderer 
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
-                            onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                            enableAddFormula={true}
                             isMarkdown={true}
                           />
                         )}
@@ -8449,7 +8455,7 @@ export default function App() {
                             <LatexRenderer 
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
-                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              enableAddFormula={true}
                               isMarkdown={true}
                             />
                           )}
@@ -9254,7 +9260,7 @@ export default function App() {
                             <LatexRenderer 
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
-                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              enableAddFormula={true}
                               isMarkdown={true}
                             />
                           )}
@@ -10113,7 +10119,7 @@ export default function App() {
                             <LatexRenderer 
                               text={msg.text} 
                               katexLoaded={katexLoaded} 
-                              onAddFormula={(mathContent) => handleAddSpecificFormula(mathContent, msg.text)}
+                              enableAddFormula={true}
                               isMarkdown={true}
                             />
                           )}

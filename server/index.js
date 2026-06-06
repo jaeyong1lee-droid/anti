@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
@@ -90,17 +90,7 @@ function mergeVerticalText(text) {
 // Helper: Clean quiz questions by removing redundant PE question style suffixes like "을 제시하고, 각 기호의 정의를 서술하시오"
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  return q
-    .replace(/(?:을|를)\s+(?:제시하고|기술하고|쓰고|기재한\s+뒤)\s*(?:,\s*)?(?:각\s+)?(?:기호|인자)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/(?:및\s+)?각\s+(?:기호|인자|인수)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/(?:과|와)\s+각\s+(?:기호|인자|인수)의?\s*정의를?\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/(?:을|를)\s+기술하고\s+기호\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/,\s*각\s+(?:기호|인자)의?\s*정의를\s*서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/공식과\s+각\s+인자의\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '공식')
-    .replace(/산정\s+공식과\s+각\s+인자의\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '산정 공식')
-    .replace(/(?:을|를)\s+간략히\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .replace(/(?:의\s+)?기본\s+정의를\s+서술(?:하시오|하라는\s+질문|하라는\s+질문\s+내용)?\.?/g, '')
-    .trim();
+  return q.trim();
 }
 
 // 로컬 공식 매칭 사전 (AI API 장애 대책용)
@@ -297,61 +287,10 @@ function decodeHtmlBuffer(buffer) {
   return decodedText;
 }
 
-// Safe LaTeX-preserving backslash escaper for LLM JSON responses
-function escapeJsonBackslashes(str) {
-  if (!str) return str;
-  let result = '';
-  let inString = false;
-  let i = 0;
-  
-  const latexCommands = [
-    'newline', 'nabla', 'nu', 'theta', 'tau', 'tan', 'times', 'tilde', 'text', 
-    'rho', 'right', 'mathrm', 'rule', 'beta', 'bar', 'begin', 'frac', 'phi', 'varphi', 'forall'
-  ];
-
-  while (i < str.length) {
-    const char = str[i];
-    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
-      inString = !inString;
-      result += char;
-      i++;
-    } else if (inString && char === '\\') {
-      const next = str[i + 1];
-      
-      if (next === '"' || next === '/' || next === '\\') {
-        result += char + next;
-        i += 2;
-      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
-        let tempIndex = i + 1;
-        let commandWord = '';
-        while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
-          commandWord += str[tempIndex];
-          tempIndex++;
-        }
-        
-        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
-        if (isLatex) {
-          result += '\\\\';
-          i++;
-        } else {
-          result += char + next;
-          i += 2;
-        }
-      } else {
-        result += '\\\\';
-        i++;
-      }
-    } else {
-      result += char;
-      i++;
-    }
-  }
-  return result;
-}
 
 function parseLlmJson(text) {
-  const escaped = escapeJsonBackslashes(text);
-  return JSON.parse(escaped);
+  // Bypassed escapeJsonBackslashes to prevent over-escaping LaTeX commands
+  return JSON.parse(text);
 }
 
 // Helper: Extract JSON array from string robustly
@@ -364,16 +303,8 @@ function extractJsonArray(str) {
     try {
       return parseLlmJson(jsonSub);
     } catch (e) {
-      console.warn('Failed parsing extracted JSON substring, trying aggressive cleanup:', e);
-      const cleanSub = jsonSub
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-        .trim();
-      try {
-        return parseLlmJson(cleanSub);
-      } catch (e2) {
-        console.error('Aggressive JSON cleanup failed:', e2);
-        return null;
-      }
+      console.warn('Failed parsing extracted JSON substring, generating fallback.');
+      throw e; // Throw so that fallback generation kicks in immediately
     }
   }
   return null;
@@ -3058,15 +2989,15 @@ ${adjustmentsPrompt}
    - "question": 토픽의 핵심 정의와 기본 개념을 묻는 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 서술하시오.")
    - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. (절대 너무 짧거나 1~2줄 요약식으로 쓰지 말고, 반드시 4~6줄 분량을 엄격히 준수하여 학술적 설명의 깊이를 확보할 것).
    - "formula": 반드시 빈 문자열 ""
-   - "structure": 반드시 빈 문자열 ""
+   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
    - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-   - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
-   - "structure": 반드시 빈 문자열 ""
+   - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
+   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")
 
    [3번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
    - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
@@ -3081,7 +3012,7 @@ ${adjustmentsPrompt}
           - **기본 기초 개념 문제 (40%, 약 4문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?", "○○○이 발생하는 조건은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
           - **정량 계산 문제 (30%, 약 3문제)**: 구체적인 조건 수치(지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
           - **심화 원리·비교 문제 (30%, 약 3문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
-      모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+
       2. **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
@@ -3105,7 +3036,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "토픽의 대표 공식명칭 (사족 배제)",
     "concept": "공식에 대한 한 줄 요약",
     "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
-    "structure": ""
+    "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
   },
   {
     "type": "객관식 (4지선다)",
@@ -3409,13 +3340,13 @@ app.post('/api/question/regenerate', async (req, res) => {
 - "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
 - "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
 - "formula": 반드시 빈 문자열 ""
-- "structure": 반드시 빈 문자열 ""`;
+- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (개요)",
   "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
   "concept": "1~2줄 컴팩트 요약 답변",
   "formula": "",
-  "structure": ""
+    "structure": ""
 }`;
       } else if (targetType === '주관식 (공식)') {
         typeRequirement = `[2번 문제] 주관식 (공식) 유형으로 생성하십시오:
@@ -3424,13 +3355,13 @@ app.post('/api/question/regenerate', async (req, res) => {
 - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
 - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
 - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
-- "structure": 반드시 빈 문자열 ""`;
+- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (공식)",
   "question": "토픽의 대표 공식명칭 (사족 배제)",
   "concept": "공식에 대한 한 줄 요약",
   "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
-  "structure": ""
+  "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
 }`;
       } else {
         typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
@@ -3439,6 +3370,12 @@ app.post('/api/question/regenerate', async (req, res) => {
 - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
 - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
 - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
+- [문제 출제 전략]:
+   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
+   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
+- [환각 방지 철칙 (Anti-Hallucination Constraints)]:
+   1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
+   2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 - **오답 보기 구성 주의사항 (매우 중요)**: 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.`;
         formatRequirement = `{
   "type": "객관식 (4지선다)",
@@ -3610,7 +3547,7 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "공식"
 - "question": "[필수공식] (공식명칭) 공식을 제시하고, 각 기호의 정의를 서술하시오." 와 같은 완성형 질문
-- "answer": LaTeX로 상세 작성된 공식 및 각 기호의 의미 (\\n 으로 구분)
+- "answer": 상세 작성된 공식 및 각 기호의 의미
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
@@ -3624,7 +3561,7 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "서술"
 - "question": "[이론유도] (유도개념)의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오." 형태의 완성형 질문
-- "answer": LaTeX 수식을 포함한 심도 있는 이론적 유도 메커니즘 설명 (\\n 구분)
+- "answer": 심도 있는 이론적 유도 메커니즘 설명
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
@@ -3821,13 +3758,13 @@ app.post('/api/question/adjust', async (req, res) => {
 - "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
 - "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
 - "formula": 반드시 빈 문자열 ""
-- "structure": 반드시 빈 문자열 ""`;
+- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (개요)",
   "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
   "concept": "1~2줄 요약 답변",
   "formula": "",
-  "structure": ""
+    "structure": ""
 }`;
       } else if (targetType === '주관식 (공식)') {
         typeRequirement = `[2번 문제] 주관식 (공식) 유형으로 생성하십시오:
@@ -3836,13 +3773,13 @@ app.post('/api/question/adjust', async (req, res) => {
 - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
 - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
 - "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
-- "structure": 반드시 빈 문자열 ""`;
+- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (공식)",
   "question": "토픽의 대표 공식명칭 (사족 배제)",
   "concept": "공식에 대한 한 줄 요약",
   "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
-  "structure": ""
+  "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
 }`;
       } else {
         typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
@@ -3986,7 +3923,7 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "공식"
 - "question": "[필수공식] (공식명칭) 공식을 제시하고, 각 기호의 정의를 서술하시오." 와 같은 완성형 질문
-- "answer": LaTeX로 상세 작성된 공식 및 각 기호의 의미 (\\n 으로 구분)
+- "answer": 상세 작성된 공식 및 각 기호의 의미
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
@@ -4000,7 +3937,7 @@ ${formatRequirement}
 - "type": "주관식"
 - "subtype": "서술"
 - "question": "[이론유도] (유도개념)의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오." 형태의 완성형 질문
-- "answer": LaTeX 수식을 포함한 심도 있는 이론적 유도 메커니즘 설명 (\\n 구분)
+- "answer": 심도 있는 이론적 유도 메커니즘 설명
 - "concept": 핵심 개념 1줄 요약`;
           formatRequirement = `{
   "type": "주관식",
@@ -4265,14 +4202,19 @@ ${adjustmentsPrompt}
      * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
      * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
      * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
-   모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+   
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
-   - 특히 **수치 해석법이나 가설 구조물 해석(예: 탄소성보법의 굴착 단계별 누적 해석 메커니즘, 지반 반력계수 산정 등)과 같이 정밀 거동 분석이 필요한 토픽의 경우, 단순히 정성적인 서술형 지문 대신 "벽체 휨모멘트 $M_1 = 150 \\\\text{ kN}\\\\cdot\\\\text{m}$, 선행하중 $P_0 = 200 \\\\text{ kN}$, 수평지지강성 $k_s = 5,000 \\\\text{ kN/m}$ 등의 구체적인 임의의 실무 설계 파라미터(수치 조건)를 가상 부여한 뒤, 다음 시공 단계에서의 최종 누적 휨모멘트나 변위 증분, 혹은 반력 등을 정량적으로 분석하거나 계산해내는 고품격 예제문제 형식"**을 적극 구성하여 출제하십시오.
+   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
 4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+
+[환각 방지 철칙 (Anti-Hallucination Constraints)]:
+1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+
 ${LATEX_PROMPT_INSTRUCTIONS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
@@ -4368,18 +4310,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
           answer: "$\\theta = 45^\\circ + \\phi/2$",
           explanation: "응력원 기하학적 분석 상, 파괴면은 최대주응력 작용면과 $45^\\circ + \\phi/2$ 각도를 이룹니다."
         },
-        ...topics.map(t => ({
-          type: "객관식",
-          question: `국가건설기준 및 지반 거동 분석 실무에서 [${t.title}] 설계 가이드라인을 수립할 때, 한계 소성 평형 및 전단 변형 제어 특성을 고려한 엔지니어링적 대책으로 가장 올바른 진술은?`,
-          options: [
-            `해당 대상 지반이나 구조 부재의 전단 파괴선 메커니즘을 명확히 규명하고 실무적인 안전율($F.S.$) 설계 기준을 확보하여 적용해야 한다.`,
-            "배후 지반의 지하수위 거동이나 수압 벡터 변화를 무시하고 오직 정역학적 자중 효과만으로 영구 지보력을 완전히 확보할 수 있다.",
-            "임의의 시공 단계별 이완 하중 전이를 차단하기 위해 가설 벽체의 변형 변위 발생을 완전 무한대로 허용하여 설계하는 것이 경제적이다.",
-            "흙과 암반의 점착력 강도 정수 변동성을 배제하고 현장 수치 해석적 다짐 에너지 배합비만을 고정하여 장기 크리프 변형을 원천 봉쇄한다."
-          ],
-          answer: `해당 대상 지반이나 구조 부재의 전단 파괴선 메커니즘을 명확히 규명하고 실무적인 안전율($F.S.$) 설계 기준을 확보하여 적용해야 한다.`,
-          explanation: `[${t.title}] 실무 분석 및 구조 검토 시에는 대상 지반 물성의 불균질성과 파괴 규준선의 역학적 메커니즘을 정밀 검증하고, 최신 설계기준에 명시된 안전율 한계치를 엄격히 적용해야 안정성을 확보할 수 있습니다.`
-        }))
+        ...topics.flatMap(t => generateFallbackQuestions(t.title, t.keywords, fileText).filter(q => q.type.includes('객관식')))
       ];
     }
 
@@ -4670,14 +4601,19 @@ ${theoriesText || '저장된 내용 없음'}
      * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
      * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
      * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
-   모든 수식 표현은 LaTeX 기호($...$)로 감싸야 하며 보기 문항에도 수식을 적극적으로 활용하십시오.
+   
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
-   - 특히 **수치 해석법이나 가설 구조물 해석(예: 탄소성보법의 굴착 단계별 누적 해석 메커니즘, 지반 반력계수 산정 등)과 같이 정밀 거동 분석이 필요한 토픽의 경우, 단순히 정성적인 서술형 지문 대신 "벽체 휨모멘트 $M_1 = 150 \\\\text{ kN}\\\\cdot\\\\text{m}$, 선행하중 $P_0 = 200 \\\\text{ kN}$, 수평지지강성 $k_s = 5,000 \\\\text{ kN/m}$ 등의 구체적인 임의의 실무 설계 파라미터(수치 조건)를 가상 부여한 뒤, 다음 시공 단계에서의 최종 누적 휨모멘트나 변위 증분, 혹은 반력 등을 정량적으로 분석하거나 계산해내는 고품격 예제문제 형식"**을 적극 구성하여 출제하십시오.
+   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
 4. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
+
+[환각 방지 철칙 (Anti-Hallucination Constraints)]:
+1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+
 ${LATEX_PROMPT_INSTRUCTIONS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
@@ -4753,7 +4689,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
           ],
           answer: "다짐 에너지가 증가하면 최대 건조 단위 중량은 커지고 최적 함수비는 감소한다.",
           explanation: "다짐 에너지가 커지면 흙입자가 더 조밀하게 맞물려 최대 건조 단위 중량은 커지고, 필요한 최적 함수비는 건조한 측(좌측)으로 이동하여 감소합니다."
-        }
+        },
+        ...topics.flatMap(t => generateFallbackQuestions(t.title, t.keywords, fileText).filter(q => q.type.includes('객관식')))
       ];
     }
 
