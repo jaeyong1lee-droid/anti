@@ -8140,7 +8140,7 @@ export default function App() {
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
                 onTouchStart={(e) => {
                   if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0) {
                     formulaTouchStartY.current = e.touches[0].clientY;
@@ -9003,7 +9003,7 @@ export default function App() {
               {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={theoryBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
                 onTouchStart={(e) => {
                   if (!isDesktop && !isMobileLandscape && theoryBodyRef.current && theoryBodyRef.current.scrollTop === 0) {
                     theoryTouchStartY.current = e.touches[0].clientY;
@@ -9826,7 +9826,7 @@ export default function App() {
             <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
               <div 
                 ref={answersheetBodyRef} 
-                className="flex-1 w-full overflow-y-auto p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
                 onTouchStart={(e) => {
                   if (!isDesktop && !isMobileLandscape && answersheetBodyRef.current && answersheetBodyRef.current.scrollTop === 0) {
                     answersheetTouchStartY.current = e.touches[0].clientY;

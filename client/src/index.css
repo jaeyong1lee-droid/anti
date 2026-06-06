@@ -453,5 +453,12 @@
   border-width: 1px !important;
 }
 
+/* Ensure cards never stretch or overflow horizontally, keeping layouts locked */
+.formula-card-item {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
 
 
