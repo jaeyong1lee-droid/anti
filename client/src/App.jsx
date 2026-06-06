@@ -455,13 +455,13 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 
   // 5. Render list items (both bullet points * and - and numbered lists)
   if (isMarkdown) {
-    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #94a3b8; line-height: 1.6;">$1. $2</div>');
+    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
   } else {
-    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">• $1</div>');
-    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">• $1</div>');
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #cbd5e1; line-height: 1.5;">$1. $2</div>');
+    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1. $2</div>');
   }
 
   // 5.5. Remove extra newlines around list divs to prevent spacers/br from adding huge gaps
