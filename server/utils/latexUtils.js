@@ -31,6 +31,13 @@ export function healLatexFormulas(text) {
 
   let healed = text;
 
+  // 1단계: 달러 기호($) 없이 본문에 날것으로 노출된 라텍스 명령어들을 그리스 문자 및 역학 기호 기반으로 강제 포획
+  const mathRegex = /(?<!\$)\\(ge|le|sigma|tau|gamma|alpha|phi|psi|beta|delta|theta|frac|log|ln|percent|%)(?:_[a-zA-Z0-9{}]+)?(?!\$)/g;
+  healed = healed.replace(mathRegex, '$$$&$$'); // $$ -> $, $& -> match, $$ -> $ => $\ge$
+
+  // 1.5단계: 이중 역슬래시 교정 (예: \\ge -> \ge)
+  // 마크다운 파서로 넘어갈 때 \\가 있으면 렌더러가 인식하지 못하므로, 수식 내의 \\를 단일 \로 축소
+  healed = healed.replace(/\\\\(ge|le|sigma|tau|gamma|alpha|phi|psi|beta|delta|theta|frac|log|ln|percent|%)/g, '\\$1');
   // 1. Markdown list and header newlines fix
   healed = healed.replace(/([가-힣a-zA-Z0-9\.\,\?!])(\s*)(\* )/g, "$1\n\n$3");
   healed = healed.replace(/([가-힣a-zA-Z0-9\.\,\?!])(\s*)(### )/g, "$1\n\n$3");
@@ -51,8 +58,8 @@ export function healLatexFormulas(text) {
     }
     
     let tContent = token.content;
-    tContent = tContent.replace(/(?<!\$|\w)(c_v|T_v|m_v|a_v|k_h|k_v|K_a|K_p|K_0|F_s|H_d|RQD|J_n|J_r|J_a|J_w|SRF|N_c|N_q)(?!\$|\w)/g, '$$$$$1$$$$');
-    tContent = tContent.replace(/(?<!\$|\w)(\\\\(gamma_w|gamma_d|gamma_t|gamma|alpha|beta|sigma_v|sigma_h|sigma|tau_f|tau|phi|theta|mu|nu|rho))(?!\$|\w)/g, '$$$$$1$$$$');
+    
+    
     
     return tContent;
   });
@@ -114,6 +121,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
 11. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다.
 12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
+14. 🚨 [문단 격리 규칙]: JSON 내부의 문자열 항목(concept, explanation, answer 등) 구조에서 새로운 제목(###)이나 글머리 기호(*, -)가 시작될 때는, 반드시 바로 직전 문장 끝에 명시적인 줄바꿈 기호 두 개(\n\n)를 삽입하여 완벽한 독자 단락으로 분리 출력하라. 절대로 앞 문장과 같은 줄에 공백만 띄우고 이어서 붙이지 마라.
 13. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\\\n\\\\n) 사용하여 명확하게 문단을 분리하십시오.
 
 [원시 JSON 출력 엄격 준수 규칙]
