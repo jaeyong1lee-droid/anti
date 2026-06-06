@@ -3,18 +3,21 @@
 export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  // Match block math ($$...$$), inline math ($...$), and HTML tags safely on a single line
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)|(<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>\n]*>)/gs;
   let match;
   while ((match = regex.exec(text)) !== null) {
     const before = text.substring(lastIndex, match.index);
     if (before) {
       tokens.push({ type: 'text', content: before });
     }
-    const mathContent = match[0];
-    if (mathContent.startsWith('$$')) {
-      tokens.push({ type: 'block-math', content: mathContent });
+    const matchContent = match[0];
+    if (matchContent.startsWith('$$')) {
+      tokens.push({ type: 'block-math', content: matchContent });
+    } else if (matchContent.startsWith('$')) {
+      tokens.push({ type: 'inline-math', content: matchContent });
     } else {
-      tokens.push({ type: 'inline-math', content: mathContent });
+      tokens.push({ type: 'html-tag', content: matchContent });
     }
     lastIndex = regex.lastIndex;
   }
@@ -94,6 +97,8 @@ export function healLatexFormulas(text) {
       let content = token.content;
       if (token.type === 'text') {
         content = healBackslashes(content, false);
+      } else if (token.type === 'html-tag') {
+        // Skip HTML tags during backslash healing
       } else {
         const isBlock = content.startsWith('$$');
         const math = isBlock ? content.substring(2, content.length - 2) : content.substring(1, content.length - 1);
@@ -115,8 +120,9 @@ export function healLatexFormulas(text) {
   const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
                             /[_^{<>=]/.test(trimmed);
   const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
+  const hasHtmlTags = /<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b/i.test(trimmed);
 
-  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
+  if (hasMathIndicators && !hasKorean && !hasHtmlTags && trimmed.length < 150) {
     let cleanedMath = trimmed.replace(/\$/g, '');
     cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
     cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
@@ -244,7 +250,7 @@ export function healLatexFormulas(text) {
   reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
   tokens.forEach(token => {
-    if (token.type !== 'text') {
+    if (token.type === 'inline-math' || token.type === 'block-math') {
       let inside = token.content;
       const isBlock = inside.startsWith('$$');
       let math = isBlock ? inside.substring(2, inside.length - 2).trim() : inside.substring(1, inside.length - 1).trim();

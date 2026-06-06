@@ -8005,7 +8005,7 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
+            className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container`}
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
@@ -8866,7 +8866,7 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
+            className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container`}
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
@@ -9686,7 +9686,7 @@ export default function App() {
                 }
               }
             }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
+            className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container`}
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
