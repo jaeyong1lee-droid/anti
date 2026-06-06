@@ -550,12 +550,33 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return healLatexFormulas(val);
   };
 
-  const isHeavy = isHeavyHtml(text);
+  let renderText = text;
+  if (typeof text === 'string' && text.trim().startsWith('{')) {
+    try {
+      const trimmedText = text.trim();
+      if (trimmedText.endsWith('}')) {
+        const parsed = JSON.parse(trimmedText);
+        let parts = [];
+        if (parsed.title) parts.push(`### ${parsed.title}`);
+        if (parsed.concept) parts.push(`**개념:** ${parsed.concept}`);
+        if (parsed.assumptions) parts.push(`**기본 가정:**\n${parsed.assumptions}`);
+        if (parsed.explanation) parts.push(`**상세 설명:**\n${parsed.explanation}`);
+        if (parsed.answer) parts.push(`**유도 및 해설:**\n${parsed.answer}`);
+        if (parts.length > 0) {
+          renderText = parts.join('\n\n');
+        }
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 원본 그대로 사용
+    }
+  }
+
+  const isHeavy = isHeavyHtml(renderText);
 
   // 1) 불필요한 연속 빈 행을 최대 2개로 압축하여 컴팩트하게 정리
   let cleanedText = isHeavy
-    ? text.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
-    : healFormulas(text)
+    ? renderText.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
+    : healFormulas(renderText)
         .replace(/\\r\\n/g, '\n')  // escaped \r\n → real newline
         .replace(/\\n/g, '\n')      // escaped \n → real newline
         .replace(/\r\n/g, '\n')     // CR+LF → LF
@@ -789,7 +810,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             try {
               htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
-                  return m;
+                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                  if (!isRealFormula) {
+                    return m;
+                  }
                 }
                 try {
                   return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
@@ -860,7 +884,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                 try {
                   htmlLine = htmlLine.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
                     if (/[\uAC00-\uD7A3]/.test(math)) {
-                      return m;
+                      const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                      if (!isRealFormula) {
+                        return m;
+                      }
                     }
                     try {
                       return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
@@ -8334,7 +8361,7 @@ export default function App() {
                               <div className="space-y-1">
                                 <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
                                 <div className="text-sm text-slate-200 leading-relaxed">
-                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 핵심 개념"} />
+                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 핵심 개념"} />
                                 </div>
                               </div>
                             )}
@@ -8342,8 +8369,8 @@ export default function App() {
                             {q.formula ? (
                               <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                 <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
+                                <div className="text-sm text-slate-200 leading-relaxed">
+                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                 </div>
                               </div>
                             ) : !q.concept && (
@@ -9152,8 +9179,8 @@ export default function App() {
                         {!isMobileLandscape && isOutputVisible && (
                           <div className="space-y-1 py-1 px-0 min-h-0 relative select-text w-full">
                             {q.formula ? (
-                              <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-text w-full">
-                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `이론 ${idx + 1}`} />
+                              <div className="text-sm text-slate-200 leading-relaxed select-text w-full">
+                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `이론 ${idx + 1}`} />
                               </div>
                             ) : (
                               <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
@@ -10012,8 +10039,8 @@ export default function App() {
                               )}
                             </div>
                             {q.formula ? (
-                              <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} placeholderIfHeavy={true} popupTitle={q.title || `답안 ${idx + 1}`} />
+                              <div className="text-sm text-slate-200 leading-relaxed">
+                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `답안 ${idx + 1}`} />
                               </div>
                             ) : (
                               <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 또는 HTML 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>

@@ -62,6 +62,11 @@ export function healBackslashes(str, isMathMode = false) {
 }
 
 export function healLatexFormulas(text) {
+  // 문장 끝의 * 기호 앞뒤에 강제 줄바꿈 삽입 (단락 구분 가독성 개선)
+  if (text) {
+    text = text.replace(/([\.?!\)\]\}])\s*\*\s*(?=[\uAC00-\uD7A3])/g, '$1\n\n* ');
+  }
+
   // AI의 이중 이스케이프 오류(\\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
@@ -118,7 +123,10 @@ export function healLatexFormulas(text) {
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
   let healed = text;
   if (hasKorean && ((text.trim().startsWith('$$') && text.trim().endsWith('$$')) || (text.trim().startsWith('$') && text.trim().endsWith('$')))) {
-    healed = trimmed;
+    const isRealFormula = /\\/.test(trimmed) || /_/.test(trimmed) || /\^/.test(trimmed) || /[=+\-\*\/]/.test(trimmed) || /\\cdot/.test(trimmed);
+    if (!isRealFormula) {
+      healed = trimmed;
+    }
   }
 
   // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
@@ -169,7 +177,7 @@ export function healLatexFormulas(text) {
         
         const hasBackslash = trimmedMatch.includes('\\');
         const hasGreek = symbols.some(sym => trimmedMatch.includes(sym));
-        const hasMathContext = /[=<>+\*\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
+        const hasMathContext = /[=<>+\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
         
         if (hasBackslash || hasGreek || hasMathContext) {
           const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
@@ -359,4 +367,23 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 
 [JSON String Escape Rule]:
 When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse() without crashing the backend system.
+`;
+
+export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
+[🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
+0. 🚨 [절대 금지 - JSON 응답 금지]: 당신은 실시간 대화형 챗봇/해설사이므로 절대로 JSON 형식(예: {"concept": "...", "explanation": "..."})으로 응답을 감싸서 출력하지 마십시오. 중괄호({ })나 큰따옴표가 들어간 JSON 키-값 구조는 렌더링 오류를 발생시킵니다. 오직 일반적인 한글 대화 문장 및 마크다운 포맷으로만 직접 답변하십시오.
+1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, $u$, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기, 해설 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\gamma_w)는 엄격히 금지합니다. 반드시 $\\gamma_w$ 와 같이 감싸십시오. 답변에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
+2. 모든 LaTeX 명령어의 역슬래시(\\)는 단일 역슬래시(\\frac, \\sigma)로 작성하십시오. (※ JSON이 아닌 일반 마크다운 출력이므로 이중 역슬래시가 아닌 단일 역슬래시로 출력해야 정상 렌더링됩니다.)
+3. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
+4. 외부 공백 필수 조건: $ 기호의 앞과 뒤가 한글, 숫자, 문장 부호와 맞닿을 경우 반드시 앞뒤로 '한 칸의 공백(스페이스)'을 명시적으로 두어 격리하십시오. 한국어 조사('가', '는', '입니다' 등)와 결합할 때도 예외 없이 한 칸 띄우고 조사를 작성하십시오. (예: $B$ 가 4배로 증가 (O) / $B$가 4배로 증가 (X))
+5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+6. 분수(\\\\frac), 거듭제곱근(\\\\sqrt), 미분방정식 항이 중첩된 복잡한 전개 수식은 문장 중간에 절대 섞어 쓰지 말고, 반드시 수식 블록 위아래로 빈 줄을 한 칸씩 띄운 뒤 디스플레이 수식 블록($$수식$$)으로 완벽히 독립시켜 독자 단락으로 분리 출력하십시오.
+7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
+8. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
+9. 아래첨자('_')나 괄호 기호 앞에 임의의 역슬래시(\\)를 붙이지 마십시오.
+10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
+11. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다.
+12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
+13. 새로운 단락(문단)이나 글머리 기호(*, -), 또는 제목(###)이 시작될 때는 반드시 바로 앞에 줄바꿈 기호 두 개(\\n\\n)를 명시적으로 삽입하십시오. 절대로 앞 문장에 이어서 작성하지 마십시오. (예: "...예측합니다.\\n\\n* 응력 전이:" (O) / "...예측합니다.* 응력 전이:" (X))
+14. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\n\\n) 사용하여 명확하게 문단을 분리하십시오.
 `;

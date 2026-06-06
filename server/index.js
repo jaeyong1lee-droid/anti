@@ -1,5 +1,5 @@
 import express from 'express';
-import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
@@ -4811,7 +4811,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
 2. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
 
-${LATEX_PROMPT_INSTRUCTIONS}
+${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 `;
 
     try {
@@ -4888,7 +4888,7 @@ app.post('/api/chat', async (req, res) => {
    - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
 5. 기술사 수준의 고품격 서술형 구조:
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
-${LATEX_PROMPT_INSTRUCTIONS}`;
+${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
       res.json({ text: healedText });
