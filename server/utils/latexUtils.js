@@ -3,18 +3,21 @@
 export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
+  // Match block math ($$...$$), inline math ($...$), and HTML tags safely on a single line
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)|(<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>\n]*>)/gs;
   let match;
   while ((match = regex.exec(text)) !== null) {
     const before = text.substring(lastIndex, match.index);
     if (before) {
       tokens.push({ type: 'text', content: before });
     }
-    const mathContent = match[0];
-    if (mathContent.startsWith('$$')) {
-      tokens.push({ type: 'block-math', content: mathContent });
+    const matchContent = match[0];
+    if (matchContent.startsWith('$$')) {
+      tokens.push({ type: 'block-math', content: matchContent });
+    } else if (matchContent.startsWith('$')) {
+      tokens.push({ type: 'inline-math', content: matchContent });
     } else {
-      tokens.push({ type: 'inline-math', content: mathContent });
+      tokens.push({ type: 'html-tag', content: matchContent });
     }
     lastIndex = regex.lastIndex;
   }
@@ -94,6 +97,8 @@ export function healLatexFormulas(text) {
       let content = token.content;
       if (token.type === 'text') {
         content = healBackslashes(content, false);
+      } else if (token.type === 'html-tag') {
+        // Skip HTML tags during backslash healing
       } else {
         const isBlock = content.startsWith('$$');
         const math = isBlock ? content.substring(2, content.length - 2) : content.substring(1, content.length - 1);
@@ -115,8 +120,9 @@ export function healLatexFormulas(text) {
   const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
                             /[_^{<>=]/.test(trimmed);
   const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
+  const hasHtmlTags = /<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b/i.test(trimmed);
 
-  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
+  if (hasMathIndicators && !hasKorean && !hasHtmlTags && trimmed.length < 150) {
     let cleanedMath = trimmed.replace(/\$/g, '');
     cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
     cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
@@ -244,7 +250,7 @@ export function healLatexFormulas(text) {
   reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
   tokens.forEach(token => {
-    if (token.type !== 'text') {
+    if (token.type === 'inline-math' || token.type === 'block-math') {
       let inside = token.content;
       const isBlock = inside.startsWith('$$');
       let math = isBlock ? inside.substring(2, inside.length - 2).trim() : inside.substring(1, inside.length - 1).trim();
@@ -374,6 +380,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
 14. 🚨 [문단 격리 규칙]: JSON 내부의 문자열 항목(concept, explanation, answer 등) 구조에서 새로운 제목(###)이나 글머리 기호(*, -)가 시작될 때는, 반드시 바로 직전 문장 끝에 명시적인 줄바꿈 기호 두 개(\n\n)를 삽입하여 완벽한 독자 단락으로 분리 출력하라. 절대로 앞 문장과 같은 줄에 공백만 띄우고 이어서 붙이지 마라.
 13. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\\\n\\\\n) 사용하여 명확하게 문단을 분리하십시오.
+15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 
 [원시 JSON 출력 엄격 준수 규칙]
 - JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
@@ -400,4 +407,5 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
 13. 새로운 단락(문단)이나 글머리 기호(*, -), 또는 제목(###)이 시작될 때는 반드시 바로 앞에 줄바꿈 기호 두 개(\\n\\n)를 명시적으로 삽입하십시오. 절대로 앞 문장에 이어서 작성하지 마십시오. (예: "...예측합니다.\\n\\n* 응력 전이:" (O) / "...예측합니다.* 응력 전이:" (X))
 14. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\n\\n) 사용하여 명확하게 문단을 분리하십시오.
+15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 `;

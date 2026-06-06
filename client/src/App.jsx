@@ -611,11 +611,15 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   const isHeavy = isHeavyHtml(renderText);
+  let processedText = renderText;
+  if (typeof processedText === 'string' && !isHeavy) {
+    processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
+  }
 
   // 1) 불필요한 연속 빈 행을 최대 2개로 압축하여 컴팩트하게 정리
   let cleanedText = isHeavy
-    ? renderText.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
-    : healFormulas(renderText)
+    ? processedText.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
+    : healFormulas(processedText)
         .replace(/\\r\\n/g, '\n')  // escaped \r\n → real newline
         .replace(/\\n/g, '\n')      // escaped \n → real newline
         .replace(/\r\n/g, '\n')     // CR+LF → LF
