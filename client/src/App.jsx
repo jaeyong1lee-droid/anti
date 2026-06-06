@@ -9877,7 +9877,7 @@ export default function App() {
                     const idx = q.originalIdx;
                     const isNewEmptyCard = !q.title && !q.formula;
                     const isInputVisible = isNewEmptyCard || !!answersheetInputRevealed[idx];
-                    const isOutputVisible = isNewEmptyCard || !!answersheetRevealed[idx] || isInputVisible;
+                    const isOutputVisible = isNewEmptyCard || (!isDesktop && !isMobileLandscape) || !!answersheetRevealed[idx] || isInputVisible;
 
                     return (
                       <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all duration-300 hover:border-slate-700/50">
@@ -9977,8 +9977,8 @@ export default function App() {
 
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
-                            {/* 정답확인/정답접기 button */}
-                            {!isNewEmptyCard && (
+                            {/* 정답확인/정답접기 button - Hidden on mobile portrait view */}
+                            {!isNewEmptyCard && (isDesktop || isMobileLandscape) && (
                               (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
                                 <button
                                   onClick={(e) => {
@@ -10099,8 +10099,10 @@ export default function App() {
                         {!isMobileLandscape && isOutputVisible && (
                           <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                              {!isNewEmptyCard && (
+                              {(isDesktop || isMobileLandscape || isInputVisible) && (
+                                <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                              )}
+                              {!isNewEmptyCard && (isDesktop || isMobileLandscape) && (
                                 <button
                                   onClick={() => setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }))}
                                   className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
