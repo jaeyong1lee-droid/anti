@@ -97,21 +97,44 @@
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Block LaTeX (KaTeX) horizontal scrolling & hide scrollbars - Mobile Portrait & Landscape */
-@media (max-width: 767px), (orientation: landscape) and (max-height: 600px) {
-  .katex-display,
-  .overflow-x-auto {
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scrollbar-width: none !important;  /* Firefox */
-    -ms-overflow-style: none;         /* IE and Edge */
-  }
+/* Prevent inline and block LaTeX from stretching the screen and add elegant thin scrollbars */
+.katex-display,
+.katex,
+.overflow-x-auto {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin !important;  /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important; /* Firefox colors */
+}
 
-  .katex-display::-webkit-scrollbar,
-  .overflow-x-auto::-webkit-scrollbar {
-    display: none !important;         /* Chrome, Safari and Opera */
-  }
+/* Custom elegant thin scrollbar for Webkit browsers (Chrome, Safari, iOS, Android) */
+.katex-display::-webkit-scrollbar,
+.katex::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+  height: 5px !important;
+  width: 5px !important;
+  display: block !important; /* Ensure scrollbars are displayed on mobile */
+}
+
+.katex-display::-webkit-scrollbar-track,
+.katex::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.katex-display::-webkit-scrollbar-thumb,
+.katex::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 9999px !important;
+  border: none !important;
+}
+
+.katex-display::-webkit-scrollbar-thumb:hover,
+.katex::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* 📱 Mobile Landscape Layout Optimizations (height <= 600px in landscape orientation) */
