@@ -590,9 +590,17 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   };
 
   let renderText = text;
-  if (typeof text === 'string' && text.trim().startsWith('{')) {
+  if (typeof renderText === 'string') {
+    renderText = renderText
+      .replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  }
+  if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
-      const trimmedText = text.trim();
+      const trimmedText = renderText.trim();
       if (trimmedText.endsWith('}')) {
         const parsed = JSON.parse(trimmedText);
         let parts = [];
