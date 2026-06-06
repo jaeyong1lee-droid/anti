@@ -4816,7 +4816,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 
     try {
       const responseText = await callLLMWithFailover(null, prompt);
-      res.json({ text: responseText.trim() });
+      const healedText = healLatexFormulas(responseText.trim()); // 대화 수식 정정 결합
+      res.json({ text: healedText });
     } catch (err) {
       console.error('Detailed answer route error:', err);
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
@@ -4889,7 +4890,8 @@ app.post('/api/chat', async (req, res) => {
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
 ${LATEX_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
-      res.json({ text: responseText });
+      const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
+      res.json({ text: healedText });
     } catch (err) {
       console.error('Chat route error:', err);
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
@@ -5084,9 +5086,9 @@ JSON 포맷 규격:
         structure = filterStructureLines(mathContent, structure, extraAllowed);
 
         res.json({
-          title: result.title ? result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim() : (bestLocalMatch ? bestLocalMatch.title.trim() : '실시간 추출 공식'),
-          concept: result.concept ? result.concept.trim() : (bestLocalMatch ? bestLocalMatch.concept.trim() : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
-          structure: structure
+          title: result.title ? healLatexFormulas(result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.title.trim()) : '실시간 추출 공식'),
+          concept: result.concept ? healLatexFormulas(result.concept.trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.concept.trim()) : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
+          structure: structure // structure는 하단에서 filterStructureLines에 의해 별도 정제되므로 그대로 유지 가능합니다.
         });
       } catch (parseErr) {
         console.warn('JSON parsing failed, falling back to plaintext parse or local dictionary:', parseErr);
