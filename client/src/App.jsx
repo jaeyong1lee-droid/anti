@@ -150,10 +150,13 @@ const buildHtmlDocument = (text, isPopup = false) => {
       /* Compact & Premium Spacing & Title Overrides */
       html, body {
         margin: 0 !important;
-        padding: 16px !important;
+        padding: 6px !important; /* Minimized margin from 16px to 6px */
         padding-top: 8px !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        ${isPopup ? 'overflow: auto !important;' : 'overflow: hidden !important;'} /* Allow scrollbars in popup, hide in iframe */
+        max-width: 100vw !important;
+        width: 100% !important;
+        overflow-x: hidden !important; /* Crucial: Lock horizontal scroll on page level */
+        ${isPopup ? 'overflow-y: auto !important;' : 'overflow-y: hidden !important;'} /* Scroll vertical only */
         background-color: #edf7f2 !important; /* Elegant light pastel green / mint-green background */
         color: #111827 !important; /* High-contrast deep black/charcoal text */
       }
@@ -179,25 +182,61 @@ const buildHtmlDocument = (text, isPopup = false) => {
       h1 { font-size: 1.4rem !important; }
       h2 { font-size: 1.2rem !important; }
       h3 { font-size: 1.05rem !important; }
-      /* Adjust layout containers to be compact */
+      
+      /* KaTeX formulas and tables auto-scroll horizontally instead of stretching the screen */
+      .katex-display, table, pre, code {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        box-sizing: border-box !important;
+      }
+      .katex-display {
+        padding: 0.5em 8px !important;
+      }
+      
+      /* Custom elegant thin dark scrollbars for light pastel green theme */
+      .katex-display::-webkit-scrollbar,
+      .overflow-x-auto::-webkit-scrollbar,
+      table::-webkit-scrollbar,
+      pre::-webkit-scrollbar {
+        height: 5px !important;
+        width: 5px !important;
+        display: block !important;
+      }
+      .katex-display::-webkit-scrollbar-track,
+      .overflow-x-auto::-webkit-scrollbar-track,
+      table::-webkit-scrollbar-track,
+      pre::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+      .katex-display::-webkit-scrollbar-thumb,
+      .overflow-x-auto::-webkit-scrollbar-thumb,
+      table::-webkit-scrollbar-thumb,
+      pre::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15) !important;
+        border-radius: 9999px !important;
+        border: none !important;
+      }
+      .katex-display::-webkit-scrollbar-thumb:hover,
+      .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+      table::-webkit-scrollbar-thumb:hover,
+      pre::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3) !important;
+      }
+
+      /* Adjust layout containers to be compact and minimize margins */
       .container, .wrapper, [class*="container"], [class*="wrapper"] {
         padding-top: 4px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
         margin-top: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
       }
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: rgba(241, 245, 249, 0.5);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
+
       /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
       .katex {
         font-family: KaTeX_Main, "Times New Roman", serif !important;

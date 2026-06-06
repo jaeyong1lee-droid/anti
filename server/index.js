@@ -5779,18 +5779,23 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
 @media (max-width: 768px) {
   html, body {
     margin: 0 !important;
-    padding: 8px !important;
+    padding: 6px !important; /* Minimized padding from 8px to 6px */
     width: 100% !important;
+    max-width: 100vw !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
+    overflow-x: hidden !important; /* Crucial: Lock horizontal scroll on page level */
   }
-  div, section, article, table, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content, [class*="page"], [id*="page"], [class*="container"], [id*="container"], [class*="wrapper"] {
+  div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content, [class*="page"], [id*="page"], [class*="container"], [id*="container"], [class*="wrapper"] {
     position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     margin: 0 auto !important;
-    padding: 4px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    padding-left: 0 !important;  /* Crucial: Collapse horizontal padding accumulation */
+    padding-right: 0 !important; /* Crucial: Collapse horizontal padding accumulation */
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;
@@ -5798,10 +5803,45 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
     top: auto !important;
     transform: none !important;
     height: auto !important;
+    box-sizing: border-box !important;
   }
-  img, svg, table {
+  img, svg, table, pre, code {
     max-width: 100% !important;
     height: auto !important;
+  }
+  /* Force math formulas and tables to scroll horizontally inside the locked viewport */
+  .katex-display, table, pre, code {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    box-sizing: border-box !important;
+  }
+  .katex-display {
+    padding: 0.5em 8px !important;
+  }
+  /* Custom elegant thin dark scrollbars for light background */
+  .katex-display::-webkit-scrollbar,
+  table::-webkit-scrollbar,
+  pre::-webkit-scrollbar {
+    height: 5px !important;
+    width: 5px !important;
+    display: block !important;
+  }
+  .katex-display::-webkit-scrollbar-track,
+  table::-webkit-scrollbar-track,
+  pre::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  .katex-display::-webkit-scrollbar-thumb,
+  table::-webkit-scrollbar-thumb,
+  pre::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15) !important;
+    border-radius: 9999px !important;
+    border: none !important;
+  }
+  .katex-display::-webkit-scrollbar-thumb:hover,
+  table::-webkit-scrollbar-thumb:hover,
+  pre::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3) !important;
   }
   body {
     overflow-x: hidden !important;
