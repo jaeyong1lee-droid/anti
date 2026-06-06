@@ -46,7 +46,7 @@ export function healBackslashes(str, isMathMode = false) {
   ];
 
   const mathModeCommands = [
-    'left', 'right', 'le', 'ge', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'tan', 'sin', 'cos', 'sec', 'cosec', 'cot'
+    'left', 'right', 'le', 'ge', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'tan', 'sin', 'cos', 'sec', 'cosec', 'cot', 'sim'
   ];
 
   const keywordsToHeal = isMathMode 
@@ -75,7 +75,8 @@ export function healLatexFormulas(text) {
     'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
     'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
     'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
-    'equiv', 'nabla', 'quad', 'qquad', 'max', 'min'
+    'equiv', 'nabla', 'quad', 'qquad', 'max', 'min',
+    'sim', 'le', 'ge', 'div', 'sec', 'cosec', 'cot'
   ];
   
   if (text) {
@@ -116,7 +117,10 @@ export function healLatexFormulas(text) {
   const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
 
   if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
-    const cleanedMath = trimmed.replace(/\$/g, '');
+    let cleanedMath = trimmed.replace(/\$/g, '');
+    cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
+    cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
+    cleanedMath = cleanedMath.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
     return `$${cleanedMath}$`;
   }
   
@@ -264,11 +268,17 @@ export function healLatexFormulas(text) {
     if (token.type === 'inline-math') {
       let math = token.content.substring(1, token.content.length - 1).trim();
       math = math.replace(/~/g, '\\sim ');
+      math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
+      math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
       token.content = `$${math}$`;
     } else if (token.type === 'block-math') {
       let math = token.content.substring(2, token.content.length - 2).trim();
       math = math.replace(/~/g, '\\sim ');
+      math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
+      math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
       token.content = `$$${math}$$`;
+    } else if (token.type === 'text') {
+      token.content = token.content.replace(/(?<!\\)\bsim\b/gi, '~');
     }
   });
 
