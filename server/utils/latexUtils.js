@@ -262,9 +262,13 @@ export function healLatexFormulas(text) {
 
   finalTokens.forEach(token => {
     if (token.type === 'inline-math') {
-      token.content = `$${token.content.substring(1, token.content.length - 1).trim()}$`;
+      let math = token.content.substring(1, token.content.length - 1).trim();
+      math = math.replace(/~/g, '\\sim ');
+      token.content = `$${math}$`;
     } else if (token.type === 'block-math') {
-      token.content = `$$${token.content.substring(2, token.content.length - 2).trim()}$$`;
+      let math = token.content.substring(2, token.content.length - 2).trim();
+      math = math.replace(/~/g, '\\sim ');
+      token.content = `$$${math}$$`;
     }
   });
 
