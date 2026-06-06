@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
@@ -3055,7 +3055,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "주관식 (공식)",
     "question": "토픽의 대표 공식명칭 (사족 배제)",
     "concept": "공식에 대한 한 줄 요약",
-    "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
+    "formula": "$LaTeX공식",
     "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
   },
   {
@@ -3374,13 +3374,13 @@ app.post('/api/question/regenerate', async (req, res) => {
 - "type" 값: 반드시 "주관식 (공식)"
 - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
 - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-- "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
+- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \frac{P - 2C \sin\varphi}{\gamma \tan\varphi + \frac{2S}{D}}$")
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (공식)",
   "question": "토픽의 대표 공식명칭 (사족 배제)",
   "concept": "공식에 대한 한 줄 요약",
-  "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
+  "formula": "$LaTeX공식",
   "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
 }`;
       } else {
@@ -3792,13 +3792,13 @@ app.post('/api/question/adjust', async (req, res) => {
 - "type" 값: 반드시 "주관식 (공식)"
 - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
 - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-- "formula": 대표 LaTeX 공식과 함께 공식의 각 기호 정의를 절대 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$\\n- $t$: 숏크리트 두께\\n- $P$: 지반압")
+- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \frac{P - 2C \sin\varphi}{\gamma \tan\varphi + \frac{2S}{D}}$")
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (공식)",
   "question": "토픽의 대표 공식명칭 (사족 배제)",
   "concept": "공식에 대한 한 줄 요약",
-  "formula": "$LaTeX공식$\\n- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미",
+  "formula": "$LaTeX공식",
   "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
 }`;
       } else {

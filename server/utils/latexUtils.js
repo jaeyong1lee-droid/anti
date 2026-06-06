@@ -1,4 +1,4 @@
-// Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
+﻿// Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
 
 export function tokenizeForHealing(text) {
   const tokens = [];
@@ -29,36 +29,41 @@ export function tokenizeForHealing(text) {
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // 1. 역슬래시 유실로 기호 텍스트 분리된 조각 원상복구 조치
   let healed = text;
 
-  // 2. 인라인 수식 내부 및 외부 공백 자동 교정 정책 반영
+  // 1. Markdown list and header newlines fix
+  healed = healed.replace(/([가-힣a-zA-Z0-9\.\,\?!])(\s*)(\* )/g, "$1\n\n$3");
+  healed = healed.replace(/([가-힣a-zA-Z0-9\.\,\?!])(\s*)(### )/g, "$1\n\n$3");
+  healed = healed.replace(/([가-힣a-zA-Z0-9\.\,\?!])(\s*)(- )/g, "$1\n\n$3");
+
+  // 2. Trailing $ fix
+  healed = healed.replace(/(?<!\$)([A-Za-z_0-9\\][A-Za-z_0-9\\=\{\}\^\+\-\*\/ ]*[_\\\^=][A-Za-z_0-9\\=\{\}\^\+\-\*\/ ]*)\$/g, '$$$$$1$$$$');
+
   const tokens = tokenizeForHealing(healed);
   const processedParts = tokens.map(token => {
     if (token.type === 'inline-math') {
-      // 규칙 1: 내부 공백 절대 금지 조항 적용 ($ 수식 $ -> $수식$)
       let core = token.content.substring(1, token.content.length - 1).trim();
-      // 수식 내부 연속 공백 제거
       core = core.replace(/\s+/g, '');
       return `$${core}$`;
     }
     if (token.type === 'block-math') {
       return token.content;
     }
-    return token.content;
+    
+    let tContent = token.content;
+    tContent = tContent.replace(/(?<!\$|\w)(c_v|T_v|m_v|a_v|k_h|k_v|K_a|K_p|K_0|F_s|H_d|RQD|J_n|J_r|J_a|J_w|SRF|N_c|N_q)(?!\$|\w)/g, '$$$$$1$$$$');
+    tContent = tContent.replace(/(?<!\$|\w)(\\\\(gamma_w|gamma_d|gamma_t|gamma|alpha|beta|sigma_v|sigma_h|sigma|tau_f|tau|phi|theta|mu|nu|rho))(?!\$|\w)/g, '$$$$$1$$$$');
+    
+    return tContent;
   });
 
   let joinedText = processedParts.join('');
 
-  // 규칙 2: 외부 공백 필수 조건 충족 처리 ($기호$ 문장 부호나 한글 결합 시 앞뒤 한 칸 띄움 보정)
-  // 기호 앞뒤에 공백이 누락되어 붙어 있는 패턴들을 정규식 격리
   joinedText = joinedText.replace(/([가-힣a-zA-Z0-9\.\,])(\$)/g, '$1 $2');
   joinedText = joinedText.replace(/(\$)([가-힣a-zA-Z0-9])/g, '$1 $2');
 
   return joinedText;
 }
-
-// 각 수험 퀴즈 객체 유형별 자동 수선 전처리 레이어 활성화
 export function healQuizQuestionObject(q) {
   if (!q || typeof q !== 'object') return q;
   
