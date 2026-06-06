@@ -148,7 +148,14 @@ const cleanAndSanitizeMathText = (rawText) => {
   const isHeavy = isHeavyHtml(rawText);
   let cleaned = rawText;
   
-  // 1. 시스템이 수식 내부에 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
+  // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
+  cleaned = cleaned.replace(/&#x27;/g, "'")
+                   .replace(/&quot;/g, '"')
+                   .replace(/&lt;/g, '<')
+                   .replace(/&gt;/g, '>')
+                   .replace(/&amp;/g, '&');
+  
+  // 2. 복구된 상태에서 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
   if (!isHeavy) {
     cleaned = cleaned.replace(/<span[^>]*>/gi, '')
                      .replace(/<\/span>/gi, '')
@@ -156,16 +163,10 @@ const cleanAndSanitizeMathText = (rawText) => {
                      .replace(/<\/div>/gi, '');
   }
                    
-  // 2. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 강제 복구
-  cleaned = cleaned.replace(/&#x27;/g, "'")
-                   .replace(/&quot;/g, '"')
-                   .replace(/&lt;/g, '<')
-                   .replace(/&gt;/g, '>')
-                   .replace(/&amp;/g, '&');
-                   
   // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소
   if (!isHeavy) {
     cleaned = cleaned.replace(/style="[^"]*"/g, '');
+    cleaned = cleaned.replace(/style='[^']*'/g, ''); // 홑따옴표 스타일도 방어
   }
   
   // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
