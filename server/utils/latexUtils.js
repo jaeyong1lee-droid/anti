@@ -65,10 +65,41 @@ export function healBackslashes(str, isMathMode = false) {
 }
 
 export function healLatexFormulas(text) {
-  // 문장 끝의 * 기호 앞뒤에 강제 줄바꿈 삽입 (단락 구분 가독성 개선)
-  if (text) {
-    text = text.replace(/([\.?!\)\]\}])\s*\*\s*(?=[\uAC00-\uD7A3])/g, '$1\n\n* ');
+  if (!text) return text;
+  if (typeof text !== 'string') return text;
+
+  // 0.0) 이스케이프 복구 및 시스템 오염 HTML 태그 청소
+  const isHeavy = (rawText) => {
+    if (!rawText) return false;
+    const lower = rawText.toLowerCase();
+    return lower.includes('<!doctype') || lower.includes('<html>') || lower.includes('<body') || lower.includes('<script') || lower.includes('<canvas') || lower.includes('<svg') || (lower.includes('<div') && lower.includes('style='));
+  };
+
+  // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
+  text = text.replace(/&#x27;/g, "'")
+             .replace(/&quot;/g, '"')
+             .replace(/&lt;/g, '<')
+             .replace(/&gt;/g, '>')
+             .replace(/&amp;/g, '&');
+  
+  // 2. 복구된 상태에서 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
+  if (!isHeavy(text)) {
+    text = text.replace(/<span[^>]*>/gi, '')
+               .replace(/<\/span>/gi, '')
+               .replace(/<div[^>]*>/gi, '')
+               .replace(/<\/div>/gi, '');
   }
+                   
+  // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소 (이스케이프 및 orphaned > 부근까지 일괄 클리닝)
+  if (!isHeavy(text)) {
+    text = text.replace(/style=\\?["'][\s\S]*?\\?["']\s*>?/gi, '');
+  }
+  
+  // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
+  text = text.replace(/_따라서/g, '따라서');
+
+  // 문장 끝의 * 기호 앞뒤에 강제 줄바꿈 삽입 (단락 구분 가독성 개선)
+  text = text.replace(/([\.?!\)\]\}])\s*\*\s*(?=[\uAC00-\uD7A3])/g, '$1\n\n* ');
 
   // AI의 이중 이스케이프 오류(\\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
   const safeLatexCommands = [
@@ -340,6 +371,7 @@ export function healTheoryQuestionObject(t) {
   if (healed.title) healed.title = healLatexFormulas(healed.title);
   if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
   if (healed.assumptions) healed.assumptions = healLatexFormulas(healed.assumptions);
+  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
   if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
   return healed;
 }

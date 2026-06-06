@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { healLatexFormulas } from './utils/latexUtils';
+import { 
+  healLatexFormulas, 
+  healQuizQuestionObject, 
+  healTheoryQuestionObject, 
+  healFormulaQuestionObject, 
+  healAnswersheetQuestionObject 
+} from './utils/latexUtils';
 import { 
   Brain, 
   UploadCloud, 
@@ -165,8 +171,7 @@ const cleanAndSanitizeMathText = (rawText) => {
                    
   // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소
   if (!isHeavy) {
-    cleaned = cleaned.replace(/style="[^"]*"/g, '');
-    cleaned = cleaned.replace(/style='[^']*'/g, ''); // 홑따옴표 스타일도 방어
+    cleaned = cleaned.replace(/style=\\?["'][\s\S]*?\\?["']\s*>?/gi, '');
   }
   
   // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
@@ -3818,13 +3823,16 @@ export default function App() {
 
   const handleSaveFormulaQuestions = async (qs = formulaQuestions, showToast = true) => {
     try {
-      localStorage.setItem('anti_formula_questions', JSON.stringify(qs));
+      const healedQs = Array.isArray(qs) ? qs.map(healFormulaQuestionObject) : qs;
+      latestFormulaQuestionsRef.current = healedQs;
+      setFormulaQuestions(healedQs);
+      localStorage.setItem('anti_formula_questions', JSON.stringify(healedQs));
       
       // Sync with database for cross-device support (AWAITED to avoid timing issues)
       const res = await fetch(`${API_BASE}/api/session/formula`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaQuestions: qs })
+        body: JSON.stringify({ formulaQuestions: healedQs })
       });
 
       if (!res.ok) {
@@ -4034,13 +4042,16 @@ export default function App() {
 
   const handleSaveTheoryQuestions = async (qs = theoryQuestions, showToast = true) => {
     try {
-      localStorage.setItem('anti_theory_questions', JSON.stringify(qs));
+      const healedQs = Array.isArray(qs) ? qs.map(healTheoryQuestionObject) : qs;
+      latestTheoryQuestionsRef.current = healedQs;
+      setTheoryQuestions(healedQs);
+      localStorage.setItem('anti_theory_questions', JSON.stringify(healedQs));
       
       // Sync with database for cross-device support (AWAITED to avoid timing issues)
       const res = await fetch(`${API_BASE}/api/session/theory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theoryQuestions: qs })
+        body: JSON.stringify({ theoryQuestions: healedQs })
       });
 
       if (!res.ok) {
@@ -4212,12 +4223,15 @@ export default function App() {
 
   const handleSaveAnswersheetQuestions = async (qs = answersheetQuestions, showToast = true) => {
     try {
-      localStorage.setItem('anti_answersheet_questions', JSON.stringify(qs));
+      const healedQs = Array.isArray(qs) ? qs.map(healAnswersheetQuestionObject) : qs;
+      latestAnswersheetQuestionsRef.current = healedQs;
+      setAnswersheetQuestions(healedQs);
+      localStorage.setItem('anti_answersheet_questions', JSON.stringify(healedQs));
       
       const res = await fetch(`${API_BASE}/api/session/answersheet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answersheetQuestions: qs })
+        body: JSON.stringify({ answersheetQuestions: healedQs })
       });
 
       if (!res.ok) {
