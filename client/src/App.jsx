@@ -8310,6 +8310,10 @@ export default function App() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (formulaInputRevealed[idx]) {
+                                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                                      setFormulaInputRevealed(prev => ({ ...prev, [idx]: false }));
+                                    }
                                     if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
                                     } else {
@@ -9163,6 +9167,10 @@ export default function App() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (theoryInputRevealed[idx]) {
+                                      handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
+                                      setTheoryInputRevealed(prev => ({ ...prev, [idx]: false }));
+                                    }
                                     if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `이론 ${idx + 1}`, q.formula);
                                     } else {
@@ -9987,6 +9995,10 @@ export default function App() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (answersheetInputRevealed[idx]) {
+                                      handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                                      setAnswersheetInputRevealed(prev => ({ ...prev, [idx]: false }));
+                                    }
                                     if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
                                     } else {
