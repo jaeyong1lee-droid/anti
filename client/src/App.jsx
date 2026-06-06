@@ -5885,7 +5885,7 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
+        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-x-hidden">
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
@@ -6841,7 +6841,7 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-x-hidden">
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
@@ -7758,7 +7758,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-x-hidden">
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Formulas Modal */
@@ -8623,7 +8623,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
       {showTheoryExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-x-hidden">
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Theory Modal */
@@ -9429,7 +9429,7 @@ export default function App() {
       )}
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-x-hidden">
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Answersheet Modal */
