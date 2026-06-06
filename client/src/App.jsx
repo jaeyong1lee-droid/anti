@@ -142,6 +142,38 @@ const isHeavyHtml = (rawText) => {
   );
 };
 
+const cleanAndSanitizeMathText = (rawText) => {
+  if (!rawText || typeof rawText !== 'string') return rawText || '';
+  
+  const isHeavy = isHeavyHtml(rawText);
+  let cleaned = rawText;
+  
+  // 1. 시스템이 수식 내부에 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
+  if (!isHeavy) {
+    cleaned = cleaned.replace(/<span[^>]*>/gi, '')
+                     .replace(/<\/span>/gi, '')
+                     .replace(/<div[^>]*>/gi, '')
+                     .replace(/<\/div>/gi, '');
+  }
+                   
+  // 2. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 강제 복구
+  cleaned = cleaned.replace(/&#x27;/g, "'")
+                   .replace(/&quot;/g, '"')
+                   .replace(/&lt;/g, '<')
+                   .replace(/&gt;/g, '>')
+                   .replace(/&amp;/g, '&');
+                   
+  // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소
+  if (!isHeavy) {
+    cleaned = cleaned.replace(/style="[^"]*"/g, '');
+  }
+  
+  // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
+  cleaned = cleaned.replace(/_따라서/g, '따라서');
+  
+  return cleaned;
+};
+
 const buildHtmlDocument = (text, isPopup = false) => {
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   
@@ -589,15 +621,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return healLatexFormulas(val);
   };
 
-  let renderText = text;
-  if (typeof renderText === 'string') {
-    renderText = renderText
-      .replace(/&#x27;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&');
-  }
+  let renderText = cleanAndSanitizeMathText(text);
   if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
       const trimmedText = renderText.trim();
