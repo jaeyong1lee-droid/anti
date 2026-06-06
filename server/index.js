@@ -2014,10 +2014,33 @@ app.get('/api/dashboard', async (req, res) => {
     // 💡 더 이상 자동으로 보너스 약점 카드를 대시보드 리스트에 끼워넣지 않습니다.
     // 사용자가 '약점 추천 받기' 버튼을 누르면 별도 API (/api/dashboard/weak-points) 로 호출되어 추가 결합됩니다.
 
+    // 💡 금일 복습 완료한 토픽 목록 추출 (날짜 연동 노란색 표시용)
+    const startDate = getLocalDateString(new Date(queryDate), -2);
+    const endDate = getLocalDateString(new Date(queryDate), 2);
+    const completedSchedules = await dbQuery.all(
+      `SELECT topic_id, completed_at FROM schedules 
+       WHERE status = 'completed' AND completed_at IS NOT NULL 
+         AND completed_at >= ? AND completed_at <= ?`,
+      [startDate + 'T00:00:00.000Z', endDate + 'T23:59:59.999Z']
+    );
+
+    const completedTopicIds = [];
+    for (const s of completedSchedules) {
+      try {
+        const localDateStr = getLocalDateString(new Date(s.completed_at));
+        if (localDateStr === queryDate) {
+          completedTopicIds.push(s.topic_id);
+        }
+      } catch (err) {
+        console.warn('Completed_at date parse warning:', err);
+      }
+    }
+
     res.json({
       date: queryDate,
       count: uniqueReviews.length,
-      reviews: uniqueReviews
+      reviews: uniqueReviews,
+      completedTopicIds: completedTopicIds
     });
   } catch (error) {
     console.error('Error fetching dashboard reviews:', error);

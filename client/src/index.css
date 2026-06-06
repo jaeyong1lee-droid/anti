@@ -97,9 +97,8 @@
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Prevent inline and block LaTeX from stretching the screen and add elegant thin scrollbars */
+/* Prevent block LaTeX and scroll containers from stretching the screen and add elegant thin scrollbars */
 .katex-display,
-.katex,
 .overflow-x-auto {
   max-width: 100%;
   overflow-x: auto !important;
@@ -108,23 +107,24 @@
   scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important; /* Firefox colors */
 }
 
+/* Give block formulas slight horizontal padding to prevent mathematical offsets from triggering scrollbars */
+.katex-display {
+  padding: 0.5em 8px !important;
+}
+
 /* Custom elegant thin scrollbar for Webkit browsers (Chrome, Safari, iOS, Android) */
 .katex-display::-webkit-scrollbar,
-.katex::-webkit-scrollbar,
 .overflow-x-auto::-webkit-scrollbar {
   height: 5px !important;
   width: 5px !important;
-  display: block !important; /* Ensure scrollbars are displayed on mobile */
 }
 
 .katex-display::-webkit-scrollbar-track,
-.katex::-webkit-scrollbar-track,
 .overflow-x-auto::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
 .katex-display::-webkit-scrollbar-thumb,
-.katex::-webkit-scrollbar-thumb,
 .overflow-x-auto::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3) !important;
   border-radius: 9999px !important;
@@ -132,7 +132,6 @@
 }
 
 .katex-display::-webkit-scrollbar-thumb:hover,
-.katex::-webkit-scrollbar-thumb:hover,
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5) !important;
 }

@@ -1175,6 +1175,7 @@ export default function App() {
 
   // Lists
   const [todayReviews, setTodayReviews] = useState([]);
+  const [completedTopicIds, setCompletedTopicIds] = useState([]);
   const [allTopics, setAllTopics] = useState([]);
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
@@ -1640,12 +1641,19 @@ export default function App() {
         }
         const uniqueList = Array.from(uniqueMap.values());
         setTodayReviews(uniqueList);
+        if (data && Array.isArray(data.completedTopicIds)) {
+          setCompletedTopicIds(data.completedTopicIds);
+        } else {
+          setCompletedTopicIds([]);
+        }
       } else {
         setTodayReviews([]);
+        setCompletedTopicIds([]);
         console.error('Failed to load dashboard or invalid data format:', data);
       }
     } catch (err) {
       setTodayReviews([]);
+      setCompletedTopicIds([]);
       console.error('Error fetching dashboard:', err);
     } finally {
       setLoadingReviews(false);
@@ -3476,6 +3484,7 @@ export default function App() {
     setChatInput('');
     setAttachedImage(null);
     
+    const userMsgIdx = chatHistory.length;
     setChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
     setIsChatLoading(true);
 
@@ -3501,7 +3510,16 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
       requestAnimationFrame(() => {
-        if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+        const parent = chatBodyRef.current;
+        const userMsgEl = parent?.querySelector(`#chat-msg-${userMsgIdx}`);
+        if (parent && userMsgEl) {
+          const parentRect = parent.getBoundingClientRect();
+          const childRect = userMsgEl.getBoundingClientRect();
+          const relativeTop = childRect.top - parentRect.top + parent.scrollTop;
+          parent.scrollTo({ top: relativeTop, behavior: 'smooth' });
+        } else if (parent) {
+          parent.scrollTop = parent.scrollHeight;
+        }
       });
     }
   };
@@ -4727,6 +4745,7 @@ export default function App() {
     const cleanTitle = (title || '').replace(/\$/g, '').trim();
     const promptText = `기술사 시험을 대비하여, [${cleanTitle}] 공식의 상세한 이론적 배경과 수학적/역학적 유도 과정을 수험생의 눈높이에 맞춰 친절하고 구조적으로 유도해 설명해 주세요.\n\n공식 식: ${formula || ''}`;
     
+    const userMsgIdx = chatHistory.length;
     setChatHistory(prev => [...prev, { role: 'user', text: promptText }]);
     setIsChatLoading(true);
 
@@ -4752,7 +4771,16 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
       requestAnimationFrame(() => {
-        if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+        const parent = chatBodyRef.current;
+        const userMsgEl = parent?.querySelector(`#chat-msg-${userMsgIdx}`);
+        if (parent && userMsgEl) {
+          const parentRect = parent.getBoundingClientRect();
+          const childRect = userMsgEl.getBoundingClientRect();
+          const relativeTop = childRect.top - parentRect.top + parent.scrollTop;
+          parent.scrollTo({ top: relativeTop, behavior: 'smooth' });
+        } else if (parent) {
+          parent.scrollTop = parent.scrollHeight;
+        }
       });
     }
   };
@@ -5674,7 +5702,9 @@ export default function App() {
                                           setEditingTitleText(topic.title);
                                         }}
                                         ref={isFirstMatch ? firstMatchRef : null}
-                                        className="font-bold text-white text-sm md:text-[17px] truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                        className={`font-bold text-sm md:text-[17px] truncate transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow ${
+                                          completedTopicIds.includes(topic.id) ? 'text-yellow-400' : 'text-white'
+                                        }`}
                                         title="더블클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
@@ -5709,7 +5739,9 @@ export default function App() {
                                           wordBreak: 'break-all',
                                           whiteSpace: 'normal'
                                         }}
-                                        className="font-bold text-white text-xs transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow"
+                                        className={`font-bold text-xs transition-colors cursor-pointer hover:text-violet-400 decoration-dotted hover:underline min-w-0 flex-grow ${
+                                          completedTopicIds.includes(topic.id) ? 'text-yellow-400' : 'text-white'
+                                        }`}
                                         title="더블클릭 시 제목을 수정합니다."
                                       >
                                         {topic.title}
@@ -6638,7 +6670,7 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                    <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
@@ -7597,7 +7629,7 @@ export default function App() {
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
-                    <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                    <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                       <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
                         {msg.role === 'user' ? '나' : 'Gemini'}
                       </div>
@@ -8458,7 +8490,7 @@ export default function App() {
                     </div>
                   ) : (
                     chatHistory.map((msg, i) => (
-                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                         <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
                           {msg.role === 'user' ? '나' : 'Gemini'}
                         </div>
@@ -9263,7 +9295,7 @@ export default function App() {
                     </div>
                   ) : (
                     chatHistory.map((msg, i) => (
-                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                         <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
                           {msg.role === 'user' ? '나' : 'Gemini'}
                         </div>
@@ -10122,7 +10154,7 @@ export default function App() {
                     </div>
                   ) : (
                     chatHistory.map((msg, i) => (
-                      <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
                         <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-emerald-400 mr-1' : 'text-emerald-400 ml-1'}`}>
                           {msg.role === 'user' ? '나' : 'Gemini'}
                         </div>
