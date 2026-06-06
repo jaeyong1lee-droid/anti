@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
@@ -289,8 +289,28 @@ function decodeHtmlBuffer(buffer) {
 
 
 function parseLlmJson(text) {
-  // Bypassed escapeJsonBackslashes to prevent over-escaping LaTeX commands
-  return JSON.parse(text);
+  if (!text) return null;
+  let cleaned = text.trim();
+  
+  // 마크다운 코드 블록 제거 복원
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  }
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (parseErr) {
+    console.warn('[JSON 정밀 복구 가동] 네이티브 파싱 실패로 인한 역슬래시 예외 교정 수선 작업을 시작합니다.');
+    try {
+      // 제어 문자(\n, \t, \", \\)는 유지하되, LaTeX 명령어 앞의 깨진 단일 역슬래시만 추적하여 이중화 처리
+      // 정규식 설명: 앞에 역슬래시가 없고(?<!\\), 뒤에 표준 JSON 이스케이프 문자군이 오지 않는(?!...) 역슬래시(\)만 매칭
+      let repaired = cleaned.replace(/(?<!\\)\\(?!["\\\/bfnrtu])/g, '\\\\');
+      return JSON.parse(repaired);
+    } catch (repairedErr) {
+      console.error('[JSON 최종 파싱 복구 실패]:', repairedErr.message);
+      throw repairedErr;
+    }
+  }
 }
 
 // Helper: Extract JSON array from string robustly
@@ -303,8 +323,8 @@ function extractJsonArray(str) {
     try {
       return parseLlmJson(jsonSub);
     } catch (e) {
-      console.warn('Failed parsing extracted JSON substring, generating fallback.');
-      throw e; // Throw so that fallback generation kicks in immediately
+      console.warn('Failed parsing extracted JSON substring via extractJsonArray.');
+      throw e;
     }
   }
   return null;

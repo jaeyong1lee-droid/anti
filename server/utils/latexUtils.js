@@ -3,7 +3,6 @@
 export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
-  // Use [^\$\n] to prevent inline math from matching across newlines
   const regex = /(\$\$.*?\$\$)|(\$[^\$\n]+?\$)/gs;
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -26,28 +25,75 @@ export function tokenizeForHealing(text) {
   return tokens;
 }
 
+// 텍스트 전반의 LaTeX 수식 공백 규칙 강제 정제 함수
 export function healLatexFormulas(text) {
-  // Bypassed: Let the frontend LatexRenderer handle raw math syntax
-  return text;
+  if (!text || typeof text !== 'string') return text;
+
+  // 1. 역슬래시 유실로 기호 텍스트 분리된 조각 원상복구 조치
+  let healed = text;
+
+  // 2. 인라인 수식 내부 및 외부 공백 자동 교정 정책 반영
+  const tokens = tokenizeForHealing(healed);
+  const processedParts = tokens.map(token => {
+    if (token.type === 'inline-math') {
+      // 규칙 1: 내부 공백 절대 금지 조항 적용 ($ 수식 $ -> $수식$)
+      let core = token.content.substring(1, token.content.length - 1).trim();
+      // 수식 내부 연속 공백 제거
+      core = core.replace(/\s+/g, '');
+      return `$${core}$`;
+    }
+    if (token.type === 'block-math') {
+      return token.content;
+    }
+    return token.content;
+  });
+
+  let joinedText = processedParts.join('');
+
+  // 규칙 2: 외부 공백 필수 조건 충족 처리 ($기호$ 문장 부호나 한글 결합 시 앞뒤 한 칸 띄움 보정)
+  // 기호 앞뒤에 공백이 누락되어 붙어 있는 패턴들을 정규식 격리
+  joinedText = joinedText.replace(/([가-힣a-zA-Z0-9\.\,])(\$)/g, '$1 $2');
+  joinedText = joinedText.replace(/(\$)([가-힣a-zA-Z0-9])/g, '$1 $2');
+
+  return joinedText;
 }
 
-
+// 각 수험 퀴즈 객체 유형별 자동 수선 전처리 레이어 활성화
 export function healQuizQuestionObject(q) {
+  if (!q || typeof q !== 'object') return q;
+  
+  if (q.question) q.question = healLatexFormulas(q.question);
+  if (q.concept) q.concept = healLatexFormulas(q.concept);
+  if (q.explanation) q.explanation = healLatexFormulas(q.explanation);
+  if (q.answer) q.answer = healLatexFormulas(q.answer);
+  if (q.structure) q.structure = healLatexFormulas(q.structure);
+  
+  if (q.options && Array.isArray(q.options)) {
+    q.options = q.options.map(opt => healLatexFormulas(opt));
+  }
   return q;
 }
 
 export function healTheoryQuestionObject(t) {
+  if (!t || typeof t !== 'object') return t;
+  if (t.title) t.title = healLatexFormulas(t.title);
+  if (t.concept) t.concept = healLatexFormulas(t.concept);
+  if (t.assumptions) t.assumptions = healLatexFormulas(t.assumptions);
+  if (t.answer) t.answer = healLatexFormulas(t.answer);
   return t;
 }
 
 export function healFormulaQuestionObject(f) {
+  if (!f || typeof f !== 'object') return f;
+  if (f.title) f.title = healLatexFormulas(f.title);
+  if (f.formula) f.formula = healLatexFormulas(f.formula);
+  if (f.concept) f.concept = healLatexFormulas(f.concept);
   return f;
 }
 
 export function healAnswersheetQuestionObject(a) {
-  return a;
+  return healTheoryQuestionObject(a); // 공통 규격 연동
 }
-
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
@@ -68,5 +114,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 [원시 JSON 출력 엄격 준수 규칙]
 - JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
 - 절대로 단일 백슬래시('\\frac') 형태로 가공되지 않은 원시 문자열을 JSON 내부에 주입하여 문법 에러(Cartesian/Escape Syntax Error)를 유발하지 마십시오.
+
+[JSON String Escape Rule]:
 When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse() without crashing the backend system.
 `;
