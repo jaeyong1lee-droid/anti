@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
@@ -288,6 +288,62 @@ function decodeHtmlBuffer(buffer) {
 }
 
 
+// Safe LaTeX-preserving backslash escaper for LLM JSON responses
+function escapeJsonBackslashes(str) {
+  if (!str) return str;
+  let result = '';
+  let inString = false;
+  let i = 0;
+  
+  const latexCommands = [
+    'newline', 'nabla', 'nu', 'theta', 'tau', 'tan', 'times', 'tilde', 'text', 
+    'rho', 'right', 'mathrm', 'rule', 'beta', 'bar', 'begin', 'frac', 'phi', 'varphi', 'forall'
+  ];
+
+  while (i < str.length) {
+    const char = str[i];
+    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+      inString = !inString;
+      result += char;
+      i++;
+    } else if (inString && char === '\\') {
+      const next = str[i + 1];
+      
+      if (next === '"' || next === '/' || next === '\\') {
+        result += char + next;
+        i += 2;
+      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
+        let tempIndex = i + 1;
+        let commandWord = '';
+        while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
+          commandWord += str[tempIndex];
+          tempIndex++;
+        }
+        
+        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
+        if (isLatex) {
+          result += '\\\\';
+          i++;
+        } else {
+          result += char + next;
+          i += 2;
+        }
+      } else if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6))) {
+        // Safe unicode sequence bypass
+        result += char + next + str.substring(i + 2, i + 6);
+        i += 6;
+      } else {
+        result += '\\\\';
+        i++;
+      }
+    } else {
+      result += char;
+      i++;
+    }
+  }
+  return result;
+}
+
 function parseLlmJson(text) {
   if (!text) return null;
   let cleaned = text.trim();
@@ -297,20 +353,8 @@ function parseLlmJson(text) {
     cleaned = cleaned.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
   }
 
-  try {
-    return JSON.parse(cleaned);
-  } catch (parseErr) {
-    console.warn('[JSON 정밀 복구 가동] 네이티브 파싱 실패로 인한 역슬래시 예외 교정 수선 작업을 시작합니다.');
-    try {
-      // 제어 문자(\n, \t, \", \\)는 유지하되, LaTeX 명령어 앞의 깨진 단일 역슬래시만 추적하여 이중화 처리
-      // 정규식 설명: 앞에 역슬래시가 없고(?<!\\), 뒤에 표준 JSON 이스케이프 문자군이 오지 않는(?!...) 역슬래시(\)만 매칭
-      let repaired = cleaned.replace(/(?<!\\)\\(?!["\\\/bfnrtu])/g, '\\\\');
-      return JSON.parse(repaired);
-    } catch (repairedErr) {
-      console.error('[JSON 최종 파싱 복구 실패]:', repairedErr.message);
-      throw repairedErr;
-    }
-  }
+  const escaped = escapeJsonBackslashes(cleaned);
+  return JSON.parse(escaped);
 }
 
 // Helper: Extract JSON array from string robustly
