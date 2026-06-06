@@ -46,7 +46,7 @@ export function healBackslashes(str, isMathMode = false) {
   ];
 
   const mathModeCommands = [
-    'left', 'right', 'le', 'ge', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'tan', 'sin', 'cos', 'sec', 'cosec', 'cot', 'sim'
+    'left', 'right', 'le', 'ge', 'lt', 'gt', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'tan', 'sin', 'cos', 'sec', 'cosec', 'cot', 'sim'
   ];
 
   const keywordsToHeal = isMathMode 
@@ -76,7 +76,7 @@ export function healLatexFormulas(text) {
     'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
     'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
     'equiv', 'nabla', 'quad', 'qquad', 'max', 'min',
-    'sim', 'le', 'ge', 'div', 'sec', 'cosec', 'cot'
+    'sim', 'le', 'ge', 'div', 'sec', 'cosec', 'cot', 'lt', 'gt'
   ];
   
   if (text) {
