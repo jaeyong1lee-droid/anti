@@ -4934,6 +4934,71 @@ function filterStructureLines(mathContent, structure, extraAllowed = []) {
   return filteredLines.join('\n').trim();
 }
 
+// 6-3-5. Formula calculation question generator
+app.post('/api/formula/generate-quiz-question', async (req, res) => {
+  try {
+    const { formulaTitle, formula, concept, assumptions } = req.body;
+    if (!formulaTitle || !formula) {
+      return res.status(400).json({ error: '공식 정보가 부족합니다.' });
+    }
+
+    const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
+제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
+반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.`;
+
+    const userPrompt = `
+[대상 공식]:
+- 공식명: ${formulaTitle}
+- 수식: ${formula}
+- 개념 및 설명: ${concept || ''}
+- 기본 가정: ${assumptions || ''}
+
+[출제 요구사항]:
+1. **실제 공학적 수치 대입 계산 문제**: 공식에 포함된 변수들에 합리적이고 타당성 있는 토목/지반공학적 설계 조건 수치(예: 수평 저항력, 부착 강도, 압밀계수, 또는 토압 조건 등)를 제시하고, 최종 계산 결과를 묻는 정량 계산 문제를 출제하십시오.
+2. **보기(options) 구성**: 4개의 보기를 제공하며, 그 중 정확히 1개만 정답이어야 합니다. 나머지 3개의 오답 보기는 단순 임의 날조 숫자가 아닌, 계산 과정에서 흔히 범할 수 있는 전형적인 오차/착오(예: 단위 변환 누락, 특정 분모/분자 위치 오류 등)를 반영한 그럴듯한 오답 수치(distractors)로 설계하십시오.
+3. **가독성 높은 LaTeX 적용**: 문제 질문(question), 보기(options), 해설(explanation)에 포함되는 모든 물리량 기호와 수식은 반드시 LaTeX 기호($)로 감싸십시오.
+4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
+
+${LATEX_PROMPT_INSTRUCTIONS}
+
+[JSON 반환 규격]:
+{
+  "formulaTitle": "${formulaTitle}",
+  "question": "문제 질문 내용 (구체적인 설계 조건 수치 포함)",
+  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
+  "answer": "정답 보기의 텍스트와 토씨 하나 틀리지 않는 정답 텍스트",
+  "explanation": "해설 내용 (공식 유도 및 각 조건 대입을 통한 구체적인 계산 전개 과정 포함)"
+}
+`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'question');
+    let text = responseText.trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    
+    let parsed = null;
+    try {
+      parsed = parseLlmJson(text);
+    } catch (parseErr) {
+      parsed = extractJsonArray(responseText);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed = parsed[0];
+      }
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Failed to parse LLM response to JSON object');
+    }
+
+    const healed = healQuizQuestionObject(parsed);
+    res.json(healed);
+  } catch (err) {
+    console.error('generate-quiz-question error:', err);
+    res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
+  }
+});
+
 // 6-4. Formula Analysis & Title/Structure Generation
 app.post('/api/formula/suggest-title', async (req, res) => {
   try {

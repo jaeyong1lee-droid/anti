@@ -8870,6 +8870,37 @@ export default function App() {
                   </div>
                 ) : (
                   formulaQuizQuestions.map((q, qIdx) => {
+                    if (q.loading) {
+                      return (
+                        <div key={q.id} className="p-6 bg-slateCustom-900/40 border border-slate-800/80 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-md shadow-black/20 animate-pulse">
+                          <RefreshCw className="animate-spin text-rose-500" size={20} />
+                          <span className="text-[11px] text-slate-400 font-bold">공식 계산 문제 생성 중... ⏳</span>
+                        </div>
+                      );
+                    }
+                    if (q.error) {
+                      return (
+                        <div key={q.id} className="p-6 bg-rose-950/20 border border-rose-500/20 rounded-2xl text-center space-y-3 shadow-md shadow-rose-950/5">
+                          <p className="text-xs text-rose-300 font-bold">{q.error}</p>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const reloadingList = formulaQuizQuestions.map(item => item.id === q.id ? { ...item, loading: true, error: null } : item);
+                              setFormulaQuizQuestions(reloadingList);
+                              const updatedQ = await fetchQuestionContent(q);
+                              const finalList = reloadingList.map(item => item.id === q.id ? updatedQ : item);
+                              setFormulaQuizQuestions(finalList);
+                              localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(finalList));
+                            }}
+                            className="py-1.5 px-4 bg-rose-700 hover:bg-rose-600 text-white text-[11px] font-black rounded-lg transition-all active:scale-[0.97] cursor-pointer inline-flex items-center gap-1 shadow-md shadow-rose-700/10"
+                          >
+                            <RefreshCw size={11} />
+                            재시도
+                          </button>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={q.id} className={`p-4 rounded-2xl border transition-all duration-300 ${
                         q.isCorrect 
@@ -8878,7 +8909,7 @@ export default function App() {
                       }`}>
                         {/* Question Header */}
                         <div className="flex items-start justify-between gap-2 mb-3">
-                          <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식의 수식을 고르시오</span>
+                          <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식을 활용한 계산 문제를 푸시오</span>
                           {q.isCorrect && (
                             <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
                               <CheckCircle size={12} />
@@ -8886,11 +8917,16 @@ export default function App() {
                             </span>
                           )}
                         </div>
-                        <h4 className="text-xs font-black text-white mb-4 flex items-center gap-1.5 flex-wrap">
+                        <h4 className="text-xs font-black text-white mb-3 flex items-center gap-1.5 flex-wrap border-b border-slate-800/80 pb-2">
                           <span>[</span>
                           <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline-block" />
                           <span>]</span>
                         </h4>
+                        
+                        {/* Question text */}
+                        <div className="text-xs text-slate-350 leading-relaxed mb-4 whitespace-normal break-words max-w-full">
+                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
                         
                         {/* Options */}
                         <div className="space-y-2.5">
@@ -8947,14 +8983,20 @@ export default function App() {
                           })}
                         </div>
                         
-                        {/* Feedback text */}
+                        {/* Feedback text & Explanation */}
                         {q.userAnswerIndex !== null && (
-                          <div className="mt-3 text-right">
-                            {q.isCorrect ? (
-                              <span className="text-[10px] font-bold text-emerald-400">정답입니다! 다음 문제로 이동하세요.</span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-rose-400">오답입니다. 다른 보기를 선택해 보세요.</span>
-                            )}
+                          <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2.5">
+                            <div className="text-right">
+                              {q.isCorrect ? (
+                                <span className="text-[10px] font-bold text-emerald-400">정답입니다! 🎉</span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-rose-400">오답입니다. 다른 보기를 선택해 보세요. ❌</span>
+                              )}
+                            </div>
+                            <div className="p-3.5 bg-slateCustom-950/60 rounded-xl border border-slate-850 text-[11px] text-slate-350 leading-relaxed max-w-full overflow-x-auto select-text">
+                              <span className="font-extrabold text-white block mb-1 text-xs">📖 상세 해설</span>
+                              <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} />
+                            </div>
                           </div>
                         )}
                       </div>
