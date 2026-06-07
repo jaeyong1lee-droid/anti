@@ -3992,7 +3992,7 @@ export default function App() {
       console.log('[Fallback] Loaded default formula questions.');
     }
 
-    const cleaned = normalizeAndCompactifyFormulas(loadedData);
+    const cleaned = normalizeAndCompactifyFormulas(loadedData).map(healFormulaQuestionObject);
     latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
     localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
@@ -4056,9 +4056,10 @@ export default function App() {
       loadedData = defaultTheories;
     }
 
-    latestTheoryQuestionsRef.current = loadedData;
-    setTheoryQuestions(loadedData);
-    localStorage.setItem('anti_theory_questions', JSON.stringify(loadedData));
+    const cleaned = (loadedData || []).map(healTheoryQuestionObject);
+    latestTheoryQuestionsRef.current = cleaned;
+    setTheoryQuestions(cleaned);
+    localStorage.setItem('anti_theory_questions', JSON.stringify(cleaned));
     setLoadingTheory(false);
     return loadedData;
   };
@@ -4135,7 +4136,7 @@ export default function App() {
           assumptions: t.assumptions || '',
           formula: t.answer
         }));
-        const updated = [...newItems, ...prev];
+        const updated = [...newItems, ...prev].map(healTheoryQuestionObject);
         latestTheoryQuestionsRef.current = updated;
         handleSaveTheoryQuestions(updated, false);
         return updated;
@@ -4184,7 +4185,7 @@ export default function App() {
                 };
               }
               return item;
-            });
+            }).map(healTheoryQuestionObject);
             latestTheoryQuestionsRef.current = updated;
             handleSaveTheoryQuestions(updated, false);
             return updated;
@@ -4237,9 +4238,10 @@ export default function App() {
       loadedData = [];
     }
 
-    latestAnswersheetQuestionsRef.current = loadedData;
-    setAnswersheetQuestions(loadedData);
-    localStorage.setItem('anti_answersheet_questions', JSON.stringify(loadedData));
+    const cleaned = (loadedData || []).map(healAnswersheetQuestionObject);
+    latestAnswersheetQuestionsRef.current = cleaned;
+    setAnswersheetQuestions(cleaned);
+    localStorage.setItem('anti_answersheet_questions', JSON.stringify(cleaned));
     setLoadingAnswersheet(false);
     return loadedData;
   };
@@ -4364,7 +4366,7 @@ export default function App() {
                 };
               }
               return item;
-            });
+            }).map(healAnswersheetQuestionObject);
             latestAnswersheetQuestionsRef.current = updated;
             handleSaveAnswersheetQuestions(updated, false);
             return updated;
@@ -4643,7 +4645,11 @@ export default function App() {
       structure
     };
 
-    setFormulaQuestions(prev => [newFormula, ...prev]);
+    setFormulaQuestions(prev => {
+      const updated = [newFormula, ...prev].map(healFormulaQuestionObject);
+      handleSaveFormulaQuestions(updated, false);
+      return updated;
+    });
     showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
   };
 
@@ -4741,7 +4747,7 @@ export default function App() {
     };
 
     setFormulaQuestions(prev => {
-      const updated = [newFormula, ...prev];
+      const updated = [newFormula, ...prev].map(healFormulaQuestionObject);
       handleSaveFormulaQuestions(updated, false);
       return updated;
     });
@@ -4772,7 +4778,7 @@ export default function App() {
                 };
               }
               return f;
-            });
+            }).map(healFormulaQuestionObject);
             handleSaveFormulaQuestions(updated, false);
             return updated;
           });
@@ -4790,7 +4796,7 @@ export default function App() {
               };
             }
             return f;
-          });
+          }).map(healFormulaQuestionObject);
           handleSaveFormulaQuestions(updated, false);
           return updated;
         });
@@ -4844,7 +4850,7 @@ export default function App() {
                 };
               }
               return f;
-            });
+            }).map(healFormulaQuestionObject);
             latestFormulaQuestionsRef.current = updated;
             handleSaveFormulaQuestions(updated, false);
             return updated;
@@ -8328,7 +8334,7 @@ export default function App() {
                                         const trimmed = editingFormulaText.trim();
                                         if (trimmed) {
                                           setFormulaQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
                                             handleSaveFormulaQuestions(updated, false);
                                             return updated;
                                           });
@@ -8347,7 +8353,7 @@ export default function App() {
                                       const trimmed = editingFormulaText.trim();
                                       if (trimmed) {
                                         setFormulaQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item);
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
                                           handleSaveFormulaQuestions(updated, false);
                                           return updated;
                                         });
@@ -9185,7 +9191,7 @@ export default function App() {
                                         const trimmed = editTheoryTitle.trim();
                                         if (trimmed) {
                                           setTheoryQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healTheoryQuestionObject);
                                             handleSaveTheoryQuestions(updated, false);
                                             return updated;
                                           });
@@ -9204,7 +9210,7 @@ export default function App() {
                                       const trimmed = editTheoryTitle.trim();
                                       if (trimmed) {
                                         setTheoryQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healTheoryQuestionObject);
                                           handleSaveTheoryQuestions(updated, false);
                                           return updated;
                                         });
@@ -10004,7 +10010,7 @@ export default function App() {
                                         const trimmed = editAnswersheetTitle.trim();
                                         if (trimmed) {
                                           setAnswersheetQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healAnswersheetQuestionObject);
                                             handleSaveAnswersheetQuestions(updated, false);
                                             return updated;
                                           });
@@ -10023,7 +10029,7 @@ export default function App() {
                                       const trimmed = editAnswersheetTitle.trim();
                                       if (trimmed) {
                                         setAnswersheetQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healAnswersheetQuestionObject);
                                           handleSaveAnswersheetQuestions(updated, false);
                                           return updated;
                                         });

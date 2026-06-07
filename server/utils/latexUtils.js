@@ -425,25 +425,46 @@ export function healLatexFormulas(text) {
   return result;
 }
 
-// 💡 [대수술] 모든 종류의 객체/배열 내부의 모든 String 필드를 누락 없이 추적하는 Universal Deep Healer 구조 도입
+// 💡 [업그레이드] 프로토타입 오염 및 프레임워크 관찰 객체 순회 한계를 극복한 마스터 딥 힐러
 function healDeep(obj) {
-  if (!obj) return obj;
+  // 1. Null, Undefined, 혹은 객체가 아닌 원시 타입(Primitive) 처리
+  if (obj === null || obj === undefined) return obj;
+  
   if (typeof obj === 'string') {
     return healLatexFormulas(obj);
   }
+  
+  // string 이외의 원시 타입(number, boolean 등)은 그대로 반환
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+
+  // 2. 배열(Array)인 경우 내부 요소 순회
   if (Array.isArray(obj)) {
     return obj.map(item => healDeep(item));
   }
-  if (typeof obj === 'object') {
+
+  // 3. 순수 객체 및 프레임워크 특성 상태 객체 방어 순회
+  try {
     const healed = {};
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        healed[key] = healDeep(obj[key]);
-      }
+    // Object.keys는 열거 가능한 확실한 고유 프로퍼티만 안전하게 추출합니다.
+    const keys = Object.keys(obj);
+    
+    for (const key of keys) {
+      healed[key] = healDeep(obj[key]);
     }
+    
+    // 원래 객체의 프로토타입을 유지해야 하는 특수 객체일 경우를 위한 방어선
+    const proto = Object.getPrototypeOf(obj);
+    if (proto && proto !== Object.prototype) {
+      return Object.assign(Object.create(proto), healed);
+    }
+    
     return healed;
+  } catch (e) {
+    // 순회 중 예외 발생 시 원본 안전 반환 (크래시 방지)
+    return obj;
   }
-  return obj;
 }
 
 // 기존 인터페이스 호환성 100% 보장하면서 누락 원천 차단
