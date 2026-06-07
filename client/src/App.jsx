@@ -8377,17 +8377,6 @@ export default function App() {
                     onClick={() => {
                       handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                       setShowFormulaExam(false);
-                      handleOpenTheoryExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Brain size={14} />
-                    이론유도
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
                       handleOpenAnswerSheet();
                     }}
                     className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
@@ -9344,17 +9333,6 @@ export default function App() {
                   >
                     <Sigma size={14} />
                     필수공식
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                      setShowAnswerSheet(false);
-                      handleOpenTheoryExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Brain size={14} />
-                    이론유도
                   </button>
                   <button
                     className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-emerald-500 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg rounded-xl"
