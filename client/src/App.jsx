@@ -4260,6 +4260,29 @@ export default function App() {
     }
   };
 
+  const confirmAndGenerateQuizQuestion = async (shouldNavigateMobile = false) => {
+    const hasConfirmed = window.confirm("새로운 공식 문제를 생성하시겠습니까?");
+    if (hasConfirmed) {
+      await handleGenerateExtraQuizQuestion();
+      if (shouldNavigateMobile && !isDesktop && !isMobileLandscape) {
+        setFormulaMobileTab('tutor');
+        setTimeout(() => {
+          const containerWidth = formulaSplitContainerRef.current?.clientWidth || window.innerWidth;
+          formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+        }, 150);
+      }
+    } else {
+      if (shouldNavigateMobile && !isDesktop && !isMobileLandscape) {
+        setFormulaMobileTab('tutor');
+        setTimeout(() => {
+          const containerWidth = formulaSplitContainerRef.current?.clientWidth || window.innerWidth;
+          formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+        }, 50);
+      }
+    }
+  };
+
+
 
   useEffect(() => {
     if (showFormulaExam && formulaQuestions.length >= 4) {
@@ -8391,11 +8414,11 @@ export default function App() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleGenerateExtraQuizQuestion}
+                  onClick={() => confirmAndGenerateQuizQuestion(true)}
                   className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md shadow-rose-600/10 active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <Award size={12} />
-                  문제 출제
+                  공식퀴즈
                 </button>
               </div>
             </div>
@@ -8494,7 +8517,7 @@ export default function App() {
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
                 <button
                   type="button"
-                  onClick={handleGenerateExtraQuizQuestion}
+                  onClick={() => confirmAndGenerateQuizQuestion(false)}
                   className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
                   title="공식 객관식 문제 무작위 1개 추가 출제"
                 >
@@ -8528,7 +8551,7 @@ export default function App() {
           )}
 
           {/* Sub-header tabs for Mobile */}
-          {(isDesktop || isMobileLandscape) && (
+          {(!isDesktop && !isMobileLandscape) && (
             <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
               <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
                 <button
@@ -8575,7 +8598,7 @@ export default function App() {
                 }
               }
             }}
-            className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container`}
+            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
@@ -9075,9 +9098,7 @@ export default function App() {
             {/* Right: Formula Quiz Sidebar */}
             <div 
               style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-              className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
-                (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
-              }`}
+              className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
             >
               <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0">
                 <div className="flex items-center gap-2">
