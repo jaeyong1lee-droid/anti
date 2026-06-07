@@ -826,7 +826,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       // Render block math $$ ... $$
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
         const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
-        return `<div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
+        return `<div style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
       });
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
@@ -919,7 +919,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             return (
               <span 
                 key={idx} 
-                className="my-4 md:my-6 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+                className="my-1.5 md:my-2.5 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
               >
                 <span 
                   className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
@@ -974,7 +974,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           return (
             <div 
               key={idx} 
-              className="my-4 md:my-6 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+              className="my-1.5 md:my-2.5 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
             >
               {/* KaTeX 수식 */}
               <div 
@@ -2821,6 +2821,79 @@ export default function App() {
       return copy;
     });
     showNotification('해당 문제의 풀이 상태를 초기화했습니다.', 'info');
+  };
+
+  // ── Reset All Review Answers (다시 풀기) ──────────────────
+  const handleRetakeReviewQuiz = async () => {
+    if (!selectedTopic) return;
+
+    const isReadOnly = !!selectedTopic.isReadOnly;
+    const confirmMessage = isReadOnly 
+      ? `이 복습 회차를 완료 해제하고 처음부터 다시 푸시겠습니까?`
+      : `현재 출제된 모든 문제의 풀이 상태(선택한 답)를 초기화하시겠습니까?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    // If it's read-only (completed) and has a valid database schedule, reset it on the server
+    if (isReadOnly && selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999) {
+      try {
+        const res = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/reset`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showNotification(`[${selectedTopic.title}] ${selectedTopic.review_round}회차 복습이 대기 상태로 변경되었습니다.`);
+          fetchTodayReviews(referenceDate);
+          fetchAllTopics();
+        } else {
+          showNotification(data.error || '복습 상태 초기화에 실패했습니다.', 'error');
+          return;
+        }
+      } catch (err) {
+        console.error('Review reset error:', err);
+        showNotification('서버 오류로 초기화 처리에 실패했습니다.', 'error');
+        return;
+      }
+    }
+
+    // Reset local state of the quiz answers & revealed status
+    setSelectedAnswers({});
+    setRevealedQuestions({});
+    setReviewOptionExplanations({});
+    setOpenSections({}); // Clear accordion open sections if any
+    
+    // Remove localStorage progress
+    const progressKey = selectedTopic.schedule_id 
+      ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+      : `anti_review_progress_${selectedTopic.id}`;
+    localStorage.removeItem(progressKey);
+
+    // Make it editable
+    if (isReadOnly) {
+      setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
+    }
+
+    // Force save/sync the reset state to the server session immediately
+    try {
+      await fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          scheduleId: selectedTopic.schedule_id,
+          questions: aiQuestions,
+          selectedAnswers: {},
+          revealedQuestions: {},
+          savedQuizScroll: 0
+        })
+      });
+      console.log('[handleRetakeReviewQuiz] Successfully synced cleared review session to server');
+    } catch (e) {
+      console.warn('[handleRetakeReviewQuiz] Failed to sync cleared session to server:', e);
+    }
+
+    showNotification('모든 문제의 풀이 상태가 초기화되었습니다. 다시 풀 수 있습니다.', 'success');
   };
 
   const handleResetSingleExamAnswer = (idx) => {
@@ -6087,23 +6160,11 @@ export default function App() {
                 </button>
               )}
 
-              {selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+              {selectedTopic && (
                 <button
-                  onClick={() => {
-                    setSelectedTopic(null);
-                    setAiQuestions([]);
-                    setRevealedQuestions({});
-                    setSelectedAnswers({});
-                    setReviewOptionExplanations({});
-                    lastQuizTopicId.current = null;
-                    setResetConfirmTarget({
-                      scheduleId: selectedTopic.schedule_id,
-                      topicTitle: selectedTopic.title,
-                      round: selectedTopic.review_round
-                    });
-                  }}
+                  onClick={handleRetakeReviewQuiz}
                   className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border-amber-500/40 transition-all cursor-pointer active:scale-95"
-                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                  title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
                 >
                   <RefreshCw size={12} className="text-amber-400" />
                   <span>다시풀기</span>
@@ -6203,23 +6264,11 @@ export default function App() {
                   <span className="whitespace-nowrap">원보고서</span>
                 </button>
               )}
-              {isDesktop && selectedTopic?.schedule_id && selectedTopic?.schedule_id !== 9999 && (
+              {isDesktop && selectedTopic && (
                 <button
-                  onClick={() => {
-                    setSelectedTopic(null);
-                    setAiQuestions([]);
-                    setRevealedQuestions({});
-                    setSelectedAnswers({});
-                    setReviewOptionExplanations({});
-                    lastQuizTopicId.current = null;
-                    setResetConfirmTarget({
-                      scheduleId: selectedTopic.schedule_id,
-                      topicTitle: selectedTopic.title,
-                      round: selectedTopic.review_round
-                    });
-                  }}
+                  onClick={handleRetakeReviewQuiz}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
-                  title="이 복습 회차를 대기 상태로 되돌리고 처음부터 다시 풉니다."
+                  title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
                 >
                   <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
                   <span className="whitespace-nowrap">다시풀기</span>

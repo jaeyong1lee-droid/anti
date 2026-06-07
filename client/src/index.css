@@ -491,5 +491,14 @@ html, body {
   overflow-x: hidden !important;
 }
 
+/* Force normal font weight (400) for general text inside modals and chat bubbles, preserving explicit bold tags */
+.pc-enlarged-text,
+.pc-enlarged-text .whitespace-pre-line,
+.pc-enlarged-text .leading-relaxed,
+.pc-enlarged-text div[class*="text-slate-"],
+.pc-enlarged-text span[class*="text-slate-"] {
+  font-weight: 400;
+}
+
 
 

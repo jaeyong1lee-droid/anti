@@ -83,7 +83,7 @@ export function healLatexFormulas(text) {
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
       math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
+      return token.type === 'block-math' ? `\n$$${math}$$\n` : `$${math}$`;
     }
   }).join('');
 
