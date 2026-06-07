@@ -5,8 +5,8 @@ export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
   
-  // 블록 수식($$...$$)과 인라인 수식($...$)만을 정확하게 분리
-  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]+?\$)/gs;
+  // 줄바꿈(\n)이 섞여 있어도 수식 기호($) 쌍을 정확하게 포착하도록 정규식 개선
+  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
   let match;
   
   while ((match = regex.exec(text)) !== null) {
@@ -39,9 +39,10 @@ export function healBackslashes(str, isMathMode = false) {
   healed = healed.replace(/(?<!\\)\blog(?=[pt_0-9])/g, '\\log ');
   healed = healed.replace(/(?<!\\)\bln(?=[pt_0-9])/g, '\\ln ');
 
+  // 2. 그리스 문자 목록에 포아송 비 'nu' 추가
   const greekSymbols = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'zeta', 'xi', 'chi', 'upsilon'
+    'zeta', 'xi', 'chi', 'upsilon', 'nu' // <- 'nu' 명시적 추가
   ];
 
   const safeMathCommands = [
@@ -57,9 +58,16 @@ export function healBackslashes(str, isMathMode = false) {
     : [...greekSymbols, ...safeMathCommands];
 
   keywordsToHeal.forEach(kw => {
+    // 단독 알파벳 u로 오염된 케이스 우회 및 정확한 단어 경계(\b) 매칭
     const regex = new RegExp(`(?<!\\\\)\\b${kw}(?![a-zA-Z])`, 'g');
     healed = healed.replace(regex, `\\${kw}`);
   });
+
+  // 특수 예외 처리: 수식 내부에서 \u 형태로 깨진 포아송 비 강제 자동 치유
+  if (isMathMode) {
+    healed = healed.replace(/(?<!\\)\\u\b/g, '\\nu');
+    healed = healed.replace(/(?<!\\)\bu\b/g, '\\nu'); 
+  }
 
   return healed;
 }
