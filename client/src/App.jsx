@@ -8373,98 +8373,134 @@ export default function App() {
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
-            /* Mobile Portrait Header for Formulas Modal */
-            <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
-              {/* Title Line */}
-              <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-                필수공식
-              </h1>
-              
-              {/* 6 Category Switcher Buttons */}
-              <div className="flex flex-col gap-2 w-full">
-                {/* 첫 번째 줄 */}
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
-                      setViewMode('dashboard');
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
-                  >
-                    <Calendar size={14} />
-                    오늘의 복습
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
-                      setViewMode('all_topics');
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
-                  >
-                    <List size={14} />
-                    복습토픽
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
-                      handleOpenExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Award size={14} />
-                    종합평가
-                  </button>
+            formulaMobileTab === 'list' ? (
+              /* Mobile Portrait Header for Formulas Modal */
+              <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
+                {/* Title Line */}
+                <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                  필수공식
+                </h1>
+                
+                {/* 6 Category Switcher Buttons */}
+                <div className="flex flex-col gap-2 w-full">
+                  {/* 첫 번째 줄 */}
+                  <div className="flex gap-2 w-full">
+                    <button
+                      onClick={() => {
+                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                        setShowFormulaExam(false);
+                        setViewMode('dashboard');
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                    >
+                      <Calendar size={14} />
+                      오늘의 복습
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                        setShowFormulaExam(false);
+                        setViewMode('all_topics');
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                    >
+                      <List size={14} />
+                      복습토픽
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                        setShowFormulaExam(false);
+                        handleOpenExam();
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                    >
+                      <Award size={14} />
+                      종합평가
+                    </button>
+                  </div>
+                  {/* 두 번째 줄 */}
+                  <div className="flex gap-2 w-full">
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-rose-500 bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-lg rounded-xl"
+                    >
+                      <Sigma size={14} />
+                      필수공식
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                        setShowFormulaExam(false);
+                        handleOpenAnswerSheet();
+                      }}
+                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
+                    >
+                      <FileText size={14} />
+                      답안지
+                    </button>
+                  </div>
                 </div>
-                {/* 두 번째 줄 */}
-                <div className="flex gap-2 w-full">
-                  <button
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-rose-500 bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-lg rounded-xl"
-                  >
-                    <Sigma size={14} />
-                    필수공식
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
-                      handleOpenAnswerSheet();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <FileText size={14} />
-                    답안지
-                  </button>
+
+                {/* Topic Search Box (공식퀴즈 버튼 숨김) */}
+                <div className="flex items-center gap-2 w-full mt-1">
+                  <div className="relative flex items-center flex-grow">
+                    <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="공식 제목 검색..."
+                      value={formulaSearchQuery}
+                      onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                    />
+                    {formulaSearchQuery && (
+                      <button
+                        onClick={() => setFormulaSearchQuery('')}
+                        className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Topic Search Box & Question Button */}
-              <div className="flex items-center gap-2 w-full mt-1">
-                <div className="relative flex items-center flex-1">
-                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="공식 제목 검색..."
-                    value={formulaSearchQuery}
-                    onChange={(e) => setFormulaSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
-                  />
-                  {formulaSearchQuery && (
-                    <button
-                      onClick={() => setFormulaSearchQuery('')}
-                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
+            ) : (
+              /* Mobile Portrait Header for Formula Quiz:
+                 Hides all dashboard navigation rows and places the tabs row and quiz generation button at the very top */
+              <div className="flex bg-slateCustom-950 px-4 py-3 border-b border-rose-500/10 items-center justify-between gap-3 flex-shrink-0 landscape-hide">
+                <div className="flex bg-slateCustom-900 p-1 rounded-xl flex-grow max-w-[280px] border border-slate-800">
+                  <button
+                    onClick={() => {
+                      setFormulaMobileTab('list');
+                      formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                    }}
+                    className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                      formulaMobileTab === 'list'
+                        ? 'bg-rose-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    공식 리스트
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFormulaMobileTab('tutor');
+                      const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
+                      formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+                    }}
+                    className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                      formulaMobileTab === 'tutor'
+                        ? 'bg-rose-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    오늘의 공식 퀴즈
+                  </button>
                 </div>
                 <button
                   type="button"
                   disabled={generatingFormulaQuiz}
                   onClick={() => confirmAndGenerateQuizQuestion(true)}
-                  className={`px-3 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md active:scale-95 cursor-pointer whitespace-nowrap transition-all ${
+                  className={`px-3 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md active:scale-95 cursor-pointer whitespace-nowrap transition-all flex-shrink-0 ${
                     generatingFormulaQuiz 
                       ? 'bg-rose-800/80 shadow-none cursor-not-allowed opacity-70' 
                       : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/10'
@@ -8478,7 +8514,7 @@ export default function App() {
                   {generatingFormulaQuiz ? '출제 중...' : '공식퀴즈'}
                 </button>
               </div>
-            </div>
+            )
           ) : (
              /* Desktop/Landscape Header for Formulas Modal */
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
@@ -8617,7 +8653,7 @@ export default function App() {
           )}
 
           {/* Sub-header tabs for Mobile */}
-          {(!isDesktop && !isMobileLandscape) && (
+          {(!isDesktop && !isMobileLandscape && formulaMobileTab === 'list') && (
             <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
               <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
                 <button
