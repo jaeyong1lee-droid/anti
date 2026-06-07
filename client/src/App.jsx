@@ -9336,6 +9336,33 @@ export default function App() {
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
 
+                            {q.answersheet_report_id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
+                                  const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
+                                  if (isPdf) {
+                                    if (window.confirm(`[${q.pdf_name || '원 보고서'}] 파일을 다운로드하시겠습니까?`)) {
+                                      const link = document.createElement('a');
+                                      link.href = `${url}?download=true`;
+                                      link.download = q.pdf_name;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }
+                                  } else {
+                                    window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+                                  }
+                                }}
+                                className="py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 flex items-center justify-center gap-0.5 sm:gap-1"
+                                title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                              >
+                                <FileText size={10} />
+                                <span>{(!isDesktop && !isMobileLandscape) ? "원보고서" : "원 보고서 보기"}</span>
+                              </button>
+                            )}
+
                             {/* Toggle Input Editor / 수정하기 */}
                             <button
                               onClick={() => {
@@ -9366,33 +9393,6 @@ export default function App() {
                               <Edit2 size={10} />
                               <span>{(!isDesktop && !isMobileLandscape) ? "수정" : "수정하기"}</span>
                             </button>
-
-                            {q.answersheet_report_id && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
-                                  const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
-                                  if (isPdf) {
-                                    if (window.confirm(`[${q.pdf_name || '원 보고서'}] 파일을 다운로드하시겠습니까?`)) {
-                                      const link = document.createElement('a');
-                                      link.href = `${url}?download=true`;
-                                      link.download = q.pdf_name;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
-                                    }
-                                  } else {
-                                    window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
-                                  }
-                                }}
-                                className="py-1 px-1.5 sm:px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-slate-700/50 flex items-center justify-center gap-0.5 sm:gap-1"
-                                title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                              >
-                                <FileText size={10} />
-                                <span>{(!isDesktop && !isMobileLandscape) ? "원보고서" : "원 보고서 보기"}</span>
-                              </button>
-                            )}
 
                             <button
                               onClick={() => {
