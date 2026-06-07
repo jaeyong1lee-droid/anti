@@ -17,7 +17,6 @@ import {
   Sparkles, 
   PlusCircle, 
   RefreshCw, 
-  File, 
   Trash2, 
   Clock, 
   ChevronDown, 
@@ -2211,7 +2210,7 @@ export default function App() {
     const htmlVal = htmlTextareaRef.current ? htmlTextareaRef.current.value : '';
     if (htmlVal.trim()) {
       const blob = new Blob([htmlVal], { type: 'text/html' });
-      fileToUpload = new File([blob], `${title.trim()}.html`, { type: 'text/html' });
+      fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
     }
 
     if (fileToUpload) {
@@ -9487,7 +9486,7 @@ export default function App() {
                     const answersheetHtmlVal = answersheetTextareaRef.current ? answersheetTextareaRef.current.value : '';
                     if (answersheetHtmlVal.trim()) {
                       const blob = new Blob([answersheetHtmlVal], { type: 'text/html' });
-                      fileToUpload = new File([blob], 'direct_answersheet_input.html', { type: 'text/html' });
+                      fileToUpload = new window.File([blob], 'direct_answersheet_input.html', { type: 'text/html' });
                     }
 
                     if (!fileToUpload) {
