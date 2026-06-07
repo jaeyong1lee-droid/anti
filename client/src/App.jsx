@@ -764,7 +764,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
         }
       });
       // Render inline math $ ... $
-      htmlContent = htmlContent.replace(/\$([^\$]+?)\$/g, (m, math) => {
+      htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
         try {
           return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
         } catch (e) {
@@ -875,7 +875,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           } else {
             let htmlContent = part.content;
             try {
-              htmlContent = htmlContent.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
+              htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
                   const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
@@ -940,33 +940,33 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           );
         } else {
           // 비인라인 일반 텍스트의 경우, 빈 행을 제거하고 단락 숫자(1., 2. 등)가 있는 줄만 위아래 여백 적용
-          // KaTeX HTML이 개행 기호 split으로 인해 깨지는 것을 막기 위해 개행으로 먼저 쪼갠 후 각 라인별 수식 치환 적용
-          const textLines = part.content.split('\n');
+          // KaTeX HTML이 개행 기호 split으로 인해 깨지는 것을 막기 위해 전체 텍스트에서 수식을 먼저 치환한 다음 개행으로 쪼갭니다.
+          let htmlContent = part.content;
+          try {
+            htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
+              if (/[\uAC00-\uD7A3]/.test(math)) {
+                const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                if (!isRealFormula) {
+                  return m;
+                }
+              }
+              try {
+                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
+              } catch (e) {
+                return m;
+              }
+            });
+          } catch (e) {
+            console.warn(e);
+          }
+
+          const textLines = htmlContent.split('\n');
           const activeLines = textLines.filter(line => line.trim() !== '');
 
           return (
             <div key={idx} className="select-text">
               {activeLines.map((line, lIdx) => {
-                let htmlLine = line;
-                try {
-                  htmlLine = htmlLine.replace(/\$([^\$\n]+?)\$/g, (m, math) => {
-                    if (/[\uAC00-\uD7A3]/.test(math)) {
-                      const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-                      if (!isRealFormula) {
-                        return m;
-                      }
-                    }
-                    try {
-                      return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-                    } catch (e) {
-                      return m;
-                    }
-                  });
-                } catch (e) {
-                  console.warn(e);
-                }
-
-                const cleanLine = htmlLine.trim();
+                const cleanLine = line.trim();
                 // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
                 const isHeading = /^\s*\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
                 
@@ -975,19 +975,20 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                     <div 
                       key={lIdx}
                       className={`${lIdx === 0 ? 'pt-2' : 'pt-6'} pb-2 font-extrabold text-white text-[15px] sm:text-base leading-relaxed select-text block`}
-                      dangerouslySetInnerHTML={{ __html: htmlLine }}
+                      dangerouslySetInnerHTML={{ __html: line }}
                     />
                   );
                 }
 
-                const isStandaloneMath = line.trim().startsWith('$') && line.trim().endsWith('$') && (line.trim().match(/\$/g) || []).length === 2;
+                // 치환된 KaTeX가 단독으로 한 줄을 차지하는 경우 가운데 정렬 마크업 적용
+                const isStandaloneMath = (cleanLine.startsWith('<span class="katex') || cleanLine.startsWith('<div class="katex')) && cleanLine.endsWith('</span>');
 
                 if (isStandaloneMath) {
                   return (
                     <div 
                       key={lIdx}
                       className="py-1 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text flex justify-center text-center w-full"
-                      dangerouslySetInnerHTML={{ __html: htmlLine }}
+                      dangerouslySetInnerHTML={{ __html: line }}
                     />
                   );
                 }
@@ -996,7 +997,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                   <div 
                     key={lIdx}
                     className="py-0.5 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text block"
-                    dangerouslySetInnerHTML={{ __html: htmlLine }}
+                    dangerouslySetInnerHTML={{ __html: line }}
                   />
                 );
               })}
