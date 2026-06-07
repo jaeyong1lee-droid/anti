@@ -132,14 +132,14 @@ export function healLatexFormulas(text) {
   text = text.replace(/<br\s*\/?>/gi, '\n\n');
   text = text.replace(/<div[^>]*>\s*•?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1');
 
-  // [신규 전처리 2] 글머리 기호(*)가 전방 문자와 공백 없이 강제 밀착된 케이스(*k:, *H: 등) 탐지 및 리스트 격리 개행
-  text = text.replace(/([^\n\s])\*([a-zA-Z0-9_\uAC00-\uD7A3]+:)/g, '$1\n\n* $2');
+  // [신규 전처리 3-1] Misplaced variable dollar early conversion (e.g. u$: -> $u$: or N_d$: -> $N_d$:)
+  // 변수명 뒤에 $가 단독으로 오고 그 뒤에 콜론, 스페이스, 개행 등이 있을 때, 누락된 앞의 $를 보충하여 $변수명$ 형태로 만듭니다.
+  text = text.replace(/(?<!\$)\b([a-zA-Z_][a-zA-Z0-9_]*)\$(?=:|\s|\n|$)/g, (match, p1) => '$' + p1 + '$');
 
-  // [신규 전처리 3] 변수 표기 꼬임이나 오타로 흘러 들어온 불완전한 lone dollar 기호(예: N_d$:) 원천 제거
-  text = text.replace(/([a-zA-Z0-9_]+)\$(?=:|\s|\n|$)/g, '$1');
+  // [신규 전처리 2] 글머리 기호(*)가 전방 문자와 공백 없이 강제 밀착된 케이스(*k:, *H: 등) 탐지 및 리스트 격리 개행
+  text = text.replace(/([^\n\s])\s*\*+\s*([a-zA-Z0-9_\uAC00-\uD7A3\$]+:)/g, '$1\n\n* $2');
 
   // 0. AI가 JSON 파싱 에러 회피를 위해 우회한 hashtag 수식 명령어 기호(#dfrac, #frac, #nu 등)를 백슬래시(\)로 복원
-  // CSS 색상 코드(예: #cc0000)를 침범하지 않도록 명령어 whitelist 기반 안전 치환 처리
   const commandsToConvert = [
     'frac', 'dfrac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
     'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
@@ -154,8 +154,6 @@ export function healLatexFormulas(text) {
   text = text.replace(hashRegex, '\\$1');
 
   text = cleanCorruptedFormula(text);
-
-  // [교정] HTML 레이아웃을 무너뜨리는 무조건적인 문자열 삭제(replace) 로직 완전 전면 폐기
 
   // 1. 엔티티 부호 순수 문자로 복구
   text = text.replace(/&#x27;/g, "'")
@@ -182,6 +180,25 @@ export function healLatexFormulas(text) {
     if (safeLatexCommands.includes(p1)) return '\\' + p1;
     return match;
   });
+
+  // [신규 추가] standalone 라인 수식 중 unclosed dollar 치유 및 디스플레이 수식(display math) 승격
+  const lines = text.split('\n');
+  const healedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('$') && !trimmed.startsWith('$$')) {
+      const dollarCount = (trimmed.match(/\$/g) || []).length;
+      if (dollarCount === 1) {
+        return '$$' + line.substring(line.indexOf('$') + 1) + '$$';
+      }
+    } else if (trimmed.startsWith('$$')) {
+      const dollarCount = (trimmed.match(/\$\$/g) || []).length;
+      if (dollarCount === 1) {
+        return line + '$$';
+      }
+    }
+    return line;
+  });
+  text = healedLines.join('\n');
 
   // 3. 수식 블록 내부 백슬래시 정상 복원 및 불필요한 공백/줄바꿈 압축
   {
@@ -225,7 +242,7 @@ export function healLatexFormulas(text) {
     cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
     cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
     cleanedMath = cleanedMath.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
-    return `$${cleanedMath}$`;
+    return `$$${cleanedMath}$$`;
   }
   
   const symbols = ['sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'];
@@ -237,8 +254,8 @@ export function healLatexFormulas(text) {
     }
   }
 
-  const lines = healed.split('\n');
-  const processedLines = lines.map(line => {
+  const lines2 = healed.split('\n');
+  const processedLines = lines2.map(line => {
     const dollarCount = (line.match(/\$/g) || []).length;
     const isFormulaLine = /^[\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?[<>=]+/.test(line);
     if (dollarCount === 1 && isFormulaLine) {
@@ -248,8 +265,7 @@ export function healLatexFormulas(text) {
   });
   healed = processedLines.join('\n');
 
-  // 변경: p1의 문자 클래스에서 \s, ,, = 을 제거하여 문장 공백이 formula prefix로 잘못 잡히는 현상 차단
-  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\-+\*\/\{\}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\-+\*\/\{\}\(\)\[\]\.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
     const hasBackslash = p1.includes('\\') || p2.includes('\\');
     const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
     if (hasBackslash || hasGreek) {
@@ -283,7 +299,8 @@ export function healLatexFormulas(text) {
   tokens.forEach(token => {
     if (token.type === 'text') {
       token.content = runOnTextOnly(token.content, (t) => {
-        const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
+        // [중요 교정] formulaPattern에서 '*' 기호를 제거하여 마크다운 리스트 기호가 math delimiter($)에 무단으로 말려들어가는 현상 방지
+        const formulaPattern = /([a-zA-Z0-9_\-\+\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
         t = t.replace(formulaPattern, (match) => {
           const trimmedMatch = match.trim();
           if (!trimmedMatch) return match;
@@ -295,7 +312,7 @@ export function healLatexFormulas(text) {
           const hasMathContext = /[=<>+\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
           
           if (hasBackslash || hasGreek || hasMathContext) {
-            const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
+            const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\dfrac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
             return isComplex ? `$$${trimmedMatch}$$` : `$${trimmedMatch}$`;
           }
           return match;
@@ -315,7 +332,7 @@ export function healLatexFormulas(text) {
   tokens.forEach(token => {
     if (token.type === 'text') {
       token.content = runOnTextOnly(token.content, (t) => {
-        return t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+        return t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\dfrac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
           if (p1.includes('\\left') || p1.includes('\\right')) return match;
           return '($' + p1.trim() + '$)';
         });
@@ -330,7 +347,7 @@ export function healLatexFormulas(text) {
       token.content = runOnTextOnly(token.content, (t) => {
         const mathWords = [
           'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-          'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
+          'frac', 'dfrac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
         ];
         mathWords.forEach(word => {
           const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
@@ -395,6 +412,14 @@ export function healLatexFormulas(text) {
   });
 
   reassembled = finalTokens.map(t => t.content).join('');
+
+  // [중요 교정] 리스트 아이템 글머리 바로 다음에 정의되는 단독 변수명/식별자를 $변수명$ 형태로 안전하게 치환 (예: "* K_0 : 정지토압계수" -> "* $K_0$ : 정지토압계수")
+  reassembled = reassembled.replace(/(^\s*\*+\s*)([a-zA-Z0-9_]+(?:_[a-zA-Z0-9]+)?)(?=\s*:)/gm, (match, bullet, name) => {
+    if (name.startsWith('$') || name.endsWith('$')) return match;
+    return bullet + '$' + name + '$';
+  });
+  
+  // 가독성을 위한 수식 기호 앞뒤 공백 조정
   reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
   reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
 
@@ -421,6 +446,9 @@ export function healLatexFormulas(text) {
 
     result += needSpace ? ' ' + current.content : current.content;
   }
+
+  // [신규 추가] 수식 끝 조사 결합 개선: 수식 뒤에 바로 조사가 오면 스페이스 한칸 띄기
+  result = result.replace(/(\$[^\$]+?\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만)/g, '$1 $2');
 
   return result;
 }
