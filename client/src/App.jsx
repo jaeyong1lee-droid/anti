@@ -1000,7 +1000,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       // Render block math $$ ... $$
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
         const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
-        return `<div style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
+        return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
@@ -1017,29 +1017,54 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           onMouseUp={enableAddFormula ? endPress : undefined}
           onMouseMove={enableAddFormula ? cancelPress : undefined}
           onMouseLeave={enableAddFormula ? cancelPress : undefined}
-          onTouchStart={enableAddFormula ? startPress : undefined}
-          onTouchEnd={enableAddFormula ? endPress : undefined}
-          onTouchMove={enableAddFormula ? cancelPress : undefined}
-          onTouchCancel={enableAddFormula ? cancelPress : undefined}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            if (enableAddFormula) startPress(e);
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            if (enableAddFormula) endPress(e);
+          }}
+          onTouchMove={(e) => {
+            e.stopPropagation();
+            if (enableAddFormula) cancelPress(e);
+          }}
+          onTouchCancel={(e) => {
+            e.stopPropagation();
+            if (enableAddFormula) cancelPress(e);
+          }}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
     }
     return (
       <div 
-        className={`${className} select-text w-full overflow-x-auto`}
+        className={`${className} select-text w-full formula-scroll-container`}
         onMouseDown={enableAddFormula ? startPress : undefined}
         onMouseUp={enableAddFormula ? endPress : undefined}
         onMouseMove={enableAddFormula ? cancelPress : undefined}
         onMouseLeave={enableAddFormula ? cancelPress : undefined}
-        onTouchStart={enableAddFormula ? startPress : undefined}
-        onTouchEnd={enableAddFormula ? endPress : undefined}
-        onTouchMove={enableAddFormula ? cancelPress : undefined}
-        onTouchCancel={enableAddFormula ? cancelPress : undefined}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          if (enableAddFormula) startPress(e);
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          if (enableAddFormula) endPress(e);
+        }}
+        onTouchMove={(e) => {
+          e.stopPropagation();
+          if (enableAddFormula) cancelPress(e);
+        }}
+        onTouchCancel={(e) => {
+          e.stopPropagation();
+          if (enableAddFormula) cancelPress(e);
+        }}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
   }
+
 
   if (!window.katex) {
     return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
@@ -1096,7 +1121,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                 className="my-1.5 md:my-2.5 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
               >
                 <span 
-                  className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
+                  className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  onTouchCancel={(e) => e.stopPropagation()}
                   dangerouslySetInnerHTML={{ __html: mathHtml }} 
                 />
               </span>
@@ -1152,7 +1181,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             >
               {/* KaTeX 수식 */}
               <div 
-                className="flex-grow overflow-x-auto flex justify-center py-1.5 min-w-0 select-text" 
+                className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                onTouchCancel={(e) => e.stopPropagation()}
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
             </div>
@@ -1202,7 +1235,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                   return (
                     <div 
                       key={lIdx}
-                      className="py-1 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text flex justify-center text-center w-full"
+                      className="formula-scroll-container w-full py-1 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text"
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                      onTouchCancel={(e) => e.stopPropagation()}
                       dangerouslySetInnerHTML={{ __html: line }}
                     />
                   );
@@ -9284,7 +9321,7 @@ export default function App() {
                         </h4>
                         
                         {/* Question text */}
-                        <div className="text-xs text-slate-350 leading-relaxed mb-4 whitespace-normal break-words max-w-full">
+                        <div className="text-sm sm:text-[14px] text-slate-200 leading-relaxed mb-4 whitespace-normal break-words max-w-full">
                           <LatexRenderer text={q.question} katexLoaded={katexLoaded} isMarkdown={true} />
                         </div>
                         
