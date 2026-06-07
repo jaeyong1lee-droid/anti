@@ -541,6 +541,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
   // 3. Bold text
   tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, '<strong style="color: #f1f5f9; font-weight: 700;">$1</strong>');
 
+  // 3.5. Force line breaks before *** or * * * if they are in the middle of a line and not preceded by a newline
+  tempText = tempText.replace(/([^\n])[ \t]*(?:\* * \*|\*\*\*)[ \t]*/g, '$1\n* * * ');
+
   // 4. Render headings to styled HTML
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
     if (isMarkdown) {
@@ -559,12 +562,12 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 
   // 5. Render list items (both bullet points * and - and numbered lists)
   if (isMarkdown) {
-    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
   } else {
-    tempText = tempText.replace(/^\*\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
-    tempText = tempText.replace(/^-\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1. $2</div>');
   }
 

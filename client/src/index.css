@@ -496,8 +496,28 @@ html, body {
 .pc-enlarged-text .whitespace-pre-line,
 .pc-enlarged-text .leading-relaxed,
 .pc-enlarged-text div[class*="text-slate-"],
-.pc-enlarged-text span[class*="text-slate-"] {
-  font-weight: 400;
+.pc-enlarged-text span[class*="text-slate-"],
+.pc-enlarged-text div,
+.pc-enlarged-text span,
+.pc-enlarged-text p,
+.pc-enlarged-text li {
+  font-weight: 400 !important;
+}
+
+.pc-enlarged-text strong,
+.pc-enlarged-text b,
+.pc-enlarged-text strong *,
+.pc-enlarged-text b * {
+  font-weight: 700 !important;
+}
+
+.pc-enlarged-text h1,
+.pc-enlarged-text h2,
+.pc-enlarged-text h3,
+.pc-enlarged-text h4,
+.pc-enlarged-text h5,
+.pc-enlarged-text h6 {
+  font-weight: 800 !important;
 }
 
 
