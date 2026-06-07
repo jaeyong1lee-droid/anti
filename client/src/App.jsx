@@ -174,6 +174,45 @@ const extractTitleFromHtml = (html) => {
   return '';
 };
 
+const generateRandomQuizQuestion = (allFormulas) => {
+  if (!allFormulas || allFormulas.length < 4) return null;
+  const validFormulas = allFormulas.filter(f => f.title && f.formula);
+  if (validFormulas.length < 4) return null;
+  
+  const targetIndex = Math.floor(Math.random() * validFormulas.length);
+  const target = validFormulas[targetIndex];
+  
+  const distractors = [];
+  const pool = validFormulas.filter((_, idx) => idx !== targetIndex);
+  while (distractors.length < 3 && pool.length > 0) {
+    const dIdx = Math.floor(Math.random() * pool.length);
+    distractors.push(pool.splice(dIdx, 1)[0]);
+  }
+  
+  const correctFormula = target.formula;
+  const distractorFormulas = distractors.map(d => d.formula);
+  
+  const options = [correctFormula, ...distractorFormulas];
+  const shuffledOptions = [...options];
+  for (let i = shuffledOptions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+  }
+  
+  const correctOptionIndex = shuffledOptions.indexOf(correctFormula);
+  
+  return {
+    id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    formulaTitle: target.title,
+    correctFormula: correctFormula,
+    options: shuffledOptions,
+    correctOptionIndex: correctOptionIndex,
+    userAnswerIndex: null,
+    isCorrect: false,
+    dateAdded: new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD
+  };
+};
+
 const cleanCorruptedFormula = (formula) => {
   if (!formula || typeof formula !== 'string') return formula;
   
@@ -1457,6 +1496,7 @@ export default function App() {
   const theoryBodyRef = { current: null };
   const savedTheoryScroll = { current: 0 };
   const [formulaMobileTab, setFormulaMobileTab] = useState('list');
+  const [formulaQuizQuestions, setFormulaQuizQuestions] = useState([]);
   const theoryMobileTab = "list";
   const setTheoryMobileTab = () => {};
   const formulaSplitContainerRef = useRef(null);
@@ -3994,6 +4034,70 @@ export default function App() {
       }
     }
   };
+
+  const initializeFormulaQuiz = useCallback(() => {
+    if (!formulaQuestions || formulaQuestions.length < 4) return;
+    
+    const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+    const lastDate = localStorage.getItem('anti_last_quiz_date') || '';
+    let currentQuiz = [];
+    try {
+      const saved = localStorage.getItem('anti_formula_quiz_questions');
+      if (saved) {
+        currentQuiz = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved formula quiz:', e);
+    }
+    
+    if (lastDate !== todayStr) {
+      const unsolved = currentQuiz.filter(q => !q.isCorrect);
+      const needed = Math.max(0, 5 - unsolved.length);
+      const newQuestions = [];
+      for (let i = 0; i < needed; i++) {
+        const newQ = generateRandomQuizQuestion(formulaQuestions);
+        if (newQ) newQuestions.push(newQ);
+      }
+      const updatedQuiz = [...unsolved, ...newQuestions];
+      
+      setFormulaQuizQuestions(updatedQuiz);
+      localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updatedQuiz));
+      localStorage.setItem('anti_last_quiz_date', todayStr);
+    } else {
+      if (currentQuiz.length === 0) {
+        const newQuestions = [];
+        for (let i = 0; i < 5; i++) {
+          const newQ = generateRandomQuizQuestion(formulaQuestions);
+          if (newQ) newQuestions.push(newQ);
+        }
+        setFormulaQuizQuestions(newQuestions);
+        localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(newQuestions));
+        localStorage.setItem('anti_last_quiz_date', todayStr);
+      } else {
+        setFormulaQuizQuestions(currentQuiz);
+      }
+    }
+  }, [formulaQuestions]);
+
+  const handleGenerateExtraQuizQuestion = () => {
+    if (!formulaQuestions || formulaQuestions.length < 4) {
+      showNotification('최소 4개 이상의 공식이 필요합니다.', 'error');
+      return;
+    }
+    const newQ = generateRandomQuizQuestion(formulaQuestions);
+    if (newQ) {
+      const updated = [...formulaQuizQuestions, newQ];
+      setFormulaQuizQuestions(updated);
+      localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
+      showNotification('새로운 공식 객관식 문제가 추가되었습니다!', 'success');
+    }
+  };
+
+  useEffect(() => {
+    if (showFormulaExam && formulaQuestions.length >= 4) {
+      initializeFormulaQuiz();
+    }
+  }, [showFormulaExam, formulaQuestions, initializeFormulaQuiz]);
 
   const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
@@ -8038,28 +8142,38 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Topic Search Box */}
-              <div className="relative flex items-center w-full mt-1">
-                <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="공식 제목 검색..."
-                  value={formulaSearchQuery}
-                  onChange={(e) => setFormulaSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
-                />
-                {formulaSearchQuery && (
-                  <button
-                    onClick={() => setFormulaSearchQuery('')}
-                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+              {/* Topic Search Box & Question Button */}
+              <div className="flex items-center gap-2 w-full mt-1">
+                <div className="relative flex items-center flex-1">
+                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="공식 제목 검색..."
+                    value={formulaSearchQuery}
+                    onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                  />
+                  {formulaSearchQuery && (
+                    <button
+                      onClick={() => setFormulaSearchQuery('')}
+                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateExtraQuizQuestion}
+                  className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md shadow-rose-600/10 active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <Award size={12} />
+                  문제 출제
+                </button>
               </div>
             </div>
           ) : (
-            /* Desktop/Landscape Header for Formulas Modal */
+             /* Desktop/Landscape Header for Formulas Modal */
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
               <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
                 <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
@@ -8075,7 +8189,7 @@ export default function App() {
                     )}
                     {/* Mobile Swipe Hint */}
                     <span className="inline-flex md:hidden text-[9px] bg-rose-950/60 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                      ← 좌우 쓸어 넘겨 튜터 대화 보기
+                      ← 좌우 쓸어 넘겨 공식 퀴즈 보기
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
@@ -8126,29 +8240,40 @@ export default function App() {
                         <span className="max-w-[120px] truncate">공부중: {lastActiveReview.title}</span>
                       </button>
                     )}
+
+                    {/* Moved Search Box */}
+                    <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0 ml-1">
+                      <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="공식 제목 검색..."
+                        value={formulaSearchQuery}
+                        onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                      />
+                      {formulaSearchQuery && (
+                        <button
+                          onClick={() => setFormulaSearchQuery('')}
+                          className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-                <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
-                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="공식 제목 검색..."
-                    value={formulaSearchQuery}
-                    onChange={(e) => setFormulaSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
-                  />
-                  {formulaSearchQuery && (
-                    <button
-                      onClick={() => setFormulaSearchQuery('')}
-                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateExtraQuizQuestion}
+                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  title="공식 객관식 문제 무작위 1개 추가 출제"
+                >
+                  <Award size={13} />
+                  공식문제 출제
+                </button>
                 <button
                   onClick={() => {
                     handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
@@ -8204,7 +8329,7 @@ export default function App() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  제미나이 AI 튜터
+                  오늘의 공식 퀴즈
                 </button>
               </div>
             </div>
@@ -8720,106 +8845,122 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Gemini Sidebar for Formula */}
-            {(isDesktop || isMobileLandscape) && (
-              <div 
-                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
-              >
-                {!isDesktop && (
-                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                    <Brain size={16} className="text-rose-500" />
-                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 공식 튜터</span>
+            {/* Right: Formula Quiz Sidebar */}
+            <div 
+              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+              className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
+                (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
+              }`}
+            >
+              <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Sigma size={16} className="text-rose-500 animate-pulse" />
+                  <span className="text-xs font-extrabold text-slate-200">오늘의 공식 퀴즈</span>
+                </div>
+                <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2.5 py-0.5 rounded-full font-black">
+                  남은 문제: {formulaQuizQuestions.filter(q => !q.isCorrect).length}개
+                </span>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-none-mobile bg-slate-950/20">
+                {formulaQuizQuestions.length === 0 ? (
+                  <div className="text-center py-16 opacity-50">
+                    <Sigma size={32} className="mx-auto mb-2 text-slate-500" />
+                    <p className="text-[11px] text-slate-400">등록된 공식이 없거나<br/>문제를 생성할 수 없습니다.</p>
                   </div>
-                )}
-                
-                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                  {chatHistory.length === 0 ? (
-                    <div className="text-center py-10 opacity-50">
-                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                      <p className="text-[11px] text-slate-400">공식 유도 과정이나 실제 계산 문제 등<br/>무엇이든 실시간으로 설명해 드립니다!</p>
-                    </div>
-                  ) : (
-                    chatHistory.map((msg, i) => (
-                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-rose-400 ml-1'}`}>
-                          {msg.role === 'user' ? '나' : 'Gemini'}
-                        </div>
-                        <div className={
-                          msg.role === 'user' 
-                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                        }>
-                          {msg.role === 'user' ? (
-                            <div className="flex flex-col gap-2">
-                              {msg.image && (
-                                <img 
-                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                  alt="첨부 이미지" 
-                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                                />
-                              )}
-                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                            </div>
-                          ) : (
-                            <LatexRenderer 
-                              text={msg.text} 
-                              katexLoaded={katexLoaded} 
-                              enableAddFormula={true}
-                              isMarkdown={true}
-                            />
+                ) : (
+                  formulaQuizQuestions.map((q, qIdx) => {
+                    return (
+                      <div key={q.id} className={`p-4 rounded-2xl border transition-all duration-300 ${
+                        q.isCorrect 
+                          ? 'bg-emerald-950/15 border-emerald-500/20 shadow-md shadow-emerald-950/25' 
+                          : 'bg-slateCustom-900/40 border-slate-800/80 shadow-md shadow-black/20'
+                      }`}>
+                        {/* Question Header */}
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식의 수식을 고르시오</span>
+                          {q.isCorrect && (
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle size={12} />
+                              완료
+                            </span>
                           )}
                         </div>
+                        <h4 className="text-xs font-black text-white mb-4">
+                          [{q.formulaTitle}]
+                        </h4>
+                        
+                        {/* Options */}
+                        <div className="space-y-2.5">
+                          {q.options.map((opt, optIdx) => {
+                            const isSelected = q.userAnswerIndex === optIdx;
+                            const isCorrectOption = q.correctOptionIndex === optIdx;
+                            
+                            let btnStyle = "bg-slateCustom-950 hover:bg-slate-800 border-slate-800/85 text-slate-300 hover:text-white";
+                            if (q.userAnswerIndex !== null) {
+                              if (isSelected) {
+                                btnStyle = q.isCorrect 
+                                  ? "bg-emerald-950/75 border-emerald-500 text-emerald-200"
+                                  : "bg-rose-950/75 border-rose-500 text-rose-200";
+                              } else if (isCorrectOption && !q.isCorrect) {
+                                btnStyle = "bg-emerald-950/20 border-emerald-500/20 text-emerald-400/80";
+                              }
+                            }
+                            
+                            return (
+                              <button
+                                key={optIdx}
+                                type="button"
+                                disabled={q.isCorrect}
+                                onClick={() => {
+                                  const updated = formulaQuizQuestions.map((item, idx) => {
+                                    if (idx === qIdx) {
+                                      const isRight = optIdx === item.correctOptionIndex;
+                                      return {
+                                        ...item,
+                                        userAnswerIndex: optIdx,
+                                        isCorrect: isRight
+                                      };
+                                    }
+                                    return item;
+                                  });
+                                  setFormulaQuizQuestions(updated);
+                                  localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
+                                  if (optIdx === q.correctOptionIndex) {
+                                    showNotification('정답입니다! 🎉', 'success');
+                                  } else {
+                                    showNotification('오답입니다. 다시 시도해 보세요! ❌', 'error');
+                                  }
+                                }}
+                                className={`w-full text-left p-3 rounded-xl border text-xs transition-all duration-200 flex items-center gap-2 cursor-pointer ${btnStyle} disabled:cursor-default`}
+                              >
+                                <span className="w-5 h-5 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-[10px] text-slate-400 flex-shrink-0">
+                                  {optIdx + 1}
+                                </span>
+                                <div className="flex-1 overflow-x-auto overflow-y-hidden py-1 scrollbar-none">
+                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Feedback text */}
+                        {q.userAnswerIndex !== null && (
+                          <div className="mt-3 text-right">
+                            {q.isCorrect ? (
+                              <span className="text-[10px] font-bold text-emerald-400">정답입니다! 다음 문제로 이동하세요.</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-rose-400">오답입니다. 다른 보기를 선택해 보세요.</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))
-                  )}
-                  {isChatLoading && (
-                    <div className="flex flex-col items-start w-full">
-                      <div className="text-[10px] mb-1 font-bold text-rose-400 ml-1">Gemini</div>
-                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-75"></div>
-                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce delay-150"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-  
-                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                  <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500/20 transition-all shadow-lg"
-                  >
-                    {/* 텍스트 입력창 */}
-                    <div className="flex-grow">
-                      <textarea
-                        rows={1}
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendChat();
-                          }
-                        }}
-                        placeholder="공식 유도 및 개념 질문..."
-                        disabled={isChatLoading}
-                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                      />
-                    </div>
-  
-                    {/* 전송 버튼 */}
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-8 h-8 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-rose-600/10 active:scale-95 flex-shrink-0"
-                    >
-                      <Send size={12} className="text-white" />
-                    </button>
-                  </form>
-                </div>
+                    );
+                  })
+                )}
               </div>
-            )}
+            </div>
 
           </div>
         </div>
