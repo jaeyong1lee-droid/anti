@@ -102,10 +102,10 @@ export function healLatexFormulas(text) {
 
     if (prev.type === 'text' && current.type !== 'text') {
       const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
+      if (lastChar && !/\s/.test(lastChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type === 'text') {
       const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
+      if (firstChar && !/\s/.test(firstChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type !== 'text') {
       needSpace = true;
     }

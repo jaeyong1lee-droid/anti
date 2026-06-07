@@ -8886,8 +8886,10 @@ export default function App() {
                             </span>
                           )}
                         </div>
-                        <h4 className="text-xs font-black text-white mb-4">
-                          [{q.formulaTitle}]
+                        <h4 className="text-xs font-black text-white mb-4 flex items-center gap-1.5 flex-wrap">
+                          <span>[</span>
+                          <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline-block" />
+                          <span>]</span>
                         </h4>
                         
                         {/* Options */}
