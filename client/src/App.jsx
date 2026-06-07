@@ -4731,7 +4731,7 @@ export default function App() {
                   title: suggestedTitle,
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
-                  formula: `$$${mathContent}$$`,
+                  formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
                   structure: suggestedStructure || f.structure
                 };
               }
@@ -4745,6 +4745,19 @@ export default function App() {
       })
       .catch(err => {
         console.warn('AI 타이틀 추천 반영 실패 (로컬 기본값 보존):', err);
+        setFormulaQuestions(prev => {
+          const updated = prev.map(f => {
+            if (f.id === newFormula.id) {
+              return {
+                ...f,
+                formula: f.formula.replace("\n\n⏳ 각 변수/상수의 상세 의미를 AI가 분석하고 있습니다...", "")
+              };
+            }
+            return f;
+          });
+          handleSaveFormulaQuestions(updated, false);
+          return updated;
+        });
       });
   };
 
@@ -4790,7 +4803,7 @@ export default function App() {
                   title: suggestedTitle,
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
-                  formula: `$$${mathContent}$$`,
+                  formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
                   structure: suggestedStructure || f.structure
                 };
               }
