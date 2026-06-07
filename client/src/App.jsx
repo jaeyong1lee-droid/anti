@@ -6298,7 +6298,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative"
+                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -7268,7 +7268,7 @@ export default function App() {
               {/* Left: Exam Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body"
+                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -8149,7 +8149,7 @@ export default function App() {
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col scrollbar-none-mobile"
                 onTouchStart={(e) => {
                   if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0) {
                     formulaTouchStartY.current = e.touches[0].clientY;

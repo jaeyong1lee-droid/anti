@@ -407,6 +407,15 @@ html, body {
   .mobile-portrait-hide {
     display: none !important;
   }
+
+  /* Hide right scrollbar in mobile portrait and expand question window */
+  .scrollbar-none-mobile {
+    scrollbar-width: none !important;  /* Firefox */
+    -ms-overflow-style: none !important;  /* IE/Edge */
+  }
+  .scrollbar-none-mobile::-webkit-scrollbar {
+    display: none !important;  /* Chrome, Safari, Opera, Android, iOS */
+  }
 }
 
 @keyframes rainbowBackgroundShift {
