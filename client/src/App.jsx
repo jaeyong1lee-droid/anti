@@ -552,6 +552,21 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
   return tempText;
 }
 
+// Helper to render KaTeX with display-style fractions (\dfrac) for improved readability
+const renderKatexString = (math, options) => {
+  if (!math) return '';
+  const processedMath = math.replace(/\\frac\b/g, '\\dfrac');
+  if (window.katex) {
+    try {
+      return window.katex.renderToString(processedMath, options).replace(/\n/g, '');
+    } catch (e) {
+      console.warn('KaTeX render error:', e);
+      return options.displayMode ? `$$${math}$$` : `$${math}$`;
+    }
+  }
+  return options.displayMode ? `$$${math}$$` : `$${math}$`;
+};
+
 // Dynamic KaTeX loader & Math text renderer
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
@@ -756,20 +771,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     if (window.katex) {
       // Render block math $$ ... $$
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
-        try {
-          const rendered = window.katex.renderToString(math.trim(), { displayMode: true, throwOnError: false }).replace(/\n/g, '');
-          return `<div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
-        } catch (e) {
-          return m;
-        }
+        const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
+        return `<div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.5rem; width: 100%; display: flex; justify-content: center; align-items: center;">${rendered}</div>`;
       });
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
-        try {
-          return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-        } catch (e) {
-          return m;
-        }
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
     }
 
@@ -854,13 +861,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
-            let mathHtml = part.content;
-            try {
-              mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false }).replace(/\n/g, '');
-            } catch (e) {
-              console.warn(e);
-              mathHtml = `$$${part.content}$$`;
-            }
+            const mathHtml = renderKatexString(part.content, { displayMode: true, throwOnError: false });
             return (
               <span 
                 key={idx} 
@@ -882,11 +883,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                     return m;
                   }
                 }
-                try {
-                  return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-                } catch (e) {
-                  return m;
-                }
+                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
               });
             } catch (e) {
               console.warn(e);
@@ -918,13 +915,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
-          let mathHtml = part.content;
-          try {
-            mathHtml = window.katex.renderToString(part.content, { displayMode: true, throwOnError: false }).replace(/\n/g, '');
-          } catch (e) {
-            console.warn(e);
-            mathHtml = `$$${part.content}$$`;
-          }
+          const mathHtml = renderKatexString(part.content, { displayMode: true, throwOnError: false });
 
           return (
             <div 
@@ -950,11 +941,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                   return m;
                 }
               }
-              try {
-                return window.katex.renderToString(math.trim(), { displayMode: false, throwOnError: false }).replace(/\n/g, '');
-              } catch (e) {
-                return m;
-              }
+              return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
             });
           } catch (e) {
             console.warn(e);
