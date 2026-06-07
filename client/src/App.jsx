@@ -151,7 +151,6 @@ const isHeavyHtml = (rawText) => {
 const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
-  const isHeavy = isHeavyHtml(rawText);
   let cleaned = rawText;
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
@@ -161,20 +160,7 @@ const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/&gt;/g, '>')
                    .replace(/&amp;/g, '&');
   
-  // 2. 복구된 상태에서 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
-  if (!isHeavy) {
-    cleaned = cleaned.replace(/<span[^>]*>/gi, '')
-                     .replace(/<\/span>/gi, '')
-                     .replace(/<div[^>]*>/gi, '')
-                     .replace(/<\/div>/gi, '');
-  }
-                   
-  // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소
-  if (!isHeavy) {
-    cleaned = cleaned.replace(/style=\\?["'][\s\S]*?\\?["']\s*>?/gi, '');
-  }
-  
-  // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
+  // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
   cleaned = cleaned.replace(/_따라서/g, '따라서');
   
   return cleaned;

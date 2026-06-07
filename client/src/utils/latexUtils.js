@@ -1,11 +1,14 @@
 // Self-Healing LaTeX Formula Post-Processor to automatically repair missing backslashes and math delimiters ($...$)
 
 export function tokenizeForHealing(text) {
+  if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  // Match block math ($$...$$), inline math ($...$), and HTML tags safely on a single line
-  const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)|(<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>\n]*>)/gs;
+  
+  // 블록 수식($$...$$)과 인라인 수식($...$)만을 정확하게 분리
+  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]+?\$)/gs;
   let match;
+  
   while ((match = regex.exec(text)) !== null) {
     const before = text.substring(lastIndex, match.index);
     if (before) {
@@ -14,10 +17,8 @@ export function tokenizeForHealing(text) {
     const matchContent = match[0];
     if (matchContent.startsWith('$$')) {
       tokens.push({ type: 'block-math', content: matchContent });
-    } else if (matchContent.startsWith('$')) {
-      tokens.push({ type: 'inline-math', content: matchContent });
     } else {
-      tokens.push({ type: 'html-tag', content: matchContent });
+      tokens.push({ type: 'inline-math', content: matchContent });
     }
     lastIndex = regex.lastIndex;
   }
@@ -32,13 +33,12 @@ export function healBackslashes(str, isMathMode = false) {
   if (!str) return str;
   let healed = str;
 
-  // 1. Handle log and ln specifically to support logp, logt, log_10, lnp, lnt, etc.
+  // 1. 로그 및 자연로그 기호 표준화
   healed = healed.replace(/(?<!\\)\blog\b/g, '\\log');
   healed = healed.replace(/(?<!\\)\bln\b/g, '\\ln');
   healed = healed.replace(/(?<!\\)\blog(?=[pt_0-9])/g, '\\log ');
   healed = healed.replace(/(?<!\\)\bln(?=[pt_0-9])/g, '\\ln ');
 
-  // 2. Define symbols/keywords to heal
   const greekSymbols = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
     'zeta', 'xi', 'chi', 'upsilon'
@@ -68,40 +68,18 @@ export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
 
-  // 0.0) 이스케이프 복구 및 시스템 오염 HTML 태그 청소
-  const isHeavy = (rawText) => {
-    if (!rawText) return false;
-    const lower = rawText.toLowerCase();
-    return lower.includes('<!doctype') || lower.includes('<html>') || lower.includes('<body') || lower.includes('<script') || lower.includes('<canvas') || lower.includes('<svg') || (lower.includes('<div') && lower.includes('style='));
-  };
+  // [교정] HTML 레이아웃을 무너뜨리는 무조건적인 문자열 삭제(replace) 로직 완전 전면 폐기
 
-  // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
+  // 1. 엔티티 부호 순수 문자로 복구
   text = text.replace(/&#x27;/g, "'")
              .replace(/&quot;/g, '"')
              .replace(/&lt;/g, '<')
              .replace(/&gt;/g, '>')
              .replace(/&amp;/g, '&');
   
-  // 2. 복구된 상태에서 잘못 주입한 HTML 에러 스타일 태그 원천 삭제 (시뮬레이터가 아닌 경우에만)
-  if (!isHeavy(text)) {
-    text = text.replace(/<span[^>]*>/gi, '')
-               .replace(/<\/span>/gi, '')
-               .replace(/<div[^>]*>/gi, '')
-               .replace(/<\/div>/gi, '');
-  }
-                   
-  // 3. 간혹 힐링 엔진 필터에서 꼬여서 들어오는 style 문구 청소 (이스케이프 및 orphaned > 부근까지 일괄 클리닝)
-  if (!isHeavy(text)) {
-    text = text.replace(/style=\\?["'][\s\S]*?\\?["']\s*>?/gi, '');
-  }
-  
-  // 4. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
-  text = text.replace(/_따라서/g, '따라서');
-
-  // 문장 끝의 * 기호 앞뒤에 강제 줄바꿈 삽입 (단락 구분 가독성 개선)
+  // 2. 가독성 개선을 위한 리스트 줄바꿈 확보
   text = text.replace(/([\.?!\)\]\}])\s*\*\s*(?=[\uAC00-\uD7A3])/g, '$1\n\n* ');
 
-  // AI의 이중 이스케이프 오류(\\frac -> \frac, \\text -> \text) 강제 복구 (조기 반환 처리 전 최우선 수행)
   const safeLatexCommands = [
     'frac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
     'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
@@ -113,23 +91,18 @@ export function healLatexFormulas(text) {
     'sim', 'le', 'ge', 'div', 'sec', 'cosec', 'cot', 'lt', 'gt'
   ];
   
-  if (text) {
-    text = text.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
-      if (safeLatexCommands.includes(p1)) return '\\' + p1;
-      return match;
-    });
-  }
-  if (!text) return text;
+  text = text.replace(/\\\\([a-zA-Z]+)/g, (match, p1) => {
+    if (safeLatexCommands.includes(p1)) return '\\' + p1;
+    return match;
+  });
 
-  // 0.2. Heal missing backslashes in math/text blocks
+  // 3. 수식 블록 내부 백슬래시 정상 복원
   {
     const tokens = tokenizeForHealing(text);
     text = tokens.map(token => {
       let content = token.content;
       if (token.type === 'text') {
         content = healBackslashes(content, false);
-      } else if (token.type === 'html-tag') {
-        // Skip HTML tags during backslash healing
       } else {
         const isBlock = content.startsWith('$$');
         const math = isBlock ? content.substring(2, content.length - 2) : content.substring(1, content.length - 1);
@@ -140,7 +113,6 @@ export function healLatexFormulas(text) {
     }).join('');
   }
   
-  // 💡 [단일 공식/수식형 전체 감싸기 최적화]
   let trimmed = text.trim();
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     trimmed = trimmed.substring(2, trimmed.length - 2).trim();
@@ -151,9 +123,8 @@ export function healLatexFormulas(text) {
   const hasMathIndicators = /\\(sigma|tau|alpha|beta|gamma|phi|theta|epsilon|pi|delta|Delta|omega|mu|lambda|psi|rho|eta|frac|sqrt|cdot|mathrm|text|log|Sigma|Gamma|Phi|Theta|Omega)\b/.test(trimmed) || 
                             /[_^{<>=]/.test(trimmed);
   const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
-  const hasHtmlTags = /<\/?(?:div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b/i.test(trimmed);
 
-  if (hasMathIndicators && !hasKorean && !hasHtmlTags && trimmed.length < 150) {
+  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
     let cleanedMath = trimmed.replace(/\$/g, '');
     cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
     cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
@@ -170,7 +141,6 @@ export function healLatexFormulas(text) {
     }
   }
 
-  // --- Pre-processing: Clean up syntax errors and fragmented dollars ---
   const lines = healed.split('\n');
   const processedLines = lines.map(line => {
     const dollarCount = (line.match(/\$/g) || []).length;
@@ -203,12 +173,10 @@ export function healLatexFormulas(text) {
     }).join('');
   }
 
-  // STEP 1: Wrap larger equations precisely (restored to valid mathematical expression matching)
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
-      // We use a robust character class matcher that does not include newlines to prevent greedy matching
       const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
       t = t.replace(formulaPattern, (match) => {
         const trimmedMatch = match.trim();
@@ -237,7 +205,6 @@ export function healLatexFormulas(text) {
   let reassembledAfterStep1 = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembledAfterStep1);
 
-  // STEP 1.5: Parentheses inner math catching
   tokens.forEach(token => {
     if (token.type === 'text') {
       let t = token.content;
@@ -249,7 +216,6 @@ export function healLatexFormulas(text) {
     }
   });
 
-  // STEP 2: Bare Greek variables & independent notation wrapping
   let reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
   tokens.forEach(token => {
@@ -277,11 +243,10 @@ export function healLatexFormulas(text) {
     }
   });
 
-  // STEP 3: Core variable mapping cleanup inside math structures
   reassembled = tokens.map(t => t.content).join('');
   tokens = tokenizeForHealing(reassembled);
   tokens.forEach(token => {
-    if (token.type === 'inline-math' || token.type === 'block-math') {
+    if (token.type !== 'text') {
       let inside = token.content;
       const isBlock = inside.startsWith('$$');
       let math = isBlock ? inside.substring(2, inside.length - 2).trim() : inside.substring(1, inside.length - 1).trim();
