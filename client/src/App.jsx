@@ -5144,13 +5144,6 @@ export default function App() {
                 필수공식
               </button>
               <button
-                onClick={() => { forceSaveActiveSessions(); handleOpenTheoryExam(); }}
-                className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-indigo-400 hover:text-indigo-200 border border-slate-800/80 hover:bg-indigo-950/40 rounded-xl transition-all duration-200 cursor-pointer"
-              >
-                <Brain size={14} />
-                이론유도
-              </button>
-              <button
                 onClick={() => { forceSaveActiveSessions(); handleOpenAnswerSheet(); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
                   showAnswerSheet
@@ -5294,25 +5287,6 @@ export default function App() {
                   <span>필수공식</span>
                 </button>
 
-                {/* 이론유도 */}
-                <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
-                    setSelectedTopic(null);
-                    setShowExam(false);
-                    setShowFormulaExam(false);
-                    setShowAnswerSheet(false);
-                    handleOpenTheoryExam();
-                  }}
-                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
-                    showTheoryExam
-                      ? 'bg-gradient-to-tr from-indigo-600 to-blue-500 text-white border-indigo-500 shadow-lg glow-indigo'
-                      : 'bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40'
-                  }`}
-                >
-                  <Brain size={16} />
-                  <span>이론유도</span>
-                </button>
 
                 {/* 답안지 */}
                 <button
@@ -6074,17 +6048,6 @@ export default function App() {
                 <span>필수공식</span>
               </button>
 
-              <button
-                onClick={() => {
-                  forceSaveActiveSessions();
-                  setSelectedTopic(null);
-                  handleOpenTheoryExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
-              >
-                <Brain size={12} />
-                <span>이론유도</span>
-              </button>
 
               <button
                 onClick={() => {
@@ -7051,22 +7014,6 @@ export default function App() {
                 <span>필수공식</span>
               </button>
 
-              <button
-                onClick={() => {
-                  savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  fetch(`${API_BASE}/api/session/exam`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                  }).catch(e => console.warn('세션 저장 실패:', e));
-                  setShowExam(false);
-                  handleOpenTheoryExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
-              >
-                <Brain size={12} />
-                <span>이론유도</span>
-              </button>
 
               <button
                 onClick={() => {
@@ -8172,17 +8119,6 @@ export default function App() {
                 <span>필수공식</span>
               </button>
 
-              <button
-                onClick={() => {
-                  handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                  setShowFormulaExam(false);
-                  handleOpenTheoryExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
-              >
-                <Brain size={12} />
-                <span>이론유도</span>
-              </button>
 
               <button
                 onClick={() => {
@@ -9866,17 +9802,6 @@ export default function App() {
                 <span>필수공식</span>
               </button>
 
-              <button
-                onClick={() => {
-                  handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                  setShowAnswerSheet(false);
-                  handleOpenTheoryExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-indigo-400 border-slate-800/80 hover:text-indigo-200 hover:bg-indigo-950/40 transition-all cursor-pointer"
-              >
-                <Brain size={12} />
-                <span>이론유도</span>
-              </button>
 
               <button
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border-emerald-500 shadow-lg select-none cursor-default"
@@ -10472,26 +10397,6 @@ export default function App() {
           >
             <Sigma size={20} />
             <span className="text-[10px] font-bold tracking-tight">필수공식</span>
-          </button>
-          {/* 이론유도 버튼 */}
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setSelectedTopic(null);
-              setShowExam(false);
-              setShowFormulaExam(false);
-              setShowAnswerSheet(false);
-              handleOpenTheoryExam();
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              showTheoryExam
-                ? 'bg-gradient-to-tr from-indigo-600 to-purple-500 text-white shadow-lg glow-indigo'
-                : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/40'
-            }`}
-            title="전공 필수 공식 이론 유도 및 상세 증명 학습"
-          >
-            <Brain size={20} />
-            <span className="text-[10px] font-bold tracking-tight">이론유도</span>
           </button>
           
           {/* 답안지 버튼 */}
