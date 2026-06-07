@@ -561,22 +561,18 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
     } else {
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
-      let MODELS = [];
-      if (scenario === 'tutor' || scenario === 'option-explanation') {
-        MODELS = ['gemini-3.1-flash-lite'];
-      } else if (scenario === 'question') {
+      let MODELS = [
+        'gemini-3.5-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
+      ];
+      if (scenario === 'formula') {
         MODELS = [
-          'gemini-3.5-flash',
-          'gemini-2.5-flash',
           'gemini-3.1-flash-lite',
-          'gemini-2.5-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash'
-        ];
-      } else {
-        MODELS = [
           'gemini-3.5-flash',
-          'gemini-3.1-flash-lite',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
           'gemini-2.0-flash',
@@ -4831,6 +4827,8 @@ app.post('/api/chat', async (req, res) => {
    - 수험생이 지적한 "내부마찰각 $\phi$가 커지면 전이되는 응력이 커진다"는 전공 지식은 지반공학적으로 100% 명백한 사실이므로, 이를 완전히 인정하고 극찬하며 테르자기 아칭 이론으로 명쾌하게 검증/유도해 주십시오.
 5. 기술사 수준의 고품격 서술형 구조:
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
+6. [지반공학 용어 준수 철칙]:
+   - 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 가상의 단어로 번역/표기하지 마십시오. 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
@@ -4944,7 +4942,8 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
 
     const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
 제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
-반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.`;
+반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.
+[지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.`;
 
     const userPrompt = `
 [대상 공식]:
@@ -4971,7 +4970,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 }
 `;
 
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'question');
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
     let text = responseText.trim();
     if (text.startsWith('```')) {
       text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -5046,6 +5045,7 @@ app.post('/api/formula/suggest-title', async (req, res) => {
     }
 
     const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 공식의 세부 정보를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요. 다른 설명 텍스트나 코드블록 기호는 절대 출력하지 마십시오.
+[지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 번역/표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 통일하여 표기하십시오.
  
 JSON 포맷 규격:
 {
@@ -5057,7 +5057,7 @@ JSON 포맷 규격:
     const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
 
     try {
-      const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
+      const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
       
       let cleanJsonText = responseText.trim();
       const startIdx = cleanJsonText.indexOf('{');

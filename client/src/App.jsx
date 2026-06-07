@@ -21,6 +21,7 @@ import {
   Clock, 
   ChevronDown, 
   ChevronUp, 
+  ChevronRight,
   Award, 
   BookOpen, 
   Sigma, 
@@ -211,6 +212,22 @@ const generateRandomQuizQuestion = (allFormulas) => {
     isCorrect: false,
     dateAdded: new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD
   };
+};
+
+const clientExtractVariables = (mathContent) => {
+  if (!mathContent) return '';
+  const cleanMath = mathContent
+    .replace(/\\[a-zA-Z]+/g, ' ')
+    .replace(/[0-9]+/g, ' ')
+    .replace(/[\{\}\[\]\(\)\+\-\*\/\=\_\^]/g, ' ');
+  
+  const words = cleanMath.split(/\s+/);
+  const uniqueVars = Array.from(new Set(words))
+    .map(w => w.trim())
+    .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
+  
+  if (uniqueVars.length === 0) return '';
+  return uniqueVars.map(v => `* $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
 };
 
 const cleanCorruptedFormula = (formula) => {
@@ -1561,6 +1578,28 @@ export default function App() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [isMobileLandscape, setIsMobileLandscape] = useState(window.innerWidth >= 768 && window.innerHeight <= 600);
 
+  // Mobile landscape sidebar swipe hide states
+  const [landscapeSidebarHidden, setLandscapeSidebarHidden] = useState(false);
+  const landscapeSidebarTouchStartRef = useRef({ x: 0, y: 0 });
+
+  const handleLandscapeTouchStart = (e) => {
+    if (!isMobileLandscape) return;
+    const touch = e.touches[0];
+    landscapeSidebarTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleLandscapeTouchEnd = (e) => {
+    if (!isMobileLandscape) return;
+    const touch = e.changedTouches[0];
+    const diffX = landscapeSidebarTouchStartRef.current.x - touch.clientX;
+    const diffY = landscapeSidebarTouchStartRef.current.y - touch.clientY;
+    
+    // Swipe left: horizontal move >= 40px and dominant over vertical shift
+    if (diffX > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      setLandscapeSidebarHidden(true);
+    }
+  };
+
   // States and refs for modal pull-to-refresh
   const [formulaPull, setFormulaPull] = useState(0);
   const [formulaRefreshing, setFormulaRefreshing] = useState(false);
@@ -1577,7 +1616,11 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 768);
-      setIsMobileLandscape(window.innerWidth >= 768 && window.innerHeight <= 600);
+      const isLandscape = window.innerWidth >= 768 && window.innerHeight <= 600;
+      setIsMobileLandscape(isLandscape);
+      if (!isLandscape) {
+        setLandscapeSidebarHidden(false);
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -4052,7 +4095,7 @@ export default function App() {
     
     if (lastDate !== todayStr) {
       const unsolved = currentQuiz.filter(q => !q.isCorrect);
-      const needed = Math.max(0, 5 - unsolved.length);
+      const needed = Math.max(0, 3 - unsolved.length);
       const newQuestions = [];
       for (let i = 0; i < needed; i++) {
         const newQ = generateRandomQuizQuestion(formulaQuestions);
@@ -4066,7 +4109,7 @@ export default function App() {
     } else {
       if (currentQuiz.length === 0) {
         const newQuestions = [];
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 3; i++) {
           const newQ = generateRandomQuizQuestion(formulaQuestions);
           if (newQ) newQuestions.push(newQ);
         }
@@ -4102,6 +4145,7 @@ export default function App() {
   const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
     let loadedData = null;
+    let fallbackToLocal = false;
 
     // 1) Try Database Sync
     try {
@@ -4125,6 +4169,7 @@ export default function App() {
           const parsed = JSON.parse(savedStr);
           if (Array.isArray(parsed) && parsed.length > 0) {
             loadedData = parsed;
+            fallbackToLocal = true;
             console.log('[Fallback] Loaded formula questions from LocalStorage.');
           }
         }
@@ -4222,6 +4267,17 @@ export default function App() {
     latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
     localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
+    
+    // Auto sync back to database if loaded from local storage fallback
+    if (fallbackToLocal) {
+      console.log('[Sync] Auto syncing local formulas to database...');
+      fetch(`${API_BASE}/api/session/formula`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaQuestions: cleaned })
+      }).catch(err => console.warn('[Sync] Auto sync formulas failed:', err));
+    }
+
     setLoadingFormula(false);
     return cleaned;
   };
@@ -4434,6 +4490,7 @@ export default function App() {
     const loadAnswersheetQuestions = async () => {
     setLoadingAnswersheet(true);
     let loadedData = null;
+    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/answersheet?t=${Date.now()}`);
@@ -4455,6 +4512,7 @@ export default function App() {
           const parsed = JSON.parse(savedStr);
           if (Array.isArray(parsed)) {
             loadedData = parsed;
+            fallbackToLocal = true;
             console.log('[Fallback] Loaded answersheet questions from LocalStorage.');
           }
         }
@@ -4471,6 +4529,17 @@ export default function App() {
     latestAnswersheetQuestionsRef.current = cleaned;
     setAnswersheetQuestions(cleaned);
     localStorage.setItem('anti_answersheet_questions', JSON.stringify(cleaned));
+    
+    // Auto sync back to database if loaded from local storage fallback
+    if (fallbackToLocal) {
+      console.log('[Sync] Auto syncing local answersheet to database...');
+      fetch(`${API_BASE}/api/session/answersheet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answersheetQuestions: cleaned })
+      }).catch(err => console.warn('[Sync] Auto sync answersheet failed:', err));
+    }
+
     setLoadingAnswersheet(false);
     return loadedData;
   };
@@ -5036,8 +5105,16 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mathContent, fullText })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
         if (data && data.title) {
           const suggestedTitle = data.title;
           const suggestedConcept = data.concept;
@@ -5060,6 +5137,8 @@ export default function App() {
             return updated;
           });
           showNotification(`[${suggestedTitle}] 공식과 변수 해설이 AI 추천 분석을 거쳐 정밀 업데이트되었습니다!`, 'success');
+        } else {
+          throw new Error('API returned empty title');
         }
       })
       .catch(err => {
@@ -5067,9 +5146,11 @@ export default function App() {
         setFormulaQuestions(prev => {
           const updated = prev.map(f => {
             if (f.id === newFormula.id) {
+              const localStructure = clientExtractVariables(mathContent);
               return {
                 ...f,
-                formula: f.formula.replace("\n\n⏳ 각 변수/상수의 상세 의미를 AI가 분석하고 있습니다...", "")
+                formula: `$$${mathContent}$$` + (localStructure ? "\n\n" + localStructure : ""),
+                structure: localStructure
               };
             }
             return f;
@@ -5108,8 +5189,16 @@ export default function App() {
         fullText: `${q.concept || ''}\n${q.formula || ''}`
       })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
         if (data && data.title) {
           const suggestedTitle = data.title;
           const suggestedConcept = data.concept;
@@ -5134,7 +5223,7 @@ export default function App() {
           });
           showNotification(`[${suggestedTitle}] 공식의 제목, 핵심개념, 기호정의 분석 갱신이 완료되었습니다!`, 'success');
         } else {
-          showNotification('공식 재분석 결과가 유효하지 않습니다.', 'error');
+          throw new Error('API returned empty title');
         }
       })
       .catch(err => {
@@ -5465,8 +5554,21 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem] w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow">
-        <div className="flex flex-col landscape-dashboard-row gap-0">
-          <div className="landscape-dashboard-left">
+        {isMobileLandscape && landscapeSidebarHidden && (
+          <button
+            onClick={() => setLandscapeSidebarHidden(false)}
+            className="fixed top-2 left-2 z-50 flex items-center justify-center w-8 h-8 rounded-lg bg-slateCustom-900/90 text-slate-300 border border-slate-800 hover:text-white hover:bg-slate-800 transition-all cursor-pointer shadow-md select-none active:scale-95"
+            title="메뉴 열기"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
+        <div className={`flex flex-col landscape-dashboard-row gap-0 ${landscapeSidebarHidden ? 'sidebar-collapsed' : ''}`}>
+          <div 
+            className={`landscape-dashboard-left ${landscapeSidebarHidden ? 'collapsed' : ''}`}
+            onTouchStart={handleLandscapeTouchStart}
+            onTouchEnd={handleLandscapeTouchEnd}
+          >
             {/* Card 3 (공부중) inside the landscape left menu (at the top) */}
             {lastActiveReview && isMobileLandscape && (
               <button
