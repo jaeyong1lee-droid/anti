@@ -9277,9 +9277,9 @@ export default function App() {
                             <Trash2 size={13} />
                           </button>
                         </div>
-                        <h4 className="text-xs font-black text-white mb-3 flex items-center gap-1.5 flex-wrap border-b border-slate-800/80 pb-2">
+                        <h4 className="text-xs font-black text-white mb-3 border-b border-slate-800/80 pb-2 leading-relaxed select-text">
                           <span>[</span>
-                          <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline-block" />
+                          <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline" />
                           <span>]</span>
                         </h4>
                         
