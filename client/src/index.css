@@ -410,8 +410,7 @@ html, body {
 
 /* 📱 Mobile Portrait Layout Optimizations for Review and Comprehensive Exam Modals */
 @media (max-width: 767px) and (orientation: portrait) {
-  /* Minimize horizontal padding of options lists buttons inside cards for maximum text width */
-  .quiz-card-item button.w-full, .exam-card-item button.w-full {
+  .quiz-card-item button.w-full, .exam-card-item button.w-full, .formula-quiz-option-btn {
     padding-left: 8px !important;
     padding-right: 8px !important;
   }
@@ -448,11 +447,11 @@ html, body {
     display: none !important;  /* Chrome, Safari, Opera, Android, iOS */
   }
 
-  /* Expand question cards to span 100% width and remove right/left margins and rounding */
   .quiz-card-item,
   .exam-card-item,
   .formula-card-item,
-  .answersheet-card-item {
+  .answersheet-card-item,
+  .formula-quiz-card-item {
     width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
@@ -460,6 +459,8 @@ html, body {
     border-left-width: 0 !important;
     border-right-width: 0 !important;
     border-radius: 0 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
 }
 

@@ -4354,18 +4354,10 @@ export default function App() {
       await handleGenerateExtraQuizQuestion();
       if (shouldNavigateMobile && !isDesktop && !isMobileLandscape) {
         setFormulaMobileTab('tutor');
-        setTimeout(() => {
-          const containerWidth = formulaSplitContainerRef.current?.clientWidth || window.innerWidth;
-          formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-        }, 150);
       }
     } else {
       if (shouldNavigateMobile && !isDesktop && !isMobileLandscape) {
         setFormulaMobileTab('tutor');
-        setTimeout(() => {
-          const containerWidth = formulaSplitContainerRef.current?.clientWidth || window.innerWidth;
-          formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-        }, 50);
       }
     }
   };
@@ -8508,7 +8500,6 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFormulaMobileTab('list');
-                      formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                     }}
                     className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
                       formulaMobileTab === 'list'
@@ -8521,8 +8512,6 @@ export default function App() {
                   <button
                     onClick={() => {
                       setFormulaMobileTab('tutor');
-                      const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
-                      formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
                     }}
                     className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
                       formulaMobileTab === 'tutor'
@@ -8696,7 +8685,6 @@ export default function App() {
                 <button
                   onClick={() => {
                     setFormulaMobileTab('list');
-                    formulaSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                   }}
                   className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
                     formulaMobileTab === 'list'
@@ -8709,8 +8697,6 @@ export default function App() {
                 <button
                   onClick={() => {
                     setFormulaMobileTab('tutor');
-                    const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
-                    formulaSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
                   }}
                   className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
                     formulaMobileTab === 'tutor'
@@ -8724,20 +8710,10 @@ export default function App() {
             </div>
           )}
 
-          {/* Layout Split Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
+          {/* Layout Split Container (Mobile: Hides inactive column to lock layout, PC: Side-by-Side) */}
           <div 
             ref={formulaSplitContainerRef}
-            onScroll={(e) => {
-              if (!isDesktop) {
-                const scrollLeft = e.currentTarget.scrollLeft;
-                const clientWidth = e.currentTarget.clientWidth;
-                if (clientWidth > 0) {
-                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                  setFormulaMobileTab(activeTab);
-                }
-              }
-            }}
-            className="flex-1 flex flex-row overflow-x-auto md:overflow-x-hidden overflow-y-hidden snap-x snap-mandatory scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container"
+            className="flex-1 flex flex-row overflow-x-hidden overflow-y-hidden min-h-0 w-full scrollbar-none landscape-split-container"
           >
             
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
@@ -8819,9 +8795,10 @@ export default function App() {
               </div>
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
-            <div 
-              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
-            >
+            {(isDesktop || isMobileLandscape || formulaMobileTab === 'list') && (
+              <div 
+                className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+              >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
@@ -9204,6 +9181,7 @@ export default function App() {
               )}
               </div>
             </div>
+            )}
 
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
@@ -9235,10 +9213,11 @@ export default function App() {
             </div>
 
             {/* Right: Formula Quiz Sidebar */}
-            <div 
-              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-              className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
-            >
+            {(isDesktop || isMobileLandscape || formulaMobileTab === 'tutor') && (
+              <div 
+                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              >
               <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Sigma size={16} className="text-rose-500 animate-pulse" />
@@ -9289,7 +9268,7 @@ export default function App() {
                     }
 
                     return (
-                      <div key={q.id} className={`p-4 rounded-2xl border transition-all duration-300 ${
+                      <div key={q.id} className={`formula-quiz-card-item p-4 rounded-2xl border transition-all duration-300 ${
                         q.isCorrect 
                           ? 'bg-emerald-950/15 border-emerald-500/20 shadow-md shadow-emerald-950/25' 
                           : 'bg-slateCustom-900/40 border-slate-800/80 shadow-md shadow-black/20'
@@ -9367,7 +9346,7 @@ export default function App() {
                                     showNotification('오답입니다. 다시 시도해 보세요! ❌', 'error');
                                   }
                                 }}
-                                className={`w-full text-left p-3 rounded-xl border text-xs transition-all duration-200 flex items-center gap-2 cursor-pointer ${btnStyle} disabled:cursor-default`}
+                                className={`w-full text-left p-3 rounded-xl border text-xs transition-all duration-200 flex items-center gap-2 cursor-pointer formula-quiz-option-btn ${btnStyle} disabled:cursor-default`}
                               >
                                 <span className="w-5 h-5 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-[10px] text-slate-400 flex-shrink-0">
                                   {optIdx + 1}
@@ -9402,6 +9381,7 @@ export default function App() {
                 )}
               </div>
             </div>
+            )}
 
           </div>
         </div>
