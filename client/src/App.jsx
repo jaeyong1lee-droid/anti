@@ -8950,24 +8950,7 @@ export default function App() {
                           <span className="max-w-[120px] truncate">공부중: {lastActiveReview.title}</span>
                         </button>
                       )}
-
-                      <button
-                        onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = '.html,.htm,.pdf';
-                          input.onchange = (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleUploadAnswersheetPdf(file);
-                          };
-                          input.click();
-                        }}
-                        className="py-1 px-3 bg-teal-650 hover:bg-teal-550 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-teal-600/10 hover:shadow-teal-650/20 cursor-pointer border border-teal-500/20 select-none whitespace-nowrap"
-                      >
-                        <UploadCloud size={11} />
-                        <span>HTML/PDF 보고서 업로드</span>
-                      </button>
-                    </div>
+                     </div>
                   </div>
                 </div>
               </div>
@@ -9336,27 +9319,31 @@ export default function App() {
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
 
-                            {q.answersheet_report_id && (
+                            {(q.answersheet_report_id || q.formula) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
-                                  const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
-                                  if (isPdf) {
-                                    if (window.confirm(`[${q.pdf_name || '원 보고서'}] 파일을 다운로드하시겠습니까?`)) {
-                                      const link = document.createElement('a');
-                                      link.href = `${url}?download=true`;
-                                      link.download = q.pdf_name;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                  if (q.answersheet_report_id) {
+                                    const url = `${API_BASE}/api/session/answersheet/report/${q.answersheet_report_id}`;
+                                    const isPdf = q.pdf_name && q.pdf_name.toLowerCase().endsWith('.pdf');
+                                    if (isPdf) {
+                                      if (window.confirm(`[${q.pdf_name || '원 보고서'}] 파일을 다운로드하시겠습니까?`)) {
+                                        const link = document.createElement('a');
+                                        link.href = `${url}?download=true`;
+                                        link.download = q.pdf_name;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      }
+                                    } else {
+                                      window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
                                     }
                                   } else {
-                                    window.open(url, `_blank`, 'width=1200,height=900,status=no,menubar=no,toolbar=no,resizable=yes,scrollbars=yes');
+                                    handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
                                   }
                                 }}
                                 className="py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 flex items-center justify-center gap-0.5 sm:gap-1"
-                                title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                                title="원본 보고서 파일(HTML/PDF/LaTeX) 팝업 열기"
                               >
                                 <FileText size={10} />
                                 <span>{(!isDesktop && !isMobileLandscape) ? "원보고서" : "원 보고서 보기"}</span>
@@ -9423,23 +9410,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Output Display */}
-                        {!isMobileLandscape && isOutputVisible && (
-                          <div className="space-y-2 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
-                            <div className="flex items-center justify-between">
-                              {(isDesktop || isMobileLandscape || isInputVisible) && (
-                                <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                              )}
-                            </div>
-                            {q.formula ? (
-                              <div className="text-sm text-slate-200 leading-relaxed">
-                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `답안 ${idx + 1}`} />
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 또는 HTML 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
-                            )}
-                          </div>
-                        )}
+
 
                         {/* Input Area */}
                         {!isMobileLandscape && isInputVisible && (
