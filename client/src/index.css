@@ -570,5 +570,17 @@ html, body {
   font-weight: 800 !important;
 }
 
+/* 📱 Galaxy Z Flip Cover Screen Layout Adjustments (viewport height <= 450px) */
+@media (max-height: 450px) and (max-width: 599px) {
+  header {
+    position: relative !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  main {
+    margin-top: 0.75rem !important;
+  }
+}
+
 
 
