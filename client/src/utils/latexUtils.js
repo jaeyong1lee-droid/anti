@@ -18,6 +18,19 @@ export function tokenizeForHealing(text) {
     if (matchContent.startsWith('$$')) {
       tokens.push({ type: 'block-math', content: matchContent });
     } else {
+      // 인라인 수식이 줄바꿈을 포함하는 경우, 수식 기호/명령어(백슬래시, 첨자 등)가 있는 경우에만 수식으로 인정
+      // 그렇지 않거나 단락 구분(\n\n)이 포함된 경우 단순 텍스트로 처리하여 lone dollar 매칭 방어
+      const math = matchContent.substring(1, matchContent.length - 1);
+      const hasNewline = math.includes('\n');
+      const hasDoubleNewline = math.includes('\n\n');
+      const hasMathIndicators = /\\|[_^{}<=]/.test(math);
+      
+      if (hasDoubleNewline || (hasNewline && !hasMathIndicators)) {
+        tokens.push({ type: 'text', content: matchContent[0] });
+        lastIndex = match.index + 1;
+        regex.lastIndex = lastIndex;
+        continue;
+      }
       tokens.push({ type: 'inline-math', content: matchContent });
     }
     lastIndex = regex.lastIndex;
@@ -75,7 +88,7 @@ export function cleanCorruptedFormula(formula) {
   if (!formula || typeof formula !== 'string') return formula;
   
   let cleaned = formula;
-  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
+  if ((cleaned.includes('color:#cc0000') && (cleaned.includes('katex-error') || cleaned.includes('title="'))) || cleaned.includes('math mode at position')) {
     const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
                   cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
                   
@@ -115,6 +128,21 @@ export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
 
+  // 0. AI가 JSON 파싱 에러 회피를 위해 우회한 hashtag 수식 명령어 기호(#dfrac, #frac, #nu 등)를 백슬래시(\)로 복원
+  // CSS 색상 코드(예: #cc0000)를 침범하지 않도록 명령어 whitelist 기반 안전 치환 처리
+  const commandsToConvert = [
+    'frac', 'dfrac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
+    'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
+    'Phi', 'Theta', 'Omega', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 
+    'tan', 'approx', 'partial', 'text', 'left', 'right', 'begin', 'end', 'sum', 'int',
+    'textbf', 'textit', 'underline', 'pm', 'mp', 'neq', 'geq', 'leq', 'to', 'leftarrow',
+    'rightarrow', 'Rightarrow', 'Leftarrow', 'Leftrightarrow', 'infty', 'propto',
+    'equiv', 'nabla', 'quad', 'qquad', 'max', 'min',
+    'sim', 'le', 'ge', 'div', 'sec', 'cosec', 'cot', 'lt', 'gt', 'nu'
+  ];
+  const hashRegex = new RegExp(`#(${commandsToConvert.join('|')})\\b`, 'g');
+  text = text.replace(hashRegex, '\\$1');
+
   text = cleanCorruptedFormula(text);
 
   // [교정] HTML 레이아웃을 무너뜨리는 무조건적인 문자열 삭제(replace) 로직 완전 전면 폐기
@@ -145,7 +173,7 @@ export function healLatexFormulas(text) {
     return match;
   });
 
-  // 3. 수식 블록 내부 백슬래시 정상 복원
+  // 3. 수식 블록 내부 백슬래시 정상 복원 및 불필요한 공백/줄바꿈 압축
   {
     const tokens = tokenizeForHealing(text);
     text = tokens.map(token => {
@@ -155,7 +183,14 @@ export function healLatexFormulas(text) {
       } else {
         const isBlock = content.startsWith('$$');
         const math = isBlock ? content.substring(2, content.length - 2) : content.substring(1, content.length - 1);
-        const healedMath = healBackslashes(math, true);
+        let healedMath = healBackslashes(math, true);
+        
+        // Clean up newlines and extra spaces inside the math token
+        healedMath = healedMath.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        healedMath = healedMath.replace(/\\(dfrac|frac)\s*\{\s*/g, '\\$1{')
+                               .replace(/\s*\}\s*\{\s*/g, '}{')
+                               .replace(/\s*\}\s*$/g, '}');
+                               
         content = isBlock ? `$$${healedMath}$$` : `$${healedMath}$`;
       }
       return content;
@@ -163,6 +198,8 @@ export function healLatexFormulas(text) {
   }
   
   let trimmed = text.trim();
+  const startsWithDollar = trimmed.startsWith('$');
+  const endsWithDollar = trimmed.endsWith('$');
   if (trimmed.startsWith('$$') && trimmed.endsWith('$$')) {
     trimmed = trimmed.substring(2, trimmed.length - 2).trim();
   } else if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
@@ -173,7 +210,7 @@ export function healLatexFormulas(text) {
                             /[_^{<>=]/.test(trimmed);
   const hasKorean = /[\uAC00-\uD7A3]/.test(trimmed);
 
-  if (hasMathIndicators && !hasKorean && trimmed.length < 150) {
+  if (startsWithDollar && endsWithDollar && hasMathIndicators && !hasKorean && trimmed.length < 150) {
     let cleanedMath = trimmed.replace(/\$/g, '');
     cleanedMath = cleanedMath.replace(/~/g, '\\sim ');
     cleanedMath = cleanedMath.replace(/(?<!\\)\bsim\b/gi, '\\sim');
@@ -201,7 +238,8 @@ export function healLatexFormulas(text) {
   });
   healed = processedLines.join('\n');
 
-  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\s=\-+\*\/{}\(\)\[\],.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
+  // 변경: p1의 문자 클래스에서 \s, ,, = 을 제거하여 문장 공백이 formula prefix로 잘못 잡히는 현상 차단
+  healed = healed.replace(/(\r?\n|^)(\\?[a-zA-Z_']+[a-zA-Z0-9_'\-+\*\/\{\}\(\)\[\]\.\\\\/]*?)\$([^$\n]*?)\$/g, (match, start, p1, p2) => {
     const hasBackslash = p1.includes('\\') || p2.includes('\\');
     const hasGreek = symbols.some(sym => p1.includes(sym) || p2.includes(sym));
     if (hasBackslash || hasGreek) {
