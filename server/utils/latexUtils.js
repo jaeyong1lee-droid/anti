@@ -128,6 +128,16 @@ export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
 
+  // [신규 전처리 1] AI가 무단 주입한 인라인 HTML 태그(br, div)를 안정적인 마크다운 구조로 가공 및 전환
+  text = text.replace(/<br\s*\/?>/gi, '\n\n');
+  text = text.replace(/<div[^>]*>\s*•?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1');
+
+  // [신규 전처리 2] 글머리 기호(*)가 전방 문자와 공백 없이 강제 밀착된 케이스(*k:, *H: 등) 탐지 및 리스트 격리 개행
+  text = text.replace(/([^\n\s])\*([a-zA-Z0-9_\uAC00-\uD7A3]+:)/g, '$1\n\n* $2');
+
+  // [신규 전처리 3] 변수 표기 꼬임이나 오타로 흘러 들어온 불완전한 lone dollar 기호(예: N_d$:) 원천 제거
+  text = text.replace(/([a-zA-Z0-9_]+)\$(?=:|\s|\n|$)/g, '$1');
+
   // 0. AI가 JSON 파싱 에러 회피를 위해 우회한 hashtag 수식 명령어 기호(#dfrac, #frac, #nu 등)를 백슬래시(\)로 복원
   // CSS 색상 코드(예: #cc0000)를 침범하지 않도록 명령어 whitelist 기반 안전 치환 처리
   const commandsToConvert = [
@@ -370,12 +380,14 @@ export function healLatexFormulas(text) {
       math = math.replace(/~/g, '\\sim ');
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
+      math = math.replace(/(?<![a-zA-Z\\])u\b/g, '\\nu');
       token.content = `$${math}$`;
     } else if (token.type === 'block-math') {
       let math = token.content.substring(2, token.content.length - 2).trim();
       math = math.replace(/~/g, '\\sim ');
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
+      math = math.replace(/(?<![a-zA-Z\\])u\b/g, '\\nu');
       token.content = `$$${math}$$`;
     } else if (token.type === 'text') {
       token.content = token.content.replace(/(?<!\\)\bsim\b/gi, '~');
@@ -413,51 +425,32 @@ export function healLatexFormulas(text) {
   return result;
 }
 
-export function healQuizQuestionObject(q) {
-  if (!q) return q;
-  const healed = { ...q };
-  if (healed.question) healed.question = healLatexFormulas(healed.question);
-  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
-  if (healed.explanation) healed.explanation = healLatexFormulas(healed.explanation);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.structure) healed.structure = healLatexFormulas(healed.structure);
-  if (healed.options && Array.isArray(healed.options)) {
-    healed.options = healed.options.map(opt => healLatexFormulas(opt));
+// 💡 [대수술] 모든 종류의 객체/배열 내부의 모든 String 필드를 누락 없이 추적하는 Universal Deep Healer 구조 도입
+function healDeep(obj) {
+  if (!obj) return obj;
+  if (typeof obj === 'string') {
+    return healLatexFormulas(obj);
   }
-  return healed;
+  if (Array.isArray(obj)) {
+    return obj.map(item => healDeep(item));
+  }
+  if (typeof obj === 'object') {
+    const healed = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        healed[key] = healDeep(obj[key]);
+      }
+    }
+    return healed;
+  }
+  return obj;
 }
 
-export function healTheoryQuestionObject(t) {
-  if (!t) return t;
-  const healed = { ...t };
-  if (healed.title) healed.title = healLatexFormulas(healed.title);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.assumptions) healed.assumptions = healLatexFormulas(healed.assumptions);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
-  return healed;
-}
-
-export function healFormulaQuestionObject(f) {
-  if (!f) return f;
-  const healed = { ...f };
-  if (healed.title) healed.title = healLatexFormulas(healed.title);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  return healed;
-}
-
-export function healAnswersheetQuestionObject(a) {
-  if (!a) return a;
-  const healed = { ...a };
-  if (healed.title) healed.title = healLatexFormulas(healed.title);
-  if (healed.concept) healed.concept = healLatexFormulas(healed.concept);
-  if (healed.assumptions) healed.assumptions = healLatexFormulas(healed.assumptions);
-  if (healed.formula) healed.formula = healLatexFormulas(healed.formula);
-  if (healed.answer) healed.answer = healLatexFormulas(healed.answer);
-  return healed;
-}
+// 기존 인터페이스 호환성 100% 보장하면서 누락 원천 차단
+export function healQuizQuestionObject(q) { return healDeep(q); }
+export function healTheoryQuestionObject(t) { return healDeep(t); }
+export function healFormulaQuestionObject(f) { return healDeep(f); }
+export function healAnswersheetQuestionObject(a) { return healDeep(a); }
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
