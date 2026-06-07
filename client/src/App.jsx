@@ -9228,7 +9228,7 @@ export default function App() {
                 </span>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-none-mobile bg-slate-950/20">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5 scrollbar-none-mobile bg-slate-950/20">
                 {formulaQuizQuestions.length === 0 ? (
                   <div className="text-center py-16 opacity-50">
                     <Sigma size={32} className="mx-auto mb-2 text-slate-500" />
@@ -9293,14 +9293,20 @@ export default function App() {
                             <Trash2 size={13} />
                           </button>
                         </div>
-                        <h4 className="text-xs font-black text-white mb-3 border-b border-slate-800/80 pb-2 leading-relaxed select-text">
+                        <h4 className="text-xs font-black text-white mb-3 border-b border-slate-800/80 pb-2 leading-relaxed select-text break-words">
                           <span>[</span>
                           <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline" />
                           <span>]</span>
                         </h4>
                         
                         {/* Question text */}
-                        <div className="text-sm sm:text-[14px] text-slate-200 leading-relaxed mb-4 whitespace-normal break-words max-w-full">
+                        <div 
+                          className="text-sm sm:text-[14px] text-slate-200 leading-relaxed mb-4 whitespace-normal break-words max-w-full formula-scroll-container"
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
+                          onTouchCancel={(e) => e.stopPropagation()}
+                        >
                           <LatexRenderer text={q.question} katexLoaded={katexLoaded} isMarkdown={true} />
                         </div>
                         
