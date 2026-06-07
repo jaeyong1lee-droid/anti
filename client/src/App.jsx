@@ -1413,13 +1413,15 @@ export default function App() {
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
-  const [showTheoryExam, setShowTheoryExam] = useState(() => localStorage.getItem('anti_show_theory_exam') === 'true');
-  const theoryBodyRef = useRef(null);
-  const savedTheoryScroll = useRef(0);
+  const showTheoryExam = false;
+  const setShowTheoryExam = () => {};
+  const theoryBodyRef = { current: null };
+  const savedTheoryScroll = { current: 0 };
   const [formulaMobileTab, setFormulaMobileTab] = useState('list');
-  const [theoryMobileTab, setTheoryMobileTab] = useState('list');
+  const theoryMobileTab = "list";
+  const setTheoryMobileTab = () => {};
   const formulaSplitContainerRef = useRef(null);
-  const theorySplitContainerRef = useRef(null);
+  const theorySplitContainerRef = { current: null };
   const [reviewMobileTab, setReviewMobileTab] = useState('list');
   const [examMobileTab, setExamMobileTab] = useState('list');
   const reviewSplitContainerRef = useRef(null);
@@ -1668,27 +1670,32 @@ export default function App() {
   };
   
   // Theory questions states (independent of formulas)
-  const [theoryQuestions, setTheoryQuestions] = useState([]);
-  const [loadingTheory, setLoadingTheory] = useState(false);
-  const [theoryRevealed, setTheoryRevealed] = useState(() => {
-    try {
-      const saved = localStorage.getItem('anti_theory_revealed');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
-  const [theorySearchQuery, setTheorySearchQuery] = useState('');
-  const [refreshingTheoryIdx, setRefreshingTheoryIdx] = useState(null);
-  const [uploadingTheoryPdf, setUploadingTheoryPdf] = useState(false);
+  const theoryQuestions = [];
+  const setTheoryQuestions = () => {};
+  const loadingTheory = false;
+  const setLoadingTheory = () => {};
+  const theoryRevealed = {};
+  const setTheoryRevealed = () => {};
+  const theorySearchQuery = "";
+  const setTheorySearchQuery = () => {};
+  const refreshingTheoryIdx = null;
+  const setRefreshingTheoryIdx = () => {};
+  const uploadingTheoryPdf = false;
+  const setUploadingTheoryPdf = () => {};
 
   // Theory inline editing states
-  const [editingTheoryIdx, setEditingTheoryIdx] = useState(null);
-  const [editTheoryTitle, setEditTheoryTitle] = useState('');
-  const [editTheoryConcept, setEditTheoryConcept] = useState('');
-  const [editTheoryAssumptions, setEditTheoryAssumptions] = useState('');
-  const [editTheoryFormula, setEditTheoryFormula] = useState('');
-  const [theoryInputRevealed, setTheoryInputRevealed] = useState({});
+  const editingTheoryIdx = null;
+  const setEditingTheoryIdx = () => {};
+  const editTheoryTitle = "";
+  const setEditTheoryTitle = () => {};
+  const editTheoryConcept = "";
+  const setEditTheoryConcept = () => {};
+  const editTheoryAssumptions = "";
+  const setEditTheoryAssumptions = () => {};
+  const editTheoryFormula = "";
+  const setEditTheoryFormula = () => {};
+  const theoryInputRevealed = {};
+  const setTheoryInputRevealed = () => {};
   const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -1710,10 +1717,7 @@ export default function App() {
   const savedExamScroll = useRef(0);    // 종합평가 패널 저장된 스크롤 위치
 
   // Latest values refs to prevent stale closure bugs in modal headers
-  const latestTheoryQuestionsRef = useRef(theoryQuestions);
-  useEffect(() => {
-    latestTheoryQuestionsRef.current = theoryQuestions;
-  }, [theoryQuestions]);
+  const latestTheoryQuestionsRef = { current: [] };
 
   const latestFormulaQuestionsRef = useRef(formulaQuestions);
   useEffect(() => {
@@ -4000,7 +4004,8 @@ export default function App() {
     return cleaned;
   };
 
-  const loadTheoryQuestions = async () => {
+  const loadTheoryQuestions = async () => { return []; };
+  const _loadTheoryQuestions_unused = async () => {
     setLoadingTheory(true);
     let loadedData = null;
 
@@ -4064,7 +4069,8 @@ export default function App() {
     return loadedData;
   };
 
-  const handleSaveTheoryQuestions = async (qs = theoryQuestions, showToast = true) => {
+  const handleSaveTheoryQuestions = async () => {};
+  const _handleSaveTheoryQuestions_unused = async () => {
     try {
       const healedQs = Array.isArray(qs) ? qs.map(healTheoryQuestionObject) : qs;
       latestTheoryQuestionsRef.current = healedQs;
@@ -4093,7 +4099,8 @@ export default function App() {
     }
   };
 
-  const handleUploadTheoryPdf = async (file) => {
+  const handleUploadTheoryPdf = async () => {};
+  const _handleUploadTheoryPdf_unused = async () => {
     if (!file) return;
     const fileNameLower = file.name.toLowerCase();
     const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
@@ -4445,7 +4452,8 @@ export default function App() {
     localStorage.setItem('anti_answersheet_revealed', JSON.stringify(answersheetRevealed));
   }, [answersheetRevealed]);
 
-  const handleOpenTheoryExam = async () => {
+  const handleOpenTheoryExam = async () => {};
+  const _handleOpenTheoryExam_unused = async () => {
     setShowTheoryExam(true);
     setTheoryMobileTab('list');
     requestAnimationFrame(() => {
@@ -8654,812 +8662,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ===== ESSENTIAL FORMULA THEORY DERIVATION MODAL ===== */}
-      {showTheoryExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden">
-          {/* Header */}
-          {(!isDesktop && !isMobileLandscape) ? (
-            /* Mobile Portrait Header for Theory Modal */
-            <div className="flex flex-col gap-3 px-4 py-4 bg-slateCustom-950 border-b border-slate-800/80 flex-shrink-0">
-              {/* Title Line */}
-              <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-                이론유도
-              </h1>
-              
-              {/* 6 Category Switcher Buttons */}
-              <div className="flex flex-col gap-2 w-full">
-                {/* 첫 번째 줄 */}
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={async () => {
-                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                      setShowTheoryExam(false);
-                      setViewMode('dashboard');
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
-                  >
-                    <Calendar size={14} />
-                    오늘의 복습
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                      setShowTheoryExam(false);
-                      setViewMode('all_topics');
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
-                  >
-                    <List size={14} />
-                    복습토픽
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                      setShowTheoryExam(false);
-                      handleOpenExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Award size={14} />
-                    종합평가
-                  </button>
-                </div>
-                {/* 두 번째 줄 */}
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={async () => {
-                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                      setShowTheoryExam(false);
-                      handleOpenFormulaExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Sigma size={14} />
-                    필수공식
-                  </button>
-                  <button
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-indigo-500 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white shadow-lg rounded-xl"
-                  >
-                    <Brain size={14} />
-                    이론유도
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                      setShowTheoryExam(false);
-                      handleOpenAnswerSheet();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <FileText size={14} />
-                    답안지
-                  </button>
-                </div>
-              </div>
-
-              {/* Topic Search Box */}
-              <div className="relative flex items-center w-full mt-1">
-                <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="이론 제목 검색..."
-                  value={theorySearchQuery}
-                  onChange={(e) => setTheorySearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-indigo-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
-                />
-                {theorySearchQuery && (
-                  <button
-                    onClick={() => setTheorySearchQuery('')}
-                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Desktop/Landscape Header for Theory Modal */
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-indigo-500/20 flex-shrink-0 gap-4 landscape-hide">
-              <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-                <div className="p-2 bg-indigo-950/80 text-indigo-400 rounded-xl flex-shrink-0 mt-0.5">
-                  <Brain size={20} />
-                </div>
-                <div className="min-w-0 flex-grow">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider whitespace-nowrap">공식 이론유도</span>
-                    {formulaQuestions.length > 0 && (
-                      <span className="text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
-                        {formulaQuestions.length}개 핵심공식
-                      </span>
-                    )}
-                    {/* Mobile Swipe Hint */}
-                    <span className="inline-flex md:hidden text-[9px] bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                      ← 좌우 쓸어 넘겨 튜터 대화 보기
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
-                      전공 필수 공식 이론 유도 및 상세 증명 학습
-                    </h3>
-                    {/* Centered Add Question/Theory Button (Header Position next to title) */}
-                    <button
-                      onClick={() => {
-                        const newTheory = {
-                          title: "",
-                          concept: "",
-                          assumptions: "",
-                          formula: "",
-                          isDirectlyAdded: true
-                        };
-                        const updated = [...theoryQuestions, newTheory];
-                        latestTheoryQuestionsRef.current = updated;
-                        setTheoryQuestions(updated);
-                        localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                        showNotification('새로운 이론 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                        setTimeout(() => {
-                          if (theoryBodyRef.current) {
-                            theoryBodyRef.current.scrollTo({
-                              top: theoryBodyRef.current.scrollHeight,
-                              behavior: 'smooth'
-                            });
-                          }
-                        }, 80);
-                      }}
-                      className="py-1 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20 cursor-pointer border border-indigo-500/20 select-none whitespace-nowrap"
-                    >
-                      <PlusCircle size={11} />
-                      <span>새로운 이론 공식 추가 (빈표 생성)</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-                <div className="relative flex items-center min-w-[200px] sm:min-w-[240px] flex-grow sm:flex-grow-0">
-                  <Search size={14} className="absolute left-3 text-slate-500 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="이론 제목 검색..."
-                    value={theorySearchQuery}
-                    onChange={(e) => setTheorySearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-8 py-1.5 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-indigo-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
-                  />
-                  {theorySearchQuery && (
-                    <button
-                      onClick={() => setTheorySearchQuery('')}
-                      className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-                <button
-                  onClick={async () => {
-                    await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false); // 닫기를 눌러도 저장 완료후 닫음
-                    savedTheoryScroll.current = theoryBodyRef.current?.scrollTop || 0;
-                    setTheorySearchQuery('');
-                    setShowTheoryExam(false);
-                  }}
-                  className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                  title="저장 후 닫기"
-                >
-                  닫기
-                </button>
-                <button
-                  onClick={async () => {
-                    await handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, true); // 저장 버튼: 저장 완료후 토스트 출력
-                  }}
-                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
-                  title="이론 변경사항 실시간 저장"
-                >
-                  <Save size={12} />
-                  저장
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-header tabs for Mobile */}
-          {(isDesktop || isMobileLandscape) && (
-            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-indigo-500/10 justify-center flex-shrink-0 landscape-hide">
-              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-                <button
-                  onClick={() => {
-                    setTheoryMobileTab('list');
-                    theorySplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    theoryMobileTab === 'list'
-                      ? 'bg-indigo-650 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  공식 리스트
-                </button>
-                <button
-                  onClick={() => {
-                    setTheoryMobileTab('tutor');
-                    const containerWidth = theorySplitContainerRef.current?.clientWidth || 0;
-                    theorySplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    theoryMobileTab === 'tutor'
-                      ? 'bg-indigo-650 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  제미나이 AI 튜터
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Modal Container (Mobile: Horizontal Swipe, PC: Side-by-Side) */}
-          <div 
-            ref={theorySplitContainerRef}
-            onScroll={(e) => {
-              if (!isDesktop) {
-                const scrollLeft = e.currentTarget.scrollLeft;
-                const clientWidth = e.currentTarget.clientWidth;
-                if (clientWidth > 0) {
-                  const activeTab = scrollLeft > clientWidth / 2 ? 'tutor' : 'list';
-                  setTheoryMobileTab(activeTab);
-                }
-              }
-            }}
-            className={`flex-1 flex flex-row ${(!isDesktop && !isMobileLandscape) ? 'overflow-x-hidden' : 'overflow-x-auto md:overflow-x-hidden'} overflow-y-hidden ${(!isDesktop && !isMobileLandscape) ? '' : 'snap-x snap-mandatory'} scroll-smooth min-h-0 w-full scrollbar-none landscape-split-container`}
-          >
-            
-            {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
-              {lastActiveReview && (
-                <button
-                  onClick={() => {
-                    handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                    setShowTheoryExam(false);
-                    handleOpenLastActiveReview();
-                  }}
-                  className="flex bg-light-rainbow-animate border rounded-xl p-2 items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-95 text-left w-full select-none"
-                  title="공부중 복습 이어서 진행"
-                >
-                  <Clock size={12} className="text-slate-950 shrink-0" />
-                  <span className="text-[9px] font-black text-slate-950 truncate text-ellipsis overflow-hidden whitespace-nowrap max-w-[80px]">공부중: {lastActiveReview.title}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  setShowTheoryExam(false);
-                  setViewMode('dashboard');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <Calendar size={12} />
-                <span>오늘의 복습</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  setShowTheoryExam(false);
-                  setViewMode('all_topics');
-                  setSelectedTopic(null);
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-              >
-                <List size={12} />
-                <span>복습토픽</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  setShowTheoryExam(false);
-                  handleOpenExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-amber-400 border-slate-800/80 hover:text-amber-200 hover:bg-amber-950/40 transition-all cursor-pointer"
-              >
-                <Award size={12} />
-                <span>종합평가</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  setShowTheoryExam(false);
-                  handleOpenFormulaExam();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-950/40 transition-all cursor-pointer"
-              >
-                <Sigma size={12} />
-                <span>필수공식</span>
-              </button>
-
-              <button
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-gradient-to-tr from-indigo-600 to-blue-500 text-white border-indigo-500 shadow-lg select-none cursor-default"
-              >
-                <Brain size={12} />
-                <span>이론유도</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                  setShowTheoryExam(false);
-                  handleOpenAnswerSheet();
-                }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
-              >
-                <FileText size={12} />
-                <span>답안지</span>
-              </button>
-
-              </div>
-            
-            {/* Left: Theory Wrapper (Takes exactly 68% width on Desktop) */}
-            <div className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30">
-              {/* Left: Theory Body (Expanded to take full wrapper width with moved scrollbar) */}
-              <div 
-                ref={theoryBodyRef} 
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col"
-                onTouchStart={(e) => {
-                  if (!isDesktop && !isMobileLandscape && theoryBodyRef.current && theoryBodyRef.current.scrollTop === 0) {
-                    theoryTouchStartY.current = e.touches[0].clientY;
-                  }
-                }}
-                onTouchMove={(e) => {
-                  if (!isDesktop && !isMobileLandscape && theoryBodyRef.current && theoryBodyRef.current.scrollTop === 0 && !theoryRefreshing) {
-                    const currentY = e.touches[0].clientY;
-                    const deltaY = currentY - theoryTouchStartY.current;
-                    if (deltaY > 0) {
-                      const dist = Math.min(deltaY * 0.4, 80);
-                      setTheoryPull(dist);
-                      if (dist > 10 && e.cancelable) {
-                        e.preventDefault();
-                      }
-                    }
-                  }
-                }}
-                onTouchEnd={async () => {
-                  if (!isDesktop && !isMobileLandscape && !theoryRefreshing) {
-                    if (theoryPull >= 60) {
-                      setTheoryRefreshing(true);
-                      setTheoryPull(40);
-                      try {
-                        await loadTheoryQuestions();
-                        showNotification('이론유도가 성공적으로 새로고침되었습니다.', 'success');
-                      } catch (err) {
-                        console.error(err);
-                      } finally {
-                        setTheoryRefreshing(false);
-                        setTheoryPull(0);
-                      }
-                    } else {
-                      setTheoryPull(0);
-                    }
-                  }
-                }}
-              >
-                {/* Pull to Refresh Indicator */}
-                {(theoryPull > 0 || theoryRefreshing) && (
-                  <div 
-                    style={{ height: `${theoryPull}px` }} 
-                    className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
-                  >
-                    {theoryRefreshing ? (
-                      <div className="flex items-center gap-2">
-                        <RefreshCw size={14} className="animate-spin text-brand-400" />
-                        <span>새로고침 중...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <ChevronDown size={14} className={`transition-transform duration-200 ${theoryPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
-                        <span>{theoryPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="w-full space-y-5 pb-32">
-                
-
-
-                {/* No Search Results Fallback */}
-                {theoryQuestions.filter(q => {
-                  const titleMatch = (q.title || '').toLowerCase().includes(theorySearchQuery.toLowerCase());
-                  const formulaMatch = (q.formula || '').toLowerCase().includes(theorySearchQuery.toLowerCase());
-                  return titleMatch || formulaMatch;
-                }).length === 0 && (
-                  <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
-                    <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
-                      <Search size={32} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
-                      <p className="text-xs text-slate-400 mt-1">다른 이론 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
-                    </div>
-                    <button
-                      onClick={() => setTheorySearchQuery('')}
-                      className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
-                    >
-                      검색 필터 초기화
-                    </button>
-                  </div>
-                )}
-
-                {/* Theory Questions Map */}
-                {theoryQuestions
-                  .map((q, originalIdx) => ({ ...q, originalIdx }))
-                  .filter(q => {
-                    const titleMatch = (q.title || '').toLowerCase().includes(theorySearchQuery.toLowerCase());
-                    const formulaMatch = (q.formula || '').toLowerCase().includes(theorySearchQuery.toLowerCase());
-                    return titleMatch || formulaMatch;
-                  })
-                  .map((q) => {
-                    const idx = q.originalIdx;
-                    const isNewEmptyCard = !q.title && !q.formula;
-                    const isInputVisible = isNewEmptyCard || !!theoryInputRevealed[idx];
-                    const isOutputVisible = isNewEmptyCard || (!!theoryRevealed[idx] && !isInputVisible);
-
-                    return (
-                      <div key={idx} id={`theory-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 transition-all duration-300 hover:border-slate-700/50">
-                        {/* Title Row */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                          {/* Row 1: Q badge & Title */}
-                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
-                            {/* 이론 번호 배지 */}
-                            <span className="text-[11px] font-black bg-indigo-950/80 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 select-none">
-                              이론 {idx + 1}
-                            </span>
-                            
-                            {/* Title & Editor */}
-                            <div className="flex-grow min-w-0">
-                              {editingTheoryIdx === idx ? (
-                                <div className="flex items-center gap-2 w-full">
-                                  <input
-                                    type="text"
-                                    value={editTheoryTitle}
-                                    onChange={(e) => setEditTheoryTitle(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const trimmed = editTheoryTitle.trim();
-                                        if (trimmed) {
-                                          setTheoryQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healTheoryQuestionObject);
-                                            handleSaveTheoryQuestions(updated, false);
-                                            return updated;
-                                          });
-                                          setEditingTheoryIdx(null);
-                                          showNotification('이론 제목이 저장되었습니다.', 'success');
-                                        }
-                                      } else if (e.key === 'Escape') {
-                                        setEditingTheoryIdx(null);
-                                      }
-                                    }}
-                                    className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 w-full max-w-[360px]"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      const trimmed = editTheoryTitle.trim();
-                                      if (trimmed) {
-                                        setTheoryQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed } : item).map(healTheoryQuestionObject);
-                                          handleSaveTheoryQuestions(updated, false);
-                                          return updated;
-                                        });
-                                        setEditingTheoryIdx(null);
-                                        showNotification('이론 제목이 저장되었습니다.', 'success');
-                                      }
-                                    }}
-                                    className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
-                                  >
-                                    저장
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingTheoryIdx(null)}
-                                    className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
-                                  >
-                                    취소
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
-                                  <span 
-                                    onDoubleClick={() => {
-                                      setEditingTheoryIdx(idx);
-                                      setEditTheoryTitle(q.title || '');
-                                    }}
-                                    className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-indigo-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
-                                    title="더블클릭하여 이론 제목 수정"
-                                  >
-                                    <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingTheoryIdx(idx);
-                                      setEditTheoryTitle(q.title || '');
-                                    }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
-                                    title="이론 제목 수정"
-                                  >
-                                    <Edit2 size={12} />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Row 2: Action Buttons (정답확인, 수정하기, 삭제) */}
-                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
-                            {/* 정답확인/정답접기 button */}
-                                                        {!isNewEmptyCard && (
-                              (isHeavyHtml(q.formula) || !isOutputVisible) ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (theoryInputRevealed[idx]) {
-                                      handleSaveTheoryQuestions(latestTheoryQuestionsRef.current, false);
-                                      setTheoryInputRevealed(prev => ({ ...prev, [idx]: false }));
-                                    }
-                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
-                                      handleOpenHtmlAnswerPopup(q.title || `이론 ${idx + 1}`, q.formula);
-                                    } else {
-                                      setTheoryRevealed(prev => ({ ...prev, [idx]: true }));
-                                      scrollToTheoryCard(idx);
-                                    }
-                                  }}
-                                  className="py-1 px-3 bg-indigo-650 hover:bg-indigo-550 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-indigo-650/10 hover:shadow-indigo-650/20 border border-indigo-500/20 flex items-center justify-center gap-1"
-                                  title="정답 확인하기"
-                                >
-                                  <span>정답확인</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTheoryRevealed(prev => ({ ...prev, [idx]: false }));
-                                  }}
-                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
-                                  title="정답 접기"
-                                >
-                                  <span>정답접기</span>
-                                </button>
-                              )
-                            )}
-
-                            {/* Toggle Input Editor */}
-                            <button
-                              onClick={() => {
-                                if (isMobileLandscape) {
-                                  const val = window.prompt("이론 유도 LaTeX 내용을 입력하세요:", q.formula || "");
-                                  if (val !== null) {
-                                    const updated = [...theoryQuestions];
-                                    updated[idx] = { ...updated[idx], formula: val };
-                                    latestTheoryQuestionsRef.current = updated;
-                                    setTheoryQuestions(updated);
-                                    localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                                    handleSaveTheoryQuestions(updated, false);
-                                  }
-                                } else {
-                                  setTheoryInputRevealed(prev => ({
-                                    ...prev,
-                                    [idx]: !prev[idx]
-                                  }));
-                                }
-                              }}
-                              className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
-                                !isMobileLandscape && isInputVisible 
-                                  ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' 
-                                  : 'text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 border-slate-700/50 bg-slate-800/40'
-                              }`}
-                              title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
-                            >
-                              <Edit2 size={12} />
-                              <span>수정하기</span>
-                            </button>
-
-                            {/* Delete/Trash Button */}
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`[${q.title || `이론 ${idx + 1}`}] 이론 유도를 리스트에서 영구히 삭제하시겠습니까?`)) {
-                                  const updated = theoryQuestions.filter((_, i) => i !== idx);
-                                  latestTheoryQuestionsRef.current = updated;
-                                  setTheoryQuestions(updated);
-                                  handleSaveTheoryQuestions(updated, false);
-                                  setTheoryRevealed(prev => {
-                                    const updated = { ...prev };
-                                    delete updated[idx];
-                                    return updated;
-                                  });
-                                  setTheoryInputRevealed(prev => {
-                                    const updated = { ...prev };
-                                    delete updated[idx];
-                                    return updated;
-                                  });
-                                  showNotification('선택한 이론 유도가 성공적으로 삭제되었습니다.', 'info');
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
-                              title="이론 삭제"
-                            >
-                              <Trash2 size={12} />
-                              <span>삭제</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Real-time LaTeX rendered Output Display Window */}
-                        {!isMobileLandscape && isOutputVisible && (
-                          <div className="space-y-1 py-1 px-0 min-h-0 relative select-text w-full">
-                            {q.formula ? (
-                              <div className="text-sm text-slate-200 leading-relaxed select-text w-full">
-                                <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `이론 ${idx + 1}`} />
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Input Textarea Area for Paste / Typing LaTeX */}
-                        {!isMobileLandscape && isInputVisible && (
-                          <div className="space-y-1 pt-1 animate-fade-in">
-                            <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
-                            <textarea
-                              value={q.formula || ''}
-                              onChange={(e) => {
-                                const updated = [...theoryQuestions];
-                                updated[idx] = { ...updated[idx], formula: e.target.value };
-                                latestTheoryQuestionsRef.current = updated;
-                                setTheoryQuestions(updated);
-                                localStorage.setItem('anti_theory_questions', JSON.stringify(updated));
-                              }}
-                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-80 md:h-[450px]"
-                              placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
-            <div 
-              onMouseDown={startResize}
-              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-indigo-500/10 transition-colors group"
-            >
-              <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-indigo-500/50 transition-colors pointer-events-none" />
-              {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
-              <div 
-                className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-indigo-500/10 hover:border-indigo-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
-                title="이론 위/아래 이동"
-              >
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleScrollTheory('up'); }}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-indigo-500 hover:shadow-indigo-650/30 cursor-pointer flex items-center justify-center group/btn"
-                  title="이전 이론으로 스크롤"
-                >
-                  <ChevronUp size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
-                </button>
-                
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleScrollTheory('down'); }}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-indigo-500 hover:shadow-indigo-650/30 cursor-pointer flex items-center justify-center group/btn"
-                  title="다음 이론으로 스크롤"
-                >
-                  <ChevronDown size={14} className="group-hover/btn:translate-y-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right: Gemini Sidebar for Theory */}
-            {(isDesktop || isMobileLandscape) && (
-              <div 
-                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col"
-              >
-                {!isDesktop && (
-                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                    <Brain size={16} className="text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 이론 유도 튜터</span>
-                  </div>
-                )}
-                
-                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                  {chatHistory.length === 0 ? (
-                    <div className="text-center py-10 opacity-50">
-                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                      <p className="text-[11px] text-slate-400">학습하고 싶으신 공식을 왼쪽에서 선택하여<br/>이론 유도 및 상세 증명을 요청해 보세요!</p>
-                    </div>
-                  ) : (
-                    chatHistory.map((msg, i) => (
-                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-indigo-400 ml-1'}`}>
-                          {msg.role === 'user' ? '나' : 'Gemini'}
-                        </div>
-                        <div className={
-                          msg.role === 'user' 
-                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                        }>
-                          {msg.role === 'user' ? (
-                            <div className="flex flex-col gap-2">
-                              {msg.image && (
-                                <img 
-                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                  alt="첨부 이미지" 
-                                  className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                                />
-                              )}
-                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                            </div>
-                          ) : (
-                            <LatexRenderer 
-                              text={msg.text} 
-                              katexLoaded={katexLoaded} 
-                              enableAddFormula={true}
-                              isMarkdown={true}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {isChatLoading && (
-                    <div className="flex flex-col items-start w-full">
-                      <div className="text-[10px] mb-1 font-bold text-indigo-400 ml-1">Gemini</div>
-                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
-                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-  
-                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                  <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
-                  >
-                    <div className="flex-grow">
-                      <textarea
-                        rows={1}
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendChat();
-                          }
-                        }}
-                        placeholder="공식 유도 및 개념 질문..."
-                        disabled={isChatLoading}
-                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                      />
-                    </div>
-  
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
-                    >
-                      <Send size={12} className="text-white" />
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden">

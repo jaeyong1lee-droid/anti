@@ -4430,9 +4430,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
       };
     });
 
-    // Retrieve custom formula questions and theory questions from database
+    // Retrieve custom formula questions from database
     let customFormulas = [];
-    let customTheories = [];
     try {
       await ensureSessionTable();
       const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
@@ -4442,15 +4441,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
           customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
         }
       }
-      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
-      if (theoryRows.length > 0 && theoryRows[0].value) {
-        const parsed = JSON.parse(theoryRows[0].value);
-        if (Array.isArray(parsed.theoryQuestions)) {
-          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-        }
-      }
     } catch (dbErr) {
-      console.warn('Error reading formula/theory sessions for comprehensive exam:', dbErr);
+      console.warn('Error reading formula sessions for comprehensive exam:', dbErr);
     }
 
     // If database is empty, load defaults so that the user always has them
@@ -4461,31 +4453,11 @@ ${LATEX_PROMPT_INSTRUCTIONS}
         concept: d.concept || ''
       }));
     }
-    if (customTheories.length === 0) {
-      customTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-    }
 
-    // Shuffle and select up to 5 formula questions and 5 theory questions
+    // Shuffle and select up to 10 formula questions
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
-    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
     
-    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, 10).map(f => {
       const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
       return {
         type: "주관식",
@@ -4496,20 +4468,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
         concept: f.concept
       };
     });
-    
-    const selectedTheories = shuffledTheories.slice(0, 5).map(t => {
-      const matchedTopic = topics.find(tp => t.title && (tp.title.includes(t.title) || t.title.includes(tp.title)));
-      return {
-        type: "주관식",
-        subtype: "서술",
-        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-        answer: t.formula,
-        concept: t.concept
-      };
-    });
 
-    const customSubjs = [...selectedFormulas, ...selectedTheories];
+    const customSubjs = [...selectedFormulas];
 
     // 최종 결합: 로컬 DB 핵심 기출 10문항 + 분할 마이닝된 AI 문항들 병합
     const finalQuestions = [...customSubjs, ...cleanedQuestions];
@@ -4573,9 +4533,8 @@ app.post('/api/exam/additional', async (req, res) => {
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
 
-    // Retrieve custom formula questions and theory questions from database
+    // Retrieve custom formula questions from database
     let customFormulas = [];
-    let customTheories = [];
     try {
       await ensureSessionTable();
       const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
@@ -4585,15 +4544,8 @@ app.post('/api/exam/additional', async (req, res) => {
           customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
         }
       }
-      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
-      if (theoryRows.length > 0 && theoryRows[0].value) {
-        const parsed = JSON.parse(theoryRows[0].value);
-        if (Array.isArray(parsed.theoryQuestions)) {
-          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-        }
-      }
     } catch (dbErr) {
-      console.warn('Error reading formula/theory sessions for comprehensive exam refresh:', dbErr);
+      console.warn('Error reading formula sessions for comprehensive exam refresh:', dbErr);
     }
 
     // Load defaults if empty, exactly like /api/exam/all
@@ -4604,31 +4556,11 @@ app.post('/api/exam/additional', async (req, res) => {
         concept: d.concept || ''
       }));
     }
-    if (customTheories.length === 0) {
-      customTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-    }
 
-    // Select 1 formula and 1 theory randomly
+    // Select 2 formulas randomly
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
-    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
 
-    const selectedFormula = shuffledFormulas.slice(0, 1).map(f => ({
+    const selectedFormulas = shuffledFormulas.slice(0, 2).map(f => ({
       type: "주관식",
       subtype: "공식",
       question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
@@ -4636,19 +4568,10 @@ app.post('/api/exam/additional', async (req, res) => {
       concept: f.concept
     }));
 
-    const selectedTheory = shuffledTheories.slice(0, 1).map(t => ({
-      type: "주관식",
-      subtype: "서술",
-      question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-      answer: t.formula,
-      concept: t.concept
-    }));
+    const customSubjs = [...selectedFormulas];
 
-    const customSubjs = [...selectedFormula, ...selectedTheory];
-
-    // Format formulas and theories text for LLM context
+    // Format formulas text for LLM context
     const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
-    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
@@ -4660,13 +4583,13 @@ app.post('/api/exam/additional', async (req, res) => {
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
-1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 각 '<Topic>...</Topic>' 태그, **[저장된 필수공식 목록]**, **[저장된 이론유도 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 각 '<Topic>...</Topic>' 태그, **[저장된 필수공식 목록]**에서 직접 다루고 있는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
 2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
-3. 제공된 소스 자료 및 저장된 내용에 **직접 등장하지 않는 외부의 엉뚱한 타 공학/역학 분야 이론(예: 소스에 직접 언급되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 외부 임의 주제 등)이나 임의의 다른 지식을 출제 규칙에 주입하여 환각(Hallucination) 문제를 유발하지 마십시오.**
+3. 제공된 소스 자료 및 저장된 내용에 **직접 등장하지 않는 외부의 엉뚱한 타 공학/역학 분야 이론(예: 소스에 직접 언급되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템,고유진동수, 또는 그 외 외부 임의 주제 등)이나 임의의 다른 지식을 출제 규칙에 주입하여 환각(Hallucination) 문제를 유발하지 마십시오.**
 4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
 5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
 
@@ -4675,9 +4598,6 @@ ${combinedText}
 
 [저장된 필수공식 목록]:
 ${formulasText || '저장된 내용 없음'}
-
-[저장된 이론유도 목록]:
-${theoriesText || '저장된 내용 없음'}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
@@ -5911,374 +5831,9 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
   }
 });
 
-app.get('/api/session/theory', async (req, res) => {
-  try {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    await ensureSessionTable();
-    const rows = await dbQuery.all(
-      'SELECT value FROM app_session WHERE key = ?',
-      ['theory_questions']
-    );
-    if (rows.length > 0 && rows[0].value) {
-      const parsed = JSON.parse(rows[0].value);
-      res.json({ data: parsed });
-    } else {
-      res.json({ data: null });
-    }
-  } catch (err) {
-    console.error('GET /api/session/theory error:', err);
-    res.json({ data: null });
-  }
-});
 
-// POST /api/session/theory → 이론유도 상태 저장
-app.post('/api/session/theory', async (req, res) => {
-  try {
-    await ensureSessionTable();
-    const { theoryQuestions } = req.body;
-    const healedQuestions = Array.isArray(theoryQuestions)
-      ? theoryQuestions.map(healTheoryQuestionObject)
-      : theoryQuestions;
-    const value = JSON.stringify({ theoryQuestions: healedQuestions });
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['theory_questions']);
-    await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      ['theory_questions', value]
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/session/theory error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// POST /api/session/theory/upload → PDF 분석하여 이론유도 생성
-app.post('/api/session/theory/upload', upload.single('pdf'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
-    }
 
-    let fileText = '';
-    const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
-    const pdfNameLower = pdfName.toLowerCase();
-    const isHtml = pdfNameLower.endsWith('.html') || pdfNameLower.endsWith('.htm') || isBufferHtml(req.file.buffer);
-
-    if (isHtml) {
-      fileText = htmlToPlainText(req.file.buffer.toString('utf-8'));
-    } else {
-      const parsedPdf = await pdfParse(req.file.buffer);
-      fileText = parsedPdf.text || '';
-    }
-
-    fileText = mergeVerticalText(fileText);
-
-    if (!fileText || fileText.trim().length < 20) {
-      return res.status(400).json({ error: '파일에서 텍스트를 추출할 수 없습니다. 스캔된 이미지 PDF인지 확인하세요.' });
-    }
-
-    // AI API 키 체크
-    const hasAnyAiKey = !!(
-      process.env.GEMINI_API_KEY ||
-      process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY
-    );
-
-    if (!hasAnyAiKey) {
-      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
-    }
-
-    // 20000자 초과 시 중략
-    if (fileText.length > 20000) {
-      fileText = smartTruncate(fileText, 40000);
-    }
-
-    const systemInstruction = `당신은 지반공학 및 토질역학/터널/토목 분야의 최고 권위자이자 기술사 시험 전문 출제위원입니다. 
-제공된 공학 전공 PDF/HTML 텍스트를 정밀 분석하여, 수험생이 학습해야 할 중요한 핵심 이론 및 공식들을 **모두 발췌 및 발굴**하여 **여러 개의 이론 유도 문제 세트**로 구성한 JSON 형식으로 작성해 주세요.
-[매우 중요 규칙]: 
-1. 이론의 유도 과정("answer")을 작성할 때는 절대로 요약하거나 중간 과정을 생략(예: "~~ 과정을 거쳐 정리하면 다음과 같다" 등)하지 말고, **가장 기초적인 물리적 평형 조건이나 지배 미분방정식의 기본 형태(출발점)에서부터 최종 공식에 이르는 수학적 유도 단계 전체를 처음부터 끝까지 완전하고 정밀하게** 작성하십시오. 
-2. 반드시 본문 텍스트 내에서 언급되거나 유도되는 수학적/물리적 공식과 증명 과정들을 빠짐없이 파싱하여 **최소 2개에서 최대 4개까지**의 가장 중요한 핵심적인 개별 이론 카드 목록으로만 작성해야 합니다.
-
-JSON 규격:
-{
-  "theories": [
-    {
-      "title": "이론/공식의 명칭 (예: Terzaghi 1차원 압밀 지배 방정식)",
-      "concept": "이 수식/이론이 말하고자 하는 직관적인 공학적 의미 및 실무적 물리적 현상의 의미 (가장 쉽고 명쾌하며 직관적인 설명)",
-      "assumptions": "이 이론/공식이 성립하기 위해 전제되어야 하는 기본 가정 조건들 (있다면 번호 매겨 서술, 예: 1. 흙입자와 물은 비압축성이다. 2. Darcy의 법칙을 따른다... 없거나 해당사항 없다면 비워두거나 생략)",
-      "answer": "기초 가정 및 물리적 모델 상태 설명부터 시작하여, 각 변수의 평형 방정식, 적분/미분 수학적 대입 및 이항, 최종 유도 공식에 이르는 전체 수식 유도 단계를 처음부터 끝까지 생략 없이 상세히 기술. (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
-    }
-  ]
-}
-
-반드시 다른 군더더기 텍스트나 마크다운 블록 (\`\`\`json) 없이 오직 지정된 JSON 구조로만 반환해 주세요.`;
-
-    const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
-
-    try {
-      const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
-      let cleanJsonText = responseText.trim();
-      const startIdx = cleanJsonText.indexOf('{');
-      const endIdx = cleanJsonText.lastIndexOf('}');
-      if (startIdx !== -1 && endIdx !== -1) {
-        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
-      } else if (cleanJsonText.startsWith('```')) {
-        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-      }
-
-      const result = parseLlmJson(cleanJsonText)
-      let theories = [];
-      if (result.theories && Array.isArray(result.theories)) {
-        theories = result.theories;
-      } else if (result.title && result.answer) {
-        theories = [result];
-      } else {
-        throw new Error('AI 추출 정보 누락');
-      }
-
-      res.json({
-        theories: theories.map(t => healTheoryQuestionObject({
-          ...t,
-          title: (t.title || '실시간 추출 공식').trim(),
-          concept: (t.concept || '업로드한 본문 문서를 기반으로 실시간 AI가 분석한 이론식입니다.').trim(),
-          assumptions: (t.assumptions || '').trim(),
-          answer: (t.answer || '상세 유도 과정이 존재하지 않습니다.').trim()
-        }))
-      });
-    } catch (llmErr) {
-      console.warn('[Upload AI Fallback] Gemini analysis failed or timed out. Falling back to local high-fidelity theory parser:', llmErr);
-      const theories = generateLocalTheoryQuestions(pdfName, fileText);
-      res.json({
-        theories: theories.map(t => ({
-          title: t.title.trim(),
-          concept: '업로드한 본문 문서를 기반으로 분석한 로컬 마이닝 결과식입니다.',
-          assumptions: '본 문서의 물리적 관계식을 기반으로 추출됨',
-          answer: t.answer.trim()
-        }))
-      });
-    }
-
-  } catch (err) {
-    console.error('POST /api/session/theory/upload error:', err);
-    res.status(500).json({ error: err.message || 'PDF 분석에 실패했습니다.' });
-  }
-});
-
-// Local high-fidelity fallback generator for theory cards when AI fails or times out
-function generateLocalTheoryQuestions(pdfName, fileText) {
-  const theories = [];
-  const cleanPdfName = pdfName ? pdfName.replace(/\.[a-zA-Z0-9]+$/, '') : '첨부 문서';
-  
-  if (!fileText) return [{
-    title: `${cleanPdfName} 핵심 이론`,
-    answer: "첨부 문서의 텍스트가 비어 있어 이론식을 추출하지 못했습니다."
-  }];
-
-  const lines = fileText.split('\n').map(l => l.trim()).filter(l => l.length > 5);
-
-  // 1. Extract block and inline LaTeX formulas
-  const mathMatches = [];
-  const doubleDollarRegex = /\$\$(.*?)\$\$/gs;
-  let match;
-  while ((match = doubleDollarRegex.exec(fileText)) !== null) {
-    if (match[1] && match[1].trim().length > 3) {
-      mathMatches.push({ formula: `$$${match[1].trim()}$$`, type: 'LaTeX Block' });
-    }
-  }
-
-  const singleDollarRegex = /\$(.*?)\$/g;
-  while ((match = singleDollarRegex.exec(fileText)) !== null) {
-    if (match[1] && match[1].trim().length > 3 && !match[1].includes('$')) {
-      mathMatches.push({ formula: `$${match[1].trim()}$`, type: 'LaTeX Inline' });
-    }
-  }
-
-  // 2. Identify lines that contain math equations (e.g. including '=' or variables)
-  const equationLines = [];
-  for (const line of lines) {
-    if (line.includes('=') && line.length > 8 && line.length < 120) {
-      if (/[a-zA-Z]/.test(line) && !line.includes('|') && !line.startsWith('http') && !line.includes('<') && !line.includes('>')) {
-        equationLines.push(line);
-      }
-    }
-  }
-
-  // Deduplicate and combine formulas
-  const extractedItems = [];
-  const seenMath = new Set();
-  
-  for (const item of mathMatches) {
-    const norm = item.formula.replace(/\s+/g, '');
-    if (!seenMath.has(norm)) {
-      seenMath.add(norm);
-      extractedItems.push(item);
-    }
-  }
-
-  for (const eq of equationLines) {
-    const norm = eq.replace(/\s+/g, '');
-    if (!seenMath.has(norm)) {
-      seenMath.add(norm);
-      extractedItems.push({ formula: `$$${eq}$$`, type: 'Equation Line' });
-    }
-  }
-
-  // 3. For each extracted formula, search surrounding context to form theory cards
-  if (extractedItems.length > 0) {
-    const maxCards = Math.min(5, extractedItems.length);
-    for (let i = 0; i < maxCards; i++) {
-      const item = extractedItems[i];
-      const formulaRaw = item.formula.replace(/^\$\$|^\$|\$\$$|\$$/g, '').trim();
-      const index = fileText.indexOf(formulaRaw);
-      
-      let context = '';
-      if (index !== -1) {
-        const start = Math.max(0, index - 500);
-        const end = Math.min(fileText.length, index + 1500);
-        context = fileText.substring(start, end).trim();
-        context = context
-          .split('\n')
-          .map(l => l.trim())
-          .filter(l => l.length > 5)
-          .join('\n');
-      }
-
-      // Infer title based on surrounding keywords
-      let cardTitle = `${cleanPdfName} 핵심 공식 ${i + 1}`;
-      const geotechKeywords = [
-        { word: '압밀', title: '테르자기 1차원 압밀 지배 방정식' },
-        { word: '지지력', title: '얕은기초 극한 지지력 공식' },
-        { word: '토압', title: '옹벽 배면 토압 산정 이론 식' },
-        { word: '전단', title: '지반 전단강도 파괴 포락선 식' },
-        { word: '투수', title: '지반 투수계수 및 흐름 연속식' },
-        { word: '보일링', title: '한계동수경사 및 분사현상 검토 식' },
-        { word: '사면', title: '사면 안전율 계산 이론 식' },
-        { word: '여굴', title: '터널 여굴 제어 공식' },
-        { word: 'Q분류', title: '암반 Q분류 지수 공식' },
-        { word: '흙막이', title: '흙막이 수평 지반반력계수 식' }
-      ];
-
-      for (const pair of geotechKeywords) {
-        if ((context && context.includes(pair.word)) || cleanPdfName.includes(pair.word)) {
-          cardTitle = `${pair.title}`;
-          break;
-        }
-      }
-
-      theories.push({
-        title: cardTitle,
-        concept: `본문 문서에서 실시간 분석한 ${cardTitle}의 핵심 의미입니다.`,
-        assumptions: '본 문서의 물리적 평형 조건 및 지반 조건 적용',
-        answer: `${item.formula}\n\n${context || '본문에서 마이닝된 수식입니다. 상세 기호 정의와 유도는 우측 튜터에게 대화로 물어볼 수 있습니다.'}`
-      });
-    }
-  }
-
-  // 4. If we don't have enough cards, extract high-quality summary paragraphs
-  if (theories.length < 3) {
-    const paragraphs = fileText
-      .split('\n\n')
-      .map(p => p.trim())
-      .filter(p => p.length > 60 && p.length < 400);
-
-    const targetParagraphs = paragraphs.filter(p => 
-      p.includes('다.') || p.includes('있으며') || p.includes('하므로')
-    ).slice(0, 4);
-
-    for (let i = 0; i < targetParagraphs.length; i++) {
-      const p = targetParagraphs[i];
-      let inferredTitle = `${cleanPdfName} 전공 요약 ${theories.length + 1}`;
-      
-      const words = p.replace(/[^\w\s가-힣]/g, ' ').split(/\s+/).filter(w => w.length > 2).slice(0, 3).join(' ');
-      if (words.length > 4) {
-        inferredTitle = `${words} 관련 거동 메커니즘`;
-      }
-
-      theories.push({
-        title: inferredTitle,
-        concept: `${inferredTitle}에 대한 실시간 주요 거동 해석입니다.`,
-        assumptions: '본 서적의 역학적 전제 조건 적용',
-        answer: `${p}\n\n해당 단락은 토목 기술사 출제에 핵심이 되는 전공 서술 파트입니다. 상세 유도는 우측 실시간 튜터에게 질문해 보세요.`
-      });
-    }
-  }
-
-  // 5. Ultimate fallback if empty
-  if (theories.length === 0) {
-    theories.push({
-      title: `${cleanPdfName} 핵심 역학 이론`,
-      concept: `${cleanPdfName}의 수식 파싱 결과입니다.`,
-      assumptions: '일반적인 공학적 조건 적용',
-      answer: `본 문서에서 특이 수식을 파싱하지 못했습니다. 상세한 유도 질문은 우측의 AI 공식 튜터 대화창을 통해 질의해 주세요.`
-    });
-  }
-
-  return theories;
-}
-
-// POST /api/theory/refresh → 기존 이론을 AI로 고도화하여 갱신
-app.post('/api/theory/refresh', async (req, res) => {
-  try {
-    const { title, answer } = req.body;
-    
-    // AI API 키 체크
-    const hasAnyAiKey = !!(
-      process.env.GEMINI_API_KEY ||
-      process.env.GEMINI_API_KEY_SECONDARY ||
-      process.env.GEMINI_API_KEY_TERTIARY ||
-      process.env.XAI_API_KEY ||
-      process.env.GROK_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY
-    );
-
-    if (!hasAnyAiKey) {
-      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
-    }
-
-    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 최고 권위의 이론 튜터입니다. 
-제공된 기술사 수험생용 이론의 명칭과 증명 과정을 더욱 명쾌하고 학술적으로 빈틈이 없는 완벽한 유도 과정으로 업그레이드(고도화)하여 JSON 형식으로 반환해 주세요.
-[매우 중요 규칙]: 
-이론의 유도 과정("answer")을 작성 및 고도화할 때는 절대로 요약하거나 중간 단계를 건너뛰지 말고, **가장 기초적인 물리적 평형 조건이나 지배 미분방정식의 기본 형태(출발점)에서부터 최종 공식에 이르는 수학적 유도 단계 전체를 처음부터 끝까지 완전하고 정밀하게** 작성하십시오. 
-
-JSON 규격:
-{
-  "title": "개선된 이론/공식의 명칭",
-  "concept": "이 수식/이론이 말하고자 하는 직관적인 공학적 의미 및 실무적 물리적 현상의 의미 (가장 쉽고 명쾌하며 직관적인 설명)",
-  "assumptions": "이 이론/공식이 성립하기 위해 전제되어야 하는 기본 가정 조건들 (있다면 번호 매겨 서술, 예: 1. 흙입자와 물은 비압축성이다. 2. Darcy의 법칙을 따른다... 없거나 해당사항 없다면 비워두거나 생략)",
-  "answer": "기초 가정 및 물리적 모델 상태 설명부터 시작하여, 각 변수의 평형 방정식, 적분/미분 수학적 대입 및 이항, 최종 유도 공식에 이르는 전체 수식 유도 단계를 처음부터 끝까지 생략 없이 상세히 기술. (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
-}
-
-반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.`;
-
-    const userPrompt = `[기존 제목]: ${title}\n\n[기존 유도 및 증명 내용]:\n${answer}`;
-
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt);
-    let cleanJsonText = responseText.trim();
-    const startIdx = cleanJsonText.indexOf('{');
-    const endIdx = cleanJsonText.lastIndexOf('}');
-    if (startIdx !== -1 && endIdx !== -1) {
-      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
-    } else if (cleanJsonText.startsWith('```')) {
-      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-    }
-
-    const result = parseLlmJson(cleanJsonText)
-    if (!result.title || !result.answer) {
-      throw new Error('AI 분석 결과 누락');
-    }
-
-    res.json(healTheoryQuestionObject(result));
-
-  } catch (err) {
-    console.error('POST /api/theory/refresh error:', err);
-    res.status(500).json({ error: err.message || '이론 고도화에 실패했습니다.' });
-  }
-});
 
 // Spaced Repetition 무한 장기 보존 마이그레이션 함수
 async function migrateSpacedIntervals() {
