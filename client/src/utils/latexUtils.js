@@ -122,9 +122,18 @@ export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
 
-  // 인라인 HTML 태그를 마크다운 구조로 가공
+  // 인라인 HTML 태그를 마크다운 구조로 가공 (4단계 정밀 처리)
+  // Step 1: <br> → 빈 줄
   text = text.replace(/<br\s*\/?>/gi, '\n\n');
-  text = text.replace(/<div[^>]*>\s*•?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1');
+  // Step 2: 빈 spacer div 제거 (height only 등)
+  text = text.replace(/<div[^>]*>\s*<\/div>/gi, '');
+  // Step 3: 텍스트 내용이 있는 styled div → 마크다운 리스트 항목으로 변환
+  //         앞에 붙은 •, *, 공백 모두 제거하고 내용만 추출
+  text = text.replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1');
+  // Step 4: 나머지 고아 HTML 태그(div, p 잔재 등) 제거. span은 cleanCorruptedFormula에서 처리하므로 보존
+  text = text.replace(/<\/?(?:div|p|li|ul|ol|section|article)\b[^>]*>/gi, '');
+  // 3개 이상의 연속 개행 → 최대 2개로 압축
+  text = text.replace(/\n{3,}/g, '\n\n');
 
   // Misplaced variable dollar early conversion
   text = text.replace(/(?<!\$)\b([a-zA-Z_][a-zA-Z0-9_]*)\$(?=:|\s|\n|$)/g, (match, p1) => '$' + p1 + '$');
