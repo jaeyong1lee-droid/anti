@@ -8319,6 +8319,35 @@ export default function App() {
                 </div>
               ) : (
                 <div className="w-full space-y-5 pb-32">
+                  {lastActiveReview && (
+                    <button
+                      onClick={() => {
+                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                        setShowFormulaExam(false);
+                        handleOpenLastActiveReview();
+                      }}
+                      className="flex bg-light-rainbow-animate border border-slate-700/30 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full"
+                      title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
+                        <Clock size={24} className="animate-pulse-slow text-slate-950" />
+                      </div>
+                      <div className="min-w-0 flex-grow relative text-slate-950">
+                        <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                          공부중
+                        </p>
+                        <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
+                          {lastActiveReview.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
+                          {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
+                        </p>
+                      </div>
+                    </button>
+                  )}
+
                   {formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                     const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -9177,6 +9206,34 @@ export default function App() {
                   </div>
                 )}
                 <div className="w-full space-y-5 pb-32">
+                  {lastActiveReview && (
+                    <button
+                      onClick={() => {
+                        handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                        setShowAnswerSheet(false);
+                        handleOpenLastActiveReview();
+                      }}
+                      className="flex bg-light-rainbow-animate border border-slate-700/30 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full"
+                      title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
+                        <Clock size={24} className="animate-pulse-slow text-slate-950" />
+                      </div>
+                      <div className="min-w-0 flex-grow relative text-slate-950">
+                        <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                          공부중
+                        </p>
+                        <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
+                          {lastActiveReview.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
+                          {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
+                        </p>
+                      </div>
+                    </button>
+                  )}
                 
                 {/* No Search Results Fallback */}
                 {answersheetQuestions.filter(q => {
@@ -9213,7 +9270,7 @@ export default function App() {
                     const idx = q.originalIdx;
                     const isNewEmptyCard = !q.title && !q.formula;
                     const isInputVisible = isNewEmptyCard || !!answersheetInputRevealed[idx];
-                    const isOutputVisible = isNewEmptyCard || (!isDesktop && !isMobileLandscape) || !!answersheetRevealed[idx] || isInputVisible;
+                    const isOutputVisible = true;
 
                     return (
                       <div key={idx} id={`answersheet-card-${idx}`} className="formula-card-item answersheet-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-4 space-y-3 transition-all duration-300 hover:border-slate-700/50">
@@ -9296,16 +9353,6 @@ export default function App() {
                                   >
                                     <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
                                   </span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingAnswersheetIdx(idx);
-                                      setEditAnswersheetTitle(q.title || '');
-                                    }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 mt-0.5 landscape-hide mobile-portrait-hide"
-                                    title="답안 제목 수정"
-                                  >
-                                    <Edit2 size={10} />
-                                  </button>
                                 </div>
                               )}
                             </div>
@@ -9313,40 +9360,6 @@ export default function App() {
 
                           {/* Row 2: Action Buttons */}
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 md:mt-0 select-none justify-start md:justify-end shrink-0 w-auto">
-                            {/* 정답확인/정답접기 button - Hidden on mobile portrait view */}
-                            {!isNewEmptyCard && (isDesktop || isMobileLandscape) && (
-                              (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (answersheetInputRevealed[idx]) {
-                                      handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                                      setAnswersheetInputRevealed(prev => ({ ...prev, [idx]: false }));
-                                    }
-                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
-                                      handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
-                                    } else {
-                                      setAnswersheetRevealed(prev => ({ ...prev, [idx]: true }));
-                                    }
-                                  }}
-                                  className="py-1 px-2 sm:px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 border border-emerald-500/20 flex items-center justify-center gap-0.5 sm:gap-1"
-                                  title="정답 확인하기"
-                                >
-                                  <span>{(!isDesktop && !isMobileLandscape) ? "정답" : "정답확인"}</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }));
-                                  }}
-                                  className="py-1 px-2 sm:px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[10px] sm:text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-0.5 sm:gap-1"
-                                  title="정답 접기"
-                                >
-                                  <span>{(!isDesktop && !isMobileLandscape) ? "접기" : "정답접기"}</span>
-                                </button>
-                              )
-                            )}
 
                             {/* Toggle Input Editor / 수정하기 */}
                             <button
@@ -9441,14 +9454,6 @@ export default function App() {
                             <div className="flex items-center justify-between">
                               {(isDesktop || isMobileLandscape || isInputVisible) && (
                                 <span className="text-[10px] font-black text-emerald-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                              )}
-                              {!isNewEmptyCard && (isDesktop || isMobileLandscape) && (
-                                <button
-                                  onClick={() => setAnswersheetRevealed(prev => ({ ...prev, [idx]: false }))}
-                                  className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
-                                >
-                                  접기 ✕
-                                </button>
                               )}
                             </div>
                             {q.formula ? (
