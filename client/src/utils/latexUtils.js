@@ -371,14 +371,42 @@ export function healLatexFormulas(text) {
       math = math.replace(/~/g, '\\sim ');
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
-      math = math.replace(/(?<![a-zA-Z\\])u\b/g, '\\nu');
+      
+      // [신규 추가] 지반 단위 비배수 강도(c_u)나 지반 압밀 지표 변수들과 같이 
+      // u가 첨자(_u) 혹은 일반 영문 결합 변수 형태(cu, mu)일 때는 nu(\nu) 치환에서 안전하게 보장
+      // 추가로 간극수압(u) 등 수압/응력 관련 맥락일 경우 포아송비(nu) 치환을 방지
+      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math) || 
+                             (/(간극수압|유효응력|전단강도|피압|수압|테르자기)/.test(text) && /^\s*u\s*$/.test(math));
+      if (isPorePressure) {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '__PORE_U__');
+      }
+      
+      math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
+      
+      if (isPorePressure) {
+        math = math.replace(/__PORE_U__/g, 'u');
+      }
+      
       token.content = `$${math}$`;
     } else if (token.type === 'block-math') {
       let math = token.content.substring(2, token.content.length - 2).trim();
       math = math.replace(/~/g, '\\sim ');
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
-      math = math.replace(/(?<!\\)u\b/g, '\\nu');
+      
+      // [신규 추가] 인라인 수식 블록과 동일하게 안전한 지반공학 u 첨자 변수 및 간극수압 방어 패치 동기화 적용
+      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math) || 
+                             (/(간극수압|유효응력|전단강도|피압|수압|테르자기)/.test(text) && /^\s*u\s*$/.test(math));
+      if (isPorePressure) {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '__PORE_U__');
+      }
+      
+      math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
+      
+      if (isPorePressure) {
+        math = math.replace(/__PORE_U__/g, 'u');
+      }
+      
       token.content = `$$${math}$$`;
     } else if (token.type === 'text') {
       token.content = token.content.replace(/(?<!\\)\bsim\b/gi, '~');
