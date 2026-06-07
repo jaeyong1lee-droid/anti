@@ -6134,7 +6134,9 @@ export default function App() {
 
               {/* Left: Quiz Wrapper (Takes exactly 60% width on Desktop) */}
               <div 
-                className="w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+                className={`w-full shrink-0 md:flex-1 md:shrink landscape-w-55 landscape-bg-slate-900 min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+                  (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'list') ? 'hidden' : ''
+                }`}
               >
           {/* Review Header */}
           <div className="w-full flex flex-col items-stretch md:flex-row md:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 md:gap-8 landscape-hide">
@@ -6707,7 +6709,9 @@ export default function App() {
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
             style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-            className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+            className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+              (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
+            }`}
           >
               <div className="landscape-hide w-full flex-shrink-0">
                 {isDesktop && <ScientificCalculator />}
@@ -7130,7 +7134,9 @@ export default function App() {
             
             {/* Left: Exam Wrapper (Takes exactly 60% width on Desktop) */}
             <div 
-              className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 landscape-bg-slate-900"
+              className={`w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 landscape-bg-slate-900 ${
+                (!isDesktop && !isMobileLandscape && examMobileTab !== 'list') ? 'hidden' : ''
+              }`}
             >
           {/* Exam Header */}
           <div className="w-full flex flex-col sm:flex-row sm:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4 sm:gap-8 landscape-hide">
@@ -7666,7 +7672,9 @@ export default function App() {
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
               style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-              className="w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+              className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+                (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
+              }`}
             >
               <div className="landscape-hide w-full flex-shrink-0">
                 {isDesktop && <ScientificCalculator />}
