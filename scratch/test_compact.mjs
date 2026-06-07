@@ -40,6 +40,11 @@ const testCases = [
     expected: "식: $q_u = c N_c + q N_q + 0.5 \\gamma B N_\\gamma$"
   },
   {
+    name: "Forcing paragraph breaks before dividers * * * and ***",
+    input: "증가합니다.* * * 연직응력의 감쇄",
+    expected: "증가합니다.\n\n* * * 연직응력의 감쇄"
+  },
+  {
     name: "Object deep healer",
     isDeep: true,
     input: {

@@ -49,6 +49,9 @@ export function healLatexFormulas(text) {
   // [치명적 버그 해결] 제목이나 리스트 기호가 아닌, 수식/문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합
   let processed = text.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
 
+  // [추가] * * * 나 *** 같은 문단 구분자/글머리 기호 앞에 강제로 줄바꿈 두 개 주입
+  processed = processed.replace(/\s*(\* \* \*|\*\*\*)\s*/g, '\n\n$1 ');
+
   // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
                        .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
@@ -64,7 +67,7 @@ export function healLatexFormulas(text) {
       const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
       return t.replace(formulaPattern, (match) => {
         const trimmed = match.trim();
-        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$')) return match;
+        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$') || /^[*\s]+$/.test(trimmed)) return match;
         
         const hasMath = /[\\_^{}<>=+\-\*\/']/.test(trimmed);
         if (hasMath) {
