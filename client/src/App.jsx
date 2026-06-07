@@ -234,10 +234,48 @@ const generateLocalConceptQuestion = (quizItem, targetFormula, allFormulas) => {
   }
 };
 
+const LOCAL_DISTRACTOR_FORMULAS = [
+  {
+    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
+    formula: 'C_v = \\frac{k}{m_v \\gamma_w}',
+    concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식'
+  },
+  {
+    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
+    formula: 'q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}',
+    concept: '기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식'
+  },
+  {
+    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
+    formula: 'Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}',
+    concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식'
+  },
+  {
+    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
+    formula: 'H = \\frac{q - q_a}{\\gamma \\tan\\theta}',
+    concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비를 얹기 위한 하중 지지 소요 두께식'
+  },
+  {
+    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
+    formula: 'P = \\pi d L \\tau_{allow}',
+    concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식'
+  },
+  {
+    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
+    formula: 'K_a = \\tan^2(45^\\circ - \\phi/2)',
+    concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식'
+  },
+  {
+    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
+    formula: 'C = \\frac{\\gamma D_f}{q}',
+    concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식'
+  }
+];
+
 const generateRandomQuizQuestion = (allFormulas) => {
-  if (!allFormulas || allFormulas.length < 4) return null;
+  if (!allFormulas || allFormulas.length < 1) return null;
   const validFormulas = allFormulas.filter(f => f.title && f.formula);
-  if (validFormulas.length < 4) return null;
+  if (validFormulas.length < 1) return null;
   
   const targetIndex = Math.floor(Math.random() * validFormulas.length);
   const target = validFormulas[targetIndex];
@@ -253,7 +291,15 @@ const generateRandomQuizQuestion = (allFormulas) => {
     dateAdded: new Date().toLocaleDateString('sv-SE')
   };
 
-  return generateLocalConceptQuestion(quizItemPlaceholder, target, validFormulas);
+  // Combine validFormulas and LOCAL_DISTRACTOR_FORMULAS to ensure we have at least 4 formulas for distractors
+  const pool = [...validFormulas];
+  for (const item of LOCAL_DISTRACTOR_FORMULAS) {
+    if (!pool.some(f => f.title === item.title)) {
+      pool.push(item);
+    }
+  }
+
+  return generateLocalConceptQuestion(quizItemPlaceholder, target, pool);
 };
 
 
@@ -4123,7 +4169,7 @@ export default function App() {
   };
 
   const initializeFormulaQuiz = useCallback(() => {
-    if (!formulaQuestions || formulaQuestions.length < 4) return;
+    if (!formulaQuestions || formulaQuestions.length < 1) return;
     
     const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
     const lastDate = localStorage.getItem('anti_last_quiz_date') || '';
@@ -4287,11 +4333,18 @@ export default function App() {
     }
   };
 
+  const handleRemoveFormulaQuizQuestion = (quizId) => {
+    const updated = formulaQuizQuestions.filter(q => q.id !== quizId);
+    setFormulaQuizQuestions(updated);
+    localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
+    showNotification('공식 문제가 목록에서 제거되었습니다.', 'success');
+  };
+
 
 
 
   useEffect(() => {
-    if (showFormulaExam && formulaQuestions.length >= 4) {
+    if (showFormulaExam && formulaQuestions.length >= 1) {
       initializeFormulaQuiz();
     }
   }, [showFormulaExam, formulaQuestions, initializeFormulaQuiz]);
@@ -9169,14 +9222,24 @@ export default function App() {
                           : 'bg-slateCustom-900/40 border-slate-800/80 shadow-md shadow-black/20'
                       }`}>
                         {/* Question Header */}
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식을 활용한 계산 문제를 푸시오</span>
-                          {q.isCorrect && (
-                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                              <CheckCircle size={12} />
-                              완료
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between gap-2 mb-3 w-full">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식을 활용한 계산 문제를 푸시오</span>
+                            {q.isCorrect && (
+                              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                                <CheckCircle size={12} />
+                                완료
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFormulaQuizQuestion(q.id)}
+                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800/50 active:scale-95 transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
+                            title="이 문제 제거"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                         <h4 className="text-xs font-black text-white mb-3 flex items-center gap-1.5 flex-wrap border-b border-slate-800/80 pb-2">
                           <span>[</span>
