@@ -1301,7 +1301,7 @@ export default function App() {
   const [title, setTitle] = useState('');
   const [keywords, setKeywords] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
-  const [htmlContent, setHtmlContent] = useState('');
+  const htmlTextareaRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -1477,7 +1477,7 @@ export default function App() {
   const [answersheetMobileTab, setAnswersheetMobileTab] = useState('list');
   const [answersheetDragActive, setAnswersheetDragActive] = useState(false);
   const [answersheetFile, setAnswersheetFile] = useState(null);
-  const [answersheetHtmlContent, setAnswersheetHtmlContent] = useState('');
+  const answersheetTextareaRef = useRef(null);
   const answersheetFileInputRef = useRef(null);
 
   // Answersheet refs
@@ -2208,8 +2208,9 @@ export default function App() {
     formData.append('baseDate', referenceDate); // Fixes midnight timezone shifts
     
     let fileToUpload = pdfFile;
-    if (htmlContent.trim()) {
-      const blob = new Blob([htmlContent], { type: 'text/html' });
+    const htmlVal = htmlTextareaRef.current ? htmlTextareaRef.current.value : '';
+    if (htmlVal.trim()) {
+      const blob = new Blob([htmlVal], { type: 'text/html' });
       fileToUpload = new File([blob], `${title.trim()}.html`, { type: 'text/html' });
     }
 
@@ -2236,7 +2237,7 @@ export default function App() {
         setTitle('');
         setKeywords('');
         setPdfFile(null);
-        setHtmlContent('');
+        if (htmlTextareaRef.current) htmlTextareaRef.current.value = '';
         if (fileInputRef.current) fileInputRef.current.value = '';
         
         // Refresh
@@ -5777,9 +5778,8 @@ export default function App() {
                     또는 HTML 코딩 직접 입력
                   </label>
                   <textarea
+                    ref={htmlTextareaRef}
                     rows={4}
-                    value={htmlContent}
-                    onChange={(e) => setHtmlContent(e.target.value)}
                     placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
                     className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
                   />
@@ -9484,8 +9484,9 @@ export default function App() {
                   onSubmit={async (e) => {
                     e.preventDefault();
                     let fileToUpload = answersheetFile;
-                    if (answersheetHtmlContent.trim()) {
-                      const blob = new Blob([answersheetHtmlContent], { type: 'text/html' });
+                    const answersheetHtmlVal = answersheetTextareaRef.current ? answersheetTextareaRef.current.value : '';
+                    if (answersheetHtmlVal.trim()) {
+                      const blob = new Blob([answersheetHtmlVal], { type: 'text/html' });
                       fileToUpload = new File([blob], 'direct_answersheet_input.html', { type: 'text/html' });
                     }
 
@@ -9498,7 +9499,7 @@ export default function App() {
                     
                     // Reset
                     setAnswersheetFile(null);
-                    setAnswersheetHtmlContent('');
+                    if (answersheetTextareaRef.current) answersheetTextareaRef.current.value = '';
                     if (answersheetFileInputRef.current) answersheetFileInputRef.current.value = '';
                   }}
                   className="space-y-6"
@@ -9572,9 +9573,8 @@ export default function App() {
                       또는 HTML 코딩 직접 입력
                     </label>
                     <textarea
+                      ref={answersheetTextareaRef}
                       rows={8}
-                      value={answersheetHtmlContent}
-                      onChange={(e) => setAnswersheetHtmlContent(e.target.value)}
                       placeholder="HTML 코드 내용을 여기에 직접 붙여넣어 답안지로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
                       className="w-full bg-slateCustom-900/90 border border-slate-800 hover:border-slate-700/60 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none h-48"
                     />
