@@ -9219,10 +9219,24 @@ export default function App() {
                 className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
               >
               <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Sigma size={16} className="text-rose-500 animate-pulse" />
-                  <span className="text-xs font-extrabold text-slate-200">오늘의 공식 퀴즈</span>
-                </div>
+                {(!isDesktop && !isMobileLandscape) ? (
+                  <button
+                    onClick={() => {
+                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                      setShowFormulaExam(false);
+                      setViewMode('dashboard');
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-black py-1.5 px-3 rounded-xl border border-slate-850 bg-slateCustom-900/60 text-slate-350 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-[0_2px_8px_rgba(0,0,0,0.2)]"
+                  >
+                    <Calendar size={13} className="text-slate-400" />
+                    <span>오늘의 복습</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Sigma size={16} className="text-rose-500 animate-pulse" />
+                    <span className="text-xs font-extrabold text-slate-200">오늘의 공식 퀴즈</span>
+                  </div>
+                )}
                 <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2.5 py-0.5 rounded-full font-black">
                   남은 문제: {formulaQuizQuestions.filter(q => !q.isCorrect).length}개
                 </span>
