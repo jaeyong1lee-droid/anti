@@ -1,4 +1,4 @@
-// 1. 수식($)과 일반 텍스트 토큰 분리 (정규식 공백 오타 완벽 제거)
+// 1. 수식($)과 일반 텍스트 토큰 분리 (인라인 줄바꿈 오염 방지)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
@@ -32,7 +32,7 @@ export function healBackslashes(str) {
   const keywords = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
     'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow'
+    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow', 'circ'
   ];
 
   keywords.forEach(kw => {
@@ -46,11 +46,11 @@ export function healBackslashes(str) {
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // [치명적 버그 해결] 제목이나 리스트 기호가 아닌, 수식/문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합
-  let processed = text.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
+  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
+  let processed = text.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
 
-  // [추가] * * * 나 *** 같은 문단 구분자/글머리 기호 앞에 강제로 줄바꿈 두 개 주입
-  processed = processed.replace(/\s*(\* \* \*|\*\*\*)\s*/g, '\n\n$1 ');
+  // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
+  processed = processed.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
 
   // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
@@ -63,15 +63,14 @@ export function healLatexFormulas(text) {
     if (token.type === 'text') {
       let t = healBackslashes(token.content);
       
-      // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (공백 및 탭 허용)
-      const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
+      // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (별표 * 제외로 마크다운 충돌 방지)
+      const formulaPattern = /([a-zA-Z0-9_\-\+\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
       return t.replace(formulaPattern, (match) => {
         const trimmed = match.trim();
-        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$') || /^[*\s]+$/.test(trimmed)) return match;
+        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$')) return match;
         
-        const hasMath = /[\\_^{}<>=+\-\*\/']/.test(trimmed);
+        const hasMath = /[\\_^{}<>=+\-\/']/.test(trimmed);
         if (hasMath) {
-          // 특수기호 변환 및 첨자 뒤 공백 제거 정밀 처리 수칙 반영
           let sanitized = trimmed.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
           return `$${sanitized}$`;
@@ -83,7 +82,7 @@ export function healLatexFormulas(text) {
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
       math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n$$${math}$$\n` : `$${math}$`;
+      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
     }
   }).join('');
 
@@ -102,10 +101,10 @@ export function healLatexFormulas(text) {
 
     if (prev.type === 'text' && current.type !== 'text') {
       const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar)) needSpace = true;
+      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type === 'text') {
       const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar)) needSpace = true;
+      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type !== 'text') {
       needSpace = true;
     }
