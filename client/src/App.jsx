@@ -175,6 +175,65 @@ const extractTitleFromHtml = (html) => {
   return '';
 };
 
+const generateLocalConceptQuestion = (quizItem, targetFormula, allFormulas) => {
+  const validFormulas = allFormulas.filter(f => f.title && f.formula && f.title !== targetFormula.title);
+  
+  // Pick random question type: 0 = identify formula by name, 1 = identify formula name by concept description
+  const qType = validFormulas.length >= 3 ? Math.floor(Math.random() * 2) : 0;
+
+  if (qType === 0) {
+    const distractors = [];
+    const pool = [...validFormulas];
+    while (distractors.length < 3 && pool.length > 0) {
+      const dIdx = Math.floor(Math.random() * pool.length);
+      distractors.push(pool.splice(dIdx, 1)[0]);
+    }
+
+    const options = [targetFormula.formula, ...distractors.map(d => d.formula)];
+    const shuffled = [...options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const correctOptionIndex = shuffled.indexOf(targetFormula.formula);
+
+    return {
+      ...quizItem,
+      loading: false,
+      question: `다음 중 **${targetFormula.title}** 공식의 올바른 수식 표현을 고르시오.`,
+      options: shuffled,
+      correctOptionIndex,
+      explanation: `**${targetFormula.title}**의 공식은 다음과 같습니다:\n\n${targetFormula.formula}\n\n개념: ${targetFormula.concept || '없음'}`,
+      isAiGenerated: false
+    };
+  } else {
+    const distractors = [];
+    const pool = [...validFormulas];
+    while (distractors.length < 3 && pool.length > 0) {
+      const dIdx = Math.floor(Math.random() * pool.length);
+      distractors.push(pool.splice(dIdx, 1)[0]);
+    }
+
+    const options = [targetFormula.title, ...distractors.map(d => d.title)];
+    const shuffled = [...options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const correctOptionIndex = shuffled.indexOf(targetFormula.title);
+
+    return {
+      ...quizItem,
+      loading: false,
+      question: `다음 설명에 가장 부합하는 공식의 명칭을 고르시오.\n\n> ${targetFormula.concept || '이 공식은 토목/지반공학적 원리를 나타내는 중요한 관계식입니다.'}`,
+      options: shuffled,
+      correctOptionIndex,
+      explanation: `해당 설명은 **${targetFormula.title}** 공식에 관한 것입니다.\n\n공식: ${targetFormula.formula}`,
+      isAiGenerated: false
+    };
+  }
+};
+
 const generateRandomQuizQuestion = (allFormulas) => {
   if (!allFormulas || allFormulas.length < 4) return null;
   const validFormulas = allFormulas.filter(f => f.title && f.formula);
@@ -182,37 +241,21 @@ const generateRandomQuizQuestion = (allFormulas) => {
   
   const targetIndex = Math.floor(Math.random() * validFormulas.length);
   const target = validFormulas[targetIndex];
-  
-  const distractors = [];
-  const pool = validFormulas.filter((_, idx) => idx !== targetIndex);
-  while (distractors.length < 3 && pool.length > 0) {
-    const dIdx = Math.floor(Math.random() * pool.length);
-    distractors.push(pool.splice(dIdx, 1)[0]);
-  }
-  
-  const correctFormula = target.formula;
-  const distractorFormulas = distractors.map(d => d.formula);
-  
-  const options = [correctFormula, ...distractorFormulas];
-  const shuffledOptions = [...options];
-  for (let i = shuffledOptions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
-  }
-  
-  const correctOptionIndex = shuffledOptions.indexOf(correctFormula);
-  
-  return {
+
+  const quizItemPlaceholder = {
     id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     formulaTitle: target.title,
-    correctFormula: correctFormula,
-    options: shuffledOptions,
-    correctOptionIndex: correctOptionIndex,
+    question: '',
+    options: [],
+    correctOptionIndex: 0,
     userAnswerIndex: null,
     isCorrect: false,
-    dateAdded: new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD
+    dateAdded: new Date().toLocaleDateString('sv-SE')
   };
+
+  return generateLocalConceptQuestion(quizItemPlaceholder, target, validFormulas);
 };
+
 
 const clientExtractVariables = (mathContent) => {
   if (!mathContent) return '';
@@ -4122,19 +4165,101 @@ export default function App() {
     }
   }, [formulaQuestions]);
 
-  const handleGenerateExtraQuizQuestion = () => {
-    if (!formulaQuestions || formulaQuestions.length < 4) {
+  const fetchQuestionContent = async (quizItem) => {
+    const targetFormula = formulaQuestions.find(f => f.title === quizItem.formulaTitle);
+    if (!targetFormula) {
+      return {
+        ...quizItem,
+        loading: false,
+        error: '공식 정보를 찾을 수 없습니다.'
+      };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/formula/generate-quiz-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formulaTitle: targetFormula.title,
+          formula: targetFormula.formula,
+          concept: targetFormula.concept || '',
+          assumptions: ''
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const correctOptionIndex = data.options.indexOf(data.answer);
+      const finalCorrectIdx = correctOptionIndex !== -1 ? correctOptionIndex : 0;
+
+      return {
+        ...quizItem,
+        loading: false,
+        question: data.question,
+        options: data.options,
+        correctOptionIndex: finalCorrectIdx,
+        explanation: data.explanation,
+        isAiGenerated: true
+      };
+    } catch (err) {
+      console.warn('AI 공식 계산 문제 생성 실패. 로컬 백업 질문 생성으로 전환합니다:', err);
+      const validFormulas = formulaQuestions.filter(f => f.title && f.formula);
+      return generateLocalConceptQuestion(quizItem, targetFormula, validFormulas);
+    }
+  };
+
+  const handleGenerateExtraQuizQuestion = async () => {
+    const validFormulas = formulaQuestions.filter(f => f.title && f.formula);
+    if (validFormulas.length < 4) {
       showNotification('최소 4개 이상의 공식이 필요합니다.', 'error');
       return;
     }
-    const newQ = generateRandomQuizQuestion(formulaQuestions);
-    if (newQ) {
-      const updated = [...formulaQuizQuestions, newQ];
-      setFormulaQuizQuestions(updated);
-      localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
-      showNotification('새로운 공식 객관식 문제가 추가되었습니다!', 'success');
+
+    const target = validFormulas[Math.floor(Math.random() * validFormulas.length)];
+    const tempId = `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newQPlaceholder = {
+      id: tempId,
+      formulaTitle: target.title,
+      question: '',
+      options: [],
+      correctOptionIndex: 0,
+      userAnswerIndex: null,
+      isCorrect: false,
+      loading: true,
+      error: null,
+      dateAdded: new Date().toLocaleDateString('sv-SE')
+    };
+
+    const listWithPlaceholder = [...formulaQuizQuestions, newQPlaceholder];
+    setFormulaQuizQuestions(listWithPlaceholder);
+    localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(listWithPlaceholder));
+    showNotification('공식 문제를 출제하고 있습니다. 잠시만 기다려주세요...', 'info');
+
+    try {
+      const resolvedQ = await fetchQuestionContent(newQPlaceholder);
+      setFormulaQuizQuestions(prev => {
+        const updated = prev.map(item => item.id === tempId ? resolvedQ : item);
+        localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
+        return updated;
+      });
+      showNotification('새로운 공식 문제가 성공적으로 추가되었습니다!', 'success');
+    } catch (err) {
+      setFormulaQuizQuestions(prev => {
+        const updated = prev.map(item => item.id === tempId ? { ...item, loading: false, error: '문제 출제 실패' } : item);
+        localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
+        return updated;
+      });
     }
   };
+
 
   useEffect(() => {
     if (showFormulaExam && formulaQuestions.length >= 4) {
