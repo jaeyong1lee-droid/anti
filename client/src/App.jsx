@@ -1557,6 +1557,7 @@ export default function App() {
   const savedTheoryScroll = { current: 0 };
   const [formulaMobileTab, setFormulaMobileTab] = useState('list');
   const [formulaQuizQuestions, setFormulaQuizQuestions] = useState([]);
+  const [generatingFormulaQuiz, setGeneratingFormulaQuiz] = useState(false);
   const theoryMobileTab = "list";
   const setTheoryMobileTab = () => {};
   const formulaSplitContainerRef = useRef(null);
@@ -4217,10 +4218,12 @@ export default function App() {
 
   const handleGenerateExtraQuizQuestion = async () => {
     const validFormulas = formulaQuestions.filter(f => f.title && f.formula);
-    if (validFormulas.length < 4) {
-      showNotification('최소 4개 이상의 공식이 필요합니다.', 'error');
+    if (validFormulas.length < 1) {
+      showNotification('등록된 공식이 없습니다. 먼저 공식을 추가해 주세요.', 'error');
       return;
     }
+
+    setGeneratingFormulaQuiz(true);
 
     const target = validFormulas[Math.floor(Math.random() * validFormulas.length)];
     const tempId = `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -4257,6 +4260,8 @@ export default function App() {
         localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
         return updated;
       });
+    } finally {
+      setGeneratingFormulaQuiz(false);
     }
   };
 
@@ -4281,6 +4286,7 @@ export default function App() {
       }
     }
   };
+
 
 
 
@@ -8414,11 +8420,20 @@ export default function App() {
                 </div>
                 <button
                   type="button"
+                  disabled={generatingFormulaQuiz}
                   onClick={() => confirmAndGenerateQuizQuestion(true)}
-                  className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md shadow-rose-600/10 active:scale-95 cursor-pointer whitespace-nowrap"
+                  className={`px-3 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md active:scale-95 cursor-pointer whitespace-nowrap transition-all ${
+                    generatingFormulaQuiz 
+                      ? 'bg-rose-800/80 shadow-none cursor-not-allowed opacity-70' 
+                      : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/10'
+                  }`}
                 >
-                  <Award size={12} />
-                  공식퀴즈
+                  {generatingFormulaQuiz ? (
+                    <RefreshCw size={12} className="animate-spin text-white" />
+                  ) : (
+                    <Award size={12} />
+                  )}
+                  {generatingFormulaQuiz ? '출제 중...' : '공식퀴즈'}
                 </button>
               </div>
             </div>
@@ -8517,12 +8532,21 @@ export default function App() {
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
                 <button
                   type="button"
+                  disabled={generatingFormulaQuiz}
                   onClick={() => confirmAndGenerateQuizQuestion(false)}
-                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  className={`px-4 py-2 border rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 ${
+                    generatingFormulaQuiz 
+                      ? 'bg-rose-950/20 border-rose-500/10 cursor-not-allowed opacity-60 text-rose-400' 
+                      : 'bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border-rose-500/20'
+                  }`}
                   title="공식 객관식 문제 무작위 1개 추가 출제"
                 >
-                  <Award size={13} />
-                  공식문제 출제
+                  {generatingFormulaQuiz ? (
+                    <RefreshCw size={13} className="animate-spin text-rose-400" />
+                  ) : (
+                    <Award size={13} />
+                  )}
+                  {generatingFormulaQuiz ? '출제 중...' : '공식문제 출제'}
                 </button>
                 <button
                   onClick={() => {
