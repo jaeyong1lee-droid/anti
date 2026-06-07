@@ -42,11 +42,11 @@ export function healBackslashes(str, isMathMode = false) {
   // 2. 그리스 문자 목록에 포아송 비 'nu' 추가
   const greekSymbols = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'zeta', 'xi', 'chi', 'upsilon', 'nu' // <- 'nu' 명시적 추가
+    'zeta', 'xi', 'chi', 'upsilon', 'nu' // nu는 목록에 안전하게 유지
   ];
 
   const safeMathCommands = [
-    'frac', 'sqrt', 'rightarrow', 'leftarrow', 'cdot'
+    'frac', 'dfrac', 'sqrt', 'rightarrow', 'leftarrow', 'cdot' // dfrac 명시적 추가로 명령어 방어
   ];
 
   const mathModeCommands = [
@@ -58,15 +58,14 @@ export function healBackslashes(str, isMathMode = false) {
     : [...greekSymbols, ...safeMathCommands];
 
   keywordsToHeal.forEach(kw => {
-    // 단독 알파벳 u로 오염된 케이스 우회 및 정확한 단어 경계(\b) 매칭
     const regex = new RegExp(`(?<!\\\\)\\b${kw}(?![a-zA-Z])`, 'g');
     healed = healed.replace(regex, `\\${kw}`);
   });
 
-  // 특수 예외 처리: 수식 내부에서 \u 형태로 깨진 포아송 비 강제 자동 치유
+  // [치유 가동 조건 미세 조정]: \dfrac 이나 명령어 골격을 파괴하는 u 매칭 전면 폐기
+  // 오직 독립적인 변수 형태 혹은 분모/분자 방어선 내에서 꼬인 \u 형태만 타깃으로 선별 조치
   if (isMathMode) {
-    healed = healed.replace(/(?<!\\)\\u\b/g, '\\nu');
-    healed = healed.replace(/(?<!\\)\bu\b/g, '\\nu'); 
+    healed = healed.replace(/(?<![a-zA-Z\\])\\u\b/g, '\\nu');
   }
 
   return healed;
