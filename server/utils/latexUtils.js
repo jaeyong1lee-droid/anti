@@ -5,7 +5,7 @@ export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
   
-  // 줄바꿈(\n)이 섞여 있어도 수식 기호($) 쌍을 정확하게 포착하도록 정규식 개선
+  // 줄바꿈(\n)이 섞여 있어도 수식 기호($) 쌍을 정확하게 포착하도록 정규식 유지
   const regex = /(\$\$.*?\$\$)|(\$[^\$]+?\$)/gs;
   let match;
   
@@ -18,14 +18,14 @@ export function tokenizeForHealing(text) {
     if (matchContent.startsWith('$$')) {
       tokens.push({ type: 'block-math', content: matchContent });
     } else {
-      // 인라인 수식이 줄바꿈을 포함하는 경우, 수식 기호/명령어(백슬래시, 첨자 등)가 있는 경우에만 수식으로 인정
-      // 그렇지 않거나 단락 구분(\n\n)이 포함된 경우 단순 텍스트로 처리하여 lone dollar 매칭 방어
       const math = matchContent.substring(1, matchContent.length - 1);
       const hasNewline = math.includes('\n');
       const hasDoubleNewline = math.includes('\n\n');
       const hasMathIndicators = /\\|[_^{}<=]/.test(math);
       
-      if (hasDoubleNewline || (hasNewline && !hasMathIndicators)) {
+      // [안전 장치 강화] 인라인 수식 토큰의 길이가 너무 길거나(Lone Dollar 매칭 오염), 
+      // 단락 구분(\n\n)이 포함되어 있다면 수식 영역에서 탈탈 털어내고 텍스트 처리
+      if (hasDoubleNewline || (hasNewline && !hasMathIndicators) || math.length > 200) {
         tokens.push({ type: 'text', content: matchContent[0] });
         lastIndex = match.index + 1;
         regex.lastIndex = lastIndex;
@@ -52,14 +52,14 @@ export function healBackslashes(str, isMathMode = false) {
   healed = healed.replace(/(?<!\\)\blog(?=[pt_0-9])/g, '\\log ');
   healed = healed.replace(/(?<!\\)\bln(?=[pt_0-9])/g, '\\ln ');
 
-  // 2. 그리스 문자 목록에 포아송 비 'nu' 추가
+  // 2. 그리스 문자 목록 구조화
   const greekSymbols = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-    'zeta', 'xi', 'chi', 'upsilon', 'nu' // nu는 목록에 안전하게 유지
+    'zeta', 'xi', 'chi', 'upsilon', 'nu'
   ];
 
   const safeMathCommands = [
-    'frac', 'dfrac', 'sqrt', 'rightarrow', 'leftarrow', 'cdot' // dfrac 명시적 추가로 명령어 방어
+    'frac', 'dfrac', 'sqrt', 'rightarrow', 'leftarrow', 'cdot'
   ];
 
   const mathModeCommands = [
@@ -75,8 +75,6 @@ export function healBackslashes(str, isMathMode = false) {
     healed = healed.replace(regex, `\\${kw}`);
   });
 
-  // [치유 가동 조건 미세 조정]: \dfrac 이나 명령어 골격을 파괴하는 u 매칭 전면 폐기
-  // 오직 독립적인 변수 형태 혹은 분모/분자 방어선 내에서 꼬인 \u 형태만 타깃으로 선별 조치
   if (isMathMode) {
     healed = healed.replace(/(?<![a-zA-Z\\])\\u\b/g, '\\nu');
   }
@@ -98,16 +96,12 @@ export function cleanCorruptedFormula(formula) {
       let rest = '';
       if (closingSpanIndex !== -1) {
         const restStart = cleaned.indexOf('>', closingSpanIndex);
-        if (restStart !== -1) {
-          rest = cleaned.substring(restStart + 1);
-        }
+        if (restStart !== -1) rest = cleaned.substring(restStart + 1);
       } else {
         const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
         if (closingSpanIndexEntity !== -1) {
           const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
-          if (restStart !== -1) {
-            rest = cleaned.substring(restStart + 4);
-          }
+          if (restStart !== -1) rest = cleaned.substring(restStart + 4);
         }
       }
       
@@ -128,18 +122,17 @@ export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
 
-  // [신규 전처리 1] AI가 무단 주입한 인라인 HTML 태그(br, div)를 안정적인 마크다운 구조로 가공 및 전환
+  // 인라인 HTML 태그를 마크다운 구조로 가공
   text = text.replace(/<br\s*\/?>/gi, '\n\n');
   text = text.replace(/<div[^>]*>\s*•?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1');
 
-  // [신규 전처리 3-1] Misplaced variable dollar early conversion (e.g. u$: -> $u$: or N_d$: -> $N_d$:)
-  // 변수명 뒤에 $가 단독으로 오고 그 뒤에 콜론, 스페이스, 개행 등이 있을 때, 누락된 앞의 $를 보충하여 $변수명$ 형태로 만듭니다.
+  // Misplaced variable dollar early conversion
   text = text.replace(/(?<!\$)\b([a-zA-Z_][a-zA-Z0-9_]*)\$(?=:|\s|\n|$)/g, (match, p1) => '$' + p1 + '$');
 
-  // [신규 전처리 2] 글머리 기호(*)가 전방 문자와 공백 없이 강제 밀착된 케이스(*k:, *H: 등) 탐지 및 리스트 격리 개행
+  // 글머리 기호 붙어있는 케이스 격리 개행
   text = text.replace(/([^\n\s])\s*\*+\s*([a-zA-Z0-9_\uAC00-\uD7A3\$]+:)/g, '$1\n\n* $2');
 
-  // 0. AI가 JSON 파싱 에러 회피를 위해 우회한 hashtag 수식 명령어 기호(#dfrac, #frac, #nu 등)를 백슬래시(\)로 복원
+  // 해시태그 수식 복원
   const commandsToConvert = [
     'frac', 'dfrac', 'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 
     'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 
@@ -155,14 +148,12 @@ export function healLatexFormulas(text) {
 
   text = cleanCorruptedFormula(text);
 
-  // 1. 엔티티 부호 순수 문자로 복구
   text = text.replace(/&#x27;/g, "'")
              .replace(/&quot;/g, '"')
              .replace(/&lt;/g, '<')
              .replace(/&gt;/g, '>')
              .replace(/&amp;/g, '&');
   
-  // 2. 가독성 개선을 위한 리스트 줄바꿈 확보
   text = text.replace(/([\.?!\)\]\}])\s*\*\s*(?=[\uAC00-\uD7A3])/g, '$1\n\n* ');
 
   const safeLatexCommands = [
@@ -181,26 +172,7 @@ export function healLatexFormulas(text) {
     return match;
   });
 
-  // [신규 추가] standalone 라인 수식 중 unclosed dollar 치유 및 디스플레이 수식(display math) 승격
-  const lines = text.split('\n');
-  const healedLines = lines.map(line => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('$') && !trimmed.startsWith('$$')) {
-      const dollarCount = (trimmed.match(/\$/g) || []).length;
-      if (dollarCount === 1) {
-        return '$$' + line.substring(line.indexOf('$') + 1) + '$$';
-      }
-    } else if (trimmed.startsWith('$$')) {
-      const dollarCount = (trimmed.match(/\$\$/g) || []).length;
-      if (dollarCount === 1) {
-        return line + '$$';
-      }
-    }
-    return line;
-  });
-  text = healedLines.join('\n');
-
-  // 3. 수식 블록 내부 백슬래시 정상 복원 및 불필요한 공백/줄바꿈 압축
+  // 백슬래시 정상 복원 및 내부 공백 최적화 진행
   {
     const tokens = tokenizeForHealing(text);
     text = tokens.map(token => {
@@ -212,7 +184,6 @@ export function healLatexFormulas(text) {
         const math = isBlock ? content.substring(2, content.length - 2) : content.substring(1, content.length - 1);
         let healedMath = healBackslashes(math, true);
         
-        // Clean up newlines and extra spaces inside the math token
         healedMath = healedMath.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
         healedMath = healedMath.replace(/\\(dfrac|frac)\s*\{\s*/g, '\\$1{')
                                .replace(/\s*\}\s*\{\s*/g, '}{')
@@ -299,7 +270,7 @@ export function healLatexFormulas(text) {
   tokens.forEach(token => {
     if (token.type === 'text') {
       token.content = runOnTextOnly(token.content, (t) => {
-        // [중요 교정] formulaPattern에서 '*' 기호를 제거하여 마크다운 리스트 기호가 math delimiter($)에 무단으로 말려들어가는 현상 방지
+        // [수식 포착 정규식 보완] 일반 공백 텍스트 오염을 막기 위해 텍스트 내 자동 포착 방어 조건 강화
         const formulaPattern = /([a-zA-Z0-9_\-\+\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
         t = t.replace(formulaPattern, (match) => {
           const trimmedMatch = match.trim();
@@ -312,7 +283,10 @@ export function healLatexFormulas(text) {
           const hasMathContext = /[=<>+\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
           
           if (hasBackslash || hasGreek || hasMathContext) {
-            const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\dfrac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
+            // 백슬래시가 없는 일반 변수/기호 결합문인데 글자수가 너무 길면 수식 자동 감싸기 제외 (오염 방지)
+            if (trimmedMatch.length > 40 && !hasBackslash) return match;
+            
+            const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\dfrac') || trimmedMatch.includes('\\log') || (trimmedMatch.length > 45 && hasBackslash);
             return isComplex ? `$$${trimmedMatch}$$` : `$${trimmedMatch}$`;
           }
           return match;
@@ -404,7 +378,7 @@ export function healLatexFormulas(text) {
       math = math.replace(/~/g, '\\sim ');
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
-      math = math.replace(/(?<![a-zA-Z\\])u\b/g, '\\nu');
+      math = math.replace(/(?<!\\)u\b/g, '\\nu');
       token.content = `$$${math}$$`;
     } else if (token.type === 'text') {
       token.content = token.content.replace(/(?<!\\)\bsim\b/gi, '~');
@@ -413,13 +387,11 @@ export function healLatexFormulas(text) {
 
   reassembled = finalTokens.map(t => t.content).join('');
 
-  // [중요 교정] 리스트 아이템 글머리 바로 다음에 정의되는 단독 변수명/식별자를 $변수명$ 형태로 안전하게 치환 (예: "* K_0 : 정지토압계수" -> "* $K_0$ : 정지토압계수")
   reassembled = reassembled.replace(/(^\s*\*+\s*)([a-zA-Z0-9_]+(?:_[a-zA-Z0-9]+)?)(?=\s*:)/gm, (match, bullet, name) => {
     if (name.startsWith('$') || name.endsWith('$')) return match;
     return bullet + '$' + name + '$';
   });
   
-  // 가독성을 위한 수식 기호 앞뒤 공백 조정
   reassembled = reassembled.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])([\(\[\{])/g, '$1 $2');
   reassembled = reassembled.replace(/([\)\]\}])([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9])/g, '$1 $2');
 
@@ -447,7 +419,6 @@ export function healLatexFormulas(text) {
     result += needSpace ? ' ' + current.content : current.content;
   }
 
-  // [신규 추가] 수식 끝 조사 결합 개선: 수식 뒤에 바로 조사가 오면 스페이스 한칸 띄기
   result = result.replace(/(\$[^\$]+?\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만)/g, '$1 $2');
 
   return result;
@@ -455,47 +426,32 @@ export function healLatexFormulas(text) {
 
 // 💡 [업그레이드] 프로토타입 오염 및 프레임워크 관찰 객체 순회 한계를 극복한 마스터 딥 힐러
 function healDeep(obj) {
-  // 1. Null, Undefined, 혹은 객체가 아닌 원시 타입(Primitive) 처리
   if (obj === null || obj === undefined) return obj;
-  
   if (typeof obj === 'string') {
     return healLatexFormulas(obj);
   }
-  
-  // string 이외의 원시 타입(number, boolean 등)은 그대로 반환
   if (typeof obj !== 'object') {
     return obj;
   }
-
-  // 2. 배열(Array)인 경우 내부 요소 순회
   if (Array.isArray(obj)) {
     return obj.map(item => healDeep(item));
   }
-
-  // 3. 순수 객체 및 프레임워크 특성 상태 객체 방어 순회
   try {
     const healed = {};
-    // Object.keys는 열거 가능한 확실한 고유 프로퍼티만 안전하게 추출합니다.
     const keys = Object.keys(obj);
-    
     for (const key of keys) {
       healed[key] = healDeep(obj[key]);
     }
-    
-    // 원래 객체의 프로토타입을 유지해야 하는 특수 객체일 경우를 위한 방어선
     const proto = Object.getPrototypeOf(obj);
     if (proto && proto !== Object.prototype) {
       return Object.assign(Object.create(proto), healed);
     }
-    
     return healed;
   } catch (e) {
-    // 순회 중 예외 발생 시 원본 안전 반환 (크래시 방지)
     return obj;
   }
 }
 
-// 기존 인터페이스 호환성 100% 보장하면서 누락 원천 차단
 export function healQuizQuestionObject(q) { return healDeep(q); }
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
