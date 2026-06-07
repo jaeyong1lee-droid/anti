@@ -1472,6 +1472,10 @@ export default function App() {
   const [editAnswersheetTitle, setEditAnswersheetTitle] = useState('');
   const [answersheetInputRevealed, setAnswersheetInputRevealed] = useState({});
   const [answersheetMobileTab, setAnswersheetMobileTab] = useState('list');
+  const [answersheetDragActive, setAnswersheetDragActive] = useState(false);
+  const [answersheetFile, setAnswersheetFile] = useState(null);
+  const [answersheetHtmlContent, setAnswersheetHtmlContent] = useState('');
+  const answersheetFileInputRef = useRef(null);
 
   // Answersheet refs
   const latestAnswersheetQuestionsRef = useRef([]);
@@ -4409,11 +4413,50 @@ export default function App() {
       await handleSaveAnswersheetQuestions(updated, false);
 
       showNotification(`[${file.name}] 보고서가 성공적으로 답안지 탭에 연동 추가되었습니다!`, 'success');
-    } catch (err) {
-      console.error('Answersheet upload failed:', err);
-      showNotification(err.message || 'PDF/HTML 업로드 중 오류가 발생했습니다.', 'error');
     } finally {
       setUploadingAnswersheetPdf(false);
+    }
+  };
+
+  const handleAnswersheetDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setAnswersheetDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setAnswersheetDragActive(false);
+    }
+  };
+
+  const handleAnswersheetDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAnswersheetDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const fileNameLower = file.name.toLowerCase();
+      const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+      const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
+      if (isPdf || isHtml) {
+        setAnswersheetFile(file);
+      } else {
+        showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
+      }
+    }
+  };
+
+  const handleAnswersheetFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const fileNameLower = file.name.toLowerCase();
+      const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
+      const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
+      if (isPdf || isHtml) {
+        setAnswersheetFile(file);
+      } else {
+        showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
+      }
     }
   };
 
@@ -8968,7 +9011,7 @@ export default function App() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  제미나이 AI 튜터
+                  보고서 업로드
                 </button>
               </div>
             </div>
@@ -9468,104 +9511,141 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: AI Tutor */}
-            {(isDesktop || isMobileLandscape) && (
-              <div 
-                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col"
-              >
-                {!isDesktop && (
-                  <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
-                    <Brain size={16} className="text-emerald-500" />
-                    <span className="text-xs font-bold text-slate-200">제미나이 실시간 답안지 튜터</span>
-                  </div>
-                )}
-                
-                <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                  {chatHistory.length === 0 ? (
-                    <div className="text-center py-10 opacity-50">
-                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                      <p className="text-[11px] text-slate-400">학습하고 싶으신 답안을 왼쪽에서 선택하여<br/>유도 및 상세 설명을 요청해 보세요!</p>
-                    </div>
-                  ) : (
-                    chatHistory.map((msg, i) => (
-                      <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                        <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-emerald-400 mr-1' : 'text-emerald-400 ml-1'}`}>
-                          {msg.role === 'user' ? '나' : 'Gemini'}
-                        </div>
-                        <div className={
-                          msg.role === 'user' 
-                            ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-sm leading-relaxed bg-emerald-600 text-white rounded-br-sm' 
-                            : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-base max-w-none'
-                        }>
-                          {msg.role === 'user' ? (
-                            <div className="flex flex-col gap-2">
-                              {msg.image && (
-                                <img 
-                                  src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                  alt="첨부 이미지" 
-                                  className="max-w-full max-h-48 rounded-xl object-contain border border-emerald-455 shadow-md"
-                                />
-                              )}
-                              {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
-                            </div>
-                          ) : (
-                            <LatexRenderer 
-                              text={msg.text} 
-                              katexLoaded={katexLoaded} 
-                              enableAddFormula={true}
-                              isMarkdown={true}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {isChatLoading && (
-                    <div className="flex flex-col items-start w-full">
-                      <div className="text-[10px] mb-1 font-bold text-emerald-400 ml-1">Gemini</div>
-                      <div className="md:px-3 md:py-2 md:rounded-2xl md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm bg-transparent border-0 p-0 text-slate-400 text-xs flex gap-1 items-center">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></div>
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-  
-                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                  <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                    className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all shadow-lg"
-                  >
-                    <div className="flex-grow">
-                      <textarea
-                        rows={1}
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendChat();
-                          }
-                        }}
-                        placeholder="보고서 내용 및 개념 질문..."
-                        disabled={isChatLoading}
-                        className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
-                      />
-                    </div>
-  
-                    <button
-                      type="submit"
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="w-8 h-8 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:hover:bg-emerald-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-emerald-600/10 active:scale-95 flex-shrink-0"
-                    >
-                      <Send size={12} className="text-white" />
-                    </button>
-                  </form>
-                </div>
+            {/* Right: PDF/HTML upload section instead of AI Tutor */}
+            <div 
+              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+              className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col ${
+                (!isDesktop && !isMobileLandscape && answersheetMobileTab !== 'tutor') ? 'hidden' : ''
+              }`}
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-slate-800 flex items-center gap-2 bg-slateCustom-950 flex-shrink-0">
+                <UploadCloud size={16} className="text-emerald-500 animate-pulse glow-emerald" />
+                <span className="text-xs font-bold text-slate-200">기술사 서적/노트 PDF 또는 HTML 업로드</span>
               </div>
-            )}
+              
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    let fileToUpload = answersheetFile;
+                    if (answersheetHtmlContent.trim()) {
+                      const blob = new Blob([answersheetHtmlContent], { type: 'text/html' });
+                      fileToUpload = new File([blob], 'direct_answersheet_input.html', { type: 'text/html' });
+                    }
+
+                    if (!fileToUpload) {
+                      showNotification('업로드할 파일이나 HTML 코드를 입력해 주세요.', 'warning');
+                      return;
+                    }
+
+                    await handleUploadAnswersheetPdf(fileToUpload);
+                    
+                    // Reset
+                    setAnswersheetFile(null);
+                    setAnswersheetHtmlContent('');
+                    if (answersheetFileInputRef.current) answersheetFileInputRef.current.value = '';
+                  }}
+                  className="space-y-6"
+                >
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      PDF 또는 HTML 파일 선택
+                    </label>
+                    <div 
+                      onDragEnter={handleAnswersheetDrag}
+                      onDragOver={handleAnswersheetDrag}
+                      onDragLeave={handleAnswersheetDrag}
+                      onDrop={handleAnswersheetDrop}
+                      onClick={() => answersheetFileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[160px] ${
+                        answersheetDragActive 
+                          ? 'border-emerald-500 bg-emerald-500/10' 
+                          : answersheetFile
+                            ? 'border-emerald-500/50 bg-slateCustom-900/40'
+                            : 'border-slate-800 hover:border-emerald-500/40 hover:bg-slateCustom-900/30'
+                      }`}
+                    >
+                      <input 
+                        ref={answersheetFileInputRef}
+                        type="file" 
+                        accept=".pdf,.html,.htm"
+                        onChange={handleAnswersheetFileChange}
+                        className="hidden"
+                      />
+
+                      {answersheetFile ? (
+                        <div className="w-full flex flex-col items-center">
+                          <div className="p-3 bg-emerald-950/50 text-emerald-400 rounded-full mb-3">
+                            {answersheetFile.name.toLowerCase().endsWith('.html') || answersheetFile.name.toLowerCase().endsWith('.htm') ? (
+                              <FileCode size={28} />
+                            ) : (
+                              <FileText size={28} />
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold text-emerald-300 truncate max-w-full px-4">
+                            {answersheetFile.name}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            ({(answersheetFile.size / 1024 / 1024).toFixed(2)} MB)
+                          </p>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAnswersheetFile(null);
+                              if (answersheetFileInputRef.current) answersheetFileInputRef.current.value = '';
+                            }}
+                            className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-xs font-bold transition-all duration-200 cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            제거
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <UploadCloud size={32} className="text-slate-500 mb-2" />
+                          <p className="text-sm font-bold text-slate-300">Drag & Drop 또는 파일 선택</p>
+                          <p className="text-xs text-slate-500 mt-1">PDF 또는 HTML 파일 가능 (최대 10MB)</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      또는 HTML 코딩 직접 입력
+                    </label>
+                    <textarea
+                      rows={8}
+                      value={answersheetHtmlContent}
+                      onChange={(e) => setAnswersheetHtmlContent(e.target.value)}
+                      placeholder="HTML 코드 내용을 여기에 직접 붙여넣어 답안지로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
+                      className="w-full bg-slateCustom-900/90 border border-slate-800 hover:border-slate-700/60 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none h-48"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={uploadingAnswersheetPdf}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl py-3.5 font-black text-sm hover:from-emerald-500 hover:to-teal-500 transition-all duration-300 shadow-lg shadow-emerald-950/40 border border-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed glow-emerald-hover cursor-pointer"
+                  >
+                    {uploadingAnswersheetPdf ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={16} />
+                        분석 및 문제 추가 중...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle size={16} />
+                        답안지에 문제 추가
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
 
           </div>
         </div>
