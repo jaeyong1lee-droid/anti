@@ -372,19 +372,15 @@ export function healLatexFormulas(text) {
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
       
-      // [신규 추가] 지반 단위 비배수 강도(c_u)나 지반 압밀 지표 변수들과 같이 
-      // u가 첨자(_u) 혹은 일반 영문 결합 변수 형태(cu, mu)일 때는 nu(\nu) 치환에서 안전하게 보장
-      // 추가로 간극수압(u) 등 수압/응력 관련 맥락일 경우 포아송비(nu) 치환을 방지
-      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math) || 
-                             (/(간극수압|유효응력|전단강도|피압|수압|테르자기)/.test(text) && /^\s*u\s*$/.test(math));
+      // [간극수압/응력 맥락 보호] 수식 내에 \sigma, \tau, P_w 가 있으면 u는 간극수압
+      // u가 첨자(_u)이거나 영문자 뒤에 붙어있을 때는 lookbehind가 이미 보호함
+      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math);
       if (isPorePressure) {
         math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '__PORE_U__');
-      }
-      
-      math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
-      
-      if (isPorePressure) {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
         math = math.replace(/__PORE_U__/g, 'u');
+      } else {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
       }
       
       token.content = `$${math}$`;
@@ -394,17 +390,14 @@ export function healLatexFormulas(text) {
       math = math.replace(/(?<!\\)\bsim\b/gi, '\\sim');
       math = math.replace(/(\d+\.?\d*)\s+(\d+\.?\d*)/g, '$1 \\sim $2');
       
-      // [신규 추가] 인라인 수식 블록과 동일하게 안전한 지반공학 u 첨자 변수 및 간극수압 방어 패치 동기화 적용
-      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math) || 
-                             (/(간극수압|유효응력|전단강도|피압|수압|테르자기)/.test(text) && /^\s*u\s*$/.test(math));
+      // 블록 수식도 동일 로직 적용
+      const isPorePressure = /\\sigma|\\tau|P_w/i.test(math);
       if (isPorePressure) {
         math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '__PORE_U__');
-      }
-      
-      math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
-      
-      if (isPorePressure) {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
         math = math.replace(/__PORE_U__/g, 'u');
+      } else {
+        math = math.replace(/(?<![a-zA-Z\\_])u\b/g, '\\nu');
       }
       
       token.content = `$$${math}$$`;
