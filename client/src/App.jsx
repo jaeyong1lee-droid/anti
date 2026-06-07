@@ -8064,6 +8064,21 @@ export default function App() {
                       <PlusCircle size={11} />
                       <span>새로운 공식 추가 (빈표 생성)</span>
                     </button>
+
+                    {lastActiveReview && (
+                      <button
+                        onClick={() => {
+                          handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                          setShowFormulaExam(false);
+                          handleOpenLastActiveReview();
+                        }}
+                        className="py-1 px-3 bg-light-rainbow-animate text-slate-950 text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-slate-700/30 select-none whitespace-nowrap hover:scale-[1.02]"
+                        title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
+                      >
+                        <Clock size={11} className="text-slate-950 animate-pulse-slow shrink-0" />
+                        <span className="max-w-[120px] truncate">공부중: {lastActiveReview.title}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -8319,34 +8334,6 @@ export default function App() {
                 </div>
               ) : (
                 <div className="w-full space-y-5 pb-32">
-                  {lastActiveReview && (
-                    <button
-                      onClick={() => {
-                        handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                        setShowFormulaExam(false);
-                        handleOpenLastActiveReview();
-                      }}
-                      className="flex bg-light-rainbow-animate border border-slate-700/30 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full"
-                      title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
-                        <Clock size={24} className="animate-pulse-slow text-slate-950" />
-                      </div>
-                      <div className="min-w-0 flex-grow relative text-slate-950">
-                        <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                          공부중
-                        </p>
-                        <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
-                          {lastActiveReview.title}
-                        </h3>
-                        <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
-                          {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
-                        </p>
-                      </div>
-                    </button>
-                  )}
 
                   {formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -8948,6 +8935,22 @@ export default function App() {
                         <PlusCircle size={11} />
                         <span>새로운 답안 추가 (빈표 생성)</span>
                       </button>
+
+                      {lastActiveReview && (
+                        <button
+                          onClick={() => {
+                            handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                            setShowAnswerSheet(false);
+                            handleOpenLastActiveReview();
+                          }}
+                          className="py-1 px-3 bg-light-rainbow-animate text-slate-950 text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-slate-700/30 select-none whitespace-nowrap hover:scale-[1.02]"
+                          title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
+                        >
+                          <Clock size={11} className="text-slate-950 animate-pulse-slow shrink-0" />
+                          <span className="max-w-[120px] truncate">공부중: {lastActiveReview.title}</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           const input = document.createElement('input');
@@ -9206,34 +9209,6 @@ export default function App() {
                   </div>
                 )}
                 <div className="w-full space-y-5 pb-32">
-                  {lastActiveReview && (
-                    <button
-                      onClick={() => {
-                        handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                        setShowAnswerSheet(false);
-                        handleOpenLastActiveReview();
-                      }}
-                      className="flex bg-light-rainbow-animate border border-slate-700/30 rounded-2xl p-5 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full"
-                      title={lastActiveReview ? `가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)` : "최근 복습 진행 내역이 없습니다."}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
-                        <Clock size={24} className="animate-pulse-slow text-slate-950" />
-                      </div>
-                      <div className="min-w-0 flex-grow relative text-slate-950">
-                        <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                          공부중
-                        </p>
-                        <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
-                          {lastActiveReview.title}
-                        </h3>
-                        <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
-                          {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
-                        </p>
-                      </div>
-                    </button>
-                  )}
                 
                 {/* No Search Results Fallback */}
                 {answersheetQuestions.filter(q => {
