@@ -147,6 +147,33 @@ const isHeavyHtml = (rawText) => {
   );
 };
 
+const extractTitleFromHtml = (html) => {
+  if (!html || typeof html !== 'string') return '';
+  
+  // 1) Try <title> tag
+  const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch && titleMatch[1]) {
+    const txt = titleMatch[1].replace(/<[^>]+>/g, '').trim();
+    if (txt) return txt;
+  }
+  
+  // 2) Try <h1> tag
+  const h1Match = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1Match && h1Match[1]) {
+    const txt = h1Match[1].replace(/<[^>]+>/g, '').trim();
+    if (txt) return txt;
+  }
+
+  // 3) Try <h2> tag
+  const h2Match = html.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i);
+  if (h2Match && h2Match[1]) {
+    const txt = h2Match[1].replace(/<[^>]+>/g, '').trim();
+    if (txt) return txt;
+  }
+  
+  return '';
+};
+
 const cleanCorruptedFormula = (formula) => {
   if (!formula || typeof formula !== 'string') return formula;
   
@@ -1303,6 +1330,11 @@ export default function App() {
   const htmlTextareaRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+  
+  // Custom Answersheet Title & Auto-Extraction tracking refs
+  const [answersheetUploadTitle, setAnswersheetUploadTitle] = useState('');
+  const autoExtractedTitleRef = useRef('');
+  const answersheetAutoExtractedTitleRef = useRef('');
 
   // AI Modal States
   const [selectedTopic, setSelectedTopic] = useState(null);
@@ -2236,6 +2268,7 @@ export default function App() {
         setTitle('');
         setKeywords('');
         setPdfFile(null);
+        autoExtractedTitleRef.current = '';
         if (htmlTextareaRef.current) htmlTextareaRef.current.value = '';
         if (fileInputRef.current) fileInputRef.current.value = '';
         
@@ -4443,6 +4476,10 @@ export default function App() {
       const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
       if (isPdf || isHtml) {
         setAnswersheetFile(file);
+        if (!answersheetUploadTitle.trim()) {
+          const baseName = file.name.replace(/\.[^/.]+$/, "");
+          setAnswersheetUploadTitle(baseName);
+        }
       } else {
         showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
       }
@@ -4457,6 +4494,10 @@ export default function App() {
       const isHtml = file.type === 'text/html' || fileNameLower.endsWith('.html') || fileNameLower.endsWith('.htm');
       if (isPdf || isHtml) {
         setAnswersheetFile(file);
+        if (!answersheetUploadTitle.trim()) {
+          const baseName = file.name.replace(/\.[^/.]+$/, "");
+          setAnswersheetUploadTitle(baseName);
+        }
       } else {
         showNotification('PDF 또는 HTML 파일 형식만 업로드 가능합니다.', 'error');
       }
@@ -5778,6 +5819,13 @@ export default function App() {
                   </label>
                   <textarea
                     ref={htmlTextareaRef}
+                    onChange={(e) => {
+                      const extracted = extractTitleFromHtml(e.target.value);
+                      if (extracted && (title === '' || title === autoExtractedTitleRef.current)) {
+                        setTitle(extracted);
+                        autoExtractedTitleRef.current = extracted;
+                      }
+                    }}
                     rows={4}
                     placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
                     className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
@@ -8906,34 +8954,6 @@ export default function App() {
                     </h3>
                     {/* Centered Add / Upload Buttons */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => {
-                          const newItem = {
-                            title: "",
-                            concept: "",
-                            assumptions: "",
-                            formula: "",
-                            isDirectlyAdded: true
-                          };
-                          const updated = [...answersheetQuestions, newItem];
-                          latestAnswersheetQuestionsRef.current = updated;
-                          setAnswersheetQuestions(updated);
-                          localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
-                          showNotification('새로운 답안지 카드 기출 빈표가 성공적으로 추가되었습니다.', 'success');
-                          setTimeout(() => {
-                            if (answersheetBodyRef.current) {
-                              answersheetBodyRef.current.scrollTo({
-                                top: answersheetBodyRef.current.scrollHeight,
-                                behavior: 'smooth'
-                              });
-                            }
-                          }, 80);
-                        }}
-                        className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-all duration-200 active:scale-[0.97] hidden md:flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 cursor-pointer border border-emerald-500/20 select-none whitespace-nowrap"
-                      >
-                        <PlusCircle size={11} />
-                        <span>새로운 답안 추가 (빈표 생성)</span>
-                      </button>
 
                       {lastActiveReview && (
                         <button
@@ -9484,9 +9504,21 @@ export default function App() {
                     e.preventDefault();
                     let fileToUpload = answersheetFile;
                     const answersheetHtmlVal = answersheetTextareaRef.current ? answersheetTextareaRef.current.value : '';
+                    
+                    const titleText = answersheetUploadTitle.trim();
+                    if (!titleText) {
+                      showNotification('토픽 제목을 입력해 주세요.', 'warning');
+                      return;
+                    }
+
                     if (answersheetHtmlVal.trim()) {
                       const blob = new Blob([answersheetHtmlVal], { type: 'text/html' });
-                      fileToUpload = new window.File([blob], 'direct_answersheet_input.html', { type: 'text/html' });
+                      const fileName = `${titleText}.html`;
+                      fileToUpload = new window.File([blob], fileName, { type: 'text/html' });
+                    } else if (fileToUpload) {
+                      const extension = fileToUpload.name.split('.').pop();
+                      const fileName = `${titleText}.${extension}`;
+                      fileToUpload = new window.File([fileToUpload], fileName, { type: fileToUpload.type });
                     }
 
                     if (!fileToUpload) {
@@ -9498,11 +9530,42 @@ export default function App() {
                     
                     // Reset
                     setAnswersheetFile(null);
+                    setAnswersheetUploadTitle('');
+                    answersheetAutoExtractedTitleRef.current = '';
                     if (answersheetTextareaRef.current) answersheetTextareaRef.current.value = '';
                     if (answersheetFileInputRef.current) answersheetFileInputRef.current.value = '';
                   }}
                   className="space-y-6"
                 >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        토픽 제목 <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const userTitle = prompt("토픽 제목을 입력하세요:", answersheetUploadTitle);
+                          if (userTitle !== null) {
+                            setAnswersheetUploadTitle(userTitle);
+                          }
+                        }}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none"
+                      >
+                        <Edit2 size={10} />
+                        제목 직접 입력
+                      </button>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={answersheetUploadTitle}
+                      onChange={(e) => setAnswersheetUploadTitle(e.target.value)}
+                      placeholder="예: Barton의 암반 Q분류 (업로드/입력 전 설정)"
+                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition-all duration-200"
+                      required
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
                       PDF 또는 HTML 파일 선택
@@ -9550,6 +9613,10 @@ export default function App() {
                               e.stopPropagation();
                               setAnswersheetFile(null);
                               if (answersheetFileInputRef.current) answersheetFileInputRef.current.value = '';
+                              const baseName = answersheetFile ? answersheetFile.name.replace(/\.[^/.]+$/, "") : "";
+                              if (answersheetUploadTitle === baseName) {
+                                setAnswersheetUploadTitle('');
+                              }
                             }}
                             className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-xs font-bold transition-all duration-200 cursor-pointer"
                           >
@@ -9573,6 +9640,13 @@ export default function App() {
                     </label>
                     <textarea
                       ref={answersheetTextareaRef}
+                      onChange={(e) => {
+                        const extracted = extractTitleFromHtml(e.target.value);
+                        if (extracted && (answersheetUploadTitle === '' || answersheetUploadTitle === answersheetAutoExtractedTitleRef.current)) {
+                          setAnswersheetUploadTitle(extracted);
+                          answersheetAutoExtractedTitleRef.current = extracted;
+                        }
+                      }}
                       rows={8}
                       placeholder="HTML 코드 내용을 여기에 직접 붙여넣어 답안지로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
                       className="w-full bg-slateCustom-900/90 border border-slate-800 hover:border-slate-700/60 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none h-48"
