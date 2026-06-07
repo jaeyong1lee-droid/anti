@@ -148,10 +148,51 @@ const isHeavyHtml = (rawText) => {
   );
 };
 
+const cleanCorruptedFormula = (formula) => {
+  if (!formula || typeof formula !== 'string') return formula;
+  
+  let cleaned = formula;
+  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
+    const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
+                  cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
+                  
+    if (match) {
+      const coreMath = match[1].trim();
+      const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
+      let rest = '';
+      if (closingSpanIndex !== -1) {
+        const restStart = cleaned.indexOf('>', closingSpanIndex);
+        if (restStart !== -1) {
+          rest = cleaned.substring(restStart + 1);
+        }
+      } else {
+        const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
+        if (closingSpanIndexEntity !== -1) {
+          const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
+          if (restStart !== -1) {
+            rest = cleaned.substring(restStart + 4);
+          }
+        }
+      }
+      
+      let cleanRest = rest
+        .replace(/<\s*\/\s*(span|div|p)\s*>/gi, '')
+        .replace(/<\s*(div|span|p)[^>]*>/gi, '')
+        .replace(/&lt;\s*\/\s*(span|div|p)\s*&gt;/gi, '')
+        .replace(/&lt;\s*(div|span|p)[^&]*&gt;/gi, '')
+        .trim();
+        
+      cleaned = `$$${coreMath}$$\n\n${cleanRest}`;
+    }
+  }
+  return cleaned;
+};
+
 const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
   let cleaned = rawText;
+  cleaned = cleanCorruptedFormula(cleaned);
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -558,10 +599,18 @@ const renderKatexString = (math, options) => {
   const processedMath = math.replace(/\\frac\b/g, '\\dfrac');
   if (window.katex) {
     try {
-      return window.katex.renderToString(processedMath, options).replace(/\n/g, '');
+      // Force throwOnError: true to prevent KaTeX from generating title strings with '$'
+      return window.katex.renderToString(processedMath, { ...options, throwOnError: true }).replace(/\n/g, '');
     } catch (e) {
       console.warn('KaTeX render error:', e);
-      return options.displayMode ? `$$${math}$$` : `$${math}$`;
+      const escapedMath = processedMath
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\$/g, '&#36;');
+      return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
     }
   }
   return options.displayMode ? `$$${math}$$` : `$${math}$`;
@@ -3765,7 +3814,7 @@ export default function App() {
 
       // 3. [보상기초 보상도 공식] 기호 정의 자가 치유 (Self-Healing)
       // 만약 타이틀이 보상도 공식이면 디폴트 기본 스펙으로 100% 무조건 강제 정화 및 자가 치유!
-      let newFormula = f.formula;
+      let newFormula = cleanCorruptedFormula(f.formula || "");
       let newConcept = f.concept;
       if (newTitle.includes("보상도") || newTitle.includes("보상기초")) {
         newFormula = "$$C = \\frac{\\gamma D_f}{q}$$\n\n- $C$: 보상도 (Compensational ratio, $C = 1.0$이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값";

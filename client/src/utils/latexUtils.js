@@ -72,9 +72,51 @@ export function healBackslashes(str, isMathMode = false) {
   return healed;
 }
 
+export function cleanCorruptedFormula(formula) {
+  if (!formula || typeof formula !== 'string') return formula;
+  
+  let cleaned = formula;
+  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
+    const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
+                  cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
+                  
+    if (match) {
+      const coreMath = match[1].trim();
+      const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
+      let rest = '';
+      if (closingSpanIndex !== -1) {
+        const restStart = cleaned.indexOf('>', closingSpanIndex);
+        if (restStart !== -1) {
+          rest = cleaned.substring(restStart + 1);
+        }
+      } else {
+        const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
+        if (closingSpanIndexEntity !== -1) {
+          const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
+          if (restStart !== -1) {
+            rest = cleaned.substring(restStart + 4);
+          }
+        }
+      }
+      
+      let cleanRest = rest
+        .replace(/<\s*\/\s*(span|div|p)\s*>/gi, '')
+        .replace(/<\s*(div|span|p)[^>]*>/gi, '')
+        .replace(/&lt;\s*\/\s*(span|div|p)\s*&gt;/gi, '')
+        .replace(/&lt;\s*(div|span|p)[^&]*&gt;/gi, '')
+        .trim();
+        
+      cleaned = `$$${coreMath}$$\n\n${cleanRest}`;
+    }
+  }
+  return cleaned;
+}
+
 export function healLatexFormulas(text) {
   if (!text) return text;
   if (typeof text !== 'string') return text;
+
+  text = cleanCorruptedFormula(text);
 
   // [교정] HTML 레이아웃을 무너뜨리는 무조건적인 문자열 삭제(replace) 로직 완전 전면 폐기
 
@@ -181,32 +223,42 @@ export function healLatexFormulas(text) {
     }).join('');
   }
 
+  const runOnTextOnly = (txt, fn) => {
+    if (!txt) return '';
+    const parts = txt.split(/(<[^>]+>)/g);
+    return parts.map(part => {
+      if (part.startsWith('<') && part.endsWith('>')) return part;
+      return fn(part);
+    }).join('');
+  };
+
   let tokens = tokenizeForHealing(healed);
   tokens.forEach(token => {
     if (token.type === 'text') {
-      let t = token.content;
-      const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
-      t = t.replace(formulaPattern, (match) => {
-        const trimmedMatch = match.trim();
-        if (!trimmedMatch) return match;
-        if (trimmedMatch.startsWith('$')) return match;
-        if (/^[a-zA-Z0-9\s]+$/.test(trimmedMatch)) return match;
-        
-        const hasBackslash = trimmedMatch.includes('\\');
-        const hasGreek = symbols.some(sym => trimmedMatch.includes(sym));
-        const hasMathContext = /[=<>+\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
-        
-        if (hasBackslash || hasGreek || hasMathContext) {
-          const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
-          return isComplex ? `$$${trimmedMatch}$$` : `$${trimmedMatch}$`;
-        }
-        return match;
-      });
+      token.content = runOnTextOnly(token.content, (t) => {
+        const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']+)/g;
+        t = t.replace(formulaPattern, (match) => {
+          const trimmedMatch = match.trim();
+          if (!trimmedMatch) return match;
+          if (trimmedMatch.startsWith('$')) return match;
+          if (/^[a-zA-Z0-9\s]+$/.test(trimmedMatch)) return match;
+          
+          const hasBackslash = trimmedMatch.includes('\\');
+          const hasGreek = symbols.some(sym => trimmedMatch.includes(sym));
+          const hasMathContext = /[=<>+\/]/.test(trimmedMatch) || /_[a-zA-Z0-9{}]/.test(trimmedMatch) || /\^/.test(trimmedMatch) || /\s-\s/.test(trimmedMatch);
+          
+          if (hasBackslash || hasGreek || hasMathContext) {
+            const isComplex = trimmedMatch.includes('\\frac') || trimmedMatch.includes('\\log') || trimmedMatch.length > 40;
+            return isComplex ? `$$${trimmedMatch}$$` : `$${trimmedMatch}$`;
+          }
+          return match;
+        });
 
-      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
-      t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
-      t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
-      token.content = t;
+        t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+        t = t.replace(/(\\sigma'\s*=\s*\\sigma\s*-\s*u)/g, (match, p1) => '$' + p1 + '$');
+        t = t.replace(/(\\sigma\s*-\s*P_w)/g, (match, p1) => '$' + p1 + '$');
+        return t;
+      });
     }
   });
 
@@ -215,12 +267,12 @@ export function healLatexFormulas(text) {
 
   tokens.forEach(token => {
     if (token.type === 'text') {
-      let t = token.content;
-      t = t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
-        if (p1.includes('\\left') || p1.includes('\\right')) return match;
-        return '($' + p1.trim() + '$)';
+      token.content = runOnTextOnly(token.content, (t) => {
+        return t.replace(/\(([^)$]*?(?:\\gamma|\\sigma|\\theta|\\phi|\\alpha|\\beta|\\frac|\\delta|\\Delta|_[a-zA-Z0-9{])[^)$]*?)\)/g, (match, p1) => {
+          if (p1.includes('\\left') || p1.includes('\\right')) return match;
+          return '($' + p1.trim() + '$)';
+        });
       });
-      token.content = t;
     }
   });
 
@@ -228,26 +280,27 @@ export function healLatexFormulas(text) {
   tokens = tokenizeForHealing(reassembled);
   tokens.forEach(token => {
     if (token.type === 'text') {
-      let t = token.content;
-      const mathWords = [
-        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
-        'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
-      ];
-      mathWords.forEach(word => {
-        const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
-        t = t.replace(regex, `\\${word}`);
+      token.content = runOnTextOnly(token.content, (t) => {
+        const mathWords = [
+          'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
+          'frac', 'sqrt', 'cdot', 'mathrm', 'times', 'log', 'ln', 'sin', 'cos', 'tan', 'approx', 'partial'
+        ];
+        mathWords.forEach(word => {
+          const regex = new RegExp(`(?<!\\\\)\\b${word}\\b`, 'g');
+          t = t.replace(regex, `\\${word}`);
+        });
+
+        const wrapAllowedWords = [
+          'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
+        ];
+        const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
+        const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
+        t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
+
+        const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
+        t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
+        return t;
       });
-
-      const wrapAllowedWords = [
-        'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega'
-      ];
-      const subscriptPattern = `(?:_[a-zA-Z0-9]+|_(?:\\{[a-zA-Z0-9_]+\\}))?`;
-      const greekPattern = new RegExp(`(\\\\\\b(?:${wrapAllowedWords.join('|')})${subscriptPattern}(?![a-zA-Z0-9_]))`, 'g');
-      t = t.replace(greekPattern, (match, p1) => '$' + p1 + '$');
-
-      const plainSubscriptPattern = /((\b[a-zA-Z](?:_[a-zA-Z0-9]+|_(?:\{[a-zA-Z0-9_]+\}))(?![a-zA-Z0-9_])))/g;
-      t = t.replace(plainSubscriptPattern, (match, p1) => '$' + p1 + '$');
-      token.content = t;
     }
   });
 
