@@ -407,14 +407,46 @@ html, body {
   .mobile-portrait-hide {
     display: none !important;
   }
+}
 
-  /* Hide right scrollbar in mobile portrait and expand question window */
+/* Hide right scrollbar in mobile/tablet views and expand question window */
+@media (max-width: 1024px) {
+  /* Hide viewport/browser scrollbar when a modal is open */
+  html.modal-open,
+  html.modal-open body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    overflow: hidden !important;
+  }
+  html.modal-open::-webkit-scrollbar,
+  html.modal-open body::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Hide inner scrollbars of all scrollable modal bodies and override padding/margins to zero */
   .scrollbar-none-mobile {
     scrollbar-width: none !important;  /* Firefox */
     -ms-overflow-style: none !important;  /* IE/Edge */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-right: 0 !important;
   }
   .scrollbar-none-mobile::-webkit-scrollbar {
     display: none !important;  /* Chrome, Safari, Opera, Android, iOS */
+  }
+
+  /* Expand question cards to span 100% width and remove right/left margins and rounding */
+  .quiz-card-item,
+  .exam-card-item,
+  .formula-card-item,
+  .answersheet-card-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    border-radius: 0 !important;
   }
 }
 

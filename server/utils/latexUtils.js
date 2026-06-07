@@ -1,9 +1,9 @@
-// 1. 수식($)과 일반 텍스트 토큰 분리 (인라인 줄바꿈 오염 방지)
+// 1. 수식($)과 일반 텍스트 토큰 분리 (정규식 공백 오타 완벽 제거)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\ $\$)|(\$[^\$\n]{1,200}\$)/gs;
+  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -22,16 +22,13 @@ export function tokenizeForHealing(text) {
   return tokens;
 }
 
-// 2. 누락된 백슬래시 일괄 복구 (모드 구분 없이 핵심 키워드 통합)
+// 2. 누락된 백슬래시 일괄 복구
 export function healBackslashes(str) {
   if (!str) return str;
   let healed = str;
-
-  // 로그 기호 표준화
   healed = healed.replace(/(?<!\\)\b(log|ln)\b/g, '\\$1')
                  .replace(/(?<!\\)\b(log|ln)(?=[pt_0-9])/g, '\\$1 ');
 
-  // 그리스 문자, 공학 수식 명령어, 비교 연산자 일괄 매칭
   const keywords = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
     'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
@@ -42,7 +39,6 @@ export function healBackslashes(str) {
     const regex = new RegExp(`(?<!\\\\)\\b${kw}\\b`, 'g');
     healed = healed.replace(regex, `\\${kw}`);
   });
-
   return healed;
 }
 
@@ -50,48 +46,77 @@ export function healBackslashes(str) {
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // 불필요한 HTML 잔재 및 줄바꿈 기호 정제
-  let processed = text.replace(/<br\s*\/?>/gi, '\n\n')
-                      .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                      .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                      .replace(/\n{3,}/g, '\n\n');
+  // [치명적 버그 해결] 제목이나 리스트 기호가 아닌, 수식/문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합
+  let processed = text.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
 
-  // 토큰화 진행 후 일차 복구
+  // 불필요한 HTML 태그 정제
+  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
+                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
+                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
+                       .replace(/\n{3,}/g, '\n\n');
+
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
     if (token.type === 'text') {
       let t = healBackslashes(token.content);
       
-      // [핵심 수정] 날것의 수식 덩어리는 문장 붕괴를 막기 위해 '무조건' 인라인($)으로만 감쌉니다.
-      const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\}=<>\\.,\^·~]{3,})/g;
-      t = t.replace(formulaPattern, (match) => {
+      // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (공백 및 탭 허용)
+      const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
+      return t.replace(formulaPattern, (match) => {
         const trimmed = match.trim();
         if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$')) return match;
         
-        const hasMath = /[\\_^{}<>=+\-\*\/]/.test(trimmed);
-        return hasMath ? `$${trimmed}$` : match;
+        const hasMath = /[\\_^{}<>=+\-\*\/']/.test(trimmed);
+        if (hasMath) {
+          // 특수기호 변환 및 첨자 뒤 공백 제거 정밀 처리 수칙 반영
+          let sanitized = trimmed.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
+                                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
+          return `$${sanitized}$`;
+        }
+        return match;
       });
-      return t;
     } else {
-      // 이미 수식으로 분리된 토큰은 내부 공백 및 기호만 가볍게 정제
       let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
+      math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
+                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
       return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
     }
   }).join('');
 
-  // 4. 절대 준수 수칙: 문장 부호, 조사 및 수식 간 공백 강제 규격화
-  processed = processed.replace(/([\uAC00-\uD7A30-9])(\$[^\$]+\$)/g, '$1 $2') // 한글/숫자 뒤 수식 공백
-                       .replace(/(\$[^\$]+\$)([\uAC00-\uD7A30-9])/g, '$1 $2') // 수식 뒤 한글/숫자 공백
-                       .replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|의)/g, '$1 $2'); // 조사 격리
+  // 4. 절대 준수 수칙: 토큰 기반 인터페이스 외부 공백 완벽 마킹
+  const finalTokens = tokenizeForHealing(processed);
+  let result = '';
 
-  // 연속된 공백 및 오염된 기호 최종 미세 조정
-  return processed.replace(/[ \t]+/g, ' ').trim();
+  for (let i = 0; i < finalTokens.length; i++) {
+    const current = finalTokens[i];
+    if (i === 0) {
+      result += current.content;
+      continue;
+    }
+    const prev = finalTokens[i - 1];
+    let needSpace = false;
+
+    if (prev.type === 'text' && current.type !== 'text') {
+      const lastChar = prev.content[prev.content.length - 1];
+      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
+    } else if (prev.type !== 'text' && current.type === 'text') {
+      const firstChar = current.content[0];
+      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
+    } else if (prev.type !== 'text' && current.type !== 'text') {
+      needSpace = true;
+    }
+    result += needSpace ? ' ' + current.content : current.content;
+  }
+
+  // 한국어 조사 결합 어미 공백 규격 조율
+  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+  return result.replace(/[ \t]+/g, ' ').trim();
 }
 
-// 오브젝트 딥 힐러 (단순화 및 속도 최적화)
+// 오브젝트 딥 힐러 트리구조
 export function healDeep(obj) {
-  if (!obj) return obj;
+  if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'string') return healLatexFormulas(obj);
   if (Array.isArray(obj)) return obj.map(healDeep);
   if (typeof obj === 'object') {

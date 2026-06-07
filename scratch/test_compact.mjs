@@ -12,7 +12,7 @@ const testCases = [
   {
     name: "Backslash recovery for Greek symbols and functions",
     input: "알파 alpha, 베타 beta, 시그마 sigma, 로그 log x, 사인 sin(theta)",
-    expected: "알파 $\\alpha,$ 베타 $\\beta,$ 시그마 $\\sigma,$ 로그 $\\log$ x, 사인 $\\sin(\\theta)$"
+    expected: "알파 $\\alpha,$ 베타 $\\beta,$ 시그마 $\\sigma,$ 로그 $\\log x,$ 사인 $\\sin(\\theta)$"
   },
   {
     name: "Verify that raw formula chunks inside text tokens are wrapped ONLY in inline math ($), never display math ($$)",
@@ -28,6 +28,16 @@ const testCases = [
     name: "Postposition spacing normalization (한글/숫자와 수식 간 공백 강제)",
     input: "공식$x+y=z$은 중요합니다. $a=b$가 성립한다.",
     expected: "공식 $x+y=z$ 은 중요합니다. $a=b$ 가 성립한다."
+  },
+  {
+    name: "Single newline merging inside sentence / formula, while keeping bullet points and headers",
+    input: "수식: \\frac{\\partial\n u}{\\partial t} = c_v \\frac{\\partial^2\n u}{\\partial z^2}\n\n### 제목\n\n* 리스트\n단일 줄바꿈\n테스트",
+    expected: "수식: $\\frac{\\partial u}{\\partial t} = c_v \\frac{\\partial^2 u}{\\partial z^2}$\n\n### 제목\n\n* 리스트 단일 줄바꿈 테스트"
+  },
+  {
+    name: "Subscript and superscript spacing cleanup",
+    input: "식: q_ u = c N_ c + q N_ q + 0.5 \\gamma B N_\\gamma",
+    expected: "식: $q_u = c N_c + q N_q + 0.5 \\gamma B N_\\gamma$"
   },
   {
     name: "Object deep healer",
