@@ -657,29 +657,29 @@ html, body {
 @media (min-width: 768px) {
   .custom-vertical-scrollbar {
     scrollbar-width: thin !important;
-    scrollbar-color: rgba(139, 92, 246, 0.4) rgba(15, 23, 42, 0.2) !important;
+    scrollbar-color: rgba(250, 204, 21, 0.7) rgba(15, 23, 42, 0.2) !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar {
-    width: 6px !important;
+    width: 8px !important;
     display: block !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.3) !important;
+    background: rgba(15, 23, 42, 0.4) !important;
     border-radius: 9999px !important;
-    border: 1px solid rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(139, 92, 246, 0.45) !important;
+    background: rgba(250, 204, 21, 0.7) !important;
     border-radius: 9999px !important;
     border: none !important;
-    box-shadow: 0 0 4px rgba(139, 92, 246, 0.2) !important;
+    box-shadow: 0 0 6px rgba(250, 204, 21, 0.3) !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.7) !important;
+    background: rgba(250, 204, 21, 0.95) !important;
   }
 }
 
