@@ -127,14 +127,16 @@ html, body {
   background: rgba(255, 255, 255, 0.5) !important;
 }
 
-/* Disable default selection and context menu on mobile touch-hold for long-pressable formulas */
-.enable-add-formula,
-.enable-add-formula * {
-  user-select: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  -webkit-touch-callout: none !important; /* Prevents callout/Google search context menu on iOS/Android */
+/* Disable default selection and context menu on mobile touch-hold for long-pressable formulas only on touch devices */
+@media (pointer: coarse) {
+  .enable-add-formula,
+  .enable-add-formula * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    -webkit-touch-callout: none !important; /* Prevents callout/Google search context menu on iOS/Android */
+  }
 }
 
 /* 📱 Mobile Landscape Layout Optimizations (height <= 600px in landscape orientation) */
