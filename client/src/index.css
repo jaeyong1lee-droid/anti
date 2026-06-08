@@ -654,7 +654,7 @@ html, body {
 }
 
 /* PC screen only vertical scrollbar styling */
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .custom-vertical-scrollbar {
     scrollbar-width: thin !important;
     scrollbar-color: rgba(139, 92, 246, 0.4) rgba(15, 23, 42, 0.2) !important;
