@@ -428,6 +428,7 @@ const buildHtmlDocument = (text, isPopup = false) => {
       }
       .katex-display {
         padding: 0.5em 8px !important;
+        margin: 0.25em 0 !important;
       }
       
       /* Custom elegant thin dark scrollbars for light pastel green theme */
@@ -1078,7 +1079,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   while ((match = blockRegex.exec(cleanedText)) !== null) {
     const beforeText = cleanedText.substring(lastIndex, match.index);
-    if (beforeText) {
+    if (beforeText && beforeText.trim() !== '') {
       parts.push({ type: 'text', content: beforeText });
     }
     parts.push({ type: 'math-block', content: match[1].trim() });
@@ -1086,7 +1087,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   const afterText = cleanedText.substring(lastIndex);
-  if (afterText) {
+  if (afterText && afterText.trim() !== '') {
     parts.push({ type: 'text', content: afterText });
   }
 
@@ -1118,7 +1119,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             return (
               <span 
                 key={idx} 
-                className="my-1.5 md:my-2.5 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+                className="my-0.5 md:my-1 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
               >
                 <span 
                   className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
@@ -1177,7 +1178,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           return (
             <div 
               key={idx} 
-              className="my-1.5 md:my-2.5 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+              className="my-0.5 md:my-1 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
             >
               {/* KaTeX 수식 */}
               <div 

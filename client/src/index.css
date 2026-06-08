@@ -100,6 +100,7 @@ html, body {
 /* Give block formulas slight horizontal padding to prevent mathematical offsets from triggering scrollbars */
 .katex-display {
   padding: 0.5em 8px !important;
+  margin: 0.25em 0 !important;
 }
 
 /* Custom elegant thin scrollbar for Webkit browsers (Chrome, Safari, iOS, Android) */
