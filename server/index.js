@@ -296,8 +296,18 @@ function escapeJsonBackslashes(str) {
   let i = 0;
   
   const latexCommands = [
-    'newline', 'nabla', 'nu', 'theta', 'tau', 'tan', 'times', 'tilde', 'text', 
-    'rho', 'right', 'mathrm', 'rule', 'beta', 'bar', 'begin', 'frac', 'phi', 'varphi', 'forall'
+    // n
+    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
+    // t
+    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
+    // r
+    'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
+    // b
+    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
+    // f
+    'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
+    // other greek/common commands
+    'phi', 'varphi', 'mathrm'
   ];
 
   while (i < str.length) {

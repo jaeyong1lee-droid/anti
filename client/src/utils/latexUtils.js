@@ -49,6 +49,63 @@ export function healLatexFormulas(text) {
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   let processed = text.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
 
+  // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
+  processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
+                       .replace(/\x0a\s*nu\b/g, '\\nu')
+                       .replace(/\x0a\s*nabla\b/g, '\\nabla')
+                       .replace(/\x0a\s*nearrow\b/g, '\\nearrow')
+                       .replace(/\x0a\s*neg\b/g, '\\neg')
+                       .replace(/\x0a\s*ni\b/g, '\\ni')
+                       .replace(/\x0a\s*notin\b/g, '\\notin')
+                       .replace(/\x0a\s*ngeq\b/g, '\\ngeq')
+                       .replace(/\x0a\s*nleq\b/g, '\\nleq')
+                       .replace(/\x0a\s*nsim\b/g, '\\nsim')
+                       .replace(/\x0a\s*ncong\b/g, '\\ncong')
+                       .replace(/\x0a\s*nparallel\b/g, '\\nparallel')
+                       .replace(/\x0a\s*newline\b/g, '\\newline')
+                       .replace(/\x0a\s*noindent\b/g, '\\noindent');
+
+  processed = processed.replace(/\x09\s*heta\b/g, '\\theta')
+                       .replace(/\x09\s*au\b/g, '\\tau')
+                       .replace(/\x09\s*an\b/g, '\\tan')
+                       .replace(/\x09\s*imes\b/g, '\\times')
+                       .replace(/\x09\s*ilde\b/g, '\\tilde')
+                       .replace(/\x09\s*ext\b/g, '\\text')
+                       .replace(/\x09\s*rac\b/g, '\\tfrac')
+                       .replace(/\x09\s*riangle\b/g, '\\triangle')
+                       .replace(/\x09\s*op\b/g, '\\top')
+                       .replace(/\x09\s*o\b/g, '\\to');
+
+  processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
+                       .replace(/\x0d\s*ight\b/g, '\\right')
+                       .replace(/\x0d\s*ule\b/g, '\\rule')
+                       .replace(/\x0d\s*angle\b/g, '\\rangle')
+                       .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
+
+  processed = processed.replace(/\x08\s*eta\b/g, '\\beta')
+                       .replace(/\x08\s*ar\b/g, '\\bar')
+                       .replace(/\x08\s*egin\b/g, '\\begin')
+                       .replace(/\x08\s*ullet\b/g, '\\bullet');
+
+  processed = processed.replace(/\x0c\s*rac\b/g, '\\frac')
+                       .replace(/\x0c\s*orall\b/g, '\\forall')
+                       .replace(/\x0c\s*lat\b/g, '\\flat')
+                       .replace(/\x0c\s*rown\b/g, '\\frown');
+
+  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z")
+  const isMathVariable = (str) => {
+    if (/^[a-zA-Z0-9]$/.test(str)) return true;
+    if (/[\\_^]/.test(str)) return true;
+    if (str.startsWith('\\')) return true;
+    return false;
+  };
+  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s+eq\s+([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2) => {
+    if (isMathVariable(p1) && isMathVariable(p2)) {
+      return `${p1} \\neq ${p2}`;
+    }
+    return match;
+  });
+
   // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
   processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
     let katexUnit = unit.replace(/\\/g, '');
