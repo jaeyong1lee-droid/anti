@@ -92,14 +92,17 @@ export function healLatexFormulas(text) {
                        .replace(/\x0c\s*lat\b/g, '\\flat')
                        .replace(/\x0c\s*rown\b/g, '\\frown');
 
-  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z")
+  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
   const isMathVariable = (str) => {
     if (/^[a-zA-Z0-9]$/.test(str)) return true;
     if (/[\\_^]/.test(str)) return true;
     if (str.startsWith('\\')) return true;
     return false;
   };
-  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s+eq\s+([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2) => {
+  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2, offset, string) => {
+    if (string[offset - 1] === '\\') {
+      return match;
+    }
     if (isMathVariable(p1) && isMathVariable(p2)) {
       return `${p1} \\neq ${p2}`;
     }
