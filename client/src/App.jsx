@@ -771,12 +771,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 // Helper to render KaTeX with display-style fractions (\dfrac) for improved readability
 const renderKatexString = (math, options) => {
   if (!math) return '';
-  // Only convert \frac to \dfrac if not inside a superscript/subscript (which contains ^ or _)
-  // to ensure proper font scaling for fractions in exponents/subscripts.
-  const hasSuperscriptOrSubscript = /[\^_]/.test(math);
-  const processedMath = hasSuperscriptOrSubscript 
-    ? math 
-    : math.replace(/\\frac\b/g, '\\dfrac');
+  const processedMath = math.replace(/\\frac\b/g, '\\dfrac');
   if (window.katex) {
     try {
       // Force throwOnError: true to prevent KaTeX from generating title strings with '$'
