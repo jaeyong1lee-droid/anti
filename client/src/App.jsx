@@ -5798,7 +5798,7 @@ export default function App() {
 
 
       {/* Main Content Area */}
-      <main className="max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem] w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow">
+      <main className={`w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}>
         {isMobileLandscape && landscapeSidebarHidden && (
           <button
             onClick={() => setLandscapeSidebarHidden(false)}
@@ -6305,7 +6305,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className={`bg-transparent ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 border md:!border-r-0 border-slate-800/80 shadow-xl' : 'rounded-none p-0 border-0 shadow-none'}`}>
+          <section className="bg-transparent rounded-none p-0 border-0 shadow-none">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
@@ -6399,7 +6399,7 @@ export default function App() {
                                 : 'hover:bg-slateCustom-900/40 hover:scale-[1.002]'
                             }`}
                           >
-                            <td className={`py-2.5 px-3 ${(isDesktop && !isMobileLandscape) ? 'max-w-xs md:max-w-md' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>
+                            <td className={`py-2.5 px-3 ${(isDesktop && !isMobileLandscape) ? 'max-w-md xl:max-w-2xl' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>
                               <div className="space-y-1">
                                 {editingTopicId === topic.id ? (
                                   <div className="flex items-center gap-1.5 w-full select-text" onClick={(e) => e.stopPropagation()}>
