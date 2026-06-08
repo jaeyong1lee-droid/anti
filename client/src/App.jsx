@@ -504,6 +504,7 @@ const buildHtmlDocument = (text, isPopup = false) => {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/copy-tex.min.js"></script>
     <script>
       function healIframeMath() {
         const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
@@ -1444,8 +1445,18 @@ export default function App() {
       document.head.appendChild(link);
     }
 
+    const loadCopyTex = () => {
+      if (!document.getElementById('katex-copy-tex')) {
+        const copyScript = document.createElement('script');
+        copyScript.id = 'katex-copy-tex';
+        copyScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/copy-tex.min.js';
+        document.head.appendChild(copyScript);
+      }
+    };
+
     if (window.katex) {
       setKatexLoaded(true);
+      loadCopyTex();
       return;
     }
 
@@ -1453,6 +1464,7 @@ export default function App() {
     script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
     script.onload = () => {
       setKatexLoaded(true);
+      loadCopyTex();
     };
     document.head.appendChild(script);
   }, []);
