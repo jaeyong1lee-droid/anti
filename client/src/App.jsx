@@ -2468,7 +2468,7 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok) {
-        showNotification('새로운 토픽 등록 및 6개 회차 복습 스케줄 생성이 완료되었습니다!');
+        showNotification('새로운 토픽 등록 및 1회차 복습 스케줄 생성이 완료되었습니다!');
         
         // 공부 토픽 등록 성공 시 업로드한 파일이 있으면 답안지에도 자동 업로드/AI 분석 수행
         if (fileToUpload) {
@@ -6370,12 +6370,12 @@ export default function App() {
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
                         <th className={`py-2.5 px-3 ${(isDesktop && !isMobileLandscape) ? '' : 'min-w-[66vw] max-w-[66vw] w-[66vw]'}`}>토픽 정보</th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (1일 뒤)</span></th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (4일 뒤)</span></th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (7일 뒤)</span></th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (14일 뒤)</span></th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (35일 뒤)</span></th>
-                        <th className="py-2.5 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (60일 뒤)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">1회차<span className="hidden md:inline"> 복습 (등록 1일 후)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">2회차<span className="hidden md:inline"> 복습 (완료 4일 후)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">3회차<span className="hidden md:inline"> 복습 (완료 7일 후)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">4회차<span className="hidden md:inline"> 복습 (완료 14일 후)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">5회차<span className="hidden md:inline"> 복습 (완료 35일 후)</span></th>
+                        <th className="py-2.5 px-2 text-center whitespace-nowrap">6회차<span className="hidden md:inline"> 복습 (완료 60일 후)</span></th>
                         <th className="py-2.5 px-2 text-center">도구</th>
                       </tr>
                     </thead>
@@ -6520,7 +6520,7 @@ export default function App() {
                                       )}
                                     </div>
                                   ) : (
-                                    <span className="text-xs text-slate-600">-</span>
+                                    <span className="text-xs text-slate-600 cursor-help" title="이전 회차 복습 완료 시 생성">-</span>
                                   )}
                                 </td>
                               );

@@ -1788,6 +1788,35 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   return generateFallbackQuestionsModule(title, keywords, fileText);
 }
 
+// 복습이 완료되었을 때 다음 회차 복습 스케줄을 자동으로 생성하는 헬퍼 함수
+async function scheduleNextReviewRound(topicId, currentRound) {
+  const nextRound = currentRound + 1;
+  const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+  const existingNextSchedule = await dbQuery.get(nextCheckSql, [topicId, nextRound]);
+  
+  if (!existingNextSchedule) {
+    let days = 0;
+    if (currentRound === 1) days = 4;
+    else if (currentRound === 2) days = 7;
+    else if (currentRound === 3) days = 14;
+    else if (currentRound === 4) days = 35;
+    else if (currentRound === 5) days = 60;
+    else if (currentRound >= 6) {
+      days = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
+    }
+
+    if (days > 0) {
+      const nextPlannedDate = getLocalDateString(new Date(), days);
+      const insertSql = `
+        INSERT INTO schedules (topic_id, review_round, planned_date, status)
+        VALUES (?, ?, ?, 'pending')
+      `;
+      await dbQuery.run(insertSql, [topicId, nextRound, nextPlannedDate]);
+      console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate}`);
+    }
+  }
+}
+
 
 // -------------------------------------------------------------
 // ENDPOINTS
@@ -1869,26 +1898,22 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
 
     const topicId = topicResult.id;
 
-    // 망각주기 스케줄링 알고리즘: 등록일 기준 [+1일, +4일, +7일, +14일, +35일, +60일]
-    const intervals = [1, 4, 7, 14, 35, 60];
-    
+    // 망각주기 스케줄링 알고리즘: 등록일 기준 +1일로 1회차 복습만 먼저 생성
+    // (이후 회차는 이전 회차 완료 시점에 동적으로 생성됨: 1회차 완료 -> 2회차 +4일, 2회차 -> 3회차 +7일 등)
+    const firstInterval = 1;
     const insertScheduleSql = `
       INSERT INTO schedules (topic_id, review_round, planned_date, status)
-      VALUES (?, ?, ?, 'pending')
+      VALUES (?, 1, ?, 'pending')
     `;
-
-    for (let i = 0; i < intervals.length; i++) {
-      const round = i + 1;
-      const plannedDate = getLocalDateString(createdDate, intervals[i]);
-      await dbQuery.run(insertScheduleSql, [topicId, round, plannedDate]);
-    }
+    const plannedDate = getLocalDateString(createdDate, firstInterval);
+    await dbQuery.run(insertScheduleSql, [topicId, plannedDate]);
 
     res.status(201).json({
       message: '토픽 등록 및 복습 스케줄 생성이 완료되었습니다.',
       topicId: topicId,
       title: title,
       keywords: keywords,
-      schedulesCreated: intervals.length
+      schedulesCreated: 1
     });
   } catch (error) {
     console.error('Error registering topic and creating schedules:', error);
@@ -2211,23 +2236,9 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [nowTimestamp, scheduleId]);
 
-    // 6회차 이상 복습 완료 시, 장기 보존 복습을 위해 M+1(30일) ~ M+3(90일) 뒤에 다음 회차 복습을 자동으로 추가합니다.
-    if (schedule.review_round >= 6) {
-      const nextRound = schedule.review_round + 1;
-      const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
-      const existingNextSchedule = await dbQuery.get(nextCheckSql, [schedule.topic_id, nextRound]);
-      
-      if (!existingNextSchedule) {
-        const randomDays = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
-        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
-        
-        const insertSql = `
-          INSERT INTO schedules (topic_id, review_round, planned_date, status)
-          VALUES (?, ?, ?, 'pending')
-        `;
-        await dbQuery.run(insertSql, [schedule.topic_id, nextRound, nextPlannedDate]);
-        console.log(`Auto-created review round ${nextRound} for topic ${schedule.topic_id} planned on ${nextPlannedDate}`);
-      }
+    // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
+    if (schedule.review_round !== 99) {
+      await scheduleNextReviewRound(schedule.topic_id, schedule.review_round);
     }
 
     res.json({
@@ -2352,22 +2363,9 @@ app.post('/api/quiz/submit', async (req, res) => {
       await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeySchedule]);
     }
 
-    // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
-    if (isPassed && schedule.review_round >= 6 && !isBonus) {
-      const nextRound = schedule.review_round + 1;
-      const existingNext = await dbQuery.get(
-        'SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?',
-        [topic_id, nextRound]
-      );
-      if (!existingNext) {
-        const randomDays = 30 + Math.floor(Math.random() * 61);
-        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
-        await dbQuery.run(
-          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, ?, ?, 'pending')`,
-          [topic_id, nextRound, nextPlannedDate]
-        );
-        console.log(`[quiz/submit] 장기 복습 ${nextRound}회차 자동 생성: topic=${topic_id}, date=${nextPlannedDate}`);
-      }
+    // 4. 통과한 경우, 다음 회차 자동 생성
+    if (isPassed && !isBonus && schedule.review_round !== 99) {
+      await scheduleNextReviewRound(topic_id, schedule.review_round);
     }
 
     res.json({
@@ -2421,16 +2419,14 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
 
-    // 6회차 이상 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
-    if (schedule.review_round >= 6) {
-      const nextRound = schedule.review_round + 1;
-      const deleteSql = `
-        DELETE FROM schedules 
-        WHERE topic_id = ? AND review_round = ? AND status = 'pending'
-      `;
-      await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
-      console.log(`Cleaned up auto-created future round ${nextRound} for topic ${schedule.topic_id} due to reset`);
-    }
+    // 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
+    const nextRound = schedule.review_round + 1;
+    const deleteSql = `
+      DELETE FROM schedules 
+      WHERE topic_id = ? AND review_round = ? AND status = 'pending'
+    `;
+    await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
+    console.log(`Cleaned up auto-created future round ${nextRound} for topic ${schedule.topic_id} due to reset`);
 
     res.json({
       message: `${schedule.review_round}회차 복습이 대기 상태로 초기화되었습니다.`,
