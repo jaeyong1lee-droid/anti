@@ -1013,7 +1013,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     if (isInline) {
       return (
         <span 
-          className={`${className} select-text`}
+          className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+          onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
           onMouseDown={enableAddFormula ? startPress : undefined}
           onMouseUp={enableAddFormula ? endPress : undefined}
           onMouseMove={enableAddFormula ? cancelPress : undefined}
@@ -1040,7 +1041,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     }
     return (
       <div 
-        className={`${className} select-text w-full formula-scroll-container`}
+        className={`${className} select-text w-full formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
         onMouseDown={enableAddFormula ? startPress : undefined}
         onMouseUp={enableAddFormula ? endPress : undefined}
         onMouseMove={enableAddFormula ? cancelPress : undefined}
@@ -1103,7 +1105,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   if (isInline) {
     return (
       <span 
-        className={`${className} select-text`}
+        className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
         onMouseDown={enableAddFormula ? startPress : undefined}
         onMouseUp={enableAddFormula ? endPress : undefined}
         onMouseMove={enableAddFormula ? cancelPress : undefined}
@@ -1161,7 +1164,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   return (
     <div 
-      className={`${className} space-y-1.5 select-text`}
+      className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+      onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
       onMouseDown={enableAddFormula ? startPress : undefined}
       onMouseUp={enableAddFormula ? endPress : undefined}
       onMouseMove={enableAddFormula ? cancelPress : undefined}
@@ -5334,7 +5338,16 @@ export default function App() {
       handleSaveFormulaQuestions(updated, false);
       return updated;
     });
-    showNotification(`[${title}] 공식이 필수공식 퀴즈(Q1)에 성공적으로 추가되었습니다!`);
+
+    if (window.confirm(`[${title}] 공식이 필수공식 리스트에 추가되었습니다.\n지금 필수공식 탭으로 이동하시겠습니까?`)) {
+      setSelectedTopic(null);
+      setShowExam(false);
+      setShowAnswerSheet(false);
+      setShowFormulaExam(true);
+      setViewMode('dashboard');
+    } else {
+      showNotification(`[${title}] 공식이 필수공식 리스트에 추가되었습니다.`);
+    }
 
     // 6. 백그라운드 AI 정밀 공식 작명 및 변수/상수 해설 API 비동기 가동
     fetch(`${API_BASE}/api/formula/suggest-title`, {
@@ -7188,7 +7201,7 @@ export default function App() {
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed flex flex-col items-center justify-center text-center bg-slate-900/40 p-3 rounded-xl border border-slate-800/40 my-1"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
                               {q.structure && (
@@ -9143,7 +9156,7 @@ export default function App() {
                             {q.formula ? (
                               <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                 <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed">
+                                <div className="text-sm text-slate-200 leading-relaxed flex flex-col items-center justify-center text-center bg-slate-900/40 p-3 rounded-xl border border-slate-800/40 my-1">
                                   <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                 </div>
                               </div>
