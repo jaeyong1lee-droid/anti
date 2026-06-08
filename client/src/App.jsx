@@ -6041,7 +6041,7 @@ export default function App() {
                 </div>
               ) : (
                 /* Card List */
-                <div className="space-y-4 lg:max-h-[640px] lg:overflow-y-auto lg:pr-2 lg:custom-vertical-scrollbar">
+                <div className="space-y-4 lg:max-h-[calc(100vh-300px)] lg:overflow-y-auto lg:pr-2 lg:custom-vertical-scrollbar">
                   {todayReviews.map((item) => {
                     if (item.isBonus && hiddenBonusTopicIds.includes(item.topic_id)) {
                       return null;
@@ -6364,7 +6364,7 @@ export default function App() {
                   )
                 : -1;
               return (
-                <div className="overflow-x-auto md:overflow-x-visible landscape-overflow-x-auto lg:max-h-[640px] lg:overflow-y-auto lg:pr-2 lg:custom-vertical-scrollbar">
+                <div className="overflow-x-auto md:overflow-x-visible landscape-overflow-x-auto lg:max-h-[calc(100vh-300px)] lg:overflow-y-auto lg:pr-2 lg:custom-vertical-scrollbar">
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-[#0f172a] z-10 shadow-sm">
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
