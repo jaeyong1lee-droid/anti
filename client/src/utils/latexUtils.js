@@ -195,15 +195,30 @@ export function healLatexFormulas(text) {
 }
 
 // 오브젝트 딥 힐러 트리구조
-export function healDeep(obj) {
+export function healDeep(obj, parentKey = null) {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj === 'string') return healLatexFormulas(obj);
-  if (Array.isArray(obj)) return obj.map(healDeep);
+  if (typeof obj === 'string') {
+    const skipKeys = [
+      'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
+      'answersheet_report_id', 'type', 'subtype', 'keywords'
+    ];
+    if (parentKey && skipKeys.includes(parentKey)) {
+      let cleanVal = obj.trim();
+      if (cleanVal.startsWith('$') && cleanVal.endsWith('$')) {
+        cleanVal = cleanVal.slice(1, -1);
+      }
+      return cleanVal;
+    }
+    return healLatexFormulas(obj);
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => healDeep(item, parentKey));
+  }
   if (typeof obj === 'object') {
     const healed = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        healed[key] = healDeep(obj[key]);
+        healed[key] = healDeep(obj[key], key);
       }
     }
     return healed;
