@@ -796,11 +796,34 @@ const renderKatexString = (math, options) => {
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
-  const handleFormulaClick = (e) => {
-    // Find the nearest katex formula wrapper
-    const katexEl = e.target.closest('.katex, .katex-display');
-    if (!katexEl) return;
-    
+  const touchStartPos = useRef(null);
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!touchStartPos.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartPos.current.x;
+    const dy = touch.clientY - touchStartPos.current.y;
+    const dt = Date.now() - touchStartPos.current.time;
+    const distance = Math.hypot(dx, dy);
+
+    // If they touched for less than 500ms and moved less than 10 pixels, it is a tap!
+    if (distance < 10 && dt < 500) {
+      const katexEl = e.target.closest('.katex, .katex-display');
+      if (katexEl) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerAddFormula(katexEl);
+      }
+    }
+    touchStartPos.current = null;
+  };
+
+  const triggerAddFormula = (katexEl) => {
     const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
     if (!annotation) return;
     
@@ -812,6 +835,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       if (typeof window.__handleAddSpecificFormula === 'function') {
         window.__handleAddSpecificFormula(cleanMath, text);
       }
+    }
+  };
+
+  const handleFormulaClick = (e) => {
+    const katexEl = e.target.closest('.katex, .katex-display');
+    if (katexEl) {
+      triggerAddFormula(katexEl);
     }
   };
 
@@ -981,6 +1011,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
         <span 
           className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
           onClick={enableAddFormula ? handleFormulaClick : undefined}
+          onTouchStart={enableAddFormula ? handleTouchStart : undefined}
+          onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
@@ -989,6 +1021,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       <div 
         className={`${className} select-text w-full formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
         onClick={enableAddFormula ? handleFormulaClick : undefined}
+        onTouchStart={enableAddFormula ? handleTouchStart : undefined}
+        onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
@@ -1033,6 +1067,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       <span 
         className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
         onClick={enableAddFormula ? handleFormulaClick : undefined}
+        onTouchStart={enableAddFormula ? handleTouchStart : undefined}
+        onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
@@ -1084,6 +1120,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     <div 
       className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
       onClick={enableAddFormula ? handleFormulaClick : undefined}
+      onTouchStart={enableAddFormula ? handleTouchStart : undefined}
+      onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
