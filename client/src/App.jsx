@@ -374,6 +374,17 @@ const cleanAndSanitizeMathText = (rawText) => {
   
   // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
   cleaned = cleaned.replace(/_따라서/g, '따라서');
+
+  // 3. 한글이 포함되어 있으면서 실제 수식이 아닌 inline $...$ 기호 제거 (깨짐 방지)
+  cleaned = cleaned.replace(/\$([^\$]+?)\$/g, (m, math) => {
+    if (/[\uAC00-\uD7A3]/.test(math)) {
+      const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+      if (!isRealFormula) {
+        return math.trim();
+      }
+    }
+    return m;
+  });
   
   return cleaned;
 };
@@ -1001,6 +1012,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       });
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
+        if (/[\uAC00-\uD7A3]/.test(math)) {
+          const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+          if (!isRealFormula) {
+            return math.trim();
+          }
+        }
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
     }
@@ -1137,7 +1154,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                 if (/[\uAC00-\uD7A3]/.test(math)) {
                   const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
-                    return m;
+                    return math.trim();
                   }
                 }
                 return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
@@ -1200,7 +1217,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
               if (/[\uAC00-\uD7A3]/.test(math)) {
                 const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
                 if (!isRealFormula) {
-                  return m;
+                  return math.trim();
                 }
               }
               return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
@@ -1700,6 +1717,11 @@ export default function App() {
   // Option Explanations State for Multiple Choice Option Analysis (Separated for Review and Exam)
   const [reviewOptionExplanations, setReviewOptionExplanations] = useState({});
   const [examOptionExplanations, setExamOptionExplanations] = useState({});
+
+  // Card-level AI Tutor states (In-place Expansion)
+  const [activeTutorInputKey, setActiveTutorInputKey] = useState(null); // 'r_idx' or 'e_idx'
+  const [tutorInputTexts, setTutorInputTexts] = useState({}); // { 'r_idx': '사용자 질문...' }
+  const [tutorExplanations, setTutorExplanations] = useState({}); // { 'r_idx': { loading: false, text: '답변...', error: '' } }
 
   // Hidden Weak-Point Bonus topic IDs (Client hide-on-complete state)
   const [hiddenBonusTopicIds, setHiddenBonusTopicIds] = useState([]);
@@ -2726,6 +2748,9 @@ export default function App() {
       setSelectedAnswers({});
       setOpenSections({});
       setReviewOptionExplanations({});
+      setActiveTutorInputKey(null);
+      setTutorInputTexts({});
+      setTutorExplanations({});
       lastQuizTopicId.current = null;
     }
   };
@@ -3038,6 +3063,9 @@ export default function App() {
     setRevealedQuestions({}); // Reset revealed answers
     setSelectedAnswers({}); // Reset MC selected answers
     setReviewOptionExplanations({}); // Reset Option Explanations
+    setActiveTutorInputKey(null);
+    setTutorInputTexts({});
+    setTutorExplanations({});
     setIsFallback(false);
     setAiError('');
     setShowFullReport(false);
@@ -3868,6 +3896,58 @@ export default function App() {
 
     // Send immediately via handleSendChat
     await handleSendChat(promptText);
+  };
+
+  // ── Ask AI Tutor In-place Under Question Card ──────────────────────
+  const handleAskTutorInCard = async (mode, idx, q) => {
+    const key = `${mode === 'review' ? 'r' : 'e'}_${idx}`;
+    const userQuestion = (tutorInputTexts[key] || '').trim();
+    if (!userQuestion) return;
+
+    // Set loading state for this card
+    setTutorExplanations(prev => ({
+      ...prev,
+      [key]: { loading: true, text: '', error: '' }
+    }));
+
+    // Format prompt text contextually
+    let promptText = `[수험생 질문]\n아래 질문에 대해 친절하게 핵심 위주로 명쾌하게 답변해 주세요. 오직 사용자가 물어본 질문에 대해서만 집중해서 대답하세요.\n\n`;
+    promptText += `■ 참고용 문제 정보:\n- 문제: ${q.question}\n`;
+    if (q.options && q.options.length > 0) {
+      promptText += `- 객관식 보기:\n${q.options.map((opt, i) => `${i + 1}) ${opt}`).join('\n')}\n`;
+      promptText += `- 정답: ${q.answer || '확인 필요'}\n`;
+      if (q.explanation) {
+        promptText += `- 기존 해설: ${q.explanation}\n`;
+      }
+    } else {
+      if (q.concept) promptText += `- 핵심 개념: ${q.concept}\n`;
+      if (q.formula) promptText += `- 공식/개념도: ${q.formula}\n`;
+      if (q.answer) promptText += `- 예시 답안: ${q.answer}\n`;
+    }
+    promptText += `\n■ 질문:\n${userQuestion}`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [], // No history for card-level freeform queries to focus only on user query
+          message: promptText
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변을 받아오지 못했습니다.');
+
+      setTutorExplanations(prev => ({
+        ...prev,
+        [key]: { loading: false, text: data.text, error: '' }
+      }));
+    } catch (err) {
+      setTutorExplanations(prev => ({
+        ...prev,
+        [key]: { loading: false, text: '', error: err.message }
+      }));
+    }
   };
 
   // ── Request Detailed Answer for Exam Questions ────────────────────────
@@ -7013,7 +7093,7 @@ export default function App() {
                         fetch(deleteUrl, { method: 'DELETE' })
                           .catch(e => console.warn('세션 초기화 실패:', e));
                       }
-                      setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                      setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); setActiveTutorInputKey(null); setTutorInputTexts({}); setTutorExplanations({}); lastQuizTopicId.current = null; 
                     }}
                     className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                     title="문제 초기화 (재개 시 새 문제 생성)"
@@ -7255,12 +7335,17 @@ export default function App() {
                                      )}
 
                                      {/* AI 튜터 버튼 */}
-                                     <button
-                                       onClick={() => handleAskTutorAboutQuestion(q, 'review')}
-                                       className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
-                                     >
-                                       💬 AI 튜터
-                                     </button>
+                                     {activeTutorInputKey !== `r_${idx}` && (
+                                       <button
+                                         onClick={() => {
+                                           setActiveTutorInputKey(`r_${idx}`);
+                                           setAdjustingInputKey(null);
+                                         }}
+                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
+                                       >
+                                         💬 AI 튜터
+                                       </button>
+                                     )}
                                    </div>
 
                                    {/* 문제조정 입력 및 결과 보드 */}
@@ -7317,6 +7402,54 @@ export default function App() {
                                        <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                        <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                          <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                       </div>
+                                     </div>
+                                   )}
+
+                                   {/* AI 튜터 입력창 및 답변 보드 */}
+                                   {activeTutorInputKey === `r_${idx}` && (
+                                     <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/30 rounded-xl w-full">
+                                       <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터에게 질문하기:</label>
+                                       <textarea
+                                         rows={2}
+                                         value={tutorInputTexts[`r_${idx}`] || ''}
+                                         onChange={(e) => {
+                                           const text = e.target.value;
+                                           setTutorInputTexts(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                         }}
+                                         placeholder="이 문제의 풀이법이나 헷갈리는 점에 대해 질문해 보세요..."
+                                         className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
+                                       />
+                                       <div className="flex gap-2 justify-end">
+                                         <button
+                                           onClick={() => setActiveTutorInputKey(null)}
+                                           className="text-[10px] px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                         >
+                                           취소
+                                         </button>
+                                         <button
+                                           onClick={() => handleAskTutorInCard('review', idx, q)}
+                                           disabled={tutorExplanations[`r_${idx}`]?.loading}
+                                           className="text-[10px] px-3 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                                         >
+                                           {tutorExplanations[`r_${idx}`]?.loading ? '답변 중...' : '질문하기'}
+                                         </button>
+                                       </div>
+                                       {tutorExplanations[`r_${idx}`]?.loading && (
+                                         <div className="text-[10px] text-violet-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 답변을 작성하고 있습니다...</div>
+                                       )}
+                                     </div>
+                                   )}
+
+                                   {/* AI 튜터 답변 결과 */}
+                                   {tutorExplanations[`r_${idx}`]?.error && (
+                                     <div className="text-[10px] text-rose-400 font-bold mt-2">❌ 답변 실패: {tutorExplanations[`r_${idx}`].error}</div>
+                                   )}
+                                   {tutorExplanations[`r_${idx}`]?.text && !tutorExplanations[`r_${idx}`]?.loading && (
+                                     <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
+                                       <div className="text-[11px] font-black text-violet-400 mb-2">💬 AI 튜터 답변</div>
+                                       <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                         <LatexRenderer text={tutorExplanations[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} />
                                        </div>
                                      </div>
                                    )}
