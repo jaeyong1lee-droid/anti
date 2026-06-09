@@ -660,6 +660,7 @@ html, body {
   .custom-vertical-scrollbar {
     scrollbar-width: auto !important;
     scrollbar-color: rgba(250, 204, 21, 0.85) rgba(30, 41, 59, 0.5) !important;
+    overflow-y: auto !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar {

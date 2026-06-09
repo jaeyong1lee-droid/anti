@@ -3826,6 +3826,50 @@ export default function App() {
     }
   };
 
+  // ── Ask AI Tutor About a Specific Question ──────────────────────────
+  const handleAskTutorAboutQuestion = async (q, mode = 'review') => {
+    if (isChatLoading) return;
+
+    let promptText = `[기술사 학습 질문]\n다음 문제에 대해 핵심 전공 지식과 풀이 방식을 매우 친절하고 깊이 있게 설명해 주세요.\n\n`;
+    promptText += `■ 문제:\n${q.question}\n\n`;
+    
+    if (q.options && q.options.length > 0) {
+      promptText += `■ 객관식 보기:\n${q.options.map((opt, i) => `${i + 1}) ${opt}`).join('\n')}\n\n`;
+      promptText += `■ 정답/해설:\n${q.answer || '확인 필요'}\n`;
+      if (q.explanation) {
+        promptText += `(해설 요약: ${q.explanation})\n`;
+      }
+    } else {
+      if (q.concept) {
+        promptText += `■ 핵심 개념:\n${q.concept}\n\n`;
+      }
+      if (q.formula) {
+        promptText += `■ 공식/개념도:\n${q.formula}\n\n`;
+      }
+      if (q.answer) {
+        promptText += `■ 예시 답안:\n${q.answer}\n`;
+      }
+    }
+
+    // Switch tab to Tutor in the respective split containers
+    if (mode === 'review') {
+      setReviewMobileTab('tutor');
+      requestAnimationFrame(() => {
+        const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+        reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+      });
+    } else if (mode === 'exam') {
+      setExamMobileTab('tutor');
+      requestAnimationFrame(() => {
+        const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+        examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
+      });
+    }
+
+    // Send immediately via handleSendChat
+    await handleSendChat(promptText);
+  };
+
   // ── Request Detailed Answer for Exam Questions ────────────────────────
   const handleRequestDetailedAnswer = async (idx, question, answer) => {
     setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
@@ -4003,12 +4047,14 @@ export default function App() {
   };
 
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
-  const handleSendChat = async () => {
-    const userMessage = chatInput.trim();
+  const handleSendChat = async (customMessage) => {
+    const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
     if ((!userMessage && !attachedImage) || isChatLoading) return;
     
     const currentAttachedImage = attachedImage;
-    setChatInput('');
+    if (typeof customMessage !== 'string') {
+      setChatInput('');
+    }
     setAttachedImage(null);
     
     const userMsgIdx = chatHistory.length;
@@ -6396,7 +6442,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className={`min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-270px)]' : 'h-full bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
+          <section className={`min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-270px)] overflow-hidden' : 'h-full bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
@@ -7001,7 +7047,7 @@ export default function App() {
               {/* Left: Quiz Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile"
+                className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -7185,7 +7231,7 @@ export default function App() {
                                 )}
                                 {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
 
-                                                                 {/* AI 해설 및 보기분석 버튼 패널 */}
+                                 {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
                                    <div className="flex flex-wrap items-center gap-2 mb-2">
                                      {/* 문제조정 버튼 */}
@@ -7207,6 +7253,14 @@ export default function App() {
                                          🔍 보기별 정밀 분석 해설 보기 (AI)
                                        </button>
                                      )}
+
+                                     {/* AI 튜터 버튼 */}
+                                     <button
+                                       onClick={() => handleAskTutorAboutQuestion(q, 'review')}
+                                       className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
+                                     >
+                                       💬 AI 튜터
+                                     </button>
                                    </div>
 
                                    {/* 문제조정 입력 및 결과 보드 */}
@@ -7311,14 +7365,22 @@ export default function App() {
 
                               {/* 문제조정 입력 및 결과 보드 */}
                               {true && (
-                                <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
                                   {adjustingInputKey !== `r_${idx}` ? (
-                                    <button
-                                      onClick={() => setAdjustingInputKey(`r_${idx}`)}
-                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                    >
-                                      🛠️ 문제조정 (AI 피드백)
-                                    </button>
+                                    <>
+                                      <button
+                                        onClick={() => setAdjustingInputKey(`r_${idx}`)}
+                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                      >
+                                        🛠️ 문제조정 (AI 피드백)
+                                      </button>
+                                      <button
+                                        onClick={() => handleAskTutorAboutQuestion(q, 'review')}
+                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
+                                      >
+                                        💬 AI 튜터
+                                      </button>
+                                    </>
                                   ) : (
                                     <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
                                       <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
@@ -8175,6 +8237,14 @@ export default function App() {
                                       🔍 보기별 정밀 분석 해설 보기 (AI)
                                     </button>
                                   )}
+                                  
+                                  {/* AI 튜터 버튼 */}
+                                  <button
+                                    onClick={() => handleAskTutorAboutQuestion(q, 'exam')}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
+                                  >
+                                    💬 AI 튜터
+                                  </button>
                                 </div>
 
                                 {/* 문제조정 입력 및 결과 보드 */}
@@ -8272,14 +8342,22 @@ export default function App() {
                             )}
 
                             {/* 문제조정 입력 및 결과 보드 */}
-                            <div className="mt-3 pt-2 border-t border-slate-700/50">
+                            <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
                               {adjustingInputKey !== `e_${idx}` ? (
-                                <button
-                                  onClick={() => setAdjustingInputKey(`e_${idx}`)}
-                                  className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                >
-                                  🛠️ 문제조정 (AI 피드백)
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setAdjustingInputKey(`e_${idx}`)}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                  >
+                                    🛠️ 문제조정 (AI 피드백)
+                                  </button>
+                                  <button
+                                    onClick={() => handleAskTutorAboutQuestion(q, 'exam')}
+                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
+                                  >
+                                    💬 AI 튜터
+                                  </button>
+                                </>
                               ) : (
                                 <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
                                   <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
