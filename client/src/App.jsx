@@ -10834,9 +10834,16 @@ export default function App() {
 
 function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   const [pos, setPos] = useState(() => {
-    const saved = localStorage.getItem(`anti_fab_pos_${theme}`);
     const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
     const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
+    const isCover = h <= 450;
+    const key = isCover ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
+    const saved = localStorage.getItem(key);
+    
+    // Top-left defaults (below mobile headers)
+    const initialX = 16; 
+    const initialY = 70; 
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -10847,8 +10854,6 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         }
       } catch (e) {}
     }
-    const initialX = w - 100 - 16; 
-    const initialY = h - 52 - 80; 
     return { x: initialX, y: initialY };
   });
 
@@ -10930,7 +10935,10 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         }
       }
     } else {
-      localStorage.setItem(`anti_fab_pos_${theme}`, JSON.stringify(pos));
+      const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
+      const isCover = h <= 450;
+      const key = isCover ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
+      localStorage.setItem(key, JSON.stringify(pos));
     }
     dragStart.current = null;
   };
