@@ -7089,6 +7089,10 @@ export default function App() {
                     const answered = selectedAnswers[idx] !== undefined;
                     const isCorrect = answered && selectedAnswers[idx] === q.answer;
                     const isRevd = !!revealedQuestions[idx];
+                    const subjIdx = isSubj ? aiQuestions.slice(0, idx).filter(question => {
+                      const itemMC = question.type === '객관식' || (question.options && question.options.length > 0);
+                      return !itemMC;
+                    }).length : -1;
 
                     const subtypeBadgeColor =
                       q.type?.includes('개요') || q.type?.includes('인출') ? 'bg-sky-700' :
@@ -7356,10 +7360,16 @@ export default function App() {
                               {q.formula && (
                                 <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                   <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed flex flex-col items-center justify-center text-center bg-slate-900/40 p-3 rounded-xl border border-slate-800/40 my-1"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
-                              {!q.concept && !q.formula && (
+                              {subjIdx === 1 && q.structure && (
+                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                  <span className="text-[10px] font-black text-rose-400">📋 기호 정의: </span>
+                                  <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                </div>
+                              )}
+                              {!q.concept && !q.formula && (subjIdx !== 1 || !q.structure) && (
                                 <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                               )}
 
@@ -9333,7 +9343,7 @@ export default function App() {
                             {q.formula ? (
                               <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                 <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed flex flex-col items-center justify-center text-center bg-slate-900/40 p-3 rounded-xl border border-slate-800/40 my-1">
+                                <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
                                   <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                 </div>
                               </div>
