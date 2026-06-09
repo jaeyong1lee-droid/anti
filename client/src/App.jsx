@@ -7352,6 +7352,61 @@ export default function App() {
                                       </div>
                                     )}
 
+                                    {/* AI 튜터 입력 및 답변 보드 */}
+                                    {activeTutorInputKey === `r_${idx}` && (
+                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl w-full">
+                                        <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                        <textarea
+                                          rows={3}
+                                          value={tutorInputText[`r_${idx}`] || ''}
+                                          onChange={(e) => {
+                                            const text = e.target.value;
+                                            setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                          }}
+                                          placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
+                                        />
+                                        <div className="flex gap-2 justify-end">
+                                          <button
+                                            onClick={() => setActiveTutorInputKey(null)}
+                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                          <button
+                                            disabled={tutorAnswers[`r_${idx}`]?.loading || !(tutorInputText[`r_${idx}`] || '').trim()}
+                                            onClick={() => handleAskCardTutor(`r_${idx}`, q)}
+                                            className="text-[10px] px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800/50 disabled:text-violet-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                          >
+                                            {tutorAnswers[`r_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
+                                          </button>
+                                        </div>
+
+                                        {/* AI Tutor In-Card Answer Panel */}
+                                        {tutorAnswers[`r_${idx}`]?.loading && (
+                                          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
+                                            <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                            </div>
+                                            <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                            <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                          </div>
+                                        )}
+                                        {tutorAnswers[`r_${idx}`]?.error && (
+                                          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`r_${idx}`].error}</div>
+                                        )}
+                                        {tutorAnswers[`r_${idx}`]?.text && !tutorAnswers[`r_${idx}`]?.loading && (
+                                          <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
+                                            <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+                                            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                              <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
                                    {/* 보기별 정밀 분석 결과 */}
                                    {reviewOptionExplanations[idx]?.loading && (
                                      <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
@@ -10308,7 +10363,7 @@ export default function App() {
                                     className="text-[15px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all min-w-0 flex-grow"
                                     title="더블클릭하여 답안 제목 수정"
                                   >
-                                    <LatexRenderer text={q.title} katexLoaded={katexLoaded} />
+                                    {q.title}
                                   </span>
                                 </div>
                               )}
