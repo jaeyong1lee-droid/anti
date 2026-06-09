@@ -6444,7 +6444,7 @@ export default function App() {
               return (
                 <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 custom-vertical-scrollbar ${
                   (isDesktop && !isMobileLandscape) 
-                    ? 'flex-grow min-h-0 overflow-y-scroll' 
+                    ? 'flex-1 min-h-0 overflow-y-scroll' 
                     : 'md:max-h-[calc(100vh-300px)] md:overflow-y-scroll'
                 }`}>
                   <table className="w-full text-left border-collapse">
