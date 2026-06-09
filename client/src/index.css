@@ -653,6 +653,11 @@ html, body {
     height: auto !important;
     overflow: visible !important;
   }
+
+  /* Hide specific elements on Z Flip Cover screen */
+  .cover-hide {
+    display: none !important;
+  }
 }
 
 /* PC screen only vertical scrollbar styling */
