@@ -6786,14 +6786,14 @@ export default function App() {
           className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
 {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+          <div className="w-full flex md:hidden bg-slateCustom-950 px-2 py-1 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
+            <div className="flex bg-slateCustom-900 p-0.5 rounded-lg w-full max-w-[280px] border border-slate-800">
               <button
                 onClick={() => {
                   setReviewMobileTab('list');
                   reviewSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                 }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
                   reviewMobileTab === 'list'
                     ? 'bg-violet-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -6807,7 +6807,7 @@ export default function App() {
                   const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
                   reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
                 }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
                   reviewMobileTab === 'tutor'
                     ? 'bg-violet-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -7003,24 +7003,24 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-stretch md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
+            <div className="flex items-center justify-center gap-1.5 w-full md:w-auto md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 py-1.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
-                  <FileText size={14} className="flex-shrink-0" />
+                  <FileText size={12} className="flex-shrink-0" />
                   <span className="whitespace-nowrap">원보고서</span>
                 </button>
               )}
               {isDesktop && selectedTopic && (
                 <button
                   onClick={handleRetakeReviewQuiz}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
                   title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
                 >
-                  <RefreshCw size={13} className="text-amber-400 flex-shrink-0" />
+                  <RefreshCw size={12} className="text-amber-400 flex-shrink-0" />
                   <span className="whitespace-nowrap">다시풀기</span>
                 </button>
               )}
@@ -7028,7 +7028,7 @@ export default function App() {
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 md:gap-1.5 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 md:flex-none px-2 py-1.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                 >
                   {loadingAI ? (
@@ -7495,18 +7495,18 @@ export default function App() {
 
                               {/* 문제조정 입력 및 결과 보드 */}
                               {true && (
-                                <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
+                                <div className="mt-2 pt-2 border-t border-slate-700/40 flex flex-wrap items-center justify-center gap-1.5">
                                   {adjustingInputKey !== `r_${idx}` && activeTutorInputKey !== `r_${idx}` ? (
-                                    <div className="flex flex-wrap items-center gap-2 w-full">
+                                    <div className="flex flex-wrap items-center justify-center gap-1.5 w-full">
                                       <button
                                         onClick={() => setAdjustingInputKey(`r_${idx}`)}
-                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                        className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                       >
                                         🛠️ 문제조정 (AI 피드백)
                                       </button>
                                       <button
                                         onClick={() => setActiveTutorInputKey(prev => prev === `r_${idx}` ? null : `r_${idx}`)}
-                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
+                                        className="text-[9.5px] px-2 py-1 rounded-md border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
                                       >
                                         💬 AI 튜터
                                       </button>
@@ -7862,14 +7862,14 @@ export default function App() {
           className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
 {/* Sub-header tabs for Mobile */}
-          <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
-            <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
+          <div className="w-full flex md:hidden bg-slateCustom-950 px-2 py-1 border-b border-amber-500/10 justify-center flex-shrink-0">
+            <div className="flex bg-slateCustom-900 p-0.5 rounded-lg w-full max-w-[280px] border border-slate-800">
               <button
                 onClick={() => {
                   setExamMobileTab('list');
                   examSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                 }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
                   examMobileTab === 'list'
                     ? 'bg-amber-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -7883,7 +7883,7 @@ export default function App() {
                   const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
                   examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
                 }}
-                className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
                   examMobileTab === 'tutor'
                     ? 'bg-amber-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -8408,13 +8408,13 @@ export default function App() {
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
-                              <div className="mt-3 pt-3 border-t border-slate-700/50">
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <div className="mt-2 pt-2 border-t border-slate-700/40">
+                                <div className="flex flex-wrap items-center justify-center gap-1.5 mb-1.5">
                                   {/* 문제조정 버튼 */}
                                   {adjustingInputKey !== `e_${idx}` && (
                                     <button
                                       onClick={() => setAdjustingInputKey(`e_${idx}`)}
-                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                      className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                     >
                                       🛠️ 문제조정 (AI 피드백)
                                     </button>
@@ -8424,7 +8424,7 @@ export default function App() {
                                   {!examOptionExplanations[idx] && (
                                     <button
                                       onClick={() => handleRequestOptionExplanation('exam', idx, q.question, q.options, q.answer)}
-                                      className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer"
+                                      className="text-[9.5px] px-2 py-1 rounded-md border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer"
                                     >
                                       🔍 보기별 정밀 분석 해설 보기 (AI)
                                     </button>
@@ -8433,7 +8433,7 @@ export default function App() {
                                   {/* AI 튜터 버튼 */}
                                   <button
                                     onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
+                                    className="text-[9.5px] px-2 py-1 rounded-md border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
                                   >
                                     💬 AI 튜터
                                   </button>
@@ -8599,18 +8599,18 @@ export default function App() {
                             )}
 
                             {/* 문제조정 입력 및 결과 보드 */}
-                            <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
+                            <div className="mt-2 pt-2 border-t border-slate-700/40 flex flex-wrap items-center justify-center gap-1.5">
                               {adjustingInputKey !== `e_${idx}` && activeTutorInputKey !== `e_${idx}` ? (
-                                <div className="flex flex-wrap items-center gap-2 w-full">
+                                <div className="flex flex-wrap items-center justify-center gap-1.5 w-full">
                                   <button
                                     onClick={() => setAdjustingInputKey(`e_${idx}`)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
+                                    className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                   >
                                     🛠️ 문제조정 (AI 피드백)
                                   </button>
                                   <button
                                     onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
-                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
+                                    className="text-[9.5px] px-2 py-1 rounded-md border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
                                   >
                                     💬 AI 튜터
                                   </button>
