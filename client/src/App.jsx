@@ -7778,19 +7778,6 @@ export default function App() {
 
           </div>
         </div>
-        <DraggableFloatingButton
-          currentTab={reviewMobileTab}
-          onToggle={(targetTab) => {
-            setReviewMobileTab(targetTab);
-            if (targetTab === 'list') {
-              reviewSplitContainerRef.current?.scrollTo({ left: 0 });
-            } else {
-              const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-              reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
-            }
-          }}
-          theme="violet"
-        />
       </div>
       )}
 
@@ -8854,19 +8841,6 @@ export default function App() {
 
           </div>
           </div>
-          <DraggableFloatingButton
-            currentTab={examMobileTab}
-            onToggle={(targetTab) => {
-              setExamMobileTab(targetTab);
-              if (targetTab === 'list') {
-                examSplitContainerRef.current?.scrollTo({ left: 0 });
-              } else {
-                const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-                examSplitContainerRef.current?.scrollTo({ left: containerWidth });
-              }
-            }}
-            theme="amber"
-          />
         </div>
       )}
 
@@ -10827,6 +10801,38 @@ export default function App() {
             <span className="text-[10px] font-bold tracking-tight">답안지</span>
           </button>
         </div>
+      )}
+
+      {selectedTopic && (
+        <DraggableFloatingButton
+          currentTab={reviewMobileTab}
+          onToggle={(targetTab) => {
+            setReviewMobileTab(targetTab);
+            if (targetTab === 'list') {
+              reviewSplitContainerRef.current?.scrollTo({ left: 0 });
+            } else {
+              const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+              reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
+            }
+          }}
+          theme="violet"
+        />
+      )}
+
+      {showExam && (
+        <DraggableFloatingButton
+          currentTab={examMobileTab}
+          onToggle={(targetTab) => {
+            setExamMobileTab(targetTab);
+            if (targetTab === 'list') {
+              examSplitContainerRef.current?.scrollTo({ left: 0 });
+            } else {
+              const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+              examSplitContainerRef.current?.scrollTo({ left: containerWidth });
+            }
+          }}
+          theme="amber"
+        />
       )}
     </div>
   );
