@@ -5867,7 +5867,7 @@ export default function App() {
 
 
       {/* Main Content Area */}
-      <main className={`w-full mx-auto px-3 md:px-12 md:pl-28 landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}>
+      <main className={`w-full mx-auto px-3 md:px-12 md:pl-36 landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}>
         {isMobileLandscape && landscapeSidebarHidden && (
           <button
             onClick={() => setLandscapeSidebarHidden(false)}
@@ -6374,7 +6374,7 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className={`h-full min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-150px)]' : 'bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
+          <section className={`h-full min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-270px)]' : 'bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
@@ -6444,7 +6444,7 @@ export default function App() {
               return (
                 <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 md:custom-vertical-scrollbar ${
                   (isDesktop && !isMobileLandscape) 
-                    ? 'flex-grow min-h-0 overflow-y-auto' 
+                    ? 'flex-grow min-h-0 overflow-y-scroll' 
                     : 'md:max-h-[calc(100vh-300px)] md:overflow-y-scroll'
                 }`}>
                   <table className="w-full text-left border-collapse">
@@ -6653,7 +6653,7 @@ export default function App() {
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
-          className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+          className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
@@ -7582,7 +7582,7 @@ export default function App() {
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
-          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
@@ -8488,7 +8488,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             formulaMobileTab === 'list' ? (
@@ -9498,7 +9498,7 @@ export default function App() {
 
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Answersheet Modal */
