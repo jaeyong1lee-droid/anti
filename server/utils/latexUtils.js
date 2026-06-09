@@ -1,4 +1,4 @@
-// 1. 수식($)과 일반 텍스트 토큰 분리 (정규식 공백 오타 완벽 제거)
+// 1. 수식($)과 일반 텍스트 토큰 분리 (인라인 줄바꿈 오염 방지)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
@@ -32,7 +32,7 @@ export function healBackslashes(str) {
   const keywords = [
     'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega', 'nu',
     'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
-    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow'
+    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'rightarrow', 'leftarrow', 'circ'
   ];
 
   keywords.forEach(kw => {
@@ -46,11 +46,89 @@ export function healBackslashes(str) {
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // [치명적 버그 해결] 제목이나 리스트 기호가 아닌, 수식/문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합
-  let processed = text.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
+  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
+  let processed = text.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
 
-  // [추가] * * * 나 *** 같은 문단 구분자/글머리 기호 앞에 강제로 줄바꿈 두 개 주입
-  processed = processed.replace(/\s*(\* \* \*|\*\*\*)\s*/g, '\n\n$1 ');
+  // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
+  processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
+                       .replace(/\x0a\s*u\b/g, '\\nu')
+                       .replace(/\x0a\s*abla\b/g, '\\nabla')
+                       .replace(/\x0a\s*earrow\b/g, '\\nearrow')
+                       .replace(/\x0a\s*eg\b/g, '\\neg')
+                       .replace(/\x0a\s*i\b/g, '\\ni')
+                       .replace(/\x0a\s*otin\b/g, '\\notin')
+                       .replace(/\x0a\s*geq\b/g, '\\ngeq')
+                       .replace(/\x0a\s*leq\b/g, '\\nleq')
+                       .replace(/\x0a\s*sim\b/g, '\\nsim')
+                       .replace(/\x0a\s*cong\b/g, '\\ncong')
+                       .replace(/\x0a\s*parallel\b/g, '\\nparallel')
+                       .replace(/\x0a\s*ewline\b/g, '\\newline')
+                       .replace(/\x0a\s*oindent\b/g, '\\noindent');
+
+  processed = processed.replace(/\x09\s*heta\b/g, '\\theta')
+                       .replace(/\x09\s*au\b/g, '\\tau')
+                       .replace(/\x09\s*an\b/g, '\\tan')
+                       .replace(/\x09\s*imes\b/g, '\\times')
+                       .replace(/\x09\s*ilde\b/g, '\\tilde')
+                       .replace(/\x09\s*ext\b/g, '\\text')
+                       .replace(/\x09\s*rac\b/g, '\\tfrac')
+                       .replace(/\x09\s*riangle\b/g, '\\triangle')
+                       .replace(/\x09\s*op\b/g, '\\top')
+                       .replace(/\x09\s*o\b/g, '\\to');
+
+  processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
+                       .replace(/\x0d\s*ight\b/g, '\\right')
+                       .replace(/\x0d\s*ule\b/g, '\\rule')
+                       .replace(/\x0d\s*angle\b/g, '\\rangle')
+                       .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
+
+  processed = processed.replace(/\x08\s*eta\b/g, '\\beta')
+                       .replace(/\x08\s*ar\b/g, '\\bar')
+                       .replace(/\x08\s*egin\b/g, '\\begin')
+                       .replace(/\x08\s*ullet\b/g, '\\bullet');
+
+  processed = processed.replace(/\x0c\s*rac\b/g, '\\frac')
+                       .replace(/\x0c\s*orall\b/g, '\\forall')
+                       .replace(/\x0c\s*lat\b/g, '\\flat')
+                       .replace(/\x0c\s*rown\b/g, '\\frown');
+
+  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
+  const isMathVariable = (str) => {
+    if (/^[a-zA-Z0-9]$/.test(str)) return true;
+    if (/[\\_^]/.test(str)) return true;
+    if (str.startsWith('\\')) return true;
+    return false;
+  };
+  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2, offset, string) => {
+    if (string[offset - 1] === '\\') {
+      return match;
+    }
+    if (isMathVariable(p1) && isMathVariable(p2)) {
+      return `${p1} \\neq ${p2}`;
+    }
+    return match;
+  });
+
+  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
+  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
+    let katexUnit = unit.replace(/\\/g, '');
+    if (katexUnit.includes('^')) {
+      const parts = katexUnit.split('^');
+      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
+    } else if (katexUnit.includes('²')) {
+      const base = katexUnit.replace('²', '');
+      katexUnit = `\\text{${base}}^2`;
+    } else if (katexUnit.includes('³')) {
+      const base = katexUnit.replace('³', '');
+      katexUnit = `\\text{${base}}^3`;
+    } else {
+      katexUnit = `\\text{${katexUnit}}`;
+    }
+    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
+  });
+
+  // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
+  processed = processed.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
 
   // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
@@ -63,15 +141,14 @@ export function healLatexFormulas(text) {
     if (token.type === 'text') {
       let t = healBackslashes(token.content);
       
-      // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (공백 및 탭 허용)
-      const formulaPattern = /([a-zA-Z0-9_\-\+\*\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
+      // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (별표 * 제외로 마크다운 충돌 방지)
+      const formulaPattern = /([a-zA-Z0-9_\-\+\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
       return t.replace(formulaPattern, (match) => {
         const trimmed = match.trim();
-        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$') || /^[*\s]+$/.test(trimmed)) return match;
+        if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$')) return match;
         
-        const hasMath = /[\\_^{}<>=+\-\*\/']/.test(trimmed);
+        const hasMath = /[\\_^{}<>=+\-\/']/.test(trimmed);
         if (hasMath) {
-          // 특수기호 변환 및 첨자 뒤 공백 제거 정밀 처리 수칙 반영
           let sanitized = trimmed.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
           return `$${sanitized}$`;
@@ -83,7 +160,7 @@ export function healLatexFormulas(text) {
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
       math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
                  .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n$$${math}$$\n` : `$${math}$`;
+      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
     }
   }).join('');
 
@@ -102,10 +179,10 @@ export function healLatexFormulas(text) {
 
     if (prev.type === 'text' && current.type !== 'text') {
       const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar)) needSpace = true;
+      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type === 'text') {
       const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar)) needSpace = true;
+      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
     } else if (prev.type !== 'text' && current.type !== 'text') {
       needSpace = true;
     }
