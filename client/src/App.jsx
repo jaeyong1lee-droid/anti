@@ -796,45 +796,12 @@ const renderKatexString = (math, options) => {
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
-  const pressTimer = useRef(null);
-  const pressTarget = useRef(null);
-
-  const startPress = (e) => {
+  const handleFormulaClick = (e) => {
     // Find the nearest katex formula wrapper
     const katexEl = e.target.closest('.katex, .katex-display');
     if (!katexEl) return;
     
-    pressTarget.current = katexEl;
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-    
-    pressTimer.current = setTimeout(() => {
-      if (pressTarget.current) {
-        triggerFormulaPopup();
-      }
-      pressTarget.current = null;
-    }, 600); // 600ms long press threshold
-  };
-
-  const endPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  };
-
-  const cancelPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-    pressTarget.current = null;
-  };
-
-  const triggerFormulaPopup = () => {
-    const el = pressTarget.current;
-    if (!el) return;
-    
-    const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+    const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
     if (!annotation) return;
     
     const mathTex = annotation.textContent || annotation.innerText;
@@ -1013,27 +980,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return (
         <span 
           className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-          onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
-          onMouseDown={enableAddFormula ? startPress : undefined}
-          onMouseUp={enableAddFormula ? endPress : undefined}
-          onMouseMove={enableAddFormula ? cancelPress : undefined}
-          onMouseLeave={enableAddFormula ? cancelPress : undefined}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-            if (enableAddFormula) startPress(e);
-          }}
-          onTouchEnd={(e) => {
-            e.stopPropagation();
-            if (enableAddFormula) endPress(e);
-          }}
-          onTouchMove={(e) => {
-            e.stopPropagation();
-            if (enableAddFormula) cancelPress(e);
-          }}
-          onTouchCancel={(e) => {
-            e.stopPropagation();
-            if (enableAddFormula) cancelPress(e);
-          }}
+          onClick={enableAddFormula ? handleFormulaClick : undefined}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
@@ -1041,27 +988,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return (
       <div 
         className={`${className} select-text w-full formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
-        onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
-        onMouseDown={enableAddFormula ? startPress : undefined}
-        onMouseUp={enableAddFormula ? endPress : undefined}
-        onMouseMove={enableAddFormula ? cancelPress : undefined}
-        onMouseLeave={enableAddFormula ? cancelPress : undefined}
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          if (enableAddFormula) startPress(e);
-        }}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          if (enableAddFormula) endPress(e);
-        }}
-        onTouchMove={(e) => {
-          e.stopPropagation();
-          if (enableAddFormula) cancelPress(e);
-        }}
-        onTouchCancel={(e) => {
-          e.stopPropagation();
-          if (enableAddFormula) cancelPress(e);
-        }}
+        onClick={enableAddFormula ? handleFormulaClick : undefined}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
@@ -1105,15 +1032,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return (
       <span 
         className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-        onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
-        onMouseDown={enableAddFormula ? startPress : undefined}
-        onMouseUp={enableAddFormula ? endPress : undefined}
-        onMouseMove={enableAddFormula ? cancelPress : undefined}
-        onMouseLeave={enableAddFormula ? cancelPress : undefined}
-        onTouchStart={enableAddFormula ? startPress : undefined}
-        onTouchEnd={enableAddFormula ? endPress : undefined}
-        onTouchMove={enableAddFormula ? cancelPress : undefined}
-        onTouchCancel={enableAddFormula ? cancelPress : undefined}
+        onClick={enableAddFormula ? handleFormulaClick : undefined}
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
@@ -1164,15 +1083,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   return (
     <div 
       className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-      onContextMenu={enableAddFormula ? (e) => e.preventDefault() : undefined}
-      onMouseDown={enableAddFormula ? startPress : undefined}
-      onMouseUp={enableAddFormula ? endPress : undefined}
-      onMouseMove={enableAddFormula ? cancelPress : undefined}
-      onMouseLeave={enableAddFormula ? cancelPress : undefined}
-      onTouchStart={enableAddFormula ? startPress : undefined}
-      onTouchEnd={enableAddFormula ? endPress : undefined}
-      onTouchMove={enableAddFormula ? cancelPress : undefined}
-      onTouchCancel={enableAddFormula ? cancelPress : undefined}
+      onClick={enableAddFormula ? handleFormulaClick : undefined}
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
