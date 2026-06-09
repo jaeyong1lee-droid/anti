@@ -6119,7 +6119,7 @@ export default function App() {
                 </div>
               ) : (
                 /* Card List */
-                <div className="space-y-4 md:max-h-[calc(100vh-300px)] md:overflow-y-auto md:pr-2 md:custom-vertical-scrollbar">
+                <div className="space-y-4 md:max-h-[calc(100vh-300px)] md:overflow-y-auto md:pr-2 custom-vertical-scrollbar">
                   {todayReviews.map((item) => {
                     if (item.isBonus && hiddenBonusTopicIds.includes(item.topic_id)) {
                       return null;
@@ -6442,7 +6442,7 @@ export default function App() {
                   )
                 : -1;
               return (
-                <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 md:custom-vertical-scrollbar ${
+                <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 custom-vertical-scrollbar ${
                   (isDesktop && !isMobileLandscape) 
                     ? 'flex-grow min-h-0 overflow-y-scroll' 
                     : 'md:max-h-[calc(100vh-300px)] md:overflow-y-scroll'
