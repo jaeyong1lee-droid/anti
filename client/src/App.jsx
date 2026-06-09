@@ -1431,6 +1431,28 @@ function ScientificCalculator() {
   );
 }
 
+const formatReviewDate = (completedAt, plannedDate) => {
+  if (completedAt) {
+    try {
+      const d = new Date(completedAt);
+      if (!isNaN(d.getTime())) {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${mm}.${dd}`;
+      }
+    } catch (e) {
+      console.warn('formatReviewDate error:', e);
+    }
+  }
+  if (plannedDate) {
+    const match = plannedDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[2]}.${match[3]}`;
+    }
+  }
+  return '';
+};
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -6578,22 +6600,29 @@ export default function App() {
                                   {sched ? (
                                     <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                       {sched.status === 'completed' || sched.status === 'failed' ? (
-                                        <button
-                                          {...createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                          className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
-                                            sched.status === 'completed'
-                                              ? (sched.score === 100
-                                                  ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
-                                                  : sched.score >= 80
-                                                    ? 'text-blue-400 bg-blue-950/40 hover:bg-blue-900/60 hover:text-blue-200 border-blue-500/30'
-                                                    : 'text-orange-400 bg-orange-950/40 hover:bg-orange-900/60 hover:text-orange-200 border-orange-500/30'
-                                                )
-                                              : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
-                                          }`}
-                                          title={`클릭 시 복습 내용 보기 / 길게 누르면 복습 취소 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
-                                        >
-                                          {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
-                                        </button>
+                                        <>
+                                          <button
+                                            {...createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
+                                            className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
+                                              sched.status === 'completed'
+                                                ? (sched.score === 100
+                                                    ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
+                                                    : sched.score >= 80
+                                                      ? 'text-blue-400 bg-blue-950/40 hover:bg-blue-900/60 hover:text-blue-200 border-blue-500/30'
+                                                      : 'text-orange-400 bg-orange-950/40 hover:bg-orange-900/60 hover:text-orange-200 border-orange-500/30'
+                                                  )
+                                                : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
+                                            }`}
+                                            title={`클릭 시 복습 내용 보기 / 길게 누르면 복습 취소 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
+                                          >
+                                            {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
+                                          </button>
+                                          {isDesktop && (
+                                            <span className="text-[10px] text-slate-500 mt-1 font-semibold select-none">
+                                              {formatReviewDate(sched.completed_at, sched.planned_date)}
+                                            </span>
+                                          )}
+                                        </>
                                       ) : (
                                         <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
                                           대기
