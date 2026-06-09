@@ -6374,8 +6374,8 @@ export default function App() {
           </div>
         ) : (
           /* TOTAL SPaced Grid TRACKER VIEW */
-          <section className="bg-transparent rounded-none p-0 border-0 shadow-none">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <section className={`h-full min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-150px)]' : 'bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <List size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">복습 토픽</h2>
@@ -6442,7 +6442,11 @@ export default function App() {
                   )
                 : -1;
               return (
-                <div className="overflow-x-auto landscape-overflow-x-auto md:max-h-[calc(100vh-300px)] md:overflow-y-scroll md:pr-2 md:custom-vertical-scrollbar">
+                <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 md:custom-vertical-scrollbar ${
+                  (isDesktop && !isMobileLandscape) 
+                    ? 'flex-grow min-h-0 overflow-y-auto' 
+                    : 'md:max-h-[calc(100vh-300px)] md:overflow-y-scroll'
+                }`}>
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-[#0f172a] z-10 shadow-sm">
                       <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-bold">
