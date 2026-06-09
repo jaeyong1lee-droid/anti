@@ -796,32 +796,9 @@ const renderKatexString = (math, options) => {
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
-  const touchStartPos = useRef(null);
-
-  const handleTouchStart = (e) => {
-    const touch = e.touches[0];
-    touchStartPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-  };
-
-  const handleTouchEnd = (e) => {
-    if (!touchStartPos.current) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartPos.current.x;
-    const dy = touch.clientY - touchStartPos.current.y;
-    const dt = Date.now() - touchStartPos.current.time;
-    const distance = Math.hypot(dx, dy);
-
-    // If they touched for less than 500ms and moved less than 10 pixels, it is a tap!
-    if (distance < 10 && dt < 500) {
-      const katexEl = e.target.closest('.katex, .katex-display');
-      if (katexEl) {
-        e.preventDefault();
-        e.stopPropagation();
-        triggerAddFormula(katexEl);
-      }
-    }
-    touchStartPos.current = null;
-  };
+  const longPressTimer = useRef(null);
+  const isLongPressActive = useRef(false);
+  const startPos = useRef({ x: 0, y: 0 });
 
   const triggerAddFormula = (katexEl) => {
     const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
@@ -831,19 +808,90 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     if (!mathTex) return;
     
     const cleanMath = mathTex.trim();
-    if (window.confirm(`[${cleanMath}] 공식을 필수공식 리스트에 추가하시겠습니까?`)) {
-      if (typeof window.__handleAddSpecificFormula === 'function') {
-        window.__handleAddSpecificFormula(cleanMath, text);
-      }
+    if (typeof window.__handleFormulaConfirmRequest === 'function') {
+      window.__handleFormulaConfirmRequest(cleanMath, text);
     }
   };
 
-  const handleFormulaClick = (e) => {
-    const katexEl = e.target.closest('.katex, .katex-display');
-    if (katexEl) {
+  const startPress = (clientX, clientY, target) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    isLongPressActive.current = false;
+    startPos.current = { x: clientX, y: clientY };
+
+    let katexEl = target.closest('.katex, .katex-display');
+    if (!katexEl) {
+      katexEl = target.querySelector('.katex, .katex-display');
+    }
+    if (!katexEl) return;
+
+    longPressTimer.current = setTimeout(() => {
+      isLongPressActive.current = true;
       triggerAddFormula(katexEl);
+    }, 1500);
+  };
+
+  const cancelPress = (clientX, clientY, isMove = false) => {
+    if (isMove) {
+      const dx = clientX - startPos.current.x;
+      const dy = clientY - startPos.current.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 10) return;
+    }
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
   };
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    startPress(e.clientX, e.clientY, e.target);
+  };
+
+  const handleMouseMove = (e) => {
+    cancelPress(e.clientX, e.clientY, true);
+  };
+
+  const handleMouseUpOrLeave = () => {
+    cancelPress(0, 0, false);
+  };
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    startPress(touch.clientX, touch.clientY, e.target);
+  };
+
+  const handleTouchMove = (e) => {
+    const touch = e.touches[0];
+    cancelPress(touch.clientX, touch.clientY, true);
+  };
+
+  const handleTouchEndOrCancel = () => {
+    cancelPress(0, 0, false);
+  };
+
+  const handleFormulaClick = (e) => {
+    if (isLongPressActive.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPressActive.current = false;
+    }
+  };
+
+  const eventHandlers = enableAddFormula ? {
+    onClick: handleFormulaClick,
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUpOrLeave,
+    onMouseLeave: handleMouseUpOrLeave,
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEndOrCancel,
+    onTouchCancel: handleTouchEndOrCancel,
+    onContextMenu: (e) => e.preventDefault(),
+  } : {};
 
   // 0.5) 필수공식/이론유도 내 지반 단위중량 기호 y(\y) 그리스 감마(\gamma) 자가치유 규칙 탑재
   const healFormulas = (val) => {
@@ -1010,9 +1058,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return (
         <span 
           className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-          onClick={enableAddFormula ? handleFormulaClick : undefined}
-          onTouchStart={enableAddFormula ? handleTouchStart : undefined}
-          onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
+          {...eventHandlers}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       );
@@ -1020,9 +1066,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return (
       <div 
         className={`${className} select-text w-full formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
-        onClick={enableAddFormula ? handleFormulaClick : undefined}
-        onTouchStart={enableAddFormula ? handleTouchStart : undefined}
-        onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
+        {...eventHandlers}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     );
@@ -1066,9 +1110,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return (
       <span 
         className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-        onClick={enableAddFormula ? handleFormulaClick : undefined}
-        onTouchStart={enableAddFormula ? handleTouchStart : undefined}
-        onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
+        {...eventHandlers}
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
@@ -1119,9 +1161,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   return (
     <div 
       className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
-      onClick={enableAddFormula ? handleFormulaClick : undefined}
-      onTouchStart={enableAddFormula ? handleTouchStart : undefined}
-      onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
+      {...eventHandlers}
     >
       {parts.map((part, idx) => {
         if (part.type === 'math-block') {
@@ -1470,6 +1510,17 @@ export default function App() {
   const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
   const [editingFormulaText, setEditingFormulaText] = useState("");
   const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
+  const [formulaConfirmTarget, setFormulaConfirmTarget] = useState(null);
+  const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
+
+  useEffect(() => {
+    window.__handleFormulaConfirmRequest = (math, fullText) => {
+      setFormulaConfirmTarget({ math, fullText });
+    };
+    return () => {
+      delete window.__handleFormulaConfirmRequest;
+    };
+  }, []);
   
   // Date selector for easy testing (defaults to today's local date 'YYYY-MM-DD')
   const getTodayString = () => {
@@ -5475,15 +5526,7 @@ export default function App() {
       return updated;
     });
 
-    if (window.confirm(`[${title}] 공식이 필수공식 리스트에 추가되었습니다.\n지금 필수공식 탭으로 이동하시겠습니까?`)) {
-      setSelectedTopic(null);
-      setShowExam(false);
-      setShowAnswerSheet(false);
-      setShowFormulaExam(true);
-      setViewMode('dashboard');
-    } else {
-      showNotification(`[${title}] 공식이 필수공식 리스트에 추가되었습니다.`);
-    }
+    setFormulaAddedTarget({ title });
 
     // 6. 백그라운드 AI 정밀 공식 작명 및 변수/상수 해설 API 비동기 가동
     fetch(`${API_BASE}/api/formula/suggest-title`, {
@@ -7153,7 +7196,7 @@ export default function App() {
 
                         {/* Question Text */}
                         <div className="text-[17px] font-bold text-white leading-relaxed">
-                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                         </div>
 
                         {/* MC Options */}
@@ -7193,7 +7236,7 @@ export default function App() {
                                 >
                                   <span className="flex gap-2 items-start select-text">
                                     <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
-                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" />
+                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                   </span>
                                 </div>
                               );
@@ -7203,7 +7246,7 @@ export default function App() {
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                                 {!isCorrect && (
                                   <span className="ml-2 inline-flex items-center gap-1">
-                                    정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
+                                    정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
                                 {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
@@ -7729,8 +7772,94 @@ export default function App() {
         </div>
       </div>
       )}
+      {/* 공식 추가 확인 모달 (Formula Add Confirmation Modal) */}
+      {formulaConfirmTarget && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-md transition-all duration-300 animate-fade-in">
+          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+            
+            {/* Modal Icon and Title */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-4 bg-violet-500/10 text-violet-400 rounded-full">
+                <Brain size={28} className="text-violet-500 animate-pulse" />
+              </div>
+              <h3 className="text-lg font-extrabold text-white">필수공식 추가</h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                선택한 수식을 필수공식 리스트에 추가하시겠습니까?
+              </p>
+              <div className="bg-slateCustom-950/60 p-4 border border-slate-800/80 rounded-2xl w-full text-center overflow-x-auto select-text">
+                <LatexRenderer text={`$$${formulaConfirmTarget.math}$$`} katexLoaded={katexLoaded} />
+              </div>
+            </div>
 
+            {/* Buttons */}
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  const target = formulaConfirmTarget;
+                  setFormulaConfirmTarget(null);
+                  handleAddSpecificFormula(target.math, target.fullText);
+                }}
+                className="flex-1 px-5 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              >
+                추가하기
+              </button>
+              <button
+                onClick={() => setFormulaConfirmTarget(null)}
+                className="flex-1 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                취소
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
 
+      {/* 공식 추가 완료 및 이동 확인 모달 (Formula Added Modal) */}
+      {formulaAddedTarget && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-md transition-all duration-300 animate-fade-in">
+          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+            
+            {/* Modal Icon and Title */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-full">
+                <CheckCircle size={28} className="text-emerald-500" />
+              </div>
+              <h3 className="text-lg font-extrabold text-white">추가 완료!</h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                [<span className="text-brand-400">{formulaAddedTarget.title}</span>] 공식이 필수공식 리스트에 추가되었습니다.
+              </p>
+              <div className="bg-slateCustom-950/60 p-3.5 border border-slate-800/80 rounded-2xl text-[11px] text-emerald-300 font-bold leading-normal w-full">
+                지금 필수공식 탭으로 이동하여 학습/퀴즈를 진행하시겠습니까?
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setFormulaAddedTarget(null);
+                  setSelectedTopic(null);
+                  setShowExam(false);
+                  setShowAnswerSheet(false);
+                  setShowFormulaExam(true);
+                  setViewMode('dashboard');
+                }}
+                className="flex-1 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              >
+                이동하기
+              </button>
+              <button
+                onClick={() => setFormulaAddedTarget(null)}
+                className="flex-1 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                계속 학습하기
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
 
       {/* 복습 초기화 확인 모달 (Reset Review Confirmation Modal) */}
       {resetConfirmTarget && (
@@ -8239,7 +8368,7 @@ export default function App() {
 
                       {/* Question Text */}
                       <div className="text-[17px] font-bold text-white leading-relaxed">
-                        <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                        <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                       </div>
 
                       {/* MC Options */}
@@ -8279,7 +8408,7 @@ export default function App() {
                               >
                                 <span className="flex gap-2 items-start select-text">
                                   <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
-                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" />
+                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                 </span>
                               </div>
                             );
@@ -8289,7 +8418,7 @@ export default function App() {
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && (
                                 <span className="ml-2 inline-flex items-center gap-1">
-                                  정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" /></strong>
+                                  정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
                               {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
