@@ -7774,38 +7774,38 @@ export default function App() {
       )}
       {/* 공식 추가 확인 모달 (Formula Add Confirmation Modal) */}
       {formulaConfirmTarget && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-md transition-all duration-300 animate-fade-in">
-          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="p-4 bg-violet-500/10 text-violet-400 rounded-full">
-                <Brain size={28} className="text-violet-500 animate-pulse" />
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="p-2.5 bg-violet-500/10 text-violet-400 rounded-full">
+                <Brain size={22} className="text-violet-500 animate-pulse" />
               </div>
-              <h3 className="text-lg font-extrabold text-white">필수공식 추가</h3>
-              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+              <h3 className="text-base font-extrabold text-white">필수공식 추가</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
                 선택한 수식을 필수공식 리스트에 추가하시겠습니까?
               </p>
-              <div className="bg-slateCustom-950/60 p-4 border border-slate-800/80 rounded-2xl w-full text-center overflow-x-auto select-text">
+              <div className="bg-slateCustom-950/60 p-3 border border-slate-800/80 rounded-xl w-full text-center overflow-x-auto select-text">
                 <LatexRenderer text={`$$${formulaConfirmTarget.math}$$`} katexLoaded={katexLoaded} />
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-2.5 justify-center">
               <button
                 onClick={() => {
                   const target = formulaConfirmTarget;
                   setFormulaConfirmTarget(null);
                   handleAddSpecificFormula(target.math, target.fullText);
                 }}
-                className="flex-1 px-5 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
               >
                 추가하기
               </button>
               <button
                 onClick={() => setFormulaConfirmTarget(null)}
-                className="flex-1 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
               >
                 취소
               </button>
@@ -7817,25 +7817,25 @@ export default function App() {
 
       {/* 공식 추가 완료 및 이동 확인 모달 (Formula Added Modal) */}
       {formulaAddedTarget && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-md transition-all duration-300 animate-fade-in">
-          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-full">
-                <CheckCircle size={28} className="text-emerald-500" />
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-full">
+                <CheckCircle size={22} className="text-emerald-500" />
               </div>
-              <h3 className="text-lg font-extrabold text-white">추가 완료!</h3>
-              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+              <h3 className="text-base font-extrabold text-white">추가 완료!</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
                 [<span className="text-brand-400">{formulaAddedTarget.title}</span>] 공식이 필수공식 리스트에 추가되었습니다.
               </p>
-              <div className="bg-slateCustom-950/60 p-3.5 border border-slate-800/80 rounded-2xl text-[11px] text-emerald-300 font-bold leading-normal w-full">
+              <div className="bg-slateCustom-950/60 p-3 border border-slate-800/80 rounded-xl text-[10.5px] text-emerald-300 font-bold leading-normal w-full">
                 지금 필수공식 탭으로 이동하여 학습/퀴즈를 진행하시겠습니까?
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-2.5 justify-center">
               <button
                 onClick={() => {
                   setFormulaAddedTarget(null);
@@ -7845,13 +7845,13 @@ export default function App() {
                   setShowFormulaExam(true);
                   setViewMode('dashboard');
                 }}
-                className="flex-1 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
               >
                 이동하기
               </button>
               <button
                 onClick={() => setFormulaAddedTarget(null)}
-                className="flex-1 px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
               >
                 계속 학습하기
               </button>
