@@ -1125,10 +1125,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
               >
                 <span 
                   className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchMove={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                  onTouchCancel={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                  onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                  onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                  onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                   dangerouslySetInnerHTML={{ __html: mathHtml }} 
                 />
               </span>
@@ -1186,10 +1186,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
               {/* KaTeX 수식 */}
               <div 
                 className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchMove={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                onTouchCancel={(e) => e.stopPropagation()}
+                onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
             </div>
@@ -1242,10 +1242,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                     <div 
                       key={lIdx}
                       className="formula-scroll-container w-full py-1 text-sm sm:text-[14px] text-slate-300 leading-relaxed select-text"
-                      onTouchStart={(e) => e.stopPropagation()}
-                      onTouchMove={(e) => e.stopPropagation()}
-                      onTouchEnd={(e) => e.stopPropagation()}
-                      onTouchCancel={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                      onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                      onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                      onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                       dangerouslySetInnerHTML={{ __html: line }}
                     />
                   );
