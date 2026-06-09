@@ -1739,6 +1739,63 @@ export default function App() {
     }
   };
 
+  // Touch swipe gesture handling for Galaxy Z Flip 6 cover screen and mobile portrait views
+  const swipeTouchStartX = useRef(null);
+  const swipeTouchStartY = useRef(null);
+
+  const handleSwipeTouchStart = (e) => {
+    // Only detect swipe on mobile portrait
+    if (isDesktop || isMobileLandscape) return;
+
+    // Check if the touch start target is inside an interactive or horizontally scrollable element
+    let current = e.target;
+    while (current && current !== document.body) {
+      const tagName = current.tagName?.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || tagName === 'button' || tagName === 'select' || tagName === 'a') {
+        return;
+      }
+      if (current.getAttribute('role') === 'button' || current.onclick) {
+        return;
+      }
+      try {
+        const style = window.getComputedStyle(current);
+        if (
+          style &&
+          (current.scrollWidth > current.clientWidth) &&
+          (style.overflowX === 'auto' || style.overflowX === 'scroll' || style.overflowX === 'overlay')
+        ) {
+          return;
+        }
+      } catch (err) {
+        // ignore errors
+      }
+      current = current.parentElement;
+    }
+
+    swipeTouchStartX.current = e.touches[0].clientX;
+    swipeTouchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleSwipeTouchEnd = (e, currentTab, setTab) => {
+    if (isDesktop || isMobileLandscape) return;
+    if (swipeTouchStartX.current === null || swipeTouchStartY.current === null) return;
+
+    const diffX = e.changedTouches[0].clientX - swipeTouchStartX.current;
+    const diffY = e.changedTouches[0].clientY - swipeTouchStartY.current;
+
+    // Min distance 50px, and horizontal distance must be at least 1.5 times the vertical distance
+    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (diffX < 0 && currentTab === 'list') {
+        setTab('tutor');
+      } else if (diffX > 0 && currentTab === 'tutor') {
+        setTab('list');
+      }
+    }
+
+    swipeTouchStartX.current = null;
+    swipeTouchStartY.current = null;
+  };
+
   // States and refs for modal pull-to-refresh
   const [formulaPull, setFormulaPull] = useState(0);
   const [formulaRefreshing, setFormulaRefreshing] = useState(false);
@@ -6589,7 +6646,11 @@ export default function App() {
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
-        <div className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div 
+          onTouchStart={handleSwipeTouchStart}
+          onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
+          className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+        >
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
@@ -7514,7 +7575,11 @@ export default function App() {
 
       {/* ===== COMPREHENSIVE EXAM MODAL (70문항) ===== */}
       {showExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div 
+          onTouchStart={handleSwipeTouchStart}
+          onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
+          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-28 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+        >
 {/* Sub-header tabs for Mobile */}
           <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-amber-500/10 justify-center flex-shrink-0">
             <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
