@@ -6931,7 +6931,7 @@ export default function App() {
             <div 
               ref={reviewSplitContainerRef}
               onScroll={(e) => {
-                if (!isDesktop) {
+                if (!isDesktop && isMobileLandscape) {
                   const scrollLeft = e.currentTarget.scrollLeft;
                   const clientWidth = e.currentTarget.clientWidth;
                   if (clientWidth > 0) {
@@ -7779,17 +7779,14 @@ export default function App() {
             {!isDesktop && !isMobileLandscape && (
               <DraggableFloatingButton
                 currentTab={reviewMobileTab}
-                onToggle={() => {
-                  setReviewMobileTab(prev => {
-                    const next = prev === 'list' ? 'tutor' : 'list';
-                    if (next === 'list') {
-                      reviewSplitContainerRef.current?.scrollTo({ left: 0 });
-                    } else {
-                      const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-                      reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
-                    }
-                    return next;
-                  });
+                onToggle={(targetTab) => {
+                  setReviewMobileTab(targetTab);
+                  if (targetTab === 'list') {
+                    reviewSplitContainerRef.current?.scrollTo({ left: 0 });
+                  } else {
+                    const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+                    reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
+                  }
                 }}
                 theme="violet"
               />
@@ -8041,7 +8038,7 @@ export default function App() {
             <div 
               ref={examSplitContainerRef}
               onScroll={(e) => {
-                if (!isDesktop) {
+                if (!isDesktop && isMobileLandscape) {
                   const scrollLeft = e.currentTarget.scrollLeft;
                   const clientWidth = e.currentTarget.clientWidth;
                   if (clientWidth > 0) {
@@ -8860,17 +8857,14 @@ export default function App() {
             {!isDesktop && !isMobileLandscape && (
               <DraggableFloatingButton
                 currentTab={examMobileTab}
-                onToggle={() => {
-                  setExamMobileTab(prev => {
-                    const next = prev === 'list' ? 'tutor' : 'list';
-                    if (next === 'list') {
-                      examSplitContainerRef.current?.scrollTo({ left: 0 });
-                    } else {
-                      const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-                      examSplitContainerRef.current?.scrollTo({ left: containerWidth });
-                    }
-                    return next;
-                  });
+                onToggle={(targetTab) => {
+                  setExamMobileTab(targetTab);
+                  if (targetTab === 'list') {
+                    examSplitContainerRef.current?.scrollTo({ left: 0 });
+                  } else {
+                    const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+                    examSplitContainerRef.current?.scrollTo({ left: containerWidth });
+                  }
                 }}
                 theme="amber"
               />
@@ -10844,8 +10838,19 @@ export default function App() {
 
 function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   const [pos, setPos] = useState(() => {
-    const initialX = window.innerWidth - 110 - 20; 
-    const initialY = window.innerHeight - 44 - 80; 
+    const saved = localStorage.getItem(`anti_fab_pos_${theme}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          const x = Math.max(10, Math.min(parsed.x, window.innerWidth - 60));
+          const y = Math.max(10, Math.min(parsed.y, window.innerHeight - 150));
+          return { x, y };
+        }
+      } catch (e) {}
+    }
+    const initialX = window.innerWidth - 52 - 16; 
+    const initialY = window.innerHeight - 100 - 80; 
     return { x: initialX, y: initialY };
   });
 
@@ -10855,8 +10860,8 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   useEffect(() => {
     const handleResize = () => {
       setPos(prev => {
-        const btnWidth = buttonRef.current?.clientWidth || 110;
-        const btnHeight = buttonRef.current?.clientHeight || 44;
+        const btnWidth = buttonRef.current?.clientWidth || 52;
+        const btnHeight = buttonRef.current?.clientHeight || 100;
         const x = Math.min(prev.x, window.innerWidth - btnWidth - 10);
         const y = Math.min(prev.y, window.innerHeight - btnHeight - 10);
         return { x: Math.max(10, x), y: Math.max(10, y) };
@@ -10889,8 +10894,8 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     let newX = startPosX + dx;
     let newY = startPosY + dy;
 
-    const btnWidth = buttonRef.current?.clientWidth || 110;
-    const btnHeight = buttonRef.current?.clientHeight || 44;
+    const btnWidth = buttonRef.current?.clientWidth || 52;
+    const btnHeight = buttonRef.current?.clientHeight || 100;
 
     newX = Math.max(10, Math.min(newX, window.innerWidth - btnWidth - 10));
     newY = Math.max(10, Math.min(newY, window.innerHeight - btnHeight - 10));
@@ -10898,10 +10903,20 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     setPos({ x: newX, y: newY });
   };
 
-  const handleEnd = () => {
+  const handleEnd = (targetElement) => {
     if (!dragStart.current) return;
     if (!dragStart.current.isDragging) {
-      onToggle();
+      if (targetElement) {
+        const btn = targetElement.closest('[data-tab]');
+        if (btn) {
+          const targetTab = btn.getAttribute('data-tab');
+          if (targetTab && currentTab !== targetTab) {
+            onToggle(targetTab);
+          }
+        }
+      }
+    } else {
+      localStorage.setItem(`anti_fab_pos_${theme}`, JSON.stringify(pos));
     }
     dragStart.current = null;
   };
@@ -10917,6 +10932,10 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     handleMove(touch.clientX, touch.clientY);
   };
 
+  const onTouchEnd = (e) => {
+    handleEnd(e.target);
+  };
+
   const onMouseDown = (e) => {
     if (e.button !== 0) return;
     handleStart(e.clientX, e.clientY);
@@ -10925,11 +10944,8 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
       handleMove(moveEvent.clientX, moveEvent.clientY);
     };
 
-    const onMouseUp = () => {
-      if (dragStart.current && !dragStart.current.isDragging) {
-        onToggle();
-      }
-      dragStart.current = null;
+    const onMouseUp = (upEvent) => {
+      handleEnd(upEvent.target);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -10939,16 +10955,13 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   };
 
   const isList = currentTab === 'list';
-  const themeClasses = theme === 'amber'
-    ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 border-amber-400/40 shadow-amber-500/30'
-    : 'bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 border-violet-400/40 shadow-violet-500/30';
 
   return (
     <div
       ref={buttonRef}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
-      onTouchEnd={handleEnd}
+      onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}
       style={{
         position: 'fixed',
@@ -10956,19 +10969,34 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         top: `${pos.y}px`,
         touchAction: 'none',
       }}
-      className={`z-[9999] flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-full border text-xs font-black text-white shadow-xl cursor-grab active:cursor-grabbing transition-all duration-150 transform active:scale-95 select-none ${themeClasses}`}
+      className="z-[9999] flex flex-col items-center gap-2.5 p-1.5 rounded-full border bg-slateCustom-950/90 border-slate-800 shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
     >
-      {isList ? (
-        <>
-          <span className="text-sm">💬</span>
-          <span className="whitespace-nowrap">AI 튜터</span>
-        </>
-      ) : (
-        <>
-          <span className="text-sm">📝</span>
-          <span className="whitespace-nowrap">문제 풀이</span>
-        </>
-      )}
+      <div
+        data-tab="list"
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 cursor-pointer ${
+          isList
+            ? theme === 'amber'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30'
+              : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
+            : 'bg-slate-800/80 text-slate-500 hover:text-slate-300'
+        }`}
+        title="문제 풀이"
+      >
+        📝
+      </div>
+      <div
+        data-tab="tutor"
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-lg transition-all duration-200 cursor-pointer ${
+          !isList
+            ? theme === 'amber'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30'
+              : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
+            : 'bg-slate-800/80 text-slate-500 hover:text-slate-300'
+        }`}
+        title="제미나이 AI 튜터"
+      >
+        💬
+      </div>
     </div>
   );
 }
