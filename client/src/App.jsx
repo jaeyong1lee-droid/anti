@@ -7778,21 +7778,19 @@ export default function App() {
 
           </div>
         </div>
-        {!isDesktop && !isMobileLandscape && (
-          <DraggableFloatingButton
-            currentTab={reviewMobileTab}
-            onToggle={(targetTab) => {
-              setReviewMobileTab(targetTab);
-              if (targetTab === 'list') {
-                reviewSplitContainerRef.current?.scrollTo({ left: 0 });
-              } else {
-                const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-                reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
-              }
-            }}
-            theme="violet"
-          />
-        )}
+        <DraggableFloatingButton
+          currentTab={reviewMobileTab}
+          onToggle={(targetTab) => {
+            setReviewMobileTab(targetTab);
+            if (targetTab === 'list') {
+              reviewSplitContainerRef.current?.scrollTo({ left: 0 });
+            } else {
+              const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+              reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
+            }
+          }}
+          theme="violet"
+        />
       </div>
       )}
 
@@ -8856,21 +8854,19 @@ export default function App() {
 
           </div>
           </div>
-          {!isDesktop && !isMobileLandscape && (
-            <DraggableFloatingButton
-              currentTab={examMobileTab}
-              onToggle={(targetTab) => {
-                setExamMobileTab(targetTab);
-                if (targetTab === 'list') {
-                  examSplitContainerRef.current?.scrollTo({ left: 0 });
-                } else {
-                  const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-                  examSplitContainerRef.current?.scrollTo({ left: containerWidth });
-                }
-              }}
-              theme="amber"
-            />
-          )}
+          <DraggableFloatingButton
+            currentTab={examMobileTab}
+            onToggle={(targetTab) => {
+              setExamMobileTab(targetTab);
+              if (targetTab === 'list') {
+                examSplitContainerRef.current?.scrollTo({ left: 0 });
+              } else {
+                const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+                examSplitContainerRef.current?.scrollTo({ left: containerWidth });
+              }
+            }}
+            theme="amber"
+          />
         </div>
       )}
 
@@ -10839,18 +10835,20 @@ export default function App() {
 function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   const [pos, setPos] = useState(() => {
     const saved = localStorage.getItem(`anti_fab_pos_${theme}`);
+    const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
+    const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          const x = Math.max(10, Math.min(parsed.x, window.innerWidth - 100));
-          const y = Math.max(10, Math.min(parsed.y, window.innerHeight - 60));
+          const x = Math.max(10, Math.min(parsed.x, w - 100));
+          const y = Math.max(10, Math.min(parsed.y, h - 60));
           return { x, y };
         }
       } catch (e) {}
     }
-    const initialX = window.innerWidth - 100 - 16; 
-    const initialY = window.innerHeight - 52 - 80; 
+    const initialX = w - 100 - 16; 
+    const initialY = h - 52 - 80; 
     return { x: initialX, y: initialY };
   });
 
@@ -10858,17 +10856,31 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   const buttonRef = useRef(null);
 
   useEffect(() => {
-    const handleResize = () => {
+    const clampPos = () => {
       setPos(prev => {
         const btnWidth = buttonRef.current?.clientWidth || 100;
         const btnHeight = buttonRef.current?.clientHeight || 52;
-        const x = Math.min(prev.x, window.innerWidth - btnWidth - 10);
-        const y = Math.min(prev.y, window.innerHeight - btnHeight - 10);
+        const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
+        const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
+        const x = Math.min(prev.x, w - btnWidth - 10);
+        const y = Math.min(prev.y, h - btnHeight - 10);
         return { x: Math.max(10, x), y: Math.max(10, y) };
       });
     };
+    
+    // Immediate clamp on mount
+    clampPos();
+    // Also clamp after a short timeout to ensure the layout is fully ready and clientWidth/clientHeight are populated
+    const timer = setTimeout(clampPos, 100);
+
+    const handleResize = () => {
+      clampPos();
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const handleStart = (clientX, clientY) => {
@@ -10896,9 +10908,11 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
 
     const btnWidth = buttonRef.current?.clientWidth || 100;
     const btnHeight = buttonRef.current?.clientHeight || 52;
+    const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
+    const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
 
-    newX = Math.max(10, Math.min(newX, window.innerWidth - btnWidth - 10));
-    newY = Math.max(10, Math.min(newY, window.innerHeight - btnHeight - 10));
+    newX = Math.max(10, Math.min(newX, w - btnWidth - 10));
+    newY = Math.max(10, Math.min(newY, h - btnHeight - 10));
 
     setPos({ x: newX, y: newY });
   };
@@ -10969,7 +10983,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         top: `${pos.y}px`,
         touchAction: 'none',
       }}
-      className="z-[9999] flex flex-row items-center gap-2.5 p-1.5 rounded-full border bg-slateCustom-950/90 border-slate-800 shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
+      className="z-[9999] md:hidden landscape-hide flex flex-row items-center gap-2.5 p-1.5 rounded-full border bg-slateCustom-950/90 border-slate-800 shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
     >
       <div
         data-tab="list"
