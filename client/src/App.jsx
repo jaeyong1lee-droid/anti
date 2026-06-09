@@ -1665,6 +1665,9 @@ export default function App() {
   const [adjustingInputKey, setAdjustingInputKey] = useState(null);
   const [adjustingText, setAdjustingText] = useState({});
   const [adjustingLoading, setAdjustingLoading] = useState({});
+  const [activeTutorInputKey, setActiveTutorInputKey] = useState(null);
+  const [tutorInputText, setTutorInputText] = useState({});
+  const [tutorAnswers, setTutorAnswers] = useState({});
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
@@ -3823,6 +3826,53 @@ export default function App() {
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
+    }
+  };
+
+  // ── Ask AI Tutor In-Card (Expanded panel) ───────────────────────────
+  const handleAskCardTutor = async (key, q) => {
+    const userQuery = (tutorInputText[key] || '').trim();
+    if (!userQuery) return;
+
+    setTutorAnswers(prev => ({
+      ...prev,
+      [key]: { loading: true, text: '', error: '' }
+    }));
+
+    try {
+      let contextPrompt = `[학습 문맥 정보]\n`;
+      contextPrompt += `■ 문제: ${q.question}\n`;
+      if (q.options && q.options.length > 0) {
+        contextPrompt += `■ 보기:\n${q.options.map((opt, i) => `${i + 1}) ${opt}`).join('\n')}\n`;
+      }
+      contextPrompt += `■ 정답/모범 답안: ${q.answer || ''}\n`;
+      if (q.explanation) contextPrompt += `■ 기존 해설: ${q.explanation}\n`;
+      if (q.concept) contextPrompt += `■ 핵심 개념: ${q.concept}\n`;
+      if (q.formula) contextPrompt += `■ 공식: ${q.formula}\n`;
+      
+      contextPrompt += `\n[사용자 질문]\n${userQuery}\n\n`;
+      contextPrompt += `[답변 지침]\n위 문제의 문맥을 바탕으로 사용자의 질문에만 직접적이고 깊이 있게 답변해 주세요. 불필요한 서론이나 인사말은 생략하고 본론으로 바로 대답해야 하며, 수식은 LaTeX 형식($...$ 또는 $$...$$)을 사용해 정밀하게 표현해야 합니다.`;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: contextPrompt
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변을 생성하지 못했습니다.');
+      
+      setTutorAnswers(prev => ({
+        ...prev,
+        [key]: { loading: false, text: data.text, error: '' }
+      }));
+    } catch (err) {
+      setTutorAnswers(prev => ({
+        ...prev,
+        [key]: { loading: false, text: '', error: err.message }
+      }));
     }
   };
 
@@ -7260,7 +7310,7 @@ export default function App() {
 
                                      {/* AI 튜터 버튼 */}
                                      <button
-                                       onClick={() => handleAskTutorAboutQuestion(q, 'review')}
+                                       onClick={() => setActiveTutorInputKey(prev => prev === `r_${idx}` ? null : `r_${idx}`)}
                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
                                      >
                                        💬 AI 튜터
@@ -7376,8 +7426,8 @@ export default function App() {
                               {/* 문제조정 입력 및 결과 보드 */}
                               {true && (
                                 <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
-                                  {adjustingInputKey !== `r_${idx}` ? (
-                                    <>
+                                  {adjustingInputKey !== `r_${idx}` && activeTutorInputKey !== `r_${idx}` ? (
+                                    <div className="flex flex-wrap items-center gap-2 w-full">
                                       <button
                                         onClick={() => setAdjustingInputKey(`r_${idx}`)}
                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
@@ -7385,13 +7435,13 @@ export default function App() {
                                         🛠️ 문제조정 (AI 피드백)
                                       </button>
                                       <button
-                                        onClick={() => handleAskTutorAboutQuestion(q, 'review')}
+                                        onClick={() => setActiveTutorInputKey(prev => prev === `r_${idx}` ? null : `r_${idx}`)}
                                         className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
                                       >
                                         💬 AI 튜터
                                       </button>
-                                    </>
-                                  ) : (
+                                    </div>
+                                  ) : adjustingInputKey === `r_${idx}` ? (
                                     <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
                                       <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                       <textarea
@@ -7421,6 +7471,58 @@ export default function App() {
                                       </div>
                                       {adjustingLoading[`r_${idx}`] && (
                                         <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl w-full">
+                                      <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                      <textarea
+                                        rows={3}
+                                        value={tutorInputText[`r_${idx}`] || ''}
+                                        onChange={(e) => {
+                                          const text = e.target.value;
+                                          setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                        }}
+                                        placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                        className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
+                                      />
+                                      <div className="flex gap-2 justify-end">
+                                        <button
+                                          onClick={() => setActiveTutorInputKey(null)}
+                                          className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                        >
+                                          취소
+                                        </button>
+                                        <button
+                                          disabled={tutorAnswers[`r_${idx}`]?.loading || !(tutorInputText[`r_${idx}`] || '').trim()}
+                                          onClick={() => handleAskCardTutor(`r_${idx}`, q)}
+                                          className="text-[10px] px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800/50 disabled:text-violet-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                        >
+                                          {tutorAnswers[`r_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
+                                        </button>
+                                      </div>
+
+                                      {/* AI Tutor In-Card Answer Panel */}
+                                      {tutorAnswers[`r_${idx}`]?.loading && (
+                                        <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
+                                          <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                            <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                          </div>
+                                          <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                          <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                        </div>
+                                      )}
+                                      {tutorAnswers[`r_${idx}`]?.error && (
+                                        <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`r_${idx}`].error}</div>
+                                      )}
+                                      {tutorAnswers[`r_${idx}`]?.text && !tutorAnswers[`r_${idx}`]?.loading && (
+                                        <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
+                                          <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+                                          <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                            <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                          </div>
+                                        </div>
                                       )}
                                     </div>
                                   )}
@@ -8250,7 +8352,7 @@ export default function App() {
                                   
                                   {/* AI 튜터 버튼 */}
                                   <button
-                                    onClick={() => handleAskTutorAboutQuestion(q, 'exam')}
+                                    onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
                                     className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
                                   >
                                     💬 AI 튜터
@@ -8292,7 +8394,62 @@ export default function App() {
                                   </div>
                                 )}
 
-                                {/* 보기별 정밀 분석 결과 */}
+                                    {/* AI 튜터 입력 및 답변 보드 */}
+                                    {activeTutorInputKey === `e_${idx}` && (
+                                      <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl w-full">
+                                        <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                        <textarea
+                                          rows={3}
+                                          value={tutorInputText[`e_${idx}`] || ''}
+                                          onChange={(e) => {
+                                            const text = e.target.value;
+                                            setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                          }}
+                                          placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
+                                        />
+                                        <div className="flex gap-2 justify-end">
+                                          <button
+                                            onClick={() => setActiveTutorInputKey(null)}
+                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                          <button
+                                            disabled={tutorAnswers[`e_${idx}`]?.loading || !(tutorInputText[`e_${idx}`] || '').trim()}
+                                            onClick={() => handleAskCardTutor(`e_${idx}`, q)}
+                                            className="text-[10px] px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/50 disabled:text-amber-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                          >
+                                            {tutorAnswers[`e_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
+                                          </button>
+                                        </div>
+
+                                        {/* AI Tutor In-Card Answer Panel */}
+                                        {tutorAnswers[`e_${idx}`]?.loading && (
+                                          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-amber-500/10">
+                                            <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
+                                              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
+                                              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                            </div>
+                                            <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                            <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                          </div>
+                                        )}
+                                        {tutorAnswers[`e_${idx}`]?.error && (
+                                          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-amber-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`e_${idx}`].error}</div>
+                                        )}
+                                        {tutorAnswers[`e_${idx}`]?.text && !tutorAnswers[`e_${idx}`]?.loading && (
+                                          <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
+                                            <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
+                                            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                              <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* 보기별 정밀 분석 결과 */}
                                 {examOptionExplanations[idx]?.loading && (
                                   <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
                                     <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
@@ -8353,8 +8510,8 @@ export default function App() {
 
                             {/* 문제조정 입력 및 결과 보드 */}
                             <div className="mt-3 pt-2 border-t border-slate-700/50 flex flex-wrap items-center gap-2">
-                              {adjustingInputKey !== `e_${idx}` ? (
-                                <>
+                              {adjustingInputKey !== `e_${idx}` && activeTutorInputKey !== `e_${idx}` ? (
+                                <div className="flex flex-wrap items-center gap-2 w-full">
                                   <button
                                     onClick={() => setAdjustingInputKey(`e_${idx}`)}
                                     className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
@@ -8362,13 +8519,13 @@ export default function App() {
                                     🛠️ 문제조정 (AI 피드백)
                                   </button>
                                   <button
-                                    onClick={() => handleAskTutorAboutQuestion(q, 'exam')}
+                                    onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
                                     className="text-[10px] px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
                                   >
                                     💬 AI 튜터
                                   </button>
-                                </>
-                              ) : (
+                                </div>
+                              ) : adjustingInputKey === `e_${idx}` ? (
                                 <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
                                   <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                   <textarea
@@ -8398,6 +8555,58 @@ export default function App() {
                                   </div>
                                   {adjustingLoading[`e_${idx}`] && (
                                     <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl w-full">
+                                  <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                  <textarea
+                                    rows={3}
+                                    value={tutorInputText[`e_${idx}`] || ''}
+                                    onChange={(e) => {
+                                      const text = e.target.value;
+                                      setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                    }}
+                                    placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                    className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <button
+                                      onClick={() => setActiveTutorInputKey(null)}
+                                      className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                    >
+                                      취소
+                                    </button>
+                                    <button
+                                      disabled={tutorAnswers[`e_${idx}`]?.loading || !(tutorInputText[`e_${idx}`] || '').trim()}
+                                      onClick={() => handleAskCardTutor(`e_${idx}`, q)}
+                                      className="text-[10px] px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/50 disabled:text-amber-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-255"
+                                    >
+                                      {tutorAnswers[`e_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
+                                    </button>
+                                  </div>
+
+                                  {/* AI Tutor In-Card Answer Panel */}
+                                  {tutorAnswers[`e_${idx}`]?.loading && (
+                                    <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-amber-500/10">
+                                      <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
+                                        <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                      </div>
+                                      <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                      <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                    </div>
+                                  )}
+                                  {tutorAnswers[`e_${idx}`]?.error && (
+                                    <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-amber-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`e_${idx}`].error}</div>
+                                  )}
+                                  {tutorAnswers[`e_${idx}`]?.text && !tutorAnswers[`e_${idx}`]?.loading && (
+                                    <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
+                                      <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
+                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                        <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
                               )}
