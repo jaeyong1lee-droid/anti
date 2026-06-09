@@ -7305,13 +7305,7 @@ export default function App() {
                                   <div className="text-sm text-slate-200 leading-relaxed flex flex-col items-center justify-center text-center bg-slate-900/40 p-3 rounded-xl border border-slate-800/40 my-1"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                 </div>
                               )}
-                              {q.structure && (
-                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                  <span className="text-[10px] font-black text-emerald-400">📋 답안 구조: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                </div>
-                              )}
-                              {!q.concept && !q.formula && !q.structure && (
+                              {!q.concept && !q.formula && (
                                 <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                               )}
 
