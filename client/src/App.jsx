@@ -10833,11 +10833,16 @@ export default function App() {
 }
 
 function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
+  const [isCover, setIsCover] = useState(() => {
+    const h = window.innerHeight;
+    return h > 0 && h <= 450;
+  });
+
   const [pos, setPos] = useState(() => {
     const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
     const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
-    const isCover = h <= 450;
-    const key = isCover ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
+    const isCoverMode = h <= 450;
+    const key = isCoverMode ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
     const saved = localStorage.getItem(key);
     
     // Top-left defaults (below mobile headers)
@@ -10847,7 +10852,10 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+        if (
+          typeof parsed.x === 'number' && Number.isFinite(parsed.x) &&
+          typeof parsed.y === 'number' && Number.isFinite(parsed.y)
+        ) {
           const x = Math.max(10, Math.min(parsed.x, w - 100));
           const y = Math.max(10, Math.min(parsed.y, h - 60));
           return { x, y };
@@ -10862,6 +10870,8 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
 
   useEffect(() => {
     const clampPos = () => {
+      const hVal = window.innerHeight || 0;
+      setIsCover(hVal > 0 && hVal <= 450);
       setPos(prev => {
         const btnWidth = buttonRef.current?.clientWidth || 100;
         const btnHeight = buttonRef.current?.clientHeight || 52;
@@ -10869,7 +10879,12 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
         const x = Math.min(prev.x, w - btnWidth - 10);
         const y = Math.min(prev.y, h - btnHeight - 10);
-        return { x: Math.max(10, x), y: Math.max(10, y) };
+        const nextX = Math.max(10, x);
+        const nextY = Math.max(10, y);
+        if (Number.isFinite(nextX) && Number.isFinite(nextY)) {
+          return { x: nextX, y: nextY };
+        }
+        return prev;
       });
     };
     
@@ -10889,6 +10904,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   }, []);
 
   const handleStart = (clientX, clientY) => {
+    if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
     dragStart.current = {
       startX: clientX,
       startY: clientY,
@@ -10919,7 +10935,9 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     newX = Math.max(10, Math.min(newX, w - btnWidth - 10));
     newY = Math.max(10, Math.min(newY, h - btnHeight - 10));
 
-    setPos({ x: newX, y: newY });
+    if (Number.isFinite(newX) && Number.isFinite(newY)) {
+      setPos({ x: newX, y: newY });
+    }
   };
 
   const handleEnd = (targetElement) => {
@@ -10936,9 +10954,11 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
       }
     } else {
       const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
-      const isCover = h <= 450;
-      const key = isCover ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
-      localStorage.setItem(key, JSON.stringify(pos));
+      const isCoverMode = h <= 450;
+      const key = isCoverMode ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
+      if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+        localStorage.setItem(key, JSON.stringify(pos));
+      }
     }
     dragStart.current = null;
   };
@@ -10991,7 +11011,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
         top: `${pos.y}px`,
         touchAction: 'none',
       }}
-      className="z-[9999] md:hidden landscape-hide flex flex-row items-center gap-2.5 p-1.5 rounded-full border bg-slateCustom-950/90 border-slate-800 shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
+      className={`z-[9999] ${isCover ? '' : 'md:hidden landscape-hide'} flex flex-row items-center gap-2.5 p-1.5 rounded-full border bg-slateCustom-950/90 border-slate-800 shadow-2xl backdrop-blur-md cursor-grab active:cursor-grabbing select-none`}
     >
       <div
         data-tab="list"
