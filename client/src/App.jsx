@@ -878,6 +878,9 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   let processedText = renderText;
   if (typeof processedText === 'string' && !isHeavy) {
     processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
+    if (!processedText.includes('\n')) {
+      processedText = processedText.replace(/([가-힣a-zA-Z0-9])다\.\s+/g, '$1다.\n\n');
+    }
   }
 
   // 1) 불필요한 연속 빈 행을 최대 2개로 압축하여 컴팩트하게 정리
@@ -1210,12 +1213,14 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           }
 
           const textLines = htmlContent.split('\n');
-          const activeLines = textLines.filter(line => line.trim() !== '');
 
           return (
             <div key={idx} className="select-text">
-              {activeLines.map((line, lIdx) => {
+              {textLines.map((line, lIdx) => {
                 const cleanLine = line.trim();
+                if (cleanLine === '') {
+                  return <div key={lIdx} className="h-2 select-none" />;
+                }
                 // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
                 const isHeading = /^\s*\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
                 
@@ -7363,6 +7368,16 @@ export default function App() {
                                             const text = e.target.value;
                                             setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
                                           }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              const isPending = tutorAnswers[`r_${idx}`]?.loading;
+                                              const hasText = (tutorInputText[`r_${idx}`] || '').trim();
+                                              if (!isPending && hasText) {
+                                                handleAskCardTutor(`r_${idx}`, q);
+                                              }
+                                            }
+                                          }}
                                           placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
                                           className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
                                         />
@@ -7537,6 +7552,16 @@ export default function App() {
                                         onChange={(e) => {
                                           const text = e.target.value;
                                           setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            const isPending = tutorAnswers[`r_${idx}`]?.loading;
+                                            const hasText = (tutorInputText[`r_${idx}`] || '').trim();
+                                            if (!isPending && hasText) {
+                                              handleAskCardTutor(`r_${idx}`, q);
+                                            }
+                                          }
                                         }}
                                         placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
                                         className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
@@ -8460,6 +8485,16 @@ export default function App() {
                                             const text = e.target.value;
                                             setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
                                           }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              const isPending = tutorAnswers[`e_${idx}`]?.loading;
+                                              const hasText = (tutorInputText[`e_${idx}`] || '').trim();
+                                              if (!isPending && hasText) {
+                                                handleAskCardTutor(`e_${idx}`, q);
+                                              }
+                                            }
+                                          }}
                                           placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
                                           className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
                                         />
@@ -8621,6 +8656,16 @@ export default function App() {
                                     onChange={(e) => {
                                       const text = e.target.value;
                                       setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        const isPending = tutorAnswers[`e_${idx}`]?.loading;
+                                        const hasText = (tutorInputText[`e_${idx}`] || '').trim();
+                                        if (!isPending && hasText) {
+                                          handleAskCardTutor(`e_${idx}`, q);
+                                        }
+                                      }
                                     }}
                                     placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
                                     className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
