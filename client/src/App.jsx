@@ -6785,38 +6785,7 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
-{/* Sub-header tabs for Mobile */}
-          <div className="w-full flex md:hidden bg-slateCustom-950 px-2 py-1 border-b border-violet-500/10 justify-center flex-shrink-0 landscape-hide">
-            <div className="flex bg-slateCustom-900 p-0.5 rounded-lg w-full max-w-[280px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setReviewMobileTab('list');
-                  reviewSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
-                  reviewMobileTab === 'list'
-                    ? 'bg-violet-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                문제 풀이
-              </button>
-              <button
-                onClick={() => {
-                  setReviewMobileTab('tutor');
-                  const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
-                  reviewSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
-                  reviewMobileTab === 'tutor'
-                    ? 'bg-violet-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
-            </div>
-          </div>
+
 
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
@@ -7807,6 +7776,24 @@ export default function App() {
               </div>
             </div>
 
+            {!isDesktop && !isMobileLandscape && (
+              <DraggableFloatingButton
+                currentTab={reviewMobileTab}
+                onToggle={() => {
+                  setReviewMobileTab(prev => {
+                    const next = prev === 'list' ? 'tutor' : 'list';
+                    if (next === 'list') {
+                      reviewSplitContainerRef.current?.scrollTo({ left: 0 });
+                    } else {
+                      const containerWidth = reviewSplitContainerRef.current?.clientWidth || 0;
+                      reviewSplitContainerRef.current?.scrollTo({ left: containerWidth });
+                    }
+                    return next;
+                  });
+                }}
+                theme="violet"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -7861,38 +7848,7 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
-{/* Sub-header tabs for Mobile */}
-          <div className="w-full flex md:hidden bg-slateCustom-950 px-2 py-1 border-b border-amber-500/10 justify-center flex-shrink-0">
-            <div className="flex bg-slateCustom-900 p-0.5 rounded-lg w-full max-w-[280px] border border-slate-800">
-              <button
-                onClick={() => {
-                  setExamMobileTab('list');
-                  examSplitContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
-                  examMobileTab === 'list'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                문제 풀이
-              </button>
-              <button
-                onClick={() => {
-                  setExamMobileTab('tutor');
-                  const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
-                  examSplitContainerRef.current?.scrollTo({ left: containerWidth, behavior: 'smooth' });
-                }}
-                className={`flex-1 py-1 text-center text-[11px] font-black rounded-md transition-all cursor-pointer ${
-                  examMobileTab === 'tutor'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                제미나이 AI 튜터
-              </button>
-            </div>
-          </div>
+
 
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
@@ -8901,6 +8857,24 @@ export default function App() {
               </div>
             </div>
 
+            {!isDesktop && !isMobileLandscape && (
+              <DraggableFloatingButton
+                currentTab={examMobileTab}
+                onToggle={() => {
+                  setExamMobileTab(prev => {
+                    const next = prev === 'list' ? 'tutor' : 'list';
+                    if (next === 'list') {
+                      examSplitContainerRef.current?.scrollTo({ left: 0 });
+                    } else {
+                      const containerWidth = examSplitContainerRef.current?.clientWidth || 0;
+                      examSplitContainerRef.current?.scrollTo({ left: containerWidth });
+                    }
+                    return next;
+                  });
+                }}
+                theme="amber"
+              />
+            )}
           </div>
           </div>
         </div>
@@ -10863,6 +10837,137 @@ export default function App() {
             <span className="text-[10px] font-bold tracking-tight">답안지</span>
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
+  const [pos, setPos] = useState(() => {
+    const initialX = window.innerWidth - 110 - 20; 
+    const initialY = window.innerHeight - 44 - 80; 
+    return { x: initialX, y: initialY };
+  });
+
+  const dragStart = useRef(null);
+  const buttonRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setPos(prev => {
+        const btnWidth = buttonRef.current?.clientWidth || 110;
+        const btnHeight = buttonRef.current?.clientHeight || 44;
+        const x = Math.min(prev.x, window.innerWidth - btnWidth - 10);
+        const y = Math.min(prev.y, window.innerHeight - btnHeight - 10);
+        return { x: Math.max(10, x), y: Math.max(10, y) };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleStart = (clientX, clientY) => {
+    dragStart.current = {
+      startX: clientX,
+      startY: clientY,
+      startPosX: pos.x,
+      startPosY: pos.y,
+      isDragging: false,
+    };
+  };
+
+  const handleMove = (clientX, clientY) => {
+    if (!dragStart.current) return;
+    const { startX, startY, startPosX, startPosY } = dragStart.current;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+
+    if (Math.hypot(dx, dy) > 6) {
+      dragStart.current.isDragging = true;
+    }
+
+    let newX = startPosX + dx;
+    let newY = startPosY + dy;
+
+    const btnWidth = buttonRef.current?.clientWidth || 110;
+    const btnHeight = buttonRef.current?.clientHeight || 44;
+
+    newX = Math.max(10, Math.min(newX, window.innerWidth - btnWidth - 10));
+    newY = Math.max(10, Math.min(newY, window.innerHeight - btnHeight - 10));
+
+    setPos({ x: newX, y: newY });
+  };
+
+  const handleEnd = () => {
+    if (!dragStart.current) return;
+    if (!dragStart.current.isDragging) {
+      onToggle();
+    }
+    dragStart.current = null;
+  };
+
+  const onTouchStart = (e) => {
+    const touch = e.touches[0];
+    handleStart(touch.clientX, touch.clientY);
+  };
+
+  const onTouchMove = (e) => {
+    if (e.cancelable) e.preventDefault();
+    const touch = e.touches[0];
+    handleMove(touch.clientX, touch.clientY);
+  };
+
+  const onMouseDown = (e) => {
+    if (e.button !== 0) return;
+    handleStart(e.clientX, e.clientY);
+
+    const onMouseMove = (moveEvent) => {
+      handleMove(moveEvent.clientX, moveEvent.clientY);
+    };
+
+    const onMouseUp = () => {
+      if (dragStart.current && !dragStart.current.isDragging) {
+        onToggle();
+      }
+      dragStart.current = null;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const isList = currentTab === 'list';
+  const themeClasses = theme === 'amber'
+    ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 border-amber-400/40 shadow-amber-500/30'
+    : 'bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 border-violet-400/40 shadow-violet-500/30';
+
+  return (
+    <div
+      ref={buttonRef}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={handleEnd}
+      onMouseDown={onMouseDown}
+      style={{
+        position: 'fixed',
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        touchAction: 'none',
+      }}
+      className={`z-[9999] flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-full border text-xs font-black text-white shadow-xl cursor-grab active:cursor-grabbing transition-all duration-150 transform active:scale-95 select-none ${themeClasses}`}
+    >
+      {isList ? (
+        <>
+          <span className="text-sm">💬</span>
+          <span className="whitespace-nowrap">AI 튜터</span>
+        </>
+      ) : (
+        <>
+          <span className="text-sm">📝</span>
+          <span className="whitespace-nowrap">문제 풀이</span>
+        </>
       )}
     </div>
   );
