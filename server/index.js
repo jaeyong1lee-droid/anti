@@ -2021,7 +2021,7 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.review_round ASC, s.planned_date ASC
+      ORDER BY s.planned_date ASC, s.review_round ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);

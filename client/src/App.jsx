@@ -2100,6 +2100,12 @@ export default function App() {
           }
         }
         const uniqueList = Array.from(uniqueMap.values());
+        uniqueList.sort((a, b) => {
+          const dateA = a.planned_date || '';
+          const dateB = b.planned_date || '';
+          if (dateA !== dateB) return dateA.localeCompare(dateB);
+          return (a.review_round || 0) - (b.review_round || 0);
+        });
         setTodayReviews(uniqueList);
         if (data && Array.isArray(data.completedTopicIds)) {
           setCompletedTopicIds(data.completedTopicIds);
@@ -2759,7 +2765,14 @@ export default function App() {
           setHiddenBonusTopicIds(prevHidden => prevHidden.filter(id => !newTopicIds.includes(id)));
 
           showNotification(`약점 보완 추천 토픽 ${newPoints.length}개가 오늘의 복습 목록에 성공적으로 추가되었습니다!`, 'success');
-          return [...newPoints, ...prev]; // 보너스를 상단에 노출하기 위해 앞에 붙임
+          const merged = [...newPoints, ...prev];
+          merged.sort((a, b) => {
+            const dateA = a.planned_date || '';
+            const dateB = b.planned_date || '';
+            if (dateA !== dateB) return dateA.localeCompare(dateB);
+            return (a.review_round || 0) - (b.review_round || 0);
+          });
+          return merged;
         });
       } else {
         showNotification(data.message || '추천 가능한 새로운 약점 토픽이 없습니다.', 'info');
