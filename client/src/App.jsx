@@ -5848,28 +5848,6 @@ export default function App() {
     loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
   }, []);
 
-  // ── 갤럭시 플립6 커버화면 및 모바일 브라우저 주소창 숨김을 위한 Fullscreen API 자동 요청
-  useEffect(() => {
-    const handleCoverFullscreen = () => {
-      const isCoverMode = window.innerHeight > 0 && window.innerHeight <= 450 && window.innerWidth <= 600;
-      if (isCoverMode) {
-        const docEl = document.documentElement;
-        if (!document.fullscreenElement) {
-          docEl.requestFullscreen?.().catch(err => {
-            console.warn("[Cover Fullscreen] Request failed:", err);
-          });
-        }
-      }
-    };
-
-    document.addEventListener('click', handleCoverFullscreen);
-    document.addEventListener('touchstart', handleCoverFullscreen);
-    return () => {
-      document.removeEventListener('click', handleCoverFullscreen);
-      document.removeEventListener('touchstart', handleCoverFullscreen);
-    };
-  }, []);
-
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
       {/* Toast Notification */}
