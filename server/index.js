@@ -1799,7 +1799,7 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
 }
 
 // 복습이 완료되었을 때 다음 회차 복습 스케줄을 자동으로 생성하는 헬퍼 함수
-async function scheduleNextReviewRound(topicId, currentRound) {
+async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Date()) {
   const nextRound = currentRound + 1;
   const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
   const existingNextSchedule = await dbQuery.get(nextCheckSql, [topicId, nextRound]);
@@ -1816,13 +1816,13 @@ async function scheduleNextReviewRound(topicId, currentRound) {
     }
 
     if (days > 0) {
-      const nextPlannedDate = getLocalDateString(new Date(), days);
+      const nextPlannedDate = getLocalDateString(baseDate, days);
       const insertSql = `
         INSERT INTO schedules (topic_id, review_round, planned_date, status)
         VALUES (?, ?, ?, 'pending')
       `;
       await dbQuery.run(insertSql, [topicId, nextRound, nextPlannedDate]);
-      console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate}`);
+      console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
     }
   }
 }
@@ -2233,6 +2233,7 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
 // 3. Mark Review Round as Complete
 app.post('/api/schedules/:id/complete', async (req, res) => {
   const scheduleId = req.params.id;
+  const { referenceDate } = req.body;
 
   try {
     const checkSql = `SELECT * FROM schedules WHERE id = ?`;
@@ -2256,7 +2257,8 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
     // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
     if (schedule.review_round !== 99) {
-      await scheduleNextReviewRound(schedule.topic_id, schedule.review_round);
+      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      await scheduleNextReviewRound(schedule.topic_id, schedule.review_round, baseDate);
     }
 
     res.json({
@@ -2273,7 +2275,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, referenceDate } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -2391,7 +2393,8 @@ app.post('/api/quiz/submit', async (req, res) => {
 
     // 4. 통과한 경우, 다음 회차 자동 생성
     if (isPassed && !isBonus && schedule.review_round !== 99) {
-      await scheduleNextReviewRound(topic_id, schedule.review_round);
+      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      await scheduleNextReviewRound(topic_id, schedule.review_round, baseDate);
     }
 
     res.json({
@@ -5980,6 +5983,52 @@ async function migrateSpacedIntervals() {
   }
 }
 
+// 복습이 완료되었으나 planned_date가 실제 오늘 날짜(new Date())로 잘못 생성된 pending 일정들을 Ebbinghaus 주기 기준으로 자가 치유(Self-healing)
+async function healPendingSchedules() {
+  console.log('[Migration] Healing pending schedule planned dates...');
+  try {
+    const pendingSchedules = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round != 99`);
+    let healCount = 0;
+    
+    for (const sched of pendingSchedules) {
+      const prevRound = sched.review_round - 1;
+      const prevSched = await dbQuery.get(
+        `SELECT completed_at, planned_date FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`,
+        [sched.topic_id, prevRound]
+      );
+      
+      if (prevSched) {
+        let baseDateStr = prevSched.completed_at || prevSched.planned_date;
+        if (baseDateStr) {
+          let days = 0;
+          if (prevRound === 1) days = 4;
+          else if (prevRound === 2) days = 7;
+          else if (prevRound === 3) days = 14;
+          else if (prevRound === 4) days = 35;
+          else if (prevRound === 5) days = 60;
+          
+          if (days > 0) {
+            const baseDate = new Date(baseDateStr);
+            const correctPlannedDate = getLocalDateString(baseDate, days);
+            
+            if (sched.planned_date !== correctPlannedDate) {
+              await dbQuery.run(
+                `UPDATE schedules SET planned_date = ? WHERE id = ?`,
+                [correctPlannedDate, sched.id]
+              );
+              healCount++;
+              console.log(`[Migration] Healed round ${sched.review_round} for topic ${sched.topic_id}: ${sched.planned_date} -> ${correctPlannedDate}`);
+            }
+          }
+        }
+      }
+    }
+    console.log(`[Migration] Completed pending schedules heal. Corrected ${healCount} records.`);
+  } catch (error) {
+    console.error('[Migration] Error healing pending schedules:', error);
+  }
+}
+
 // 과거에 풀이했던 복습 일정 중 성적(score, correct_count, total_count)이 누락되었거나 불일치하지만 app_session에 풀이 이력이 존재하는 경우 채점하여 백필
 async function backfillPastScheduleScores() {
   console.log('[Backfill] Checking and backfilling past schedule scores from app_session...');
@@ -6039,6 +6088,7 @@ async function startServer() {
     await initDatabase();
     console.log('Database schema initialization completed.');
     await migrateSpacedIntervals();
+    await healPendingSchedules();
     await backfillPastScheduleScores();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
@@ -6071,6 +6121,7 @@ if (!process.env.VERCEL) {
   initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
     await migrateSpacedIntervals();
+    await healPendingSchedules();
     await backfillPastScheduleScores();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);

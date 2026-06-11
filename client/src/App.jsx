@@ -2673,6 +2673,8 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/schedules/${scheduleId}/complete`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referenceDate })
       });
       const data = await res.json();
 
@@ -2743,7 +2745,8 @@ export default function App() {
           isBonus: !!selectedTopic.isBonus,
           questions: aiQuestions,
           selectedAnswers: selectedAnswers,
-          revealedQuestions: revealedQuestions
+          revealedQuestions: revealedQuestions,
+          referenceDate: referenceDate
         })
       });
       const data = await res.json();
