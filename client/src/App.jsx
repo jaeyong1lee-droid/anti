@@ -1749,7 +1749,7 @@ export default function App() {
   const [isCover, setIsCover] = useState(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    return h > 0 && (h <= 550 || (w > 0 && h / w < 1.3 && h <= 600));
+    return h > 0 && w > 0 && (h / w < 1.5);
   });
 
   // Mobile landscape sidebar swipe hide states
@@ -1851,7 +1851,7 @@ export default function App() {
       setIsMobileLandscape(isLandscape);
       const w = window.innerWidth;
       const h = window.innerHeight;
-      setIsCover(h > 0 && (h <= 550 || (w > 0 && h / w < 1.3 && h <= 600)));
+      setIsCover(h > 0 && w > 0 && (h / w < 1.5));
       if (!isLandscape) {
         setLandscapeSidebarHidden(false);
       }
@@ -10976,13 +10976,13 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
   const [isCover, setIsCover] = useState(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    return h > 0 && (h <= 550 || (w > 0 && h / w < 1.3 && h <= 600));
+    return h > 0 && w > 0 && (h / w < 1.5);
   });
 
   const [pos, setPos] = useState(() => {
     const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
     const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
-    const isCoverMode = h <= 550 || (h / w < 1.3 && h <= 600);
+    const isCoverMode = h / w < 1.5;
     const key = isCoverMode ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
     const saved = localStorage.getItem(key);
     
@@ -11013,7 +11013,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     const clampPos = () => {
       const wVal = window.innerWidth || 0;
       const hVal = window.innerHeight || 0;
-      setIsCover(hVal > 0 && (hVal <= 550 || (wVal > 0 && hVal / wVal < 1.3 && hVal <= 600)));
+      setIsCover(hVal > 0 && wVal > 0 && (hVal / wVal < 1.5));
       setPos(prev => {
         const btnWidth = buttonRef.current?.clientWidth || 100;
         const btnHeight = buttonRef.current?.clientHeight || 52;
@@ -11097,7 +11097,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
     } else {
       const w = window.innerWidth && window.innerWidth > 50 ? window.innerWidth : 320;
       const h = window.innerHeight && window.innerHeight > 50 ? window.innerHeight : 480;
-      const isCoverMode = h <= 550 || (h / w < 1.3 && h <= 600);
+      const isCoverMode = h / w < 1.5;
       const key = isCoverMode ? `anti_fab_pos_${theme}_cover` : `anti_fab_pos_${theme}`;
       if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
         localStorage.setItem(key, JSON.stringify(pos));
