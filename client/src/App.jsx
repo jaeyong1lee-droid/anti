@@ -1860,9 +1860,9 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Z Flip 6 cover screen fullscreen auto-request on user interaction
+  // Mobile portrait fullscreen auto-request on user interaction
   useEffect(() => {
-    if (!isCover) return;
+    if (isDesktop || isMobileLandscape) return;
 
     const requestFullscreen = () => {
       const docEl = document.documentElement;
@@ -1893,7 +1893,7 @@ export default function App() {
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
     };
-  }, [isCover]);
+  }, [isDesktop, isMobileLandscape]);
 
 
 
