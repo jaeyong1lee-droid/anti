@@ -1,47 +1,24 @@
 const CACHE_NAME = 'anti-pe-cache-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/icon.svg',
-  '/manifest.json'
-];
 
+// We skip precaching static assets to prevent caching conflicts and updates latency.
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
   self.skipWaiting();
 });
 
+// Automatically clean up any legacy caches on activation to free device storage and force fresh fetches.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
+          return caches.delete(cache);
         })
       );
-    })
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-  // Only handle standard HTTP/HTTPS schemes to prevent Chrome extension errors
-  if (!event.request.url.startsWith('http')) return;
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).catch(() => {
-        // Fallback or ignore for offline requests
-      });
+    }).then(() => {
+      return self.clients.claim();
     })
   );
 });
+
+// We do NOT intercept fetch events. This lets the browser load all assets directly from the network,
+// leveraging Vite's filename hashes for perfect and immediate cache-busting on reload.
