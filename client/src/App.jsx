@@ -6751,6 +6751,13 @@ export default function App() {
                             {/* 6 spaced rounds status grid */}
                             {[1, 2, 3, 4, 5, 6].map((round) => {
                               const sched = topic.schedules?.find(s => s.review_round === round);
+                              const finishedRounds = topic.schedules
+                                ? topic.schedules
+                                    .filter(s => s.status === 'completed' || s.status === 'failed')
+                                    .map(s => s.review_round)
+                                : [];
+                              const lastFinishedRound = finishedRounds.length > 0 ? Math.max(...finishedRounds) : 0;
+                              const nextRoundToReview = lastFinishedRound + 1;
                               return (
                                 <td key={round} className="py-2.5 px-2 text-center">
                                   {sched ? (
@@ -6780,9 +6787,25 @@ export default function App() {
                                           )}
                                         </>
                                       ) : (
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                                          대기
-                                        </span>
+                                        (() => {
+                                          if (round === nextRoundToReview) {
+                                            const p = new Date(sched.planned_date);
+                                            const r = new Date(referenceDate);
+                                            const diffDays = Math.round((p.getTime() - r.getTime()) / (1000 * 60 * 60 * 24));
+                                            if (diffDays > 0) {
+                                              return (
+                                                <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-violet-400 bg-violet-950/40 border border-violet-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                                  {diffDays}일후
+                                                </span>
+                                              );
+                                            }
+                                          }
+                                          return (
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                                              대기
+                                            </span>
+                                          );
+                                        })()
                                       )}
                                     </div>
                                   ) : (
