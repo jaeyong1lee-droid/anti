@@ -5921,11 +5921,6 @@ export default function App() {
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
               {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
             </h1>
-            {(!isDesktop && !isMobileLandscape) && (
-              <p className="text-[9px] text-rose-400 font-mono tracking-tight">
-                DEBUG: isCover={isCover ? 'Y' : 'N'}, w={window.innerWidth}, h={window.innerHeight}, ratio={(window.innerHeight / window.innerWidth).toFixed(2)}, ver=1.0.5
-              </p>
-            )}
             {(!(!isDesktop && !isMobileLandscape)) && (
               <p className="text-xs md:text-sm text-slate-400 font-medium">
                 에빙하우스 망각곡선 기반 스케줄링 & AI 기출 예상문제 출제 비서
