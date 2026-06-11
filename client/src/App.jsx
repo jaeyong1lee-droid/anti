@@ -1889,15 +1889,26 @@ export default function App() {
     };
   }, [isCover]);
 
-  // Z Flip 6 cover screen: prevent browser address bar from sliding down on swipe down at the top of scrollable elements
+  // Z Flip 6 cover screen: prevent browser address bar from sliding down on swipe down at the top of scrollable elements,
+  // and trigger custom pull-to-refresh reload when swiped down sufficiently.
   useEffect(() => {
+    if (isCover) {
+      document.documentElement.style.overscrollBehaviorY = 'none';
+      document.body.style.overscrollBehaviorY = 'none';
+    } else {
+      document.documentElement.style.overscrollBehaviorY = '';
+      document.body.style.overscrollBehaviorY = '';
+    }
+
     if (!isCover) return;
 
     let startY = 0;
+    let isReloading = false;
 
     const handleTouchStart = (e) => {
       if (e.touches.length === 1) {
         startY = e.touches[0].clientY;
+        isReloading = false;
       }
     };
 
@@ -1937,6 +1948,12 @@ export default function App() {
           if (e.cancelable) {
             e.preventDefault();
           }
+
+          // Trigger custom pull-to-refresh reload if pulled down sufficiently
+          if (deltaY > 100 && !isReloading) {
+            isReloading = true;
+            window.location.reload();
+          }
         }
       }
     };
@@ -1947,6 +1964,8 @@ export default function App() {
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
+      document.documentElement.style.overscrollBehaviorY = '';
+      document.body.style.overscrollBehaviorY = '';
     };
   }, [isCover]);
 

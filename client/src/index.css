@@ -59,7 +59,6 @@ body::-webkit-scrollbar {
 html, body {
   -ms-overflow-style: none !important;  /* IE and Edge */
   scrollbar-width: none !important;  /* Firefox */
-  overscroll-behavior-y: none;
 }
 
 /* Custom PE Paper Styling */
