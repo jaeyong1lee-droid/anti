@@ -6313,11 +6313,16 @@ export default function App() {
                               {item.review_round}회차 복습
                             </span>
                           )}
-                          {!item.isBonus && item.planned_date < referenceDate && (
-                            <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold px-2 py-0.5 rounded-full">
-                              미뤄진 복습
-                            </span>
-                          )}
+                          {!item.isBonus && item.planned_date < referenceDate && (() => {
+                            const p = new Date(item.planned_date);
+                            const r = new Date(referenceDate);
+                            const diffDays = Math.round((r.getTime() - p.getTime()) / (1000 * 60 * 60 * 24));
+                            return (
+                              <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold px-2 py-0.5 rounded-full">
+                                {diffDays}일 지연
+                              </span>
+                            );
+                          })()}
                           {item.pdf_name && (
                             <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                               {item.pdf_name.toLowerCase().endsWith('.html') || item.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
