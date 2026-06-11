@@ -6756,7 +6756,7 @@ export default function App() {
                               const sched = topic.schedules?.find(s => s.review_round === round);
                               const finishedRounds = topic.schedules
                                 ? topic.schedules
-                                    .filter(s => s.status === 'completed' || s.status === 'failed')
+                                    .filter(s => (s.status === 'completed' || s.status === 'failed') && s.review_round < 99)
                                     .map(s => s.review_round)
                                 : [];
                               const lastFinishedRound = finishedRounds.length > 0 ? Math.max(...finishedRounds) : 0;
