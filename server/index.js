@@ -1804,25 +1804,33 @@ async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Dat
   const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
   const existingNextSchedule = await dbQuery.get(nextCheckSql, [topicId, nextRound]);
   
-  if (!existingNextSchedule) {
-    let days = 0;
-    if (currentRound === 1) days = 4;
-    else if (currentRound === 2) days = 7;
-    else if (currentRound === 3) days = 14;
-    else if (currentRound === 4) days = 35;
-    else if (currentRound === 5) days = 60;
-    else if (currentRound >= 6) {
-      days = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
-    }
+  let days = 0;
+  if (currentRound === 1) days = 4;
+  else if (currentRound === 2) days = 7;
+  else if (currentRound === 3) days = 14;
+  else if (currentRound === 4) days = 35;
+  else if (currentRound === 5) days = 60;
+  else if (currentRound >= 6) {
+    days = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
+  }
 
-    if (days > 0) {
-      const nextPlannedDate = getLocalDateString(baseDate, days);
+  if (days > 0) {
+    const nextPlannedDate = getLocalDateString(baseDate, days);
+    if (!existingNextSchedule) {
       const insertSql = `
         INSERT INTO schedules (topic_id, review_round, planned_date, status)
         VALUES (?, ?, ?, 'pending')
       `;
       await dbQuery.run(insertSql, [topicId, nextRound, nextPlannedDate]);
       console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
+    } else if (existingNextSchedule.status === 'pending') {
+      const updateSql = `
+        UPDATE schedules 
+        SET planned_date = ? 
+        WHERE id = ?
+      `;
+      await dbQuery.run(updateSql, [nextPlannedDate, existingNextSchedule.id]);
+      console.log(`[scheduleNextReviewRound] Updated existing pending review round ${nextRound} for topic ${topicId} to planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
     }
   }
 }

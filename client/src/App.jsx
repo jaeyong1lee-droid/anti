@@ -6763,10 +6763,10 @@ export default function App() {
                               const nextRoundToReview = lastFinishedRound + 1;
                               return (
                                 <td key={round} className="py-2.5 px-2 text-center">
-                                  {sched ? (
-                                    <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
-                                      {sched.status === 'completed' || sched.status === 'failed' ? (
-                                        <>
+                                  {(() => {
+                                    if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+                                      return (
+                                        <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                           <button
                                             {...createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
                                             className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
@@ -6788,37 +6788,45 @@ export default function App() {
                                               {formatReviewDate(sched.completed_at, sched.planned_date)}
                                             </span>
                                           )}
-                                        </>
-                                      ) : (
-                                        (() => {
-                                          const p = new Date(sched.planned_date);
-                                          const r = new Date(referenceDate);
-                                          const diffDays = Math.round((p.getTime() - r.getTime()) / (1000 * 60 * 60 * 24));
-                                          if (diffDays > 0) {
-                                            return (
+                                        </div>
+                                      );
+                                    } else {
+                                      if (round === nextRoundToReview && sched) {
+                                        const p = new Date(sched.planned_date);
+                                        const r = new Date(referenceDate);
+                                        const diffDays = Math.round((p.getTime() - r.getTime()) / (1000 * 60 * 60 * 24));
+                                        return (
+                                          <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
+                                            {diffDays > 0 ? (
                                               <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-violet-400 bg-violet-950/40 border border-violet-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
                                                 {diffDays}일후
                                               </span>
-                                            );
-                                          } else if (diffDays < 0) {
-                                            return (
+                                            ) : diffDays < 0 ? (
                                               <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-rose-400 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
                                                 {Math.abs(diffDays)}일 지연
                                               </span>
-                                            );
-                                          } else {
-                                            return (
+                                            ) : (
                                               <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
                                                 오늘 복습
                                               </span>
-                                            );
-                                          }
-                                        })()
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-slate-600 cursor-help" title="이전 회차 복습 완료 시 생성">-</span>
-                                  )}
+                                            )}
+                                          </div>
+                                        );
+                                      } else if (round >= nextRoundToReview) {
+                                        return (
+                                          <div className="flex flex-col items-center justify-center">
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                                              대기
+                                            </span>
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="text-xs text-slate-600 cursor-help" title="이전 회차 복습 완료 시 생성">-</span>
+                                        );
+                                      }
+                                    }
+                                  })()}
                                 </td>
                               );
                             })}
