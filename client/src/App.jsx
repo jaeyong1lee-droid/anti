@@ -2608,7 +2608,7 @@ export default function App() {
         const res = await fetch(`${API_BASE}/api/schedules/bonus/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topicId })
+          body: JSON.stringify({ topicId, scheduleId })
         });
         if (res.ok) {
           setHiddenBonusTopicIds(prev => [...prev, topicId]);

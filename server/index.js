@@ -2094,11 +2094,11 @@ async function generateWeakPointRecommendation(queryDate) {
     return null;
   }
 
-  // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 실제 점수를 획득해 완료한 토픽 목록
+  // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 완료한 토픽 목록
   const excludedRows = await dbQuery.all(
     `SELECT DISTINCT topic_id FROM schedules 
      WHERE (status = 'pending' AND planned_date <= ?) 
-        OR (review_round = 99 AND planned_date = ? AND status = 'completed' AND score IS NOT NULL)`,
+        OR (review_round = 99 AND planned_date = ? AND status = 'completed')`,
     [queryDate, queryDate]
   );
   const excludedTopicIds = excludedRows.map(r => r.topic_id);
@@ -2156,7 +2156,7 @@ async function generateWeakPointRecommendation(queryDate) {
       title: topic.title,
       keywords: topic.keywords,
       pdf_name: topic.pdf_name,
-      review_round: 1,
+      review_round: 99,
       planned_date: queryDate,
       status: 'pending',
       completed_at: null,
@@ -2183,7 +2183,8 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
 
 // 2-9. Mark Weak-point Bonus Review as Complete
 app.post('/api/schedules/bonus/complete', async (req, res) => {
-  const { topicId, score } = req.body;
+  const { topicId, score, scheduleId, schedule_id } = req.body;
+  const targetScheduleId = scheduleId || schedule_id;
   const today = getLocalDateString();
   const now = new Date().toISOString();
 
@@ -2192,11 +2193,18 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
   }
 
   try {
-    // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
-    const existing = await dbQuery.get(
-      'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-      [topicId, today]
-    );
+    let existing = null;
+    if (targetScheduleId) {
+      existing = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    }
+
+    if (!existing) {
+      // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
+      existing = await dbQuery.get(
+        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+        [topicId, today]
+      );
+    }
 
     if (existing) {
       // 이미 추천 단계를 통해 pending 상태로 존재하는 보너스 레코드가 있으므로 completed로 업데이트
@@ -2277,12 +2285,20 @@ app.post('/api/quiz/submit', async (req, res) => {
     let targetScheduleId = schedule_id;
 
     if (isBonus) {
-      const today = getLocalDateString();
-      const existingBonus = await dbQuery.get(
-        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-        [topic_id, today]
-      );
+      let existingBonus = null;
+      if (schedule_id && schedule_id !== 9999 && String(schedule_id) !== '9999') {
+        existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [schedule_id]);
+      }
       if (!existingBonus) {
+        const today = getLocalDateString();
+        existingBonus = await dbQuery.get(
+          'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+          [topic_id, today]
+        );
+      }
+
+      if (!existingBonus) {
+        const today = getLocalDateString();
         await dbQuery.run(
           `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, 'pending')`,
           [topic_id, today]
