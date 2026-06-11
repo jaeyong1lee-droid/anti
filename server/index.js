@@ -5990,6 +5990,15 @@ async function healPendingSchedules() {
     const pendingSchedules = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round != 99`);
     let healCount = 0;
     
+    // Debug: Dump all schedules in the database to see what exists in production
+    try {
+      const allSchedules = await dbQuery.all(`SELECT id, topic_id, review_round, planned_date, completed_at, status, score FROM schedules`);
+      console.log('=== DEBUG PRODUCTION DB SCHEDULES ===');
+      console.log(JSON.stringify(allSchedules, null, 2));
+    } catch (dbErr) {
+      console.error('Error dumping all schedules:', dbErr);
+    }
+    
     for (const sched of pendingSchedules) {
       const prevRound = sched.review_round - 1;
       const prevSched = await dbQuery.get(
