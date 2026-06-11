@@ -1889,6 +1889,67 @@ export default function App() {
     };
   }, [isCover]);
 
+  // Z Flip 6 cover screen: prevent browser address bar from sliding down on swipe down at the top of scrollable elements
+  useEffect(() => {
+    if (!isCover) return;
+
+    let startY = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        startY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length !== 1) return;
+
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+
+      // Swipe down gesture
+      if (deltaY > 0) {
+        let target = e.target;
+        let isScrollable = false;
+        let isAtTop = true;
+
+        // Climb DOM to check if inside a scrollable container
+        while (target && target !== document.documentElement && target !== document.body) {
+          const style = window.getComputedStyle(target);
+          const overflowY = style.overflowY;
+          const isScrollableVal = overflowY === 'auto' || overflowY === 'scroll';
+          
+          if (isScrollableVal && target.scrollHeight > target.clientHeight) {
+            isScrollable = true;
+            isAtTop = target.scrollTop <= 0;
+            break;
+          }
+          target = target.parentNode;
+        }
+
+        if (!isScrollable) {
+          // Check main page scroll
+          isAtTop = (window.scrollY || document.documentElement.scrollTop) <= 0;
+        }
+
+        // If we are at the top boundary and swipe down, block default browser behavior (which pulls down the address bar)
+        if (isAtTop) {
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isCover]);
+
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
   const wasModalOpenRef = useRef(false);

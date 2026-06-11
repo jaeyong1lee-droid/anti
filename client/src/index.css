@@ -59,6 +59,7 @@ body::-webkit-scrollbar {
 html, body {
   -ms-overflow-style: none !important;  /* IE and Edge */
   scrollbar-width: none !important;  /* Firefox */
+  overscroll-behavior-y: none;
 }
 
 /* Custom PE Paper Styling */
@@ -606,6 +607,7 @@ html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: none !important;
   }
 
   /* 2. Make all inner headers, tabs, search bars flow naturally in document (relative) */
