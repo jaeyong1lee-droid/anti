@@ -6791,23 +6791,28 @@ export default function App() {
                                         </>
                                       ) : (
                                         (() => {
-                                          if (round === nextRoundToReview) {
-                                            const p = new Date(sched.planned_date);
-                                            const r = new Date(referenceDate);
-                                            const diffDays = Math.round((p.getTime() - r.getTime()) / (1000 * 60 * 60 * 24));
-                                            if (diffDays > 0) {
-                                              return (
-                                                <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-violet-400 bg-violet-950/40 border border-violet-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
-                                                  {diffDays}일후
-                                                </span>
-                                              );
-                                            }
+                                          const p = new Date(sched.planned_date);
+                                          const r = new Date(referenceDate);
+                                          const diffDays = Math.round((p.getTime() - r.getTime()) / (1000 * 60 * 60 * 24));
+                                          if (diffDays > 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-violet-400 bg-violet-950/40 border border-violet-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                                {diffDays}일후
+                                              </span>
+                                            );
+                                          } else if (diffDays < 0) {
+                                            return (
+                                              <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-rose-400 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                                {Math.abs(diffDays)}일 지연
+                                              </span>
+                                            );
+                                          } else {
+                                            return (
+                                              <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                                오늘 복습
+                                              </span>
+                                            );
                                           }
-                                          return (
-                                            <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-slate-400 bg-slateCustom-900 border border-slate-800 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
-                                              대기
-                                            </span>
-                                          );
                                         })()
                                       )}
                                     </div>
