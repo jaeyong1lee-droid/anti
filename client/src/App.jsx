@@ -1854,6 +1854,41 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Z Flip 6 cover screen fullscreen auto-request on user interaction
+  useEffect(() => {
+    if (!isCover) return;
+
+    const requestFullscreen = () => {
+      const docEl = document.documentElement;
+      if (!document.fullscreenElement) {
+        const req = docEl.requestFullscreen || 
+                    docEl.webkitRequestFullscreen || 
+                    docEl.mozRequestFullScreen || 
+                    docEl.msRequestFullscreen;
+        if (req) {
+          req.call(docEl).catch(err => {
+            console.warn('[Fullscreen] Request failed:', err);
+          });
+        }
+      }
+    };
+
+    const handleInteraction = () => {
+      requestFullscreen();
+      // Remove event listeners after first interaction to avoid repeated calls
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction, { passive: true });
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [isCover]);
+
   // Mobile Back Button Interception logic to prevent accidental exit and close modals instead
   const activeModalRef = useRef(null);
   const wasModalOpenRef = useRef(false);
