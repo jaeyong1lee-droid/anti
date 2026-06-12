@@ -40,7 +40,11 @@ import {
   Paperclip,
   Copy,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Battery,
+  BatteryCharging,
+  Wifi,
+  Signal
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -1447,6 +1451,36 @@ const formatReviewDate = (completedAt, plannedDate) => {
   return '';
 };
 
+// Mock Mobile Status Bar Component
+function MobileStatusBar({ time, batteryLevel, isCharging, isDesktop, isMobileLandscape }) {
+  if (isDesktop || isMobileLandscape) return null;
+
+  return (
+    <div className="w-full bg-slateCustom-950 text-slate-400 text-[11px] font-bold px-4 py-1.5 flex justify-between items-center select-none border-b border-slate-900/60 shrink-0 z-[70] relative">
+      {/* Carrier Info */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-slate-200 tracking-wide font-extrabold">SKT</span>
+        <span className="text-[9px] text-slate-500 font-bold bg-slate-800/40 px-1 py-0.5 rounded">5G</span>
+      </div>
+      
+      {/* Time */}
+      <div className="font-extrabold text-slate-200 tracking-tight">{time}</div>
+      
+      {/* Battery & Network Status */}
+      <div className="flex items-center gap-1.5">
+        <Signal size={12} className="text-slate-400 stroke-[2.5]" />
+        <Wifi size={12} className="text-slate-400 stroke-[2.5]" />
+        <span className="text-[9.5px] font-black text-slate-300 leading-none">{batteryLevel}%</span>
+        {isCharging ? (
+          <BatteryCharging size={13} className="text-emerald-400 stroke-[2.5]" />
+        ) : (
+          <Battery size={13} className="text-slate-400 stroke-[2.5]" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -1752,6 +1786,11 @@ export default function App() {
     return h > 0 && w > 0 && (h / w < 1.5);
   });
 
+  // Mobile Status Bar States
+  const [statusBarTime, setStatusBarTime] = useState('');
+  const [batteryLevel, setBatteryLevel] = useState(88);
+  const [isCharging, setIsCharging] = useState(false);
+
   // Mobile landscape sidebar swipe hide states
   const [landscapeSidebarHidden, setLandscapeSidebarHidden] = useState(false);
   const landscapeSidebarTouchStartRef = useRef({ x: 0, y: 0 });
@@ -1858,6 +1897,34 @@ export default function App() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Mobile Status Bar Updater (Time & Battery)
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      setStatusBarTime(`${hours}:${minutes}`);
+    };
+    updateTime();
+    const timeInterval = setInterval(updateTime, 10000);
+
+    if (navigator.getBattery) {
+      navigator.getBattery().then((battery) => {
+        const updateBattery = () => {
+          setBatteryLevel(Math.round(battery.level * 100));
+          setIsCharging(battery.charging);
+        };
+        updateBattery();
+        battery.addEventListener('levelchange', updateBattery);
+        battery.addEventListener('chargingchange', updateBattery);
+      });
+    }
+
+    return () => {
+      clearInterval(timeInterval);
+    };
   }, []);
 
   // Mobile portrait fullscreen auto-request on user interaction
@@ -5898,6 +5965,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
+      {/* Mobile Mock Status Bar on Main Page */}
+      <MobileStatusBar 
+        time={statusBarTime} 
+        batteryLevel={batteryLevel} 
+        isCharging={isCharging} 
+        isDesktop={isDesktop} 
+        isMobileLandscape={isMobileLandscape} 
+      />
       {/* Toast Notification */}
       {notification && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl transition-all duration-300 transform scale-100 ${
@@ -6879,6 +6954,13 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
+          <MobileStatusBar 
+            time={statusBarTime} 
+            batteryLevel={batteryLevel} 
+            isCharging={isCharging} 
+            isDesktop={isDesktop} 
+            isMobileLandscape={isMobileLandscape} 
+          />
 
 
           {/* Main Layout Area */}
@@ -7164,7 +7246,7 @@ export default function App() {
           </div>
               <div 
                 ref={quizBodyRef} 
-                className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
+                className={`flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -7218,7 +7300,7 @@ export default function App() {
                       'bg-amber-700';
 
                     return (
-                      <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                      <div key={idx} className={`quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
                         {/* Q Header */}
                         <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                           <div className="flex items-center gap-2">
@@ -7322,13 +7404,15 @@ export default function App() {
                                     setSelectedAnswers(prev => {
                                       const updated = { ...prev, [idx]: opt };
                                       const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
-                                      if (normalizeAns(opt) === normalizeAns(q.answer)) {
-                                        setTimeout(() => {
-                                          const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
-                                          if (cards && cards[idx]) {
-                                            quizBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
-                                          }
-                                        }, 600);
+                                      if (isDesktop || isMobileLandscape) {
+                                        if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                          setTimeout(() => {
+                                            const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
+                                            if (cards && cards[idx]) {
+                                              quizBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
+                                            }
+                                          }, 600);
+                                        }
                                       }
                                       return updated;
                                     });
@@ -8009,6 +8093,13 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
+          <MobileStatusBar 
+            time={statusBarTime} 
+            batteryLevel={batteryLevel} 
+            isCharging={isCharging} 
+            isDesktop={isDesktop} 
+            isMobileLandscape={isMobileLandscape} 
+          />
 
 
           {/* Main Layout Area */}
@@ -8339,7 +8430,7 @@ export default function App() {
           </div>
               <div 
                 ref={examBodyRef} 
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
+                className={`flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -8371,7 +8462,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                    <div key={idx} className={`exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
                       {/* Q Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap w-full">
                         <div className="flex items-center gap-2">
@@ -8493,13 +8584,15 @@ export default function App() {
                                   setExamAnswers(prev => {
                                     const updated = { ...prev, [idx]: opt };
                                     const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
-                                    if (normalizeAns(opt) === normalizeAns(q.answer)) {
-                                      setTimeout(() => {
-                                        const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
-                                        if (cards && cards[idx]) {
-                                          examBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
-                                        }
-                                      }, 600);
+                                    if (isDesktop || isMobileLandscape) {
+                                      if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                        setTimeout(() => {
+                                          const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
+                                          if (cards && cards[idx]) {
+                                            examBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
+                                          }
+                                        }, 600);
+                                      }
                                     }
                                     return updated;
                                   });
@@ -9025,6 +9118,13 @@ export default function App() {
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+          <MobileStatusBar 
+            time={statusBarTime} 
+            batteryLevel={batteryLevel} 
+            isCharging={isCharging} 
+            isDesktop={isDesktop} 
+            isMobileLandscape={isMobileLandscape} 
+          />
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             formulaMobileTab === 'list' ? (
@@ -10035,6 +10135,13 @@ export default function App() {
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+          <MobileStatusBar 
+            time={statusBarTime} 
+            batteryLevel={batteryLevel} 
+            isCharging={isCharging} 
+            isDesktop={isDesktop} 
+            isMobileLandscape={isMobileLandscape} 
+          />
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Answersheet Modal */
