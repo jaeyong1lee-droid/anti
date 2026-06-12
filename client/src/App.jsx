@@ -1403,7 +1403,7 @@ function ScientificCalculator() {
   const [isStoring, setIsStoring] = useState(false);
   const [isRecalling, setIsRecalling] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [displaySdMode, setDisplaySdMode] = useState('both'); // both, decimal, fraction
+  const [displaySdMode, setDisplaySdMode] = useState('decimal'); // both, decimal, fraction
   const [cursorPosition, setCursorPosition] = useState(0);
 
   const inputRef = useRef(null);
@@ -3106,7 +3106,7 @@ function ScientificCalculator() {
             {renderNumPadKey('%', '', '', () => appendToInput('%'))}
             <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
             <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
-            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
+            {renderNumPadKey('S⇔D', '', '', handleSdToggle)}
 
             {/* Row 6 */}
             {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
