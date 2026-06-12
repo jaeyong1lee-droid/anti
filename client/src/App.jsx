@@ -2155,10 +2155,10 @@ function ScientificCalculator() {
       preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
 
       // Implicit multiplication replacements
-      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([XYABCDEFMπe\(])/g, '$1*$3');
+      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([a-zA-Z가-힣π_∛\(]|sin⁻¹|cos⁻¹|tan⁻¹)/g, '$1*$3');
       preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*(\d+(\.\d+)?)/g, '$1*$2');
-      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*([XYABCDEFMπe])/g, '$1*$2');
-      preProcessed = preProcessed.replace(/\)\s*([\dXYABCDEFMπe\(])/g, ')*$1');
+      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*([XYABCDEFMπe\(])/g, '$1*$2');
+      preProcessed = preProcessed.replace(/\)\s*([\dXYABCDEFMπe\([a-zA-Z가-힣_∛]|sin⁻¹|cos⁻¹|tan⁻¹)/g, ')*$1');
       
       // Percentage conversion
       preProcessed = preProcessed.replace(/([XYABCDEFMπe\d\.\)]+)%/g, '($1*0.01)');
