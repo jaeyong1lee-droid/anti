@@ -3177,34 +3177,9 @@ const formatReviewDate = (completedAt, plannedDate) => {
   return '';
 };
 
-// Mock Mobile Status Bar Component
-function MobileStatusBar({ time, batteryLevel, isCharging, isDesktop, isMobileLandscape }) {
-  if (isDesktop || isMobileLandscape) return null;
-
-  return (
-    <div className="w-full bg-slateCustom-950 text-slate-400 text-[11px] font-bold px-4 py-1.5 flex justify-between items-center select-none border-b border-slate-900/60 shrink-0 z-[70] relative">
-      {/* Carrier Info */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-slate-200 tracking-wide font-extrabold">SKT</span>
-        <span className="text-[9px] text-slate-500 font-bold bg-slate-800/40 px-1 py-0.5 rounded">5G</span>
-      </div>
-      
-      {/* Time */}
-      <div className="font-extrabold text-slate-200 tracking-tight">{time}</div>
-      
-      {/* Battery & Network Status */}
-      <div className="flex items-center gap-1.5">
-        <Signal size={12} className="text-slate-400 stroke-[2.5]" />
-        <Wifi size={12} className="text-slate-400 stroke-[2.5]" />
-        <span className="text-[9.5px] font-black text-slate-300 leading-none">{batteryLevel}%</span>
-        {isCharging ? (
-          <BatteryCharging size={13} className="text-emerald-400 stroke-[2.5]" />
-        ) : (
-          <Battery size={13} className="text-slate-400 stroke-[2.5]" />
-        )}
-      </div>
-    </div>
-  );
+// Mock Mobile Status Bar Component (DISABLED: Native phone header is kept visible)
+function MobileStatusBar() {
+  return null;
 }
 
 export default function App() {
@@ -3653,40 +3628,10 @@ export default function App() {
     };
   }, []);
 
-  // Mobile portrait fullscreen auto-request on user interaction
+  // Mobile portrait fullscreen auto-request on user interaction (DISABLED to keep native status bar visible)
   useEffect(() => {
-    if (isDesktop || isMobileLandscape) return;
-
-    const requestFullscreen = () => {
-      const docEl = document.documentElement;
-      if (!document.fullscreenElement) {
-        const req = docEl.requestFullscreen || 
-                    docEl.webkitRequestFullscreen || 
-                    docEl.mozRequestFullScreen || 
-                    docEl.msRequestFullscreen;
-        if (req) {
-          req.call(docEl).catch(err => {
-            console.warn('[Fullscreen] Request failed:', err);
-          });
-        }
-      }
-    };
-
-    const handleInteraction = () => {
-      requestFullscreen();
-      // Remove event listeners after first interaction to avoid repeated calls
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
-    };
-
-    window.addEventListener('click', handleInteraction, { passive: true });
-    window.addEventListener('touchstart', handleInteraction, { passive: true });
-
-    return () => {
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
-    };
-  }, [isDesktop, isMobileLandscape]);
+    // Fullscreen request is disabled so that the mobile device's native system status bar is not hidden.
+  }, []);
 
 
 
