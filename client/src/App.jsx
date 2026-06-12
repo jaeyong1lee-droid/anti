@@ -2685,7 +2685,7 @@ function ScientificCalculator() {
             <span key={index} className="inline-flex flex-col items-center mx-1.5 align-middle leading-none">
               <span className="border-b border-[#202528] pb-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.numStr === '' ? (
-                  <span className="border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block"></span>
+                  <span className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.numEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.numStartIdx, node.numEndIdx)).map(n => shiftIndices(n, node.numStartIdx)))
                 )}
@@ -2693,7 +2693,7 @@ function ScientificCalculator() {
               </span>
               <span className="pt-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.denStr === '' ? (
-                  <span className="border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block"></span>
+                  <span className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.denEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.denStartIdx, node.denEndIdx)).map(n => shiftIndices(n, node.denStartIdx)))
                 )}
@@ -2702,9 +2702,14 @@ function ScientificCalculator() {
             </span>
           );
         } else if (node.type === 'exponent') {
+          const isEmpty = node.expStr === '';
+          const wrapperClass = isEmpty
+            ? `inline-flex items-center justify-center align-super text-[0.6em] font-bold border border-dashed border-[#202528]/40 rounded-[1px] p-0.5 min-w-[16px] min-h-[16px] ml-0.5 leading-none bg-[#202528]/25`
+            : `inline-flex items-center justify-center align-super text-[0.6em] font-bold ml-0.5 leading-none`;
+          
           return (
-            <span key={index} className="inline-flex items-center justify-center align-super text-[0.6em] font-bold border border-dashed border-[#202528]/40 rounded-[1px] p-0.5 min-w-[16px] min-h-[16px] ml-0.5 leading-none">
-              {node.expStr === '' ? (
+            <span key={index} className={wrapperClass}>
+              {isEmpty ? (
                 <span className="w-2.5 h-3.5 inline-block"></span>
               ) : (
                 renderTree(parseFormula(str.substring(node.expStartIdx, node.expEndIdx)).map(n => shiftIndices(n, node.expStartIdx)))
