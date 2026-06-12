@@ -1268,26 +1268,394 @@ function ScientificCalculator() {
   const [lastAns, setLastAns] = useState('');
   const [shiftActive, setShiftActive] = useState(false);
   const [alphaActive, setAlphaActive] = useState(false);
+  const [hypActive, setHypActive] = useState(false);
+  const [isOn, setIsOn] = useState(true);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [variables, setVariables] = useState({
+    A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0
+  });
+  const [isStoring, setIsStoring] = useState(false);
+  const [isRecalling, setIsRecalling] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [displaySdMode, setDisplaySdMode] = useState('both'); // both, decimal, fraction
+
+  const inputRef = useRef(null);
 
   const appendToInput = (val) => {
-    setCalcInput(prev => prev + val);
+    if (!isOn) return;
+    insertAtCursor(val);
+  };
+
+  const insertAtCursor = (val) => {
+    setCalcResult('');
+    setStatusMessage('');
+    if (!inputRef.current) {
+      setCalcInput(prev => prev + val);
+      return;
+    }
+    const start = inputRef.current.selectionStart;
+    const end = inputRef.current.selectionEnd;
+    const text = calcInput;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    const newText = before + val + after;
+    setCalcInput(newText);
+    
+    const newCursorPos = start + val.length;
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 10);
   };
 
   const handleClear = () => {
     setCalcInput('');
     setCalcResult('');
+    setStatusMessage('');
+    setShiftActive(false);
+    setAlphaActive(false);
+    setHypActive(false);
+    setIsStoring(false);
+    setIsRecalling(false);
   };
 
   const handleBackspace = () => {
-    setCalcInput(prev => prev.slice(0, -1));
+    if (!isOn) return;
+    setCalcResult('');
+    setStatusMessage('');
+    if (!inputRef.current) {
+      setCalcInput(prev => prev.slice(0, -1));
+      return;
+    }
+    const start = inputRef.current.selectionStart;
+    const end = inputRef.current.selectionEnd;
+    const text = calcInput;
+    
+    if (start !== end) {
+      const before = text.substring(0, start);
+      const after = text.substring(end, text.length);
+      setCalcInput(before + after);
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(start, start);
+        }
+      }, 10);
+    } else if (start > 0) {
+      const before = text.substring(0, start - 1);
+      const after = text.substring(start, text.length);
+      setCalcInput(before + after);
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(start - 1, start - 1);
+        }
+      }, 10);
+    }
   };
 
-  const evaluateExpr = (expr, angleMode) => {
+  const moveCursor = (direction) => {
+    if (!isOn || !inputRef.current) return;
+    const start = inputRef.current.selectionStart;
+    let newPos = start;
+    if (direction === 'left') {
+      newPos = Math.max(0, start - 1);
+    } else if (direction === 'right') {
+      newPos = Math.min(calcInput.length, start + 1);
+    }
+    inputRef.current.focus();
+    inputRef.current.setSelectionRange(newPos, newPos);
+  };
+
+  function decimalToFraction(val, maxDenominator = 100000) {
+    if (typeof val !== 'number' || isNaN(val) || !isFinite(val)) return null;
+    let x = val;
+    let sign = Math.sign(x);
+    x = Math.abs(x);
+    
+    if (x < 1e-9) return { numerator: 0, denominator: 1 };
+    if (Number.isInteger(x)) return { numerator: sign * x, denominator: 1 };
+    
+    let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+    let b = Math.floor(x);
+    let h = b;
+    let k = 1;
+    
+    let limit = 0;
+    while (x - b > 1e-11 && limit < 15) {
+      let aux = h1;
+      h1 = b * h1 + h2;
+      h2 = aux;
+      
+      aux = k1;
+      k1 = b * k1 + k2;
+      k2 = aux;
+      
+      x = 1 / (x - b);
+      b = Math.floor(x);
+      
+      let nextH = b * h1 + h2;
+      let nextK = b * k1 + k2;
+      if (nextK > maxDenominator) break;
+      h = nextH;
+      k = nextK;
+      limit++;
+    }
+    
+    const approx = h / k;
+    if (Math.abs(approx - Math.abs(val)) < 1e-6) {
+      return { numerator: sign * h, denominator: k };
+    }
+    return null;
+  }
+
+  const parseIntegrationAndDerivatives = (expr) => {
+    let processed = expr;
+    
+    // Process ∫(
+    while (processed.includes('∫(')) {
+      const idx = processed.indexOf('∫(');
+      let parenCount = 1;
+      let endIdx = -1;
+      for (let i = idx + 2; i < processed.length; i++) {
+        if (processed[i] === '(') parenCount++;
+        else if (processed[i] === ')') parenCount--;
+        if (parenCount === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+      if (endIdx === -1) break;
+      
+      const content = processed.substring(idx + 2, endIdx);
+      const args = [];
+      let currentArg = '';
+      let level = 0;
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        if (char === '(') level++;
+        else if (char === ')') level--;
+        
+        if (char === ',' && level === 0) {
+          args.push(currentArg);
+          currentArg = '';
+        } else {
+          currentArg += char;
+        }
+      }
+      args.push(currentArg);
+      
+      if (args.length === 3) {
+        const funcStr = args[0];
+        const aVal = evaluateExpr(args[1], calcAngleMode, true);
+        const bVal = evaluateExpr(args[2], calcAngleMode, true);
+        
+        if (aVal === 'Error' || bVal === 'Error') {
+          return 'Error';
+        }
+        
+        const a = parseFloat(aVal);
+        const b = parseFloat(bVal);
+        
+        const N = 500;
+        const h = (b - a) / N;
+        let sum = 0;
+        let hasError = false;
+        
+        const f = (xVal) => {
+          let subbed = funcStr.replace(/\bX\b/g, `(${xVal})`);
+          const res = evaluateExpr(subbed, calcAngleMode, true);
+          if (res === 'Error') {
+            hasError = true;
+            return 0;
+          }
+          return parseFloat(res);
+        };
+        
+        sum += 0.5 * (f(a) + f(b));
+        for (let i = 1; i < N; i++) {
+          sum += f(a + i * h);
+          if (hasError) break;
+        }
+        
+        if (hasError) {
+          processed = processed.substring(0, idx) + 'Error' + processed.substring(endIdx + 1);
+        } else {
+          const finalVal = sum * h;
+          processed = processed.substring(0, idx) + finalVal.toString() + processed.substring(endIdx + 1);
+        }
+      } else {
+        processed = processed.substring(0, idx) + 'Error' + processed.substring(endIdx + 1);
+      }
+    }
+    
+    // Process d/dx(
+    while (processed.includes('d/dx(')) {
+      const idx = processed.indexOf('d/dx(');
+      let parenCount = 1;
+      let endIdx = -1;
+      for (let i = idx + 5; i < processed.length; i++) {
+        if (processed[i] === '(') parenCount++;
+        else if (processed[i] === ')') parenCount--;
+        if (parenCount === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+      if (endIdx === -1) break;
+      
+      const content = processed.substring(idx + 5, endIdx);
+      const args = [];
+      let currentArg = '';
+      let level = 0;
+      for (let i = 0; i < content.length; i++) {
+        const textChar = content[i];
+        if (textChar === '(') level++;
+        else if (textChar === ')') level--;
+        
+        if (textChar === ',' && level === 0) {
+          args.push(currentArg);
+          currentArg = '';
+        } else {
+          currentArg += textChar;
+        }
+      }
+      args.push(currentArg);
+      
+      if (args.length === 2) {
+        const funcStr = args[0];
+        const x0Val = evaluateExpr(args[1], calcAngleMode, true);
+        if (x0Val === 'Error') return 'Error';
+        
+        const x0 = parseFloat(x0Val);
+        const h = 1e-5;
+        let hasError = false;
+        
+        const f = (xVal) => {
+          let subbed = funcStr.replace(/\bX\b/g, `(${xVal})`);
+          const res = evaluateExpr(subbed, calcAngleMode, true);
+          if (res === 'Error') {
+            hasError = true;
+            return 0;
+          }
+          return parseFloat(res);
+        };
+        
+        const df = (f(x0 + h) - f(x0 - h)) / (2 * h);
+        if (hasError) {
+          processed = processed.substring(0, idx) + 'Error' + processed.substring(endIdx + 1);
+        } else {
+          processed = processed.substring(0, idx) + df.toString() + processed.substring(endIdx + 1);
+        }
+      } else {
+        processed = processed.substring(0, idx) + 'Error' + processed.substring(endIdx + 1);
+      }
+    }
+    
+    // Process log(value, base) or log(value)
+    while (processed.includes('log(')) {
+      const idx = processed.indexOf('log(');
+      let parenCount = 1;
+      let endIdx = -1;
+      for (let i = idx + 4; i < processed.length; i++) {
+        if (processed[i] === '(') parenCount++;
+        else if (processed[i] === ')') parenCount--;
+        if (parenCount === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+      if (endIdx === -1) break;
+      
+      const content = processed.substring(idx + 4, endIdx);
+      const args = [];
+      let currentArg = '';
+      let level = 0;
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        if (char === '(') level++;
+        else if (char === ')') level--;
+        
+        if (char === ',' && level === 0) {
+          args.push(currentArg);
+          currentArg = '';
+        } else {
+          currentArg += char;
+        }
+      }
+      args.push(currentArg);
+      
+      if (args.length === 2) {
+        const valStr = evaluateExpr(args[0], calcAngleMode, true);
+        const baseStr = evaluateExpr(args[1], calcAngleMode, true);
+        if (valStr === 'Error' || baseStr === 'Error') return 'Error';
+        const val = parseFloat(valStr);
+        const base = parseFloat(baseStr);
+        const logVal = Math.log(val) / Math.log(base);
+        processed = processed.substring(0, idx) + logVal.toString() + processed.substring(endIdx + 1);
+      } else {
+        processed = processed.substring(0, idx) + 'Math.log10(' + content + ')' + processed.substring(endIdx + 1);
+      }
+    }
+
+    return processed;
+  };
+
+  const evaluateExpr = (expr, angleMode, isInternal = false) => {
     try {
-      // Normalize mathematical symbols for Casio
-      let sanitized = expr
+      if (!expr.trim()) return '';
+      
+      let preProcessed = expr;
+      
+      if (!isInternal) {
+        preProcessed = parseIntegrationAndDerivatives(preProcessed);
+        if (preProcessed === 'Error') return 'Error';
+      }
+      
+      const placeholders = {
+        'sin⁻¹': '__ASIN__',
+        'cos⁻¹': '__ACOS__',
+        'tan⁻¹': '__ATAN__',
+        'sin': '__SIN__',
+        'cos': '__COS__',
+        'tan': '__TAN__',
+        'asin': '__ASIN__',
+        'acos': '__ACOS__',
+        'atan': '__ATAN__',
+        'sinh': '__SINH__',
+        'cosh': '__COSH__',
+        'tanh': '__TANH__',
+        'asinh': '__ASINH__',
+        'acosh': '__ACOSH__',
+        'atanh': '__ATANH__',
+        'ln': '__LN__',
+        'exp': '__EXP__',
+        'sqrt': '__SQRT__',
+        'cbrt': '__CBRT__',
+        'Abs': '__ABS__'
+      };
+
+      let tempExpr = preProcessed;
+      Object.keys(placeholders).forEach(key => {
+        tempExpr = tempExpr.replaceAll(key, placeholders[key]);
+      });
+
+      // Replace variables (A, B, C, D, E, F, X, Y, M)
+      Object.keys(variables).forEach(v => {
+        const val = variables[v] !== undefined ? variables[v] : 0;
+        tempExpr = tempExpr.replace(new RegExp(`\\b${v}\\b`, 'g'), `(${val})`);
+      });
+
+      Object.keys(placeholders).forEach(key => {
+        tempExpr = tempExpr.replaceAll(placeholders[key], key);
+      });
+      
+      preProcessed = tempExpr;
+      
+      preProcessed = preProcessed
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
         .replace(/π/g, 'Math.PI')
@@ -1300,9 +1668,6 @@ function ScientificCalculator() {
         .replace(/10\^\(/g, '10^(')
         .replace(/Ans/g, `(${lastAns || '0'})`);
 
-      let preProcessed = sanitized;
-
-      // Handle trigonometry angle modes (Degrees vs Radians)
       if (angleMode === 'deg') {
         preProcessed = preProcessed
           .replace(/sin\(/g, 'Math.sin((Math.PI/180)*')
@@ -1322,18 +1687,37 @@ function ScientificCalculator() {
       }
 
       preProcessed = preProcessed
+        .replace(/sinh\(/g, 'Math.sinh(')
+        .replace(/cosh\(/g, 'Math.cosh(')
+        .replace(/tanh\(/g, 'Math.tanh(')
+        .replace(/asinh\(/g, 'Math.asinh(')
+        .replace(/acosh\(/g, 'Math.acosh(')
+        .replace(/atanh\(/g, 'Math.atanh(');
+
+      preProcessed = preProcessed
         .replace(/ln\(/g, 'Math.log(')
-        .replace(/log\(/g, 'Math.log10(')
         .replace(/sqrt\(/g, 'Math.sqrt(')
         .replace(/cbrt\(/g, 'Math.cbrt(')
         .replace(/exp\(/g, 'Math.exp(')
+        .replace(/Abs\(/g, 'Math.abs(')
         .replace(/\^/g, '**');
 
-      const result = new Function(`return (${preProcessed})`)();
+      const fact = (n) => {
+        if (n < 0) return NaN;
+        if (n === 0 || n === 1) return 1;
+        let result = 1;
+        for (let i = 2; i <= n; i++) result *= i;
+        return result;
+      };
+      
+      let factProcessed = preProcessed;
+      factProcessed = factProcessed.replace(/(\d+(\.\d+)?|\bMath\.PI\b|\bMath\.E\b|\bAns\b)\!/g, 'fact($1)');
+      
+      const result = new Function('fact', `return (${factProcessed})`)(fact);
       if (typeof result === 'number' && !isNaN(result)) {
         if (!isFinite(result)) return 'Infinity';
         if (Number.isInteger(result)) return result.toString();
-        return parseFloat(result.toFixed(6)).toString();
+        return parseFloat(result.toFixed(9)).toString();
       }
       return 'Error';
     } catch (err) {
@@ -1342,7 +1726,7 @@ function ScientificCalculator() {
   };
 
   const handleEqual = () => {
-    if (!calcInput.trim()) return;
+    if (!isOn || !calcInput.trim()) return;
     const res = evaluateExpr(calcInput, calcAngleMode);
     setCalcResult(res);
     if (res !== 'Error') {
@@ -1365,42 +1749,327 @@ function ScientificCalculator() {
   };
 
   const handleDpad = (direction) => {
+    if (!isOn) return;
     if (direction === 'up') {
       if (history.length > 0) {
         const nextIndex = Math.min(historyIndex + 1, history.length - 1);
         setHistoryIndex(nextIndex);
         setCalcInput(history[history.length - 1 - nextIndex]);
+        setCalcResult('');
       }
     } else if (direction === 'down') {
       if (historyIndex > 0) {
         const nextIndex = historyIndex - 1;
         setHistoryIndex(nextIndex);
         setCalcInput(history[history.length - 1 - nextIndex]);
+        setCalcResult('');
       } else if (historyIndex === 0) {
         setHistoryIndex(-1);
         setCalcInput('');
+        setCalcResult('');
+      }
+    } else if (direction === 'left' || direction === 'right') {
+      moveCursor(direction);
+    }
+  };
+
+  const handleSdToggle = () => {
+    setDisplaySdMode(prev => {
+      if (prev === 'both') return 'decimal';
+      if (prev === 'decimal') return 'fraction';
+      return 'both';
+    });
+  };
+
+  const handleVariableButton = (varName) => {
+    if (isStoring) {
+      const valueToStore = calcResult && calcResult !== 'Error' ? parseFloat(calcResult) : (calcInput ? parseFloat(evaluateExpr(calcInput, calcAngleMode)) : 0);
+      setVariables(prev => ({ ...prev, [varName]: isNaN(valueToStore) ? 0 : valueToStore }));
+      setStatusMessage(`${isNaN(valueToStore) ? 0 : valueToStore} → ${varName}`);
+      setIsStoring(false);
+      setShiftActive(false);
+    } else if (isRecalling) {
+      insertAtCursor(variables[varName].toString());
+      setIsRecalling(false);
+    } else {
+      if (alphaActive) {
+        insertAtCursor(varName);
+        setAlphaActive(false);
+      } else {
+        if (varName === 'A') insertAtCursor('-');
+        else if (varName === 'B') insertAtCursor('°');
+        else if (varName === 'C') {
+          setHypActive(true);
+          setStatusMessage('hyp');
+        }
+        else if (varName === 'D') insertAtCursor('sin(');
+        else if (varName === 'E') insertAtCursor('cos(');
+        else if (varName === 'F') insertAtCursor('tan(');
+        else if (varName === 'X') insertAtCursor('(');
+        else if (varName === 'Y') insertAtCursor(')');
+        else if (varName === 'M') insertAtCursor('M');
       }
     }
   };
 
-  // Casio-style key renderers
-  const renderFuncKey = (id, label, shiftLabel, standardVal, shiftVal) => {
+  const handleKeyClick = (keyId) => {
+    if (!isOn && keyId !== 'on') return;
+
+    if (isStoring || isRecalling || alphaActive) {
+      const varMap = {
+        'neg': 'A',
+        'dms': 'B',
+        'hyp': 'C',
+        'sin': 'D',
+        'cos': 'E',
+        'tan': 'F',
+        'lparen': 'X',
+        'rparen': 'Y',
+        'mplus': 'M'
+      };
+      if (varMap[keyId]) {
+        handleVariableButton(varMap[keyId]);
+        return;
+      }
+    }
+
+    setStatusMessage('');
+
+    switch (keyId) {
+      case 'shift':
+        setShiftActive(prev => !prev);
+        setAlphaActive(false);
+        break;
+      case 'alpha':
+        setAlphaActive(prev => !prev);
+        setShiftActive(false);
+        break;
+      case 'mode':
+        setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg');
+        setShiftActive(false);
+        break;
+      case 'on':
+        if (!isOn) {
+          setIsOn(true);
+        } else {
+          handleClear();
+        }
+        break;
+      case 'calc':
+        if (shiftActive) {
+          handleEqual();
+          setShiftActive(false);
+        } else if (alphaActive) {
+          insertAtCursor('=');
+          setAlphaActive(false);
+        } else {
+          handleEqual();
+        }
+        break;
+      case 'integration':
+        if (shiftActive) {
+          insertAtCursor('d/dx(');
+          setShiftActive(false);
+        } else if (alphaActive) {
+          insertAtCursor(':');
+          setAlphaActive(false);
+        } else {
+          insertAtCursor('∫(');
+        }
+        break;
+      case 'inverse':
+        if (shiftActive) {
+          insertAtCursor('!');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('^-1');
+        }
+        break;
+      case 'log_base':
+        if (shiftActive) {
+          insertAtCursor('Σ(');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('log(');
+        }
+        break;
+      case 'frac':
+        insertAtCursor('/');
+        break;
+      case 'sqrt':
+        if (shiftActive) {
+          insertAtCursor('∛(');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('sqrt(');
+        }
+        break;
+      case 'sq':
+        if (shiftActive) {
+          insertAtCursor('^3');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('^2');
+        }
+        break;
+      case 'pow':
+        if (shiftActive) {
+          insertAtCursor('^(1/');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('^');
+        }
+        break;
+      case 'log':
+        if (shiftActive) {
+          insertAtCursor('10^(');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('log(');
+        }
+        break;
+      case 'ln':
+        if (shiftActive) {
+          insertAtCursor('e^(');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('ln(');
+        }
+        break;
+      case 'neg':
+        if (shiftActive) {
+          insertAtCursor('∠');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('-');
+        }
+        break;
+      case 'dms':
+        insertAtCursor('°');
+        break;
+      case 'hyp':
+        if (shiftActive) {
+          insertAtCursor('Abs(');
+          setShiftActive(false);
+        } else {
+          setHypActive(true);
+          setStatusMessage('hyp');
+        }
+        break;
+      case 'sin':
+        if (hypActive) {
+          if (shiftActive) insertAtCursor('asinh(');
+          else insertAtCursor('sinh(');
+          setHypActive(false);
+          setShiftActive(false);
+        } else {
+          if (shiftActive) {
+            insertAtCursor('sin⁻¹(');
+            setShiftActive(false);
+          } else {
+            insertAtCursor('sin(');
+          }
+        }
+        break;
+      case 'cos':
+        if (hypActive) {
+          if (shiftActive) insertAtCursor('acosh(');
+          else insertAtCursor('cosh(');
+          setHypActive(false);
+          setShiftActive(false);
+        } else {
+          if (shiftActive) {
+            insertAtCursor('cos⁻¹(');
+            setShiftActive(false);
+          } else {
+            insertAtCursor('cos(');
+          }
+        }
+        break;
+      case 'tan':
+        if (hypActive) {
+          if (shiftActive) insertAtCursor('atanh(');
+          else insertAtCursor('tanh(');
+          setHypActive(false);
+          setShiftActive(false);
+        } else {
+          if (shiftActive) {
+            insertAtCursor('tan⁻¹(');
+            setShiftActive(false);
+          } else {
+            insertAtCursor('tan(');
+          }
+        }
+        break;
+      case 'rcl':
+        if (shiftActive) {
+          setIsStoring(true);
+          setShiftActive(false);
+        } else {
+          setIsRecalling(true);
+        }
+        break;
+      case 'eng':
+        insertAtCursor('*10^');
+        break;
+      case 'lparen':
+        if (shiftActive) {
+          insertAtCursor('%');
+          setShiftActive(false);
+        } else {
+          insertAtCursor('(');
+        }
+        break;
+      case 'rparen':
+        if (shiftActive) {
+          insertAtCursor(',');
+          setShiftActive(false);
+        } else {
+          insertAtCursor(')');
+        }
+        break;
+      case 'sd':
+        handleSdToggle();
+        break;
+      case 'mplus':
+        if (shiftActive) {
+          const resVal = parseFloat(evaluateExpr(calcInput, calcAngleMode));
+          if (!isNaN(resVal)) {
+            setVariables(prev => ({ ...prev, M: prev.M - resVal }));
+            setStatusMessage(`M - ${resVal}`);
+          }
+          setShiftActive(false);
+        } else {
+          const resVal = parseFloat(evaluateExpr(calcInput, calcAngleMode));
+          if (!isNaN(resVal)) {
+            setVariables(prev => ({ ...prev, M: prev.M + resVal }));
+            setStatusMessage(`M + ${resVal}`);
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  const renderSilverKey = (label, topLabel, keyId) => {
+    let topColor = 'text-slate-400';
+    if (keyId === 'shift') topColor = 'text-amber-500';
+    if (keyId === 'alpha') topColor = 'text-rose-400';
+    
+    let activeCls = '';
+    if (keyId === 'shift' && shiftActive) activeCls = 'bg-amber-500 border-amber-400 text-slate-950 scale-95 shadow-inner';
+    else if (keyId === 'alpha' && alphaActive) activeCls = 'bg-rose-500 border-rose-400 text-white scale-95 shadow-inner';
+    else activeCls = 'bg-[#7c8682] border-[#919c98] text-slate-950 active:scale-95 hover:bg-[#8d9995] cursor-pointer';
+
     return (
       <div className="flex flex-col items-center w-full relative">
-        <span className="text-[6.5px] font-black text-amber-500 h-2 select-none pointer-events-none truncate max-w-full">
-          {shiftLabel || ' '}
+        <span className={`text-[6px] font-black ${topColor} h-2.5 select-none pointer-events-none mb-0.5 truncate max-w-full uppercase`}>
+          {topLabel || ' '}
         </span>
         <button
-          onClick={() => {
-            setHistoryIndex(-1);
-            if (shiftActive) {
-              setShiftActive(false);
-              appendToInput(shiftVal);
-            } else {
-              appendToInput(standardVal);
-            }
-          }}
-          className="w-full py-0.5 rounded bg-[#353c3a] border border-[#48534f] text-[9px] text-slate-200 font-extrabold active:scale-95 hover:bg-[#404947] transition-all cursor-pointer shadow-sm select-none h-5 flex items-center justify-center"
+          onClick={() => handleKeyClick(keyId)}
+          className={`w-full py-1 rounded text-[8px] font-black transition-all shadow-sm select-none h-5 flex items-center justify-center border ${activeCls}`}
         >
           {label}
         </button>
@@ -1408,22 +2077,138 @@ function ScientificCalculator() {
     );
   };
 
-  const renderNumKey = (label, onClick, colorType) => {
-    let cls = "w-full py-0.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer h-6 flex items-center justify-center select-none ";
-    if (colorType === 'orange') {
-      cls += "bg-amber-600 border-amber-500 text-white hover:bg-amber-500 active:scale-95 shadow-sm shadow-amber-900/30";
+  const renderFuncKey = (keyId, label, shiftLabel, alphaLabel, keyName) => {
+    return (
+      <div className="flex flex-col items-center w-full relative">
+        <div className="flex justify-between w-full px-1 mb-0.5 select-none h-2.5">
+          <span className="text-[5.5px] font-black text-amber-500 truncate max-w-[45%]">{shiftLabel || ' '}</span>
+          <span className="text-[5.5px] font-black text-rose-400 truncate max-w-[45%]">{alphaLabel || ' '}</span>
+        </div>
+        <button
+          onClick={() => handleKeyClick(keyId)}
+          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[9px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-6 flex items-center justify-center relative"
+        >
+          {label}
+        </button>
+      </div>
+    );
+  };
+
+  const renderNumPadKey = (label, topLabelGold, topLabelPink, onClick, colorType) => {
+    let btnCls = "w-full py-1 text-[10px] font-black rounded-lg border transition-all cursor-pointer h-7.5 flex items-center justify-center select-none ";
+    if (colorType === 'green') {
+      btnCls += "bg-[#a3c965] border-[#8aab51] text-slate-950 hover:bg-[#b0da6d] active:scale-95 shadow-sm shadow-emerald-950/20";
     } else if (colorType === 'equal') {
-      cls += "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500 active:scale-95 shadow-sm shadow-emerald-900/30";
+      btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else if (colorType === 'operator') {
-      cls += "bg-[#4e5652] border-[#656e69] text-slate-150 hover:bg-[#5a625e] active:scale-95 shadow-sm";
+      btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else {
-      cls += "bg-slateCustom-900 border-slate-800 text-slate-200 hover:bg-[#343a37] active:scale-95 shadow-sm";
+      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[11px]";
     }
 
     return (
-      <button onClick={onClick} className={cls}>
-        {label}
-      </button>
+      <div className="flex flex-col items-center w-full relative">
+        <div className="flex justify-between w-full px-1 mb-0.5 select-none h-2.5">
+          <span className="text-[5.5px] font-black text-amber-500 truncate">{topLabelGold || ' '}</span>
+          <span className="text-[5.5px] font-black text-rose-400 truncate">{topLabelPink || ' '}</span>
+        </div>
+        <button onClick={onClick} className={btnCls}>
+          {label}
+        </button>
+      </div>
+    );
+  };
+
+  const renderLcdDisplay = () => {
+    if (!isOn) {
+      return (
+        <div className="bg-[#1a1c19] border-2 border-[#30332f] rounded-md p-2 font-mono shadow-inner text-transparent mb-1.5 h-16 select-none" />
+      );
+    }
+
+    let showFraction = false;
+    let showDecimal = true;
+    
+    let fracNumerator = '';
+    let fracDenominator = '';
+    
+    if (calcResult && calcResult !== 'Error') {
+      const numVal = parseFloat(calcResult);
+      if (!isNaN(numVal)) {
+        const frac = decimalToFraction(numVal);
+        if (frac && frac.denominator > 1) {
+          fracNumerator = frac.numerator.toString();
+          fracDenominator = frac.denominator.toString();
+          
+          if (displaySdMode === 'both') {
+            showFraction = true;
+            showDecimal = true;
+          } else if (displaySdMode === 'fraction') {
+            showFraction = true;
+            showDecimal = false;
+          } else {
+            showFraction = false;
+            showDecimal = true;
+          }
+        }
+      }
+    }
+    
+    return (
+      <div className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-2 font-mono shadow-inner text-[#141a12] mb-1.5 relative overflow-hidden h-16 flex flex-col justify-between select-text">
+        <div className="flex gap-2 text-[6.5px] font-black select-none h-2 leading-none text-[#2f382a] tracking-wider">
+          <span className={shiftActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
+          <span className={alphaActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>A</span>
+          <span className={variables.M !== 0 ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>M</span>
+          <span className={calcAngleMode === 'deg' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>D</span>
+          <span className={calcAngleMode === 'rad' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>R</span>
+          {isStoring && <span className="opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]">STO</span>}
+          {isRecalling && <span className="opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]">RCL</span>}
+          <span className="ml-auto opacity-100">Math</span>
+        </div>
+        
+        <div className="flex flex-col justify-between flex-grow mt-1 select-text">
+          <div className="flex justify-between items-start w-full min-h-[1.5rem] select-text">
+            <div className="flex-grow select-text">
+              {showFraction ? (
+                <div className="flex items-center text-[10px] leading-none select-text">
+                  <div className="flex flex-col items-center justify-center font-bold px-1 select-text">
+                    <span className="border-b border-[#141a12] pb-0.5 px-0.5 select-text">{fracNumerator}</span>
+                    <span className="pt-0.5 px-0.5 select-text">{fracDenominator}</span>
+                  </div>
+                </div>
+              ) : (
+                <input
+                  ref={inputRef}
+                  id="calc-input-field"
+                  type="text"
+                  value={calcInput}
+                  onChange={(e) => {
+                    setHistoryIndex(-1);
+                    setCalcInput(e.target.value);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="공식/수치 입력..."
+                  className="w-full text-left bg-transparent text-[11px] font-extrabold border-0 outline-none p-0 placeholder-[#2f382a]/40 text-[#141a12] font-mono select-text"
+                />
+              )}
+            </div>
+            
+            {statusMessage && (
+              <span className="text-[7px] text-[#2f382a] bg-[#2f382a]/10 px-1 py-0.5 rounded select-none">
+                {statusMessage}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex justify-between items-end w-full h-5 select-text">
+            <span className="text-[9px] opacity-75 text-[#2f382a] select-none">=</span>
+            <div className="text-right text-xs font-black tracking-tight leading-none text-[#141a12] select-all font-mono">
+              {showDecimal ? (calcResult || '0') : ''}
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -1434,11 +2219,11 @@ function ScientificCalculator() {
       <div className="flex justify-between items-center px-1 mb-1.5 select-none">
         <div className="flex flex-col">
           <span className="text-[9px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
-          <span className="text-[6px] font-bold text-slate-500 mt-0.5 tracking-tight">fx-570ES PLUS</span>
+          <span className="text-[5.5px] font-bold text-slate-500 mt-0.5 tracking-tight uppercase">fx-570ES PLUS <span className="text-[4.5px] text-slate-600">2nd edition</span></span>
         </div>
         
         {/* Solar Panel */}
-        <div className="w-14 h-3 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
+        <div className="w-14 h-3.5 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
           <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
           <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
           <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
@@ -1446,146 +2231,100 @@ function ScientificCalculator() {
         </div>
       </div>
 
-      {/* Casio Gray-Green LCD Screen */}
-      <div className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-1.5 font-mono shadow-inner text-[#141a12] mb-1.5 relative overflow-hidden">
-        {/* LCD Indicators */}
-        <div className="flex gap-2 text-[6px] font-black select-none h-1.5 leading-none text-[#2f382a] tracking-wider mb-0.5">
-          <span className={shiftActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
-          <span className={alphaActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>A</span>
-          <span className="opacity-10">M</span>
-          <span className={calcAngleMode === 'deg' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>D</span>
-          <span className={calcAngleMode === 'rad' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>R</span>
-          <span className="ml-auto opacity-100">Math</span>
+      {/* Casio LCD Screen */}
+      {renderLcdDisplay()}
+
+      {/* Casio Scientific Function Keys (6 columns with center D-pad) */}
+      <div className="grid grid-cols-6 gap-x-1 gap-y-0.5 select-none">
+        {/* Row 1 */}
+        {renderSilverKey('SHIFT', 'SHIFT', 'shift')}
+        {renderSilverKey('ALPHA', 'ALPHA', 'alpha')}
+        
+        {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
+        <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-1">
+          <div className="relative w-12 h-12 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+            <button onClick={() => handleDpad('up')} className="absolute top-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▲</button>
+            <button onClick={() => handleDpad('down')} className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▼</button>
+            <button onClick={() => handleDpad('left')} className="absolute left-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">◀</button>
+            <button onClick={() => handleDpad('right')} className="absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▶</button>
+            <span className="text-[5px] font-black text-slate-500 tracking-wider">REPLAY</span>
+          </div>
         </div>
-        {/* LCD Display */}
-        <div className="flex flex-col w-full text-right">
-          <input
-            type="text"
-            value={calcInput}
-            onChange={(e) => {
-              setHistoryIndex(-1);
-              setCalcInput(e.target.value);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="공식/수치 입력..."
-            className="w-full text-left bg-transparent text-[11px] font-extrabold border-0 outline-none p-0 mt-0.5 placeholder-[#2f382a]/40 text-[#141a12] font-mono"
-          />
-          {calcResult && (
-            <div className="text-xs font-black tracking-tight mt-0.5 h-4 leading-none flex justify-between items-center select-all font-mono text-[#141a12]">
-              <span className="text-[9px] opacity-75 text-[#2f382a]">=</span>
-              <span className="text-right">{calcResult}</span>
-            </div>
-          )}
-        </div>
+        
+        {renderSilverKey('MODE', 'SETUP', 'mode')}
+        {renderSilverKey('ON', 'OFF', 'on')}
+        
+        {/* Row 2 */}
+        {renderFuncKey('calc', 'CALC', 'SOLVE', '=', 'calc')}
+        {renderFuncKey('integration', '∫dx', 'd/dx', ':', 'integration')}
+        {/* cols 3 & 4 skipped for row-span-2 D-Pad */}
+        {renderFuncKey('inverse', 'x⁻¹', 'x!', 'DEC', 'inverse')}
+        {renderFuncKey('log_base', 'log_■', 'Σ', 'HEX', 'log_base')}
+        
+        {/* Row 3 */}
+        {renderFuncKey('frac', '■/□', 'a b/c', '', 'frac')}
+        {renderFuncKey('sqrt', '√', '∛', '', 'sqrt')}
+        {renderFuncKey('sq', 'x²', 'x³', 'DEC', 'sq')}
+        {renderFuncKey('pow', 'x^■', 'x√', 'HEX', 'pow')}
+        {renderFuncKey('log', 'log', '10ˣ', 'BIN', 'log')}
+        {renderFuncKey('ln', 'ln', 'eˣ', 'OCT', 'ln')}
+        
+        {/* Row 4 */}
+        {renderFuncKey('neg', '(-)', '∠', 'A', 'neg')}
+        {renderFuncKey('dms', '°\'"', '←', 'B', 'dms')}
+        {renderFuncKey('hyp', 'hyp', 'Abs', 'C', 'hyp')}
+        {renderFuncKey('sin', 'sin', 'sin⁻¹', 'D', 'sin')}
+        {renderFuncKey('cos', 'cos', 'cos⁻¹', 'E', 'cos')}
+        {renderFuncKey('tan', 'tan', 'tan⁻¹', 'F', 'tan')}
+        
+        {/* Row 5 */}
+        {renderFuncKey('rcl', 'RCL', 'STO', '', 'rcl')}
+        {renderFuncKey('eng', 'ENG', '←', 'i', 'eng')}
+        {renderFuncKey('lparen', '(', '%', 'X', 'lparen')}
+        {renderFuncKey('rparen', ')', ',', 'Y', 'rparen')}
+        {renderFuncKey('sd', 'S⇔D', 'd/c', '', 'sd')}
+        {renderFuncKey('mplus', 'M+', 'M-', 'M', 'mplus')}
       </div>
 
-      {/* D-Pad & Controls area */}
-      <div className="flex justify-between items-center px-1 mb-1.5 relative">
-        {/* SHIFT & ALPHA */}
-        <div className="flex flex-col gap-0.5 w-12 shrink-0">
-          <div className="flex flex-col items-center">
-            <span className="text-[5.5px] font-black text-amber-500 mb-0.5 leading-none">SHIFT</span>
-            <button 
-              onClick={() => { setShiftActive(prev => !prev); setAlphaActive(false); }}
-              className={`w-full py-0.5 text-[7px] font-black rounded border shadow-sm transition-all cursor-pointer h-4 flex items-center justify-center ${
-                shiftActive 
-                  ? 'bg-amber-500 border-amber-400 text-slate-950 scale-95' 
-                  : 'bg-[#5c6561] border-[#78827e] text-amber-400 active:scale-95 hover:bg-[#68726e]'
-              }`}
-            >
-              SHIFT
-            </button>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-[5.5px] font-black text-rose-400 mb-0.5 leading-none">ALPHA</span>
-            <button 
-              onClick={() => { setAlphaActive(prev => !prev); setShiftActive(false); }}
-              className={`w-full py-0.5 text-[7px] font-black rounded border shadow-sm transition-all cursor-pointer h-4 flex items-center justify-center ${
-                alphaActive 
-                  ? 'bg-rose-500 border-rose-400 text-white scale-95' 
-                  : 'bg-[#5c6561] border-[#78827e] text-rose-400 active:scale-95 hover:bg-[#68726e]'
-              }`}
-            >
-              ALPHA
-            </button>
-          </div>
-        </div>
+      {/* Casio Number Pad (5 columns) */}
+      <div className="grid grid-cols-5 gap-x-1 gap-y-0.5 mt-1 select-none">
+        {/* Row 6 */}
+        {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
+        {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
+        {renderNumPadKey('9', 'CLR', '', () => appendToInput('9'))}
+        {renderNumPadKey('DEL', 'INS', '', handleBackspace, 'green')}
+        {renderNumPadKey('AC', 'OFF', '', () => handleKeyClick('on'), 'green')}
 
-        {/* Circular D-PAD (Replay) */}
-        <div className="relative w-12 h-12 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
-          <button onClick={() => handleDpad('up')} className="absolute top-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▲</button>
-          <button onClick={() => handleDpad('down')} className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▼</button>
-          <button onClick={() => handleDpad('left')} className="absolute left-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">◀</button>
-          <button onClick={() => handleDpad('right')} className="absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▶</button>
-          <span className="text-[5px] font-black text-slate-500 tracking-wider">REPLAY</span>
-        </div>
+        {/* Row 7 */}
+        {renderNumPadKey('4', 'MATRIX', '', () => appendToInput('4'))}
+        {renderNumPadKey('5', 'VECTOR', '', () => appendToInput('5'))}
+        {renderNumPadKey('6', '', '', () => appendToInput('6'))}
+        {renderNumPadKey('×', 'nPr', '', () => appendToInput('×'), 'operator')}
+        {renderNumPadKey('÷', 'nCr', '', () => appendToInput('÷'), 'operator')}
 
-        {/* MODE & ON */}
-        <div className="flex flex-col gap-0.5 w-12 shrink-0">
-          <div className="flex flex-col items-center">
-            <span className="text-[5.5px] font-black text-slate-400 mb-0.5 leading-none">SETUP</span>
-            <button 
-              onClick={() => setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg')}
-              className="w-full py-0.5 text-[7px] font-black bg-[#5c6561] border-[#78827e] text-slate-200 rounded border shadow-sm active:scale-95 hover:bg-[#68726e] cursor-pointer h-4 flex items-center justify-center"
-              title="DEG/RAD 토글"
-            >
-              MODE
-            </button>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-[5.5px] font-black text-slate-400 mb-0.5 leading-none">ON</span>
-            <button 
-              onClick={handleClear}
-              className="w-full py-0.5 text-[7px] font-black bg-[#5c6561] border-[#78827e] text-slate-200 rounded border shadow-sm active:scale-95 hover:bg-[#68726e] cursor-pointer h-4 flex items-center justify-center"
-            >
-              ON
-            </button>
-          </div>
-        </div>
-      </div>
+        {/* Row 8 */}
+        {renderNumPadKey('1', 'STAT', '', () => appendToInput('1'))}
+        {renderNumPadKey('2', 'CMPLX', '', () => appendToInput('2'))}
+        {renderNumPadKey('3', 'BASE', '', () => appendToInput('3'))}
+        {renderNumPadKey('+', 'Pol', '', () => appendToInput('+'), 'operator')}
+        {renderNumPadKey('-', 'Rec', '', () => appendToInput('-'), 'operator')}
 
-      {/* Casio Scientific Function Keys (6 columns) */}
-      <div className="grid grid-cols-6 gap-1 select-none">
-        {renderFuncKey('inv', 'x⁻¹', 'x!', '^-1', '!')}
-        {renderFuncKey('sqrt', '√', '∛', 'sqrt(', '∛(')}
-        {renderFuncKey('sq', 'x²', 'x³', '^2', '^3')}
-        {renderFuncKey('pow', '^', 'x√', '^', '^(1/')}
-        {renderFuncKey('log', 'log', '10ˣ', 'log(', '10^(')}
-        {renderFuncKey('ln', 'ln', 'eˣ', 'ln(', 'e^(')}
-
-        {renderFuncKey('sin', 'sin', 'sin⁻¹', 'sin(', 'sin⁻¹(')}
-        {renderFuncKey('cos', 'cos', 'cos⁻¹', 'cos(', 'cos⁻¹(')}
-        {renderFuncKey('tan', 'tan', 'tan⁻¹', 'tan(', 'tan⁻¹(')}
-        {renderFuncKey('lparen', '(', '%', '(', '%')}
-        {renderFuncKey('rparen', ')', ',', ')', ',')}
-        {renderFuncKey('pi', 'π', 'e', 'π', 'e')}
-      </div>
-
-      {/* Casio Number & Operator Keys (5 columns) */}
-      <div className="grid grid-cols-5 gap-1 mt-1.5 select-none">
-        {renderNumKey('7', () => appendToInput('7'))}
-        {renderNumKey('8', () => appendToInput('8'))}
-        {renderNumKey('9', () => appendToInput('9'))}
-        {renderNumKey('DEL', handleBackspace, 'orange')}
-        {renderNumKey('AC', handleClear, 'orange')}
-
-        {renderNumKey('4', () => appendToInput('4'))}
-        {renderNumKey('5', () => appendToInput('5'))}
-        {renderNumKey('6', () => appendToInput('6'))}
-        {renderNumKey('×', () => appendToInput('×'), 'operator')}
-        {renderNumKey('÷', () => appendToInput('÷'), 'operator')}
-
-        {renderNumKey('1', () => appendToInput('1'))}
-        {renderNumKey('2', () => appendToInput('2'))}
-        {renderNumKey('3', () => appendToInput('3'))}
-        {renderNumKey('+', () => appendToInput('+'), 'operator')}
-        {renderNumKey('-', () => appendToInput('-'), 'operator')}
-
-        {renderNumKey('0', () => appendToInput('0'))}
-        {renderNumKey('.', () => appendToInput('.'))}
-        {renderNumKey('EXP', () => appendToInput('exp('), 'operator')}
-        {renderNumKey('Ans', () => appendToInput('Ans'), 'operator')}
-        {renderNumKey('=', handleEqual, 'equal')}
+        {/* Row 9 */}
+        {renderNumPadKey('0', 'Rnd', '', () => appendToInput('0'))}
+        {renderNumPadKey('.', 'Ran#', 'RanInt', () => appendToInput('.'))}
+        {renderNumPadKey('×10ˣ', 'π', 'e', () => {
+          if (shiftActive) {
+            appendToInput('π');
+            setShiftActive(false);
+          } else if (alphaActive) {
+            appendToInput('e');
+            setAlphaActive(false);
+          } else {
+            appendToInput('*10^(');
+          }
+        })}
+        {renderNumPadKey('Ans', 'DRG▶', '', () => appendToInput('Ans'), 'operator')}
+        {renderNumPadKey('=', '', '', handleEqual, 'equal')}
       </div>
 
     </div>
