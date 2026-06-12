@@ -1266,6 +1266,10 @@ function ScientificCalculator() {
   const [calcResult, setCalcResult] = useState('');
   const [calcAngleMode, setCalcAngleMode] = useState('deg'); // deg / rad
   const [lastAns, setLastAns] = useState('');
+  const [shiftActive, setShiftActive] = useState(false);
+  const [alphaActive, setAlphaActive] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   const appendToInput = (val) => {
     setCalcInput(prev => prev + val);
@@ -1282,12 +1286,18 @@ function ScientificCalculator() {
 
   const evaluateExpr = (expr, angleMode) => {
     try {
-      // Normalize mathematical symbols
+      // Normalize mathematical symbols for Casio
       let sanitized = expr
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
         .replace(/π/g, 'Math.PI')
         .replace(/\be\b/g, 'Math.E')
+        .replace(/sin⁻¹\(/g, 'asin(')
+        .replace(/cos⁻¹\(/g, 'acos(')
+        .replace(/tan⁻¹\(/g, 'atan(')
+        .replace(/∛\(/g, 'cbrt(')
+        .replace(/e\^\(/g, 'exp(')
+        .replace(/10\^\(/g, '10^(')
         .replace(/Ans/g, `(${lastAns || '0'})`);
 
       let preProcessed = sanitized;
@@ -1315,6 +1325,7 @@ function ScientificCalculator() {
         .replace(/ln\(/g, 'Math.log(')
         .replace(/log\(/g, 'Math.log10(')
         .replace(/sqrt\(/g, 'Math.sqrt(')
+        .replace(/cbrt\(/g, 'Math.cbrt(')
         .replace(/exp\(/g, 'Math.exp(')
         .replace(/\^/g, '**');
 
@@ -1336,6 +1347,14 @@ function ScientificCalculator() {
     setCalcResult(res);
     if (res !== 'Error') {
       setLastAns(res);
+      setHistory(prev => {
+        const updated = [...prev, calcInput];
+        if (updated.length > 20) {
+          updated.shift();
+        }
+        return updated;
+      });
+      setHistoryIndex(-1);
     }
   };
 
@@ -1345,86 +1364,230 @@ function ScientificCalculator() {
     }
   };
 
-  const btnClass = "flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700/80 active:scale-95 text-center text-xs text-slate-200 font-bold border border-slate-700/50 transition-all select-none cursor-pointer";
-  const opBtnClass = "flex-1 py-1 rounded bg-slate-700/70 hover:bg-slate-600/80 active:scale-95 text-center text-xs text-amber-400 font-black border border-slate-600/50 transition-all select-none cursor-pointer";
-  const fnBtnClass = "flex-1 py-1 rounded bg-slate-900 hover:bg-slate-800/80 active:scale-95 text-center text-[10px] text-violet-400 font-black border border-slate-800/80 transition-all select-none cursor-pointer";
+  const handleDpad = (direction) => {
+    if (direction === 'up') {
+      if (history.length > 0) {
+        const nextIndex = Math.min(historyIndex + 1, history.length - 1);
+        setHistoryIndex(nextIndex);
+        setCalcInput(history[history.length - 1 - nextIndex]);
+      }
+    } else if (direction === 'down') {
+      if (historyIndex > 0) {
+        const nextIndex = historyIndex - 1;
+        setHistoryIndex(nextIndex);
+        setCalcInput(history[history.length - 1 - nextIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCalcInput('');
+      }
+    }
+  };
+
+  // Casio-style key renderers
+  const renderFuncKey = (id, label, shiftLabel, standardVal, shiftVal) => {
+    return (
+      <div className="flex flex-col items-center w-full relative">
+        <span className="text-[6.5px] font-black text-amber-500 h-2 select-none pointer-events-none truncate max-w-full">
+          {shiftLabel || ' '}
+        </span>
+        <button
+          onClick={() => {
+            setHistoryIndex(-1);
+            if (shiftActive) {
+              setShiftActive(false);
+              appendToInput(shiftVal);
+            } else {
+              appendToInput(standardVal);
+            }
+          }}
+          className="w-full py-0.5 rounded bg-[#353c3a] border border-[#48534f] text-[9px] text-slate-200 font-extrabold active:scale-95 hover:bg-[#404947] transition-all cursor-pointer shadow-sm select-none h-5 flex items-center justify-center"
+        >
+          {label}
+        </button>
+      </div>
+    );
+  };
+
+  const renderNumKey = (label, onClick, colorType) => {
+    let cls = "w-full py-0.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer h-6 flex items-center justify-center select-none ";
+    if (colorType === 'orange') {
+      cls += "bg-amber-600 border-amber-500 text-white hover:bg-amber-500 active:scale-95 shadow-sm shadow-amber-900/30";
+    } else if (colorType === 'equal') {
+      cls += "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500 active:scale-95 shadow-sm shadow-emerald-900/30";
+    } else if (colorType === 'operator') {
+      cls += "bg-[#4e5652] border-[#656e69] text-slate-150 hover:bg-[#5a625e] active:scale-95 shadow-sm";
+    } else {
+      cls += "bg-slateCustom-900 border-slate-800 text-slate-200 hover:bg-[#343a37] active:scale-95 shadow-sm";
+    }
+
+    return (
+      <button onClick={onClick} className={cls}>
+        {label}
+      </button>
+    );
+  };
 
   return (
-    <div className="w-full bg-slateCustom-950 border-b border-slate-800 p-2.5 flex flex-col gap-1.5 flex-shrink-0 shadow-lg select-none">
-      <div className="flex justify-between items-center bg-slate-900 border border-slate-800/60 rounded-xl p-2">
-        <div className="flex flex-col w-full text-right overflow-hidden">
-          <div className="text-[9px] text-slate-500 font-bold flex justify-between select-none">
-            <span className="text-violet-500 uppercase tracking-widest text-[8px] font-black">{calcAngleMode} mode</span>
-            <span className="truncate max-w-[180px]">{calcInput || '0'}</span>
-          </div>
+    <div className="w-full bg-[#181d1b] border-b border-slate-800 p-3 flex flex-col gap-1 flex-shrink-0 shadow-2xl select-none relative font-sans">
+      
+      {/* Casio Logo & Solar Panel Header */}
+      <div className="flex justify-between items-center px-1 mb-1.5 select-none">
+        <div className="flex flex-col">
+          <span className="text-[9px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
+          <span className="text-[6px] font-bold text-slate-500 mt-0.5 tracking-tight">fx-570ES PLUS</span>
+        </div>
+        
+        {/* Solar Panel */}
+        <div className="w-14 h-3 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40"></div>
+        </div>
+      </div>
+
+      {/* Casio Gray-Green LCD Screen */}
+      <div className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-1.5 font-mono shadow-inner text-[#141a12] mb-1.5 relative overflow-hidden">
+        {/* LCD Indicators */}
+        <div className="flex gap-2 text-[6px] font-black select-none h-1.5 leading-none text-[#2f382a] tracking-wider mb-0.5">
+          <span className={shiftActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
+          <span className={alphaActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>A</span>
+          <span className="opacity-10">M</span>
+          <span className={calcAngleMode === 'deg' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>D</span>
+          <span className={calcAngleMode === 'rad' ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>R</span>
+          <span className="ml-auto opacity-100">Math</span>
+        </div>
+        {/* LCD Display */}
+        <div className="flex flex-col w-full text-right">
           <input
             type="text"
             value={calcInput}
-            onChange={(e) => setCalcInput(e.target.value)}
+            onChange={(e) => {
+              setHistoryIndex(-1);
+              setCalcInput(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="공식/수치 입력..."
-            className="w-full text-right bg-transparent text-xs text-white font-extrabold border-0 outline-none p-0 mt-0.5 placeholder-slate-600"
+            className="w-full text-left bg-transparent text-[11px] font-extrabold border-0 outline-none p-0 mt-0.5 placeholder-[#2f382a]/40 text-[#141a12] font-mono"
           />
           {calcResult && (
-            <div className="text-[11px] text-emerald-400 font-extrabold mt-0.5 truncate select-all">
-              = {calcResult}
+            <div className="text-xs font-black tracking-tight mt-0.5 h-4 leading-none flex justify-between items-center select-all font-mono text-[#141a12]">
+              <span className="text-[9px] opacity-75 text-[#2f382a]">=</span>
+              <span className="text-right">{calcResult}</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-5 gap-1 select-none">
-        {/* Row 1 */}
-        <button 
-          onClick={() => setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg')}
-          className="py-1 rounded bg-violet-950/65 hover:bg-violet-900/65 text-violet-300 border border-violet-500/20 text-[9px] font-black cursor-pointer uppercase active:scale-95"
-          title="Degree / Radian 각도 모드 변경"
-        >
-          {calcAngleMode}
-        </button>
-        <button onClick={() => appendToInput('(')} className={fnBtnClass}>(</button>
-        <button onClick={() => appendToInput(')')} className={fnBtnClass}>)</button>
-        <button onClick={handleBackspace} className="py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[9px] font-black cursor-pointer active:scale-95">DEL</button>
-        <button onClick={handleClear} className="py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 text-[9px] font-black cursor-pointer active:scale-95">AC</button>
+      {/* D-Pad & Controls area */}
+      <div className="flex justify-between items-center px-1 mb-1.5 relative">
+        {/* SHIFT & ALPHA */}
+        <div className="flex flex-col gap-0.5 w-12 shrink-0">
+          <div className="flex flex-col items-center">
+            <span className="text-[5.5px] font-black text-amber-500 mb-0.5 leading-none">SHIFT</span>
+            <button 
+              onClick={() => { setShiftActive(prev => !prev); setAlphaActive(false); }}
+              className={`w-full py-0.5 text-[7px] font-black rounded border shadow-sm transition-all cursor-pointer h-4 flex items-center justify-center ${
+                shiftActive 
+                  ? 'bg-amber-500 border-amber-400 text-slate-950 scale-95' 
+                  : 'bg-[#5c6561] border-[#78827e] text-amber-400 active:scale-95 hover:bg-[#68726e]'
+              }`}
+            >
+              SHIFT
+            </button>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-[5.5px] font-black text-rose-400 mb-0.5 leading-none">ALPHA</span>
+            <button 
+              onClick={() => { setAlphaActive(prev => !prev); setShiftActive(false); }}
+              className={`w-full py-0.5 text-[7px] font-black rounded border shadow-sm transition-all cursor-pointer h-4 flex items-center justify-center ${
+                alphaActive 
+                  ? 'bg-rose-500 border-rose-400 text-white scale-95' 
+                  : 'bg-[#5c6561] border-[#78827e] text-rose-400 active:scale-95 hover:bg-[#68726e]'
+              }`}
+            >
+              ALPHA
+            </button>
+          </div>
+        </div>
 
-        {/* Row 2 */}
-        <button onClick={() => appendToInput('sin(')} className={fnBtnClass}>sin</button>
-        <button onClick={() => appendToInput('cos(')} className={fnBtnClass}>cos</button>
-        <button onClick={() => appendToInput('tan(')} className={fnBtnClass}>tan</button>
-        <button onClick={() => appendToInput('^')} className={fnBtnClass}>xʸ</button>
-        <button onClick={() => appendToInput('sqrt(')} className={fnBtnClass}>√</button>
+        {/* Circular D-PAD (Replay) */}
+        <div className="relative w-12 h-12 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+          <button onClick={() => handleDpad('up')} className="absolute top-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▲</button>
+          <button onClick={() => handleDpad('down')} className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▼</button>
+          <button onClick={() => handleDpad('left')} className="absolute left-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">◀</button>
+          <button onClick={() => handleDpad('right')} className="absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold">▶</button>
+          <span className="text-[5px] font-black text-slate-500 tracking-wider">REPLAY</span>
+        </div>
 
-        {/* Row 3 */}
-        <button onClick={() => appendToInput('ln(')} className={fnBtnClass}>ln</button>
-        <button onClick={() => appendToInput('log(')} className={fnBtnClass}>log</button>
-        <button onClick={() => appendToInput('π')} className={fnBtnClass}>π</button>
-        <button onClick={() => appendToInput('e')} className={fnBtnClass}>e</button>
-        <button onClick={() => appendToInput('÷')} className={opBtnClass}>÷</button>
-
-        {/* Row 4 */}
-        <button onClick={() => appendToInput('7')} className={btnClass}>7</button>
-        <button onClick={() => appendToInput('8')} className={btnClass}>8</button>
-        <button onClick={() => appendToInput('9')} className={btnClass}>9</button>
-        <button onClick={() => appendToInput('exp(')} className={fnBtnClass}>exp</button>
-        <button onClick={() => appendToInput('×')} className={opBtnClass}>×</button>
-
-        {/* Row 5 */}
-        <button onClick={() => appendToInput('4')} className={btnClass}>4</button>
-        <button onClick={() => appendToInput('5')} className={btnClass}>5</button>
-        <button onClick={() => appendToInput('6')} className={btnClass}>6</button>
-        <button onClick={() => appendToInput('Ans')} className={fnBtnClass} title="이전 결과 불러오기">Ans</button>
-        <button onClick={() => appendToInput('-')} className={opBtnClass}>-</button>
-
-        {/* Row 6 */}
-        <button onClick={() => appendToInput('1')} className={btnClass}>1</button>
-        <button onClick={() => appendToInput('2')} className={btnClass}>2</button>
-        <button onClick={() => appendToInput('3')} className={btnClass}>3</button>
-        <button onClick={handleEqual} className="row-span-2 col-span-2 py-2 rounded bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-500/20 text-xs font-black text-emerald-300 cursor-pointer active:scale-95 flex items-center justify-center">=</button>
-
-        {/* Row 7 */}
-        <button onClick={() => appendToInput('0')} className="col-span-2 py-1 rounded bg-slate-800 hover:bg-slate-700/80 active:scale-95 text-center text-xs text-slate-200 font-bold border border-slate-700/50 cursor-pointer">0</button>
-        <button onClick={() => appendToInput('.')} className={btnClass}>.</button>
+        {/* MODE & ON */}
+        <div className="flex flex-col gap-0.5 w-12 shrink-0">
+          <div className="flex flex-col items-center">
+            <span className="text-[5.5px] font-black text-slate-400 mb-0.5 leading-none">SETUP</span>
+            <button 
+              onClick={() => setCalcAngleMode(prev => prev === 'deg' ? 'rad' : 'deg')}
+              className="w-full py-0.5 text-[7px] font-black bg-[#5c6561] border-[#78827e] text-slate-200 rounded border shadow-sm active:scale-95 hover:bg-[#68726e] cursor-pointer h-4 flex items-center justify-center"
+              title="DEG/RAD 토글"
+            >
+              MODE
+            </button>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-[5.5px] font-black text-slate-400 mb-0.5 leading-none">ON</span>
+            <button 
+              onClick={handleClear}
+              className="w-full py-0.5 text-[7px] font-black bg-[#5c6561] border-[#78827e] text-slate-200 rounded border shadow-sm active:scale-95 hover:bg-[#68726e] cursor-pointer h-4 flex items-center justify-center"
+            >
+              ON
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Casio Scientific Function Keys (6 columns) */}
+      <div className="grid grid-cols-6 gap-1 select-none">
+        {renderFuncKey('inv', 'x⁻¹', 'x!', '^-1', '!')}
+        {renderFuncKey('sqrt', '√', '∛', 'sqrt(', '∛(')}
+        {renderFuncKey('sq', 'x²', 'x³', '^2', '^3')}
+        {renderFuncKey('pow', '^', 'x√', '^', '^(1/')}
+        {renderFuncKey('log', 'log', '10ˣ', 'log(', '10^(')}
+        {renderFuncKey('ln', 'ln', 'eˣ', 'ln(', 'e^(')}
+
+        {renderFuncKey('sin', 'sin', 'sin⁻¹', 'sin(', 'sin⁻¹(')}
+        {renderFuncKey('cos', 'cos', 'cos⁻¹', 'cos(', 'cos⁻¹(')}
+        {renderFuncKey('tan', 'tan', 'tan⁻¹', 'tan(', 'tan⁻¹(')}
+        {renderFuncKey('lparen', '(', '%', '(', '%')}
+        {renderFuncKey('rparen', ')', ',', ')', ',')}
+        {renderFuncKey('pi', 'π', 'e', 'π', 'e')}
+      </div>
+
+      {/* Casio Number & Operator Keys (5 columns) */}
+      <div className="grid grid-cols-5 gap-1 mt-1.5 select-none">
+        {renderNumKey('7', () => appendToInput('7'))}
+        {renderNumKey('8', () => appendToInput('8'))}
+        {renderNumKey('9', () => appendToInput('9'))}
+        {renderNumKey('DEL', handleBackspace, 'orange')}
+        {renderNumKey('AC', handleClear, 'orange')}
+
+        {renderNumKey('4', () => appendToInput('4'))}
+        {renderNumKey('5', () => appendToInput('5'))}
+        {renderNumKey('6', () => appendToInput('6'))}
+        {renderNumKey('×', () => appendToInput('×'), 'operator')}
+        {renderNumKey('÷', () => appendToInput('÷'), 'operator')}
+
+        {renderNumKey('1', () => appendToInput('1'))}
+        {renderNumKey('2', () => appendToInput('2'))}
+        {renderNumKey('3', () => appendToInput('3'))}
+        {renderNumKey('+', () => appendToInput('+'), 'operator')}
+        {renderNumKey('-', () => appendToInput('-'), 'operator')}
+
+        {renderNumKey('0', () => appendToInput('0'))}
+        {renderNumKey('.', () => appendToInput('.'))}
+        {renderNumKey('EXP', () => appendToInput('exp('), 'operator')}
+        {renderNumKey('Ans', () => appendToInput('Ans'), 'operator')}
+        {renderNumKey('=', handleEqual, 'equal')}
+      </div>
+
     </div>
   );
 }
