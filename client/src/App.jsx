@@ -3137,7 +3137,7 @@ function ScientificCalculator() {
     return (
       <div 
         onClick={() => inputRef.current && inputRef.current.focus()}
-        className="bg-[#E3E8E5] border-2 border-[#b8c2be] rounded-md p-3 font-mono shadow-inner text-[#202528] mb-2 relative overflow-hidden h-[120px] flex flex-col justify-between select-text cursor-text"
+        className="bg-[#E3E8E5] border-2 border-[#b8c2be] rounded-md pt-2 pb-2 px-3 font-mono shadow-inner text-[#202528] mb-2 relative overflow-hidden h-[90px] flex flex-col justify-between select-text cursor-text"
       >
         <div className="flex gap-3 text-[12px] font-black select-none h-3.5 leading-none text-[#202528] tracking-wider">
           <span className={shiftActive ? "opacity-100 bg-[#202528] text-[#E3E8E5] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
@@ -3150,8 +3150,8 @@ function ScientificCalculator() {
           <span className="ml-auto opacity-100">Math</span>
         </div>
         
-        <div className="flex flex-row justify-between flex-grow mt-1 select-text w-full items-center gap-1 overflow-hidden h-[80px]">
-          <div className="flex-[8] w-[80%] flex items-center select-text overflow-x-auto h-full pr-1.5 border-r border-[#202528]/10 scrollbar-thin">
+        <div className="flex flex-row justify-between flex-grow mt-1 select-text w-full items-center gap-1.5 overflow-hidden h-[52px]">
+          <div className="flex-[8] w-[80%] flex items-center select-text overflow-x-auto h-full pr-1.5 scrollbar-thin">
             <div className="w-full select-text">
               <FormulaRenderer str={calcInput} cursorIdx={cursorPosition} />
             </div>
@@ -3163,9 +3163,9 @@ function ScientificCalculator() {
             )}
           </div>
           
-          <div className="flex-[2] w-[20%] flex items-center justify-end select-text h-full pl-1.5 text-right overflow-hidden">
+          <div className="flex-[2] w-[20%] flex items-center justify-center select-text h-full px-1 text-center overflow-hidden bg-[#c9d0cc] rounded-md border border-[#b0b8b4]/30 shadow-sm">
             <span className="text-[18px] opacity-75 text-[#202528] select-none leading-none mr-1 shrink-0">=</span>
-            <div className="text-[#202528] select-all font-mono leading-none flex items-center justify-end overflow-hidden max-w-full">
+            <div className="text-[#202528] select-all font-mono leading-none flex items-center justify-center overflow-hidden max-w-full">
               {showFraction ? (
                 <div className="inline-flex flex-col items-center justify-center font-bold px-0.5 text-[14px] align-middle shrink-0 leading-tight">
                   <span className="border-b border-[#202528] pb-0.5 px-0.5 select-text">{fracNumerator}</span>
