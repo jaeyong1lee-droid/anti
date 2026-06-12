@@ -2307,14 +2307,21 @@ function ScientificCalculator() {
     try {
       if (!expr.trim()) return '';
       
-      if (!isInternal && expr.includes('=')) {
-        const eqParts = expr.split('=');
+      let processedExpr = expr;
+      if (!isInternal && processedExpr.trim().startsWith('=')) {
+        processedExpr = processedExpr.trim().substring(1);
+      }
+      
+      if (!processedExpr.trim()) return '';
+      
+      if (!isInternal && processedExpr.includes('=')) {
+        const eqParts = processedExpr.split('=');
         if (eqParts.length !== 2) return 'Error';
         
         let varName = null;
         const possibleVars = ['X', 'Y', 'A', 'B', 'C', 'D', 'E', 'F', 'M'];
         for (const v of possibleVars) {
-          if (expr.includes(v)) {
+          if (processedExpr.includes(v)) {
             varName = v;
             break;
           }
@@ -2337,7 +2344,7 @@ function ScientificCalculator() {
         return solvedVal.toString();
       }
       
-      let preProcessed = resolveFractions(expr);
+      let preProcessed = resolveFractions(processedExpr);
       if (preProcessed.includes('Error')) return 'Error';
       
       preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
