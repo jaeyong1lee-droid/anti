@@ -8552,6 +8552,14 @@ export default function App() {
                                             )}
                                           </div>
                                         );
+                                      } else if (sched && sched.status === 'pending' && round < nextRoundToReview) {
+                                        return (
+                                          <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-sky-400 bg-sky-950/40 border border-sky-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                              재복습중
+                                            </span>
+                                          </div>
+                                        );
                                       } else if (round >= nextRoundToReview) {
                                         return (
                                           <div className="flex flex-col items-center justify-center">
