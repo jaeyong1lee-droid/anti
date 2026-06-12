@@ -2908,16 +2908,7 @@ function ScientificCalculator() {
         <div className="flex flex-col justify-between flex-grow mt-1.5 select-text">
           <div className="flex justify-between items-start w-full min-h-[2.5rem] select-text">
             <div className="flex-grow select-text overflow-hidden">
-              {showFraction ? (
-                <div className="flex items-center text-[22px] leading-none select-text">
-                  <div className="flex flex-col items-center justify-center font-bold px-1 select-text">
-                    <span className="border-b border-[#202528] pb-1 px-1 select-text">{fracNumerator}</span>
-                    <span className="pt-1 px-1 select-text">{fracDenominator}</span>
-                  </div>
-                </div>
-              ) : (
-                <FormulaRenderer str={calcInput} cursorIdx={cursorPosition} />
-              )}
+              <FormulaRenderer str={calcInput} cursorIdx={cursorPosition} />
             </div>
             
             {statusMessage && (
@@ -2929,8 +2920,15 @@ function ScientificCalculator() {
           
           <div className="flex justify-between items-end w-full h-8.5 select-text">
             <span className="text-[21px] opacity-75 text-[#202528] select-none leading-none mb-0.5">=</span>
-            <div className="text-right text-[27px] font-black tracking-tight leading-none text-[#202528] select-all font-mono">
-              {showDecimal ? (calcResult || '0') : ''}
+            <div className="text-right text-[#202528] select-all font-mono leading-none flex items-end">
+              {showFraction ? (
+                <div className="inline-flex flex-col items-center justify-center font-bold px-1 text-[20px] align-middle">
+                  <span className="border-b border-[#202528] pb-0.5 px-1 select-text">{fracNumerator}</span>
+                  <span className="pt-0.5 px-1 select-text">{fracDenominator}</span>
+                </div>
+              ) : (
+                <span className="text-[27px] font-black tracking-tight select-text leading-none">{showDecimal ? (calcResult || '0') : ''}</span>
+              )}
             </div>
           </div>
         </div>
