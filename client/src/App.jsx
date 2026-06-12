@@ -2160,6 +2160,9 @@ function ScientificCalculator() {
       preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*([XYABCDEFMπe])/g, '$1*$2');
       preProcessed = preProcessed.replace(/\)\s*([\dXYABCDEFMπe\(])/g, ')*$1');
       
+      // Percentage conversion
+      preProcessed = preProcessed.replace(/([XYABCDEFMπe\d\.\)]+)%/g, '($1*0.01)');
+      
       if (!isInternal) {
         preProcessed = parseIntegrationAndDerivatives(preProcessed);
         if (preProcessed === 'Error') return 'Error';
@@ -3100,6 +3103,13 @@ function ScientificCalculator() {
         {/* Right Side: Casio Number Pad (5 columns) */}
         <div className="flex-[0.75] min-w-0 pl-1 flex flex-col justify-end">
           <div className="grid grid-cols-5 gap-x-1.5 gap-y-1.5 select-none">
+            {/* Top Row (Row 0): Aligns keypad top edges, adds pi and % buttons */}
+            {renderNumPadKey('π', '', '', () => appendToInput('π'))}
+            {renderNumPadKey('%', '', '', () => appendToInput('%'))}
+            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
+            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
+            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
+
             {/* Row 6 */}
             {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
             {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
