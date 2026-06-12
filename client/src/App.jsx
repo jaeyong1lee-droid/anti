@@ -11559,7 +11559,7 @@ export default function App() {
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
-                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 scroll-smooth flex flex-col scrollbar-none-mobile"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden p-3 sm:p-6 md:px-5 md:pr-3 scroll-smooth flex flex-col scrollbar-none-mobile custom-vertical-scrollbar"
                 onTouchStart={(e) => {
                   if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0) {
                     formulaTouchStartY.current = e.touches[0].clientY;
@@ -12049,7 +12049,7 @@ export default function App() {
                 </span>
               </div>
               
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5 scrollbar-none-mobile bg-slate-950/20">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:pr-2 space-y-5 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar">
                 {formulaQuizQuestions.length === 0 ? (
                   <div className="text-center py-16 opacity-50">
                     <Sigma size={32} className="mx-auto mb-2 text-slate-500" />
