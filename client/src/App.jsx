@@ -8045,7 +8045,7 @@ export default function App() {
                         key={item.schedule_id || `bonus_${item.topic_id}`}
                         className="glass-panel rounded-2xl p-5 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-purple-hover"
                       >
-                      <div className="space-y-2.5 flex-grow">
+                      <div className="space-y-2.5 flex-grow min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           {item.isBonus ? (
                             <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/30 font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
@@ -8126,7 +8126,7 @@ export default function App() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap">
+                      <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap md:flex-nowrap md:shrink-0">
                         {/* 소스 + Gemini 복습 */}
                         <button
                           onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round, item.isBonus)}
