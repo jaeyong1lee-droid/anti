@@ -7637,13 +7637,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
       {/* Mobile Mock Status Bar on Main Page */}
-      <MobileStatusBar 
-        time={statusBarTime} 
-        batteryLevel={batteryLevel} 
-        isCharging={isCharging} 
-        isDesktop={isDesktop} 
-        isMobileLandscape={isMobileLandscape} 
-      />
+      
       {/* Toast Notification */}
       {notification && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl transition-all duration-300 transform scale-100 ${
@@ -8625,13 +8619,7 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
-          <MobileStatusBar 
-            time={statusBarTime} 
-            batteryLevel={batteryLevel} 
-            isCharging={isCharging} 
-            isDesktop={isDesktop} 
-            isMobileLandscape={isMobileLandscape} 
-          />
+          
 
 
           {/* Main Layout Area */}
@@ -9764,13 +9752,7 @@ export default function App() {
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
           className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
         >
-          <MobileStatusBar 
-            time={statusBarTime} 
-            batteryLevel={batteryLevel} 
-            isCharging={isCharging} 
-            isDesktop={isDesktop} 
-            isMobileLandscape={isMobileLandscape} 
-          />
+          
 
 
           {/* Main Layout Area */}
@@ -10789,13 +10771,7 @@ export default function App() {
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
-          <MobileStatusBar 
-            time={statusBarTime} 
-            batteryLevel={batteryLevel} 
-            isCharging={isCharging} 
-            isDesktop={isDesktop} 
-            isMobileLandscape={isMobileLandscape} 
-          />
+          
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             formulaMobileTab === 'list' ? (
@@ -11806,13 +11782,7 @@ export default function App() {
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
         <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
-          <MobileStatusBar 
-            time={statusBarTime} 
-            batteryLevel={batteryLevel} 
-            isCharging={isCharging} 
-            isDesktop={isDesktop} 
-            isMobileLandscape={isMobileLandscape} 
-          />
+          
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
             /* Mobile Portrait Header for Answersheet Modal */
