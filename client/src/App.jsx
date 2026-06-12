@@ -2651,10 +2651,10 @@ function ScientificCalculator() {
     let topSize = 'text-[9px] h-3.5 mb-1';
     if (keyId === 'shift') {
       topColor = 'text-amber-500';
-      topSize = 'text-[11px] h-4 mb-0.5';
+      topSize = 'text-[9px] h-4 mb-0.5';
     } else if (keyId === 'alpha') {
       topColor = 'text-rose-400';
-      topSize = 'text-[11px] h-4 mb-0.5';
+      topSize = 'text-[9px] h-4 mb-0.5';
     }
     
     let activeCls = '';
@@ -2681,8 +2681,8 @@ function ScientificCalculator() {
     return (
       <div className="flex flex-col items-center w-full relative">
         <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
-          <span className="text-[10px] font-black text-amber-500 truncate max-w-[50%] leading-none">{shiftLabel || ' '}</span>
-          <span className="text-[10px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
+          <span className="text-[8px] font-black text-amber-500 truncate max-w-[50%] leading-none">{shiftLabel || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
@@ -2709,8 +2709,8 @@ function ScientificCalculator() {
     return (
       <div className="flex flex-col items-center w-full relative">
         <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
-          <span className="text-[10px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
-          <span className="text-[10px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
+          <span className="text-[8px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
         </div>
         <button onClick={onClick} className={btnCls}>
           {label}
