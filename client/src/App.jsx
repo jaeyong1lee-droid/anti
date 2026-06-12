@@ -1331,9 +1331,45 @@ function parseFormula(str) {
         });
         
         i = closeIdx + 1;
+      } else if (str.startsWith('^(', i)) {
+        let expStart = i;
+        i += 2; // skip '^('
+        let contentStart = i;
+        let level = 0;
+        let closeIdx = -1;
+        while (i < str.length) {
+          if (str[i] === '(') level++;
+          else if (str[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        
+        if (closeIdx === -1) {
+          nodes.push({ type: 'text', content: '^(', startIdx: expStart, endIdx: contentStart });
+          i = contentStart;
+          continue;
+        }
+        
+        const expStr = str.substring(contentStart, closeIdx);
+        nodes.push({
+          type: 'exponent',
+          expStr: expStr,
+          expStartIdx: contentStart,
+          expEndIdx: closeIdx,
+          startIdx: expStart,
+          endIdx: closeIdx + 1
+        });
+        
+        i = closeIdx + 1;
       } else {
         let textStart = i;
-        while (i < str.length && !str.startsWith('frac(', i)) {
+        while (i < str.length && !str.startsWith('frac(', i) && !str.startsWith('^(', i)) {
           i++;
         }
         nodes.push({
@@ -1391,6 +1427,16 @@ function ScientificCalculator() {
     let newCursorPos = start + val.length;
     if (val === 'frac(,)') {
       newCursorPos = start + 5;
+    } else if (val === '^()') {
+      newCursorPos = start + 2;
+    } else if (val === '10^()') {
+      newCursorPos = start + 4;
+    } else if (val === 'e^()') {
+      newCursorPos = start + 3;
+    } else if (val === '*10^()') {
+      newCursorPos = start + 5;
+    } else if (val === '^(1/)') {
+      newCursorPos = start + 4;
     }
     setCursorPosition(newCursorPos);
     
@@ -1468,6 +1514,46 @@ function ScientificCalculator() {
     return fracs;
   };
 
+  const getExponents = (currentStr) => {
+    const exps = [];
+    let i = 0;
+    while (i < currentStr.length) {
+      if (currentStr.startsWith('^(', i)) {
+        let expStart = i;
+        i += 2;
+        let level = 0;
+        let closeIdx = -1;
+        let contentStart = i;
+        while (i < currentStr.length) {
+          if (currentStr[i] === '(') level++;
+          else if (currentStr[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        if (closeIdx === -1) {
+          i = contentStart;
+          continue;
+        }
+        exps.push({
+          startIdx: expStart,
+          expStartIdx: contentStart,
+          expEndIdx: closeIdx,
+          endIdx: closeIdx + 1
+        });
+        i = closeIdx + 1;
+      } else {
+        i++;
+      }
+    }
+    return exps;
+  };
+
   const adjustCursorOnMove = (currentStr, newPos, direction) => {
     const fracs = getFractions(currentStr);
     for (const f of fracs) {
@@ -1484,6 +1570,17 @@ function ScientificCalculator() {
         if (direction === 'left') return f.denEndIdx;
       }
     }
+    const exps = getExponents(currentStr);
+    for (const e of exps) {
+      if (newPos > e.startIdx && newPos < e.expStartIdx) {
+        if (direction === 'right') return e.expStartIdx;
+        if (direction === 'left') return e.startIdx;
+      }
+      if (newPos > e.expEndIdx && newPos < e.endIdx) {
+        if (direction === 'right') return e.endIdx;
+        if (direction === 'left') return e.expEndIdx;
+      }
+    }
     return newPos;
   };
 
@@ -1494,6 +1591,7 @@ function ScientificCalculator() {
     
     if (cursorPosition > 0) {
       const cur = cursorPosition;
+      
       const fracs = getFractions(calcInput);
       let deletedFraction = false;
       for (const f of fracs) {
@@ -1511,13 +1609,30 @@ function ScientificCalculator() {
           break;
         }
       }
-      
-      if (!deletedFraction) {
-        const before = calcInput.substring(0, cur - 1);
-        const after = calcInput.substring(cur);
-        setCalcInput(before + after);
-        setCursorPosition(cur - 1);
+      if (deletedFraction) return;
+
+      const exps = getExponents(calcInput);
+      let deletedExponent = false;
+      for (const e of exps) {
+        const isSyntax =
+          (cur - 1 >= e.startIdx && cur - 1 < e.expStartIdx) || // "^("
+          (cur - 1 === e.expEndIdx); // ")"
+          
+        if (isSyntax) {
+          const before = calcInput.substring(0, e.startIdx);
+          const after = calcInput.substring(e.endIdx);
+          setCalcInput(before + after);
+          setCursorPosition(e.startIdx);
+          deletedExponent = true;
+          break;
+        }
       }
+      if (deletedExponent) return;
+      
+      const before = calcInput.substring(0, cur - 1);
+      const after = calcInput.substring(cur);
+      setCalcInput(before + after);
+      setCursorPosition(cur - 1);
     }
   };
 
@@ -1551,6 +1666,18 @@ function ScientificCalculator() {
         }
         if (direction === 'up' && cursorPosition >= f.denStartIdx && cursorPosition <= f.denEndIdx) {
           setCursorPosition(f.numEndIdx);
+          return;
+        }
+      }
+      
+      const exps = getExponents(calcInput);
+      for (const e of exps) {
+        if (direction === 'down' && cursorPosition >= e.expStartIdx && cursorPosition <= e.expEndIdx) {
+          setCursorPosition(e.endIdx);
+          return;
+        }
+        if (direction === 'up' && cursorPosition === e.startIdx) {
+          setCursorPosition(e.expStartIdx);
           return;
         }
       }
@@ -1661,8 +1788,10 @@ function ScientificCalculator() {
       args.push(currentArg);
       
       if (args.length === 2) {
-        const resolvedNum = resolveFractions(args[0]);
-        const resolvedDen = resolveFractions(args[1]);
+        let resolvedNum = resolveFractions(args[0]);
+        let resolvedDen = resolveFractions(args[1]);
+        if (!resolvedNum.trim()) resolvedNum = '0';
+        if (!resolvedDen.trim()) resolvedDen = '1';
         const replacement = `((${resolvedNum})/(${resolvedDen}))`;
         processed = processed.substring(0, idx) + replacement + processed.substring(endIdx + 1);
       } else {
@@ -1870,6 +1999,8 @@ function ScientificCalculator() {
       
       let preProcessed = resolveFractions(expr);
       if (preProcessed.includes('Error')) return 'Error';
+      
+      preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
       
       if (!isInternal) {
         preProcessed = parseIntegrationAndDerivatives(preProcessed);
@@ -2157,7 +2288,7 @@ function ScientificCalculator() {
           insertAtCursor('!');
           setShiftActive(false);
         } else {
-          insertAtCursor('^-1');
+          insertAtCursor('^(-1)');
         }
         break;
       case 'log_base':
@@ -2181,23 +2312,23 @@ function ScientificCalculator() {
         break;
       case 'sq':
         if (shiftActive) {
-          insertAtCursor('^3');
+          insertAtCursor('^(3)');
           setShiftActive(false);
         } else {
-          insertAtCursor('^2');
+          insertAtCursor('^(2)');
         }
         break;
       case 'pow':
         if (shiftActive) {
-          insertAtCursor('^(1/');
+          insertAtCursor('^(1/)');
           setShiftActive(false);
         } else {
-          insertAtCursor('^');
+          insertAtCursor('^()');
         }
         break;
       case 'log':
         if (shiftActive) {
-          insertAtCursor('10^(');
+          insertAtCursor('10^()');
           setShiftActive(false);
         } else {
           insertAtCursor('log(');
@@ -2205,7 +2336,7 @@ function ScientificCalculator() {
         break;
       case 'ln':
         if (shiftActive) {
-          insertAtCursor('e^(');
+          insertAtCursor('e^()');
           setShiftActive(false);
         } else {
           insertAtCursor('ln(');
@@ -2285,7 +2416,7 @@ function ScientificCalculator() {
         }
         break;
       case 'eng':
-        insertAtCursor('*10^');
+        insertAtCursor('*10^()');
         break;
       case 'lparen':
         if (shiftActive) {
@@ -2427,6 +2558,14 @@ function ScientificCalculator() {
           startIdx: node.startIdx + offset,
           endIdx: node.endIdx + offset
         };
+      } else if (node.type === 'exponent') {
+        return {
+          ...node,
+          expStartIdx: node.expStartIdx + offset,
+          expEndIdx: node.expEndIdx + offset,
+          startIdx: node.startIdx + offset,
+          endIdx: node.endIdx + offset
+        };
       }
       return node;
     };
@@ -2449,7 +2588,7 @@ function ScientificCalculator() {
             <span key={index} className="inline-flex flex-col items-center mx-1.5 align-middle leading-none">
               <span className="border-b border-[#141a12] pb-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.numStr === '' ? (
-                  <span className="border border-dashed border-[#141a12]/40 w-5.5 h-5.5 rounded-[1px] inline-block"></span>
+                  <span className="border border-dashed border-[#141a12]/40 w-[18px] h-[18px] rounded-[1px] inline-block"></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.numStartIdx, node.numEndIdx)).map(n => shiftIndices(n, node.numStartIdx)))
                 )}
@@ -2457,12 +2596,23 @@ function ScientificCalculator() {
               </span>
               <span className="pt-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.denStr === '' ? (
-                  <span className="border border-dashed border-[#141a12]/40 w-5.5 h-5.5 rounded-[1px] inline-block"></span>
+                  <span className="border border-dashed border-[#141a12]/40 w-[18px] h-[18px] rounded-[1px] inline-block"></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.denStartIdx, node.denEndIdx)).map(n => shiftIndices(n, node.denStartIdx)))
                 )}
                 {renderCursor(node.denEndIdx)}
               </span>
+            </span>
+          );
+        } else if (node.type === 'exponent') {
+          return (
+            <span key={index} className="inline-flex items-center justify-center align-super text-[0.6em] font-bold border border-dashed border-[#141a12]/40 rounded-[1px] p-0.5 min-w-[16px] min-h-[16px] ml-0.5 leading-none">
+              {node.expStr === '' ? (
+                <span className="w-2.5 h-3.5 inline-block"></span>
+              ) : (
+                renderTree(parseFormula(str.substring(node.expStartIdx, node.expEndIdx)).map(n => shiftIndices(n, node.expStartIdx)))
+              )}
+              {renderCursor(node.expEndIdx)}
             </span>
           );
         }
@@ -2568,6 +2718,32 @@ function ScientificCalculator() {
             const val = e.target.value;
             setCalcResult('');
             
+            // Intercept caret '^' typed by physical keyboard
+            if (val.includes('^')) {
+              let caretIdx = -1;
+              for (let idx = 0; idx < val.length; idx++) {
+                if (val[idx] === '^' && val[idx + 1] !== '(') {
+                  caretIdx = idx;
+                  break;
+                }
+              }
+              if (caretIdx !== -1) {
+                const before = val.substring(0, caretIdx);
+                const after = val.substring(caretIdx + 1);
+                const finalVal = before + '^()' + after;
+                setCalcInput(finalVal);
+                const newPos = caretIdx + 2; // inside the parenthesis
+                setCursorPosition(newPos);
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.setSelectionRange(newPos, newPos);
+                  }
+                }, 10);
+                return;
+              }
+            }
+
             // If the user typed or inserted a slash '/', convert it to frac(,)
             if (val.includes('/')) {
               const slashIdx = val.indexOf('/');
@@ -2733,7 +2909,7 @@ function ScientificCalculator() {
                 appendToInput('e');
                 setAlphaActive(false);
               } else {
-                appendToInput('*10^(');
+                appendToInput('*10^()');
               }
             })}
             {renderNumPadKey('Ans', 'DRG▶', '', () => appendToInput('Ans'), 'operator')}
@@ -9200,7 +9376,7 @@ export default function App() {
                       <div className={
                         msg.role === 'user'
                           ? 'px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm'
-                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[90%] bg-transparent border-0 p-0 max-w-full w-full'
+                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
                       }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
@@ -10357,7 +10533,7 @@ export default function App() {
                       <div className={
                         msg.role === 'user' 
                           ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                          : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[95%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
+                          : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
                       }>
                         {msg.role === 'user' ? (
                           <div className="flex flex-col gap-2">
