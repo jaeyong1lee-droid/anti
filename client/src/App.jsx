@@ -3395,12 +3395,12 @@ function ScientificCalculator() {
         {/* Right Side: Casio Number Pad (5 columns) */}
         <div className="flex-[0.75] min-w-0 pl-1 flex flex-col justify-end">
           <div className="grid grid-cols-5 gap-2 select-none">
-            {/* Top Row (Row 0): Aligns keypad top edges, adds pi, %, and e buttons */}
+            {/* Top Row (Row 0): Aligns keypad top edges, adds pi, %, e, =, and X buttons */}
             {renderNumPadKey('π', () => appendToInput('π'))}
             {renderNumPadKey('%', () => appendToInput('%'))}
             {renderNumPadKey('e', () => appendToInput('e'))}
-            <div className="w-full h-[52px]" />
-            <div className="w-full h-[52px]" />
+            {renderNumPadKey('=', () => appendToInput('='))}
+            {renderNumPadKey('X', () => appendToInput('X'))}
 
             {/* Row 6 */}
             {renderNumPadKey('7', () => appendToInput('7'))}
