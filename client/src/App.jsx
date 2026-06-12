@@ -1261,6 +1261,95 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 });
 
 // ── 공학용 계산기 컴포넌트 ──────────────────
+function parseFormula(str) {
+  let i = 0;
+  
+  function parseExpr() {
+    let nodes = [];
+    while (i < str.length) {
+      if (str.startsWith('frac(', i)) {
+        let fracStart = i;
+        i += 5; // skip 'frac('
+        
+        let level = 0;
+        let commaIdx = -1;
+        let numStart = i;
+        
+        while (i < str.length) {
+          if (str[i] === '(') level++;
+          else if (str[i] === ')') level--;
+          else if (str[i] === ',' && level === 0) {
+            commaIdx = i;
+            break;
+          }
+          i++;
+        }
+        
+        if (commaIdx === -1) {
+          nodes.push({ type: 'text', content: 'frac(', startIdx: fracStart, endIdx: numStart });
+          i = numStart;
+          continue;
+        }
+        
+        i++; // skip ','
+        let denStart = i;
+        
+        level = 0;
+        let closeIdx = -1;
+        while (i < str.length) {
+          if (str[i] === '(') level++;
+          else if (str[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        
+        if (closeIdx === -1) {
+          nodes.push({ type: 'text', content: str.substring(fracStart, denStart), startIdx: fracStart, endIdx: denStart });
+          i = denStart;
+          continue;
+        }
+        
+        const numStr = str.substring(numStart, commaIdx);
+        const denStr = str.substring(denStart, closeIdx);
+        
+        nodes.push({
+          type: 'fraction',
+          numStr: numStr,
+          denStr: denStr,
+          numStartIdx: numStart,
+          numEndIdx: commaIdx,
+          denStartIdx: denStart,
+          denEndIdx: closeIdx,
+          startIdx: fracStart,
+          endIdx: closeIdx + 1
+        });
+        
+        i = closeIdx + 1;
+      } else {
+        let textStart = i;
+        while (i < str.length && !str.startsWith('frac(', i)) {
+          i++;
+        }
+        nodes.push({
+          type: 'text',
+          content: str.substring(textStart, i),
+          startIdx: textStart,
+          endIdx: i
+        });
+      }
+    }
+    return nodes;
+  }
+  
+  return parseExpr();
+}
+
 function ScientificCalculator() {
   const [calcInput, setCalcInput] = useState('');
   const [calcResult, setCalcResult] = useState('');
@@ -1279,6 +1368,7 @@ function ScientificCalculator() {
   const [isRecalling, setIsRecalling] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [displaySdMode, setDisplaySdMode] = useState('both'); // both, decimal, fraction
+  const [cursorPosition, setCursorPosition] = useState(0);
 
   const inputRef = useRef(null);
 
@@ -1290,19 +1380,20 @@ function ScientificCalculator() {
   const insertAtCursor = (val) => {
     setCalcResult('');
     setStatusMessage('');
-    if (!inputRef.current) {
-      setCalcInput(prev => prev + val);
-      return;
-    }
-    const start = inputRef.current.selectionStart;
-    const end = inputRef.current.selectionEnd;
+    
+    const start = cursorPosition;
     const text = calcInput;
     const before = text.substring(0, start);
-    const after = text.substring(end, text.length);
+    const after = text.substring(start);
     const newText = before + val + after;
     setCalcInput(newText);
     
-    const newCursorPos = start + val.length;
+    let newCursorPos = start + val.length;
+    if (val === 'frac(,)') {
+      newCursorPos = start + 5;
+    }
+    setCursorPosition(newCursorPos);
+    
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -1320,54 +1411,177 @@ function ScientificCalculator() {
     setHypActive(false);
     setIsStoring(false);
     setIsRecalling(false);
+    setCursorPosition(0);
+  };
+
+  const getFractions = (currentStr) => {
+    const fracs = [];
+    let i = 0;
+    while (i < currentStr.length) {
+      if (currentStr.startsWith('frac(', i)) {
+        let fracStart = i;
+        i += 5;
+        let level = 0;
+        let commaIdx = -1;
+        let numStart = i;
+        while (i < currentStr.length) {
+          if (currentStr[i] === '(') level++;
+          else if (currentStr[i] === ')') level--;
+          else if (currentStr[i] === ',' && level === 0) {
+            commaIdx = i;
+            break;
+          }
+          i++;
+        }
+        if (commaIdx === -1) continue;
+        i++;
+        let denStart = i;
+        level = 0;
+        let closeIdx = -1;
+        while (i < currentStr.length) {
+          if (currentStr[i] === '(') level++;
+          else if (currentStr[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        if (closeIdx === -1) continue;
+        
+        fracs.push({
+          startIdx: fracStart,
+          numStartIdx: numStart,
+          numEndIdx: commaIdx,
+          denStartIdx: denStart,
+          denEndIdx: closeIdx,
+          endIdx: closeIdx + 1
+        });
+        i = closeIdx + 1;
+      } else {
+        i++;
+      }
+    }
+    return fracs;
+  };
+
+  const adjustCursorOnMove = (currentStr, newPos, direction) => {
+    const fracs = getFractions(currentStr);
+    for (const f of fracs) {
+      if (newPos > f.startIdx && newPos < f.numStartIdx) {
+        if (direction === 'right') return f.numStartIdx;
+        if (direction === 'left') return f.startIdx;
+      }
+      if (newPos > f.numEndIdx && newPos < f.denStartIdx) {
+        if (direction === 'right') return f.denStartIdx;
+        if (direction === 'left') return f.numEndIdx;
+      }
+      if (newPos > f.denEndIdx && newPos < f.endIdx) {
+        if (direction === 'right') return f.endIdx;
+        if (direction === 'left') return f.denEndIdx;
+      }
+    }
+    return newPos;
   };
 
   const handleBackspace = () => {
     if (!isOn) return;
     setCalcResult('');
     setStatusMessage('');
-    if (!inputRef.current) {
-      setCalcInput(prev => prev.slice(0, -1));
-      return;
-    }
-    const start = inputRef.current.selectionStart;
-    const end = inputRef.current.selectionEnd;
-    const text = calcInput;
     
-    if (start !== end) {
-      const before = text.substring(0, start);
-      const after = text.substring(end, text.length);
-      setCalcInput(before + after);
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.setSelectionRange(start, start);
+    if (cursorPosition > 0) {
+      const cur = cursorPosition;
+      const fracs = getFractions(calcInput);
+      let deletedFraction = false;
+      for (const f of fracs) {
+        const isSyntax = 
+          (cur - 1 >= f.startIdx && cur - 1 < f.numStartIdx) || // "frac("
+          (cur - 1 === f.numEndIdx) || // ","
+          (cur - 1 === f.denEndIdx); // ")"
+          
+        if (isSyntax) {
+          const before = calcInput.substring(0, f.startIdx);
+          const after = calcInput.substring(f.endIdx);
+          setCalcInput(before + after);
+          setCursorPosition(f.startIdx);
+          deletedFraction = true;
+          break;
         }
-      }, 10);
-    } else if (start > 0) {
-      const before = text.substring(0, start - 1);
-      const after = text.substring(start, text.length);
-      setCalcInput(before + after);
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.setSelectionRange(start - 1, start - 1);
-        }
-      }, 10);
+      }
+      
+      if (!deletedFraction) {
+        const before = calcInput.substring(0, cur - 1);
+        const after = calcInput.substring(cur);
+        setCalcInput(before + after);
+        setCursorPosition(cur - 1);
+      }
     }
   };
 
   const moveCursor = (direction) => {
     if (!isOn || !inputRef.current) return;
-    const start = inputRef.current.selectionStart;
-    let newPos = start;
+    let newPos = cursorPosition;
     if (direction === 'left') {
-      newPos = Math.max(0, start - 1);
+      newPos = Math.max(0, cursorPosition - 1);
     } else if (direction === 'right') {
-      newPos = Math.min(calcInput.length, start + 1);
+      newPos = Math.min(calcInput.length, cursorPosition + 1);
     }
-    inputRef.current.focus();
-    inputRef.current.setSelectionRange(newPos, newPos);
+    newPos = adjustCursorOnMove(calcInput, newPos, direction);
+    setCursorPosition(newPos);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 10);
+  };
+
+  const handleDpad = (direction) => {
+    if (!isOn) return;
+    if (direction === 'up' || direction === 'down') {
+      const fracs = getFractions(calcInput);
+      for (const f of fracs) {
+        if (direction === 'down' && cursorPosition >= f.numStartIdx && cursorPosition <= f.numEndIdx) {
+          setCursorPosition(f.denStartIdx);
+          return;
+        }
+        if (direction === 'up' && cursorPosition >= f.denStartIdx && cursorPosition <= f.denEndIdx) {
+          setCursorPosition(f.numEndIdx);
+          return;
+        }
+      }
+      
+      if (direction === 'up') {
+        if (history.length > 0) {
+          const nextIndex = Math.min(historyIndex + 1, history.length - 1);
+          setHistoryIndex(nextIndex);
+          const histVal = history[history.length - 1 - nextIndex];
+          setCalcInput(histVal);
+          setCursorPosition(histVal.length);
+          setCalcResult('');
+        }
+      } else if (direction === 'down') {
+        if (historyIndex > 0) {
+          const nextIndex = historyIndex - 1;
+          setHistoryIndex(nextIndex);
+          const histVal = history[history.length - 1 - nextIndex];
+          setCalcInput(histVal);
+          setCursorPosition(histVal.length);
+          setCalcResult('');
+        } else if (historyIndex === 0) {
+          setHistoryIndex(-1);
+          setCalcInput('');
+          setCursorPosition(0);
+          setCalcResult('');
+        }
+      }
+    } else if (direction === 'left' || direction === 'right') {
+      moveCursor(direction);
+    }
   };
 
   function decimalToFraction(val, maxDenominator = 100000) {
@@ -1411,6 +1625,52 @@ function ScientificCalculator() {
     }
     return null;
   }
+
+  const resolveFractions = (expr) => {
+    let processed = expr;
+    while (processed.includes('frac(')) {
+      const idx = processed.indexOf('frac(');
+      let parenCount = 1;
+      let endIdx = -1;
+      for (let i = idx + 5; i < processed.length; i++) {
+        if (processed[i] === '(') parenCount++;
+        else if (processed[i] === ')') parenCount--;
+        if (parenCount === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+      if (endIdx === -1) break;
+      
+      const content = processed.substring(idx + 5, endIdx);
+      const args = [];
+      let currentArg = '';
+      let level = 0;
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        if (char === '(') level++;
+        else if (char === ')') level--;
+        
+        if (char === ',' && level === 0) {
+          args.push(currentArg);
+          currentArg = '';
+        } else {
+          currentArg += char;
+        }
+      }
+      args.push(currentArg);
+      
+      if (args.length === 2) {
+        const resolvedNum = resolveFractions(args[0]);
+        const resolvedDen = resolveFractions(args[1]);
+        const replacement = `((${resolvedNum})/(${resolvedDen}))`;
+        processed = processed.substring(0, idx) + replacement + processed.substring(endIdx + 1);
+      } else {
+        processed = processed.substring(0, idx) + 'Error' + processed.substring(endIdx + 1);
+      }
+    }
+    return processed;
+  };
 
   const parseIntegrationAndDerivatives = (expr) => {
     let processed = expr;
@@ -1608,7 +1868,8 @@ function ScientificCalculator() {
     try {
       if (!expr.trim()) return '';
       
-      let preProcessed = expr;
+      let preProcessed = resolveFractions(expr);
+      if (preProcessed.includes('Error')) return 'Error';
       
       if (!isInternal) {
         preProcessed = parseIntegrationAndDerivatives(preProcessed);
@@ -1745,32 +2006,30 @@ function ScientificCalculator() {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleEqual();
+    } else if (e.key === '/') {
+      e.preventDefault();
+      handleFracKey();
     }
   };
 
-  const handleDpad = (direction) => {
+  const handleFracKey = () => {
     if (!isOn) return;
-    if (direction === 'up') {
-      if (history.length > 0) {
-        const nextIndex = Math.min(historyIndex + 1, history.length - 1);
-        setHistoryIndex(nextIndex);
-        setCalcInput(history[history.length - 1 - nextIndex]);
-        setCalcResult('');
+    setCalcResult('');
+    setStatusMessage('');
+    const start = cursorPosition;
+    const val = 'frac(,)';
+    const before = calcInput.substring(0, start);
+    const after = calcInput.substring(start);
+    setCalcInput(before + val + after);
+    const newPos = start + 5;
+    setCursorPosition(newPos);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(newPos, newPos);
       }
-    } else if (direction === 'down') {
-      if (historyIndex > 0) {
-        const nextIndex = historyIndex - 1;
-        setHistoryIndex(nextIndex);
-        setCalcInput(history[history.length - 1 - nextIndex]);
-        setCalcResult('');
-      } else if (historyIndex === 0) {
-        setHistoryIndex(-1);
-        setCalcInput('');
-        setCalcResult('');
-      }
-    } else if (direction === 'left' || direction === 'right') {
-      moveCursor(direction);
-    }
+    }, 10);
   };
 
   const handleSdToggle = () => {
@@ -1894,7 +2153,7 @@ function ScientificCalculator() {
         }
         break;
       case 'frac':
-        insertAtCursor('/');
+        handleFracKey();
         break;
       case 'sqrt':
         if (shiftActive) {
@@ -2064,12 +2323,12 @@ function ScientificCalculator() {
 
     return (
       <div className="flex flex-col items-center w-full relative">
-        <span className={`text-[6px] font-black ${topColor} h-2.5 select-none pointer-events-none mb-0.5 truncate max-w-full uppercase`}>
+        <span className={`text-[9px] font-black ${topColor} h-3.5 select-none pointer-events-none mb-1 truncate max-w-full uppercase`}>
           {topLabel || ' '}
         </span>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className={`w-full py-1 rounded text-[8px] font-black transition-all shadow-sm select-none h-5 flex items-center justify-center border ${activeCls}`}
+          className={`w-full py-1.5 rounded text-[12px] font-black transition-all shadow-sm select-none h-7.5 flex items-center justify-center border ${activeCls}`}
         >
           {label}
         </button>
@@ -2080,13 +2339,13 @@ function ScientificCalculator() {
   const renderFuncKey = (keyId, label, shiftLabel, alphaLabel, keyName) => {
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between w-full px-1 mb-0.5 select-none h-2.5">
-          <span className="text-[5.5px] font-black text-amber-500 truncate max-w-[45%]">{shiftLabel || ' '}</span>
-          <span className="text-[5.5px] font-black text-rose-400 truncate max-w-[45%]">{alphaLabel || ' '}</span>
+        <div className="flex justify-between w-full px-1.5 mb-1 select-none h-3.5">
+          <span className="text-[8px] font-black text-amber-500 truncate max-w-[45%]">{shiftLabel || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate max-w-[45%]">{alphaLabel || ' '}</span>
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[9px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-6 flex items-center justify-center relative"
+          className="w-full py-1.5 rounded bg-[#2c3230] border border-[#404845] text-[13px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative"
         >
           {label}
         </button>
@@ -2095,7 +2354,7 @@ function ScientificCalculator() {
   };
 
   const renderNumPadKey = (label, topLabelGold, topLabelPink, onClick, colorType) => {
-    let btnCls = "w-full py-1 text-[10px] font-black rounded-lg border transition-all cursor-pointer h-7.5 flex items-center justify-center select-none ";
+    let btnCls = "w-full py-1.5 text-[15px] font-black rounded-lg border transition-all cursor-pointer h-11 flex items-center justify-center select-none ";
     if (colorType === 'green') {
       btnCls += "bg-[#a3c965] border-[#8aab51] text-slate-950 hover:bg-[#b0da6d] active:scale-95 shadow-sm shadow-emerald-950/20";
     } else if (colorType === 'equal') {
@@ -2103,14 +2362,14 @@ function ScientificCalculator() {
     } else if (colorType === 'operator') {
       btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else {
-      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[11px]";
+      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[16px]";
     }
 
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between w-full px-1 mb-0.5 select-none h-2.5">
-          <span className="text-[5.5px] font-black text-amber-500 truncate">{topLabelGold || ' '}</span>
-          <span className="text-[5.5px] font-black text-rose-400 truncate">{topLabelPink || ' '}</span>
+        <div className="flex justify-between w-full px-1.5 mb-1 select-none h-3.5">
+          <span className="text-[8px] font-black text-amber-500 truncate">{topLabelGold || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate">{topLabelPink || ' '}</span>
         </div>
         <button onClick={onClick} className={btnCls}>
           {label}
@@ -2119,10 +2378,88 @@ function ScientificCalculator() {
     );
   };
 
+  const FormulaRenderer = ({ str, cursorIdx }) => {
+    const parsed = parseFormula(str);
+    
+    const renderCursor = (idx) => {
+      if (idx === cursorIdx) {
+        return <span className="animate-pulse border-l-2 border-[#141a12] h-4.5 ml-[-1px] inline-block" style={{ verticalAlign: 'middle' }}></span>;
+      }
+      return null;
+    };
+
+    const shiftIndices = (node, offset) => {
+      if (node.type === 'text') {
+        return {
+          ...node,
+          startIdx: node.startIdx + offset,
+          endIdx: node.endIdx + offset
+        };
+      } else if (node.type === 'fraction') {
+        return {
+          ...node,
+          numStartIdx: node.numStartIdx + offset,
+          numEndIdx: node.numEndIdx + offset,
+          denStartIdx: node.denStartIdx + offset,
+          denEndIdx: node.denEndIdx + offset,
+          startIdx: node.startIdx + offset,
+          endIdx: node.endIdx + offset
+        };
+      }
+      return node;
+    };
+
+    const renderTree = (nodes) => {
+      return nodes.map((node, index) => {
+        if (node.type === 'text') {
+          const chars = [];
+          for (let idx = node.startIdx; idx <= node.endIdx; idx++) {
+            chars.push(
+              <React.Fragment key={idx}>
+                {renderCursor(idx)}
+                {idx < node.endIdx ? node.content[idx - node.startIdx] : null}
+              </React.Fragment>
+            );
+          }
+          return <span key={index} className="inline-block">{chars}</span>;
+        } else if (node.type === 'fraction') {
+          return (
+            <span key={index} className="inline-flex flex-col items-center mx-1 align-middle leading-none">
+              <span className="border-b border-[#141a12] pb-0.5 px-1 w-full text-center flex justify-center items-center min-w-[14px] min-h-[14px] leading-none">
+                {node.numStr === '' && cursorIdx !== node.numStartIdx ? (
+                  <span className="border border-dashed border-[#141a12]/40 w-3 h-3 rounded-[1px] inline-block"></span>
+                ) : (
+                  renderTree(parseFormula(str.substring(node.numStartIdx, node.numEndIdx)).map(n => shiftIndices(n, node.numStartIdx)))
+                )}
+                {renderCursor(node.numEndIdx)}
+              </span>
+              <span className="pt-0.5 px-1 w-full text-center flex justify-center items-center min-w-[14px] min-h-[14px] leading-none">
+                {node.denStr === '' && cursorIdx !== node.denStartIdx ? (
+                  <span className="border border-dashed border-[#141a12]/40 w-3 h-3 rounded-[1px] inline-block"></span>
+                ) : (
+                  renderTree(parseFormula(str.substring(node.denStartIdx, node.denEndIdx)).map(n => shiftIndices(n, node.denStartIdx)))
+                )}
+                {renderCursor(node.denEndIdx)}
+              </span>
+            </span>
+          );
+        }
+        return null;
+      });
+    };
+    
+    return (
+      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[17px] font-extrabold leading-none text-[#141a12] font-mono">
+        {renderTree(parsed)}
+        {renderCursor(str.length)}
+      </span>
+    );
+  };
+
   const renderLcdDisplay = () => {
     if (!isOn) {
       return (
-        <div className="bg-[#1a1c19] border-2 border-[#30332f] rounded-md p-2 font-mono shadow-inner text-transparent mb-1.5 h-16 select-none" />
+        <div className="bg-[#1a1c19] border-2 border-[#30332f] rounded-md p-2 font-mono shadow-inner text-transparent mb-2 h-24 select-none" />
       );
     }
 
@@ -2155,8 +2492,11 @@ function ScientificCalculator() {
     }
     
     return (
-      <div className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-2 font-mono shadow-inner text-[#141a12] mb-1.5 relative overflow-hidden h-16 flex flex-col justify-between select-text">
-        <div className="flex gap-2 text-[6.5px] font-black select-none h-2 leading-none text-[#2f382a] tracking-wider">
+      <div 
+        onClick={() => inputRef.current && inputRef.current.focus()}
+        className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-3 font-mono shadow-inner text-[#141a12] mb-2 relative overflow-hidden h-24 flex flex-col justify-between select-text cursor-text"
+      >
+        <div className="flex gap-3 text-[10px] font-black select-none h-3.5 leading-none text-[#2f382a] tracking-wider">
           <span className={shiftActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
           <span className={alphaActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>A</span>
           <span className={variables.M !== 0 ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>M</span>
@@ -2167,67 +2507,75 @@ function ScientificCalculator() {
           <span className="ml-auto opacity-100">Math</span>
         </div>
         
-        <div className="flex flex-col justify-between flex-grow mt-1 select-text">
+        <div className="flex flex-col justify-between flex-grow mt-1.5 select-text">
           <div className="flex justify-between items-start w-full min-h-[1.5rem] select-text">
-            <div className="flex-grow select-text">
+            <div className="flex-grow select-text overflow-hidden">
               {showFraction ? (
-                <div className="flex items-center text-[10px] leading-none select-text">
+                <div className="flex items-center text-[15px] leading-none select-text">
                   <div className="flex flex-col items-center justify-center font-bold px-1 select-text">
                     <span className="border-b border-[#141a12] pb-0.5 px-0.5 select-text">{fracNumerator}</span>
                     <span className="pt-0.5 px-0.5 select-text">{fracDenominator}</span>
                   </div>
                 </div>
               ) : (
-                <input
-                  ref={inputRef}
-                  id="calc-input-field"
-                  type="text"
-                  value={calcInput}
-                  onChange={(e) => {
-                    setHistoryIndex(-1);
-                    setCalcInput(e.target.value);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="공식/수치 입력..."
-                  className="w-full text-left bg-transparent text-[11px] font-extrabold border-0 outline-none p-0 placeholder-[#2f382a]/40 text-[#141a12] font-mono select-text"
-                />
+                <FormulaRenderer str={calcInput} cursorIdx={cursorPosition} />
               )}
             </div>
             
             {statusMessage && (
-              <span className="text-[7px] text-[#2f382a] bg-[#2f382a]/10 px-1 py-0.5 rounded select-none">
+              <span className="text-[10px] text-[#2f382a] bg-[#2f382a]/10 px-1 py-0.5 rounded select-none shrink-0 ml-1">
                 {statusMessage}
               </span>
             )}
           </div>
           
-          <div className="flex justify-between items-end w-full h-5 select-text">
-            <span className="text-[9px] opacity-75 text-[#2f382a] select-none">=</span>
-            <div className="text-right text-xs font-black tracking-tight leading-none text-[#141a12] select-all font-mono">
+          <div className="flex justify-between items-end w-full h-7.5 select-text">
+            <span className="text-[14px] opacity-75 text-[#2f382a] select-none">=</span>
+            <div className="text-right text-[18px] font-black tracking-tight leading-none text-[#141a12] select-all font-mono">
               {showDecimal ? (calcResult || '0') : ''}
             </div>
           </div>
         </div>
+
+        <input
+          ref={inputRef}
+          id="calc-input-field"
+          type="text"
+          value={calcInput}
+          onChange={(e) => {
+            setCalcInput(e.target.value);
+            setCursorPosition(e.target.selectionStart);
+            setCalcResult('');
+          }}
+          onKeyDown={handleKeyDown}
+          onKeyUp={(e) => {
+            setCursorPosition(e.target.selectionStart);
+          }}
+          onClick={(e) => {
+            setCursorPosition(e.target.selectionStart);
+          }}
+          className="absolute opacity-0 pointer-events-none w-0 h-0"
+        />
       </div>
     );
   };
 
   return (
-    <div className="w-full bg-[#181d1b] border-b border-slate-800 p-3 flex flex-col gap-1 flex-shrink-0 shadow-2xl select-none relative font-sans">
+    <div className="w-full bg-[#181d1b] border-b border-slate-800 p-4 flex flex-col gap-1.5 flex-shrink-0 shadow-2xl select-none relative font-sans">
       
       {/* Casio Logo & Solar Panel Header */}
-      <div className="flex justify-between items-center px-1 mb-1.5 select-none">
+      <div className="flex justify-between items-center px-1 mb-2 select-none">
         <div className="flex flex-col">
-          <span className="text-[9px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
-          <span className="text-[5.5px] font-bold text-slate-500 mt-0.5 tracking-tight uppercase">fx-570ES PLUS <span className="text-[4.5px] text-slate-600">2nd edition</span></span>
+          <span className="text-[14px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
+          <span className="text-[8px] font-bold text-slate-500 mt-1 tracking-tight uppercase">fx-570ES PLUS <span className="text-[6px] text-slate-600">2nd edition</span></span>
         </div>
         
         {/* Solar Panel */}
-        <div className="w-14 h-3.5 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40"></div>
+        <div className="w-20 h-5 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
+          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1.5 h-full bg-[#523527]/40"></div>
         </div>
       </div>
 
@@ -2235,19 +2583,19 @@ function ScientificCalculator() {
       {renderLcdDisplay()}
 
       {/* Casio Scientific Function Keys (6 columns with center D-pad) */}
-      <div className="grid grid-cols-6 gap-x-1 gap-y-0.5 select-none">
+      <div className="grid grid-cols-6 gap-x-1.5 gap-y-1 select-none">
         {/* Row 1 */}
         {renderSilverKey('SHIFT', 'SHIFT', 'shift')}
         {renderSilverKey('ALPHA', 'ALPHA', 'alpha')}
         
         {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
-        <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-1">
-          <div className="relative w-12 h-12 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
-            <button onClick={() => handleDpad('up')} className="absolute top-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▲</button>
-            <button onClick={() => handleDpad('down')} className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▼</button>
-            <button onClick={() => handleDpad('left')} className="absolute left-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">◀</button>
-            <button onClick={() => handleDpad('right')} className="absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[8px] font-bold cursor-pointer">▶</button>
-            <span className="text-[5px] font-black text-slate-500 tracking-wider">REPLAY</span>
+        <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-1.5">
+          <div className="relative w-18 h-18 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+            <button onClick={() => handleDpad('up')} className="absolute top-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▲</button>
+            <button onClick={() => handleDpad('down')} className="absolute bottom-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▼</button>
+            <button onClick={() => handleDpad('left')} className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">◀</button>
+            <button onClick={() => handleDpad('right')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▶</button>
+            <span className="text-[8px] font-black text-slate-500 tracking-wider">REPLAY</span>
           </div>
         </div>
         
@@ -2287,7 +2635,7 @@ function ScientificCalculator() {
       </div>
 
       {/* Casio Number Pad (5 columns) */}
-      <div className="grid grid-cols-5 gap-x-1 gap-y-0.5 mt-1 select-none">
+      <div className="grid grid-cols-5 gap-x-1.5 gap-y-1 mt-1.5 select-none">
         {/* Row 6 */}
         {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
         {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
@@ -2330,6 +2678,7 @@ function ScientificCalculator() {
     </div>
   );
 }
+
 
 const formatReviewDate = (completedAt, plannedDate) => {
   if (completedAt) {
