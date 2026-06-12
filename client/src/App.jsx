@@ -2648,12 +2648,12 @@ function ScientificCalculator() {
         
         {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
         <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-1.5">
-          <div className="relative w-18 h-18 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
-            <button onClick={() => handleDpad('up')} className="absolute top-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▲</button>
-            <button onClick={() => handleDpad('down')} className="absolute bottom-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▼</button>
-            <button onClick={() => handleDpad('left')} className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">◀</button>
-            <button onClick={() => handleDpad('right')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[12px] font-bold cursor-pointer">▶</button>
-            <span className="text-[8px] font-black text-slate-500 tracking-wider">REPLAY</span>
+          <div className="relative w-24 h-24 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+            <button onClick={() => handleDpad('up')} className="absolute top-1.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▲</button>
+            <button onClick={() => handleDpad('down')} className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▼</button>
+            <button onClick={() => handleDpad('left')} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">◀</button>
+            <button onClick={() => handleDpad('right')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▶</button>
+            <span className="text-[9px] font-black text-slate-500 tracking-wider">REPLAY</span>
           </div>
         </div>
         
@@ -9145,7 +9145,7 @@ export default function App() {
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
-              <div className="landscape-hide w-full flex-shrink-0">
+              <div className={`landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800 ${isDesktop ? 'h-1/2' : ''}`}>
                 {isDesktop && <ScientificCalculator />}
               </div>
 
@@ -10302,7 +10302,7 @@ export default function App() {
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
-              <div className="landscape-hide w-full flex-shrink-0">
+              <div className={`landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800 ${isDesktop ? 'h-1/2' : ''}`}>
                 {isDesktop && <ScientificCalculator />}
               </div>
 
