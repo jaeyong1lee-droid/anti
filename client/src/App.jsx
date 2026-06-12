@@ -1993,9 +1993,106 @@ function ScientificCalculator() {
     return processed;
   };
 
+  const solveEquation = (left, right, varName, angleMode) => {
+    const evalWithVar = (val) => {
+      const originalVal = variables[varName];
+      variables[varName] = val;
+      let res = NaN;
+      try {
+        const leftVal = parseFloat(evaluateExpr(left, angleMode, true));
+        const rightVal = parseFloat(evaluateExpr(right, angleMode, true));
+        res = leftVal - rightVal;
+      } catch (e) {
+        // ignore
+      }
+      variables[varName] = originalVal;
+      return res;
+    };
+
+    let x0 = 0.0;
+    let x1 = 1.0;
+    let y0 = evalWithVar(x0);
+    let y1 = evalWithVar(x1);
+
+    if (isNaN(y0) || !isFinite(y0)) {
+      x0 = 0.1;
+      y0 = evalWithVar(x0);
+    }
+    if (isNaN(y1) || !isFinite(y1)) {
+      x1 = 1.1;
+      y1 = evalWithVar(x1);
+    }
+
+    if (isNaN(y0) || isNaN(y1)) {
+      const searchPoints = [-100, -10, -1, 0, 1, 10, 100];
+      for (let p of searchPoints) {
+        const y = evalWithVar(p);
+        if (!isNaN(y) && isFinite(y)) {
+          if (isNaN(y0)) {
+            x0 = p;
+            y0 = y;
+          } else {
+            x1 = p;
+            y1 = y;
+            break;
+          }
+        }
+      }
+    }
+
+    if (isNaN(y0) || isNaN(y1)) return 'Error';
+
+    const tol = 1e-7;
+    const maxIter = 100;
+    
+    for (let iter = 0; iter < maxIter; iter++) {
+      if (Math.abs(y1) < tol) {
+        return parseFloat(x1.toFixed(9));
+      }
+      if (Math.abs(y1 - y0) < 1e-12) {
+        break;
+      }
+      const x2 = x1 - y1 * (x1 - x0) / (y1 - y0);
+      if (isNaN(x2) || !isFinite(x2)) {
+        break;
+      }
+      x0 = x1;
+      y0 = y1;
+      x1 = x2;
+      y1 = evalWithVar(x1);
+    }
+
+    if (Math.abs(y1) < 1e-4) {
+      return parseFloat(x1.toFixed(9));
+    }
+
+    return 'Error';
+  };
+
   const evaluateExpr = (expr, angleMode, isInternal = false) => {
     try {
       if (!expr.trim()) return '';
+      
+      if (!isInternal && expr.includes('=')) {
+        const eqParts = expr.split('=');
+        if (eqParts.length !== 2) return 'Error';
+        
+        let varName = null;
+        const possibleVars = ['X', 'Y', 'A', 'B', 'C', 'D', 'E', 'F', 'M'];
+        for (const v of possibleVars) {
+          if (expr.includes(v)) {
+            varName = v;
+            break;
+          }
+        }
+        if (!varName) return 'Error';
+        
+        const solvedVal = solveEquation(eqParts[0], eqParts[1], varName, angleMode);
+        if (solvedVal === 'Error') return 'Error';
+        
+        setVariables(prev => ({ ...prev, [varName]: solvedVal }));
+        return solvedVal.toString();
+      }
       
       let preProcessed = resolveFractions(expr);
       if (preProcessed.includes('Error')) return 'Error';
@@ -2481,7 +2578,7 @@ function ScientificCalculator() {
         </span>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className={`w-full py-1 rounded text-[10px] font-black transition-all shadow-sm select-none h-6 flex items-center justify-center border ${activeCls}`}
+          className={`w-full py-1 rounded text-[11px] font-black transition-all shadow-sm select-none h-8 flex items-center justify-center border ${activeCls}`}
         >
           {label}
         </button>
@@ -2498,7 +2595,7 @@ function ScientificCalculator() {
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[10px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-7 flex items-center justify-center relative"
+          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[11px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative"
         >
           {label}
         </button>
@@ -2507,7 +2604,7 @@ function ScientificCalculator() {
   };
 
   const renderNumPadKey = (label, topLabelGold, topLabelPink, onClick, colorType) => {
-    let btnCls = "w-full py-1 text-[12px] font-black rounded-md border transition-all cursor-pointer h-8.5 flex items-center justify-center select-none ";
+    let btnCls = "w-full py-1 text-[13px] font-black rounded-md border transition-all cursor-pointer h-10.5 flex items-center justify-center select-none ";
     if (colorType === 'green') {
       btnCls += "bg-[#a3c965] border-[#8aab51] text-slate-950 hover:bg-[#b0da6d] active:scale-95 shadow-sm shadow-emerald-950/20";
     } else if (colorType === 'equal') {
@@ -2515,7 +2612,7 @@ function ScientificCalculator() {
     } else if (colorType === 'operator') {
       btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else {
-      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[13px]";
+      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[14px]";
     }
 
     return (
@@ -2822,19 +2919,19 @@ function ScientificCalculator() {
         
         {/* Left Side: Casio Scientific Function Keys (6 columns with center D-pad) */}
         <div className="flex-[1.25] min-w-0 pr-1 border-r border-[#404845]/30 flex flex-col justify-end">
-          <div className="grid grid-cols-6 gap-x-1 gap-y-1 select-none">
+          <div className="grid grid-cols-6 gap-x-1.5 gap-y-1.5 select-none">
             {/* Row 1 */}
             {renderSilverKey('SHIFT', 'SHIFT', 'shift')}
             {renderSilverKey('ALPHA', 'ALPHA', 'alpha')}
             
             {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
             <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-0.5">
-              <div className="relative w-18 h-18 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
-                <button onClick={() => handleDpad('up')} className="absolute top-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▲</button>
-                <button onClick={() => handleDpad('down')} className="absolute bottom-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▼</button>
-                <button onClick={() => handleDpad('left')} className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">◀</button>
-                <button onClick={() => handleDpad('right')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▶</button>
-                <span className="text-[8px] font-black text-slate-500 tracking-wider">REPLAY</span>
+              <div className="relative w-24 h-24 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+                <button onClick={() => handleDpad('up')} className="absolute top-2 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[18px] font-black cursor-pointer leading-none">▲</button>
+                <button onClick={() => handleDpad('down')} className="absolute bottom-2 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[18px] font-black cursor-pointer leading-none">▼</button>
+                <button onClick={() => handleDpad('left')} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[18px] font-black cursor-pointer leading-none">◀</button>
+                <button onClick={() => handleDpad('right')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[18px] font-black cursor-pointer leading-none">▶</button>
+                <span className="text-[9px] font-black text-slate-500 tracking-wider">REPLAY</span>
               </div>
             </div>
             
@@ -2876,7 +2973,7 @@ function ScientificCalculator() {
 
         {/* Right Side: Casio Number Pad (5 columns) */}
         <div className="flex-[0.75] min-w-0 pl-1 flex flex-col justify-end">
-          <div className="grid grid-cols-5 gap-x-1 gap-y-1 select-none">
+          <div className="grid grid-cols-5 gap-x-1.5 gap-y-1.5 select-none">
             {/* Row 6 */}
             {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
             {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
