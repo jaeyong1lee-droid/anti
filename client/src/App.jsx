@@ -2903,8 +2903,8 @@ function ScientificCalculator() {
     );
   };
 
-  const renderNumPadKey = (label, topLabelGold, topLabelPink, onClick, colorType) => {
-    let btnCls = "w-full py-1 text-[13px] font-black rounded-md border transition-all cursor-pointer h-10.5 flex items-center justify-center select-none ";
+  const renderNumPadKey = (label, onClick, colorType) => {
+    let btnCls = "w-full py-1 text-[16px] font-black rounded-md border transition-all cursor-pointer h-[52px] flex items-center justify-center select-none ";
     if (colorType === 'green') {
       btnCls += "bg-[#a3c965] border-[#8aab51] text-slate-950 hover:bg-[#b0da6d] active:scale-95 shadow-sm shadow-emerald-950/20";
     } else if (colorType === 'equal') {
@@ -2912,19 +2912,13 @@ function ScientificCalculator() {
     } else if (colorType === 'operator') {
       btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else {
-      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[14px]";
+      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[18px]";
     }
 
     return (
-      <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
-          <span className="text-[8px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
-          <span className="text-[8px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
-        </div>
-        <button onClick={onClick} className={btnCls}>
-          {label}
-        </button>
-      </div>
+      <button onClick={onClick} className={btnCls}>
+        {label}
+      </button>
     );
   };
 
@@ -3400,51 +3394,41 @@ function ScientificCalculator() {
 
         {/* Right Side: Casio Number Pad (5 columns) */}
         <div className="flex-[0.75] min-w-0 pl-1 flex flex-col justify-end">
-          <div className="grid grid-cols-5 gap-x-1.5 gap-y-1.5 select-none">
+          <div className="grid grid-cols-5 gap-2 select-none">
             {/* Top Row (Row 0): Aligns keypad top edges, adds pi and % buttons */}
-            {renderNumPadKey('π', '', '', () => appendToInput('π'))}
-            {renderNumPadKey('%', '', '', () => appendToInput('%'))}
-            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
-            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
-            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
+            {renderNumPadKey('π', () => appendToInput('π'))}
+            {renderNumPadKey('%', () => appendToInput('%'))}
+            <div className="w-full h-[52px]" />
+            <div className="w-full h-[52px]" />
+            <div className="w-full h-[52px]" />
 
             {/* Row 6 */}
-            {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
-            {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
-            {renderNumPadKey('9', 'CLR', '', () => appendToInput('9'))}
-            {renderNumPadKey('DEL', 'INS', '', handleBackspace, 'green')}
-            {renderNumPadKey('AC', 'OFF', '', () => handleKeyClick('on'), 'green')}
+            {renderNumPadKey('7', () => appendToInput('7'))}
+            {renderNumPadKey('8', () => appendToInput('8'))}
+            {renderNumPadKey('9', () => appendToInput('9'))}
+            {renderNumPadKey('DEL', handleBackspace, 'green')}
+            {renderNumPadKey('AC', () => handleKeyClick('on'), 'green')}
 
             {/* Row 7 */}
-            {renderNumPadKey('4', 'MATRIX', '', () => appendToInput('4'))}
-            {renderNumPadKey('5', 'VECTOR', '', () => appendToInput('5'))}
-            {renderNumPadKey('6', '', '', () => appendToInput('6'))}
-            {renderNumPadKey('×', 'nPr', '', () => appendToInput('×'), 'operator')}
-            {renderNumPadKey('÷', 'nCr', '', () => appendToInput('÷'), 'operator')}
+            {renderNumPadKey('4', () => appendToInput('4'))}
+            {renderNumPadKey('5', () => appendToInput('5'))}
+            {renderNumPadKey('6', () => appendToInput('6'))}
+            {renderNumPadKey('×', () => appendToInput('×'), 'operator')}
+            {renderNumPadKey('÷', () => appendToInput('÷'), 'operator')}
 
             {/* Row 8 */}
-            {renderNumPadKey('1', 'STAT', '', () => appendToInput('1'))}
-            {renderNumPadKey('2', 'CMPLX', '', () => appendToInput('2'))}
-            {renderNumPadKey('3', 'BASE', '', () => appendToInput('3'))}
-            {renderNumPadKey('+', 'Pol', '', () => appendToInput('+'), 'operator')}
-            {renderNumPadKey('-', 'Rec', '', () => appendToInput('-'), 'operator')}
+            {renderNumPadKey('1', () => appendToInput('1'))}
+            {renderNumPadKey('2', () => appendToInput('2'))}
+            {renderNumPadKey('3', () => appendToInput('3'))}
+            {renderNumPadKey('+', () => appendToInput('+'), 'operator')}
+            {renderNumPadKey('-', () => appendToInput('-'), 'operator')}
 
             {/* Row 9 */}
-            {renderNumPadKey('0', 'Rnd', '', () => appendToInput('0'))}
-            {renderNumPadKey('.', 'Ran#', 'RanInt', () => appendToInput('.'))}
-            {renderNumPadKey('×10ˣ', 'π', 'e', () => {
-              if (shiftActive) {
-                appendToInput('π');
-                setShiftActive(false);
-              } else if (alphaActive) {
-                appendToInput('e');
-                setAlphaActive(false);
-              } else {
-                appendToInput('*10^()');
-              }
-            })}
-            {renderNumPadKey('Ans', 'DRG▶', '', () => appendToInput('Ans'), 'operator')}
-            {renderNumPadKey('=', '', '', handleEqual, 'equal')}
+            {renderNumPadKey('0', () => appendToInput('0'))}
+            {renderNumPadKey('.', () => appendToInput('.'))}
+            {renderNumPadKey('×10ˣ', () => appendToInput('*10^()'))}
+            {renderNumPadKey('Ans', () => appendToInput('Ans'), 'operator')}
+            {renderNumPadKey('=', handleEqual, 'equal')}
           </div>
         </div>
 
