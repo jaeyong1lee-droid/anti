@@ -2884,6 +2884,7 @@ function ScientificCalculator() {
   };
 
   const renderFuncKey = (keyId, label, shiftLabel, alphaLabel, keyName) => {
+    const isDms = keyId === 'dms';
     return (
       <div className="flex flex-col items-center w-full relative">
         <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
@@ -2892,7 +2893,9 @@ function ScientificCalculator() {
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[11px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative"
+          className={`w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative ${
+            isDms ? 'text-[16px] tracking-wider pt-0 pb-0.5' : 'text-[11px]'
+          }`}
         >
           {label}
         </button>
