@@ -2040,7 +2040,7 @@ function ScientificCalculator() {
     const roots = [];
     const addRoot = (r) => {
       if (isNaN(r) || !isFinite(r)) return;
-      if (roots.some(existing => Math.abs(existing - r) < 1e-4)) return;
+      if (roots.some(existing => Math.abs(existing - r) < 0.01)) return;
       roots.push(r);
     };
 
@@ -2091,7 +2091,9 @@ function ScientificCalculator() {
     const maxIter = 60;
     for (let iter = 0; iter < maxIter; iter++) {
       if (Math.abs(y1) < tol) {
-        return parseFloat(x1.toFixed(6));
+        let val = parseFloat(x1.toFixed(6));
+        if (Math.abs(val - Math.round(val)) < 1e-3) val = Math.round(val);
+        return val;
       }
       if (Math.abs(y1 - y0) < 1e-12) {
         break;
@@ -2106,7 +2108,9 @@ function ScientificCalculator() {
       y1 = evalWithVar(x1);
     }
     if (Math.abs(y1) < 1e-3) {
-      return parseFloat(x1.toFixed(6));
+      let val = parseFloat(x1.toFixed(6));
+      if (Math.abs(val - Math.round(val)) < 1e-3) val = Math.round(val);
+      return val;
     }
     return null;
   };
@@ -2132,7 +2136,16 @@ function ScientificCalculator() {
         const solvedVal = solveEquation(eqParts[0], eqParts[1], varName, angleMode);
         if (solvedVal === 'Error') return 'Error';
         
-        setVariables(prev => ({ ...prev, [varName]: solvedVal }));
+        // Store only the first numerical root in variables memory to prevent future syntax errors
+        let numToStore = 0;
+        if (solvedVal.includes(';')) {
+          numToStore = parseFloat(solvedVal.split(';')[0]);
+        } else {
+          numToStore = parseFloat(solvedVal);
+        }
+        if (isNaN(numToStore)) numToStore = 0;
+        
+        setVariables(prev => ({ ...prev, [varName]: numToStore }));
         return solvedVal.toString();
       }
       
