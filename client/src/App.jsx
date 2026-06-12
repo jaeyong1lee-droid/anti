@@ -8126,7 +8126,7 @@ export default function App() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end flex-wrap md:flex-nowrap md:shrink-0">
+                      <div className="flex flex-row flex-nowrap items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end shrink-0">
                         {/* 소스 + Gemini 복습 */}
                         <button
                           onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round, item.isBonus)}
