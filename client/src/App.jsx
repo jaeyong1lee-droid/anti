@@ -2811,20 +2811,32 @@ function ScientificCalculator() {
             ? `inline-flex items-center justify-center align-super text-[0.6em] font-bold border border-dashed border-[#202528]/40 rounded-[1px] p-0.5 min-w-[16px] min-h-[16px] ml-0.5 leading-none bg-[#202528]/25`
             : `inline-flex items-center justify-center align-super text-[0.6em] font-bold ml-0.5 leading-none`;
           
+          const isBaseEmpty = node.startIdx === 0 || /[\+\-\*\/×÷\(,]/.test(str[node.startIdx - 1]);
+          const isBaseFocused = cursorIdx === node.startIdx;
+
           return (
-            <span 
-              key={index} 
-              className={wrapperClass} 
-              style={{ position: 'relative', top: '-0.35em' }}
-              data-index={node.expEndIdx}
-            >
-              {isEmpty ? (
-                <span className="w-2.5 h-3.5 inline-block"></span>
-              ) : (
-                renderTree(parseFormula(str.substring(node.expStartIdx, node.expEndIdx)).map(n => shiftIndices(n, node.expStartIdx)))
+            <React.Fragment key={index}>
+              {isBaseEmpty && (
+                <span 
+                  data-index={node.startIdx} 
+                  className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-flex items-center justify-center mr-0.5 align-middle ${isBaseFocused ? 'bg-[#202528]/25' : ''}`}
+                >
+                  {renderCursor(node.startIdx)}
+                </span>
               )}
-              {renderCursor(node.expEndIdx)}
-            </span>
+              <span 
+                className={wrapperClass} 
+                style={{ position: 'relative', top: '-0.35em' }}
+                data-index={node.expEndIdx}
+              >
+                {isEmpty ? (
+                  <span className="w-2.5 h-3.5 inline-block"></span>
+                ) : (
+                  renderTree(parseFormula(str.substring(node.expStartIdx, node.expEndIdx)).map(n => shiftIndices(n, node.expStartIdx)))
+                )}
+                {renderCursor(node.expEndIdx)}
+              </span>
+            </React.Fragment>
           );
         }
         return null;
