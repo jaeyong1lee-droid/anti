@@ -2405,7 +2405,7 @@ function ScientificCalculator() {
     
     const renderCursor = (idx) => {
       if (idx === cursorIdx) {
-        return <span className="animate-pulse border-l-2 border-[#141a12] h-4.5 ml-[-1px] inline-block" style={{ verticalAlign: 'middle' }}></span>;
+        return <span className="animate-pulse border-l-2 border-[#141a12] h-6.5 ml-[-1px] inline-block" style={{ verticalAlign: 'middle' }}></span>;
       }
       return null;
     };
@@ -2446,18 +2446,18 @@ function ScientificCalculator() {
           return <span key={index} className="inline-block">{chars}</span>;
         } else if (node.type === 'fraction') {
           return (
-            <span key={index} className="inline-flex flex-col items-center mx-1 align-middle leading-none">
-              <span className="border-b border-[#141a12] pb-0.5 px-1 w-full text-center flex justify-center items-center min-w-[14px] min-h-[14px] leading-none">
-                {node.numStr === '' && cursorIdx !== node.numStartIdx ? (
-                  <span className="border border-dashed border-[#141a12]/40 w-3 h-3 rounded-[1px] inline-block"></span>
+            <span key={index} className="inline-flex flex-col items-center mx-1.5 align-middle leading-none">
+              <span className="border-b border-[#141a12] pb-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
+                {node.numStr === '' ? (
+                  <span className="border border-dashed border-[#141a12]/40 w-5.5 h-5.5 rounded-[1px] inline-block"></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.numStartIdx, node.numEndIdx)).map(n => shiftIndices(n, node.numStartIdx)))
                 )}
                 {renderCursor(node.numEndIdx)}
               </span>
-              <span className="pt-0.5 px-1 w-full text-center flex justify-center items-center min-w-[14px] min-h-[14px] leading-none">
-                {node.denStr === '' && cursorIdx !== node.denStartIdx ? (
-                  <span className="border border-dashed border-[#141a12]/40 w-3 h-3 rounded-[1px] inline-block"></span>
+              <span className="pt-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
+                {node.denStr === '' ? (
+                  <span className="border border-dashed border-[#141a12]/40 w-5.5 h-5.5 rounded-[1px] inline-block"></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.denStartIdx, node.denEndIdx)).map(n => shiftIndices(n, node.denStartIdx)))
                 )}
@@ -2471,7 +2471,7 @@ function ScientificCalculator() {
     };
     
     return (
-      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[14px] font-extrabold leading-none text-[#141a12] font-mono">
+      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[25px] font-extrabold leading-none text-[#141a12] font-mono">
         {renderTree(parsed)}
         {renderCursor(str.length)}
       </span>
@@ -2516,9 +2516,9 @@ function ScientificCalculator() {
     return (
       <div 
         onClick={() => inputRef.current && inputRef.current.focus()}
-        className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-3 font-mono shadow-inner text-[#141a12] mb-2 relative overflow-hidden h-24 flex flex-col justify-between select-text cursor-text"
+        className="bg-[#8c9688] border-2 border-[#6d776a] rounded-md p-3 font-mono shadow-inner text-[#141a12] mb-2 relative overflow-hidden h-[120px] flex flex-col justify-between select-text cursor-text"
       >
-        <div className="flex gap-3 text-[10px] font-black select-none h-3.5 leading-none text-[#2f382a] tracking-wider">
+        <div className="flex gap-3 text-[12px] font-black select-none h-3.5 leading-none text-[#2f382a] tracking-wider">
           <span className={shiftActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>S</span>
           <span className={alphaActive ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>A</span>
           <span className={variables.M !== 0 ? "opacity-100 bg-[#2f382a] text-[#8c9688] px-0.5 rounded-[1px]" : "opacity-10"}>M</span>
@@ -2530,13 +2530,13 @@ function ScientificCalculator() {
         </div>
         
         <div className="flex flex-col justify-between flex-grow mt-1.5 select-text">
-          <div className="flex justify-between items-start w-full min-h-[1.5rem] select-text">
+          <div className="flex justify-between items-start w-full min-h-[2.5rem] select-text">
             <div className="flex-grow select-text overflow-hidden">
               {showFraction ? (
-                <div className="flex items-center text-[15px] leading-none select-text">
+                <div className="flex items-center text-[22px] leading-none select-text">
                   <div className="flex flex-col items-center justify-center font-bold px-1 select-text">
-                    <span className="border-b border-[#141a12] pb-0.5 px-0.5 select-text">{fracNumerator}</span>
-                    <span className="pt-0.5 px-0.5 select-text">{fracDenominator}</span>
+                    <span className="border-b border-[#141a12] pb-1 px-1 select-text">{fracNumerator}</span>
+                    <span className="pt-1 px-1 select-text">{fracDenominator}</span>
                   </div>
                 </div>
               ) : (
@@ -2551,9 +2551,9 @@ function ScientificCalculator() {
             )}
           </div>
           
-          <div className="flex justify-between items-end w-full h-7.5 select-text">
-            <span className="text-[14px] opacity-75 text-[#2f382a] select-none">=</span>
-            <div className="text-right text-[18px] font-black tracking-tight leading-none text-[#141a12] select-all font-mono">
+          <div className="flex justify-between items-end w-full h-8.5 select-text">
+            <span className="text-[21px] opacity-75 text-[#2f382a] select-none leading-none mb-0.5">=</span>
+            <div className="text-right text-[27px] font-black tracking-tight leading-none text-[#141a12] select-all font-mono">
               {showDecimal ? (calcResult || '0') : ''}
             </div>
           </div>
@@ -9155,7 +9155,7 @@ export default function App() {
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
-              <div className={`landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800 ${isDesktop ? 'h-1/2' : ''}`}>
+              <div className="landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800">
                 {isDesktop && <ScientificCalculator />}
               </div>
 
@@ -10312,7 +10312,7 @@ export default function App() {
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
-              <div className={`landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800 ${isDesktop ? 'h-1/2' : ''}`}>
+              <div className="landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800">
                 {isDesktop && <ScientificCalculator />}
               </div>
 
