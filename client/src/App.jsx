@@ -1588,6 +1588,34 @@ function ScientificCalculator() {
     if (!isOn) return;
     setCalcResult('');
     setStatusMessage('');
+
+    // Check if there is active mouse drag selection in the LCD
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      const getElementIndex = (node) => {
+        let curr = node;
+        while (curr && curr !== document.body) {
+          if (curr.nodeType === Node.ELEMENT_NODE && curr.hasAttribute('data-index')) {
+            return parseInt(curr.getAttribute('data-index'), 10);
+          }
+          curr = curr.parentNode;
+        }
+        return null;
+      };
+      const startIdx = getElementIndex(range.startContainer);
+      const endIdx = getElementIndex(range.endContainer);
+      if (startIdx !== null && endIdx !== null) {
+        const minIdx = Math.min(startIdx, endIdx);
+        const maxIdx = Math.max(startIdx, endIdx) + 1;
+        const before = calcInput.substring(0, minIdx);
+        const after = calcInput.substring(maxIdx);
+        setCalcInput(before + after);
+        setCursorPosition(minIdx);
+        selection.removeAllRanges();
+        return;
+      }
+    }
     
     if (cursorPosition > 0) {
       const cur = cursorPosition;
@@ -2009,45 +2037,61 @@ function ScientificCalculator() {
       return res;
     };
 
-    let x0 = 0.0;
-    let x1 = 1.0;
-    let y0 = evalWithVar(x0);
-    let y1 = evalWithVar(x1);
+    const roots = [];
+    const addRoot = (r) => {
+      if (isNaN(r) || !isFinite(r)) return;
+      if (roots.some(existing => Math.abs(existing - r) < 1e-4)) return;
+      roots.push(r);
+    };
 
-    if (isNaN(y0) || !isFinite(y0)) {
-      x0 = 0.1;
-      y0 = evalWithVar(x0);
-    }
-    if (isNaN(y1) || !isFinite(y1)) {
-      x1 = 1.1;
-      y1 = evalWithVar(x1);
-    }
+    // 1. Grid search for sign changes
+    const grid = [-100, -50, -20, -10, -5, -2, -1, -0.5, 0, 0.5, 1, 2, 5, 10, 20, 50, 100];
+    const evals = grid.map(x => ({ x, y: evalWithVar(x) }));
 
-    if (isNaN(y0) || isNaN(y1)) {
-      const searchPoints = [-100, -10, -1, 0, 1, 10, 100];
-      for (let p of searchPoints) {
-        const y = evalWithVar(p);
-        if (!isNaN(y) && isFinite(y)) {
-          if (isNaN(y0)) {
-            x0 = p;
-            y0 = y;
-          } else {
-            x1 = p;
-            y1 = y;
-            break;
-          }
+    for (let i = 0; i < evals.length - 1; i++) {
+      const p1 = evals[i];
+      const p2 = evals[i+1];
+      if (!isNaN(p1.y) && !isNaN(p2.y) && isFinite(p1.y) && isFinite(p2.y)) {
+        if (p1.y * p2.y <= 0) {
+          const r = runSecant(p1.x, p2.x, evalWithVar);
+          if (r !== null) addRoot(r);
         }
       }
     }
 
-    if (isNaN(y0) || isNaN(y1)) return 'Error';
+    // 2. Search pairs for double roots or local minima close to 0
+    const startPairs = [
+      [-1.0, 0.0],
+      [0.0, 1.0],
+      [-10.0, -9.0],
+      [9.0, 10.0]
+    ];
+    for (const pair of startPairs) {
+      const r = runSecant(pair[0], pair[1], evalWithVar);
+      if (r !== null) addRoot(r);
+    }
+
+    if (roots.length === 0) return 'Error';
+
+    roots.sort((a, b) => a - b);
+    
+    if (roots.length === 1) {
+      return roots[0].toString();
+    } else {
+      return roots.map(r => r.toString()).join('; ');
+    }
+  };
+
+  const runSecant = (x0, x1, evalWithVar) => {
+    let y0 = evalWithVar(x0);
+    let y1 = evalWithVar(x1);
+    if (isNaN(y0) || isNaN(y1)) return null;
 
     const tol = 1e-7;
-    const maxIter = 100;
-    
+    const maxIter = 60;
     for (let iter = 0; iter < maxIter; iter++) {
       if (Math.abs(y1) < tol) {
-        return parseFloat(x1.toFixed(9));
+        return parseFloat(x1.toFixed(6));
       }
       if (Math.abs(y1 - y0) < 1e-12) {
         break;
@@ -2061,12 +2105,10 @@ function ScientificCalculator() {
       x1 = x2;
       y1 = evalWithVar(x1);
     }
-
-    if (Math.abs(y1) < 1e-4) {
-      return parseFloat(x1.toFixed(9));
+    if (Math.abs(y1) < 1e-3) {
+      return parseFloat(x1.toFixed(6));
     }
-
-    return 'Error';
+    return null;
   };
 
   const evaluateExpr = (expr, angleMode, isInternal = false) => {
@@ -2098,6 +2140,12 @@ function ScientificCalculator() {
       if (preProcessed.includes('Error')) return 'Error';
       
       preProcessed = preProcessed.replace(/\^\(\s*\)/g, '^(1)');
+
+      // Implicit multiplication replacements
+      preProcessed = preProcessed.replace(/(\d+(\.\d+)?)\s*([XYABCDEFMπe\(])/g, '$1*$3');
+      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*(\d+(\.\d+)?)/g, '$1*$2');
+      preProcessed = preProcessed.replace(/([XYABCDEFMπe])\s*([XYABCDEFMπe])/g, '$1*$2');
+      preProcessed = preProcessed.replace(/\)\s*([\dXYABCDEFMπe\(])/g, ')*$1');
       
       if (!isInternal) {
         preProcessed = parseIntegrationAndDerivatives(preProcessed);
@@ -2237,6 +2285,33 @@ function ScientificCalculator() {
     } else if (e.key === '/') {
       e.preventDefault();
       handleFracKey();
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const getElementIndex = (node) => {
+          let curr = node;
+          while (curr && curr !== document.body) {
+            if (curr.nodeType === Node.ELEMENT_NODE && curr.hasAttribute('data-index')) {
+              return parseInt(curr.getAttribute('data-index'), 10);
+            }
+            curr = curr.parentNode;
+          }
+          return null;
+        };
+        const startIdx = getElementIndex(range.startContainer);
+        const endIdx = getElementIndex(range.endContainer);
+        if (startIdx !== null && endIdx !== null) {
+          e.preventDefault();
+          const minIdx = Math.min(startIdx, endIdx);
+          const maxIdx = Math.max(startIdx, endIdx) + 1;
+          const before = calcInput.substring(0, minIdx);
+          const after = calcInput.substring(maxIdx);
+          setCalcInput(before + after);
+          setCursorPosition(minIdx);
+          selection.removeAllRanges();
+        }
+      }
     }
   };
 
@@ -2633,7 +2708,23 @@ function ScientificCalculator() {
     
     const renderCursor = (idx) => {
       if (idx === cursorIdx) {
-        return <span className="animate-pulse border-l-2 border-[#202528] h-6.5 ml-[-1px] inline-block" style={{ verticalAlign: 'middle' }}></span>;
+        return (
+          <>
+            <style>{`
+              @keyframes casio-blink {
+                50% { opacity: 0; }
+              }
+            `}</style>
+            <span style={{
+              display: 'inline-block',
+              borderLeft: '2px solid #202528',
+              height: '24px',
+              marginLeft: '-1px',
+              verticalAlign: 'middle',
+              animation: 'casio-blink 1s step-start infinite'
+            }}></span>
+          </>
+        );
       }
       return null;
     };
@@ -2673,19 +2764,19 @@ function ScientificCalculator() {
           const chars = [];
           for (let idx = node.startIdx; idx <= node.endIdx; idx++) {
             chars.push(
-              <React.Fragment key={idx}>
+              <span key={idx} data-index={idx} className="inline">
                 {renderCursor(idx)}
                 {idx < node.endIdx ? node.content[idx - node.startIdx] : null}
-              </React.Fragment>
+              </span>
             );
           }
-          return <span key={index} className="inline-block">{chars}</span>;
+          return <span key={index} className="inline">{chars}</span>;
         } else if (node.type === 'fraction') {
           return (
-            <span key={index} className="inline-flex flex-col items-center mx-1.5 align-middle leading-none">
+            <span key={index} data-index={node.startIdx} className="inline-flex flex-col items-center mx-1.5 align-middle leading-none">
               <span className="border-b border-[#202528] pb-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.numStr === '' ? (
-                  <span className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.numEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
+                  <span data-index={node.numEndIdx} className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.numEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.numStartIdx, node.numEndIdx)).map(n => shiftIndices(n, node.numStartIdx)))
                 )}
@@ -2693,7 +2784,7 @@ function ScientificCalculator() {
               </span>
               <span className="pt-1 px-1.5 w-full text-center flex justify-center items-center min-w-[22px] min-h-[22px] leading-none">
                 {node.denStr === '' ? (
-                  <span className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.denEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
+                  <span data-index={node.denEndIdx} className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.denEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
                 ) : (
                   renderTree(parseFormula(str.substring(node.denStartIdx, node.denEndIdx)).map(n => shiftIndices(n, node.denStartIdx)))
                 )}
@@ -2708,7 +2799,12 @@ function ScientificCalculator() {
             : `inline-flex items-center justify-center align-super text-[0.6em] font-bold ml-0.5 leading-none`;
           
           return (
-            <span key={index} className={wrapperClass}>
+            <span 
+              key={index} 
+              className={wrapperClass} 
+              style={{ position: 'relative', top: '-0.35em' }}
+              data-index={node.expEndIdx}
+            >
               {isEmpty ? (
                 <span className="w-2.5 h-3.5 inline-block"></span>
               ) : (
