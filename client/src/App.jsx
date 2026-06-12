@@ -1387,24 +1387,56 @@ function parseFormula(str) {
 }
 
 function ScientificCalculator() {
-  const [calcInput, setCalcInput] = useState('');
-  const [calcResult, setCalcResult] = useState('');
-  const [calcAngleMode, setCalcAngleMode] = useState('deg'); // deg / rad
-  const [lastAns, setLastAns] = useState('');
+  const [calcInput, setCalcInput] = useState(() => localStorage.getItem('anti_calc_input') || '');
+  const [calcResult, setCalcResult] = useState(() => localStorage.getItem('anti_calc_result') || '');
+  const [calcAngleMode, setCalcAngleMode] = useState(() => localStorage.getItem('anti_calc_angle_mode') || 'deg'); // deg / rad
+  const [lastAns, setLastAns] = useState(() => localStorage.getItem('anti_calc_last_ans') || '');
   const [shiftActive, setShiftActive] = useState(false);
   const [alphaActive, setAlphaActive] = useState(false);
   const [hypActive, setHypActive] = useState(false);
   const [isOn, setIsOn] = useState(true);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [variables, setVariables] = useState({
-    A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0
+  const [variables, setVariables] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_variables');
+    return saved ? JSON.parse(saved) : { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
   });
   const [isStoring, setIsStoring] = useState(false);
   const [isRecalling, setIsRecalling] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [displaySdMode, setDisplaySdMode] = useState('decimal'); // both, decimal, fraction
-  const [cursorPosition, setCursorPosition] = useState(0);
+  const [displaySdMode, setDisplaySdMode] = useState(() => localStorage.getItem('anti_calc_sd_mode') || 'decimal'); // both, decimal, fraction
+  const [cursorPosition, setCursorPosition] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_cursor_pos');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_input', calcInput);
+  }, [calcInput]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_result', calcResult);
+  }, [calcResult]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_angle_mode', calcAngleMode);
+  }, [calcAngleMode]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_last_ans', lastAns);
+  }, [lastAns]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_variables', JSON.stringify(variables));
+  }, [variables]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_sd_mode', displaySdMode);
+  }, [displaySdMode]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_cursor_pos', cursorPosition.toString());
+  }, [cursorPosition]);
 
   const inputRef = useRef(null);
 
