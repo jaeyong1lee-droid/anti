@@ -2016,12 +2016,28 @@ function ScientificCalculator() {
     if (!isOn) return;
     setCalcResult('');
     setStatusMessage('');
-    const start = cursorPosition;
-    const val = 'frac(,)';
-    const before = calcInput.substring(0, start);
-    const after = calcInput.substring(start);
+    
+    let start = cursorPosition;
+    let text = calcInput;
+    let operandStart = start;
+    
+    // Scan backwards to find digits, decimals, variables, pi, or e that form the numerator
+    while (operandStart > 0) {
+      const char = text[operandStart - 1];
+      if (/[\d.XYABCDEFMπe]/.test(char)) {
+        operandStart--;
+      } else {
+        break;
+      }
+    }
+    
+    const before = text.substring(0, operandStart);
+    const numStr = text.substring(operandStart, start);
+    const after = text.substring(start);
+    const val = `frac(${numStr},)`;
+    
     setCalcInput(before + val + after);
-    const newPos = start + 5;
+    const newPos = numStr === '' ? operandStart + 5 : operandStart + 5 + numStr.length + 1;
     setCursorPosition(newPos);
     
     setTimeout(() => {
@@ -2313,8 +2329,13 @@ function ScientificCalculator() {
 
   const renderSilverKey = (label, topLabel, keyId) => {
     let topColor = 'text-slate-400';
-    if (keyId === 'shift') topColor = 'text-amber-500';
-    if (keyId === 'alpha') topColor = 'text-rose-400';
+    let topSize = 'text-[9px] h-3.5 mb-1';
+    if (keyId === 'shift') {
+      topColor = 'text-amber-500';
+      topSize = 'text-[18px] h-5 mb-0.5';
+    } else if (keyId === 'alpha') {
+      topColor = 'text-rose-400';
+    }
     
     let activeCls = '';
     if (keyId === 'shift' && shiftActive) activeCls = 'bg-amber-500 border-amber-400 text-slate-950 scale-95 shadow-inner';
@@ -2323,7 +2344,7 @@ function ScientificCalculator() {
 
     return (
       <div className="flex flex-col items-center w-full relative">
-        <span className={`text-[9px] font-black ${topColor} h-3.5 select-none pointer-events-none mb-1 truncate max-w-full uppercase`}>
+        <span className={`font-black ${topColor} ${topSize} select-none pointer-events-none truncate max-w-full uppercase`}>
           {topLabel || ' '}
         </span>
         <button
@@ -2339,9 +2360,9 @@ function ScientificCalculator() {
   const renderFuncKey = (keyId, label, shiftLabel, alphaLabel, keyName) => {
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between w-full px-1.5 mb-1 select-none h-3.5">
-          <span className="text-[8px] font-black text-amber-500 truncate max-w-[45%]">{shiftLabel || ' '}</span>
-          <span className="text-[8px] font-black text-rose-400 truncate max-w-[45%]">{alphaLabel || ' '}</span>
+        <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
+          <span className="text-[16px] font-black text-amber-500 truncate max-w-[55%] leading-none">{shiftLabel || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate max-w-[45%] leading-none self-end">{alphaLabel || ' '}</span>
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
@@ -2367,9 +2388,9 @@ function ScientificCalculator() {
 
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between w-full px-1.5 mb-1 select-none h-3.5">
-          <span className="text-[8px] font-black text-amber-500 truncate">{topLabelGold || ' '}</span>
-          <span className="text-[8px] font-black text-rose-400 truncate">{topLabelPink || ' '}</span>
+        <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
+          <span className="text-[16px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
+          <span className="text-[8px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
         </div>
         <button onClick={onClick} className={btnCls}>
           {label}
@@ -2543,9 +2564,46 @@ function ScientificCalculator() {
           type="text"
           value={calcInput}
           onChange={(e) => {
-            setCalcInput(e.target.value);
-            setCursorPosition(e.target.selectionStart);
+            const val = e.target.value;
             setCalcResult('');
+            
+            // If the user typed or inserted a slash '/', convert it to frac(,)
+            if (val.includes('/')) {
+              const slashIdx = val.indexOf('/');
+              const beforeSlash = val.substring(0, slashIdx);
+              const afterSlash = val.substring(slashIdx + 1);
+              
+              // Scan backwards to find operand prefix
+              let operandStart = beforeSlash.length;
+              while (operandStart > 0) {
+                const char = beforeSlash[operandStart - 1];
+                if (/[\d.XYABCDEFMπe]/.test(char)) {
+                  operandStart--;
+                } else {
+                  break;
+                }
+              }
+              
+              const before = beforeSlash.substring(0, operandStart);
+              const numStr = beforeSlash.substring(operandStart);
+              const fracVal = `frac(${numStr},)`;
+              const finalVal = before + fracVal + afterSlash;
+              
+              setCalcInput(finalVal);
+              const newPos = numStr === '' ? operandStart + 5 : operandStart + 5 + numStr.length + 1;
+              setCursorPosition(newPos);
+              
+              setTimeout(() => {
+                if (inputRef.current) {
+                  inputRef.current.focus();
+                  inputRef.current.setSelectionRange(newPos, newPos);
+                }
+              }, 10);
+              return;
+            }
+            
+            setCalcInput(val);
+            setCursorPosition(e.target.selectionStart);
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={(e) => {
