@@ -2335,6 +2335,7 @@ function ScientificCalculator() {
       topSize = 'text-[18px] h-5 mb-0.5';
     } else if (keyId === 'alpha') {
       topColor = 'text-rose-400';
+      topSize = 'text-[18px] h-5 mb-0.5';
     }
     
     let activeCls = '';
@@ -2361,8 +2362,8 @@ function ScientificCalculator() {
     return (
       <div className="flex flex-col items-center w-full relative">
         <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
-          <span className="text-[16px] font-black text-amber-500 truncate max-w-[55%] leading-none">{shiftLabel || ' '}</span>
-          <span className="text-[8px] font-black text-rose-400 truncate max-w-[45%] leading-none self-end">{alphaLabel || ' '}</span>
+          <span className="text-[16px] font-black text-amber-500 truncate max-w-[50%] leading-none">{shiftLabel || ' '}</span>
+          <span className="text-[16px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
@@ -2390,7 +2391,7 @@ function ScientificCalculator() {
       <div className="flex flex-col items-center w-full relative">
         <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
           <span className="text-[16px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
-          <span className="text-[8px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
+          <span className="text-[16px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
         </div>
         <button onClick={onClick} className={btnCls}>
           {label}
