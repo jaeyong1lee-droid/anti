@@ -1367,9 +1367,45 @@ function parseFormula(str) {
         });
         
         i = closeIdx + 1;
+      } else if (str.startsWith('sqrt(', i)) {
+        let sqrtStart = i;
+        i += 5; // skip 'sqrt('
+        let contentStart = i;
+        let level = 0;
+        let closeIdx = -1;
+        while (i < str.length) {
+          if (str[i] === '(') level++;
+          else if (str[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        
+        if (closeIdx === -1) {
+          nodes.push({ type: 'text', content: 'sqrt(', startIdx: sqrtStart, endIdx: contentStart });
+          i = contentStart;
+          continue;
+        }
+        
+        const sqrtStr = str.substring(contentStart, closeIdx);
+        nodes.push({
+          type: 'sqrt',
+          sqrtStr: sqrtStr,
+          sqrtStartIdx: contentStart,
+          sqrtEndIdx: closeIdx,
+          startIdx: sqrtStart,
+          endIdx: closeIdx + 1
+        });
+        
+        i = closeIdx + 1;
       } else {
         let textStart = i;
-        while (i < str.length && !str.startsWith('frac(', i) && !str.startsWith('^(', i)) {
+        while (i < str.length && !str.startsWith('frac(', i) && !str.startsWith('^(', i) && !str.startsWith('sqrt(', i)) {
           i++;
         }
         nodes.push({
@@ -1395,8 +1431,14 @@ function ScientificCalculator() {
   const [alphaActive, setAlphaActive] = useState(false);
   const [hypActive, setHypActive] = useState(false);
   const [isOn, setIsOn] = useState(true);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [historyIndex, setHistoryIndex] = useState(() => {
+    const saved = localStorage.getItem('anti_calc_history_index');
+    return saved !== null ? parseInt(saved, 10) : -1;
+  });
   const [variables, setVariables] = useState(() => {
     const saved = localStorage.getItem('anti_calc_variables');
     return saved ? JSON.parse(saved) : { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
@@ -1438,6 +1480,14 @@ function ScientificCalculator() {
     localStorage.setItem('anti_calc_cursor_pos', cursorPosition.toString());
   }, [cursorPosition]);
 
+  useEffect(() => {
+    localStorage.setItem('anti_calc_history', JSON.stringify(history));
+  }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_calc_history_index', historyIndex.toString());
+  }, [historyIndex]);
+
   const inputRef = useRef(null);
 
   const appendToInput = (val) => {
@@ -1445,12 +1495,31 @@ function ScientificCalculator() {
     insertAtCursor(val);
   };
 
+  const isOperatorString = (val) => {
+    const operators = ['+', '-', '×', '÷', '^', '*', '/', '%', '!', '°'];
+    if (!val) return false;
+    if (val === 'Ans') return false;
+    return operators.some(op => val.startsWith(op));
+  };
+
   const insertAtCursor = (val) => {
-    setCalcResult('');
-    setStatusMessage('');
+    let start = cursorPosition;
+    let text = calcInput;
     
-    const start = cursorPosition;
-    const text = calcInput;
+    if (calcResult) {
+      setCalcResult('');
+      if (isOperatorString(val)) {
+        text = 'Ans';
+        start = 3;
+      } else {
+        text = '';
+        start = 0;
+      }
+      setHistoryIndex(-1);
+    } else {
+      setStatusMessage('');
+    }
+    
     const before = text.substring(0, start);
     const after = text.substring(start);
     const newText = before + val + after;
@@ -1458,6 +1527,8 @@ function ScientificCalculator() {
     
     let newCursorPos = start + val.length;
     if (val === 'frac(,)') {
+      newCursorPos = start + 5;
+    } else if (val === 'sqrt()') {
       newCursorPos = start + 5;
     } else if (val === '^()') {
       newCursorPos = start + 2;
@@ -1586,6 +1657,46 @@ function ScientificCalculator() {
     return exps;
   };
 
+  const getSqrts = (currentStr) => {
+    const sqrts = [];
+    let i = 0;
+    while (i < currentStr.length) {
+      if (currentStr.startsWith('sqrt(', i)) {
+        let sqrtStart = i;
+        i += 5;
+        let level = 0;
+        let closeIdx = -1;
+        let contentStart = i;
+        while (i < currentStr.length) {
+          if (currentStr[i] === '(') level++;
+          else if (currentStr[i] === ')') {
+            if (level === 0) {
+              closeIdx = i;
+              break;
+            } else {
+              level--;
+            }
+          }
+          i++;
+        }
+        if (closeIdx === -1) {
+          i = contentStart;
+          continue;
+        }
+        sqrts.push({
+          startIdx: sqrtStart,
+          sqrtStartIdx: contentStart,
+          sqrtEndIdx: closeIdx,
+          endIdx: closeIdx + 1
+        });
+        i = closeIdx + 1;
+      } else {
+        i++;
+      }
+    }
+    return sqrts;
+  };
+
   const adjustCursorOnMove = (currentStr, newPos, direction) => {
     const fracs = getFractions(currentStr);
     for (const f of fracs) {
@@ -1613,12 +1724,27 @@ function ScientificCalculator() {
         if (direction === 'left') return e.expEndIdx;
       }
     }
+    const sqrts = getSqrts(currentStr);
+    for (const s of sqrts) {
+      if (newPos > s.startIdx && newPos < s.sqrtStartIdx) {
+        if (direction === 'right') return s.sqrtStartIdx;
+        if (direction === 'left') return s.startIdx;
+      }
+      if (newPos > s.sqrtEndIdx && newPos < s.endIdx) {
+        if (direction === 'right') return s.endIdx;
+        if (direction === 'left') return s.sqrtEndIdx;
+      }
+    }
     return newPos;
   };
 
   const handleBackspace = () => {
     if (!isOn) return;
-    setCalcResult('');
+    if (calcResult) {
+      setCalcResult('');
+      setCursorPosition(calcInput.length);
+      return;
+    }
     setStatusMessage('');
 
     // Check if there is active mouse drag selection in the LCD
@@ -1688,6 +1814,24 @@ function ScientificCalculator() {
         }
       }
       if (deletedExponent) return;
+
+      const sqrts = getSqrts(calcInput);
+      let deletedSqrt = false;
+      for (const s of sqrts) {
+        const isSyntax =
+          (cur - 1 >= s.startIdx && cur - 1 < s.sqrtStartIdx) || // "sqrt("
+          (cur - 1 === s.sqrtEndIdx); // ")"
+          
+        if (isSyntax) {
+          const before = calcInput.substring(0, s.startIdx);
+          const after = calcInput.substring(s.endIdx);
+          setCalcInput(before + after);
+          setCursorPosition(s.startIdx);
+          deletedSqrt = true;
+          break;
+        }
+      }
+      if (deletedSqrt) return;
       
       const before = calcInput.substring(0, cur - 1);
       const after = calcInput.substring(cur);
@@ -1767,6 +1911,18 @@ function ScientificCalculator() {
         }
       }
     } else if (direction === 'left' || direction === 'right') {
+      if (calcResult) {
+        setCalcResult('');
+        const pos = direction === 'left' ? calcInput.length : 0;
+        setCursorPosition(pos);
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.setSelectionRange(pos, pos);
+          }
+        }, 10);
+        return;
+      }
       moveCursor(direction);
     }
   };
@@ -2333,7 +2489,25 @@ function ScientificCalculator() {
     } else if (e.key === '/') {
       e.preventDefault();
       handleFracKey();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      handleDpad('up');
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      handleDpad('down');
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      handleDpad('left');
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      handleDpad('right');
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      if (calcResult) {
+        e.preventDefault();
+        setCalcResult('');
+        setCursorPosition(calcInput.length);
+        return;
+      }
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
@@ -2527,7 +2701,7 @@ function ScientificCalculator() {
           insertAtCursor('∛(');
           setShiftActive(false);
         } else {
-          insertAtCursor('sqrt(');
+          insertAtCursor('sqrt()');
         }
         break;
       case 'sq':
@@ -2802,6 +2976,14 @@ function ScientificCalculator() {
           startIdx: node.startIdx + offset,
           endIdx: node.endIdx + offset
         };
+      } else if (node.type === 'sqrt') {
+        return {
+          ...node,
+          sqrtStartIdx: node.sqrtStartIdx + offset,
+          sqrtEndIdx: node.sqrtEndIdx + offset,
+          startIdx: node.startIdx + offset,
+          endIdx: node.endIdx + offset
+        };
       }
       return node;
     };
@@ -2872,6 +3054,33 @@ function ScientificCalculator() {
                 {renderCursor(node.expEndIdx)}
               </span>
             </React.Fragment>
+          );
+        } else if (node.type === 'sqrt') {
+          const isEmpty = node.sqrtStr === '';
+          return (
+            <span key={index} data-index={node.startIdx} className="inline-flex items-stretch mx-0.5 align-middle relative leading-none">
+              <svg 
+                className="w-[12px] shrink-0 text-[#202528] select-none" 
+                viewBox="0 0 10 20" 
+                preserveAspectRatio="none"
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ verticalAlign: 'middle' }}
+              >
+                <path d="M 1,11 L 3,11 L 6,18 L 9.5,2" />
+              </svg>
+              <span className="border-t-2 border-[#202528] pt-[1px] pb-[1px] px-1 w-full text-center flex justify-center items-center min-w-[20px] min-h-[22px] leading-none">
+                {isEmpty ? (
+                  <span data-index={node.sqrtEndIdx} className={`border border-dashed border-[#202528]/40 w-[18px] h-[18px] rounded-[1px] inline-block ${cursorIdx === node.sqrtEndIdx ? 'bg-[#202528]/25' : ''}`}></span>
+                ) : (
+                  renderTree(parseFormula(str.substring(node.sqrtStartIdx, node.sqrtEndIdx)).map(n => shiftIndices(n, node.sqrtStartIdx)))
+                )}
+                {renderCursor(node.sqrtEndIdx)}
+              </span>
+            </span>
           );
         }
         return null;
@@ -2972,8 +3181,64 @@ function ScientificCalculator() {
           value={calcInput}
           onChange={(e) => {
             const val = e.target.value;
+            
+            if (calcResult) {
+              setCalcResult('');
+              const prev = calcInput;
+              let inserted = '';
+              if (val.length > prev.length) {
+                const cursor = e.target.selectionStart;
+                inserted = val.substring(cursor - (val.length - prev.length), cursor);
+              } else {
+                inserted = val;
+              }
+
+              if (inserted) {
+                let mapped = inserted;
+                if (mapped === '*') mapped = '×';
+                if (mapped === '/') mapped = '÷';
+                
+                if (isOperatorString(mapped)) {
+                  setCalcInput('Ans' + mapped);
+                  setCursorPosition(3 + mapped.length);
+                  setHistoryIndex(-1);
+                } else {
+                  setCalcInput(mapped);
+                  setCursorPosition(mapped.length);
+                  setHistoryIndex(-1);
+                }
+                return;
+              }
+            }
+            
             setCalcResult('');
             
+            // If they type or paste 'sqrt(', convert to 'sqrt()'
+            if (val.includes('sqrt(')) {
+              let idx = -1;
+              for (let i = 0; i < val.length; i++) {
+                if (val.startsWith('sqrt(', i) && !val.startsWith('sqrt()', i)) {
+                  idx = i;
+                  break;
+                }
+              }
+              if (idx !== -1) {
+                const before = val.substring(0, idx);
+                const after = val.substring(idx + 5);
+                const finalVal = before + 'sqrt()' + after;
+                setCalcInput(finalVal);
+                const newPos = idx + 5;
+                setCursorPosition(newPos);
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.setSelectionRange(newPos, newPos);
+                  }
+                }, 10);
+                return;
+              }
+            }
+
             // Intercept caret '^' typed by physical keyboard
             if (val.includes('^')) {
               let caretIdx = -1;
