@@ -2332,10 +2332,10 @@ function ScientificCalculator() {
     let topSize = 'text-[9px] h-3.5 mb-1';
     if (keyId === 'shift') {
       topColor = 'text-amber-500';
-      topSize = 'text-[18px] h-5 mb-0.5';
+      topSize = 'text-[11px] h-4 mb-0.5';
     } else if (keyId === 'alpha') {
       topColor = 'text-rose-400';
-      topSize = 'text-[18px] h-5 mb-0.5';
+      topSize = 'text-[11px] h-4 mb-0.5';
     }
     
     let activeCls = '';
@@ -2350,7 +2350,7 @@ function ScientificCalculator() {
         </span>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className={`w-full py-1.5 rounded text-[12px] font-black transition-all shadow-sm select-none h-7.5 flex items-center justify-center border ${activeCls}`}
+          className={`w-full py-1 rounded text-[10px] font-black transition-all shadow-sm select-none h-6 flex items-center justify-center border ${activeCls}`}
         >
           {label}
         </button>
@@ -2361,13 +2361,13 @@ function ScientificCalculator() {
   const renderFuncKey = (keyId, label, shiftLabel, alphaLabel, keyName) => {
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
-          <span className="text-[16px] font-black text-amber-500 truncate max-w-[50%] leading-none">{shiftLabel || ' '}</span>
-          <span className="text-[16px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
+        <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
+          <span className="text-[10px] font-black text-amber-500 truncate max-w-[50%] leading-none">{shiftLabel || ' '}</span>
+          <span className="text-[10px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
         </div>
         <button
           onClick={() => handleKeyClick(keyId)}
-          className="w-full py-1.5 rounded bg-[#2c3230] border border-[#404845] text-[13px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative"
+          className="w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-[10px] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-7 flex items-center justify-center relative"
         >
           {label}
         </button>
@@ -2376,7 +2376,7 @@ function ScientificCalculator() {
   };
 
   const renderNumPadKey = (label, topLabelGold, topLabelPink, onClick, colorType) => {
-    let btnCls = "w-full py-1.5 text-[15px] font-black rounded-lg border transition-all cursor-pointer h-11 flex items-center justify-center select-none ";
+    let btnCls = "w-full py-1 text-[12px] font-black rounded-md border transition-all cursor-pointer h-8.5 flex items-center justify-center select-none ";
     if (colorType === 'green') {
       btnCls += "bg-[#a3c965] border-[#8aab51] text-slate-950 hover:bg-[#b0da6d] active:scale-95 shadow-sm shadow-emerald-950/20";
     } else if (colorType === 'equal') {
@@ -2384,14 +2384,14 @@ function ScientificCalculator() {
     } else if (colorType === 'operator') {
       btnCls += "bg-[#2c3230] border-[#404845] text-slate-100 hover:bg-[#383f3d] active:scale-95 shadow-sm";
     } else {
-      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[16px]";
+      btnCls += "bg-[#eceeed] border-[#cfd2d1] text-slate-900 hover:bg-[#f7f9f8] active:scale-95 shadow-sm font-sans text-[13px]";
     }
 
     return (
       <div className="flex flex-col items-center w-full relative">
-        <div className="flex justify-between items-end w-full px-1 mb-1 select-none h-5">
-          <span className="text-[16px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
-          <span className="text-[16px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
+        <div className="flex justify-between items-end w-full px-0.5 mb-0.5 select-none h-4">
+          <span className="text-[10px] font-black text-amber-500 truncate leading-none">{topLabelGold || ' '}</span>
+          <span className="text-[10px] font-black text-rose-400 truncate leading-none self-end">{topLabelPink || ' '}</span>
         </div>
         <button onClick={onClick} className={btnCls}>
           {label}
@@ -2471,7 +2471,7 @@ function ScientificCalculator() {
     };
     
     return (
-      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[17px] font-extrabold leading-none text-[#141a12] font-mono">
+      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[14px] font-extrabold leading-none text-[#141a12] font-mono">
         {renderTree(parsed)}
         {renderCursor(str.length)}
       </span>
@@ -2620,118 +2620,127 @@ function ScientificCalculator() {
   };
 
   return (
-    <div className="w-full bg-[#181d1b] border-b border-slate-800 p-4 flex flex-col gap-1.5 flex-shrink-0 shadow-2xl select-none relative font-sans">
+    <div className="w-full bg-[#181d1b] border-b border-slate-800 p-3 flex flex-col gap-1 select-none relative font-sans">
       
       {/* Casio Logo & Solar Panel Header */}
-      <div className="flex justify-between items-center px-1 mb-2 select-none">
+      <div className="flex justify-between items-center px-1 mb-1.5 select-none">
         <div className="flex flex-col">
-          <span className="text-[14px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
-          <span className="text-[8px] font-bold text-slate-500 mt-1 tracking-tight uppercase">fx-570ES PLUS <span className="text-[6px] text-slate-600">2nd edition</span></span>
+          <span className="text-[12px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
+          <span className="text-[7px] font-bold text-slate-500 mt-0.5 tracking-tight uppercase">fx-570ES PLUS <span className="text-[5px] text-slate-600">2nd edition</span></span>
         </div>
         
         {/* Solar Panel */}
-        <div className="w-20 h-5 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
-          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1.5 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1.5 h-full bg-[#523527]/40"></div>
+        <div className="w-16 h-4 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
+          <div className="w-1 h-full bg-[#523527]/40"></div>
         </div>
       </div>
 
       {/* Casio LCD Screen */}
       {renderLcdDisplay()}
 
-      {/* Casio Scientific Function Keys (6 columns with center D-pad) */}
-      <div className="grid grid-cols-6 gap-x-1.5 gap-y-1 select-none">
-        {/* Row 1 */}
-        {renderSilverKey('SHIFT', 'SHIFT', 'shift')}
-        {renderSilverKey('ALPHA', 'ALPHA', 'alpha')}
+      {/* Keypad Container (Function keys on left, Number pad on right) */}
+      <div className="flex flex-row gap-2 mt-1 w-full overflow-hidden items-stretch">
         
-        {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
-        <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-1.5">
-          <div className="relative w-24 h-24 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
-            <button onClick={() => handleDpad('up')} className="absolute top-1.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▲</button>
-            <button onClick={() => handleDpad('down')} className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▼</button>
-            <button onClick={() => handleDpad('left')} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">◀</button>
-            <button onClick={() => handleDpad('right')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[22px] font-black cursor-pointer leading-none">▶</button>
-            <span className="text-[9px] font-black text-slate-500 tracking-wider">REPLAY</span>
+        {/* Left Side: Casio Scientific Function Keys (6 columns with center D-pad) */}
+        <div className="flex-[1.25] min-w-0 pr-1 border-r border-[#404845]/30 flex flex-col justify-end">
+          <div className="grid grid-cols-6 gap-x-1 gap-y-1 select-none">
+            {/* Row 1 */}
+            {renderSilverKey('SHIFT', 'SHIFT', 'shift')}
+            {renderSilverKey('ALPHA', 'ALPHA', 'alpha')}
+            
+            {/* D-Pad occupies cols 3 & 4 and spans 2 rows */}
+            <div className="col-span-2 row-span-2 flex items-center justify-center relative w-full h-full my-auto px-0.5">
+              <div className="relative w-18 h-18 bg-gradient-to-tr from-[#3a423e] to-[#252a28] border-2 border-[#4a5450] rounded-full shadow-md flex items-center justify-center shrink-0">
+                <button onClick={() => handleDpad('up')} className="absolute top-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▲</button>
+                <button onClick={() => handleDpad('down')} className="absolute bottom-1 left-1/2 -translate-x-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▼</button>
+                <button onClick={() => handleDpad('left')} className="absolute left-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">◀</button>
+                <button onClick={() => handleDpad('right')} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white active:scale-90 select-none text-[15px] font-black cursor-pointer leading-none">▶</button>
+                <span className="text-[8px] font-black text-slate-500 tracking-wider">REPLAY</span>
+              </div>
+            </div>
+            
+            {renderSilverKey('MODE', 'SETUP', 'mode')}
+            {renderSilverKey('ON', 'OFF', 'on')}
+            
+            {/* Row 2 */}
+            {renderFuncKey('calc', 'CALC', 'SOLVE', '=', 'calc')}
+            {renderFuncKey('integration', '∫dx', 'd/dx', ':', 'integration')}
+            {/* cols 3 & 4 skipped for row-span-2 D-Pad */}
+            {renderFuncKey('inverse', 'x⁻¹', 'x!', 'DEC', 'inverse')}
+            {renderFuncKey('log_base', 'log_■', 'Σ', 'HEX', 'log_base')}
+            
+            {/* Row 3 */}
+            {renderFuncKey('frac', '■/□', 'a b/c', '', 'frac')}
+            {renderFuncKey('sqrt', '√', '∛', '', 'sqrt')}
+            {renderFuncKey('sq', 'x²', 'x³', 'DEC', 'sq')}
+            {renderFuncKey('pow', 'x^■', 'x√', 'HEX', 'pow')}
+            {renderFuncKey('log', 'log', '10ˣ', 'BIN', 'log')}
+            {renderFuncKey('ln', 'ln', 'eˣ', 'OCT', 'ln')}
+            
+            {/* Row 4 */}
+            {renderFuncKey('neg', '(-)', '∠', 'A', 'neg')}
+            {renderFuncKey('dms', '°\'"', '←', 'B', 'dms')}
+            {renderFuncKey('hyp', 'hyp', 'Abs', 'C', 'hyp')}
+            {renderFuncKey('sin', 'sin', 'sin⁻¹', 'D', 'sin')}
+            {renderFuncKey('cos', 'cos', 'cos⁻¹', 'E', 'cos')}
+            {renderFuncKey('tan', 'tan', 'tan⁻¹', 'F', 'tan')}
+            
+            {/* Row 5 */}
+            {renderFuncKey('rcl', 'RCL', 'STO', '', 'rcl')}
+            {renderFuncKey('eng', 'ENG', '←', 'i', 'eng')}
+            {renderFuncKey('lparen', '(', '%', 'X', 'lparen')}
+            {renderFuncKey('rparen', ')', ',', 'Y', 'rparen')}
+            {renderFuncKey('sd', 'S⇔D', 'd/c', '', 'sd')}
+            {renderFuncKey('mplus', 'M+', 'M-', 'M', 'mplus')}
           </div>
         </div>
-        
-        {renderSilverKey('MODE', 'SETUP', 'mode')}
-        {renderSilverKey('ON', 'OFF', 'on')}
-        
-        {/* Row 2 */}
-        {renderFuncKey('calc', 'CALC', 'SOLVE', '=', 'calc')}
-        {renderFuncKey('integration', '∫dx', 'd/dx', ':', 'integration')}
-        {/* cols 3 & 4 skipped for row-span-2 D-Pad */}
-        {renderFuncKey('inverse', 'x⁻¹', 'x!', 'DEC', 'inverse')}
-        {renderFuncKey('log_base', 'log_■', 'Σ', 'HEX', 'log_base')}
-        
-        {/* Row 3 */}
-        {renderFuncKey('frac', '■/□', 'a b/c', '', 'frac')}
-        {renderFuncKey('sqrt', '√', '∛', '', 'sqrt')}
-        {renderFuncKey('sq', 'x²', 'x³', 'DEC', 'sq')}
-        {renderFuncKey('pow', 'x^■', 'x√', 'HEX', 'pow')}
-        {renderFuncKey('log', 'log', '10ˣ', 'BIN', 'log')}
-        {renderFuncKey('ln', 'ln', 'eˣ', 'OCT', 'ln')}
-        
-        {/* Row 4 */}
-        {renderFuncKey('neg', '(-)', '∠', 'A', 'neg')}
-        {renderFuncKey('dms', '°\'"', '←', 'B', 'dms')}
-        {renderFuncKey('hyp', 'hyp', 'Abs', 'C', 'hyp')}
-        {renderFuncKey('sin', 'sin', 'sin⁻¹', 'D', 'sin')}
-        {renderFuncKey('cos', 'cos', 'cos⁻¹', 'E', 'cos')}
-        {renderFuncKey('tan', 'tan', 'tan⁻¹', 'F', 'tan')}
-        
-        {/* Row 5 */}
-        {renderFuncKey('rcl', 'RCL', 'STO', '', 'rcl')}
-        {renderFuncKey('eng', 'ENG', '←', 'i', 'eng')}
-        {renderFuncKey('lparen', '(', '%', 'X', 'lparen')}
-        {renderFuncKey('rparen', ')', ',', 'Y', 'rparen')}
-        {renderFuncKey('sd', 'S⇔D', 'd/c', '', 'sd')}
-        {renderFuncKey('mplus', 'M+', 'M-', 'M', 'mplus')}
-      </div>
 
-      {/* Casio Number Pad (5 columns) */}
-      <div className="grid grid-cols-5 gap-x-1.5 gap-y-1 mt-1.5 select-none">
-        {/* Row 6 */}
-        {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
-        {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
-        {renderNumPadKey('9', 'CLR', '', () => appendToInput('9'))}
-        {renderNumPadKey('DEL', 'INS', '', handleBackspace, 'green')}
-        {renderNumPadKey('AC', 'OFF', '', () => handleKeyClick('on'), 'green')}
+        {/* Right Side: Casio Number Pad (5 columns) */}
+        <div className="flex-[0.75] min-w-0 pl-1 flex flex-col justify-end">
+          <div className="grid grid-cols-5 gap-x-1 gap-y-1 select-none">
+            {/* Row 6 */}
+            {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
+            {renderNumPadKey('8', 'CONV', '', () => appendToInput('8'))}
+            {renderNumPadKey('9', 'CLR', '', () => appendToInput('9'))}
+            {renderNumPadKey('DEL', 'INS', '', handleBackspace, 'green')}
+            {renderNumPadKey('AC', 'OFF', '', () => handleKeyClick('on'), 'green')}
 
-        {/* Row 7 */}
-        {renderNumPadKey('4', 'MATRIX', '', () => appendToInput('4'))}
-        {renderNumPadKey('5', 'VECTOR', '', () => appendToInput('5'))}
-        {renderNumPadKey('6', '', '', () => appendToInput('6'))}
-        {renderNumPadKey('×', 'nPr', '', () => appendToInput('×'), 'operator')}
-        {renderNumPadKey('÷', 'nCr', '', () => appendToInput('÷'), 'operator')}
+            {/* Row 7 */}
+            {renderNumPadKey('4', 'MATRIX', '', () => appendToInput('4'))}
+            {renderNumPadKey('5', 'VECTOR', '', () => appendToInput('5'))}
+            {renderNumPadKey('6', '', '', () => appendToInput('6'))}
+            {renderNumPadKey('×', 'nPr', '', () => appendToInput('×'), 'operator')}
+            {renderNumPadKey('÷', 'nCr', '', () => appendToInput('÷'), 'operator')}
 
-        {/* Row 8 */}
-        {renderNumPadKey('1', 'STAT', '', () => appendToInput('1'))}
-        {renderNumPadKey('2', 'CMPLX', '', () => appendToInput('2'))}
-        {renderNumPadKey('3', 'BASE', '', () => appendToInput('3'))}
-        {renderNumPadKey('+', 'Pol', '', () => appendToInput('+'), 'operator')}
-        {renderNumPadKey('-', 'Rec', '', () => appendToInput('-'), 'operator')}
+            {/* Row 8 */}
+            {renderNumPadKey('1', 'STAT', '', () => appendToInput('1'))}
+            {renderNumPadKey('2', 'CMPLX', '', () => appendToInput('2'))}
+            {renderNumPadKey('3', 'BASE', '', () => appendToInput('3'))}
+            {renderNumPadKey('+', 'Pol', '', () => appendToInput('+'), 'operator')}
+            {renderNumPadKey('-', 'Rec', '', () => appendToInput('-'), 'operator')}
 
-        {/* Row 9 */}
-        {renderNumPadKey('0', 'Rnd', '', () => appendToInput('0'))}
-        {renderNumPadKey('.', 'Ran#', 'RanInt', () => appendToInput('.'))}
-        {renderNumPadKey('×10ˣ', 'π', 'e', () => {
-          if (shiftActive) {
-            appendToInput('π');
-            setShiftActive(false);
-          } else if (alphaActive) {
-            appendToInput('e');
-            setAlphaActive(false);
-          } else {
-            appendToInput('*10^(');
-          }
-        })}
-        {renderNumPadKey('Ans', 'DRG▶', '', () => appendToInput('Ans'), 'operator')}
-        {renderNumPadKey('=', '', '', handleEqual, 'equal')}
+            {/* Row 9 */}
+            {renderNumPadKey('0', 'Rnd', '', () => appendToInput('0'))}
+            {renderNumPadKey('.', 'Ran#', 'RanInt', () => appendToInput('.'))}
+            {renderNumPadKey('×10ˣ', 'π', 'e', () => {
+              if (shiftActive) {
+                appendToInput('π');
+                setShiftActive(false);
+              } else if (alphaActive) {
+                appendToInput('e');
+                setAlphaActive(false);
+              } else {
+                appendToInput('*10^(');
+              }
+            })}
+            {renderNumPadKey('Ans', 'DRG▶', '', () => appendToInput('Ans'), 'operator')}
+            {renderNumPadKey('=', '', '', handleEqual, 'equal')}
+          </div>
+        </div>
+
       </div>
 
     </div>
