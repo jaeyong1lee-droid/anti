@@ -5034,15 +5034,16 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 // 6-4. Formula Analysis & Title/Structure Generation
 app.post('/api/formula/suggest-title', async (req, res) => {
   try {
-    const { mathContent, fullText } = req.body;
+    const { mathContent, fullText, userFeedback } = req.body;
     if (!mathContent) {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
-    // 1) 로컬 사전 매칭 시도
+    // 1) 로컬 사전 매칭 시도 (사용자 피드백이 없을 때만 수행)
     let bestLocalMatch = null;
     let maxMatchCount = 0;
-    const cleanMathContent = mathContent.replace(/\s+/g, '');
+    if (!userFeedback) {
+      const cleanMathContent = mathContent.replace(/\s+/g, '');
     
     // LaTeX 명령어(예: \frac, \left, \right)의 내부 텍스트만 추출하고 명령어 단어 자체는 차단
     const mathTokens = mathContent
@@ -5076,8 +5077,9 @@ app.post('/api/formula/suggest-title', async (req, res) => {
         bestLocalMatch = dict;
       }
     }
+    }
 
-    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 공식의 세부 정보를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요. 다른 설명 텍스트나 코드블록 기호는 절대 출력하지 마십시오.
+    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락, 현재 학습 중인 토픽 등의 문제 출처/맥락을 깊이 있게 고려하여 해당 맥락 하에서의 공학적 정의와 의미로 맞춤형 작성을 해야 합니다. 반드시 아래 지정된 JSON 형식으로만 응답해 주세요. 다른 설명 텍스트나 코드블록 기호는 절대 출력하지 마십시오.
 [지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 번역/표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 통일하여 표기하십시오.
  
 JSON 포맷 규격:
@@ -5087,7 +5089,10 @@ JSON 포맷 규격:
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 분석한 설명 리스트입니다. 반드시 제공된 공식에 실제 표기된 기호에 한해서만 정의 목록을 작성하십시오. 사족 문장 없이 마크다운 불릿 리스트 형태로만 반환하십시오."
 }`;
 
-    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
+    let userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
+    if (userFeedback) {
+      userPrompt += `\n\n[사용자 공식 조정 요청 의견]:\n${userFeedback}\n\n위 사용자 피드백 의견을 최우선적으로 적극 반영하여 공식의 명칭(title), 핵심개념(concept), 그리고 수식 기호 설명(structure)을 재구성하여 한글로 성실히 보완하십시오.`;
+    }
 
     try {
       const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');

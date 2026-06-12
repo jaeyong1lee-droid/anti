@@ -3248,14 +3248,6 @@ export default function App() {
   const [formulaConfirmTarget, setFormulaConfirmTarget] = useState(null);
   const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
 
-  useEffect(() => {
-    window.__handleFormulaConfirmRequest = (math, fullText) => {
-      setFormulaConfirmTarget({ math, fullText });
-    };
-    return () => {
-      delete window.__handleFormulaConfirmRequest;
-    };
-  }, []);
   
   // Date selector for easy testing (defaults to today's local date 'YYYY-MM-DD')
   const getTodayString = () => {
@@ -3348,6 +3340,35 @@ export default function App() {
         }
       })
       .catch(err => console.warn('Failed to load right_sidebar_width from database:', err));
+  }, []);
+
+  // --- Formula Adjust States & Context Registration ---
+  const [adjustingFormulaInputKey, setAdjustingFormulaInputKey] = useState(null);
+  const [adjustingFormulaText, setAdjustingFormulaText] = useState({});
+  const [adjustingFormulaLoading, setAdjustingFormulaLoading] = useState({});
+
+  const selectedTopicRefForFormula = useRef(null);
+  selectedTopicRefForFormula.current = selectedTopic;
+
+  const examTopicRefForFormula = useRef(null);
+  examTopicRefForFormula.current = examTopic;
+
+  useEffect(() => {
+    window.__handleFormulaConfirmRequest = (math, fullText) => {
+      let contextText = fullText || "";
+      const selTopic = selectedTopicRefForFormula.current;
+      const exTopic = examTopicRefForFormula.current;
+      
+      if (selTopic && selTopic.title) {
+        contextText = `[현재 학습 중인 토픽]: ${selTopic.title}\n\n${contextText}`;
+      } else if (exTopic && exTopic.title) {
+        contextText = `[현재 시험 중인 토픽]: ${exTopic.title}\n\n${contextText}`;
+      }
+      setFormulaConfirmTarget({ math, fullText: contextText });
+    };
+    return () => {
+      delete window.__handleFormulaConfirmRequest;
+    };
   }, []);
 
   // Save sidebar width to server database when resizing stops
@@ -7463,6 +7484,87 @@ export default function App() {
       });
   };
 
+  // 필수공식 개별 AI 조정 (사용자 의견 반영 재작성)
+  const handleAdjustFormula = async (idx) => {
+    if (idx === null || idx === undefined) return;
+    const q = formulaQuestions[idx];
+    if (!q) return;
+
+    const feedbackText = adjustingFormulaText[idx] || '';
+    if (!feedbackText.trim()) {
+      showNotification('공식 조정 의견을 입력해 주세요.', 'warning');
+      return;
+    }
+
+    // 수식 본문 내 LaTeX 추출
+    let mathContent = "";
+    const match = q.formula.match(/\$\$(.*?)\$\$/s);
+    if (match) {
+      mathContent = match[1].trim();
+    } else {
+      mathContent = q.formula.replace(/^\$\$|\$\$$/g, '').trim();
+    }
+
+    setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: true }));
+    showNotification(`[${q.title || `Q${idx + 1}`}] 공식을 사용자 피드백을 반영하여 재조정 중입니다...`);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/formula/suggest-title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mathContent,
+          fullText: `${q.concept || ''}\n${q.formula || ''}`,
+          userFeedback: feedbackText
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+
+      if (data && data.title) {
+        const suggestedTitle = data.title;
+        const suggestedConcept = data.concept;
+        const suggestedStructure = data.structure;
+
+        setFormulaQuestions(prev => {
+          const updated = prev.map((f, i) => {
+            if (i === idx) {
+              return {
+                ...f,
+                title: suggestedTitle,
+                question: suggestedTitle,
+                concept: suggestedConcept || f.concept,
+                formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
+                structure: suggestedStructure || f.structure
+              };
+            }
+            return f;
+          }).map(healFormulaQuestionObject);
+          latestFormulaQuestionsRef.current = updated;
+          handleSaveFormulaQuestions(updated, false);
+          return updated;
+        });
+
+        showNotification(`[${suggestedTitle}] 공식이 사용자 피드백을 반영하여 재조정되었습니다!`, 'success');
+        setAdjustingFormulaInputKey(null); // 입력창 닫기
+      } else {
+        throw new Error('API returned empty title');
+      }
+    } catch (err) {
+      console.warn('공식 피드백 AI 조정 실패:', err);
+      showNotification('AI 공식 조정 호출 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: false }));
+    }
+  };
+
   // 필수공식 이론유도 질문 (실시간 튜터 연동)
   const handleAskTheoryDerivation = async (title, formula) => {
     if (isChatLoading) return;
@@ -11433,6 +11535,21 @@ export default function App() {
                               </button>
                             )}
 
+                            {/* AI Adjust Formula Button */}
+                            {!q.isDirectlyAdded && (
+                              <button
+                                onClick={() => setAdjustingFormulaInputKey(prev => prev === idx ? null : idx)}
+                                disabled={adjustingFormulaLoading[idx]}
+                                className={`p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 hover:border-brand-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
+                                  adjustingFormulaLoading[idx] ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                                title="공식 제목, 핵심개념, 기호정의를 조율하기 위한 피드백 입력창 토글"
+                              >
+                                <Edit2 size={12} />
+                                <span>공식조정</span>
+                              </button>
+                            )}
+
                             {/* Toggle Input Editor */}
                             {q.isDirectlyAdded && (
                               <button
@@ -11495,6 +11612,41 @@ export default function App() {
                             </button>
                           </div>
                         </div>
+
+                        {/* 공식조정 입력 및 결과 보드 */}
+                        {adjustingFormulaInputKey === idx && (
+                          <div className="mt-2.5 p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-xl w-full">
+                            <label className="block text-[10px] font-black text-indigo-400 mb-1.5 select-none">🛠️ 공식조정 의견을 제시해 주세요:</label>
+                            <textarea
+                              rows={2}
+                              value={adjustingFormulaText[idx] || ''}
+                              onChange={(e) => {
+                                const text = e.target.value;
+                                setAdjustingFormulaText(prev => ({ ...prev, [idx]: text }));
+                              }}
+                              placeholder="예: 이 공식의 명칭을 '터널 여굴 두께 공식'으로 바꾼 뒤, 변수 L을 터널 굴착 길이로 맞추어 개념을 자세히 써줘..."
+                              className="w-full text-xs p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none animate-fade-in"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => setAdjustingFormulaInputKey(null)}
+                                className="text-[10px] px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                              >
+                                취소
+                              </button>
+                              <button
+                                onClick={() => handleAdjustFormula(idx)}
+                                disabled={adjustingFormulaLoading[idx]}
+                                className="text-[10px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
+                              >
+                                {adjustingFormulaLoading[idx] ? '조정 중...' : '조정하기'}
+                              </button>
+                            </div>
+                            {adjustingFormulaLoading[idx] && (
+                              <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 공식을 재구성 중입니다...</div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Real-time LaTeX rendered Output Display Window */}
                         {!isMobileLandscape && isOutputVisible && (
