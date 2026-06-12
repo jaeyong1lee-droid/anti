@@ -3106,7 +3106,7 @@ function ScientificCalculator() {
             {renderNumPadKey('%', '', '', () => appendToInput('%'))}
             <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
             <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
-            {renderNumPadKey('S⇔D', '', '', handleSdToggle)}
+            <div className="w-full relative"><div className="h-4 mb-0.5" /><div className="h-10.5 w-full" /></div>
 
             {/* Row 6 */}
             {renderNumPadKey('7', 'CONST', '', () => appendToInput('7'))}
