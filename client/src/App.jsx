@@ -2943,7 +2943,7 @@ function ScientificCalculator() {
             <span style={{
               display: 'inline-block',
               borderLeft: '2px solid #202528',
-              height: '24px',
+              height: '20px',
               marginLeft: '-1px',
               verticalAlign: 'middle',
               animation: 'casio-blink 1s step-start infinite'
@@ -3091,7 +3091,7 @@ function ScientificCalculator() {
     };
     
     return (
-      <span className="flex items-center flex-wrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[25px] font-extrabold leading-none text-[#202528] font-mono">
+      <span className="flex items-center flex-nowrap select-text whitespace-nowrap overflow-x-auto py-1 max-w-full text-[20px] font-extrabold leading-none text-[#202528] font-mono">
         {renderTree(parsed)}
         {renderCursor(str.length)}
       </span>
@@ -3149,9 +3149,9 @@ function ScientificCalculator() {
           <span className="ml-auto opacity-100">Math</span>
         </div>
         
-        <div className="flex flex-col justify-between flex-grow mt-1.5 select-text">
-          <div className="flex justify-between items-start w-full min-h-[2.5rem] select-text">
-            <div className="flex-grow select-text overflow-hidden">
+        <div className="flex flex-row justify-between flex-grow mt-1 select-text w-full items-center gap-1 overflow-hidden h-[80px]">
+          <div className="flex-[8] w-[80%] flex items-center select-text overflow-x-auto h-full pr-1.5 border-r border-[#202528]/10 scrollbar-thin">
+            <div className="w-full select-text">
               <FormulaRenderer str={calcInput} cursorIdx={cursorPosition} />
             </div>
             
@@ -3162,16 +3162,16 @@ function ScientificCalculator() {
             )}
           </div>
           
-          <div className="flex justify-between items-end w-full h-8.5 select-text">
-            <span className="text-[21px] opacity-75 text-[#202528] select-none leading-none mb-0.5">=</span>
-            <div className="text-right text-[#202528] select-all font-mono leading-none flex items-end">
+          <div className="flex-[2] w-[20%] flex items-center justify-end select-text h-full pl-1.5 text-right overflow-hidden">
+            <span className="text-[18px] opacity-75 text-[#202528] select-none leading-none mr-1 shrink-0">=</span>
+            <div className="text-[#202528] select-all font-mono leading-none flex items-center justify-end overflow-hidden max-w-full">
               {showFraction ? (
-                <div className="inline-flex flex-col items-center justify-center font-bold px-1 text-[20px] align-middle">
-                  <span className="border-b border-[#202528] pb-0.5 px-1 select-text">{fracNumerator}</span>
-                  <span className="pt-0.5 px-1 select-text">{fracDenominator}</span>
+                <div className="inline-flex flex-col items-center justify-center font-bold px-0.5 text-[14px] align-middle shrink-0 leading-tight">
+                  <span className="border-b border-[#202528] pb-0.5 px-0.5 select-text">{fracNumerator}</span>
+                  <span className="pt-0.5 px-0.5 select-text">{fracDenominator}</span>
                 </div>
               ) : (
-                <span className="text-[27px] font-black tracking-tight select-text leading-none">{showDecimal ? (calcResult || '0') : ''}</span>
+                <span className="text-[20px] font-black tracking-tight select-text leading-none truncate">{showDecimal ? (calcResult || '0') : ''}</span>
               )}
             </div>
           </div>
