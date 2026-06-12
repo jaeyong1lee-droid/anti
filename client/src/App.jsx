@@ -3316,22 +3316,6 @@ function ScientificCalculator() {
   return (
     <div className="w-full bg-[#181d1b] border-b border-slate-800 p-3 flex flex-col gap-1 select-none relative font-sans">
       
-      {/* Casio Logo & Solar Panel Header */}
-      <div className="flex justify-between items-center px-1 mb-1.5 select-none">
-        <div className="flex flex-col">
-          <span className="text-[12px] font-black tracking-widest text-[#a8b0ad] leading-none">CASIO</span>
-          <span className="text-[7px] font-bold text-slate-500 mt-0.5 tracking-tight uppercase">fx-570ES PLUS <span className="text-[5px] text-slate-600">2nd edition</span></span>
-        </div>
-        
-        {/* Solar Panel */}
-        <div className="w-16 h-4 bg-gradient-to-r from-[#3d271d] via-[#523527] to-[#3d271d] border border-[#1e2321] rounded flex gap-0.5 justify-around px-0.5 py-0.5 shadow-inner">
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40 border-r border-[#3d271d]/20"></div>
-          <div className="w-1 h-full bg-[#523527]/40"></div>
-        </div>
-      </div>
-
       {/* Casio LCD Screen */}
       {renderLcdDisplay()}
 
