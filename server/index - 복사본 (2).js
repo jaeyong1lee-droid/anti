@@ -90,7 +90,7 @@ function mergeVerticalText(text) {
 // Helper: Clean quiz questions by removing redundant PE question style suffixes like "을 제시하고, 각 기호의 정의를 서술하시오"
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return q.trim();
 }
 
 // 로컬 공식 매칭 사전 (AI API 장애 대책용)
@@ -296,18 +296,8 @@ function escapeJsonBackslashes(str) {
   let i = 0;
   
   const latexCommands = [
-    // n
-    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
-    // t
-    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
-    // r
-    'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
-    // b
-    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
-    // f
-    'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
-    // other greek/common commands
-    'phi', 'varphi', 'mathrm'
+    'newline', 'nabla', 'nu', 'theta', 'tau', 'tan', 'times', 'tilde', 'text', 
+    'rho', 'right', 'mathrm', 'rule', 'beta', 'bar', 'begin', 'frac', 'phi', 'varphi', 'forall'
   ];
 
   while (i < str.length) {
@@ -579,7 +569,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         'gemini-2.0-flash',
         'gemini-1.5-flash'
       ];
-      if (scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation') {
+      if (scenario === 'formula') {
         MODELS = [
           'gemini-3.1-flash-lite',
           'gemini-3.5-flash',
@@ -749,9 +739,6 @@ function htmlToPlainText(html) {
   // 1. Remove script and style tags and their contents safely (avoiding catastrophic backtracking)
   let text = html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
   text = text.replace(/<style\b[\s\S]*?<\/style>/gi, '');
-  
-  // [추가 대책] 인라인 스타일 속성(style="...")을 최우선 박멸하여 태그 파싱 오류 및 찌꺼기 차단 (중첩 쿼트 대응)
-  text = text.replace(/style\s*=\s*(?:"[^"]*"|'[^']*'|夸[^夸]*夸)/gi, '');
   
   // 2. Convert tables to Markdown before stripping block tags
   text = convertHtmlTablesToMarkdown(text);
@@ -1801,43 +1788,6 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   return generateFallbackQuestionsModule(title, keywords, fileText);
 }
 
-// 복습이 완료되었을 때 다음 회차 복습 스케줄을 자동으로 생성하는 헬퍼 함수
-async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Date()) {
-  const nextRound = currentRound + 1;
-  const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
-  const existingNextSchedule = await dbQuery.get(nextCheckSql, [topicId, nextRound]);
-  
-  let days = 0;
-  if (currentRound === 1) days = 4;
-  else if (currentRound === 2) days = 7;
-  else if (currentRound === 3) days = 14;
-  else if (currentRound === 4) days = 35;
-  else if (currentRound === 5) days = 60;
-  else if (currentRound >= 6) {
-    days = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
-  }
-
-  if (days > 0) {
-    const nextPlannedDate = getLocalDateString(baseDate, days);
-    if (!existingNextSchedule) {
-      const insertSql = `
-        INSERT INTO schedules (topic_id, review_round, planned_date, status)
-        VALUES (?, ?, ?, 'pending')
-      `;
-      await dbQuery.run(insertSql, [topicId, nextRound, nextPlannedDate]);
-      console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
-    } else if (existingNextSchedule.status === 'pending') {
-      const updateSql = `
-        UPDATE schedules 
-        SET planned_date = ? 
-        WHERE id = ?
-      `;
-      await dbQuery.run(updateSql, [nextPlannedDate, existingNextSchedule.id]);
-      console.log(`[scheduleNextReviewRound] Updated existing pending review round ${nextRound} for topic ${topicId} to planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
-    }
-  }
-}
-
 
 // -------------------------------------------------------------
 // ENDPOINTS
@@ -1919,22 +1869,26 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
 
     const topicId = topicResult.id;
 
-    // 망각주기 스케줄링 알고리즘: 등록일 기준 +1일로 1회차 복습만 먼저 생성
-    // (이후 회차는 이전 회차 완료 시점에 동적으로 생성됨: 1회차 완료 -> 2회차 +4일, 2회차 -> 3회차 +7일 등)
-    const firstInterval = 1;
+    // 망각주기 스케줄링 알고리즘: 등록일 기준 [+1일, +4일, +7일, +14일, +35일, +60일]
+    const intervals = [1, 4, 7, 14, 35, 60];
+    
     const insertScheduleSql = `
       INSERT INTO schedules (topic_id, review_round, planned_date, status)
-      VALUES (?, 1, ?, 'pending')
+      VALUES (?, ?, ?, 'pending')
     `;
-    const plannedDate = getLocalDateString(createdDate, firstInterval);
-    await dbQuery.run(insertScheduleSql, [topicId, plannedDate]);
+
+    for (let i = 0; i < intervals.length; i++) {
+      const round = i + 1;
+      const plannedDate = getLocalDateString(createdDate, intervals[i]);
+      await dbQuery.run(insertScheduleSql, [topicId, round, plannedDate]);
+    }
 
     res.status(201).json({
       message: '토픽 등록 및 복습 스케줄 생성이 완료되었습니다.',
       topicId: topicId,
       title: title,
       keywords: keywords,
-      schedulesCreated: 1
+      schedulesCreated: intervals.length
     });
   } catch (error) {
     console.error('Error registering topic and creating schedules:', error);
@@ -2003,20 +1957,13 @@ app.get('/api/dashboard', async (req, res) => {
     const todayKstStr = kstDate.toISOString().split('T')[0];
 
     if (queryDate === todayKstStr && kstHour >= 8) {
-      const activeWeaknessCount = await dbQuery.get(
-        `SELECT COUNT(*) as count FROM schedules 
-         WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
+      const existingTodayBonus = await dbQuery.get(
+        `SELECT id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
         [todayKstStr]
       );
-      if (activeWeaknessCount.count < 3) {
-        const existingTodayBonus = await dbQuery.get(
-          `SELECT id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
-          [todayKstStr]
-        );
-        if (!existingTodayBonus) {
-          console.log(`[Auto-WeakPoint] Automatically generating 8 AM KST weak-point recommendation for ${todayKstStr}`);
-          await generateWeakPointRecommendation(todayKstStr);
-        }
+      if (!existingTodayBonus) {
+        console.log(`[Auto-WeakPoint] Automatically generating 8 AM KST weak-point recommendation for ${todayKstStr}`);
+        await generateWeakPointRecommendation(todayKstStr);
       }
     }
     // ----------------------------------------
@@ -2039,7 +1986,7 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.planned_date ASC, s.review_round ASC
+      ORDER BY s.review_round ASC, s.planned_date ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
@@ -2112,44 +2059,36 @@ async function generateWeakPointRecommendation(queryDate) {
     return null;
   }
 
-  // 오늘의 복습 목록에 떠있는 약점복습토픽이 3개 이상이면 신규 추천하지 않음
-  const activeWeaknessCount = await dbQuery.get(
-    `SELECT COUNT(*) as count FROM schedules 
-     WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
-    [queryDate]
-  );
-  if (activeWeaknessCount.count >= 3) {
-    return null;
-  }
-
-  // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 완료한 토픽 목록
+  // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 실제 점수를 획득해 완료한 토픽 목록
   const excludedRows = await dbQuery.all(
     `SELECT DISTINCT topic_id FROM schedules 
      WHERE (status = 'pending' AND planned_date <= ?) 
-        OR (review_round = 99 AND planned_date = ? AND status = 'completed')`,
+        OR (review_round = 99 AND planned_date = ? AND status = 'completed' AND score IS NOT NULL)`,
     [queryDate, queryDate]
   );
   const excludedTopicIds = excludedRows.map(r => r.topic_id);
 
-  // 2. 정규 복습하기 점수와 내부에 저장된 약점복습 점수의 평균점수가 90점 이하인 토픽 추출
+  // 2. 각 토픽의 모든 완료된 복습 세션(일반 복습 및 약점 복습 포함)의 평균 성적이 100점 미만인 항목을 최저 평균 점수 순 정렬
   const scoreHistory = await dbQuery.all(
     `SELECT topic_id, AVG(score) as avg_score
      FROM schedules
      WHERE status = 'completed' AND score IS NOT NULL
      GROUP BY topic_id
-     HAVING AVG(score) <= 90
+     HAVING AVG(score) < 100
      ORDER BY avg_score ASC`
   );
 
   // 제외 대상 제외
   let candidates = scoreHistory.filter(h => !excludedTopicIds.includes(h.topic_id));
 
-  if (candidates.length === 0) {
+  // 3. 하위 5개 토픽 내에서 1개 무작위 선택
+  const bottomFive = candidates.slice(0, 5);
+
+  if (bottomFive.length === 0) {
     return null;
   }
 
-  // 90점 이하 토픽 중 전체 무작위(랜덤)로 1개 선택
-  const selectedCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+  const selectedCandidate = bottomFive[Math.floor(Math.random() * bottomFive.length)];
 
   const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
   if (topic) {
@@ -2182,7 +2121,7 @@ async function generateWeakPointRecommendation(queryDate) {
       title: topic.title,
       keywords: topic.keywords,
       pdf_name: topic.pdf_name,
-      review_round: 99,
+      review_round: 1,
       planned_date: queryDate,
       status: 'pending',
       completed_at: null,
@@ -2198,15 +2137,6 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
-    const activeWeaknessCount = await dbQuery.get(
-      `SELECT COUNT(*) as count FROM schedules 
-       WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
-      [queryDate]
-    );
-    if (activeWeaknessCount.count >= 3) {
-      return res.json({ weakPoints: [], message: '오늘의 복습에 등록된 약점복습토픽이 3개를 초과할 수 없습니다.' });
-    }
-
     const recommended = await generateWeakPointRecommendation(queryDate);
     const weakPoints = recommended ? [recommended] : [];
     res.json({ weakPoints });
@@ -2218,8 +2148,7 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
 
 // 2-9. Mark Weak-point Bonus Review as Complete
 app.post('/api/schedules/bonus/complete', async (req, res) => {
-  const { topicId, score, scheduleId, schedule_id } = req.body;
-  const targetScheduleId = scheduleId || schedule_id;
+  const { topicId, score } = req.body;
   const today = getLocalDateString();
   const now = new Date().toISOString();
 
@@ -2228,18 +2157,11 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
   }
 
   try {
-    let existing = null;
-    if (targetScheduleId) {
-      existing = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
-    }
-
-    if (!existing) {
-      // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
-      existing = await dbQuery.get(
-        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-        [topicId, today]
-      );
-    }
+    // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
+    const existing = await dbQuery.get(
+      'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+      [topicId, today]
+    );
 
     if (existing) {
       // 이미 추천 단계를 통해 pending 상태로 존재하는 보너스 레코드가 있으므로 completed로 업데이트
@@ -2268,7 +2190,6 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
 // 3. Mark Review Round as Complete
 app.post('/api/schedules/:id/complete', async (req, res) => {
   const scheduleId = req.params.id;
-  const { referenceDate } = req.body;
 
   try {
     const checkSql = `SELECT * FROM schedules WHERE id = ?`;
@@ -2290,10 +2211,23 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [nowTimestamp, scheduleId]);
 
-    // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
-    if (schedule.review_round !== 99) {
-      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
-      await scheduleNextReviewRound(schedule.topic_id, schedule.review_round, baseDate);
+    // 6회차 이상 복습 완료 시, 장기 보존 복습을 위해 M+1(30일) ~ M+3(90일) 뒤에 다음 회차 복습을 자동으로 추가합니다.
+    if (schedule.review_round >= 6) {
+      const nextRound = schedule.review_round + 1;
+      const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+      const existingNextSchedule = await dbQuery.get(nextCheckSql, [schedule.topic_id, nextRound]);
+      
+      if (!existingNextSchedule) {
+        const randomDays = 30 + Math.floor(Math.random() * 61); // 30 ~ 90일 후
+        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
+        
+        const insertSql = `
+          INSERT INTO schedules (topic_id, review_round, planned_date, status)
+          VALUES (?, ?, ?, 'pending')
+        `;
+        await dbQuery.run(insertSql, [schedule.topic_id, nextRound, nextPlannedDate]);
+        console.log(`Auto-created review round ${nextRound} for topic ${schedule.topic_id} planned on ${nextPlannedDate}`);
+      }
     }
 
     res.json({
@@ -2310,7 +2244,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -2322,20 +2256,12 @@ app.post('/api/quiz/submit', async (req, res) => {
     let targetScheduleId = schedule_id;
 
     if (isBonus) {
-      let existingBonus = null;
-      if (schedule_id && schedule_id !== 9999 && String(schedule_id) !== '9999') {
-        existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [schedule_id]);
-      }
+      const today = getLocalDateString();
+      const existingBonus = await dbQuery.get(
+        'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+        [topic_id, today]
+      );
       if (!existingBonus) {
-        const today = getLocalDateString();
-        existingBonus = await dbQuery.get(
-          'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-          [topic_id, today]
-        );
-      }
-
-      if (!existingBonus) {
-        const today = getLocalDateString();
         await dbQuery.run(
           `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, 'pending')`,
           [topic_id, today]
@@ -2407,13 +2333,7 @@ app.post('/api/quiz/submit', async (req, res) => {
     // [핵심] 복습 완료 시, 풀이한 문제 세트, 객관식 마킹 내역, 주관식 풀이 열람 이력을 기기 간 완벽 복원하기 위해 세션 테이블에 세이브
     if (questions && questions.length > 0) {
       const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
-      const solvedSessionValue = JSON.stringify({ 
-        questions, 
-        selectedAnswers: selectedAnswers || {}, 
-        revealedQuestions: revealedQuestions || {},
-        tableAnswers: tableAnswers || {},
-        tableGradingResults: tableGradingResults || {}
-      });
+      const solvedSessionValue = JSON.stringify({ questions, selectedAnswers, revealedQuestions });
       await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
       await dbQuery.run(
         'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
@@ -2432,10 +2352,22 @@ app.post('/api/quiz/submit', async (req, res) => {
       await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeySchedule]);
     }
 
-    // 4. 통과한 경우, 다음 회차 자동 생성
-    if (isPassed && !isBonus && schedule.review_round !== 99) {
-      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
-      await scheduleNextReviewRound(topic_id, schedule.review_round, baseDate);
+    // 4. 통과한 경우, 6회차 이상이면 /api/schedules/:id/complete 로직과 동일하게 장기 복습 자동 생성
+    if (isPassed && schedule.review_round >= 6 && !isBonus) {
+      const nextRound = schedule.review_round + 1;
+      const existingNext = await dbQuery.get(
+        'SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?',
+        [topic_id, nextRound]
+      );
+      if (!existingNext) {
+        const randomDays = 30 + Math.floor(Math.random() * 61);
+        const nextPlannedDate = getLocalDateString(new Date(), randomDays);
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, ?, ?, 'pending')`,
+          [topic_id, nextRound, nextPlannedDate]
+        );
+        console.log(`[quiz/submit] 장기 복습 ${nextRound}회차 자동 생성: topic=${topic_id}, date=${nextPlannedDate}`);
+      }
     }
 
     res.json({
@@ -2489,14 +2421,16 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
     `;
     await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
 
-    // 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
-    const nextRound = schedule.review_round + 1;
-    const deleteSql = `
-      DELETE FROM schedules 
-      WHERE topic_id = ? AND review_round = ? AND status = 'pending'
-    `;
-    await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
-    console.log(`Cleaned up auto-created future round ${nextRound} for topic ${schedule.topic_id} due to reset`);
+    // 6회차 이상 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
+    if (schedule.review_round >= 6) {
+      const nextRound = schedule.review_round + 1;
+      const deleteSql = `
+        DELETE FROM schedules 
+        WHERE topic_id = ? AND review_round = ? AND status = 'pending'
+      `;
+      await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
+      console.log(`Cleaned up auto-created future round ${nextRound} for topic ${schedule.topic_id} due to reset`);
+    }
 
     res.json({
       message: `${schedule.review_round}회차 복습이 대기 상태로 초기화되었습니다.`,
@@ -2828,180 +2762,6 @@ function shuffleMultipleChoice(q) {
 }
 
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
-function createLocalFallbackTableQuestion(idx, title, keywords) {
-  if (idx === 0) {
-    return {
-      type: "주관식 (표채우기)",
-      question: "다음 소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 알맞은 핵심 개념을 서술하시오.",
-      tableData: {
-        headers: ["구분 항목", "소일네일링 (Soil Nailing)", "어스앵커 (Earth Anchor)"],
-        rows: [
-          ["보강 방식 및 지지력 메커니즘", "[INPUT_1]", "[INPUT_2]"],
-          ["긴장력 도입 여부", "수동적 보강 (긴장력 도입 없음)", "능동적 보강 (프리스트레스 긴장력 도입)"],
-          ["주요 구성 요소", "강봉 또는 네일, 시멘트 그라우팅", "PC 강연선, 인장재, 자유장 및 정착장"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "수동적 전단 및 인장 저항",
-        "INPUT_2": "선단 지지력 및 주면 마찰력"
-      },
-      explanation: "소일네일링은 지반 변형 시 가동되는 수동적 저항 메커니즘을 가지며, 어스앵커는 프리스트레스를 이용해 능동적으로 지반을 지지하는 특성을 갖습니다."
-    };
-  } else if (idx === 1) {
-    return {
-      type: "주관식 (표채우기)",
-      question: "다음 얕은기초(확대기초)와 깊은기초(말뚝기초)의 공학적 설계 조건 및 하중 전이 경로 비교표 빈칸 (A), (B)에 들어갈 핵심 용어를 작성하시오.",
-      tableData: {
-        headers: ["비교 구분 항목", "얕은기초 (확대기초)", "깊은기초 (말뚝기초)"],
-        rows: [
-          ["근입 깊이 기하학적 조건", "근입깊이가 기초 폭보다 작거나 같음 (Df <= B)", "근입깊이가 기초 폭보다 훨씬 큼 (Df >> B)"],
-          ["하중 전이 경로 및 저항 기전", "[INPUT_1]", "[INPUT_2]"],
-          ["적용 지층의 조건", "상부 지반의 지지력이 양호함", "상부 연약 지반 아래에 견고한 지지층이 존재함"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "기초 저면 지반의 직접 지지력",
-        "INPUT_2": "선단 지지력 및 주면 마찰력"
-      },
-      explanation: "얕은기초는 저면 지반의 지지력을 직접 이용하며, 깊은기초는 얕은 지층이 연약할 때 하부 암반층까지 말뚝을 박아 선단 지지력과 주면 마찰력으로 저항합니다."
-    };
-  } else {
-    return {
-      type: "주관식 (표채우기)",
-      question: "터널 굴착면 상부의 보강 공법인 강관다단 그라우팅과 천단 훠폴링 공법의 비교표 빈칸 (A), (B)에 들어갈 공학적 설명을 기술하시오.",
-      tableData: {
-        headers: ["비교 항목", "강관다단 그라우팅 공법", "천단 훠폴링 (Forepoling) 공법"],
-        rows: [
-          ["보강재 규격 및 특성", "대구경 강관 주입재 가압 그라우팅", "[INPUT_1]"],
-          ["주요 역할 및 역학적 기전", "[INPUT_2]", "천단 낙석 방지 및 국부 붕괴 방지"],
-          ["시공 길이 및 범위", "10m ~ 15m (중첩 시공 필요)", "3m ~ 6m 내외"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "소구경 강봉 또는 이형철근 주입",
-        "INPUT_2": "터널 상부 종방향 아치 형성 및 차수"
-      },
-      explanation: "강관다단 그라우팅은 대구경 강관과 가압 주입을 통해 천단부에 종방향 아치를 형성하고 차수 효과를 극대화하는 반면, 훠폴링은 소구경 보강재로 천단의 국부 탈락 및 낙석 방지에 초점을 둡니다."
-    };
-  }
-}
-
-function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
-  const subjsIntroFormula = questions.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
-  const subjsShort = questions.filter(q => q.type === '주관식 (단답형)');
-  const subjsTable = questions.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
-  const mcs = questions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
-
-  // 1. Q1, Q2 (Intro/Formula) - exactly 2
-  let finalSubjsIntroFormula = [...subjsIntroFormula].slice(0, 2);
-  if (finalSubjsIntroFormula.length < 2) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackSubjs = fallbackQs.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
-    finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
-  }
-
-  // 2. Q3, Q4 (Short Answer) - exactly 2
-  let finalSubjsShort = [...subjsShort];
-  if (finalSubjsShort.length < 2) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)');
-    finalSubjsShort = [...finalSubjsShort, ...fallbackShorts];
-  }
-
-  // Dedup finalSubjsShort to avoid exact duplicates
-  const uniqueShort = [];
-  const shortSeen = new Set();
-  finalSubjsShort.forEach(q => {
-    const qText = (q.question || '').trim();
-    if (qText && !shortSeen.has(qText)) {
-      shortSeen.add(qText);
-      uniqueShort.push(q);
-    }
-  });
-  finalSubjsShort = uniqueShort.slice(0, 2);
-
-  // If we still need more to make exactly 2, we dynamically derive from Q1 (finalSubjsIntroFormula[0])
-  if (finalSubjsShort.length < 2 && finalSubjsIntroFormula.length > 0) {
-    const q1 = finalSubjsIntroFormula[0];
-    finalSubjsShort.push({
-      type: "주관식 (단답형)",
-      question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
-      answer: q1.concept || `${topic.title}의 핵심 개념`,
-      explanation: `${topic.title}에 관한 핵심 정의 및 개요 서술형 평가입니다.`
-    });
-  }
-
-  // Ensure we have exactly 2
-  while (finalSubjsShort.length < 2) {
-    finalSubjsShort.push({
-      type: "주관식 (단답형)",
-      question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
-      answer: "핵심 메커니즘",
-      explanation: `${topic.title}의 기본적인 공학적 개념과 핵심 작동 메커니즘입니다.`
-    });
-  }
-
-  // 3. Q5, Q6, Q7 (Table Quiz) - exactly 3
-  let finalSubjsTable = [...subjsTable].slice(0, 3);
-  if (finalSubjsTable.length < 3) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackTables = fallbackQs.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
-    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 3);
-  }
-  while (finalSubjsTable.length < 3) {
-    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
-  }
-
-  // 4. MC questions (6 questions)
-  let finalMcs = [];
-  const uniqueMcQuestions = new Set();
-
-  mcs.forEach(q => {
-    if (finalMcs.length >= 6) return;
-    const cleanQ = (q.question || '').trim();
-    if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
-      uniqueMcQuestions.add(cleanQ);
-      finalMcs.push(q);
-    }
-  });
-
-  if (finalMcs.length < 6 && carryOverQuestions && carryOverQuestions.length > 0) {
-    const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
-    shuffledCarryOvers.forEach(q => {
-      if (finalMcs.length >= 6) return;
-      const cleanQ = (q.question || '').trim();
-      if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
-        uniqueMcQuestions.add(cleanQ);
-        finalMcs.push(q);
-      }
-    });
-  }
-
-  if (finalMcs.length < 6) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
-    for (const fQ of fallbackMcs) {
-      if (finalMcs.length >= 6) break;
-      const cleanQ = (fQ.question || '').trim();
-      if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
-        uniqueMcQuestions.add(cleanQ);
-        finalMcs.push(fQ);
-      }
-    }
-  }
-
-  if (finalMcs.length < 6) {
-    const deficit = 6 - finalMcs.length;
-    console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
-    for (let i = 0; i < deficit; i++) {
-      finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
-    }
-  }
-
-  const shuffledRest = shuffleArray([...finalSubjsTable, ...finalMcs]);
-  return [...finalSubjsIntroFormula, ...shuffledRest, ...finalSubjsShort];
-}
-
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
@@ -3029,16 +2789,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       try {
         const parsed = JSON.parse(cached.value);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const healed = parsed.map(q => healQuizQuestionObject(q));
-          return res.json({ questions: healed, isFallback: false, isCached: true });
+          return res.json({ questions: parsed, isFallback: false, isCached: true });
         } else if (parsed && Array.isArray(parsed.questions)) {
-          const healed = parsed.questions.map(q => healQuizQuestionObject(q));
           return res.json({
-            questions: healed,
+            questions: parsed.questions,
             selectedAnswers: parsed.selectedAnswers || {},
             revealedQuestions: parsed.revealedQuestions || {},
-            tableAnswers: parsed.tableAnswers || {},
-            tableGradingResults: parsed.tableGradingResults || {},
             savedQuizScroll: parsed.savedQuizScroll || 0,
             isFallback: false,
             isCached: true
@@ -3082,7 +2838,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 6;
+    const neededAiMcCount = 10;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -3155,8 +2911,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
-      const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
+      const cleanedCore = coreQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
@@ -3186,8 +2941,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
-      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
+      const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
@@ -3217,7 +2971,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       specialInstructions = `
 [특별 출제 지침 - 매우 중요]:
 이 토픽은 '프란틀 지지력 공식'이나 '테르자기 극한지지력 공식' 자체의 상세한 유도나 공식 정의를 단독으로 묻는 토픽이 아닙니다.
-반드시 다음의 핵심 영역들에 고도로 집중하여 객관식 7문제와 주관식 표채우기 3문제를 출제하십시오:
+반드시 다음의 핵심 영역들에 고도로 집중하여 10문제를 출제하십시오:
 1. 기초 아래 지반의 3대 파괴 형태: "전반전단파괴(General Shear Failure)", "국부전단파괴(Local Shear Failure)", "관입전단파괴(Punching Shear Failure)"의 구체적 발생 조건(상대밀도 $D_r$, 근입깊이비 $D_f/B$, 지반 압축성 등), 파괴면의 발달 메커니즘, 융기(Heaving) 및 침하의 시각적 거동 특징.
 2. Vesic(1973)이 제안한 모래 지반에서의 파괴형태 예측 도표의 특징.
 3. 기초 강성(연성기초 vs 강성기초)과 흙의 종류(사질토 vs 점성토)의 4가지 조합에 따른 접지압(Contact Pressure) 분포 패턴 및 침하 형상(등분포 여부, 가장자리/중심 최대 여부 등).
@@ -3232,12 +2986,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       weaknessPrompt = `
 [이전 회차 오답 정보 및 출제 지침 - 매우 중요]:
 아래 오답들은 사용자가 이전 회차에서 틀린 문제입니다.
-이번에 생성할 ${neededAiMcCount}개의 객관식 문제 중, **앞의 ${carryOverQuestions.length}개 문제(6번부터 ${5 + carryOverQuestions.length}번 문제)는 반드시 아래 오답 문제들의 변형 문제로 출제**하십시오.
+이번에 생성할 10개의 객관식 문제 중, **앞의 ${carryOverQuestions.length}개 문제(3번부터 ${2 + carryOverQuestions.length}번 문제)는 반드시 아래 오답 문제들의 변형 문제로 출제**하십시오.
 변형 출제 시 다음 지침을 엄격히 따르십시오:
 1. 문제를 절대로 그대로 내지 마십시오. (보기 내용 교체, 질문의 긍정/부정 전환 등)
 2. 원래 문제가 "옳은 것/맞는 것"을 고르는 문제였다면, 변형 문제는 "옳지 않은 것/틀린 것"을 고르는 문제로 변형하여 출제하고 해설도 그에 맞게 수정하십시오. 반대의 경우도 마찬가지입니다.
 3. 보기(options)의 구성과 순서를 완전히 교체하십시오.
-4. 나머지 ${neededAiMcCount - carryOverQuestions.length}개 객관식 문제는 [첨부파일 본문 텍스트] 및 토픽 개념에 기반한 새로운 고난도 문제로 출제하십시오.
+4. 나머지 ${10 - carryOverQuestions.length}개 객관식 문제는 [첨부파일 본문 텍스트] 및 토픽 개념에 기반한 새로운 고난도 문제로 출제하십시오.
 
 틀린 오답 문제 리스트:
 ${carryOverQuestions.map((q, idx) => `
@@ -3250,7 +3004,7 @@ ${carryOverQuestions.map((q, idx) => `
 `;
     }
 
-    const totalAiQuestionsCount = 13;
+    const totalAiQuestionsCount = 2 + neededAiMcCount;
 
     let feedbackPrompt = '';
     try {
@@ -3315,54 +3069,34 @@ ${adjustmentsPrompt}
    [1번 문제] 주관식 (개요):
    - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
    - "type" 값: 반드시 "주관식 (개요)"
-   - "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
-   - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. (절대 너무 짧거나 1~2줄 요약식으로 쓰지 말고, 반드시 4~6줄 분량을 엄격히 준수하여 학술적 설명의 깊이를 확보할 것). 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
+   - "question": 토픽의 핵심 정의와 기본 개념을 묻는 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 서술하시오.")
+   - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. (절대 너무 짧거나 1~2줄 요약식으로 쓰지 말고, 반드시 4~6줄 분량을 엄격히 준수하여 학술적 설명의 깊이를 확보할 것).
    - "formula": 반드시 빈 문자열 ""
    - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
+   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
    - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
-   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
+   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")
 
-   [12번~13번 문제] 주관식 (단답형):
-   - 개수: 반드시 정확히 2문제를 출제하십시오.
-   - "type" 값: 반드시 "주관식 (단답형)"
-   - 출제 원칙:
-     * 12번 문제: 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
-     * 13번 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
-     * 정답("answer"): 12번과 13번의 모범 답안은 단순히 한 단어 키워드가 아니라, 핵심 내용이 논리적으로 포함된 1줄 서술형(최소 15자에서 최대 30자 내외)으로 작성하십시오. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
-     * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
-
-   [3번~11번 문제 중 3개] 주관식 (표채우기):
-   - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법(예: 소일네일링 vs 어스앵커, 얕은기초 vs 깊은기초 등)의 특징을 대조하는 유기적 표(Table) 질문 출제.
-   - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(예: 보강방식, 지지메커니즘, 활용방안, 설계 시 주의사항 등)을 둔 뒤, 알맞은 핵심 공학 내용을 채워넣는 형식을 매우 강력히 권장합니다.
-   - ⚠️ [중요 금지 규칙 - 입력 편의성 극대화]: 주관식 표채우기 문제 출제 시, 사용자가 직접 수식(예: $\\sqrt{k_h/k_v}$와 같은 루트, 제곱, 분수식 등)이나 로마자/그리스 문자 기호, 또는 단위(m, kN, Pa 등)를 직접 키보드로 입력해야 하는 문제는 **절대로 출제하지 마십시오.** 키보드로 기호 및 수식을 입력하는 것은 불가능에 가깝고 오타 발생률이 극도로 높습니다.
-   - ⚠️ [정답 구성 원칙]: 수식이나 공식 자체를 묻고 싶다면 반드시 '객관식'으로 질문을 구성하십시오. 주관식 표채우기 빈칸(\`[INPUT_1]\`)에는 단순히 '면모 구조 형성'이나 '이온 교환' 같은 5~6자 내외의 단순 용어 명칭은 **절대로 출제하지 마십시오.** 대신 **핵심 원리/개념을 관통하여 15자~20자 내외로 서술해야 하는 서술형 문구**이거나, 혹은 **특정 공학적 상황을 가정했을 때 대처 방안 및 어떻게 해야 하는가에 대해 15자~20자 내외로 명확히 답하는 구체적인 서술형 문구**를 정답으로 구성하십시오.
-   - "type" 값: 반드시 "주관식 (표채우기)"
-   - "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 소일네일링과 어스앵커 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 기술하십시오."). (⚠️ [지문 작성 수칙 - 매우 중요!]): "question" 본문에는 절대로 "INPUT_1", "INPUT_2" 또는 "[INPUT_1]" 같은 시스템 토큰명 자체를 노출하여 적지 마십시오. 대신 사용자가 직관적으로 알아볼 수 있도록 순서대로 "(A)", "(B)", "(C)", "(D)" 등으로 지칭하여 지문을 구성하십시오.
-   - "tableData": 표의 데이터를 구조화한 객체. 반드시 다음 키를 포함하는 오브젝트여야 합니다:
-     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["구분 항목", "소일네일링", "어스앵커"])
-     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. (⚠️ [비교 컬럼 전체 빈칸 비우기 수칙 - 극도로 중요!]): 첫 번째 '구분 항목' 열을 제외하고, 오른쪽에 위치하는 모든 비교/대비 대상 컬럼의 셀들은 단 하나의 텍스트 힌트도 남기지 말고 **무조건 전부 빈칸 토큰([INPUT_1], [INPUT_2] 등)으로 비워두십시오.** 일부 셀이 텍스트로 미리 채워져 있으면 사용자가 서로 반대 내용을 대입하여 정답을 쉽게 맞추므로 변별력이 사라집니다. 따라서 구분 컬럼을 제외한 내부는 **전부 입력창(3열 3행 테이블 기준 총 6칸 전체)**으로 구성해야 합니다. (예: rows 구조: [["지지 매커니즘", "[INPUT_1]", "[INPUT_2]"], ["설계 핵심 변수", "[INPUT_3]", "[INPUT_4]"], ["주요 적용 지반", "[INPUT_5]", "[INPUT_6]"]])
-   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "인장 및 전단력에 대한 수동적 저항", "INPUT_2": "정착지반 마찰저항 및 인장력 선도입"}). 각 모범 답안은 핵심 메커니즘을 상세히 기술하는 **15자~20자 내외의 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
-   - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
-
-   [3번~11번 문제 중 6개] 객관식 (4지선다):
-   - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
+   [3번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
+   - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
    - "type" 값: 반드시 "객관식 (4지선다)"
-   - 개수: 반드시 정확히 6개의 객관식 문제를 출제해야 합니다.
-   - ⚠️ [계산문제 비중 조건 - 매우 중요]: 전체 6개의 객관식 문제 중, **반드시 정확히 2개의 문제는 구체적인 조건 수치(예: 지반 물성치, 하중값 등)를 대입하여 계산 공식/식 자체를 활용해야 정답을 도출할 수 있는 '정량적 수치 계산 문제'로 출제**하십시오. (만약 계산 공식을 직접 적용하기 애매한 정성적 토픽인 경우에도, 공학적 비례/반비례 관계나 계산에 필요한 매개변수를 유추하는 문제 등으로 대체하여 계산적 성격을 띤 문제를 최대한 2문제 확보하십시오.)
-   - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래 of "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-   - "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
-   - "options": 4개의 보기 문항으로 구성된 문자열 배열.
+   - 개수: 반드시 정확히 ${neededAiMcCount}개의 객관식 문제를 출제해야 합니다.
+   - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
+   - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
    - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-   - 중요 특화 출제 사항 (공식 은닉 원칙 - 극도로 중요):
-      🚨 [공식 노출 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 핵심이 되는 공학 수식 자체를 직접 텍스트로 적어 제공하지 마십시오. 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭이나 변수들의 공학적 관계만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
-       🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.** (예: 공식 $A = B \times C$에 대해 "B가 증가할 때 A의 변화"를 묻는 문제를 출제했다면, 동일한 테스트 세트 내에 "C가 증가할 때 A의 변화"를 묻는 질문은 사실상 동일한 비례 관계 메커니즘을 묻는 중복 문제이므로 **절대로 같이 내지 말고**, 완전히 다른 공학적 개념이나 새로운 지식을 묻는 독립적인 문제로만 구성하십시오.)
+   - 중요 특화 출제 사항 (문제 구성 비율 및 공식 은닉 원칙 - 극도로 중요):
+      1. 전체 객관식 10문제는 반드시 아래 비율을 준수하여 구성하십시오:
+          - **기본 기초 개념 문제 (40%, 약 4문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?", "○○○이 발생하는 조건은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+          - **정량 계산 문제 (30%, 약 3문제)**: 구체적인 조건 수치(지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+          - **심화 원리·비교 문제 (30%, 약 3문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+
+      2. **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 
@@ -3376,7 +3110,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   {
     "type": "주관식 (개요)",
     "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-    "concept": "개요 설명",
+    "concept": "토픽의 공학적 메커니즘과 학술적 원리를 상세히 기술한 4~6줄 분량의 직관적인 개요 설명",
     "formula": "",
     "structure": ""
   },
@@ -3385,35 +3119,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "토픽의 대표 공식명칭 (사족 배제)",
     "concept": "공식에 대한 한 줄 요약",
     "formula": "$LaTeX공식",
-    "structure": "- $기호1$: 간단한 명사형 의미"
-  },
-  {
-    "type": "주관식 (단답형)",
-    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 (3번 문제)",
-    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명"
-  },
-  {
-    "type": "주관식 (단답형)",
-    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 (4번 문제)",
-    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안",
-    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명"
-  },
-  {
-    "type": "주관식 (표채우기)",
-    "question": "다음 표의 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
-    "tableData": {
-      "headers": ["지지력 계수", "연관된 지반 물성 및 영향 인자"],
-      "rows": [
-        ["$N_c$", "[INPUT_1]"],
-        ["$N_q$", "[INPUT_2]"]
-      ]
-    },
-    "answers": {
-      "INPUT_1": "흙의 점착력",
-      "INPUT_2": "상재하중"
-    },
-    "explanation": "테르자기 지지력 계수 Nc, Nq는 각각 지반의 점착력, 상재하중이 극한 지지력에 미치는 거동 영향도를 정량화한 지수입니다."
+    "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
   },
   {
     "type": "객관식 (4지선다)",
@@ -3422,7 +3128,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 3), 객관식(6개), 주관식(단답형 2)을 순서대로 배열하여 총 13개 완성)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 객관식 계속)
 ]
 `;
 
@@ -3446,7 +3152,47 @@ try {
           throw new Error('AI 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.');
         }
 
-        const finalQuestions = assembleFinalQuestions(questions, topic, carryOverQuestions, fileText);
+        const subjs = questions.filter(q => !q.options || q.options.length === 0);
+        const mcs = questions.filter(q => q.options && q.options.length > 0);
+
+        // Gemini가 직접 오답 변형 문제를 포함하여 10개를 생성했으므로 그대로 사용하되, 부족한 경우만 채워줍니다.
+        let finalMcs = [...mcs].slice(0, 10);
+        
+        // 만약 AI가 문제 생성에 실패하거나 일부 유실되어 10개 미만인 경우, 이전 오답의 보기를 프로그램적으로 셔플하여 보완적으로 채워줍니다.
+        if (finalMcs.length < 10) {
+          const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
+          shuffledCarryOvers.forEach(q => {
+            if (finalMcs.length >= 10) return;
+            if (!finalMcs.some(existing => existing.question === q.question)) {
+              finalMcs.push(q);
+            }
+          });
+        }
+
+        // 그래도 부족하면 fallback generator에서 채움
+        if (finalMcs.length < 10) {
+          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+          const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
+          for (const fQ of fallbackMcs) {
+            if (finalMcs.length >= 10) break;
+            if (!finalMcs.some(q => q.question === fQ.question)) {
+              finalMcs.push(fQ);
+            }
+          }
+          while (finalMcs.length < 10 && fallbackMcs.length > 0) {
+            finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
+          }
+        }
+
+        // 주관식도 정확히 2개(개요, 공식)로 구성
+        let finalSubjs = subjs.slice(0, 2);
+        if (finalSubjs.length < 2) {
+          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
+          const fallbackSubjs = fallbackQs.filter(q => !q.options || q.options.length === 0);
+          finalSubjs = [...finalSubjs, ...fallbackSubjs].slice(0, 2);
+        }
+
+        const finalQuestions = [...finalSubjs, ...finalMcs];
         const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           topic_id: Number(topicId),
@@ -3471,7 +3217,10 @@ try {
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+      const subjs = fallbackQuestions.filter(q => !q.options || q.options.length === 0);
+      const mcs = fallbackQuestions.filter(q => q.options && q.options.length > 0);
+      const finalMcs = [...carryOverQuestions, ...mcs].slice(0, 10);
+      const finalQuestions = [...subjs.slice(0, 2), ...finalMcs];
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
@@ -3495,81 +3244,6 @@ try {
   } catch (error) {
     console.error('Error in AI question generation route:', error);
     res.status(500).json({ error: '서버 오류로 AI 기출문제를 생성하지 못했습니다.' });
-  }
-});
-
-// 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정
-app.post('/api/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer } = req.body;
-
-  if (!correctAnswer || !userAnswer) {
-    return res.json({ isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' });
-  }
-
-  // 1차 필터링: 공백 제거 후 단순 일치하는 경우 API 호출 없이 바로 정답 처리
-  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-  if (normalize(userAnswer) === normalize(correctAnswer)) {
-    return res.json({ isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' });
-  }
-
-  // 2차 필터링: Gemini API를 사용하여 의미적 유사성 판단 및 부분점수 부여 (tutor 시나리오로 호출 시 gemini-3.1-flash-lite가 우선 배치됨)
-  try {
-    const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
-주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
-
-[채점 규칙]:
-1. 점수 부여 방식 (0~10점):
-   - 10점 (만점): 모범 답안과 의미가 완전히 동일하거나, 핵심 키워드/공학적 방향성이 완벽히 일치하는 경우. (예: '두껍다' vs '두께 증가', '얇다' vs '이중층 두께 감소', '낮다' vs '전단강도 저하', '높다' vs '강도 크게 향상').
-   - 5~9점 (부분점수): 핵심 용어나 개념이 일부 포함되어 있고 방향성은 맞으나, 부가적인 설명이나 디테일이 약간 부족한 경우.
-   - 1~4점 (최소점수): 답안의 직접적인 정답은 아니지만 관련 공학적 개념이 언급된 경우.
-   - 0점: 전혀 관계없는 내용이거나 답안이 비어있는 경우.
-
-2. 표/빈칸 채우기 맥락 및 유한 동의어/방향성 허용:
-   - 표 채우기 문항의 경우, 행/열 헤더(예: '이중층 두께', '전단강도')로 인해 모범 답안에 불필요한 수식어나 단어가 중복되어 있을 수 있습니다.
-   - 사용자가 헤더의 맥락에 맞춰 단순히 '얇다', '얇아진다', '감소', '낮다', '높다', '증가', '큼'과 같이 방향성이나 상태 변화만 일치하게 적었다면, 모범 답안의 긴 텍스트(예: '이중층 두께가 급격히 감소', '면모 구조화로 강도 크게 향상')와 무조건 동등한 정답으로 간주하여 **반드시 10점(만점)**을 부여하고 isCorrect: true로 판정하십시오.
-   - 특히, 공학적 의미 및 상태 방향성이 거의 유사한 형용사적 어미('크다', '높다', '우수하다', '강하다' 또는 '작다', '낮다', '감소', '약하다' 등)의 경우 엄격하게 단어 일치 여부를 따지지 말고 의미적 방향성이 일치한다면 유하게 정답으로 판정하십시오. 예를 들어 '압축성이 크다'와 '압축성이 높다', 또는 '투수성이 높다'와 '투수성이 크다'는 완전히 동일한 정답으로 간주하여 감점 없이 **만점(10점)**을 부여하고 isCorrect: true로 처리하십시오.
-
-3. [주관식 개요 키워드 채점 규칙]:
-   - 문제 맥락(question)이 "핵심 키워드를 입력하세요"라고 되어 있거나 모범 답안(correctAnswer) 내에 강조 표시(**키워드**)가 있는 경우:
-   - 사용자가 쉼표(,) 등으로 모범 답안 속의 **강조 키워드**들(개념, 원리, 정의 관련 핵심 단어)을 나열하거나 포함하여 입력했다면, 완결된 문장 형식이 아니더라도 채점 시 핵심 키워드들이 의미 있게 언급되었는지를 확인하여 평가하십시오. 모범 답안 내에 표시된 주요 **강조 키워드**들 중 핵심 키워드들이 사용자 입력에 충분히 포함되어 있다면 감점 없이 **만점(10점)** 및 isCorrect: true를 부여하십시오.
-
-4. 정답 여부 판단 기준:
-   - 5점 이상인 경우 isCorrect를 true로 설정하고, 5점 미만인 경우 false로 설정하십시오.
-   - 응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
-{
-  "isCorrect": true 또는 false,
-  "score": 0에서 10 사이의 정수,
-  "reason": "점수 부여 사유를 한 줄의 한국어 요약으로 서술 (예: '핵심 키워드들이 모두 올바르게 포함되어 있어 만점 인정', '방향성은 맞으나 구체적인 공학적 기전이 누락되어 7점 부여')"
-}
-반드시 마크다운 코드 블록(예: \`\`\`json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
-
-    const userPrompt = `
-- 문제/맥락: ${question || '주관식 빈칸 채우기'}
-- 모범 답안: ${correctAnswer}
-- 사용자의 답안: ${userAnswer}
-`;
-
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
-    let text = responseText.trim();
-    if (text.startsWith('```')) {
-      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    }
-    
-    const result = JSON.parse(text);
-    res.json({
-      isCorrect: !!result.isCorrect,
-      score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
-      reason: result.reason || 'AI 채점 완료'
-    });
-  } catch (err) {
-    console.error('AI grading error:', err);
-    // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
-    const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
-    res.json({
-      isCorrect: localCorrect,
-      score: localCorrect ? 10 : 0,
-      reason: localCorrect ? '로컬 단순 비교로 정답 판정' : '모범 답안과 일치하지 않습니다.'
-    });
   }
 });
 
@@ -3744,16 +3418,16 @@ app.post('/api/question/regenerate', async (req, res) => {
       let formatRequirement = '';
       if (targetType === '주관식 (개요)') {
         typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
-- 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
+- 목적: 토픽의 핵심 정의(개요)만 명확하게 묻는 간결한 질문.
 - "type" 값: 반드시 "주관식 (개요)"
-- "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
-- "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
+- "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
+- "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
 - "formula": 반드시 빈 문자열 ""
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (개요)",
   "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-  "concept": "핵심 키워드가 **강조**된 4~6줄 분량의 개요 설명 답변",
+  "concept": "1~2줄 컴팩트 요약 답변",
   "formula": "",
     "structure": ""
 }`;
@@ -3775,8 +3449,7 @@ app.post('/api/question/regenerate', async (req, res) => {
       } else {
         typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
 - "type" 값: 반드시 "객관식 (4지선다)"
-- "question": 구체적이고 학술적인 내용 일치, 원리 분석 또는 공식 분석/정량적 계산 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
+- "question": 구체적이고 학술적인 내용 일치, 원리 분석 또는 공식 분석/정량적 계산 객관식 질문. (서술형 문제, 공식/수식 이해형 문제, 정량적 수치 계산 예제 문제를 고려하여 생성하십시오. 특히 이 토픽이 수식 계산이나 정량적 조건 대입이 가능한 역학/공학 토픽인 경우, 서술형 문제보다는 구체적인 임의의 설계 수치(예: $P_0$, $k_s$, $k_h$, 휨모멘트 $M_1$ 등)를 부여하여 최종 결과나 누적 변위 등을 정량적으로 계산/분석하도록 예제문제(quantitative example problem) 형식으로 우선하여 위주로 출제하십시오. 또한 **🚨 [공식 노출 금지 규칙]**: 문제 질문(question) 본문 내에 **문제를 푸는 핵심 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 등)를 직접 제공하지 마십시오.** 식의 명칭이나 변수 관계만 질문에 제시하고, 해설(explanation)에서만 수식을 적어 설명하십시오.)
 - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
 - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
 - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
@@ -3790,11 +3463,10 @@ app.post('/api/question/regenerate', async (req, res) => {
         formatRequirement = `{
   "type": "객관식 (4지선다)",
   "question": "질문 내용",
-  "tableData": null,
   "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
   "answer": "정확히 일치하는 정답 보기 텍스트",
   "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+}`;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
@@ -4001,19 +3673,17 @@ ${formatRequirement}
         // 객관식
         typeRequirement = `[4지선다 객관식] 유형으로 생성하십시오:
 - "type": "객관식"
-- "question": 공학적 원리 또는 현상 분석 고난도 질문 (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
+- "question": 공학적 원리 또는 현상 분석 고난도 질문
 - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개)
 - "answer": "options" 배열 내의 정확한 정답 보기 텍스트와 토씨 하나 틀리지 않는 값
 - "explanation": 명쾌하고 공학적으로 깊이 있는 정밀 해설`;
         formatRequirement = `{
   "type": "객관식",
   "question": "공학적 현상 분석 질문 내용",
-  "tableData": null,
   "options": ["보기1", "보기2", "보기3", "보기4"],
   "answer": "정확히 일치하는 정답 보기 텍스트",
   "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+}`;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
@@ -4166,16 +3836,16 @@ app.post('/api/question/adjust', async (req, res) => {
       let formatRequirement = '';
       if (targetType === '주관식 (개요)') {
         typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
-- 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
+- 목적: 토픽의 핵심 정의(개요)만 명확하게 묻는 간결한 질문.
 - "type" 값: 반드시 "주관식 (개요)"
-- "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
-- "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
+- "question": 토픽의 핵심 정의와 기본 개념만 묻는 초간결 완성형 질문. (예: "[토픽]의 핵심 정의와 기본 개념을 간략히 서술하시오.")
+- "concept": 질문에 정확히 부합하는 1~2줄 이내의 매우 명료하고 컴팩트한 핵심 정의 및 요약 답변 (절대 길거나 장황하게 쓰지 말 것).
 - "formula": 반드시 빈 문자열 ""
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
         formatRequirement = `{
   "type": "주관식 (개요)",
   "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-  "concept": "핵심 키워드가 **강조**된 4~6줄 분량의 개요 설명 답변",
+  "concept": "1~2줄 요약 답변",
   "formula": "",
     "structure": ""
 }`;
@@ -4197,19 +3867,17 @@ app.post('/api/question/adjust', async (req, res) => {
       } else {
         typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
 - "type" 값: 반드시 "객관식 (4지선다)"
-- "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
+- "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
 - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
 - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
 - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.`;
         formatRequirement = `{
   "type": "객관식 (4지선다)",
   "question": "질문 내용",
-  "tableData": null,
   "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
   "answer": "정확히 일치하는 정답 보기 텍스트",
   "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+}`;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
@@ -4379,19 +4047,17 @@ ${formatRequirement}
       } else {
         typeRequirement = `[4지선다 객관식] 유형으로 생성하십시오:
 - "type": "객관식"
-- "question": 공학적 원리 또는 현상 분석 고난도 질문 (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
+- "question": 공학적 원리 또는 현상 분석 고난도 질문
 - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개)
 - "answer": "options" 배열 내의 정확한 정답 보기 텍스트와 토씨 하나 틀리지 않는 값
 - "explanation": 명쾌하고 공학적으로 깊이 있는 정밀 해설`;
         formatRequirement = `{
   "type": "객관식",
   "question": "공학적 현상 분석 질문 내용",
-  "tableData": null,
   "options": ["보기1", "보기2", "보기3", "보기4"],
   "answer": "정확히 일치하는 정답 보기 텍스트",
   "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+}`;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
@@ -4623,7 +4289,6 @@ ${adjustmentsPrompt}
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
    - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
-   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
@@ -4650,12 +4315,11 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "type": "객관식",
     "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
     "question": "공학적 현상 분석 질문",
-    "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
     "explanation": "이유와 오답 정밀 해설"
   }
-] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+]
 `;
 
       try {
@@ -4944,7 +4608,6 @@ ${formulasText || '저장된 내용 없음'}
    - **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
    - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
-   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
@@ -4969,12 +4632,11 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   {
     "type": "객관식",
     "question": "공학적 현상 분석 질문",
-    "tableData": null,
     "options": ["보기1", "보기2", "보기3", "보기4"],
     "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
     "explanation": "이유와 오답 정밀 해설"
   }
-] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+]
 `;
 
       try {
@@ -5194,7 +4856,7 @@ function extractVariablesFromMath(mathContent) {
     .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
   
   if (uniqueVars.length === 0) return '';
-  return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n\n');
+  return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
 }
 
 function filterStructureLines(mathContent, structure, extraAllowed = []) {
@@ -5244,30 +4906,30 @@ function filterStructureLines(mathContent, structure, extraAllowed = []) {
   }
 
   const lines = structure.split('\n');
-  const filteredLines = lines
-    .map(line => line.trim())
-    .filter(Boolean)
-    .filter(line => {
-      if (/^[\-\*\u2022\d\.]/.test(line)) {
-        const colonIdx = line.indexOf(':');
-        const dashIdx = line.indexOf('-', 1);
-        const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true;
+    
+    if (/^\s*[\-\*\d\.]/.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(':');
+      const dashIdx = trimmed.indexOf('-', 1);
+      const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
+      
+      if (sepIdx !== -1) {
+        const symbolPortion = trimmed.substring(0, sepIdx);
+        const symbolTokens = symbolPortion.match(tokenRegex) || [];
+        const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
         
-        if (sepIdx !== -1) {
-          const symbolPortion = line.substring(0, sepIdx);
-          const symbolTokens = symbolPortion.match(tokenRegex) || [];
-          const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
-          
-          if (normalizedSymbols.length === 0) return true;
-          
-          const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
-          return hasMatch;
-        }
+        if (normalizedSymbols.length === 0) return true;
+        
+        const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
+        return hasMatch;
       }
-      return true;
-    });
+    }
+    return true;
+  });
 
-  return filteredLines.join('\n\n');
+  return filteredLines.join('\n').trim();
 }
 
 // 6-3-5. Formula calculation question generator
@@ -5339,16 +5001,15 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 // 6-4. Formula Analysis & Title/Structure Generation
 app.post('/api/formula/suggest-title', async (req, res) => {
   try {
-    const { mathContent, fullText, userFeedback } = req.body;
+    const { mathContent, fullText } = req.body;
     if (!mathContent) {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
-    // 1) 로컬 사전 매칭 시도 (사용자 피드백이 없을 때만 수행)
+    // 1) 로컬 사전 매칭 시도
     let bestLocalMatch = null;
     let maxMatchCount = 0;
-    if (!userFeedback) {
-      const cleanMathContent = mathContent.replace(/\s+/g, '');
+    const cleanMathContent = mathContent.replace(/\s+/g, '');
     
     // LaTeX 명령어(예: \frac, \left, \right)의 내부 텍스트만 추출하고 명령어 단어 자체는 차단
     const mathTokens = mathContent
@@ -5382,9 +5043,8 @@ app.post('/api/formula/suggest-title', async (req, res) => {
         bestLocalMatch = dict;
       }
     }
-    }
 
-    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락, 현재 학습 중인 토픽 등의 문제 출처/맥락을 깊이 있게 고려하여 해당 맥락 하에서의 공학적 정의와 의미로 맞춤형 작성을 해야 합니다. 반드시 아래 지정된 JSON 형식으로만 응답해 주세요. 다른 설명 텍스트나 코드블록 기호는 절대 출력하지 마십시오.
+    const systemInstruction = `당신은 지반공학 및 토질역학/토목 전공 학술 공식을 완벽히 분석해주는 기술사 전문 튜터입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로 공식의 세부 정보를 분석하여 반드시 아래 지정된 JSON 형식으로만 응답해 주세요. 다른 설명 텍스트나 코드블록 기호는 절대 출력하지 마십시오.
 [지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 번역/표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 통일하여 표기하십시오.
  
 JSON 포맷 규격:
@@ -5394,10 +5054,7 @@ JSON 포맷 규격:
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 분석한 설명 리스트입니다. 반드시 제공된 공식에 실제 표기된 기호에 한해서만 정의 목록을 작성하십시오. 사족 문장 없이 마크다운 불릿 리스트 형태로만 반환하십시오."
 }`;
 
-    let userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
-    if (userFeedback) {
-      userPrompt += `\n\n[사용자 공식 조정 요청 의견]:\n${userFeedback}\n\n위 사용자 피드백 의견을 최우선적으로 적극 반영하여 공식의 명칭(title), 핵심개념(concept), 그리고 수식 기호 설명(structure)을 재구성하여 한글로 성실히 보완하십시오.`;
-    }
+    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
 
     try {
       const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
@@ -5412,19 +5069,12 @@ JSON 포맷 규격:
       }
       
       try {
-        const result = parseLlmJson(cleanJsonText);
+        const result = parseLlmJson(cleanJsonText)
         let structure = result.structure || '';
-        if (Array.isArray(structure)) {
-          structure = structure.join('\n\n');
-        }
-        if (typeof structure === 'string') {
-          structure = structure
-            .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
-            .replace(/각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
-            .trim();
-        } else {
-          structure = '';
-        }
+        structure = structure
+          .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+          .replace(/각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+          .trim();
 
         if (!structure && bestLocalMatch) {
           structure = bestLocalMatch.structure;
@@ -5658,11 +5308,7 @@ app.get('/api/session/exam', async (req, res) => {
       ['exam_session']
     );
     if (rows.length > 0 && rows[0].value) {
-      const data = JSON.parse(rows[0].value);
-      if (data && Array.isArray(data.questions)) {
-        data.questions = data.questions.map(q => healQuizQuestionObject(q));
-      }
-      res.json({ data });
+      res.json({ data: JSON.parse(rows[0].value) });
     } else {
       res.json({ data: null });
     }
@@ -5676,8 +5322,8 @@ app.get('/api/session/exam', async (req, res) => {
 app.post('/api/session/exam', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, savedExamScroll } = req.body;
-    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, savedExamScroll });
+    const { examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll } = req.body;
+    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll });
     // DELETE + INSERT (모든 DB 호환 UPSERT)
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     await dbQuery.run(
@@ -5707,7 +5353,7 @@ app.delete('/api/session/exam', async (req, res) => {
 app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, savedQuizScroll } = req.body;
+    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, savedQuizScroll } = req.body;
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
@@ -5718,8 +5364,6 @@ app.post('/api/session/review', async (req, res) => {
       questions,
       selectedAnswers: selectedAnswers || {},
       revealedQuestions: revealedQuestions || {},
-      tableAnswers: tableAnswers || {},
-      tableGradingResults: tableGradingResults || {},
       savedQuizScroll: savedQuizScroll || 0
     });
     
@@ -5762,11 +5406,7 @@ app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
       [`completed_review_schedule_${scheduleId}`]
     );
     if (row && row.value) {
-      const data = JSON.parse(row.value);
-      if (data && Array.isArray(data.questions)) {
-        data.questions = data.questions.map(q => healQuizQuestionObject(q));
-      }
-      res.json({ success: true, data });
+      res.json({ success: true, data: JSON.parse(row.value) });
     } else {
       res.json({ success: false, error: '해당 복습의 저장된 풀이 기록이 없습니다.' });
     }
@@ -5928,9 +5568,6 @@ app.get('/api/session/formula', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      if (parsed && Array.isArray(parsed.formulaQuestions)) {
-        parsed.formulaQuestions = parsed.formulaQuestions.map(q => healFormulaQuestionObject(q));
-      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -5973,9 +5610,6 @@ app.get('/api/session/answersheet', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      if (parsed && Array.isArray(parsed.questions)) {
-        parsed.questions = parsed.questions.map(q => healAnswersheetQuestionObject(q));
-      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -6324,51 +5958,6 @@ async function migrateSpacedIntervals() {
   }
 }
 
-// 복습이 완료되었으나 planned_date가 실제 오늘 날짜(new Date())로 잘못 생성된 pending 일정들을 Ebbinghaus 주기 기준으로 자가 치유(Self-healing)
-async function healPendingSchedules() {
-  console.log('[Migration] Healing pending schedule planned dates...');
-  try {
-    const pendingSchedules = await dbQuery.all(`SELECT * FROM schedules WHERE status = 'pending' AND review_round != 99`);
-    let healCount = 0;
-    for (const sched of pendingSchedules) {
-      const prevRound = sched.review_round - 1;
-      const prevSched = await dbQuery.get(
-        `SELECT completed_at, planned_date FROM schedules WHERE topic_id = ? AND review_round = ? AND status = 'completed'`,
-        [sched.topic_id, prevRound]
-      );
-      
-      if (prevSched) {
-        let baseDateStr = prevSched.completed_at || prevSched.planned_date;
-        if (baseDateStr) {
-          let days = 0;
-          if (prevRound === 1) days = 4;
-          else if (prevRound === 2) days = 7;
-          else if (prevRound === 3) days = 14;
-          else if (prevRound === 4) days = 35;
-          else if (prevRound === 5) days = 60;
-          
-          if (days > 0) {
-            const baseDate = new Date(baseDateStr);
-            const correctPlannedDate = getLocalDateString(baseDate, days);
-            
-            if (sched.planned_date !== correctPlannedDate) {
-              await dbQuery.run(
-                `UPDATE schedules SET planned_date = ? WHERE id = ?`,
-                [correctPlannedDate, sched.id]
-              );
-              healCount++;
-              console.log(`[Migration] Healed round ${sched.review_round} for topic ${sched.topic_id}: ${sched.planned_date} -> ${correctPlannedDate}`);
-            }
-          }
-        }
-      }
-    }
-    console.log(`[Migration] Completed pending schedules heal. Corrected ${healCount} records.`);
-  } catch (error) {
-    console.error('[Migration] Error healing pending schedules:', error);
-  }
-}
-
 // 과거에 풀이했던 복습 일정 중 성적(score, correct_count, total_count)이 누락되었거나 불일치하지만 app_session에 풀이 이력이 존재하는 경우 채점하여 백필
 async function backfillPastScheduleScores() {
   console.log('[Backfill] Checking and backfilling past schedule scores from app_session...');
@@ -6428,7 +6017,6 @@ async function startServer() {
     await initDatabase();
     console.log('Database schema initialization completed.');
     await migrateSpacedIntervals();
-    await healPendingSchedules();
     await backfillPastScheduleScores();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
@@ -6461,7 +6049,6 @@ if (!process.env.VERCEL) {
   initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
     await migrateSpacedIntervals();
-    await healPendingSchedules();
     await backfillPastScheduleScores();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
