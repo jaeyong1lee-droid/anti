@@ -10584,19 +10584,17 @@ export default function App() {
                               </button>
                             )}
                             {/* 답안보기 버튼 */}
-                            <button
-                              onClick={() => {
-                                if (isMC) {
-                                  setSelectedAnswers(prev => ({ ...prev, [idx]: q.answer }));
-                                } else {
+                            {!isMC && (
+                              <button
+                                onClick={() => {
                                   setShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
-                                }
-                              }}
-                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                              title="정답 바로 확인"
-                            >
-                              <span className="hidden sm:inline">👁️ </span>답안보기
-                            </button>
+                                }}
+                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                                title="정답 바로 확인"
+                              >
+                                <span className="hidden sm:inline">👁️ </span>답안보기
+                              </button>
+                            )}
                             {/* 추천/비추천 피드백 버튼 */}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -11906,19 +11904,17 @@ export default function App() {
                             </button>
                           )}
                           {/* 답안보기 버튼 */}
-                          <button
-                            onClick={() => {
-                              if (isMC) {
-                                setExamAnswers(prev => ({ ...prev, [idx]: q.answer }));
-                              } else {
+                          {!isMC && (
+                            <button
+                              onClick={() => {
                                 setExamShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
-                              }
-                            }}
-                            className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                            title="정답 바로 확인"
-                          >
-                            <span className="hidden sm:inline">👁️ </span>답안보기
-                          </button>
+                              }}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                              title="정답 바로 확인"
+                            >
+                              <span className="hidden sm:inline">👁️ </span>답안보기
+                            </button>
+                          )}
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
