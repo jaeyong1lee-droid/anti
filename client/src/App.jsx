@@ -1350,7 +1350,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 });
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, showAnswers, katexLoaded, tableGradingResults }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -1425,15 +1425,22 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             className={inputClassName}
                           />
                         </div>
-                        {revealed && !isCorrect && (
-                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                            {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                          </span>
-                        )}
-                        {revealed && isCorrect && (
-                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                            {inputLetter} 일치함
-                          </span>
+                        {revealed ? (
+                          !isCorrect ? (
+                            <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                              {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                              {inputLetter} 일치함
+                            </span>
+                          )
+                        ) : (
+                          showAnswers && (
+                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
+                              {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                            </span>
+                          )
                         )}
                       </div>
                     </td>
@@ -4042,6 +4049,8 @@ export default function App() {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
   const [tableGradingResults, setTableGradingResults] = useState({});
+  const [showAnswersState, setShowAnswersState] = useState({});
+  const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
 
   const gradeTableQuestion = async (qIdx, q) => {
@@ -5591,6 +5600,8 @@ export default function App() {
     setReviewOptionExplanations({});
     setTableAnswers({});
     setTableGradingResults({});
+    setShowAnswersState({});
+    setExamShowAnswersState({});
     setIsFallback(false);
     setAiError('');
     setShowFullReport(false);
@@ -5869,11 +5880,15 @@ export default function App() {
               setTableGradingResults(initialTableGradingResults);
               setRevealedQuestions(initialRevealedQuestions);
               setSelectedAnswers(initialSelectedAnswers);
+              setShowAnswersState({});
+              setExamShowAnswersState({});
             } else {
               setRevealedQuestions({});
               setSelectedAnswers({});
               setTableAnswers({});
               setTableGradingResults({});
+              setShowAnswersState({});
+              setExamShowAnswersState({});
             }
           } catch (e) {
             console.warn('복습 진행률 복원 실패:', e);
@@ -5881,6 +5896,8 @@ export default function App() {
             setSelectedAnswers({});
             setTableAnswers({});
             setTableGradingResults({});
+            setShowAnswersState({});
+            setExamShowAnswersState({});
           }
 
           // 즉시 DB 저장
@@ -5992,6 +6009,8 @@ export default function App() {
     setReviewOptionExplanations({});
     setTableAnswers({});
     setTableGradingResults({});
+    setShowAnswersState({});
+    setExamShowAnswersState({});
     setOpenSections({}); // Clear accordion open sections if any
     
     // Remove localStorage progress
@@ -6086,6 +6105,8 @@ export default function App() {
     setReviewOptionExplanations({});
     setTableAnswers({});
     setTableGradingResults({});
+    setShowAnswersState({});
+    setExamShowAnswersState({});
     setIsFallback(false);
     setAiError('');
     
@@ -6645,8 +6666,56 @@ export default function App() {
       if (q.concept) contextPrompt += `■ 핵심 개념: ${q.concept}\n`;
       if (q.formula) contextPrompt += `■ 공식: ${q.formula}\n`;
       
+      // 사용자 입력 정보 추가
+      const isExam = key.startsWith('e_');
+      const idx = parseInt(key.split('_')[1], 10);
+      const isMC = q.options && q.options.length > 0;
+      
+      let userAttemptInfo = '';
+      if (isMC) {
+        const userAnswer = isExam ? examAnswers[idx] : selectedAnswers[idx];
+        if (userAnswer) {
+          userAttemptInfo += `■ 사용자가 선택한 답안: ${userAnswer}\n`;
+          const isCorrect = userAnswer === q.answer;
+          userAttemptInfo += `■ 채점 결과: ${isCorrect ? '정답' : '오답'}\n`;
+        }
+      } else if (q.tableData) {
+        // 표 채우기 문항
+        const inputIds = Object.keys(q.answers || {});
+        if (inputIds.length > 0) {
+          userAttemptInfo += `■ 사용자가 표에 입력한 답안 및 채점 결과:\n`;
+          inputIds.forEach(inputId => {
+            const userVal = tableAnswers[`${idx}_${inputId}`] || '(미입력)';
+            const correctVal = q.answers[inputId] || '';
+            const grading = tableGradingResults[`${idx}_${inputId}`];
+            const inputNum = inputId.match(/\d+/) ? parseInt(inputId.match(/\d+/)[0], 10) : 1;
+            const inputLetter = String.fromCharCode(64 + inputNum);
+            
+            userAttemptInfo += `- [빈칸 ${inputLetter}] 사용자 입력: "${userVal}" (모범 답안: "${correctVal}")`;
+            if (grading) {
+              userAttemptInfo += ` → 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason})`;
+            }
+            userAttemptInfo += `\n`;
+          });
+        }
+      } else {
+        // 일반 주관식 문항
+        const userVal = tableAnswers[`${idx}_INPUT`];
+        if (userVal) {
+          userAttemptInfo += `■ 사용자가 입력한 답안: "${userVal}"\n`;
+          const grading = tableGradingResults[`${idx}_INPUT`];
+          if (grading) {
+            userAttemptInfo += `■ 채점 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason})\n`;
+          }
+        }
+      }
+      
+      if (userAttemptInfo) {
+        contextPrompt += `\n[사용자 답안 및 채점 정보]\n${userAttemptInfo}`;
+      }
+      
       contextPrompt += `\n[사용자 질문]\n${userQuery}\n\n`;
-      contextPrompt += `[답변 지침]\n위 문제의 문맥을 바탕으로 사용자의 질문에만 직접적이고 깊이 있게 답변해 주세요. 불필요한 서론이나 인사말은 생략하고 본론으로 바로 대답해야 하며, 수식은 LaTeX 형식($...$ 또는 $$...$$)을 사용해 정밀하게 표현해야 합니다.`;
+      contextPrompt += `[답변 지침]\n위 문제의 문맥과 사용자의 입력 답안/채점 정보를 바탕으로 사용자의 질문에만 직접적이고 깊이 있게 답변해 주세요. 불필요한 서론이나 인사말은 생략하고 본론으로 바로 대답해야 하며, 수식은 LaTeX 형식($...$ 또는 $$...$$)을 사용해 정밀하게 표현해야 합니다.`;
 
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -7085,6 +7154,8 @@ export default function App() {
         setExamTopic(null);
         setTableAnswers({});
         setTableGradingResults({});
+        setShowAnswersState({});
+        setExamShowAnswersState({});
       }
     } catch (e) {
       console.warn('서버 세션 확인 실패, 로컬 상태를 사용합니다:', e);
@@ -7106,6 +7177,8 @@ export default function App() {
     setExamOptionExplanations({});
     setTableAnswers({});
     setTableGradingResults({});
+    setShowAnswersState({});
+    setExamShowAnswersState({});
     try {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
@@ -10235,17 +10308,42 @@ export default function App() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {/* 다시풀기 버튼 */}
+                            {!isMC && (!!revealedQuestions[idx] || Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`))) && (
+                              <button
+                                onClick={() => {
+                                  // 1) 정오체크 해제 (grading 결과 삭제)
+                                  setTableGradingResults(prev => {
+                                    const copy = { ...prev };
+                                    Object.keys(copy).forEach(k => {
+                                      if (k.startsWith(`${idx}_`)) {
+                                        delete copy[k];
+                                      }
+                                    });
+                                    return copy;
+                                  });
+                                  // 2) 상세해설 닫기 및 채점버튼 원복
+                                  setRevealedQuestions(prev => ({ ...prev, [idx]: false }));
+                                  // 3) 답안보기 상태 초기화
+                                  setShowAnswersState(prev => ({ ...prev, [idx]: false }));
+                                }}
+                                className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border border-rose-500/20 bg-rose-950/40 text-rose-350 hover:bg-rose-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                                title="정오체크 해제 및 다시 풀기"
+                              >
+                                <span>🔄 다시풀기</span>
+                              </button>
+                            )}
                             {/* 답안보기 버튼 */}
                             <button
                               onClick={() => {
                                 if (isMC) {
                                   setSelectedAnswers(prev => ({ ...prev, [idx]: q.answer }));
                                 } else {
-                                  setRevealedQuestions(prev => ({ ...prev, [idx]: !prev[idx] }));
+                                  setShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
                                 }
                               }}
                               className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
-                              title="정답 및 해설 바로 확인"
+                              title="정답 바로 확인"
                             >
                               <span>👁️ 답안보기</span>
                             </button>
@@ -10555,6 +10653,7 @@ export default function App() {
                                 tableAnswers={tableAnswers} 
                                 setTableAnswers={setTableAnswers} 
                                 revealed={isRevd} 
+                                showAnswers={!!showAnswersState[idx]}
                                 katexLoaded={katexLoaded} 
                                 tableGradingResults={tableGradingResults}
                               />
@@ -10612,6 +10711,11 @@ export default function App() {
                                     />
                                   </div>
                                 </div>
+                                {!isRevd && showAnswersState[idx] && (
+                                  <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
+                                    정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                  </div>
+                                )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
                                     tableGradingResults[`${idx}_INPUT`].isCorrect
@@ -11226,7 +11330,7 @@ export default function App() {
                   if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
                     fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                       .catch(e => console.warn('세션 삭제 실패:', e));
-                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({});
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                   }
                 }}
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
@@ -11369,7 +11473,7 @@ export default function App() {
                   // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({});
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                 }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
@@ -11424,17 +11528,42 @@ export default function App() {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          {/* 다시풀기 버튼 */}
+                          {!isMC && (!!examRevealed[idx] || Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`))) && (
+                            <button
+                              onClick={() => {
+                                // 1) 정오체크 해제 (grading 결과 삭제)
+                                setTableGradingResults(prev => {
+                                  const copy = { ...prev };
+                                  Object.keys(copy).forEach(k => {
+                                    if (k.startsWith(`${idx}_`)) {
+                                      delete copy[k];
+                                    }
+                                  });
+                                  return copy;
+                                });
+                                // 2) 상세해설 닫기 및 채점버튼 원복
+                                setExamRevealed(prev => ({ ...prev, [idx]: false }));
+                                // 3) 답안보기 상태 초기화
+                                setExamShowAnswersState(prev => ({ ...prev, [idx]: false }));
+                              }}
+                              className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border border-rose-500/20 bg-rose-950/40 text-rose-350 hover:bg-rose-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                              title="정오체크 해제 및 다시 풀기"
+                            >
+                              <span>🔄 다시풀기</span>
+                            </button>
+                          )}
                           {/* 답안보기 버튼 */}
                           <button
                             onClick={() => {
                               if (isMC) {
                                 setExamAnswers(prev => ({ ...prev, [idx]: q.answer }));
                               } else {
-                                setExamRevealed(prev => ({ ...prev, [idx]: !prev[idx] }));
+                                setExamShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
                               }
                             }}
                             className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
-                            title="정답 및 해설 바로 확인"
+                            title="정답 바로 확인"
                           >
                             <span>👁️ 답안보기</span>
                           </button>
@@ -11761,6 +11890,7 @@ export default function App() {
                                 tableAnswers={tableAnswers} 
                                 setTableAnswers={setTableAnswers} 
                                 revealed={!!examRevealed[idx]} 
+                                showAnswers={!!examShowAnswersState[idx]}
                                 katexLoaded={katexLoaded} 
                                 tableGradingResults={tableGradingResults}
                               />
@@ -11818,6 +11948,11 @@ export default function App() {
                                     />
                                   </div>
                                 </div>
+                                {!examRevealed[idx] && examShowAnswersState[idx] && (
+                                  <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
+                                    정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                  </div>
+                                )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
                                     tableGradingResults[`${idx}_INPUT`].isCorrect
