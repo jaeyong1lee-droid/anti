@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   healLatexFormulas, 
   healQuizQuestionObject, 
@@ -2474,6 +2474,17 @@ function ScientificCalculator() {
     }
   };
 
+  const previewResult = useMemo(() => {
+    if (!calcInput.trim()) return '';
+    try {
+      const res = evaluateExpr(calcInput, calcAngleMode);
+      if (res && res !== 'Error') {
+        return res;
+      }
+    } catch (e) {}
+    return '';
+  }, [calcInput, calcAngleMode, variables, lastAns]);
+
   const handleEqual = () => {
     if (!isOn || !calcInput.trim()) return;
     const res = evaluateExpr(calcInput, calcAngleMode);
@@ -3107,14 +3118,16 @@ function ScientificCalculator() {
       );
     }
 
+    const displayResult = calcResult || previewResult;
+
     let showFraction = false;
     let showDecimal = true;
     
     let fracNumerator = '';
     let fracDenominator = '';
     
-    if (calcResult && calcResult !== 'Error') {
-      const numVal = parseFloat(calcResult);
+    if (displayResult && displayResult !== 'Error') {
+      const numVal = parseFloat(displayResult);
       if (!isNaN(numVal)) {
         const frac = decimalToFraction(numVal);
         if (frac && frac.denominator > 1) {
@@ -3173,7 +3186,7 @@ function ScientificCalculator() {
                   <span className="pt-0.5 px-0.5 select-text">{fracDenominator}</span>
                 </div>
               ) : (
-                <span className="text-[20px] font-black tracking-tight select-text leading-none truncate">{showDecimal ? (calcResult || '0') : ''}</span>
+                <span className="text-[20px] font-black tracking-tight select-text leading-none truncate">{showDecimal ? (displayResult || '0') : ''}</span>
               )}
             </div>
           </div>
@@ -3349,7 +3362,7 @@ function ScientificCalculator() {
             </div>
             
             {renderSilverKey('MODE', 'SETUP', 'mode')}
-            {renderSilverKey('ON', 'OFF', 'on')}
+            {renderSilverKey('CLR', 'OFF', 'on')}
             
             {/* Row 2 */}
             {renderFuncKey('calc', 'CALC', 'SOLVE', '=', 'calc')}
