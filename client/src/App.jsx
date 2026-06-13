@@ -9975,7 +9975,7 @@ export default function App() {
                           <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                         </div>
 
-                        {q.tableData && (
+                        {isMC && q.tableData && (
                           <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
                         )}
 
@@ -11162,7 +11162,7 @@ export default function App() {
                         <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                       </div>
 
-                      {q.tableData && (
+                      {isMC && q.tableData && (
                         <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
                       )}
 
