@@ -1367,6 +1367,22 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 });
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
+const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
+  if (!value) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
+  
+  const score = gradingResult?.score;
+  if (score === undefined) {
+    return isCorrect 
+      ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+      : 'border-rose-500 bg-rose-950/20 text-rose-300';
+  }
+  
+  if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
+  if (score >= 6) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
+  if (score >= 3) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
+  return 'border-rose-500 bg-rose-950/20 text-rose-300';
+};
+
 const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, showAnswers, katexLoaded, tableGradingResults, weight = 10 }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
@@ -1423,20 +1439,11 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-[10px] sm:text-xs pl-1.5 pr-8 py-0.5 sm:pl-2 sm:pr-12 sm:py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
-                  if (revealed) {
-                    if (value) {
-                      if (isCorrect) {
-                        inputClassName += 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
-                      } else {
-                        inputClassName += 'border-rose-500 bg-rose-950/20 text-rose-300';
-                      }
-                    } else {
-                      inputClassName += 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
-                    }
-                  } else {
-                    inputClassName += 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500';
-                  }
+                  let inputClassName = `w-full text-[10px] sm:text-xs pl-1.5 pr-8 py-0.5 sm:pl-2 sm:pr-12 sm:py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                    revealed
+                      ? getTableInputColorClasses(gradingResult, isCorrect, value)
+                      : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
+                  }`;
 
                   return (
                     <td 
@@ -4025,6 +4032,51 @@ export default function App() {
     if (score >= 6) return '⚠️ 부분 인정 (우수)';
     if (score >= 3) return '⚠️ 부분 인정 (보통)';
     return '❌ 오답 판정';
+  };
+
+  const getTableAverageScore = (idx, q) => {
+    const inputIds = Object.keys(q.answers || {});
+    if (inputIds.length === 0) return 10;
+    
+    let sumScore = 0;
+    let gradedCount = 0;
+    inputIds.forEach(inputId => {
+      const grading = tableGradingResults[`${idx}_${inputId}`];
+      if (grading && grading.score !== undefined) {
+        sumScore += grading.score;
+        gradedCount++;
+      }
+    });
+    
+    if (gradedCount === 0) return undefined;
+    return sumScore / gradedCount;
+  };
+
+  const getTableBannerClasses = (idx, q) => {
+    const score = getTableAverageScore(idx, q);
+    if (score === undefined) return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
+    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450';
+    if (score >= 6) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-450';
+    if (score >= 3) return 'bg-orange-950/20 border-orange-500/30 text-orange-450';
+    return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
+  };
+
+  const getTableBannerTitleClasses = (idx, q) => {
+    const score = getTableAverageScore(idx, q);
+    if (score === undefined) return 'text-rose-400';
+    if (score >= 9) return 'text-emerald-400';
+    if (score >= 6) return 'text-yellow-400';
+    if (score >= 3) return 'text-orange-400';
+    return 'text-rose-400';
+  };
+
+  const getTableBannerStatusText = (idx, q) => {
+    const score = getTableAverageScore(idx, q);
+    if (score === undefined) return '❌ 감점 및 오답 사유 피드백';
+    if (score >= 9) return '✅ 채점 피드백 (정답인정)';
+    if (score >= 6) return '⚠️ 채점 피드백 (우수)';
+    if (score >= 3) return '⚠️ 채점 피드백 (보통)';
+    return '❌ 감점 및 오답 사유 피드백';
   };
 
   // Dynamic KaTeX Loader State
@@ -11064,14 +11116,14 @@ export default function App() {
                                     });
                                     if (wrongFeedbacks.length > 0) {
                                       return (
-                                        <div className="p-3.5 bg-rose-950/30 border border-rose-500/20 rounded-xl space-y-2 text-left animate-fade-in my-2">
-                                          <div className="text-xs font-black text-rose-400 flex items-center gap-1.5">
-                                            <span>❌ 감점 및 오답 사유 피드백</span>
+                                        <div className={`p-3.5 border rounded-xl space-y-2 text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
+                                          <div className={`text-xs font-black flex items-center gap-1.5 ${getTableBannerTitleClasses(idx, q)}`}>
+                                            <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
                                             {wrongFeedbacks.map((fb, fIdx) => (
                                               <li key={fIdx}>
-                                                <span className="font-extrabold text-rose-350">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
+                                                <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </li>
                                             ))}
                                           </ul>
@@ -12411,14 +12463,14 @@ export default function App() {
                                     });
                                     if (wrongFeedbacks.length > 0) {
                                       return (
-                                        <div className="p-3.5 bg-rose-950/30 border border-rose-500/20 rounded-xl space-y-2 text-left animate-fade-in my-2">
-                                          <div className="text-xs font-black text-rose-400 flex items-center gap-1.5">
-                                            <span>❌ 감점 및 오답 사유 피드백</span>
+                                        <div className={`p-3.5 border rounded-xl space-y-2 text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
+                                          <div className={`text-xs font-black flex items-center gap-1.5 ${getTableBannerTitleClasses(idx, q)}`}>
+                                            <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
                                             {wrongFeedbacks.map((fb, fIdx) => (
                                               <li key={fIdx}>
-                                                <span className="font-extrabold text-rose-350">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
+                                                <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </li>
                                             ))}
                                           </ul>
