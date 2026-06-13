@@ -4968,6 +4968,7 @@ export default function App() {
         if (s.openSections) setOpenSections(s.openSections);
         if (s.isFallback !== undefined) setIsFallback(s.isFallback);
         if (s.chatHistory) setChatHistory(s.chatHistory);
+        if (s.tableAnswers) setTableAnswers(s.tableAnswers);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
@@ -4987,6 +4988,7 @@ export default function App() {
           if (data.examRevealed) setExamRevealed(data.examRevealed);
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
+          if (data.tableAnswers) setTableAnswers(data.tableAnswers);
           if (data.savedExamScroll) savedExamScroll.current = data.savedExamScroll;
           requestAnimationFrame(() => {
             if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
@@ -5030,31 +5032,33 @@ export default function App() {
         examQuestions,
         examRevealed,
         examAnswers,
+        tableAnswers,
         chatHistory,
       }));
     } catch (e) {
       console.warn('localStorage 저장 실패:', e);
     }
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, chatHistory]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, chatHistory]);
 
   // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
   useEffect(() => {
     if (selectedTopic && selectedTopic.id) {
-      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0) {
+      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0) {
         try {
           const key = selectedTopic.schedule_id 
             ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
             : `anti_review_progress_${selectedTopic.id}`;
           localStorage.setItem(key, JSON.stringify({
             revealedQuestions,
-            selectedAnswers
+            selectedAnswers,
+            tableAnswers
           }));
         } catch (e) {
           console.warn('localStorage 복습 진행률 저장 실패:', e);
         }
       }
     }
-  }, [selectedTopic, revealedQuestions, selectedAnswers]);
+  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -5068,6 +5072,7 @@ export default function App() {
             examRevealed,
             examAnswers,
             examTopic,
+            tableAnswers,
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
@@ -5075,7 +5080,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers]);
 
   const forceSaveActiveSessions = () => {
     // 1) Save active review session immediately
@@ -5090,6 +5095,7 @@ export default function App() {
           questions: aiQuestions,
           selectedAnswers,
           revealedQuestions,
+          tableAnswers,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
@@ -5106,6 +5112,7 @@ export default function App() {
           examRevealed,
           examAnswers,
           examTopic,
+          tableAnswers,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
@@ -5123,7 +5130,7 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers]);
 
   // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
@@ -5138,6 +5145,7 @@ export default function App() {
             questions: aiQuestions,
             selectedAnswers,
             revealedQuestions,
+            tableAnswers,
             savedQuizScroll: quizBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
@@ -5145,7 +5153,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers]);
 
   const getCurrentTabIndex = () => {
     if (showAnswerSheet) return 3;
@@ -5805,9 +5813,10 @@ export default function App() {
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
         
         // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
-        if (data.isCached && (data.selectedAnswers || data.revealedQuestions)) {
+        if (data.isCached && (data.selectedAnswers || data.revealedQuestions || data.tableAnswers)) {
           setSelectedAnswers(data.selectedAnswers || {});
           setRevealedQuestions(data.revealedQuestions || {});
+          setTableAnswers(data.tableAnswers || {});
           if (data.savedQuizScroll) {
             savedQuizScroll.current = data.savedQuizScroll;
             requestAnimationFrame(() => {
@@ -5826,11 +5835,13 @@ export default function App() {
               const parsed = JSON.parse(savedProgress);
               if (parsed.revealedQuestions) initialRevealedQuestions = parsed.revealedQuestions;
               if (parsed.selectedAnswers) initialSelectedAnswers = parsed.selectedAnswers;
+              if (parsed.tableAnswers) setTableAnswers(parsed.tableAnswers);
               if (parsed.revealedQuestions) setRevealedQuestions(parsed.revealedQuestions);
               if (parsed.selectedAnswers) setSelectedAnswers(parsed.selectedAnswers);
             } else {
               setRevealedQuestions({});
               setSelectedAnswers({});
+              setTableAnswers({});
             }
           } catch (e) {
             console.warn('복습 진행률 복원 실패:', e);
@@ -5943,6 +5954,7 @@ export default function App() {
     setSelectedAnswers({});
     setRevealedQuestions({});
     setReviewOptionExplanations({});
+    setTableAnswers({});
     setOpenSections({}); // Clear accordion open sections if any
     
     // Remove localStorage progress
@@ -6033,6 +6045,7 @@ export default function App() {
     setRevealedQuestions({});
     setSelectedAnswers({});
     setReviewOptionExplanations({});
+    setTableAnswers({});
     setIsFallback(false);
     setAiError('');
     
@@ -6583,7 +6596,11 @@ export default function App() {
       if (q.options && q.options.length > 0) {
         contextPrompt += `■ 보기:\n${q.options.map((opt, i) => `${i + 1}) ${opt}`).join('\n')}\n`;
       }
-      contextPrompt += `■ 정답/모범 답안: ${q.answer || ''}\n`;
+      if (q.answers && typeof q.answers === 'object') {
+        contextPrompt += `■ 정답/모범 답안 (표 빈칸):\n${Object.entries(q.answers).map(([k, v]) => `- ${k.replace('INPUT_', '')}: ${v}`).join('\n')}\n`;
+      } else {
+        contextPrompt += `■ 정답/모범 답안: ${q.answer || ''}\n`;
+      }
       if (q.explanation) contextPrompt += `■ 기존 해설: ${q.explanation}\n`;
       if (q.concept) contextPrompt += `■ 핵심 개념: ${q.concept}\n`;
       if (q.formula) contextPrompt += `■ 공식: ${q.formula}\n`;
@@ -6612,6 +6629,66 @@ export default function App() {
         [key]: { loading: false, text: '', error: err.message }
       }));
     }
+  };
+
+  const renderCardTutorChat = (key, q) => {
+    return (
+      <div className="mt-2.5 p-3.5 bg-violet-955/20 border border-violet-500/25 rounded-2xl w-full text-left">
+        <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <div className="flex gap-2">
+          <textarea
+            rows={1}
+            value={tutorInputText[key] || ''}
+            onChange={(e) => {
+              const text = e.target.value;
+              setTutorInputText(prev => ({ ...prev, [key]: text }));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const isPending = tutorAnswers[key]?.loading;
+                const hasText = (tutorInputText[key] || '').trim();
+                if (!isPending && hasText) {
+                  handleAskCardTutor(key, q);
+                }
+              }
+            }}
+            placeholder="이 문제의 계산 과정이나 특정 보기가 정오답인 근거를 물어보세요..."
+            className="flex-1 text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+          />
+          <button
+            disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+            onClick={() => handleAskCardTutor(key, q)}
+            className="text-[10px] px-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-extrabold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap active:scale-95 duration-200"
+          >
+            {tutorAnswers[key]?.loading ? '작성 중...' : '질문'}
+          </button>
+        </div>
+
+        {/* AI Tutor In-Card Answer Panel */}
+        {tutorAnswers[key]?.loading && (
+          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
+            <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+            </div>
+            <div className="h-4 bg-slate-850 rounded w-5/6"></div>
+            <div className="h-4 bg-slate-850 rounded w-4/6"></div>
+          </div>
+        )}
+        {tutorAnswers[key]?.error && (
+          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+        )}
+        {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+          <div className="mt-2.5 pt-2.5 border-t border-violet-500/20 select-text">
+            <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-slate-900/60 p-3 rounded-xl border border-violet-500/10 shadow-inner">
+              <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // ── Ask AI Tutor About a Specific Question ──────────────────────────
@@ -6965,6 +7042,7 @@ export default function App() {
         setExamRevealed({});
         setExamAnswers({});
         setExamTopic(null);
+        setTableAnswers({});
       }
     } catch (e) {
       console.warn('서버 세션 확인 실패, 로컬 상태를 사용합니다:', e);
@@ -6984,6 +7062,7 @@ export default function App() {
     setExamRevealed({});
     setExamAnswers({});
     setExamOptionExplanations({});
+    setTableAnswers({});
     try {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
@@ -10462,6 +10541,7 @@ export default function App() {
                                   {q.explanation && (
                                     <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
+                                  {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
                               )}
                             </div>
@@ -11093,7 +11173,7 @@ export default function App() {
                   if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
                     fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                       .catch(e => console.warn('세션 삭제 실패:', e));
-                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({});
                   }
                 }}
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
@@ -11234,7 +11314,7 @@ export default function App() {
                   // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({});
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({});
                 }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
@@ -11655,6 +11735,7 @@ export default function App() {
                                   {q.explanation && (
                                     <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
+                                  {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
                               )}
                             </div>
