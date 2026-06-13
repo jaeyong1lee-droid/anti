@@ -3580,6 +3580,13 @@ export default function App() {
   const [detailedAnswers, setDetailedAnswers] = useState({});
   const [chatHistory, setChatHistory] = useState([]);
 
+  // Formula AI Tutor states
+  const [selectedFormulaIdx, setSelectedFormulaIdx] = useState(-1);
+  const [formulaChatHistory, setFormulaChatHistory] = useState([]);
+  const [isFormulaChatLoading, setIsFormulaChatLoading] = useState(false);
+  const formulaChatBodyRef = useRef(null);
+  const [formulaChatInput, setFormulaChatInput] = useState('');
+
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
 
@@ -7888,6 +7895,77 @@ export default function App() {
     }
   };
 
+  // Formula AI Tutor handlers
+  const handleFormulaSelect = (idx) => {
+    setSelectedFormulaIdx(idx);
+    if (idx === -1) {
+      setFormulaChatHistory([]);
+      return;
+    }
+    const q = formulaQuestions[idx];
+    const greetingText = `안녕하세요! 선택하신 **[${q.title || `공식 카드 ${idx + 1}`}]** 공식에 대해 논해보겠습니다.
+    
+공식 식:
+$$ ${q.formula || ''} $$
+
+이 공식의 핵심 개념, 역학적 유도 과정, 설계상 적용 조건이나 시험 기출 문제에 대해 궁금하신 점을 말씀해 주세요!`;
+    
+    setFormulaChatHistory([
+      { role: 'model', text: greetingText }
+    ]);
+
+    requestAnimationFrame(() => {
+      if (formulaChatBodyRef.current) {
+        formulaChatBodyRef.current.scrollTop = 0;
+      }
+    });
+  };
+
+  const handleSendFormulaChatMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (isFormulaChatLoading || !formulaChatInput.trim() || selectedFormulaIdx === -1) return;
+    
+    const userMessage = formulaChatInput.trim();
+    setFormulaChatInput('');
+    
+    const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage }];
+    setFormulaChatHistory(updatedHistory);
+    setIsFormulaChatLoading(true);
+    
+    requestAnimationFrame(() => {
+      if (formulaChatBodyRef.current) {
+        formulaChatBodyRef.current.scrollTop = formulaChatBodyRef.current.scrollHeight;
+      }
+    });
+    
+    const selected = formulaQuestions[selectedFormulaIdx];
+    const promptText = `[수험생이 선택하여 논의 중인 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]\n\n질문: ${userMessage}`;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: formulaChatHistory.map(h => ({ role: h.role, text: h.text })),
+          message: promptText,
+          image: null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      setFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+    } catch (err) {
+      setFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+    } finally {
+      setIsFormulaChatLoading(false);
+      requestAnimationFrame(() => {
+        if (formulaChatBodyRef.current) {
+          formulaChatBodyRef.current.scrollTop = formulaChatBodyRef.current.scrollHeight;
+        }
+      });
+    }
+  };
+
   // View full report text
   const handleViewFullReport = async (topicId) => {
     setLoadingReport(true);
@@ -11250,8 +11328,8 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              /* Mobile Portrait Header for Formula Quiz:
-                 Hides all dashboard navigation rows and places the tabs row and quiz generation button at the very top */
+              /* Mobile Portrait Header for Formula AI Tutor:
+                 Hides all dashboard navigation rows and places the tabs row at the very top */
               <div className="flex bg-slateCustom-950 px-4 py-3 border-b border-rose-500/10 items-center justify-between gap-3 flex-shrink-0 landscape-hide">
                 <div className="flex bg-slateCustom-900 p-1 rounded-xl flex-grow max-w-[280px] border border-slate-800">
                   <button
@@ -11276,26 +11354,9 @@ export default function App() {
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    오늘의 공식 퀴즈
+                    실시간 AI 튜터
                   </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={generatingFormulaQuiz}
-                  onClick={() => confirmAndGenerateQuizQuestion(true)}
-                  className={`px-3 py-2 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-md active:scale-95 cursor-pointer whitespace-nowrap transition-all flex-shrink-0 ${
-                    generatingFormulaQuiz 
-                      ? 'bg-rose-800/80 shadow-none cursor-not-allowed opacity-70' 
-                      : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/10'
-                  }`}
-                >
-                  {generatingFormulaQuiz ? (
-                    <RefreshCw size={12} className="animate-spin text-white" />
-                  ) : (
-                    <Award size={12} />
-                  )}
-                  {generatingFormulaQuiz ? '출제 중...' : '공식퀴즈'}
-                </button>
               </div>
             )
           ) : (
@@ -11461,7 +11522,7 @@ export default function App() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  오늘의 공식 퀴즈
+                  실시간 AI 튜터
                 </button>
               </div>
             </div>
@@ -11825,6 +11886,25 @@ export default function App() {
                               </button>
                             )}
 
+                            {/* AI Tutor Discussion Button */}
+                            {!isNewEmptyCard && (
+                              <button
+                                onClick={() => {
+                                  handleFormulaSelect(idx);
+                                  setFormulaMobileTab('tutor');
+                                }}
+                                className={`p-1.5 rounded-lg border text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
+                                  selectedFormulaIdx === idx 
+                                    ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' 
+                                    : 'border-slate-700/50'
+                                }`}
+                                title="AI 튜터와 이 공식에 대해 질문하고 토론하기"
+                              >
+                                <MessageSquare size={12} />
+                                <span>튜터토론</span>
+                              </button>
+                            )}
+
                             {/* Toggle Input Editor */}
                             {q.isDirectlyAdded && (
                               <button
@@ -12019,195 +12099,125 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right: Formula Quiz Sidebar */}
+            {/* Right: Formula AI Tutor Sidebar */}
             {(isDesktop || isMobileLandscape || formulaMobileTab === 'tutor') && (
               <div 
                 style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
                 className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
               >
-              <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0">
-                {(!isDesktop && !isMobileLandscape) ? (
-                  <button
-                    onClick={() => {
-                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                      setShowFormulaExam(false);
-                      setViewMode('dashboard');
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-black py-1.5 px-3 rounded-xl border border-slate-850 bg-slateCustom-900/60 text-slate-350 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-[0_2px_8px_rgba(0,0,0,0.2)]"
-                  >
-                    <Calendar size={13} className="text-slate-400" />
-                    <span>오늘의 복습</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Sigma size={16} className="text-rose-500 animate-pulse" />
-                    <span className="text-xs font-extrabold text-slate-200">오늘의 공식 퀴즈</span>
+                {/* Header with Formula Selector */}
+                <div className="p-3.5 border-b border-slate-800 flex flex-col gap-2.5 bg-slateCustom-950 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={16} className="text-rose-500 animate-pulse" />
+                      <span className="text-xs font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
+                    </div>
+                    {(!isDesktop && !isMobileLandscape) && (
+                      <button
+                        onClick={() => {
+                          handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                          setShowFormulaExam(false);
+                          setViewMode('dashboard');
+                        }}
+                        className="flex items-center gap-1.5 text-[10px] font-black py-1 px-2.5 rounded-lg border border-slate-800 bg-slateCustom-900/60 text-slate-350 hover:text-white transition-all cursor-pointer"
+                      >
+                        <Calendar size={11} className="text-slate-400" />
+                        <span>오늘의 복습</span>
+                      </button>
+                    )}
                   </div>
-                )}
-                <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2.5 py-0.5 rounded-full font-black">
-                  남은 문제: {formulaQuizQuestions.filter(q => !q.isCorrect).length}개
-                </span>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:pr-2 space-y-5 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar">
-                {formulaQuizQuestions.length === 0 ? (
-                  <div className="text-center py-16 opacity-50">
-                    <Sigma size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">등록된 공식이 없거나<br/>문제를 생성할 수 없습니다.</p>
-                  </div>
-                ) : (
-                  formulaQuizQuestions.map((q, qIdx) => {
-                    if (q.loading) {
-                      return (
-                        <div key={q.id} className="p-6 bg-slateCustom-900/40 border border-slate-800/80 rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-md shadow-black/20 animate-pulse">
-                          <RefreshCw className="animate-spin text-rose-500" size={20} />
-                          <span className="text-[11px] text-slate-400 font-bold">공식 계산 문제 생성 중... ⏳</span>
-                        </div>
-                      );
-                    }
-                    if (q.error) {
-                      return (
-                        <div key={q.id} className="p-6 bg-rose-950/20 border border-rose-500/20 rounded-2xl text-center space-y-3 shadow-md shadow-rose-950/5">
-                          <p className="text-xs text-rose-300 font-bold">{q.error}</p>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const reloadingList = formulaQuizQuestions.map(item => item.id === q.id ? { ...item, loading: true, error: null } : item);
-                              setFormulaQuizQuestions(reloadingList);
-                              const updatedQ = await fetchQuestionContent(q);
-                              const finalList = reloadingList.map(item => item.id === q.id ? updatedQ : item);
-                              setFormulaQuizQuestions(finalList);
-                              localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(finalList));
-                            }}
-                            className="py-1.5 px-4 bg-rose-700 hover:bg-rose-600 text-white text-[11px] font-black rounded-lg transition-all active:scale-[0.97] cursor-pointer inline-flex items-center gap-1 shadow-md shadow-rose-700/10"
-                          >
-                            <RefreshCw size={11} />
-                            재시도
-                          </button>
-                        </div>
-                      );
-                    }
 
-                    return (
-                      <div key={q.id} className={`formula-quiz-card-item p-4 rounded-2xl border transition-all duration-300 ${
-                        q.isCorrect 
-                          ? 'bg-emerald-950/15 border-emerald-500/20 shadow-md shadow-emerald-950/25' 
-                          : 'bg-slateCustom-900/40 border-slate-800/80 shadow-md shadow-black/20'
-                      }`}>
-                        {/* Question Header */}
-                        <div className="flex items-center justify-between gap-2 mb-3 w-full">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-black text-rose-400">Q{qIdx + 1}. 다음 공식을 활용한 계산 문제를 푸시오</span>
-                            {q.isCorrect && (
-                              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                                <CheckCircle size={12} />
-                                완료
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFormulaQuizQuestion(q.id)}
-                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800/50 active:scale-95 transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
-                            title="이 문제 제거"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                        <h4 className="text-xs font-black text-white mb-3 border-b border-slate-800/80 pb-2 leading-relaxed select-text break-words">
-                          <span>[</span>
-                          <LatexRenderer text={q.formulaTitle} katexLoaded={katexLoaded} className="inline" />
-                          <span>]</span>
-                        </h4>
-                        
-                        {/* Question text */}
-                        <div 
-                          className="text-sm sm:text-[14px] text-slate-200 leading-relaxed mb-4 whitespace-normal break-words max-w-full formula-scroll-container"
-                          onTouchStart={(e) => e.stopPropagation()}
-                          onTouchMove={(e) => e.stopPropagation()}
-                          onTouchEnd={(e) => e.stopPropagation()}
-                          onTouchCancel={(e) => e.stopPropagation()}
-                        >
-                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} isMarkdown={true} />
-                        </div>
-                        
-                        {/* Options */}
-                        <div className="space-y-2.5">
-                          {q.options.map((opt, optIdx) => {
-                            const isSelected = q.userAnswerIndex === optIdx;
-                            const isCorrectOption = q.correctOptionIndex === optIdx;
-                            
-                            let btnStyle = "bg-slateCustom-950 hover:bg-slate-800 border-slate-800/85 text-slate-300 hover:text-white";
-                            if (q.userAnswerIndex !== null) {
-                              if (isSelected) {
-                                btnStyle = q.isCorrect 
-                                  ? "bg-emerald-950/75 border-emerald-500 text-emerald-200"
-                                  : "bg-rose-950/75 border-rose-500 text-rose-200";
-                              } else if (isCorrectOption && !q.isCorrect) {
-                                btnStyle = "bg-emerald-950/20 border-emerald-500/20 text-emerald-400/80";
-                              }
-                            }
-                            
-                            return (
-                              <button
-                                key={optIdx}
-                                type="button"
-                                disabled={q.isCorrect}
-                                onClick={() => {
-                                  const updated = formulaQuizQuestions.map((item, idx) => {
-                                    if (idx === qIdx) {
-                                      const isRight = optIdx === item.correctOptionIndex;
-                                      return {
-                                        ...item,
-                                        userAnswerIndex: optIdx,
-                                        isCorrect: isRight
-                                      };
-                                    }
-                                    return item;
-                                  });
-                                  setFormulaQuizQuestions(updated);
-                                  localStorage.setItem('anti_formula_quiz_questions', JSON.stringify(updated));
-                                  if (optIdx === q.correctOptionIndex) {
-                                    showNotification('정답입니다! 🎉', 'success');
-                                  } else {
-                                    showNotification('오답입니다. 다시 시도해 보세요! ❌', 'error');
-                                  }
-                                }}
-                                className={`w-full text-left p-3 rounded-xl border text-xs transition-all duration-200 flex items-center gap-2 cursor-pointer formula-quiz-option-btn ${btnStyle} disabled:cursor-default`}
-                              >
-                                <span className="w-5 h-5 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-[10px] text-slate-400 flex-shrink-0">
-                                  {optIdx + 1}
-                                </span>
-                                <div className="flex-1 overflow-x-auto overflow-y-hidden py-1 scrollbar-none">
-                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        
-                        {/* Feedback text & Explanation */}
-                        {q.userAnswerIndex !== null && (
-                          <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2.5">
-                            <div className="text-right">
-                              {q.isCorrect ? (
-                                <span className="text-[10px] font-bold text-emerald-400">정답입니다! 🎉</span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-rose-400">오답입니다. 다른 보기를 선택해 보세요. ❌</span>
-                              )}
-                            </div>
-                            <div className="p-3.5 bg-slateCustom-950/60 rounded-xl border border-slate-850 text-[11px] text-slate-350 leading-relaxed max-w-full overflow-x-auto select-text">
-                              <span className="font-extrabold text-white block mb-1 text-xs">📖 상세 해설</span>
-                              <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} />
-                            </div>
-                          </div>
-                        )}
+                  {/* Formula Dropdown Selector */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-extrabold block">학습 및 질의할 공식 선택:</label>
+                    <select
+                      value={selectedFormulaIdx}
+                      onChange={(e) => handleFormulaSelect(Number(e.target.value))}
+                      className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-2.5 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
+                    >
+                      <option value={-1}>-- 공식을 선택하세요 --</option>
+                      {formulaQuestions.map((fq, idx) => (
+                        <option key={idx} value={idx}>
+                          Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Chat Message History */}
+                <div 
+                  ref={formulaChatBodyRef}
+                  className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:pr-2 space-y-4 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar"
+                >
+                  {selectedFormulaIdx === -1 ? (
+                    <div className="text-center py-16 px-4 opacity-50 flex flex-col items-center justify-center h-full">
+                      <div className="p-4 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-3 animate-bounce-slow">
+                        <MessageSquare size={32} />
                       </div>
-                    );
-                  })
-                )}
+                      <p className="text-xs text-slate-300 font-bold">공식에 대해 AI 튜터와 논의해 보세요!</p>
+                      <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">
+                        상단의 드롭다운 메뉴나 왼쪽 공식 카드에서 <strong>[튜터토론]</strong> 버튼을 눌러 공식 대화를 시작하세요.
+                      </p>
+                    </div>
+                  ) : (
+                    formulaChatHistory.map((msg, mIdx) => {
+                      const isUser = msg.role === 'user';
+                      return (
+                        <div 
+                          key={mIdx} 
+                          className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
+                        >
+                          <span className="text-[10px] text-slate-400 font-bold px-1">
+                            {isUser ? '수험생' : 'AI 튜터'}
+                          </span>
+                          <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed select-text break-words ${
+                            isUser 
+                              ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
+                              : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
+                          }`}>
+                            <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  {isFormulaChatLoading && (
+                    <div className="flex flex-col items-start space-y-1">
+                      <span className="text-[10px] text-slate-400 font-bold px-1">AI 튜터</span>
+                      <div className="bg-slateCustom-900/60 border border-slate-800/80 text-slate-400 rounded-2xl rounded-tl-none px-4 py-3 text-xs flex items-center gap-1.5">
+                        <RefreshCw size={12} className="animate-spin text-rose-500" />
+                        <span>생각하는 중...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                  <form onSubmit={handleSendFormulaChatMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      disabled={selectedFormulaIdx === -1 || isFormulaChatLoading}
+                      value={formulaChatInput}
+                      onChange={(e) => setFormulaChatInput(e.target.value)}
+                      placeholder={
+                        selectedFormulaIdx === -1 
+                          ? "공식을 먼저 선택해 주세요..." 
+                          : "공식에 대해 질문해 보세요 (예: 유도과정, 적용조건)..."
+                      }
+                      className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none placeholder-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <button
+                      type="submit"
+                      disabled={selectedFormulaIdx === -1 || isFormulaChatLoading || !formulaChatInput.trim()}
+                      className="px-4 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-850 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
+                    >
+                      <span>보내기</span>
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
             )}
 
           </div>
