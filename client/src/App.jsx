@@ -3459,7 +3459,7 @@ function MobileStatusBar() {
 }
 
 // Floating Casio Calculator Component
-function FloatingCalculator({ onClose }) {
+function FloatingCalculator({ isVisible, onClose }) {
   const dragRef = useRef(null);
   const [position, setPosition] = useState(() => {
     const isMobile = window.innerWidth < 768;
@@ -3533,7 +3533,8 @@ function FloatingCalculator({ onClose }) {
         left: `${position.x}px`,
         top: `${position.y}px`,
         zIndex: 9999,
-        touchAction: 'none'
+        touchAction: 'none',
+        display: isVisible ? 'flex' : 'none'
       }}
       className="w-[90vw] md:w-[660px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
     >
@@ -3887,10 +3888,7 @@ export default function App() {
   const answersheetBodyRef = useRef(null);
   const savedAnswersheetScroll = useRef(0);
 
-  // Close floating calculator when switching views/tabs
-  useEffect(() => {
-    setShowFloatingCalculator(false);
-  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic?.id, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
+  // Close floating calculator auto-toggle is now handled via visibility hiding rather than unmounting
 
   // Load chat history when selectedTopic changes
   useEffect(() => {
@@ -13445,9 +13443,10 @@ export default function App() {
         />
       )}
 
-      {showFloatingCalculator && (
-        <FloatingCalculator onClose={() => setShowFloatingCalculator(false)} />
-      )}
+      <FloatingCalculator 
+        isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet)} 
+        onClose={() => setShowFloatingCalculator(false)} 
+      />
     </div>
   );
 }
