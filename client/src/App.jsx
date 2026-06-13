@@ -11510,7 +11510,11 @@ export default function App() {
 
       {/* ===== ESSENTIAL FORMULA EXAM MODAL (주관식) ===== */}
       {showFormulaExam && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div 
+          onTouchStart={handleSwipeTouchStart}
+          onTouchEnd={(e) => handleSwipeTouchEnd(e, formulaMobileTab, setFormulaMobileTab)}
+          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+        >
           
           {/* Formula Header */}
           {(!isDesktop && !isMobileLandscape) ? (
@@ -11604,38 +11608,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            ) : (
-              /* Mobile Portrait Header for Formula AI Tutor:
-                 Hides all dashboard navigation rows and places the tabs row at the very top */
-              <div className="flex bg-slateCustom-950 px-4 py-3 border-b border-rose-500/10 items-center justify-between gap-3 flex-shrink-0 landscape-hide">
-                <div className="flex bg-slateCustom-900 p-1 rounded-xl flex-grow max-w-[280px] border border-slate-800">
-                  <button
-                    onClick={() => {
-                      setFormulaMobileTab('list');
-                    }}
-                    className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                      formulaMobileTab === 'list'
-                        ? 'bg-rose-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    공식 리스트
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFormulaMobileTab('tutor');
-                    }}
-                    className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                      formulaMobileTab === 'tutor'
-                        ? 'bg-rose-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    실시간 AI 튜터
-                  </button>
-                </div>
-              </div>
-            )
+            ) : null
           ) : (
              /* Desktop/Landscape Header for Formulas Modal */
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
@@ -11778,37 +11751,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Sub-header tabs for Mobile */}
-          {(!isDesktop && !isMobileLandscape && formulaMobileTab === 'list') && (
-            <div className="flex md:hidden bg-slateCustom-950 px-5 py-2 border-b border-rose-500/10 justify-center flex-shrink-0 landscape-hide">
-              <div className="flex bg-slateCustom-900 p-1 rounded-xl w-full max-w-[320px] border border-slate-800">
-                <button
-                  onClick={() => {
-                    setFormulaMobileTab('list');
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    formulaMobileTab === 'list'
-                      ? 'bg-rose-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  공식 리스트
-                </button>
-                <button
-                  onClick={() => {
-                    setFormulaMobileTab('tutor');
-                  }}
-                  className={`flex-1 py-1.5 text-center text-xs font-black rounded-lg transition-all cursor-pointer ${
-                    formulaMobileTab === 'tutor'
-                      ? 'bg-rose-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  실시간 AI 튜터
-                </button>
-              </div>
-            </div>
-          )}
+
 
           {/* Layout Split Container (Mobile: Hides inactive column to lock layout, PC: Side-by-Side) */}
           <div 
@@ -11895,9 +11838,10 @@ export default function App() {
               </div>
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
-            {(isDesktop || isMobileLandscape || formulaMobileTab === 'list') && (
               <div 
-                className="w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30"
+                className={`w-full shrink-0 md:flex-1 md:shrink min-w-0 snap-start h-full relative overflow-hidden flex flex-col items-center bg-slateCustom-900/30 ${
+                  (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'list') ? 'hidden' : ''
+                }`}
               >
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
@@ -12351,7 +12295,6 @@ export default function App() {
               )}
               </div>
             </div>
-            )}
 
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
@@ -12383,10 +12326,11 @@ export default function App() {
             </div>
 
             {/* Right: Formula AI Tutor Sidebar */}
-            {(isDesktop || isMobileLandscape || formulaMobileTab === 'tutor') && (
               <div 
                 style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-                className="w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col"
+                className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
+                  (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
+                }`}
               >
                 {/* Header with Formula Selector */}
                 <div className="p-3.5 border-b border-slate-800 flex flex-col gap-2.5 bg-slateCustom-950 flex-shrink-0">
@@ -12548,7 +12492,6 @@ export default function App() {
                   </form>
                 </div>
               </div>
-            )}
 
           </div>
         </div>
@@ -13547,6 +13490,22 @@ export default function App() {
         />
       )}
 
+      {showFormulaExam && (
+        <DraggableFloatingButton
+          currentTab={formulaMobileTab}
+          onToggle={(targetTab) => {
+            setFormulaMobileTab(targetTab);
+            if (targetTab === 'list') {
+              formulaSplitContainerRef.current?.scrollTo({ left: 0 });
+            } else {
+              const containerWidth = formulaSplitContainerRef.current?.clientWidth || 0;
+              formulaSplitContainerRef.current?.scrollTo({ left: containerWidth });
+            }
+          }}
+          theme="rose"
+        />
+      )}
+
       <FloatingCalculator 
         isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
         onClose={() => setShowFloatingCalculator(false)} 
@@ -13745,7 +13704,9 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
           isList
             ? theme === 'amber'
               ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30'
-              : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
+              : theme === 'rose'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30'
+                : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
             : 'bg-slate-800/80 text-slate-500 hover:text-slate-300'
         }`}
         title="문제 풀이"
@@ -13758,7 +13719,9 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
           !isList
             ? theme === 'amber'
               ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30'
-              : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
+              : theme === 'rose'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30'
+                : 'bg-violet-600 text-white shadow-md shadow-violet-500/30'
             : 'bg-slate-800/80 text-slate-500 hover:text-slate-300'
         }`}
         title="제미나이 AI 튜터"
