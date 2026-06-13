@@ -1434,14 +1434,23 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         <div className="flex items-center gap-1.5 w-full">
                           <span className="text-xs font-bold text-slate-400 select-none min-w-[14px] text-right">{inputLetter}</span>
                           <div className="relative flex-grow">
-                            <input
-                              type="text"
-                              disabled={revealed}
-                              value={revealed && !value ? correctAnswer : value}
-                              onChange={(e) => handleInputChange(inputId, e.target.value)}
-                              placeholder={`${inputLetter} 입력`}
-                              className={inputClassName}
-                            />
+                            {revealed && value && !isCorrect ? (
+                              <div className={`${inputClassName} flex items-center flex-wrap gap-1 select-text min-h-[30px] pr-8`}>
+                                <span className="line-through opacity-60">{value}</span>
+                                <span className="text-emerald-450 font-black flex items-center gap-0.5">
+                                  → <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                </span>
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                disabled={revealed}
+                                value={revealed && !value ? correctAnswer : value}
+                                onChange={(e) => handleInputChange(inputId, e.target.value)}
+                                placeholder={`${inputLetter} 입력`}
+                                className={inputClassName}
+                              />
+                            )}
                             {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
                               const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                               const displayScore = Math.round(cellObtained * 10) / 10;
@@ -10952,22 +10961,31 @@ export default function App() {
                                 <div className="space-y-1">
                                   <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
                                   <div className="relative">
-                                    <input
-                                      type="text"
-                                      disabled={isRevd}
-                                      value={isRevd && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
-                                      onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
-                                      placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
-                                        isRevd
-                                          ? (tableAnswers[`${idx}_INPUT`]
-                                              ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
-                                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
-                                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                                              : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
-                                          : 'border-slate-750 text-white'
-                                      }`}
-                                    />
+                                    {isRevd && tableAnswers[`${idx}_INPUT`] && !tableGradingResults[`${idx}_INPUT`]?.isCorrect ? (
+                                      <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
+                                        <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
+                                        <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                                          → 정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        disabled={isRevd}
+                                        value={isRevd && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
+                                        onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                        placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
+                                          isRevd
+                                            ? (tableAnswers[`${idx}_INPUT`]
+                                                ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
+                                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+                                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                                                : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
+                                            : 'border-slate-750 text-white'
+                                        }`}
+                                      />
+                                    )}
                                     {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
                                         {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
@@ -12291,22 +12309,31 @@ export default function App() {
                                 <div className="space-y-1">
                                   <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
                                   <div className="relative">
-                                    <input
-                                      type="text"
-                                      disabled={!!examRevealed[idx]}
-                                      value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
-                                      onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
-                                      placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
-                                        !!examRevealed[idx]
-                                          ? (tableAnswers[`${idx}_INPUT`]
-                                              ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
-                                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
-                                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                                              : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
-                                          : 'border-slate-750 text-white'
-                                      }`}
-                                    />
+                                    {!!examRevealed[idx] && tableAnswers[`${idx}_INPUT`] && !tableGradingResults[`${idx}_INPUT`]?.isCorrect ? (
+                                      <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
+                                        <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
+                                        <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                                          → 정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        disabled={!!examRevealed[idx]}
+                                        value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
+                                        onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                        placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
+                                          !!examRevealed[idx]
+                                            ? (tableAnswers[`${idx}_INPUT`]
+                                                ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
+                                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+                                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                                                : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
+                                            : 'border-slate-750 text-white'
+                                        }`}
+                                      />
+                                    )}
                                     {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
                                         {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
