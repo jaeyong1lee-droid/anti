@@ -4315,6 +4315,28 @@ export default function App() {
   });
   const [isResizing, setIsResizing] = useState(false);
 
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const current = window.innerWidth;
+      setWindowWidth(prev => {
+        if (prev !== current) {
+          setRightSidebarWidth(oldWidth => {
+            const ratio = oldWidth / prev;
+            const newWidth = Math.round(current * ratio);
+            const minWidth = 250;
+            const maxWidth = current * 0.7;
+            return Math.max(minWidth, Math.min(maxWidth, newWidth));
+          });
+        }
+        return current;
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Sync rightSidebarWidth to localStorage
   useEffect(() => {
     localStorage.setItem('anti_right_sidebar_width', rightSidebarWidth.toString());
