@@ -12043,7 +12043,7 @@ export default function App() {
 
                           {/* Row 2: Action Buttons (정답확인, 리프레쉬, 삭제) */}
                           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
-                            {/* 정답확인/정답접기 button */}
+                            {/* 정답확인 button */}
                             {!isNewEmptyCard && (
                               (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
                                 <button
@@ -12065,18 +12065,7 @@ export default function App() {
                                 >
                                   <span>정답확인</span>
                                 </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setFormulaRevealed(prev => ({ ...prev, [idx]: false }));
-                                  }}
-                                  className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap flex items-center justify-center gap-1"
-                                  title="정답 접기"
-                                >
-                                  <span>정답접기</span>
-                                </button>
-                              )
+                              ) : null
                             )}
 
                             {/* AI Refresh Button */}
