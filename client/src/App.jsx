@@ -3890,12 +3890,42 @@ export default function App() {
 
   // Close floating calculator auto-toggle is now handled via visibility hiding rather than unmounting
 
-  // Load saved states (formulaChatHistory, selectedFormulaIdx, formulaMobileTab) when selectedTopic changes
+  // 1) Load Selected Formula Index and Mobile Tab when selectedTopic changes
   useEffect(() => {
     const topicKey = selectedTopic?.id || 'default';
     
-    // 1) Load Chat History
-    const chatKey = `anti_formula_chat_history_${topicKey}`;
+    // Load Selected Formula Index
+    const idxKey = `anti_selected_formula_idx_${topicKey}`;
+    const savedIdx = localStorage.getItem(idxKey);
+    if (savedIdx !== null) {
+      const parsedIdx = parseInt(savedIdx, 10);
+      if (!isNaN(parsedIdx)) {
+        setSelectedFormulaIdx(parsedIdx);
+      } else {
+        setSelectedFormulaIdx(-1);
+      }
+    } else {
+      setSelectedFormulaIdx(-1);
+    }
+
+    // Load Mobile Tab
+    const tabKey = `anti_formula_mobile_tab_${topicKey}`;
+    const savedTab = localStorage.getItem(tabKey);
+    if (savedTab) {
+      setFormulaMobileTab(savedTab);
+    } else {
+      setFormulaMobileTab('list');
+    }
+  }, [selectedTopic?.id]);
+
+  // 2) Load Chat History when selectedTopic or selectedFormulaIdx changes
+  useEffect(() => {
+    const topicKey = selectedTopic?.id || 'default';
+    if (selectedFormulaIdx === -1) {
+      setFormulaChatHistory([]);
+      return;
+    }
+    const chatKey = `anti_formula_chat_history_${topicKey}_${selectedFormulaIdx}`;
     const savedChat = localStorage.getItem(chatKey);
     if (savedChat) {
       try {
@@ -3911,36 +3941,13 @@ export default function App() {
     } else {
       setFormulaChatHistory([]);
     }
-
-    // 2) Load Selected Formula Index
-    const idxKey = `anti_selected_formula_idx_${topicKey}`;
-    const savedIdx = localStorage.getItem(idxKey);
-    if (savedIdx !== null) {
-      const parsedIdx = parseInt(savedIdx, 10);
-      if (!isNaN(parsedIdx)) {
-        setSelectedFormulaIdx(parsedIdx);
-      } else {
-        setSelectedFormulaIdx(-1);
-      }
-    } else {
-      setSelectedFormulaIdx(-1);
-    }
-
-    // 3) Load Mobile Tab
-    const tabKey = `anti_formula_mobile_tab_${topicKey}`;
-    const savedTab = localStorage.getItem(tabKey);
-    if (savedTab) {
-      setFormulaMobileTab(savedTab);
-    } else {
-      setFormulaMobileTab('list');
-    }
-  }, [selectedTopic?.id]);
+  }, [selectedTopic?.id, selectedFormulaIdx]);
 
   const saveFormulaChatHistory = (historyOrFn) => {
     setFormulaChatHistory(prev => {
       const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
       const nextArray = Array.isArray(next) ? next : [];
-      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
+      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}_${selectedFormulaIdx}`;
       localStorage.setItem(key, JSON.stringify(nextArray));
       return nextArray;
     });
@@ -8081,7 +8088,14 @@ export default function App() {
     if (idx === -1) return;
     setSelectedFormulaIdx(idx);
     setFormulaMobileTab('tutor');
-    saveFormulaChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
+    
+    // Explicitly set loading state for the specific index to prevent state races
+    const topicKey = selectedTopic?.id || 'default';
+    const chatKey = `anti_formula_chat_history_${topicKey}_${idx}`;
+    const initialHistory = [{ role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }];
+    localStorage.setItem(chatKey, JSON.stringify(initialHistory));
+    setFormulaChatHistory(initialHistory);
+    
     setIsFormulaChatLoading(true);
 
     const selected = formulaQuestions[idx];
@@ -8111,15 +8125,14 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '문제 출제 실패');
-      saveFormulaChatHistory(prev => {
-        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
-        return [...filtered, { role: 'model', text: data.text }];
-      });
+      
+      const newHistory = [{ role: 'model', text: data.text }];
+      localStorage.setItem(chatKey, JSON.stringify(newHistory));
+      setFormulaChatHistory(newHistory);
     } catch (err) {
-      saveFormulaChatHistory(prev => {
-        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
-        return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
-      });
+      const newHistory = [{ role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
+      localStorage.setItem(chatKey, JSON.stringify(newHistory));
+      setFormulaChatHistory(newHistory);
     } finally {
       setIsFormulaChatLoading(false);
       requestAnimationFrame(() => {
@@ -12403,8 +12416,9 @@ export default function App() {
                         상단의 드롭다운 메뉴나 왼쪽 공식 카드에서 <strong>[AI 토론]</strong> 버튼을 눌러 공식 대화를 시작하세요.
                       </p>
                     </div>
-                  ) : formulaChatHistory.length === 0 ? (
-                    <div className="w-full px-4 pt-0.5 pb-4 flex flex-col items-center justify-start min-h-0">
+                  ) : (
+                    <div className="w-full flex flex-col gap-4">
+                      {/* Formula display block - always shown at the top! */}
                       {(() => {
                         const formulaStr = formulaQuestions[selectedFormulaIdx]?.formula || '';
                         const lines = formulaStr.split('\n');
@@ -12428,7 +12442,7 @@ export default function App() {
                         const formulaOnly = mathLines.join('\n').trim();
                         
                         return formulaOnly ? (
-                          <div className="w-full bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 text-sm text-slate-200 leading-relaxed text-left overflow-x-auto custom-vertical-scrollbar mb-4">
+                          <div className="w-full bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 text-sm text-slate-200 leading-relaxed text-left overflow-x-auto custom-vertical-scrollbar">
                             <LatexRenderer 
                               text={formulaOnly} 
                               katexLoaded={katexLoaded} 
@@ -12437,28 +12451,29 @@ export default function App() {
                           </div>
                         ) : null;
                       })()}
-                    </div>
-                  ) : (
-                    formulaChatHistory.map((msg, mIdx) => {
-                      const isUser = msg.role === 'user';
-                      return (
-                        <div 
-                          key={mIdx} 
-                          className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
-                        >
-                          <span className="text-[10px] text-slate-400 font-bold px-1">
-                            {isUser ? '수험생' : 'AI 튜터'}
-                          </span>
-                          <div className={`${isUser ? 'max-w-[92%]' : 'max-w-[97%]'} rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed select-text break-words ${
-                            isUser 
-                              ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
-                              : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
-                          }`}>
-                            <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+
+                      {/* Chat messages list */}
+                      {formulaChatHistory.map((msg, mIdx) => {
+                        const isUser = msg.role === 'user';
+                        return (
+                          <div 
+                            key={mIdx} 
+                            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
+                          >
+                            <span className="text-[10px] text-slate-400 font-bold px-1">
+                              {isUser ? '수험생' : 'AI 튜터'}
+                            </span>
+                            <div className={`${isUser ? 'max-w-[92%]' : 'max-w-[97%]'} rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed select-text break-words ${
+                              isUser 
+                                ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
+                                : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
+                            }`}>
+                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </div>
                   )}
                   {isFormulaChatLoading && (
                     <div className="flex flex-col items-start space-y-1">
