@@ -11879,7 +11879,7 @@ export default function App() {
                           })()}
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                           {/* 다시풀기 버튼 */}
                           {!isMC && (!!examRevealed[idx] || Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`))) && (
                             <button
@@ -11899,10 +11899,10 @@ export default function App() {
                                 // 3) 답안보기 상태 초기화
                                 setExamShowAnswersState(prev => ({ ...prev, [idx]: false }));
                               }}
-                              className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border border-rose-500/20 bg-rose-950/40 text-rose-350 hover:bg-rose-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                              className="flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-rose-500/20 bg-rose-950/40 text-rose-350 hover:bg-rose-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
                               title="정오체크 해제 및 다시 풀기"
                             >
-                              <span>🔄 다시풀기</span>
+                              <span className="hidden sm:inline">🔄 </span>다시풀기
                             </button>
                           )}
                           {/* 답안보기 버튼 */}
@@ -11914,44 +11914,44 @@ export default function App() {
                                 setExamShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
                               }
                             }}
-                            className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                            className="flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
                             title="정답 바로 확인"
                           >
-                            <span>👁️ 답안보기</span>
+                            <span className="hidden sm:inline">👁️ </span>답안보기
                           </button>
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
-                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                            className={`flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                               questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
                                 ? 'bg-emerald-950/60 border-emerald-500 text-emerald-450 font-black' 
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
                             }`}
                             title="추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 높깁니다."
                           >
-                            <ThumbsUp size={12} />
+                            <ThumbsUp size={12} className="hidden sm:inline-block" />
                             <span>추천</span>
                           </button>
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
-                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer ${
+                            className={`flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                               questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
                                 ? 'bg-rose-950/60 border-rose-500 text-rose-450 font-black' 
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
                             }`}
                             title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
                           >
-                            <ThumbsDown size={12} />
+                            <ThumbsDown size={12} className="hidden sm:inline-block" />
                             <span>비추천</span>
                           </button>
 
                           {answered && isMC && (
                             <button
                               onClick={() => handleResetSingleExamAnswer(idx)}
-                              className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-amber-950/40 hover:border-amber-500/50 hover:text-amber-400 active:scale-95 transition-all duration-300"
+                              className="flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-amber-950/40 hover:border-amber-500/50 hover:text-amber-400 active:scale-95 transition-all duration-300 whitespace-nowrap"
                             >
                               <svg
-                                className="w-3 h-3 text-slate-400 hover:text-amber-400"
+                                className="w-3 h-3 text-slate-400 hover:text-amber-400 hidden sm:inline-block"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="2"
@@ -11966,14 +11966,14 @@ export default function App() {
                           <button
                             disabled={regeneratingExam[idx]}
                             onClick={() => handleRegenerateQuestion('exam', idx, q)}
-                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all duration-300 ${
+                            className={`flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 whitespace-nowrap ${
                               regeneratingExam[idx]
                                 ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
                             }`}
                           >
                             <svg
-                              className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'}`}
+                              className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'} hidden sm:inline-block`}
                               fill="none"
                               stroke="currentColor"
                               strokeWidth="2"
@@ -11986,11 +11986,11 @@ export default function App() {
 
                           <button
                             onClick={() => handleDeleteExamQuestion(idx)}
-                            className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/40 hover:border-rose-500/50 hover:text-rose-400 active:scale-95 transition-all duration-300 cursor-pointer"
+                            className="flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/40 hover:border-rose-500/50 hover:text-rose-400 active:scale-95 transition-all duration-300 cursor-pointer whitespace-nowrap"
                             title="이 문제를 종합평가에서 삭제"
                           >
                             <svg
-                              className="w-3 h-3 text-slate-400 group-hover:text-rose-400"
+                              className="w-3 h-3 text-slate-400 group-hover:text-rose-400 hidden sm:inline-block"
                               fill="none"
                               stroke="currentColor"
                               strokeWidth="2"
