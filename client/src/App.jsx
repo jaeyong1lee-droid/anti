@@ -14603,7 +14603,7 @@ export default function App() {
         </div>
       )}
 
-      {selectedTopic && (
+      {selectedTopic && !isDesktop && (
         <DraggableFloatingButton
           currentTab={reviewMobileTab}
           onToggle={(targetTab) => {
@@ -14619,7 +14619,7 @@ export default function App() {
         />
       )}
 
-      {showExam && (
+      {showExam && !isDesktop && (
         <DraggableFloatingButton
           currentTab={examMobileTab}
           onToggle={(targetTab) => {
@@ -14635,7 +14635,7 @@ export default function App() {
         />
       )}
 
-      {showFormulaExam && (
+      {showFormulaExam && !isDesktop && (
         <DraggableFloatingButton
           currentTab={formulaMobileTab}
           onToggle={(targetTab) => {
