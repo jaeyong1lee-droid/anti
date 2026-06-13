@@ -3458,6 +3458,100 @@ function MobileStatusBar() {
   return null;
 }
 
+// Floating Casio Calculator Component
+function FloatingCalculator({ onClose }) {
+  const [position, setPosition] = useState(() => ({ x: Math.max(10, window.innerWidth - 360), y: 150 }));
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    if (e.target.closest('.drag-handle')) {
+      isDragging.current = true;
+      dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    const newX = e.clientX - dragStart.current.x;
+    const newY = e.clientY - dragStart.current.y;
+    const boundedX = Math.max(10, Math.min(window.innerWidth - 340, newX));
+    const boundedY = Math.max(10, Math.min(window.innerHeight - 500, newY));
+    setPosition({ x: boundedX, y: boundedY });
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.target.closest('.drag-handle')) {
+      isDragging.current = true;
+      const touch = e.touches[0];
+      dragStart.current = { x: touch.clientX - position.x, y: touch.clientY - position.y };
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging.current) return;
+    const touch = e.touches[0];
+    const newX = touch.clientX - dragStart.current.x;
+    const newY = touch.clientY - dragStart.current.y;
+    const boundedX = Math.max(10, Math.min(window.innerWidth - 340, newX));
+    const boundedY = Math.max(10, Math.min(window.innerHeight - 500, newY));
+    setPosition({ x: boundedX, y: boundedY });
+    e.preventDefault();
+  };
+
+  const handleTouchEnd = () => {
+    isDragging.current = false;
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        zIndex: 9999,
+        touchAction: 'none'
+      }}
+      className="w-[330px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
+    >
+      {/* Draggable Header */}
+      <div 
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slateCustom-950 border-b border-slate-800 cursor-move select-none"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] bg-slate-800 text-slate-350 font-black px-1.5 py-0.5 rounded border border-slate-700/50">CASIO</span>
+          <span className="text-[10px] text-slate-400 font-extrabold tracking-wider">공학용 계산기</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      {/* Calculator Body Wrapper */}
+      <div className="p-2 overflow-y-auto max-h-[70vh] custom-vertical-scrollbar bg-slate-950/20">
+        <ScientificCalculator />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -3498,6 +3592,7 @@ export default function App() {
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
+  const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
   const [lastActiveReview, setLastActiveReview] = useState(null);
   useEffect(() => {
     const saved = localStorage.getItem('anti_last_active_review');
@@ -7899,14 +7994,13 @@ export default function App() {
   // Formula AI Tutor handlers
   const handleFormulaSelect = (idx) => {
     setSelectedFormulaIdx(idx);
-    setFormulaChatHistory([]);
   };
 
   const handleGenerateFormulaProblem = async (idx) => {
     if (idx === -1) return;
     setSelectedFormulaIdx(idx);
     setFormulaMobileTab('tutor');
-    setFormulaChatHistory([{ role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
+    setFormulaChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
     setIsFormulaChatLoading(true);
 
     const selected = formulaQuestions[idx];
@@ -7936,16 +8030,20 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '문제 출제 실패');
-      setFormulaChatHistory([{ role: 'model', text: data.text }]);
+      setFormulaChatHistory(prev => {
+        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
+        return [...filtered, { role: 'model', text: data.text }];
+      });
     } catch (err) {
-      setFormulaChatHistory([
-        { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }
-      ]);
+      setFormulaChatHistory(prev => {
+        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
+        return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
+      });
     } finally {
       setIsFormulaChatLoading(false);
       requestAnimationFrame(() => {
         if (formulaChatBodyRef.current) {
-          formulaChatBodyRef.current.scrollTop = 0;
+          formulaChatBodyRef.current.scrollTop = formulaChatBodyRef.current.scrollHeight;
         }
       });
     }
@@ -11483,6 +11581,29 @@ export default function App() {
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
                 <button
+                  onClick={() => setShowFloatingCalculator(prev => !prev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 ${
+                    showFloatingCalculator 
+                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
+                      : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
+                  }`}
+                  title="공학용 계산기 플로팅 창 토글"
+                >
+                  <span>🧮 계산기</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm("AI 튜터와의 모든 대화 기록을 지우시겠습니까?")) {
+                      setFormulaChatHistory([]);
+                    }
+                  }}
+                  className="px-3 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                  title="AI 튜터와의 모든 대화 기록 비우기"
+                >
+                  <Trash2 size={12} className="text-slate-400" />
+                  <span>튜터클린</span>
+                </button>
+                <button
                   onClick={() => {
                     handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
                     savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
@@ -12445,6 +12566,17 @@ export default function App() {
                   )}
                 </div>
                 <button
+                  onClick={() => setShowFloatingCalculator(prev => !prev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 ${
+                    showFloatingCalculator 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
+                  }`}
+                  title="공학용 계산기 플로팅 창 토글"
+                >
+                  <span>🧮 계산기</span>
+                </button>
+                <button
                   onClick={async () => {
                     await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                     savedAnswersheetScroll.current = answersheetBodyRef.current?.scrollTop || 0;
@@ -13266,6 +13398,10 @@ export default function App() {
           }}
           theme="amber"
         />
+      )}
+
+      {showFloatingCalculator && (
+        <FloatingCalculator onClose={() => setShowFloatingCalculator(false)} />
       )}
     </div>
   );
