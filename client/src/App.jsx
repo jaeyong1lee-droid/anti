@@ -9699,7 +9699,7 @@ export default function App() {
               </div>
               <div className="min-w-0 flex-grow">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 10문항)</span>
+                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 13문항)</span>
                   {!loadingAI && aiQuestions.length > 0 && (
                     <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
                       {aiQuestions.length}문항
@@ -9803,7 +9803,7 @@ export default function App() {
                     </div>
                     <div className="absolute inset-0 bg-violet-500 rounded-full animate-ping opacity-20"></div>
                   </div>
-                  <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 10문항을 출제하는 중...</h4>
+                  <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 13문항을 출제하는 중...</h4>
                   <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
                     소스 자료를 분석하여 주관식(개요·공식)과 객관식을 혼용한 복습 문제를 생성하고 있습니다. 약 10~20초 소요됩니다.
                   </p>
