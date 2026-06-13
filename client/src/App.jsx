@@ -8482,24 +8482,17 @@ export default function App() {
             {!isDesktop && !isMobileLandscape && (viewMode === 'all_topics' || viewMode === 'dashboard') && lastActiveReview && (
               <button
                 onClick={handleOpenLastActiveReview}
-                className="flex bg-light-rainbow-animate border rounded-2xl p-4 items-center gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full mt-2"
+                className="flex bg-light-rainbow-animate border rounded-2xl py-1.5 px-3 items-center gap-2 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-95 text-left shadow-[0_4px_20px_rgba(0,0,0,0.12)] relative overflow-hidden group select-none w-full mt-2"
                 title={`가장 최근 진행한 복습: [${lastActiveReview.title}] (클릭 시 이어서 학습)`}
               >
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="p-3 bg-slate-950/10 text-slate-900 rounded-xl group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
-                  <Clock size={20} className="text-slate-950" />
+                <div className="p-1.5 bg-slate-950/10 text-slate-900 rounded-lg group-hover:bg-slate-950/15 transition-all duration-300 flex-shrink-0 relative">
+                  <Clock size={16} className="text-slate-950" />
                 </div>
                 <div className="min-w-0 flex-grow relative text-slate-950">
-                  <p className="text-[10px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10B981] mr-1.5"></span>
-                    공부중
-                  </p>
-                  <h3 className="text-xs font-black text-slate-950 mt-0.5 truncate leading-tight">
+                  <h3 className="text-xs font-black text-slate-950 truncate leading-tight">
                     {lastActiveReview.title}
                   </h3>
-                  <p className="text-[10px] text-slate-800 mt-0.5 font-bold truncate">
-                    {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
-                  </p>
                 </div>
               </button>
             )}
@@ -8682,18 +8675,9 @@ export default function App() {
                 <Clock size={24} className="animate-pulse-slow text-slate-950" />
               </div>
               <div className="min-w-0 flex-grow relative text-slate-950">
-                <p className="text-[11px] font-black text-slate-900 tracking-wide uppercase flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                  공부중
-                </p>
-                <h3 className="text-[15px] font-black text-slate-950 mt-1 truncate leading-tight">
+                <h3 className="text-[15px] font-black text-slate-950 truncate leading-tight">
                   {lastActiveReview ? lastActiveReview.title : '최근 복습 내역 없음'}
                 </h3>
-                {lastActiveReview && (
-                  <p className="text-[11px] text-slate-800 mt-0.5 font-bold truncate">
-                    {lastActiveReview.isReadOnly ? '이전 복습 회차 열람 중' : `${lastActiveReview.reviewRound}회차 복습 진행 중`}
-                  </p>
-                )}
               </div>
             </button>
 
