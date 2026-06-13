@@ -12414,7 +12414,16 @@ export default function App() {
                         const mathLines = lines.filter(line => {
                           const trimmed = line.trim();
                           if (!trimmed) return false;
-                          if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                          // Skip lines starting with description bullet points or dashes
+                          if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.startsWith('–') || trimmed.startsWith('―') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                            return false;
+                          }
+                          // Skip lines containing variable explanations/symbol definitions (which have colons like "$E$: Elastic Modulus")
+                          if (trimmed.includes(':')) {
+                            return false;
+                          }
+                          // Skip lines containing explanatory keywords
+                          if (trimmed.toLowerCase().includes('where') || trimmed.includes('단,') || trimmed.includes('여기서')) {
                             return false;
                           }
                           return true;
