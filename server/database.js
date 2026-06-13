@@ -16,7 +16,7 @@ const connectionString = process.env.DATABASE_URL ||
                          process.env.SUPABASE_DATABASE_URL ||
                          '';
 
-export const isPostgres = !!connectionString;
+export let isPostgres = !!connectionString;
 const isVercel = !!process.env.VERCEL;
 
 let db = null;
@@ -278,7 +278,9 @@ export async function initDatabase() {
         if (isVercel) {
           throw pgInitError; // Keep failing on Vercel as SQLite is disabled there
         }
-        console.error('PostgreSQL connection failed at startup. Keeping PostgreSQL active to retry and connect to the Neon cloud database: ', pgInitError.message);
+        console.error('PostgreSQL connection failed at startup. Falling back to local SQLite database: ', pgInitError.message);
+        isPostgres = false;
+        await initSQLiteTables();
       }
     } else {
       await initSQLiteTables();
