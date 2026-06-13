@@ -1261,6 +1261,92 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   );
 });
 
+// ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded }) {
+  if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
+    return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
+  }
+
+  const { headers, rows } = q.tableData;
+
+  const handleInputChange = (inputId, val) => {
+    setTableAnswers(prev => ({
+      ...prev,
+      [`${questionIdx}_${inputId}`]: val
+    }));
+  };
+
+  return (
+    <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+      <table className="w-full text-center border-collapse text-sm">
+        <thead>
+          <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+            {headers.map((header, hIdx) => (
+              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-850 last:border-r-0 select-text">
+                <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rIdx) => (
+            <tr key={rIdx} className="border-b border-slate-850 last:border-b-0 hover:bg-slate-900/20">
+              {row.map((cell, cIdx) => {
+                const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
+                if (isInput) {
+                  const inputId = cell.replace('[', '').replace(']', '').trim();
+                  const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                  const correctAnswer = q.answers?.[inputId] || '';
+                  
+                  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+                  const isCorrect = normalize(value) === normalize(correctAnswer);
+
+                  return (
+                    <td key={cIdx} className="p-3 border-r border-slate-850 last:border-r-0 text-slate-200 min-w-[150px]">
+                      <div className="flex flex-col gap-1.5 justify-center items-center">
+                        <input
+                          type="text"
+                          disabled={revealed}
+                          value={value}
+                          onChange={(e) => handleInputChange(inputId, e.target.value)}
+                          placeholder={`빈칸 입력`}
+                          className={`w-full max-w-[200px] text-xs px-2.5 py-1.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                            revealed 
+                              ? (isCorrect 
+                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
+                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                              : 'border-slate-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500'
+                          }`}
+                        />
+                        {revealed && !isCorrect && (
+                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                            정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                          </span>
+                        )}
+                        {revealed && isCorrect && (
+                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                            ✓ 일치함
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  );
+                } else {
+                  return (
+                    <td key={cIdx} className="p-3 border-r border-slate-850 last:border-r-0 text-slate-350 select-text">
+                      <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                    </td>
+                  );
+                }
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});
+
 // ── 공학용 계산기 컴포넌트 ──────────────────
 function parseFormula(str) {
   let i = 0;
@@ -3685,6 +3771,7 @@ export default function App() {
   const [aiQuestions, setAiQuestions] = useState([]);
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
+  const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
@@ -9969,163 +10056,84 @@ export default function App() {
 
                         {/* Subjective Reveal */}
                         {isSubj && (
-                          !isRevd ? (
-                            <button
-                              onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
-                              className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-violet-500 rounded-xl text-xs font-bold text-slate-400 hover:text-violet-300 transition-all duration-200"
-                            >
-                              💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
-                            </button>
-                          ) : (
-                            <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                              <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                                <span>📝 모범 답안</span>
+                          q.type === '주관식 (표채우기)' ? (
+                            <div className="space-y-3 w-full">
+                              <TableQuiz 
+                                questionIdx={idx} 
+                                q={q} 
+                                tableAnswers={tableAnswers} 
+                                setTableAnswers={setTableAnswers} 
+                                revealed={isRevd} 
+                                katexLoaded={katexLoaded} 
+                              />
+                              {!isRevd ? (
                                 <button
-                                  onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
-                                  className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                  title="답안 접기"
+                                  onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
+                                  className="w-full py-3 bg-violet-600 hover:bg-violet-550 border border-violet-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-violet-600/20 font-black"
                                 >
-                                  접기 ✕
+                                  제출하고 채점하기 →
                                 </button>
-                              </div>
-                              {q.concept && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                </div>
-                              )}
-                              {q.formula && (
-                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                  <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                </div>
-                              )}
-                              {subjIdx === 1 && q.structure && (
-                                <div className="space-y-1 pt-2 border-t border-amber-500/10">
-                                  <span className="text-[10px] font-black text-rose-400">📋 기호 정의: </span>
-                                  <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                </div>
-                              )}
-                              {!q.concept && !q.formula && (subjIdx !== 1 || !q.structure) && (
-                                <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                              )}
-
-                              {/* 문제조정 입력 및 결과 보드 */}
-                              {true && (
-                                <div className="mt-2 pt-2 border-t border-slate-700/40 flex flex-wrap items-center justify-center gap-1.5">
-                                  {adjustingInputKey !== `r_${idx}` && activeTutorInputKey !== `r_${idx}` ? (
-                                    <div className="flex flex-wrap items-center justify-center gap-1.5 w-full">
-                                      <button
-                                        onClick={() => setAdjustingInputKey(`r_${idx}`)}
-                                        className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                      >
-                                        🛠️ 문제조정 (AI 피드백)
-                                      </button>
-                                      <button
-                                        onClick={() => setActiveTutorInputKey(prev => prev === `r_${idx}` ? null : `r_${idx}`)}
-                                        className="text-[9.5px] px-2 py-1 rounded-md border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
-                                      >
-                                        💬 AI 튜터
-                                      </button>
-                                    </div>
-                                  ) : adjustingInputKey === `r_${idx}` ? (
-                                    <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
-                                      <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
-                                      <textarea
-                                        rows={2}
-                                        value={adjustingText[`r_${idx}`] || ''}
-                                        onChange={(e) => {
-                                          const text = e.target.value;
-                                          setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
-                                        }}
-                                        placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
-                                        className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
-                                      />
-                                      <div className="flex gap-2 justify-end">
-                                        <button
-                                          onClick={() => setAdjustingInputKey(null)}
-                                          className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                        >
-                                          취소
-                                        </button>
-                                        <button
-                                          onClick={() => handleAdjustQuestion('review', idx, q)}
-                                          disabled={adjustingLoading[`r_${idx}`]}
-                                          className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
-                                        >
-                                          {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
-                                        </button>
-                                      </div>
-                                      {adjustingLoading[`r_${idx}`] && (
-                                        <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl w-full">
-                                      <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
-                                      <textarea
-                                        rows={3}
-                                        value={tutorInputText[`r_${idx}`] || ''}
-                                        onChange={(e) => {
-                                          const text = e.target.value;
-                                          setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            const isPending = tutorAnswers[`r_${idx}`]?.loading;
-                                            const hasText = (tutorInputText[`r_${idx}`] || '').trim();
-                                            if (!isPending && hasText) {
-                                              handleAskCardTutor(`r_${idx}`, q);
-                                            }
-                                          }
-                                        }}
-                                        placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                        className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
-                                      />
-                                      <div className="flex gap-2 justify-end">
-                                        <button
-                                          onClick={() => setActiveTutorInputKey(null)}
-                                          className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                        >
-                                          취소
-                                        </button>
-                                        <button
-                                          disabled={tutorAnswers[`r_${idx}`]?.loading || !(tutorInputText[`r_${idx}`] || '').trim()}
-                                          onClick={() => handleAskCardTutor(`r_${idx}`, q)}
-                                          className="text-[10px] px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800/50 disabled:text-violet-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
-                                        >
-                                          {tutorAnswers[`r_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
-                                        </button>
-                                      </div>
-
-                                      {/* AI Tutor In-Card Answer Panel */}
-                                      {tutorAnswers[`r_${idx}`]?.loading && (
-                                        <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
-                                          <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-                                            <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-                                          </div>
-                                          <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                          <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                        </div>
-                                      )}
-                                      {tutorAnswers[`r_${idx}`]?.error && (
-                                        <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`r_${idx}`].error}</div>
-                                      )}
-                                      {tutorAnswers[`r_${idx}`]?.text && !tutorAnswers[`r_${idx}`]?.loading && (
-                                        <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
-                                          <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-                                          <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                            <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
+                              ) : (
+                                <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                    <span>📝 상세 해설</span>
+                                    <button
+                                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                      title="답안 접기"
+                                    >
+                                      접기 ✕
+                                    </button>
+                                  </div>
+                                  {q.explanation && (
+                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                 </div>
                               )}
                             </div>
+                          ) : (
+                            !isRevd ? (
+                              <button
+                                onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
+                                className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-violet-500 rounded-xl text-xs font-bold text-slate-400 hover:text-violet-300 transition-all duration-200"
+                              >
+                                💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                              </button>
+                            ) : (
+                              <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                  <span>📝 모범 답안</span>
+                                  <button
+                                    onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                    title="답안 접기"
+                                  >
+                                    접기 ✕
+                                  </button>
+                                </div>
+                                {q.concept && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  </div>
+                                )}
+                                {q.formula && (
+                                  <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                    <span className="text-[10px] font-black text-rose-400">📐 공식/개념도: </span>
+                                    <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  </div>
+                                )}
+                                {subjIdx === 1 && q.structure && (
+                                  <div className="space-y-1 pt-2 border-t border-amber-500/10">
+                                    <span className="text-[10px] font-black text-rose-455">📋 기호 정의: </span>
+                                    <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  </div>
+                                )}
+                                {!q.concept && !q.formula && (subjIdx !== 1 || !q.structure) && (
+                                  <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                )}
+                              </div>
+                            )
                           )
                         )}
                       </div>
@@ -11147,151 +11155,74 @@ export default function App() {
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                        !isRevd ? (
-                          <button
-                            onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: true }))}
-                            className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-400 hover:text-amber-300 transition-all duration-200"
-                          >
-                            💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
-                          </button>
-                        ) : (
-                          <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                            <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                              <span>📝 모범 답안</span>
-                              <button
-                                onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
-                                className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                title="답안 접기"
-                              >
-                                접기 ✕
-                              </button>
-                            </div>
-                            <div className="text-sm text-slate-200 leading-relaxed">
-                              <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
-                            </div>
-                            {q.concept && (
-                              <div className="pt-2 border-t border-amber-500/10">
-                                <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                <span className="text-[10px] text-slate-300">{q.concept}</span>
-                              </div>
-                            )}
-
-                            {/* 문제조정 입력 및 결과 보드 */}
-                            <div className="mt-2 pt-2 border-t border-slate-700/40 flex flex-wrap items-center justify-center gap-1.5">
-                              {adjustingInputKey !== `e_${idx}` && activeTutorInputKey !== `e_${idx}` ? (
-                                <div className="flex flex-wrap items-center justify-center gap-1.5 w-full">
-                                  <button
-                                    onClick={() => setAdjustingInputKey(`e_${idx}`)}
-                                    className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
-                                  >
-                                    🛠️ 문제조정 (AI 피드백)
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
-                                    className="text-[9.5px] px-2 py-1 rounded-md border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
-                                  >
-                                    💬 AI 튜터
-                                  </button>
-                                </div>
-                              ) : adjustingInputKey === `e_${idx}` ? (
-                                <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
-                                  <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
-                                  <textarea
-                                    rows={2}
-                                    value={adjustingText[`e_${idx}`] || ''}
-                                    onChange={(e) => {
-                                      const text = e.target.value;
-                                      setAdjustingText(prev => ({ ...prev, [`e_${idx}`]: text }));
-                                    }}
-                                    placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
-                                    className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
-                                  />
-                                  <div className="flex gap-2 justify-end">
-                                    <button
-                                      onClick={() => setAdjustingInputKey(null)}
-                                      className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                    >
-                                      취소
-                                    </button>
-                                    <button
-                                      onClick={() => handleAdjustQuestion('exam', idx, q)}
-                                      disabled={adjustingLoading[`e_${idx}`]}
-                                      className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
-                                    >
-                                      {adjustingLoading[`e_${idx}`] ? '조정 중...' : '조정하기'}
-                                    </button>
-                                  </div>
-                                  {adjustingLoading[`e_${idx}`] && (
-                                    <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
-                                  )}
-                                </div>
+                          q.type === '주관식 (표채우기)' ? (
+                            <div className="space-y-3 w-full">
+                              <TableQuiz 
+                                questionIdx={idx} 
+                                q={q} 
+                                tableAnswers={tableAnswers} 
+                                setTableAnswers={setTableAnswers} 
+                                revealed={!!examRevealed[idx]} 
+                                katexLoaded={katexLoaded} 
+                              />
+                              {!examRevealed[idx] ? (
+                                <button
+                                  onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: true }))}
+                                  className="w-full py-3 bg-amber-600 hover:bg-amber-500 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black"
+                                >
+                                  제출하고 채점하기 →
+                                </button>
                               ) : (
-                                <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl w-full">
-                                  <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
-                                  <textarea
-                                    rows={3}
-                                    value={tutorInputText[`e_${idx}`] || ''}
-                                    onChange={(e) => {
-                                      const text = e.target.value;
-                                      setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        const isPending = tutorAnswers[`e_${idx}`]?.loading;
-                                        const hasText = (tutorInputText[`e_${idx}`] || '').trim();
-                                        if (!isPending && hasText) {
-                                          handleAskCardTutor(`e_${idx}`, q);
-                                        }
-                                      }
-                                    }}
-                                    placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                    className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
-                                  />
-                                  <div className="flex gap-2 justify-end">
+                                <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                    <span>📝 상세 해설</span>
                                     <button
-                                      onClick={() => setActiveTutorInputKey(null)}
-                                      className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                      onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                      title="답안 접기"
                                     >
-                                      취소
-                                    </button>
-                                    <button
-                                      disabled={tutorAnswers[`e_${idx}`]?.loading || !(tutorInputText[`e_${idx}`] || '').trim()}
-                                      onClick={() => handleAskCardTutor(`e_${idx}`, q)}
-                                      className="text-[10px] px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/50 disabled:text-amber-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-255"
-                                    >
-                                      {tutorAnswers[`e_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
+                                      접기 ✕
                                     </button>
                                   </div>
-
-                                  {/* AI Tutor In-Card Answer Panel */}
-                                  {tutorAnswers[`e_${idx}`]?.loading && (
-                                    <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-amber-500/10">
-                                      <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
-                                        <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-                                      </div>
-                                      <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                      <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                    </div>
-                                  )}
-                                  {tutorAnswers[`e_${idx}`]?.error && (
-                                    <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-amber-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`e_${idx}`].error}</div>
-                                  )}
-                                  {tutorAnswers[`e_${idx}`]?.text && !tutorAnswers[`e_${idx}`]?.loading && (
-                                    <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
-                                      <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
-                                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                        <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
-                                      </div>
-                                    </div>
+                                  {q.explanation && (
+                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )
-                      )}
+                          ) : (
+                            !examRevealed[idx] ? (
+                              <button
+                                onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: true }))}
+                                className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-400 hover:text-amber-300 transition-all duration-200"
+                              >
+                                💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
+                              </button>
+                            ) : (
+                              <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                  <span>📝 모범 답안</span>
+                                  <button
+                                    onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                    title="답안 접기"
+                                  >
+                                    접기 ✕
+                                  </button>
+                                </div>
+                                <div className="text-sm text-slate-200 leading-relaxed">
+                                  <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                </div>
+                                {q.concept && (
+                                  <div className="pt-2 border-t border-amber-500/10">
+                                    <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                    <span className="text-[10px] text-slate-300">{q.concept}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          )
+                        )}
                     </div>
                   );
                 })}

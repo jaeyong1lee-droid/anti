@@ -2819,6 +2819,112 @@ function shuffleMultipleChoice(q) {
 }
 
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
+function createLocalFallbackTableQuestion(idx, title, keywords) {
+  const cleanKeywords = (keywords || '지반공학').split(',').map(s => s.trim()).filter(Boolean);
+  const keyword1 = cleanKeywords[0] || '지반거동';
+  const keyword2 = cleanKeywords[1] || '설계기준';
+  
+  if (idx === 0) {
+    return {
+      type: "주관식 (표채우기)",
+      question: `다음 ${title} 토픽 관련 공학적 특징 및 연관 매개변수 표의 빈칸 (A), (B)에 들어갈 적합한 용어를 제시하시오.`,
+      tableData: {
+        headers: ["평가 항목", "공학적 특성 / 매개변수 설명"],
+        rows: [
+          ["해석 대상", `${title}의 핵심 거동 메커니즘`],
+          ["주요 설계 파라미터", "[INPUT_1]"],
+          ["설계 시 핵심 고려사항", "[INPUT_2]"]
+        ]
+      },
+      answers: {
+        "INPUT_1": keyword1,
+        "INPUT_2": keyword2
+      },
+      explanation: `${title} 설계 및 거동 특성 평가를 위해 고려해야 할 매개변수는 ${keyword1} 및 ${keyword2} 등입니다.`
+    };
+  } else if (idx === 1) {
+    return {
+      type: "주관식 (표채우기)",
+      question: `다음 ${title} 지반공학적 상태 분류 및 판정 표의 빈칸 (A), (B)에 들어갈 명칭을 서술하시오.`,
+      tableData: {
+        headers: ["거동 범주", "물리적 상태 및 거동적 의미"],
+        rows: [
+          ["기본 정의", `${title}의 안정 상태 및 허용 기준`],
+          ["한계 상태 판정", "[INPUT_1]"],
+          ["안전율 확보 방안", "[INPUT_2]"]
+        ]
+      },
+      answers: {
+        "INPUT_1": "극한계상태",
+        "INPUT_2": "보강 및 개량공법 적용"
+      },
+      explanation: `${title}의 공학적 안정성 평가는 극한계상태 및 사용성계상태를 종합적으로 검토해야 합니다.`
+    };
+  } else {
+    return {
+      type: "주관식 (표채우기)",
+      question: `다음 ${title} 실무 설계 및 시공 시 유의사항 정리표의 빈칸 (A), (B)에 들어갈 내용을 채우시오.`,
+      tableData: {
+        headers: ["단계", "시공/설계 핵심 유의사항"],
+        rows: [
+          ["사전 조사", "지반 물성치의 불확실성 및 지층 분포 특성 파악"],
+          ["해석 및 설계", "[INPUT_1]"],
+          ["현장 관리", "[INPUT_2]"]
+        ]
+      },
+      answers: {
+        "INPUT_1": "수치해석 및 현장 계측 계획 수립",
+        "INPUT_2": "시공 중 계측을 통한 설계 정합성 검증"
+      },
+      explanation: `${title} 관련 실무 진행 시 사전조사부터 시공 중 계측 관리까지 통합적인 엔지니어링 관리가 필수적입니다.`
+    };
+  }
+}
+
+function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
+  const subjsIntroFormula = questions.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
+  const subjsTable = questions.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
+  const mcs = questions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
+
+  let finalSubjsIntroFormula = [...subjsIntroFormula].slice(0, 2);
+  if (finalSubjsIntroFormula.length < 2) {
+    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+    const fallbackSubjs = fallbackQs.filter(q => !q.options || q.options.length === 0);
+    finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
+  }
+
+  let finalSubjsTable = [...subjsTable].slice(0, 3);
+  while (finalSubjsTable.length < 3) {
+    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
+  }
+
+  let finalMcs = [...mcs].slice(0, 7);
+  if (finalMcs.length < 7 && carryOverQuestions && carryOverQuestions.length > 0) {
+    const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
+    shuffledCarryOvers.forEach(q => {
+      if (finalMcs.length >= 7) return;
+      if (!finalMcs.some(existing => existing.question === q.question)) {
+        finalMcs.push(q);
+      }
+    });
+  }
+  if (finalMcs.length < 7) {
+    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+    const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
+    for (const fQ of fallbackMcs) {
+      if (finalMcs.length >= 7) break;
+      if (!finalMcs.some(q => q.question === fQ.question)) {
+        finalMcs.push(fQ);
+      }
+    }
+    while (finalMcs.length < 7 && fallbackMcs.length > 0) {
+      finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
+    }
+  }
+
+  return [...finalSubjsIntroFormula, ...finalSubjsTable, ...finalMcs];
+}
+
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
@@ -2895,7 +3001,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 10;
+    const neededAiMcCount = 7;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -2968,7 +3074,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedCore = coreQuestions.map(q => healQuizQuestionObject({
+      const finalQuestions = assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
+      const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
@@ -2998,7 +3105,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const cleanedFallback = fallbackQuestions.map(q => healQuizQuestionObject({
+      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+      const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
         question: cleanQuizQuestion(q.question)
@@ -3028,7 +3136,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       specialInstructions = `
 [특별 출제 지침 - 매우 중요]:
 이 토픽은 '프란틀 지지력 공식'이나 '테르자기 극한지지력 공식' 자체의 상세한 유도나 공식 정의를 단독으로 묻는 토픽이 아닙니다.
-반드시 다음의 핵심 영역들에 고도로 집중하여 10문제를 출제하십시오:
+반드시 다음의 핵심 영역들에 고도로 집중하여 객관식 7문제와 주관식 표채우기 3문제를 출제하십시오:
 1. 기초 아래 지반의 3대 파괴 형태: "전반전단파괴(General Shear Failure)", "국부전단파괴(Local Shear Failure)", "관입전단파괴(Punching Shear Failure)"의 구체적 발생 조건(상대밀도 $D_r$, 근입깊이비 $D_f/B$, 지반 압축성 등), 파괴면의 발달 메커니즘, 융기(Heaving) 및 침하의 시각적 거동 특징.
 2. Vesic(1973)이 제안한 모래 지반에서의 파괴형태 예측 도표의 특징.
 3. 기초 강성(연성기초 vs 강성기초)과 흙의 종류(사질토 vs 점성토)의 4가지 조합에 따른 접지압(Contact Pressure) 분포 패턴 및 침하 형상(등분포 여부, 가장자리/중심 최대 여부 등).
@@ -3043,12 +3151,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       weaknessPrompt = `
 [이전 회차 오답 정보 및 출제 지침 - 매우 중요]:
 아래 오답들은 사용자가 이전 회차에서 틀린 문제입니다.
-이번에 생성할 10개의 객관식 문제 중, **앞의 ${carryOverQuestions.length}개 문제(3번부터 ${2 + carryOverQuestions.length}번 문제)는 반드시 아래 오답 문제들의 변형 문제로 출제**하십시오.
+이번에 생성할 ${neededAiMcCount}개의 객관식 문제 중, **앞의 ${carryOverQuestions.length}개 문제(6번부터 ${5 + carryOverQuestions.length}번 문제)는 반드시 아래 오답 문제들의 변형 문제로 출제**하십시오.
 변형 출제 시 다음 지침을 엄격히 따르십시오:
 1. 문제를 절대로 그대로 내지 마십시오. (보기 내용 교체, 질문의 긍정/부정 전환 등)
 2. 원래 문제가 "옳은 것/맞는 것"을 고르는 문제였다면, 변형 문제는 "옳지 않은 것/틀린 것"을 고르는 문제로 변형하여 출제하고 해설도 그에 맞게 수정하십시오. 반대의 경우도 마찬가지입니다.
 3. 보기(options)의 구성과 순서를 완전히 교체하십시오.
-4. 나머지 ${10 - carryOverQuestions.length}개 객관식 문제는 [첨부파일 본문 텍스트] 및 토픽 개념에 기반한 새로운 고난도 문제로 출제하십시오.
+4. 나머지 ${neededAiMcCount - carryOverQuestions.length}개 객관식 문제는 [첨부파일 본문 텍스트] 및 토픽 개념에 기반한 새로운 고난도 문제로 출제하십시오.
 
 틀린 오답 문제 리스트:
 ${carryOverQuestions.map((q, idx) => `
@@ -3134,26 +3242,31 @@ ${adjustmentsPrompt}
    [2번 문제] 주관식 (공식):
    - 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
    - "type" 값: 반드시 "주관식 (공식)"
-   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. (예: "보상기초(Compensated Foundation) 설계 시 보상도(C) 산정 공식", "랭킹(Rankine)의 주동토압 계수 및 강도 공식"). 뒤에 "을 제시하고, 각 기호의 정의를 서술하시오"와 같은 명령조/요구조 꼬리말이나 불필요한 사족은 절대 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
+   - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-   - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
-   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")
+   - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \frac{P - 2C \sin\varphi}{\gamma \tan\varphi + \frac{2S}{D}}$")
+   - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
-   [3번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
-   - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점, 공학적 특징 및 실무 시공 시 유의사항 등을 다각도로 평가하는 고난도 4지선다형 질문.
+   [3번~5번 문제] 주관식 (표채우기):
+   - 목적: 핵심 공학 이론, 공식, 또는 개념의 세부 속성/의미들을 표(Table) 형태의 빈칸을 채우며 유기적으로 학습하게 하는 고차원 주관식 질문.
+   - "type" 값: 반드시 "주관식 (표채우기)"
+   - "question": 표의 빈칸에 알맞은 답을 서술하라는 질문 (예: "다음 테르자기 극한지지력 공식의 지지력 계수별 역학적 의미 표 빈칸 (A), (B), (C)에 들어갈 내용을 알맞게 서술하시오.")
+   - "tableData": 표의 데이터를 구조화한 객체. 반드시 다음 키를 포함하는 오브젝트여야 합니다:
+     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["지지력 계수", "연관된 지반 물성 및 영향 인자"])
+     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 채워넣어야 하는 빈칸 자리에는 반드시 "[INPUT_1]", "[INPUT_2]", "[INPUT_3]" 등의 토큰을 삽입하십시오. (예: [["$N_c$", "[INPUT_1]"], ["$N_q$", "[INPUT_2]"], ["$N_\gamma$", "[INPUT_3]"]])
+   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "흙의 점착력", "INPUT_2": "상재하중", "INPUT_3": "단위중량"}). 각 모범 답안은 가급적 핵심 명사형 또는 간단한 구문(20자 이내)으로 구성하십시오.
+   - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
+
+   [6번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
+   - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
    - "type" 값: 반드시 "객관식 (4지선다)"
-   - 개수: 반드시 정확히 ${neededAiMcCount}개의 객관식 문제를 출제해야 합니다.
+   - 개수: 반드시 정확히 7개의 객관식 문제를 출제해야 합니다.
    - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문.
-   - "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
+   - "options": 4개의 보기 문항으로 구성된 문자열 배열.
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
    - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-   - 중요 특화 출제 사항 (문제 구성 비율 및 공식 은닉 원칙 - 극도로 중요):
-      1. 전체 객관식 10문제는 반드시 아래 비율을 준수하여 구성하십시오:
-          - **기본 기초 개념 문제 (40%, 약 4문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?", "○○○이 발생하는 조건은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
-          - **정량 계산 문제 (30%, 약 3문제)**: 구체적인 조건 수치(지반 물성치, 하중값, 기하학적 치수 등)를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
-          - **심화 원리·비교 문제 (30%, 약 3문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
-
-      2. **🚨 [공식 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 핵심이 되는 공학 수식 자체(예: $1/\beta = \sqrt[4]{\frac{4EI}{k_hB}}$ 이나 침하량 공식, 토압 계수 공식 등)를 직접 텍스트로 적어 제공하지 마십시오.** 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭(예: "가상 변형 특성 길이 $1/\beta$")이나 변수들의 공학적 관계(예: "수평 환산폭 $B$가 2배로 증가할 때 가상 변형 특성 길이 $1/\beta$의 변화")만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
+   - 중요 특화 출제 사항 (공식 은닉 원칙 - 극도로 중요):
+      🚨 [공식 노출 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 핵심이 되는 공학 수식 자체를 직접 텍스트로 적어 제공하지 마십시오. 공식 자체를 질문에 노출시키면 학생이 식을 암기하여 적용하는 능력을 평가할 수 없습니다. 대신 공식의 명칭이나 변수들의 공학적 관계만을 제시하여, 학생이 머릿속에서 공식을 스스로 떠올려서 계산하거나 관계를 유추하여 정답을 맞추도록 설계하십시오. (단, 해설(explanation)에서는 자세하게 공식을 적어 설명해야 합니다.)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 
@@ -3167,7 +3280,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   {
     "type": "주관식 (개요)",
     "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-    "concept": "토픽의 공학적 메커니즘과 학술적 원리를 상세히 기술한 4~6줄 분량의 직관적인 개요 설명",
+    "concept": "개요 설명",
     "formula": "",
     "structure": ""
   },
@@ -3176,7 +3289,23 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "토픽의 대표 공식명칭 (사족 배제)",
     "concept": "공식에 대한 한 줄 요약",
     "formula": "$LaTeX공식",
-    "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
+    "structure": "- $기호1$: 간단한 명사형 의미"
+  },
+  {
+    "type": "주관식 (표채우기)",
+    "question": "다음 표의 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
+    "tableData": {
+      "headers": ["지지력 계수", "연관된 지반 물성 및 영향 인자"],
+      "rows": [
+        ["$N_c$", "[INPUT_1]"],
+        ["$N_q$", "[INPUT_2]"]
+      ]
+    },
+    "answers": {
+      "INPUT_1": "흙의 점착력",
+      "INPUT_2": "상재하중"
+    },
+    "explanation": "테르자기 지지력 계수 Nc, Nq는 각각 지반의 점착력, 상재하중이 극한 지지력에 미치는 거동 영향도를 정량화한 지수입니다."
   },
   {
     "type": "객관식 (4지선다)",
@@ -3185,7 +3314,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 ${totalAiQuestionsCount}개가 되도록 객관식 계속)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 3)과 객관식(7개)을 순서대로 배열하여 총 12개 완성)
 ]
 `;
 
@@ -3209,47 +3338,7 @@ try {
           throw new Error('AI 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.');
         }
 
-        const subjs = questions.filter(q => !q.options || q.options.length === 0);
-        const mcs = questions.filter(q => q.options && q.options.length > 0);
-
-        // Gemini가 직접 오답 변형 문제를 포함하여 10개를 생성했으므로 그대로 사용하되, 부족한 경우만 채워줍니다.
-        let finalMcs = [...mcs].slice(0, 10);
-        
-        // 만약 AI가 문제 생성에 실패하거나 일부 유실되어 10개 미만인 경우, 이전 오답의 보기를 프로그램적으로 셔플하여 보완적으로 채워줍니다.
-        if (finalMcs.length < 10) {
-          const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
-          shuffledCarryOvers.forEach(q => {
-            if (finalMcs.length >= 10) return;
-            if (!finalMcs.some(existing => existing.question === q.question)) {
-              finalMcs.push(q);
-            }
-          });
-        }
-
-        // 그래도 부족하면 fallback generator에서 채움
-        if (finalMcs.length < 10) {
-          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-          const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
-          for (const fQ of fallbackMcs) {
-            if (finalMcs.length >= 10) break;
-            if (!finalMcs.some(q => q.question === fQ.question)) {
-              finalMcs.push(fQ);
-            }
-          }
-          while (finalMcs.length < 10 && fallbackMcs.length > 0) {
-            finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
-          }
-        }
-
-        // 주관식도 정확히 2개(개요, 공식)로 구성
-        let finalSubjs = subjs.slice(0, 2);
-        if (finalSubjs.length < 2) {
-          const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-          const fallbackSubjs = fallbackQs.filter(q => !q.options || q.options.length === 0);
-          finalSubjs = [...finalSubjs, ...fallbackSubjs].slice(0, 2);
-        }
-
-        const finalQuestions = [...finalSubjs, ...finalMcs];
+        const finalQuestions = assembleFinalQuestions(questions, topic, carryOverQuestions, fileText);
         const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           topic_id: Number(topicId),
@@ -3274,10 +3363,7 @@ try {
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const subjs = fallbackQuestions.filter(q => !q.options || q.options.length === 0);
-      const mcs = fallbackQuestions.filter(q => q.options && q.options.length > 0);
-      const finalMcs = [...carryOverQuestions, ...mcs].slice(0, 10);
-      const finalQuestions = [...subjs.slice(0, 2), ...finalMcs];
+      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
