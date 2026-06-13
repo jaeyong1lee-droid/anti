@@ -3541,15 +3541,15 @@ function FloatingCalculator({ onClose }) {
       <div 
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slateCustom-950 border-b border-slate-800 cursor-move select-none"
+        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border-b border-slate-200/80 cursor-move select-none"
       >
         <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-slate-800 text-slate-350 font-black px-1.5 py-0.5 rounded border border-slate-700/50">CASIO</span>
-          <span className="text-[10px] text-slate-400 font-extrabold tracking-wider">공학용 계산기</span>
+          <span className="text-[10px] bg-slate-900 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-800/20">CASIO</span>
+          <span className="text-[10px] text-slate-800 font-black tracking-wider">공학용 계산기</span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+          className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer flex items-center justify-center"
         >
           <X size={14} />
         </button>
