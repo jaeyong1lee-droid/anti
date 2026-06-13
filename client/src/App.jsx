@@ -1382,6 +1382,80 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   );
 });
 
+// ── 질문 내 표 파싱 유틸리티 ──────────────────
+function parseQuestionTable(q) {
+  let questionText = q.question || '';
+  let tableData = q.tableData || null;
+
+  if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
+    // HTML 태그 내의 불필요한 공백을 표준 공백으로 정규화
+    let cleaned = questionText
+      .replace(/<\s*table[^>]*>/gi, '<table>')
+      .replace(/<\s*\/table\s*>/gi, '</table>')
+      .replace(/<\s*tr[^>]*>/gi, '<tr>')
+      .replace(/<\s*\/tr\s*>/gi, '</tr>')
+      .replace(/<\s*th[^>]*>/gi, '<th>')
+      .replace(/<\s*\/th\s*>/gi, '</th>')
+      .replace(/<\s*td[^>]*>/gi, '<td>')
+      .replace(/<\s*\/td\s*>/gi, '</td>');
+
+    const tableRegex = /<table>([\s\S]*?)<\/table>/i;
+    const match = cleaned.match(tableRegex);
+    if (match) {
+      const tableContent = match[1];
+      const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
+      let trMatch;
+      const headers = [];
+      const rows = [];
+      
+      while ((trMatch = trRegex.exec(tableContent)) !== null) {
+        const rowContent = trMatch[1];
+        const thRegex = /<th>([\s\S]*?)<\/th>/gi;
+        let thMatch;
+        const ths = [];
+        while ((thMatch = thRegex.exec(rowContent)) !== null) {
+          ths.push(thMatch[1].trim());
+        }
+        if (ths.length > 0) {
+          headers.push(...ths);
+          continue;
+        }
+        
+        const tdRegex = /<td>([\s\S]*?)<\/td>/gi;
+        let tdMatch;
+        const tds = [];
+        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
+          tds.push(tdMatch[1].trim());
+        }
+        if (tds.length > 0) {
+          rows.push(tds);
+        }
+      }
+
+      if (rows.length > 0) {
+        tableData = {
+          headers: headers.length > 0 ? headers : rows[0],
+          rows: headers.length > 0 ? rows : rows.slice(1)
+        };
+        
+        // 원본 질문 텍스트에서 표 태그 부분 제거
+        const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
+        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/\s*table\s*>/i);
+        if (tableStartIdx !== -1 && tableEndIdx !== -1) {
+          const endBracketIdx = questionText.indexOf('>', tableEndIdx);
+          if (endBracketIdx !== -1) {
+            const originalTableHtml = questionText.substring(tableStartIdx, endBracketIdx + 1);
+            questionText = questionText.replace(originalTableHtml, '').trim();
+          }
+        }
+      }
+    }
+  }
+
+  return { questionText, tableData };
+}
+
+
 // ── 공학용 계산기 컴포넌트 ──────────────────
 function parseFormula(str) {
   let i = 0;
@@ -9970,14 +10044,19 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Question Text */}
-                        <div className="text-[17px] font-bold text-white leading-relaxed">
-                          <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
-                        </div>
-
-                        {isMC && q.tableData && (
-                          <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
-                        )}
+                        {(() => {
+                          const { questionText, tableData } = parseQuestionTable(q);
+                          return (
+                            <>
+                              <div className="text-[17px] font-bold text-white leading-relaxed">
+                                <LatexRenderer text={questionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                              </div>
+                              {isMC && tableData && (
+                                <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {/* MC Options */}
                         {isMC && (
@@ -11157,14 +11236,19 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Question Text */}
-                      <div className="text-[17px] font-bold text-white leading-relaxed">
-                        <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
-                      </div>
-
-                      {isMC && q.tableData && (
-                        <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
-                      )}
+                      {(() => {
+                        const { questionText, tableData } = parseQuestionTable(q);
+                        return (
+                          <>
+                            <div className="text-[17px] font-bold text-white leading-relaxed">
+                              <LatexRenderer text={questionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                            </div>
+                            {isMC && tableData && (
+                              <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+                            )}
+                          </>
+                        );
+                      })()}
 
                       {/* MC Options */}
                       {isMC && (
