@@ -42,18 +42,112 @@ export function healBackslashes(str) {
   return healed;
 }
 
+export function htmlTableToMarkdown(html) {
+  if (!html) return html;
+
+  // 1. 깨진 공백 및 태그 정제
+  let cleanHtml = html
+    .replace(/<\s*table[^>]*>/gi, '<table>')
+    .replace(/<\s*\/\s*table\s*>/gi, '</table>')
+    .replace(/<\s*tr[^>]*>/gi, '<tr>')
+    .replace(/<\s*\/\s*tr\s*>/gi, '</tr>')
+    .replace(/<\s*th[^>]*>/gi, '<th>')
+    .replace(/<\s*\/\s*th\s*>/gi, '</th>')
+    .replace(/<\s*td[^>]*>/gi, '<td>')
+    .replace(/<\s*\/\s*td\s*>/gi, '</td>');
+
+  // 2. 정규식을 이용해 <table> 블록 전체 포착 후 마크다운 구조로 빌드
+  return cleanHtml.replace(/<table>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
+    const rows = [];
+    const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
+    let trMatch;
+    let hasHeader = false;
+
+    while ((trMatch = trRegex.exec(tableContent)) !== null) {
+      const rowContent = trMatch[1];
+      const cells = [];
+      
+      const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+        cells.push(cellMatch[1].trim());
+      }
+      
+      if (cells.length > 0) {
+        rows.push(`| ${cells.join(' | ')} |`);
+        if (rowContent.includes('<th')) hasHeader = true;
+      }
+    }
+
+    if (rows.length === 0) return '';
+
+    const colCount = rows[0].split('|').length - 2;
+    const separator = `| ${Array(colCount).fill('---').join(' | ')} |`;
+
+    if (hasHeader) {
+      rows.splice(1, 0, separator);
+    } else {
+      rows.unshift(`| ${Array(colCount).fill(' ').join(' | ')} |`);
+      rows.splice(1, 0, separator);
+    }
+
+    return `\n\n${rows.join('\n')}\n\n`;
+  });
+}
+
+function parseMarkdownTable(questionText) {
+  if (!questionText) return null;
+  const lines = questionText.split('\n');
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (startIdx === -1) {
+        startIdx = i;
+      }
+      endIdx = i;
+    } else {
+      if (startIdx !== -1) {
+        break;
+      }
+    }
+  }
+
+  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
+    const headers = lines[startIdx]
+      .split('|')
+      .slice(1, -1)
+      .map(cell => cell.trim());
+    
+    const separatorLine = lines[startIdx + 1];
+    if (separatorLine.includes('---')) {
+      const rows = [];
+      for (let i = startIdx + 2; i <= endIdx; i++) {
+        const rowCells = lines[i]
+          .split('|')
+          .slice(1, -1)
+          .map(cell => cell.trim());
+        rows.push(rowCells);
+      }
+      
+      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
+      return {
+        tableData: { headers, rows },
+        originalTableText
+      };
+    }
+  }
+  return null;
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
-  // 1. Extract HTML tables
-  const tables = [];
-  const tableRegex = /(<\s*table[^>]*>[\s\S]*?<\s*\/\s*table\s*>)/gi;
-  let processed = text.replace(tableRegex, (match) => {
-    const index = tables.length;
-    tables.push(match);
-    return ` HTMLTABLEPLACEHOLDERXYZ${index} `;
-  });
+  // 1. Convert HTML tables to Markdown tables
+  let processed = htmlTableToMarkdown(text);
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
@@ -216,12 +310,6 @@ export function healLatexFormulas(text) {
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
   result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
 
-  // 3. Restore HTML tables
-  for (let i = 0; i < tables.length; i++) {
-    const placeholderRegex = new RegExp(`\\s*\\$?HTMLTABLEPLACEHOLDERXYZ${i}\\$?\\s*`, 'g');
-    result = result.replace(placeholderRegex, tables[i]);
-  }
-
   return result;
 }
 
@@ -260,6 +348,8 @@ export function healDeep(obj, parentKey = null) {
 function parseQuestionTableText(questionText) {
   let tableData = null;
   if (!questionText) return { questionText, tableData };
+
+  // 1. Try parsing HTML table
   if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
     let cleaned = questionText
       .replace(/<\s*table[^>]*>/gi, '<table>')
@@ -322,6 +412,16 @@ function parseQuestionTableText(questionText) {
       }
     }
   }
+
+  // 2. Try parsing Markdown table if HTML table parsing wasn't successful/present
+  if (!tableData) {
+    const mdParsed = parseMarkdownTable(questionText);
+    if (mdParsed) {
+      tableData = mdParsed.tableData;
+      questionText = questionText.replace(mdParsed.originalTableText, '').trim();
+    }
+  }
+
   return { questionText, tableData };
 }
 

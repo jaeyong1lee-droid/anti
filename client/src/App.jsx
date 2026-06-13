@@ -1394,6 +1394,53 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   );
 });
 
+function parseMarkdownTable(questionText) {
+  if (!questionText) return null;
+  const lines = questionText.split('\n');
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (startIdx === -1) {
+        startIdx = i;
+      }
+      endIdx = i;
+    } else {
+      if (startIdx !== -1) {
+        break;
+      }
+    }
+  }
+
+  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
+    const headers = lines[startIdx]
+      .split('|')
+      .slice(1, -1)
+      .map(cell => cell.trim());
+    
+    const separatorLine = lines[startIdx + 1];
+    if (separatorLine.includes('---')) {
+      const rows = [];
+      for (let i = startIdx + 2; i <= endIdx; i++) {
+        const rowCells = lines[i]
+          .split('|')
+          .slice(1, -1)
+          .map(cell => cell.trim());
+        rows.push(rowCells);
+      }
+      
+      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
+      return {
+        tableData: { headers, rows },
+        originalTableText
+      };
+    }
+  }
+  return null;
+}
+
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
 function parseQuestionTable(q) {
   let questionText = q.question || '';
@@ -1461,6 +1508,15 @@ function parseQuestionTable(q) {
           }
         }
       }
+    }
+  }
+
+  // Markdown table fallback
+  if (!tableData) {
+    const mdParsed = parseMarkdownTable(questionText);
+    if (mdParsed) {
+      tableData = mdParsed.tableData;
+      questionText = questionText.replace(mdParsed.originalTableText, '').trim();
     }
   }
 
