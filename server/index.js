@@ -3454,28 +3454,38 @@ app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer } = req.body;
 
   if (!correctAnswer || !userAnswer) {
-    return res.json({ isCorrect: false, reason: '답안이 비어 있습니다.' });
+    return res.json({ isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' });
   }
 
   // 1차 필터링: 공백 제거 후 단순 일치하는 경우 API 호출 없이 바로 정답 처리
   const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
   if (normalize(userAnswer) === normalize(correctAnswer)) {
-    return res.json({ isCorrect: true, reason: '텍스트가 모범 답안과 정확히 일치합니다.' });
+    return res.json({ isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' });
   }
 
-  // 2차 필터링: Gemini API를 사용하여 의미적 유사성 판단 (tutor 시나리오로 호출 시 gemini-3.1-flash-lite가 우선 배치됨)
+  // 2차 필터링: Gemini API를 사용하여 의미적 유사성 판단 및 부분점수 부여 (tutor 시나리오로 호출 시 gemini-3.1-flash-lite가 우선 배치됨)
   try {
     const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
-주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 사용자의 답이 맞았는지(correct) 틀렸는지(incorrect) 판정하십시오.
+주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
 
 [채점 규칙]:
-1. 의미적 유사성 판단: 맞춤법, 띄어쓰기, 주관식 조사 사용 여부, 또는 핵심 의미가 통하는 유의어(예: '단위중량' vs '단위 무게', '흙의 점착력' vs '점착력', '소일네일링' vs '소일네일', '수동저항' vs '수동적 저항')인 경우 반드시 정답(correct)으로 인정하십시오.
-2. 약어/동의어 인정: 공학 용어상 동의어는 유연하게 정답 처리해 주십시오.
-3. 표/빈칸 채우기 맥락 고려: 표 채우기 등에서 행/열 헤더(예: '이중층 두께', '전단강도')로 인해 모범 답안에 불필요한 단어 중복이 있을 때(예: 모범 답안은 '이중층 두께가 급격히 감소'이나 사용자가 '얇다', '얇아진다', '감소'라고 한 경우 또는 모범 답안은 '강도 크게 향상'이나 사용자가 '높다', '증가', '큼'이라고 한 경우 등), 핵심 방향성과 상태 변화가 일치하면 무조건 정답(correct)으로 판정하십시오.
-4. 정답 여부만 판단하며, 응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
+1. 점수 부여 방식 (0~10점):
+   - 10점 (만점): 모범 답안과 의미가 완전히 동일하거나, 핵심 키워드/공학적 방향성이 완벽히 일치하는 경우. (예: '두껍다' vs '두께 증가', '얇다' vs '이중층 두께 감소', '낮다' vs '전단강도 저하', '높다' vs '강도 크게 향상').
+   - 5~9점 (부분점수): 핵심 용어나 개념이 일부 포함되어 있고 방향성은 맞으나, 부가적인 설명이나 디테일이 약간 부족한 경우.
+   - 1~4점 (최소점수): 답안의 직접적인 정답은 아니지만 관련 공학적 개념이 언급된 경우.
+   - 0점: 전혀 관계없는 내용이거나 답안이 비어있는 경우.
+
+2. 표/빈칸 채우기 맥락 고려:
+   - 표 채우기 문항의 경우, 행/열 헤더(예: '이중층 두께', '전단강도')로 인해 모범 답안에 불필요한 수식어나 단어가 중복되어 있을 수 있습니다.
+   - 사용자가 헤더의 맥락에 맞춰 단순히 '얇다', '얇아진다', '감소', '낮다', '높다', '증가', '큼'과 같이 방향성이나 상태 변화만 일치하게 적었다면, 모범 답안의 긴 텍스트(예: '이중층 두께가 급격히 감소', '면모 구조화로 강도 크게 향상')와 무조건 동등한 정답으로 간주하여 **반드시 10점(만점)**을 부여하고 isCorrect: true로 판정하십시오.
+
+3. 정답 여부 판단 기준:
+   - 5점 이상인 경우 isCorrect를 true로 설정하고, 5점 미만인 경우 false로 설정하십시오.
+   - 응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
 {
   "isCorrect": true 또는 false,
-  "reason": "왜 정답/오답으로 판정했는지 설명하는 한 줄의 한국어 요약 (예: '행 헤더 맥락에서 얇다는 두께 감소와 부합하므로 정답 인정', '설명이 모범 답안의 범주를 벗어나서 오답 판정')"
+  "score": 0에서 10 사이의 정수,
+  "reason": "점수 부여 사유를 한 줄의 한국어 요약으로 서술 (예: '행 헤더 맥락에서 얇다는 두께 감소와 동일하므로 만점 인정', '방향성은 맞으나 구체적인 공학적 기전이 누락되어 7점 부여')"
 }
 반드시 마크다운 코드 블록(예: \`\`\`json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
 
@@ -3494,6 +3504,7 @@ app.post('/api/grade-subjective', async (req, res) => {
     const result = JSON.parse(text);
     res.json({
       isCorrect: !!result.isCorrect,
+      score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
       reason: result.reason || 'AI 채점 완료'
     });
   } catch (err) {
@@ -3502,6 +3513,7 @@ app.post('/api/grade-subjective', async (req, res) => {
     const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
     res.json({
       isCorrect: localCorrect,
+      score: localCorrect ? 10 : 0,
       reason: localCorrect ? '로컬 단순 비교로 정답 판정' : '모범 답안과 일치하지 않습니다.'
     });
   }

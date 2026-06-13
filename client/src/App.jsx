@@ -1396,7 +1396,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
+                  let inputClassName = `w-full text-xs pl-2 pr-12 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
                   if (revealed) {
                     if (value) {
                       if (isCorrect) {
@@ -1416,14 +1416,21 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <div className="flex flex-col gap-1 justify-center items-center w-full">
                         <div className="flex items-center gap-1.5 w-full">
                           <span className="text-xs font-bold text-slate-400 select-none min-w-[14px] text-right">{inputLetter}</span>
-                          <input
-                            type="text"
-                            disabled={revealed}
-                            value={revealed && !value ? correctAnswer : value}
-                            onChange={(e) => handleInputChange(inputId, e.target.value)}
-                            placeholder={`${inputLetter} 입력`}
-                            className={inputClassName}
-                          />
+                          <div className="relative flex-grow">
+                            <input
+                              type="text"
+                              disabled={revealed}
+                              value={revealed && !value ? correctAnswer : value}
+                              onChange={(e) => handleInputChange(inputId, e.target.value)}
+                              placeholder={`${inputLetter} 입력`}
+                              className={inputClassName}
+                            />
+                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-amber-400 select-none bg-slate-950 px-1 py-0.5 rounded border border-amber-500/20 shadow">
+                                {gradingResult.score}점
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {revealed ? (
                           !isCorrect ? (
@@ -4076,6 +4083,7 @@ export default function App() {
           ...prev,
           [`${qIdx}_${inputId}`]: {
             isCorrect: data.isCorrect,
+            score: data.score,
             reason: data.reason
           }
         }));
@@ -4087,6 +4095,7 @@ export default function App() {
           ...prev,
           [`${qIdx}_${inputId}`]: {
             isCorrect,
+            score: isCorrect ? 10 : 0,
             reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
           }
         }));
@@ -4117,6 +4126,7 @@ export default function App() {
         ...prev,
         [`${qIdx}_INPUT`]: {
           isCorrect: data.isCorrect,
+          score: data.score,
           reason: data.reason
         }
       }));
@@ -4128,6 +4138,7 @@ export default function App() {
         ...prev,
         [`${qIdx}_INPUT`]: {
           isCorrect,
+          score: isCorrect ? 10 : 0,
           reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
         }
       }));
@@ -5414,12 +5425,54 @@ export default function App() {
       }
     }
 
-    // 객관식 정답률(점수) 정밀 채점
-    const totalMC = aiQuestions.filter(q => q.options?.length > 0).length;
-    const correctMC = Object.keys(selectedAnswers).filter(
-      (i) => selectedAnswers[i] === aiQuestions[parseInt(i)]?.answer
-    ).length;
-    const scoreMC = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : null;
+    // Q1, Q2 제외하고 Q3부터 종합 점수(배점) 계산
+    let totalScoreObtained = 0;
+    let scoredQuestionsCount = 0;
+    let correctCount = 0;
+
+    aiQuestions.forEach((q, idx) => {
+      if (idx < 2) return; // Q1, Q2 제외
+      scoredQuestionsCount++;
+
+      const isMC = q.options && q.options.length > 0;
+      if (isMC) {
+        const userAnswer = selectedAnswers[idx];
+        const isCorrect = userAnswer === q.answer;
+        if (isCorrect) {
+          totalScoreObtained += 10;
+          correctCount++;
+        }
+      } else if (q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        let sumVal = 0;
+        let countVal = inputIds.length;
+        inputIds.forEach(inputId => {
+          const grading = tableGradingResults[`${idx}_${inputId}`];
+          if (grading && grading.score !== undefined) {
+            sumVal += grading.score;
+          }
+        });
+        if (countVal > 0) {
+          const questionScore = (sumVal / (countVal * 10)) * 10;
+          totalScoreObtained += questionScore;
+          if (questionScore >= 5) {
+            correctCount++;
+          }
+        }
+      } else {
+        const grading = tableGradingResults[`${idx}_INPUT`];
+        if (grading && grading.score !== undefined) {
+          totalScoreObtained += grading.score;
+          if (grading.score >= 5) {
+            correctCount++;
+          }
+        }
+      }
+    });
+
+    const totalMC = scoredQuestionsCount;
+    const correctMC = correctCount;
+    const scoreMC = totalMC > 0 ? Math.round((totalScoreObtained / (totalMC * 10)) * 100) : 100;
 
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
@@ -10306,6 +10359,49 @@ export default function App() {
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                               {isMC ? '객관식' : '주관식'}
                             </span>
+                            {idx >= 2 && (() => {
+                              if (isMC) {
+                                const userAnswer = selectedAnswers[idx];
+                                if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
+                                  const isCorrect = userAnswer === q.answer;
+                                  return (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                      득점: {isCorrect ? 10 : 0} / 10점
+                                    </span>
+                                  );
+                                }
+                              } else {
+                                if (q.tableData) {
+                                  const inputIds = Object.keys(q.answers || {});
+                                  let obtainedVal = 0;
+                                  let hasGradedVal = false;
+                                  inputIds.forEach(inputId => {
+                                    const grading = tableGradingResults[`${idx}_${inputId}`];
+                                    if (grading && grading.score !== undefined) {
+                                      obtainedVal += grading.score;
+                                      hasGradedVal = true;
+                                    }
+                                  });
+                                  if (hasGradedVal) {
+                                    return (
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                        득점: {obtainedVal} / {inputIds.length * 10}점
+                                      </span>
+                                    );
+                                  }
+                                } else {
+                                  const grading = tableGradingResults[`${idx}_INPUT`];
+                                  if (grading && grading.score !== undefined) {
+                                    return (
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                        득점: {grading.score} / 10점
+                                      </span>
+                                    );
+                                  }
+                                }
+                              }
+                              return null;
+                            })()}
                           </div>
                           <div className="flex items-center gap-2">
                             {/* 다시풀기 버튼 */}
@@ -10699,7 +10795,7 @@ export default function App() {
                                       value={isRevd && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
                                       onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
                                       placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none transition-all ${
+                                      className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                         isRevd
                                           ? (tableAnswers[`${idx}_INPUT`]
                                               ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
@@ -10709,6 +10805,11 @@ export default function App() {
                                           : 'border-slate-750 text-white'
                                       }`}
                                     />
+                                    {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-amber-400 select-none bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/20 shadow">
+                                        {tableGradingResults[`${idx}_INPUT`].score}점
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 {!isRevd && showAnswersState[idx] && (
@@ -11525,6 +11626,49 @@ export default function App() {
                           <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                             {isMC ? '객관식' : '주관식'}
                           </span>
+                          {idx >= 2 && (() => {
+                            if (isMC) {
+                              const userAnswer = examAnswers[idx];
+                              if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
+                                const isCorrect = userAnswer === q.answer;
+                                return (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                    득점: {isCorrect ? 10 : 0} / 10점
+                                  </span>
+                                );
+                              }
+                            } else {
+                              if (q.tableData) {
+                                const inputIds = Object.keys(q.answers || {});
+                                let obtainedVal = 0;
+                                let hasGradedVal = false;
+                                inputIds.forEach(inputId => {
+                                  const grading = tableGradingResults[`${idx}_${inputId}`];
+                                  if (grading && grading.score !== undefined) {
+                                    obtainedVal += grading.score;
+                                    hasGradedVal = true;
+                                  }
+                                });
+                                if (hasGradedVal) {
+                                  return (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                      득점: {obtainedVal} / {inputIds.length * 10}점
+                                    </span>
+                                  );
+                                }
+                              } else {
+                                const grading = tableGradingResults[`${idx}_INPUT`];
+                                if (grading && grading.score !== undefined) {
+                                  return (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                      득점: {grading.score} / 10점
+                                    </span>
+                                  );
+                                }
+                              }
+                            }
+                            return null;
+                          })()}
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -11936,7 +12080,7 @@ export default function App() {
                                       value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
                                       onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
                                       placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl px-3 py-2 text-xs focus:outline-none transition-all ${
+                                      className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                         !!examRevealed[idx]
                                           ? (tableAnswers[`${idx}_INPUT`]
                                               ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
@@ -11946,6 +12090,11 @@ export default function App() {
                                           : 'border-slate-750 text-white'
                                       }`}
                                     />
+                                    {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-amber-400 select-none bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/20 shadow">
+                                        {tableGradingResults[`${idx}_INPUT`].score}점
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 {!examRevealed[idx] && examShowAnswersState[idx] && (
