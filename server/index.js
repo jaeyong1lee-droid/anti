@@ -2000,13 +2000,20 @@ app.get('/api/dashboard', async (req, res) => {
     const todayKstStr = kstDate.toISOString().split('T')[0];
 
     if (queryDate === todayKstStr && kstHour >= 8) {
-      const existingTodayBonus = await dbQuery.get(
-        `SELECT id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
+      const activeWeaknessCount = await dbQuery.get(
+        `SELECT COUNT(*) as count FROM schedules 
+         WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
         [todayKstStr]
       );
-      if (!existingTodayBonus) {
-        console.log(`[Auto-WeakPoint] Automatically generating 8 AM KST weak-point recommendation for ${todayKstStr}`);
-        await generateWeakPointRecommendation(todayKstStr);
+      if (activeWeaknessCount.count < 3) {
+        const existingTodayBonus = await dbQuery.get(
+          `SELECT id FROM schedules WHERE review_round = 99 AND planned_date = ?`,
+          [todayKstStr]
+        );
+        if (!existingTodayBonus) {
+          console.log(`[Auto-WeakPoint] Automatically generating 8 AM KST weak-point recommendation for ${todayKstStr}`);
+          await generateWeakPointRecommendation(todayKstStr);
+        }
       }
     }
     // ----------------------------------------
@@ -2102,6 +2109,16 @@ async function generateWeakPointRecommendation(queryDate) {
     return null;
   }
 
+  // 오늘의 복습 목록에 떠있는 약점복습토픽이 3개 이상이면 신규 추천하지 않음
+  const activeWeaknessCount = await dbQuery.get(
+    `SELECT COUNT(*) as count FROM schedules 
+     WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
+    [queryDate]
+  );
+  if (activeWeaknessCount.count >= 3) {
+    return null;
+  }
+
   // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 완료한 토픽 목록
   const excludedRows = await dbQuery.all(
     `SELECT DISTINCT topic_id FROM schedules 
@@ -2111,27 +2128,25 @@ async function generateWeakPointRecommendation(queryDate) {
   );
   const excludedTopicIds = excludedRows.map(r => r.topic_id);
 
-  // 2. 각 토픽의 모든 완료된 복습 세션(일반 복습 및 약점 복습 포함)의 평균 성적이 100점 미만인 항목을 최저 평균 점수 순 정렬
+  // 2. 정규 복습하기 점수와 내부에 저장된 약점복습 점수의 평균점수가 90점 이하인 토픽 추출
   const scoreHistory = await dbQuery.all(
     `SELECT topic_id, AVG(score) as avg_score
      FROM schedules
      WHERE status = 'completed' AND score IS NOT NULL
      GROUP BY topic_id
-     HAVING AVG(score) < 100
+     HAVING AVG(score) <= 90
      ORDER BY avg_score ASC`
   );
 
   // 제외 대상 제외
   let candidates = scoreHistory.filter(h => !excludedTopicIds.includes(h.topic_id));
 
-  // 3. 하위 5개 토픽 내에서 1개 무작위 선택
-  const bottomFive = candidates.slice(0, 5);
-
-  if (bottomFive.length === 0) {
+  if (candidates.length === 0) {
     return null;
   }
 
-  const selectedCandidate = bottomFive[Math.floor(Math.random() * bottomFive.length)];
+  // 90점 이하 토픽 중 전체 무작위(랜덤)로 1개 선택
+  const selectedCandidate = candidates[Math.floor(Math.random() * candidates.length)];
 
   const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
   if (topic) {
@@ -2180,6 +2195,15 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
+    const activeWeaknessCount = await dbQuery.get(
+      `SELECT COUNT(*) as count FROM schedules 
+       WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
+      [queryDate]
+    );
+    if (activeWeaknessCount.count >= 3) {
+      return res.json({ weakPoints: [], message: '오늘의 복습에 등록된 약점복습토픽이 3개를 초과할 수 없습니다.' });
+    }
+
     const recommended = await generateWeakPointRecommendation(queryDate);
     const weakPoints = recommended ? [recommended] : [];
     res.json({ weakPoints });
