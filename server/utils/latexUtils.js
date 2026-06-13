@@ -46,8 +46,17 @@ export function healBackslashes(str) {
 export function healLatexFormulas(text) {
   if (!text || typeof text !== 'string') return text;
 
+  // 1. Extract HTML tables
+  const tables = [];
+  const tableRegex = /(<\s*table[^>]*>[\s\S]*?<\s*\/\s*table\s*>)/gi;
+  let processed = text.replace(tableRegex, (match) => {
+    const index = tables.length;
+    tables.push(match);
+    return ` HTMLTABLEPLACEHOLDERXYZ${index} `;
+  });
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
-  let processed = text.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
+  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
 
   // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
   processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
@@ -191,7 +200,18 @@ export function healLatexFormulas(text) {
 
   // 한국어 조사 결합 어미 공백 규격 조율
   result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
-  return result.replace(/[ \t]+/g, ' ').trim();
+  result = result.replace(/[ \t]+/g, ' ').trim();
+
+  // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
+  result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
+
+  // 3. Restore HTML tables
+  for (let i = 0; i < tables.length; i++) {
+    const placeholderRegex = new RegExp(`\\s*\\$?HTMLTABLEPLACEHOLDERXYZ${i}\\$?\\s*`, 'g');
+    result = result.replace(placeholderRegex, tables[i]);
+  }
+
+  return result;
 }
 
 // 오브젝트 딥 힐러 트리구조
