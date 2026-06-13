@@ -12137,19 +12137,6 @@ export default function App() {
                               </button>
                             )}
 
-                            {/* AI Tutor Problem Generator Button */}
-                            {!isNewEmptyCard && (
-                              <button
-                                onClick={() => {
-                                  handleGenerateFormulaProblem(idx);
-                                }}
-                                className="p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40"
-                                title="이 공식으로 푸는 정량적 문제 출제 받기"
-                              >
-                                <HelpCircle size={12} />
-                                <span>문제출제</span>
-                              </button>
-                            )}
 
                             {/* Toggle Input Editor */}
                             {q.isDirectlyAdded && (
@@ -12388,6 +12375,16 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+                    {selectedFormulaIdx !== -1 && (
+                      <button
+                        onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
+                        disabled={isFormulaChatLoading}
+                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <HelpCircle size={11} className="text-rose-400" />
+                        <span>이 공식으로 문제 출제 받기 📝</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
