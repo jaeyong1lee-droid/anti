@@ -11703,44 +11703,42 @@ export default function App() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-start border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-              {!loadingExam && examQuestions.length > 0 && (
-                <span className="text-[10px] text-slate-400 mr-auto sm:hidden font-bold">
-                  정답: {Object.keys(examAnswers).filter(i => examAnswers[i] === examQuestions[parseInt(i)]?.answer).length}/{examQuestions.filter(q => q.type === '객관식').length}
-                </span>
-              )}
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full sm:w-auto justify-start border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
-                className="px-4 py-2 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed mr-1"
+                className="px-1 py-1.5 sm:px-4 sm:py-2 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center flex items-center justify-center gap-0 sm:gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 title="종합평가에 신규 AI 문제 10문항 추가 (기존 풀이 보존)"
               >
                 {loadingExam ? (
-                  <svg className="animate-spin h-3.5 w-3.5 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-3.5 w-3.5 text-indigo-300 hidden sm:inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                ) : "➕"}
+                ) : (
+                  <span className="hidden sm:inline">➕</span>
+                )}
                 <span>문제추가</span>
               </button>
               <button
                 onClick={handleRefreshExamQuestions}
                 disabled={loadingExam}
-                className="px-4 py-2 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-1 py-1.5 sm:px-4 sm:py-2 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-white border border-amber-500/20 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center flex items-center justify-center gap-0 sm:gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 title="종합평가 전체 문제 실시간 AI 재출제"
               >
                 {loadingExam ? (
-                  <svg className="animate-spin h-3.5 w-3.5 text-amber-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-3.5 w-3.5 text-amber-300 hidden sm:inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                ) : "🔄"}
+                ) : (
+                  <span className="hidden sm:inline">🔄</span>
+                )}
                 <span>리프레쉬</span>
               </button>
               <button
                 onClick={async () => {
                   savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  // 서버에 현재 상태 저장 (기기 간 공유) - 완료 확인 후 닫기
                   try {
                     const r = await fetch(`${API_BASE}/api/session/exam`, {
                       method: 'POST',
@@ -11762,24 +11760,23 @@ export default function App() {
                   }
                   setShowExam(false);
                 }}
-                className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                className="px-1 py-1.5 sm:px-4 sm:py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center whitespace-nowrap"
                 title="화면만 숨김 (재개 시 문제 유지)"
               >
                 닫기
               </button>
-               <button
+              <button
                 onClick={() => {
-                  // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
                   setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                 }}
-                className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
+                className="px-1 py-1.5 sm:px-4 sm:py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center whitespace-nowrap"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
               >
                 종료
               </button>
-              <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+              <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none hidden sm:inline-block" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
                 {getExamTotalScore()} / 100점
               </span>
             </div>
