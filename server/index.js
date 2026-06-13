@@ -750,6 +750,9 @@ function htmlToPlainText(html) {
   let text = html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
   text = text.replace(/<style\b[\s\S]*?<\/style>/gi, '');
   
+  // [추가 대책] 인라인 스타일 속성(style="...")을 최우선 박멸하여 태그 파싱 오류 및 찌꺼기 차단 (중첩 쿼트 대응)
+  text = text.replace(/style\s*=\s*(?:"[^"]*"|'[^']*'|夸[^夸]*夸)/gi, '');
+  
   // 2. Convert tables to Markdown before stripping block tags
   text = convertHtmlTablesToMarkdown(text);
   
