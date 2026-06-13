@@ -11018,7 +11018,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[100px] py-2 text-xs focus:outline-none transition-all ${
                                           isRevd
                                             ? (tableAnswers[`${idx}_INPUT`]
                                                 ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
@@ -11029,9 +11029,28 @@ export default function App() {
                                         }`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
-                                        {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
-                                      </span>
+                                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
+                                        <button
+                                          onClick={async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            await gradeSubjectiveQuestion(idx, q);
+                                          }}
+                                          disabled={gradingLoading[idx]}
+                                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[9px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-0.5"
+                                          title="AI에게 답안 재채점 요청"
+                                        >
+                                          {gradingLoading[idx] ? (
+                                            <RefreshCw size={8} className="animate-spin text-slate-400" />
+                                          ) : (
+                                            <RefreshCw size={8} className="text-slate-400" />
+                                          )}
+                                          <span>재평가</span>
+                                        </button>
+                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
+                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
+                                        </span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -12350,7 +12369,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[100px] py-2 text-xs focus:outline-none transition-all ${
                                           !!examRevealed[idx]
                                             ? (tableAnswers[`${idx}_INPUT`]
                                                 ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
@@ -12361,9 +12380,28 @@ export default function App() {
                                         }`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
-                                        {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
-                                      </span>
+                                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
+                                        <button
+                                          onClick={async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            await gradeSubjectiveQuestion(idx, q);
+                                          }}
+                                          disabled={gradingLoading[idx]}
+                                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[9px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-0.5"
+                                          title="AI에게 답안 재채점 요청"
+                                        >
+                                          {gradingLoading[idx] ? (
+                                            <RefreshCw size={8} className="animate-spin text-slate-400" />
+                                          ) : (
+                                            <RefreshCw size={8} className="text-slate-400" />
+                                          )}
+                                          <span>재평가</span>
+                                        </button>
+                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
+                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
+                                        </span>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
