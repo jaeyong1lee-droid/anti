@@ -10134,7 +10134,7 @@ export default function App() {
                   })}
 
                   {aiQuestions.length > 0 && (
-                    <div className="text-center py-6">
+                    <div className={`quiz-card-item text-center py-6 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
                       <div className="flex justify-center gap-3 flex-wrap">
                         {selectedTopic?.isReadOnly ? (
                           <>
@@ -11310,7 +11310,7 @@ export default function App() {
                 )}
 
                 {examQuestions.length > 0 && !loadingExam && (
-                  <div className="text-center py-6">
+                  <div className={`exam-card-item text-center py-6 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
                     <div className="inline-flex items-center gap-3 bg-amber-950/60 border border-amber-500/20 rounded-2xl px-6 py-4">
                       <Award size={20} className="text-amber-400" />
                       <div className="text-left">
@@ -11403,17 +11403,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {examTopic && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateTopicProblem(examTopic)}
-                    disabled={isChatLoading}
-                    className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <HelpCircle size={11} className="text-amber-400" />
-                    <span>이 토픽으로 문제 출제 받기 📝</span>
-                  </button>
-                )}
+
               </div>
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
