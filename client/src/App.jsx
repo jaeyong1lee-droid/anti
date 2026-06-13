@@ -10835,8 +10835,35 @@ export default function App() {
                           const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                           return (
                             <>
-                              <div className="text-[17px] font-bold text-white leading-relaxed">
-                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                              <div className="flex justify-between items-start gap-3 w-full">
+                                <div className="text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
+                                  <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                </div>
+                                {isSubj && isRevd && idx !== 1 && (
+                                  <div className="flex-shrink-0 pt-0.5">
+                                    <button
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (q.type === '주관식 (표채우기)') {
+                                          await gradeTableQuestion(idx, q);
+                                        } else {
+                                          await gradeSubjectiveQuestion(idx, q);
+                                        }
+                                      }}
+                                      disabled={gradingLoading[idx]}
+                                      className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                                      title="AI에게 답안 재채점 요청"
+                                    >
+                                      {gradingLoading[idx] ? (
+                                        <RefreshCw size={10} className="animate-spin text-slate-400" />
+                                      ) : (
+                                        <RefreshCw size={10} className="text-slate-400" />
+                                      )}
+                                      <span>재평가</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                               {isMC && tableData && (
                                 <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
@@ -11168,27 +11195,10 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[110px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
-                                        <button
-                                          onClick={async (e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            await gradeSubjectiveQuestion(idx, q);
-                                          }}
-                                          disabled={gradingLoading[idx]}
-                                          className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1"
-                                          title="AI에게 답안 재채점 요청"
-                                        >
-                                          {gradingLoading[idx] ? (
-                                            <RefreshCw size={10} className="animate-spin text-slate-400" />
-                                          ) : (
-                                            <RefreshCw size={10} className="text-slate-400" />
-                                          )}
-                                          <span>재평가</span>
-                                        </button>
+                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
                                         <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
                                           {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                         </span>
@@ -12222,8 +12232,35 @@ export default function App() {
                         const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                         return (
                           <>
-                            <div className="text-[17px] font-bold text-white leading-relaxed">
-                              <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                            <div className="flex justify-between items-start gap-3 w-full">
+                              <div className="text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
+                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                              </div>
+                              {isSubj && isRevd && idx !== 1 && (
+                                <div className="flex-shrink-0 pt-0.5">
+                                  <button
+                                    onClick={async (e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (q.type === '주관식 (표채우기)') {
+                                        await gradeTableQuestion(idx, q);
+                                      } else {
+                                        await gradeSubjectiveQuestion(idx, q);
+                                      }
+                                    }}
+                                    disabled={gradingLoading[idx]}
+                                    className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                                    title="AI에게 답안 재채점 요청"
+                                  >
+                                    {gradingLoading[idx] ? (
+                                      <RefreshCw size={10} className="animate-spin text-slate-400" />
+                                    ) : (
+                                      <RefreshCw size={10} className="text-slate-400" />
+                                    )}
+                                    <span>재평가</span>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             {isMC && tableData && (
                               <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
@@ -12555,27 +12592,10 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[110px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
-                                        <button
-                                          onClick={async (e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            await gradeSubjectiveQuestion(idx, q);
-                                          }}
-                                          disabled={gradingLoading[idx]}
-                                          className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1"
-                                          title="AI에게 답안 재채점 요청"
-                                        >
-                                          {gradingLoading[idx] ? (
-                                            <RefreshCw size={10} className="animate-spin text-slate-400" />
-                                          ) : (
-                                            <RefreshCw size={10} className="text-slate-400" />
-                                          )}
-                                          <span>재평가</span>
-                                        </button>
+                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
                                         <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
                                           {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                         </span>
