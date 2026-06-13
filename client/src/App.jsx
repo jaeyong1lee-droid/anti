@@ -1305,15 +1305,15 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     : (normalize(value) === normalize(correctAnswer));
  
                   return (
-                    <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[150px]">
-                      <div className="flex flex-col gap-1.5 justify-center items-center">
+                    <td key={cIdx} className="p-1 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[110px]">
+                      <div className="flex flex-col gap-1 justify-center items-center">
                         <input
                           type="text"
                           disabled={revealed}
                           value={value}
                           onChange={(e) => handleInputChange(inputId, e.target.value)}
                           placeholder={`빈칸 입력`}
-                          className={`w-full max-w-[200px] text-xs px-2.5 py-1.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                          className={`w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
                             revealed 
                               ? (isCorrect 
                                   ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
@@ -1342,6 +1342,38 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   );
                 }
               })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});
+
+// ── 객관식 표 렌더러 ──────────────────
+const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded }) {
+  if (!tableData || !tableData.headers || !tableData.rows) return null;
+  const { headers, rows } = tableData;
+  return (
+    <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+      <table className="w-full text-center border-collapse text-sm">
+        <thead>
+          <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+            {headers.map((header, hIdx) => (
+              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text">
+                <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rIdx) => (
+            <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+              {row.map((cell, cIdx) => (
+                <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text">
+                  <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -9699,7 +9731,7 @@ export default function App() {
               </div>
               <div className="min-w-0 flex-grow">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습 (Gemini AI · 13문항)</span>
+                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습</span>
                   {!loadingAI && aiQuestions.length > 0 && (
                     <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
                       {aiQuestions.length}문항
@@ -9943,6 +9975,10 @@ export default function App() {
                           <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                         </div>
 
+                        {q.tableData && (
+                          <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
+                        )}
+
                         {/* MC Options */}
                         {isMC && (
                           <div className="space-y-2">
@@ -10177,7 +10213,7 @@ export default function App() {
                                     await gradeTableQuestion(idx, q);
                                     setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-300 hover:bg-slate-200 text-slate-900 border border-slate-400/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-300/10 font-black disabled:opacity-50"
+                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -10235,7 +10271,7 @@ export default function App() {
                                     await gradeSubjectiveQuestion(idx, q);
                                     setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-300 hover:bg-slate-200 text-slate-900 border border-slate-400/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-300/10 font-black disabled:opacity-50"
+                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -11125,6 +11161,10 @@ export default function App() {
                       <div className="text-[17px] font-bold text-white leading-relaxed">
                         <LatexRenderer text={q.question} katexLoaded={katexLoaded} enableAddFormula={true} />
                       </div>
+
+                      {q.tableData && (
+                        <ReadOnlyTable tableData={q.tableData} katexLoaded={katexLoaded} />
+                      )}
 
                       {/* MC Options */}
                       {isMC && (
