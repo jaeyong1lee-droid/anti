@@ -10363,30 +10363,15 @@ export default function App() {
               >
           {/* Review Header */}
           <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full px-1.5 md:px-0">
-              <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Brain size={20} />
-              </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-violet-400 tracking-wider whitespace-nowrap">토픽 복습</span>
-                  {!loadingAI && aiQuestions.length > 0 && (
-                    <span className="text-[10px] bg-violet-950/60 text-violet-300 border border-violet-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {aiQuestions.length}문항
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-3 mt-1.5 w-full">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
-                    {selectedTopic.title}
-                  </h3>
-                  {selectedTopic && (
-                    <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                      {getReviewTotalScore()} / 100점
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
+              <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
+                {selectedTopic.title}
+              </h3>
+              {selectedTopic && (
+                <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                  {getReviewTotalScore()} / 100점
+                </span>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
