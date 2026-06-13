@@ -596,6 +596,13 @@ html, body {
     display: block !important;
   }
 
+  .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:start:decrement,
+  .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:end:increment {
+    display: block !important;
+    height: 35% !important;
+    background: transparent !important;
+  }
+
   .custom-vertical-scrollbar::-webkit-scrollbar-track {
     background: rgba(30, 41, 59, 0.5) !important;
     border-radius: 9999px !important;

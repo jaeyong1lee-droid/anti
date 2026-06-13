@@ -11453,24 +11453,6 @@ $$ ${q.formula || ''} $$
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
                 <button
-                  type="button"
-                  disabled={generatingFormulaQuiz}
-                  onClick={() => confirmAndGenerateQuizQuestion(false)}
-                  className={`px-4 py-2 border rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5 ${
-                    generatingFormulaQuiz 
-                      ? 'bg-rose-950/20 border-rose-500/10 cursor-not-allowed opacity-60 text-rose-400' 
-                      : 'bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border-rose-500/20'
-                  }`}
-                  title="공식 객관식 문제 무작위 1개 추가 출제"
-                >
-                  {generatingFormulaQuiz ? (
-                    <RefreshCw size={13} className="animate-spin text-rose-400" />
-                  ) : (
-                    <Award size={13} />
-                  )}
-                  {generatingFormulaQuiz ? '출제 중...' : '공식문제 출제'}
-                </button>
-                <button
                   onClick={() => {
                     handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
                     savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
@@ -11901,7 +11883,7 @@ $$ ${q.formula || ''} $$
                                 title="AI 튜터와 이 공식에 대해 질문하고 토론하기"
                               >
                                 <MessageSquare size={12} />
-                                <span>튜터토론</span>
+                                <span>AI 토론</span>
                               </button>
                             )}
 
