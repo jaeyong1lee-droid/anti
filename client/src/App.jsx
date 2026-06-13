@@ -5120,6 +5120,7 @@ export default function App() {
     setAiError('');
     setShowFullReport(false);
     setReportText('');
+    setChatHistory([]);
 
     try {
       const res = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
@@ -5336,6 +5337,7 @@ export default function App() {
     setAiError('');
     setShowFullReport(false);
     setReportText('');
+    setChatHistory([]);
 
     try {
       let url = `${API_BASE}/api/topics/${topicId}/ai-questions`;
