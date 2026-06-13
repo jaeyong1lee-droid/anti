@@ -4913,7 +4913,7 @@ function extractVariablesFromMath(mathContent) {
     .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
   
   if (uniqueVars.length === 0) return '';
-  return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
+  return uniqueVars.map(v => `- $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n\n');
 }
 
 function filterStructureLines(mathContent, structure, extraAllowed = []) {
@@ -4963,30 +4963,30 @@ function filterStructureLines(mathContent, structure, extraAllowed = []) {
   }
 
   const lines = structure.split('\n');
-  const filteredLines = lines.filter(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return true;
-    
-    if (/^\s*[\-\*\d\.]/.test(trimmed)) {
-      const colonIdx = trimmed.indexOf(':');
-      const dashIdx = trimmed.indexOf('-', 1);
-      const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
-      
-      if (sepIdx !== -1) {
-        const symbolPortion = trimmed.substring(0, sepIdx);
-        const symbolTokens = symbolPortion.match(tokenRegex) || [];
-        const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
+  const filteredLines = lines
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => {
+      if (/^[\-\*\u2022\d\.]/.test(line)) {
+        const colonIdx = line.indexOf(':');
+        const dashIdx = line.indexOf('-', 1);
+        const sepIdx = colonIdx !== -1 ? colonIdx : dashIdx;
         
-        if (normalizedSymbols.length === 0) return true;
-        
-        const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
-        return hasMatch;
+        if (sepIdx !== -1) {
+          const symbolPortion = line.substring(0, sepIdx);
+          const symbolTokens = symbolPortion.match(tokenRegex) || [];
+          const normalizedSymbols = symbolTokens.map(s => normalize(s)).filter(Boolean);
+          
+          if (normalizedSymbols.length === 0) return true;
+          
+          const hasMatch = normalizedSymbols.some(s => formulaTokenSet.has(s));
+          return hasMatch;
+        }
       }
-    }
-    return true;
-  });
+      return true;
+    });
 
-  return filteredLines.join('\n').trim();
+  return filteredLines.join('\n\n');
 }
 
 // 6-3-5. Formula calculation question generator
@@ -5131,12 +5131,19 @@ JSON 포맷 규격:
       }
       
       try {
-        const result = parseLlmJson(cleanJsonText)
+        const result = parseLlmJson(cleanJsonText);
         let structure = result.structure || '';
-        structure = structure
-          .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
-          .replace(/각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
-          .trim();
+        if (Array.isArray(structure)) {
+          structure = structure.join('\n\n');
+        }
+        if (typeof structure === 'string') {
+          structure = structure
+            .replace(/-\s*각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+            .replace(/각\s*기호와\s*상수의\s*의미를\s*대화\s*맥락을\s*기반으로\s*복습해\s*보세요\.?/gi, '')
+            .trim();
+        } else {
+          structure = '';
+        }
 
         if (!structure && bestLocalMatch) {
           structure = bestLocalMatch.structure;

@@ -321,7 +321,7 @@ const clientExtractVariables = (mathContent) => {
     .filter(w => /^[a-zA-Z]$|^[a-zA-Z]_[a-zA-Z0-9]+$/.test(w));
   
   if (uniqueVars.length === 0) return '';
-  return uniqueVars.map(v => `* $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n');
+  return uniqueVars.map(v => `* $${v}$: (이 기호의 공학적 정의를 입력해 보세요)`).join('\n\n');
 };
 
 const cleanCorruptedFormula = (formula) => {
