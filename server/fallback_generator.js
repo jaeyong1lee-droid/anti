@@ -2103,12 +2103,12 @@ function getDynamicSourceExpertQuestions(title, keywords, fileText) {
 // Stage 1: Strict Title-First Strategy
 // Stage 2: Secondary Keyword-Match Strategy
 // ============================================================================
-function padTo12Questions(questions, title, keywords) {
-  if (!Array.isArray(questions) || questions.length >= 12) {
+function padTo13Questions(questions, title, keywords) {
+  if (!Array.isArray(questions) || questions.length >= 13) {
     return questions;
   }
   
-  console.log(`[Padding] Current questions length: ${questions.length}. Padding up to 12 questions...`);
+  console.log(`[Padding] Current questions length: ${questions.length}. Padding up to 13 questions...`);
   const padded = [...questions];
   const generalPool = getGeneralGeotechExpertQuestions(title, keywords);
   
@@ -2116,7 +2116,7 @@ function padTo12Questions(questions, title, keywords) {
   const existingQuestions = new Set(questions.map(q => q.question.trim()));
   
   for (const gq of generalPool) {
-    if (padded.length >= 12) break;
+    if (padded.length >= 13) break;
     if (!existingQuestions.has(gq.question.trim())) {
       padded.push(gq);
       existingQuestions.add(gq.question.trim());
@@ -2125,7 +2125,7 @@ function padTo12Questions(questions, title, keywords) {
   
   // Just in case we are still short, pull anything from generalPool
   for (const gq of generalPool) {
-    if (padded.length >= 12) break;
+    if (padded.length >= 13) break;
     if (padded.indexOf(gq) === -1) {
       padded.push(gq);
     }
@@ -2162,14 +2162,27 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
     mcQs = rawQuestions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
   }
   
-  // Ensure we have at least one short subjective
-  if (shortSubj.length === 0) {
-    shortSubj = [{
-      type: '주관식 (단답형)',
-      question: `[${title}]와 관련하여 공학적 메커니즘을 설명하는 가장 중요한 핵심 개념 명칭은?`,
-      answer: '핵심 개념',
-      explanation: '기본적인 개념과 원리를 의미합니다.'
-    }];
+  // Ensure we have at least two short subjective questions (one standard concept, one problem-solving scenario)
+  if (shortSubj.length < 2) {
+    const defaultShorts = [
+      {
+        type: '주관식 (단답형)',
+        question: `[${title}] 기술 적용 시 가장 핵심적인 공학적 개념과 작동 원리를 설명하시오.`,
+        answer: `${title}의 핵심 공학 메커니즘`,
+        explanation: '기본적인 개념과 원리를 의미합니다.'
+      },
+      {
+        type: '주관식 (단답형)',
+        question: `[${title}] 시공 중 주변 지반의 국부적 침하 또는 이상 변위가 발생하는 공학적 문제(Scenario)가 확인되었을 때, 이를 억제하기 위한 구체적인 공학적 해결 대책(Solution)을 제시하시오.`,
+        answer: '계측 관리 강화 및 차수/지반 보강 그라우팅 실시',
+        explanation: '공학적 비상 상황 발생 시의 전형적인 대책안입니다.'
+      }
+    ];
+    if (shortSubj.length === 1) {
+      shortSubj = [shortSubj[0], defaultShorts[1]];
+    } else {
+      shortSubj = defaultShorts;
+    }
   }
   
   // Ensure we have at least one table subjective
@@ -2188,18 +2201,18 @@ function generateFallbackQuestions(title, keywords, fileText = '') {
   
   // Mix them:
   // - 2 standard subjective (q1, q2)
-  // - 1 short subjective
+  // - 2 short subjective
   // - 1 table subjective (additional table subjective questions are added during final assembly in index.js)
   // - all MC questions
   const finalQuestions = [
     q1,
     q2,
-    ...shortSubj.slice(0, 1),
+    ...shortSubj.slice(0, 2),
     ...tableSubj.slice(0, 1),
     ...mcQs
   ];
   
-  return padTo12Questions(finalQuestions, title, keywords);
+  return padTo13Questions(finalQuestions, title, keywords);
 }
 
 function routeFallbackQuestions(title, keywords, fileText = '') {

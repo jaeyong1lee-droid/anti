@@ -2900,23 +2900,48 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
   }
 
-  // 2. Q3 (Short Answer) - exactly 1
-  let finalSubjsShort = [...subjsShort].slice(0, 1);
-  if (finalSubjsShort.length < 1) {
+  // 2. Q3, Q4 (Short Answer) - exactly 2
+  let finalSubjsShort = [...subjsShort];
+  if (finalSubjsShort.length < 2) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
     const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)');
-    finalSubjsShort = [...finalSubjsShort, ...fallbackShorts].slice(0, 1);
+    finalSubjsShort = [...finalSubjsShort, ...fallbackShorts];
   }
-  if (finalSubjsShort.length < 1) {
-    finalSubjsShort = [{
+
+  // Dedup finalSubjsShort to avoid exact duplicates
+  const uniqueShort = [];
+  const shortSeen = new Set();
+  finalSubjsShort.forEach(q => {
+    const qText = (q.question || '').trim();
+    if (qText && !shortSeen.has(qText)) {
+      shortSeen.add(qText);
+      uniqueShort.push(q);
+    }
+  });
+  finalSubjsShort = uniqueShort.slice(0, 2);
+
+  // If we still need more to make exactly 2, we dynamically derive from Q1 (finalSubjsIntroFormula[0])
+  if (finalSubjsShort.length < 2 && finalSubjsIntroFormula.length > 0) {
+    const q1 = finalSubjsIntroFormula[0];
+    finalSubjsShort.push({
+      type: "주관식 (단답형)",
+      question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
+      answer: q1.concept || `${topic.title}의 핵심 개념`,
+      explanation: `${topic.title}에 관한 핵심 정의 및 개요 서술형 평가입니다.`
+    });
+  }
+
+  // Ensure we have exactly 2
+  while (finalSubjsShort.length < 2) {
+    finalSubjsShort.push({
       type: "주관식 (단답형)",
       question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
       answer: "핵심 메커니즘",
       explanation: `${topic.title}의 기본적인 공학적 개념과 핵심 작동 메커니즘입니다.`
-    }];
+    });
   }
 
-  // 3. Q4, Q5, Q6 (Table Quiz) - exactly 3
+  // 3. Q5, Q6, Q7 (Table Quiz) - exactly 3
   let finalSubjsTable = [...subjsTable].slice(0, 3);
   if (finalSubjsTable.length < 3) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
@@ -2927,12 +2952,12 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
   }
 
-  // 4. MC questions (7 questions)
+  // 4. MC questions (6 questions)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
 
   mcs.forEach(q => {
-    if (finalMcs.length >= 7) return;
+    if (finalMcs.length >= 6) return;
     const cleanQ = (q.question || '').trim();
     if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
       uniqueMcQuestions.add(cleanQ);
@@ -2940,10 +2965,10 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  if (finalMcs.length < 7 && carryOverQuestions && carryOverQuestions.length > 0) {
+  if (finalMcs.length < 6 && carryOverQuestions && carryOverQuestions.length > 0) {
     const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
     shuffledCarryOvers.forEach(q => {
-      if (finalMcs.length >= 7) return;
+      if (finalMcs.length >= 6) return;
       const cleanQ = (q.question || '').trim();
       if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
         uniqueMcQuestions.add(cleanQ);
@@ -2952,11 +2977,11 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     });
   }
 
-  if (finalMcs.length < 7) {
+  if (finalMcs.length < 6) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
     const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
     for (const fQ of fallbackMcs) {
-      if (finalMcs.length >= 7) break;
+      if (finalMcs.length >= 6) break;
       const cleanQ = (fQ.question || '').trim();
       if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
         uniqueMcQuestions.add(cleanQ);
@@ -2965,8 +2990,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  if (finalMcs.length < 7) {
-    const deficit = 7 - finalMcs.length;
+  if (finalMcs.length < 6) {
+    const deficit = 6 - finalMcs.length;
     console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
     for (let i = 0; i < deficit; i++) {
       finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
@@ -3057,7 +3082,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 7;
+    const neededAiMcCount = 6;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -3225,7 +3250,7 @@ ${carryOverQuestions.map((q, idx) => `
 `;
     }
 
-    const totalAiQuestionsCount = 2 + neededAiMcCount;
+    const totalAiQuestionsCount = 13;
 
     let feedbackPrompt = '';
     try {
@@ -3300,12 +3325,22 @@ ${adjustmentsPrompt}
    - "type" 값: 반드시 "주관식 (공식)"
    - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
    - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-   - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \frac{P - 2C \sin\varphi}{\gamma \tan\varphi + \frac{2S}{D}}$")
+   - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
    - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
-   [3번~5번 문제] 주관식 (표채우기):
+
+   [3번~4번 문제] 주관식 (단답형):
+   - 개수: 반드시 정확히 2문제를 출제하십시오.
+   - "type" 값: 반드시 "주관식 (단답형)"
+   - 출제 원칙:
+     * 3번 문제: 토픽의 핵심적인 공학적 개념이나 중요한 이론적 원리를 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오. (단순 키워드를 묻는 게 아니며, 1번 주관식 개요의 핵심 개념을 더 심화하여 질문해도 무방함.)
+     * 4번 문제: 반드시 실제 현장 시공, 설계, 혹은 유지관리 시 발생할 수 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 연약지반 침하, 급격한 압밀 지연, 보강재의 인발 파괴, 사면 붕괴 징후 등)**를 제시하고, 그에 대해 기술사 관점에서의 **구체적이고 실무적인 공학적 해결 방안, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 물어보는 문제로 출제하십시오.
+     * 정답("answer"): 3번과 4번의 모범 답안은 단순히 한 단어 키워드가 아니라, 핵심 내용이 논리적으로 포함된 1줄 서술형(최소 15자에서 최대 30자 내외)으로 작성하십시오.
+     * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
+
+   [5번~7번 문제] 주관식 (표채우기):
    - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법(예: 소일네일링 vs 어스앵커, 얕은기초 vs 깊은기초 등)의 특징을 대조하는 유기적 표(Table) 질문 출제.
    - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(예: 보강방식, 지지메커니즘, 활용방안, 설계 시 주의사항 등)을 둔 뒤, 알맞은 핵심 공학 내용을 채워넣는 형식을 매우 강력히 권장합니다.
-   - ⚠️ [중요 금지 규칙 - 입력 편의성 극대화]: 주관식 표채우기 문제 출제 시, 사용자가 직접 수식(예: $\sqrt{k_h/k_v}$와 같은 루트, 제곱, 분수식 등)이나 로마자/그리스 문자 기호, 또는 단위(m, kN, Pa 등)를 직접 키보드로 입력해야 하는 문제는 **절대로 출제하지 마십시오.** 키보드로 기호 및 수식을 입력하는 것은 불가능에 가깝고 오타 발생률이 극도로 높습니다.
+   - ⚠️ [중요 금지 규칙 - 입력 편의성 극대화]: 주관식 표채우기 문제 출제 시, 사용자가 직접 수식(예: $\\sqrt{k_h/k_v}$와 같은 루트, 제곱, 분수식 등)이나 로마자/그리스 문자 기호, 또는 단위(m, kN, Pa 등)를 직접 키보드로 입력해야 하는 문제는 **절대로 출제하지 마십시오.** 키보드로 기호 및 수식을 입력하는 것은 불가능에 가깝고 오타 발생률이 극도로 높습니다.
    - ⚠️ [정답 구성 원칙]: 수식이나 공식 자체를 묻고 싶다면 반드시 '객관식'으로 질문을 구성하십시오. 주관식 표채우기 빈칸(\`[INPUT_1]\`)에는 단순히 '면모 구조 형성'이나 '이온 교환' 같은 5~6자 내외의 단순 용어 명칭은 **절대로 출제하지 마십시오.** 대신 **핵심 원리/개념을 관통하여 15자~20자 내외로 서술해야 하는 서술형 문구**이거나, 혹은 **특정 공학적 상황을 가정했을 때 대처 방안 및 어떻게 해야 하는가에 대해 15자~20자 내외로 명확히 답하는 구체적인 서술형 문구**를 정답으로 구성하십시오.
    - "type" 값: 반드시 "주관식 (표채우기)"
    - "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 소일네일링과 어스앵커 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 기술하십시오."). (⚠️ [지문 작성 수칙 - 매우 중요!]): "question" 본문에는 절대로 "INPUT_1", "INPUT_2" 또는 "[INPUT_1]" 같은 시스템 토큰명 자체를 노출하여 적지 마십시오. 대신 사용자가 직관적으로 알아볼 수 있도록 순서대로 "(A)", "(B)", "(C)", "(D)" 등으로 지칭하여 지문을 구성하십시오.
@@ -3314,12 +3349,13 @@ ${adjustmentsPrompt}
      * "rows": 각 행의 셀 데이터들을 담은 이중 배열. (⚠️ [비교 컬럼 전체 빈칸 비우기 수칙 - 극도로 중요!]): 첫 번째 '구분 항목' 열을 제외하고, 오른쪽에 위치하는 모든 비교/대비 대상 컬럼의 셀들은 단 하나의 텍스트 힌트도 남기지 말고 **무조건 전부 빈칸 토큰([INPUT_1], [INPUT_2] 등)으로 비워두십시오.** 일부 셀이 텍스트로 미리 채워져 있으면 사용자가 서로 반대 내용을 대입하여 정답을 쉽게 맞추므로 변별력이 사라집니다. 따라서 구분 컬럼을 제외한 내부는 **전부 입력창(3열 3행 테이블 기준 총 6칸 전체)**으로 구성해야 합니다. (예: rows 구조: [["지지 매커니즘", "[INPUT_1]", "[INPUT_2]"], ["설계 핵심 변수", "[INPUT_3]", "[INPUT_4]"], ["주요 적용 지반", "[INPUT_5]", "[INPUT_6]"]])
    - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "인장 및 전단력에 대한 수동적 저항", "INPUT_2": "정착지반 마찰저항 및 인장력 선도입"}). 각 모범 답안은 핵심 메커니즘을 상세히 기술하는 **15자~20자 내외의 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
    - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
-   [6번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
+
+   [8번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
    - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
    - "type" 값: 반드시 "객관식 (4지선다)"
-   - 개수: 반드시 정확히 7개의 객관식 문제를 출제해야 합니다.
-   - ⚠️ [계산문제 비중 조건 - 매우 중요]: 전체 7개의 객관식 문제 중, **반드시 정확히 3개의 문제는 구체적인 조건 수치(예: 지반 물성치, 하중값 등)를 대입하여 계산 공식/식 자체를 활용해야 정답을 도출할 수 있는 '정량적 수치 계산 문제'로 출제**하십시오. (만약 계산 공식을 직접 적용하기 애매한 정성적 토픽인 경우에도, 공학적 비례/반비례 관계나 계산에 필요한 매개변수를 유추하는 문제 등으로 대체하여 계산적 성격을 띤 문제를 최대한 3문제 확보하십시오.)
-   - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
+   - 개수: 반드시 정확히 6개의 객관식 문제를 출제해야 합니다.
+   - ⚠️ [계산문제 비중 조건 - 매우 중요]: 전체 6개의 객관식 문제 중, **반드시 정확히 2개의 문제는 구체적인 조건 수치(예: 지반 물성치, 하중값 등)를 대입하여 계산 공식/식 자체를 활용해야 정답을 도출할 수 있는 '정량적 수치 계산 문제'로 출제**하십시오. (만약 계산 공식을 직접 적용하기 애매한 정성적 토픽인 경우에도, 공학적 비례/반비례 관계나 계산에 필요한 매개변수를 유추하는 문제 등으로 대체하여 계산적 성격을 띤 문제를 최대한 2문제 확보하십시오.)
+   - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래 of "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
    - "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
    - "options": 4개의 보기 문항으로 구성된 문자열 배열.
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
@@ -3351,6 +3387,12 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "structure": "- $기호1$: 간단한 명사형 의미"
   },
   {
+    "type": "주관식 (단답형)",
+    "question": "토픽의 핵심적인 공학적 원리를 묻거나(3번), 실제 공학적 문제 시나리오와 해결 대책을 묻는 질문 내용(4번)",
+    "answer": "핵심 내용이 포함된 1줄 서술형 답안 문구",
+    "explanation": "상세한 해설"
+  },
+  {
     "type": "주관식 (표채우기)",
     "question": "다음 표의 빈칸 (A), (B)에 들어갈 내용을 알맞게 서술하시오.",
     "tableData": {
@@ -3373,7 +3415,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 3)과 객관식(7개)을 순서대로 배열하여 총 12개 완성)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 단답형 2, 표채우기 3)과 객관식(6개)을 순서대로 배열하여 총 13개 완성)
 ]
 `;
 
