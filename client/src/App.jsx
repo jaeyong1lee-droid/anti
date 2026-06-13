@@ -3607,7 +3607,7 @@ export default function App() {
   // Close floating calculator when switching views/tabs
   useEffect(() => {
     setShowFloatingCalculator(false);
-  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
+  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic?.id, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
   const [lastActiveReview, setLastActiveReview] = useState(null);
   useEffect(() => {
     const saved = localStorage.getItem('anti_last_active_review');
