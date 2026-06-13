@@ -853,12 +853,28 @@ function convertMarkdownTablesToHtml(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+    const hasPipe = trimmed.includes('|');
+
+    if (hasPipe) {
+      let normalizedRow = trimmed;
+      if (!normalizedRow.startsWith('|')) normalizedRow = '| ' + normalizedRow;
+      if (!normalizedRow.endsWith('|')) normalizedRow = normalizedRow + ' |';
+
       if (!inTable) {
-        inTable = true;
-        tableRows = [];
+        const nextLine = lines[i + 1];
+        const nextTrimmed = nextLine ? nextLine.trim() : '';
+        const isNextSeparator = nextTrimmed.includes('|') && 
+                                /^[\s|:-]+$/.test(nextTrimmed) && 
+                                nextTrimmed.includes('-');
+        if (isNextSeparator) {
+          inTable = true;
+          tableRows = [normalizedRow];
+        } else {
+          processedLines.push(line);
+        }
+      } else {
+        tableRows.push(normalizedRow);
       }
-      tableRows.push(trimmed);
     } else {
       if (inTable) {
         const htmlTable = buildHtmlTableFromMarkdownRows(tableRows);
@@ -1350,12 +1366,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 });
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, showAnswers, katexLoaded, tableGradingResults }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, showAnswers, katexLoaded, tableGradingResults, weight = 10 }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
 
   const { headers, rows } = q.tableData;
+  const inputIds = Object.keys(q.answers || {});
 
   const handleInputChange = (inputId, val) => {
     setTableAnswers(prev => ({
@@ -1425,23 +1442,28 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               placeholder={`${inputLetter} 입력`}
                               className={inputClassName}
                             />
-                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (
-                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-amber-400 select-none bg-slate-950 px-1 py-0.5 rounded border border-amber-500/20 shadow">
-                                {gradingResult.score}점
-                              </span>
-                            )}
+                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
+                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                              const displayScore = Math.round(cellObtained * 10) / 10;
+                              return (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
+                                  {displayScore}점
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         {revealed ? (
-                          !isCorrect ? (
+                          <div className="flex flex-col gap-0.5 items-center w-full">
                             <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
                               {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                             </span>
-                          ) : (
-                            <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                              {inputLetter} 일치함
-                            </span>
-                          )
+                            {!isCorrect && gradingResult?.reason && (
+                              <span className="text-[9px] text-rose-400 font-bold leading-tight select-text mt-0.5 text-center max-w-[180px] break-words">
+                                이유: {gradingResult.reason}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           showAnswers && (
                             <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
@@ -4106,6 +4128,93 @@ export default function App() {
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
   };
 
+  const getReviewTotalScore = () => {
+    let total = 0;
+    const scoredList = aiQuestions.filter((_, i) => i >= 2);
+    const M = scoredList.length;
+    if (M === 0) return 0;
+    const baseWeight = Math.floor(100 / M);
+    const remainder = 100 - (baseWeight * M);
+
+    aiQuestions.forEach((q, idx) => {
+      if (idx < 2) return;
+      const scoredIndex = idx - 2;
+      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
+      const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
+
+      if (isMC) {
+        const userAnswer = selectedAnswers[idx];
+        const isCorrect = userAnswer !== undefined && userAnswer === q.answer;
+        if (isCorrect) {
+          total += W;
+        }
+      } else if (q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        let sumVal = 0;
+        let countVal = inputIds.length;
+        inputIds.forEach(inputId => {
+          const grading = tableGradingResults[`${idx}_${inputId}`];
+          if (grading && grading.score !== undefined) {
+            sumVal += grading.score;
+          }
+        });
+        if (countVal > 0) {
+          total += (sumVal / (countVal * 10)) * W;
+        }
+      } else {
+        const grading = tableGradingResults[`${idx}_INPUT`];
+        if (grading && grading.score !== undefined) {
+          total += (grading.score / 10) * W;
+        }
+      }
+    });
+    return Math.round(total * 10) / 10;
+  };
+
+  const getExamTotalScore = () => {
+    let total = 0;
+    const scoredList = examQuestions.filter((_, i) => i >= 2);
+    const M = scoredList.length;
+    if (M === 0) return 0;
+    const baseWeight = Math.floor(100 / M);
+    const remainder = 100 - (baseWeight * M);
+
+    examQuestions.forEach((q, idx) => {
+      if (idx < 2) return;
+      const scoredIndex = idx - 2;
+      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
+      const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
+
+      if (isMC) {
+        const userAnswer = examAnswers[idx];
+        const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+        const isCorrect = userAnswer !== undefined && normalizeAns(userAnswer) === normalizeAns(q.answer);
+        if (isCorrect) {
+          total += W;
+        }
+      } else if (q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        let sumVal = 0;
+        let countVal = inputIds.length;
+        inputIds.forEach(inputId => {
+          const grading = tableGradingResults[`${idx}_${inputId}`];
+          if (grading && grading.score !== undefined) {
+            sumVal += grading.score;
+          }
+        });
+        if (countVal > 0) {
+          total += (sumVal / (countVal * 10)) * W;
+        }
+      } else {
+        const grading = tableGradingResults[`${idx}_INPUT`];
+        if (grading && grading.score !== undefined) {
+          total += (grading.score / 10) * W;
+        }
+      }
+    });
+    return Math.round(total * 10) / 10;
+  };
+
   const gradeSubjectiveQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     const userAnswer = tableAnswers[`${qIdx}_INPUT`] || '';
@@ -5427,19 +5536,25 @@ export default function App() {
 
     // Q1, Q2 제외하고 Q3부터 종합 점수(배점) 계산
     let totalScoreObtained = 0;
-    let scoredQuestionsCount = 0;
     let correctCount = 0;
+
+    const scoredList = aiQuestions.filter((_, i) => i >= 2);
+    const M = scoredList.length;
+    const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+    const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
 
     aiQuestions.forEach((q, idx) => {
       if (idx < 2) return; // Q1, Q2 제외
-      scoredQuestionsCount++;
+      
+      const scoredIndex = idx - 2;
+      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
 
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
         const userAnswer = selectedAnswers[idx];
         const isCorrect = userAnswer === q.answer;
         if (isCorrect) {
-          totalScoreObtained += 10;
+          totalScoreObtained += W;
           correctCount++;
         }
       } else if (q.tableData) {
@@ -5453,26 +5568,27 @@ export default function App() {
           }
         });
         if (countVal > 0) {
-          const questionScore = (sumVal / (countVal * 10)) * 10;
+          const questionScore = (sumVal / (countVal * 10)) * W;
           totalScoreObtained += questionScore;
-          if (questionScore >= 5) {
+          if (questionScore >= (W / 2)) {
             correctCount++;
           }
         }
       } else {
         const grading = tableGradingResults[`${idx}_INPUT`];
         if (grading && grading.score !== undefined) {
-          totalScoreObtained += grading.score;
-          if (grading.score >= 5) {
+          const questionScore = (grading.score / 10) * W;
+          totalScoreObtained += questionScore;
+          if (questionScore >= (W / 2)) {
             correctCount++;
           }
         }
       }
     });
 
-    const totalMC = scoredQuestionsCount;
+    const totalMC = M;
     const correctMC = correctCount;
-    const scoreMC = totalMC > 0 ? Math.round((totalScoreObtained / (totalMC * 10)) * 100) : 100;
+    const scoreMC = totalMC > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained))) : 100;
 
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
@@ -10290,7 +10406,9 @@ export default function App() {
                   >
                     종료
                   </button>
-
+                  <span className="text-2xl sm:text-3xl font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                    {getReviewTotalScore()} / 100점
+                  </span>
                 </>
               )}
             </div>
@@ -10344,6 +10462,12 @@ export default function App() {
                       return !itemMC;
                     }).length : -1;
 
+                    const scoredList = aiQuestions.filter((_, i) => i >= 2);
+                    const M = scoredList.length;
+                    const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                    const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                    const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+
                     const subtypeBadgeColor =
                       q.type?.includes('개요') || q.type?.includes('인출') ? 'bg-sky-700' :
                       q.type?.includes('공식') ? 'bg-rose-700' :
@@ -10366,7 +10490,7 @@ export default function App() {
                                   const isCorrect = userAnswer === q.answer;
                                   return (
                                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {isCorrect ? 10 : 0} / 10점
+                                      득점: {isCorrect ? W : 0} / {W}점
                                     </span>
                                   );
                                 }
@@ -10383,18 +10507,23 @@ export default function App() {
                                     }
                                   });
                                   if (hasGradedVal) {
+                                    const countVal = inputIds.length;
+                                    const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                    const displayScore = Math.round(questionScore * 100) / 100;
                                     return (
                                       <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {obtainedVal} / {inputIds.length * 10}점
+                                        득점: {displayScore} / {W}점
                                       </span>
                                     );
                                   }
                                 } else {
                                   const grading = tableGradingResults[`${idx}_INPUT`];
                                   if (grading && grading.score !== undefined) {
+                                    const questionScore = (grading.score / 10) * W;
+                                    const displayScore = Math.round(questionScore * 100) / 100;
                                     return (
                                       <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {grading.score} / 10점
+                                        득점: {displayScore} / {W}점
                                       </span>
                                     );
                                   }
@@ -10743,16 +10872,26 @@ export default function App() {
                         {isSubj && (
                           q.type === '주관식 (표채우기)' ? (
                             <div className="space-y-3 w-full">
-                              <TableQuiz 
-                                questionIdx={idx} 
-                                q={q} 
-                                tableAnswers={tableAnswers} 
-                                setTableAnswers={setTableAnswers} 
-                                revealed={isRevd} 
-                                showAnswers={!!showAnswersState[idx]}
-                                katexLoaded={katexLoaded} 
-                                tableGradingResults={tableGradingResults}
-                              />
+                              {(() => {
+                                const scoredList = aiQuestions.filter((_, i) => i >= 2);
+                                const M = scoredList.length;
+                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                                const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                return (
+                                  <TableQuiz 
+                                    questionIdx={idx} 
+                                    q={q} 
+                                    tableAnswers={tableAnswers} 
+                                    setTableAnswers={setTableAnswers} 
+                                    revealed={isRevd} 
+                                    showAnswers={!!showAnswersState[idx]}
+                                    katexLoaded={katexLoaded} 
+                                    tableGradingResults={tableGradingResults}
+                                    weight={W}
+                                  />
+                                );
+                              })()}
                               {!isRevd ? (
                                 <button
                                   disabled={gradingLoading[idx]}
@@ -10806,8 +10945,8 @@ export default function App() {
                                       }`}
                                     />
                                     {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-amber-400 select-none bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/20 shadow">
-                                        {tableGradingResults[`${idx}_INPUT`].score}점
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
+                                        {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                       </span>
                                     )}
                                   </div>
@@ -11581,7 +11720,9 @@ export default function App() {
               >
                 종료
               </button>
-
+              <span className="text-2xl sm:text-3xl font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                {getExamTotalScore()} / 100점
+              </span>
             </div>
           </div>
               <div 
@@ -11611,6 +11752,12 @@ export default function App() {
                   const isCorrect = answered && normalizeAns(examAnswers[idx]) === normalizeAns(q.answer);
                   const isRevd = !!examRevealed[idx];
 
+                  const scoredList = examQuestions.filter((_, i) => i >= 2);
+                  const M = scoredList.length;
+                  const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                  const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                  const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+
                   const subtypeBadgeColor =
                     q.subtype === '개요' ? 'bg-sky-700' :
                     q.subtype === '공식' ? 'bg-rose-700' :
@@ -11630,10 +11777,10 @@ export default function App() {
                             if (isMC) {
                               const userAnswer = examAnswers[idx];
                               if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-                                const isCorrect = userAnswer === q.answer;
+                                const isCorrect = normalizeAns(userAnswer) === normalizeAns(q.answer);
                                 return (
                                   <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                    득점: {isCorrect ? 10 : 0} / 10점
+                                    득점: {isCorrect ? W : 0} / {W}점
                                   </span>
                                 );
                               }
@@ -11650,18 +11797,23 @@ export default function App() {
                                   }
                                 });
                                 if (hasGradedVal) {
+                                  const countVal = inputIds.length;
+                                  const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                  const displayScore = Math.round(questionScore * 100) / 100;
                                   return (
                                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {obtainedVal} / {inputIds.length * 10}점
+                                      득점: {displayScore} / {W}점
                                     </span>
                                   );
                                 }
                               } else {
                                 const grading = tableGradingResults[`${idx}_INPUT`];
                                 if (grading && grading.score !== undefined) {
+                                  const questionScore = (grading.score / 10) * W;
+                                  const displayScore = Math.round(questionScore * 100) / 100;
                                   return (
                                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {grading.score} / 10점
+                                      득점: {displayScore} / {W}점
                                     </span>
                                   );
                                 }
@@ -12028,16 +12180,26 @@ export default function App() {
                       {isSubj && (
                           q.type === '주관식 (표채우기)' ? (
                             <div className="space-y-3 w-full">
-                              <TableQuiz 
-                                questionIdx={idx} 
-                                q={q} 
-                                tableAnswers={tableAnswers} 
-                                setTableAnswers={setTableAnswers} 
-                                revealed={!!examRevealed[idx]} 
-                                showAnswers={!!examShowAnswersState[idx]}
-                                katexLoaded={katexLoaded} 
-                                tableGradingResults={tableGradingResults}
-                              />
+                              {(() => {
+                                const scoredList = examQuestions.filter((_, i) => i >= 2);
+                                const M = scoredList.length;
+                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                                const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                return (
+                                  <TableQuiz 
+                                    questionIdx={idx} 
+                                    q={q} 
+                                    tableAnswers={tableAnswers} 
+                                    setTableAnswers={setTableAnswers} 
+                                    revealed={!!examRevealed[idx]} 
+                                    showAnswers={!!examShowAnswersState[idx]}
+                                    katexLoaded={katexLoaded} 
+                                    tableGradingResults={tableGradingResults}
+                                    weight={W}
+                                  />
+                                );
+                              })()}
                               {!examRevealed[idx] ? (
                                 <button
                                   disabled={gradingLoading[idx]}
@@ -12091,8 +12253,8 @@ export default function App() {
                                       }`}
                                     />
                                     {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-amber-400 select-none bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/20 shadow">
-                                        {tableGradingResults[`${idx}_INPUT`].score}점
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
+                                        {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                       </span>
                                     )}
                                   </div>
