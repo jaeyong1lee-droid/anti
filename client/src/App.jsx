@@ -10046,10 +10046,13 @@ export default function App() {
 
                         {(() => {
                           const { questionText, tableData } = parseQuestionTable(q);
+                          const cleanMcQuestionText = isMC 
+                            ? questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ') 
+                            : questionText;
                           return (
                             <>
                               <div className="text-[17px] font-bold text-white leading-relaxed">
-                                <LatexRenderer text={questionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                <LatexRenderer text={cleanMcQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                               {isMC && tableData && (
                                 <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
@@ -11238,10 +11241,13 @@ export default function App() {
 
                       {(() => {
                         const { questionText, tableData } = parseQuestionTable(q);
+                        const cleanMcQuestionText = isMC 
+                          ? questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ') 
+                          : questionText;
                         return (
                           <>
                             <div className="text-[17px] font-bold text-white leading-relaxed">
-                              <LatexRenderer text={questionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                              <LatexRenderer text={cleanMcQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                             </div>
                             {isMC && tableData && (
                               <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
