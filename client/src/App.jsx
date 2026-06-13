@@ -12032,7 +12032,7 @@ export default function App() {
                                     if (isMobileLandscape || isHeavyHtml(q.formula)) {
                                       handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
                                     } else {
-                                      setFormulaRevealed(prev => ({ ...prev, [idx]: true }));
+                                      setFormulaRevealed({ [idx]: true });
                                       scrollToFormulaCard(idx);
                                     }
                                   }}
