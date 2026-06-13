@@ -1395,6 +1395,22 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const match = inputId.match(/\d+/);
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
+
+                  let inputClassName = `w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
+                  if (revealed) {
+                    if (value) {
+                      if (isCorrect) {
+                        inputClassName += 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
+                      } else {
+                        inputClassName += 'border-rose-500 bg-rose-950/20 text-rose-300';
+                      }
+                    } else {
+                      inputClassName += 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
+                    }
+                  } else {
+                    inputClassName += 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500';
+                  }
+
                   return (
                     <td key={cIdx} className="p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[130px]">
                       <div className="flex flex-col gap-1 justify-center items-center w-full">
@@ -1403,16 +1419,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           <input
                             type="text"
                             disabled={revealed}
-                            value={value}
+                            value={revealed && !value ? correctAnswer : value}
                             onChange={(e) => handleInputChange(inputId, e.target.value)}
                             placeholder={`${inputLetter} 입력`}
-                            className={`w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
-                              revealed 
-                                ? (isCorrect 
-                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
-                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                                : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
-                            }`}
+                            className={inputClassName}
                           />
                         </div>
                         {revealed && !isCorrect && (
@@ -10554,10 +10564,18 @@ export default function App() {
                                     <input
                                       type="text"
                                       disabled={isRevd}
-                                      value={tableAnswers[`${idx}_INPUT`] || ''}
+                                      value={isRevd && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
                                       onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
                                       placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className="w-full bg-slate-900 border border-slate-750 focus:border-slate-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
+                                      className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl px-3 py-2 text-xs focus:outline-none transition-all ${
+                                        isRevd
+                                          ? (tableAnswers[`${idx}_INPUT`]
+                                              ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
+                                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+                                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                                              : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
+                                          : 'border-slate-750 text-white'
+                                      }`}
                                     />
                                   </div>
                                 </div>
@@ -11748,10 +11766,18 @@ export default function App() {
                                     <input
                                       type="text"
                                       disabled={!!examRevealed[idx]}
-                                      value={tableAnswers[`${idx}_INPUT`] || ''}
+                                      value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
                                       onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
                                       placeholder="답안을 입력하세요 (한글 10~15자 내외)"
-                                      className="w-full bg-slate-900 border border-slate-750 focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
+                                      className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl px-3 py-2 text-xs focus:outline-none transition-all ${
+                                        !!examRevealed[idx]
+                                          ? (tableAnswers[`${idx}_INPUT`]
+                                              ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
+                                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+                                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                                              : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
+                                          : 'border-slate-750 text-white'
+                                      }`}
                                     />
                                   </div>
                                 </div>
