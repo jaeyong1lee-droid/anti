@@ -797,6 +797,84 @@ const renderKatexString = (math, options) => {
   return options.displayMode ? `$$${math}$$` : `$${math}$`;
 };
 
+function buildHtmlTableFromMarkdownRows(rows) {
+  if (rows.length < 2) return rows.join('\n');
+
+  const headers = rows[0]
+    .split('|')
+    .slice(1, -1)
+    .map(cell => cell.trim());
+
+  const separator = rows[1];
+  if (!separator.includes('---')) {
+    return rows.join('\n');
+  }
+
+  const bodyRows = [];
+  for (let i = 2; i < rows.length; i++) {
+    const cells = rows[i]
+      .split('|')
+      .slice(1, -1)
+      .map(cell => cell.trim());
+    bodyRows.push(cells);
+  }
+
+  let html = `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
+  html += `<table class="w-full text-center border-collapse text-sm">`;
+  html += `<thead>`;
+  html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
+  headers.forEach(h => {
+    html += `<th class="p-3 font-extrabold border-r border-slate-800 last:border-r-0">${h}</th>`;
+  });
+  html += `</tr>`;
+  html += `</thead>`;
+  html += `<tbody>`;
+  bodyRows.forEach(row => {
+    html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
+    row.forEach(cell => {
+      html += `<td class="p-3 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody>`;
+  html += `</table>`;
+  html += `</div>`;
+
+  return html;
+}
+
+function convertMarkdownTablesToHtml(text) {
+  if (!text) return text;
+  const lines = text.split('\n');
+  let inTable = false;
+  let tableRows = [];
+  const processedLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableRows = [];
+      }
+      tableRows.push(trimmed);
+    } else {
+      if (inTable) {
+        const htmlTable = buildHtmlTableFromMarkdownRows(tableRows);
+        processedLines.push(htmlTable);
+        inTable = false;
+      }
+      processedLines.push(line);
+    }
+  }
+  if (inTable) {
+    const htmlTable = buildHtmlTableFromMarkdownRows(tableRows);
+    processedLines.push(htmlTable);
+  }
+  return processedLines.join('\n');
+}
+
 // Dynamic KaTeX loader & Math text renderer
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
@@ -948,6 +1026,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
         .replace(/\r\n/g, '\n')     // CR+LF → LF
         .replace(/\n{3,}/g, '\n\n') // max 2 consecutive newlines
         .trim();
+
+  if (typeof cleanedText === 'string') {
+    cleanedText = convertMarkdownTablesToHtml(cleanedText);
+  }
 
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
   // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
