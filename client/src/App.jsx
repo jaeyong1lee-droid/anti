@@ -12123,25 +12123,30 @@ export default function App() {
                       </p>
                     </div>
                   ) : formulaChatHistory.length === 0 ? (
-                    <div className="text-center py-12 px-4 flex flex-col items-center justify-center min-h-full">
-                      <div className="p-3 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-4 select-none">
-                        <Sigma size={24} />
-                      </div>
-                      <h4 className="text-xs text-slate-350 font-black mb-3 select-text px-2 text-center">
-                        [{formulaQuestions[selectedFormulaIdx]?.title || `공식 ${selectedFormulaIdx + 1}`}]
-                      </h4>
-                      {formulaQuestions[selectedFormulaIdx]?.formula && (
-                        <div className="w-full max-w-[290px] bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-slate-200 select-text mb-4 text-center overflow-x-auto custom-vertical-scrollbar">
-                          <LatexRenderer 
-                            text={formulaQuestions[selectedFormulaIdx].formula} 
-                            katexLoaded={katexLoaded} 
-                            isMarkdown={true} 
-                          />
-                        </div>
-                      )}
-                      <p className="text-[10px] text-slate-500 max-w-[220px] leading-relaxed select-none">
-                        이 공식에 대해 궁금한 점(개념, 유도과정, 적용조건 등)을 아래 입력창에 질문해 보세요.
-                      </p>
+                    <div className="w-full px-4 py-4 flex flex-col items-center justify-start min-h-0">
+                      {(() => {
+                        const formulaStr = formulaQuestions[selectedFormulaIdx]?.formula || '';
+                        const lines = formulaStr.split('\n');
+                        const mathLines = lines.filter(line => {
+                          const trimmed = line.trim();
+                          if (!trimmed) return false;
+                          if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                            return false;
+                          }
+                          return true;
+                        });
+                        const formulaOnly = mathLines.join('\n').trim();
+                        
+                        return formulaOnly ? (
+                          <div className="w-full bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 text-sm text-slate-200 leading-relaxed text-left overflow-x-auto custom-vertical-scrollbar mb-4">
+                            <LatexRenderer 
+                              text={formulaOnly} 
+                              katexLoaded={katexLoaded} 
+                              isMarkdown={true} 
+                            />
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   ) : (
                     formulaChatHistory.map((msg, mIdx) => {
