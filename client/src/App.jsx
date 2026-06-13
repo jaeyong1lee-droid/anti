@@ -893,7 +893,7 @@ function convertMarkdownTablesToHtml(text) {
 }
 
 // Dynamic KaTeX loader & Math text renderer
-const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
   if (!text) return null;
 
   const longPressTimer = useRef(null);
@@ -909,7 +909,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     
     const cleanMath = mathTex.trim();
     if (typeof window.__handleFormulaConfirmRequest === 'function') {
-      window.__handleFormulaConfirmRequest(cleanMath, text);
+      window.__handleFormulaConfirmRequest(cleanMath, text, formulaSource);
     }
   };
 
@@ -1439,7 +1439,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-[10px] sm:text-xs pl-1.5 pr-8 py-0.5 sm:pl-2 sm:pr-12 sm:py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                  let inputClassName = `w-full text-[10px] sm:text-sm pl-1.5 pr-8 py-0.5 sm:pl-3 sm:pr-14 sm:py-1.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
                     revealed
                       ? getTableInputColorClasses(gradingResult, isCorrect, value)
                       : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
@@ -1454,7 +1454,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     >
                       <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
                         <div className="flex items-center gap-1 sm:gap-1.5 w-full">
-                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 select-none min-w-[12px] sm:min-w-[14px] text-right">{inputLetter}</span>
+                          <span className="text-[10px] sm:text-sm font-bold text-slate-400 select-none min-w-[12px] sm:min-w-[14px] text-right">{inputLetter}</span>
                           <div className="relative flex-grow">
                             {revealed && value && !isCorrect ? (
                               <div className={`${inputClassName} flex items-center flex-wrap gap-1 select-text min-h-[26px] sm:min-h-[30px] pr-6 sm:pr-8`}>
@@ -1477,7 +1477,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                               const displayScore = Math.round(cellObtained * 10) / 10;
                               return (
-                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-[9px] font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
+                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-[11px] font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
                                   {displayScore}점
                                 </span>
                               );
@@ -1485,12 +1485,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <span className="text-[8.5px] sm:text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                          <span className="text-[8.5px] sm:text-xs text-emerald-450 font-black flex items-center gap-1 select-text">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         ) : (
                           showAnswers && (
-                            <span className="text-[8.5px] sm:text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
+                            <span className="text-[8.5px] sm:text-xs text-slate-400 font-bold flex items-center gap-1 select-text">
                               {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                             </span>
                           )
@@ -4141,6 +4141,7 @@ export default function App() {
   const [editingFormulaText, setEditingFormulaText] = useState("");
   const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
   const [formulaConfirmTarget, setFormulaConfirmTarget] = useState(null);
+  const [tutorAttachedFormula, setTutorAttachedFormula] = useState(null);
   const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
 
   
@@ -4504,7 +4505,7 @@ export default function App() {
   examTopicRefForFormula.current = examTopic;
 
   useEffect(() => {
-    window.__handleFormulaConfirmRequest = (math, fullText) => {
+    window.__handleFormulaConfirmRequest = (math, fullText, source) => {
       let contextText = fullText || "";
       const selTopic = selectedTopicRefForFormula.current;
       const exTopic = examTopicRefForFormula.current;
@@ -4514,7 +4515,7 @@ export default function App() {
       } else if (exTopic && exTopic.title) {
         contextText = `[현재 시험 중인 토픽]: ${exTopic.title}\n\n${contextText}`;
       }
-      setFormulaConfirmTarget({ math, fullText: contextText });
+      setFormulaConfirmTarget({ math, fullText: contextText, source: source || 'main' });
     };
     return () => {
       delete window.__handleFormulaConfirmRequest;
@@ -7153,7 +7154,7 @@ export default function App() {
           <div className="mt-2.5 pt-2.5 border-t border-violet-500/20 select-text">
             <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
             <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-slate-900/60 p-3 rounded-xl border border-violet-500/10 shadow-inner">
-              <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+              <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
         )}
@@ -7392,6 +7393,14 @@ export default function App() {
     }
     setAttachedImage(null);
     
+    // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가
+    let apiMessage = userMessage;
+    if (tutorAttachedFormula) {
+      apiMessage = `[수험생이 첨부한 공식: ${tutorAttachedFormula}]\n\n${userMessage}`;
+    }
+    const sentAttachedFormula = tutorAttachedFormula;
+    setTutorAttachedFormula(null); // 전송 후 비움
+
     const userMsgIdx = chatHistory.length;
     setChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
     setIsChatLoading(true);
@@ -7406,7 +7415,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
-          message: userMessage,
+          message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null
         })
       });
@@ -11015,7 +11024,7 @@ export default function App() {
                                           <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
                                             <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
                                             <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                              <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                              <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
                                             </div>
                                           </div>
                                         )}
@@ -11414,9 +11423,30 @@ export default function App() {
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
-                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                  <div className="flex flex-col gap-4 w-full">
+                    {tutorAttachedFormula && (
+                      <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => setTutorAttachedFormula(null)}
+                          className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
+                          title="공식 제거"
+                        >
+                          ✕
+                        </button>
+                        <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
+                        <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
+                          <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                          이 공식에 대해 아래 입력창에 질문해보세요!
+                        </p>
+                      </div>
+                    )}
+                    <div className="text-center py-10 opacity-50">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                      <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                    </div>
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
@@ -11445,6 +11475,7 @@ export default function App() {
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
                             enableAddFormula={true}
+                            formulaSource="tutor"
                             isMarkdown={true}
                           />
                         )}
@@ -11513,9 +11544,13 @@ export default function App() {
               <div className="p-2.5 bg-violet-500/10 text-violet-400 rounded-full">
                 <Brain size={22} className="text-violet-500 animate-pulse" />
               </div>
-              <h3 className="text-base font-extrabold text-white">필수공식 추가</h3>
+              <h3 className="text-base font-extrabold text-white">
+                {formulaConfirmTarget.source === 'tutor' ? '필수공식 추가' : '수식 선택 작업'}
+              </h3>
               <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
-                선택한 수식을 필수공식 리스트에 추가하시겠습니까?
+                {formulaConfirmTarget.source === 'tutor' 
+                  ? '선택한 수식을 필수공식 리스트에 추가하시겠습니까?' 
+                  : '선택한 수식에 대해 수행할 작업을 골라주세요.'}
               </p>
               <div className="bg-slateCustom-950/60 p-3 border border-slate-800/80 rounded-xl w-full text-center overflow-x-auto select-text">
                 <LatexRenderer text={`$$${formulaConfirmTarget.math}$$`} katexLoaded={katexLoaded} />
@@ -11523,20 +11558,34 @@ export default function App() {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-2.5 justify-center">
+            <div className="flex flex-col gap-2 w-full">
               <button
                 onClick={() => {
                   const target = formulaConfirmTarget;
                   setFormulaConfirmTarget(null);
                   handleAddSpecificFormula(target.math, target.fullText);
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-slate-300/10"
+                className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-violet-600/10"
               >
-                추가하기
+                필수공식 추가하기
               </button>
+              {formulaConfirmTarget.source !== 'tutor' && (
+                <button
+                  onClick={() => {
+                    const target = formulaConfirmTarget;
+                    setFormulaConfirmTarget(null);
+                    setTutorAttachedFormula(target.math);
+                    setReviewMobileTab('tutor');
+                    setExamMobileTab('tutor');
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
+                >
+                  AI 튜터로 전송
+                </button>
+              )}
               <button
                 onClick={() => setFormulaConfirmTarget(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 active:scale-98 cursor-pointer"
               >
                 취소
               </button>
@@ -12362,7 +12411,7 @@ export default function App() {
                                           <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
                                             <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
                                             <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                              <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} isMarkdown={true} />
+                                              <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
                                             </div>
                                           </div>
                                         )}
@@ -12730,9 +12779,30 @@ export default function App() {
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
-                  <div className="text-center py-10 opacity-50">
-                    <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
-                    <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                  <div className="flex flex-col gap-4 w-full">
+                    {tutorAttachedFormula && (
+                      <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => setTutorAttachedFormula(null)}
+                          className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
+                          title="공식 제거"
+                        >
+                          ✕
+                        </button>
+                        <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
+                        <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
+                          <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                          이 공식에 대해 아래 입력창에 질문해보세요!
+                        </p>
+                      </div>
+                    )}
+                    <div className="text-center py-10 opacity-50">
+                      <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
+                      <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
+                    </div>
                   </div>
                 ) : (
                   chatHistory.map((msg, i) => (
@@ -12761,6 +12831,7 @@ export default function App() {
                             text={msg.text} 
                             katexLoaded={katexLoaded} 
                             enableAddFormula={true}
+                            formulaSource="tutor"
                             isMarkdown={true}
                           />
                         )}
@@ -13730,6 +13801,7 @@ export default function App() {
                               katexLoaded={katexLoaded} 
                               isMarkdown={true} 
                               enableAddFormula={true}
+                              formulaSource="tutor"
                             />
                           </div>
                         ) : null;
@@ -13751,7 +13823,7 @@ export default function App() {
                                 ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
                                 : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
                             }`}>
-                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
                             </div>
                           </div>
                         );
