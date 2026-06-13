@@ -3890,13 +3890,16 @@ export default function App() {
 
   // Close floating calculator auto-toggle is now handled via visibility hiding rather than unmounting
 
-  // Load chat history when selectedTopic changes
+  // Load saved states (formulaChatHistory, selectedFormulaIdx, formulaMobileTab) when selectedTopic changes
   useEffect(() => {
-    const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
+    const topicKey = selectedTopic?.id || 'default';
+    
+    // 1) Load Chat History
+    const chatKey = `anti_formula_chat_history_${topicKey}`;
+    const savedChat = localStorage.getItem(chatKey);
+    if (savedChat) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedChat);
         if (Array.isArray(parsed)) {
           setFormulaChatHistory(parsed);
         } else {
@@ -3907,6 +3910,29 @@ export default function App() {
       }
     } else {
       setFormulaChatHistory([]);
+    }
+
+    // 2) Load Selected Formula Index
+    const idxKey = `anti_selected_formula_idx_${topicKey}`;
+    const savedIdx = localStorage.getItem(idxKey);
+    if (savedIdx !== null) {
+      const parsedIdx = parseInt(savedIdx, 10);
+      if (!isNaN(parsedIdx)) {
+        setSelectedFormulaIdx(parsedIdx);
+      } else {
+        setSelectedFormulaIdx(-1);
+      }
+    } else {
+      setSelectedFormulaIdx(-1);
+    }
+
+    // 3) Load Mobile Tab
+    const tabKey = `anti_formula_mobile_tab_${topicKey}`;
+    const savedTab = localStorage.getItem(tabKey);
+    if (savedTab) {
+      setFormulaMobileTab(savedTab);
+    } else {
+      setFormulaMobileTab('list');
     }
   }, [selectedTopic?.id]);
 
@@ -3919,6 +3945,18 @@ export default function App() {
       return nextArray;
     });
   };
+
+  // Save selectedFormulaIdx when it changes
+  useEffect(() => {
+    const key = `anti_selected_formula_idx_${selectedTopic?.id || 'default'}`;
+    localStorage.setItem(key, String(selectedFormulaIdx));
+  }, [selectedFormulaIdx, selectedTopic?.id]);
+
+  // Save formulaMobileTab when it changes
+  useEffect(() => {
+    const key = `anti_formula_mobile_tab_${selectedTopic?.id || 'default'}`;
+    localStorage.setItem(key, formulaMobileTab);
+  }, [formulaMobileTab, selectedTopic?.id]);
 
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
