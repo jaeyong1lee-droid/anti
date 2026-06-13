@@ -1,9 +1,10 @@
-// 1. 수식($)과 일반 텍스트 토큰 분리 (인라인 줄바꿈 오염 방지)
+// 1. 수식($), 일반 텍스트, 그리고 보호된 표 블록 분리 (인라인 줄바꿈 오염 방지)
 export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
+  // Match table blocks or inline/display math blocks
+  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -11,10 +12,14 @@ export function tokenizeForHealing(text) {
     if (before) tokens.push({ type: 'text', content: before });
     
     const content = match[0];
-    tokens.push({
-      type: content.startsWith('$$') ? 'block-math' : 'inline-math',
-      content
-    });
+    if (content.startsWith('<!--START_TABLE-->')) {
+      tokens.push({ type: 'table', content });
+    } else {
+      tokens.push({
+        type: content.startsWith('$$') ? 'block-math' : 'inline-math',
+        content
+      });
+    }
     lastIndex = regex.lastIndex;
   }
   const after = text.substring(lastIndex);
@@ -45,16 +50,16 @@ export function healBackslashes(str) {
 export function htmlTableToMarkdown(html) {
   if (!html) return html;
 
-  // 1. 깨진 공백 및 태그 정제
+  // 1. 깨진 공백 및 태그 정제 (시작 태그 및 끝 태그)
   let cleanHtml = html
     .replace(/<\s*table[^>]*>/gi, '<table>')
-    .replace(/<\s*\/\s*table\s*>/gi, '</table>')
+    .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
     .replace(/<\s*tr[^>]*>/gi, '<tr>')
-    .replace(/<\s*\/\s*tr\s*>/gi, '</tr>')
+    .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
     .replace(/<\s*th[^>]*>/gi, '<th>')
-    .replace(/<\s*\/\s*th\s*>/gi, '</th>')
+    .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
     .replace(/<\s*td[^>]*>/gi, '<td>')
-    .replace(/<\s*\/\s*td\s*>/gi, '</td>');
+    .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
 
   // 2. 정규식을 이용해 <table> 블록 전체 포착 후 마크다운 구조로 빌드
   return cleanHtml.replace(/<table>([\s\S]*?)<\/table>/gi, (match, tableContent) => {
@@ -70,7 +75,7 @@ export function htmlTableToMarkdown(html) {
       const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(cellMatch[1].trim());
+        cells.push(healLatexFormulas(cellMatch[1].trim(), true));
       }
       
       if (cells.length > 0) {
@@ -91,7 +96,7 @@ export function htmlTableToMarkdown(html) {
       rows.splice(1, 0, separator);
     }
 
-    return `\n\n${rows.join('\n')}\n\n`;
+    return `\n\n<!--START_TABLE-->\n${rows.join('\n')}\n<!--END_TABLE-->\n\n`;
   });
 }
 
@@ -143,11 +148,14 @@ function parseMarkdownTable(questionText) {
 }
 
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
-export function healLatexFormulas(text) {
+export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
 
-  // 1. Convert HTML tables to Markdown tables
-  let processed = htmlTableToMarkdown(text);
+  // 1. Convert HTML tables to Markdown tables (only on outer call)
+  let processed = text;
+  if (!isNested) {
+    processed = htmlTableToMarkdown(processed);
+  }
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
@@ -231,7 +239,14 @@ export function healLatexFormulas(text) {
   });
 
   // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 자동 병합 (수식 끊김 방지)
-  processed = processed.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
+  // 단, 마크다운 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지하기 위해 split 처리
+  const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
+  processed = sections.map(section => {
+    if (section.startsWith('<!--START_TABLE-->')) {
+      return section; // 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지
+    }
+    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
+  }).join('');
 
   // 불필요한 HTML 태그 정제
   processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
@@ -241,6 +256,9 @@ export function healLatexFormulas(text) {
 
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
+    if (token.type === 'table') {
+      return token.content; // Skip healing on the table structure itself!
+    }
     if (token.type === 'text') {
       let t = healBackslashes(token.content);
       
@@ -310,6 +328,10 @@ export function healLatexFormulas(text) {
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
   result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
 
+  if (!isNested) {
+    result = result.replace(/<!--START_TABLE-->\n?/g, '').replace(/\n?<!--END_TABLE-->/g, '');
+  }
+
   return result;
 }
 
@@ -353,13 +375,13 @@ function parseQuestionTableText(questionText) {
   if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
     let cleaned = questionText
       .replace(/<\s*table[^>]*>/gi, '<table>')
-      .replace(/<\s*\/table\s*>/gi, '</table>')
+      .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
       .replace(/<\s*tr[^>]*>/gi, '<tr>')
-      .replace(/<\s*\/tr\s*>/gi, '</tr>')
+      .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
       .replace(/<\s*th[^>]*>/gi, '<th>')
-      .replace(/<\s*\/th\s*>/gi, '</th>')
+      .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
       .replace(/<\s*td[^>]*>/gi, '<td>')
-      .replace(/<\s*\/td\s*>/gi, '</td>');
+      .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
 
     const tableRegex = /<table>([\s\S]*?)<\/table>/i;
     const match = cleaned.match(tableRegex);
@@ -401,7 +423,7 @@ function parseQuestionTableText(questionText) {
         };
         
         const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
-        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/\s*table\s*>/i);
+        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
         if (tableStartIdx !== -1 && tableEndIdx !== -1) {
           const endBracketIdx = questionText.indexOf('>', tableEndIdx);
           if (endBracketIdx !== -1) {

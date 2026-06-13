@@ -1532,13 +1532,13 @@ function parseQuestionTable(q) {
     // HTML 태그 내의 불필요한 공백을 표준 공백으로 정규화
     let cleaned = questionText
       .replace(/<\s*table[^>]*>/gi, '<table>')
-      .replace(/<\s*\/table\s*>/gi, '</table>')
+      .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
       .replace(/<\s*tr[^>]*>/gi, '<tr>')
-      .replace(/<\s*\/tr\s*>/gi, '</tr>')
+      .replace(/<\s*\/+\s*tr[^>]*>/gi, '</tr>')
       .replace(/<\s*th[^>]*>/gi, '<th>')
-      .replace(/<\s*\/th\s*>/gi, '</th>')
+      .replace(/<\s*\/+\s*th[^>]*>/gi, '</th>')
       .replace(/<\s*td[^>]*>/gi, '<td>')
-      .replace(/<\s*\/td\s*>/gi, '</td>');
+      .replace(/<\s*\/+\s*td[^>]*>/gi, '</td>');
 
     const tableRegex = /<table>([\s\S]*?)<\/table>/i;
     const match = cleaned.match(tableRegex);
@@ -1581,7 +1581,7 @@ function parseQuestionTable(q) {
         
         // 원본 질문 텍스트에서 표 태그 부분 제거
         const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
-        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/\s*table\s*>/i);
+        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
         if (tableStartIdx !== -1 && tableEndIdx !== -1) {
           const endBracketIdx = questionText.indexOf('>', tableEndIdx);
           if (endBracketIdx !== -1) {
