@@ -10218,7 +10218,7 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center gap-1 ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
                           : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
@@ -11373,7 +11373,7 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center gap-1 ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
                           : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
@@ -11731,7 +11731,7 @@ export default function App() {
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 ${
                     showFloatingCalculator 
                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
                       : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
@@ -12714,7 +12714,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 ${
                     showFloatingCalculator 
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                       : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
