@@ -257,7 +257,86 @@ export function healDeep(obj, parentKey = null) {
   return obj;
 }
 
-export function healQuizQuestionObject(q) { return healDeep(q); }
+function parseQuestionTableText(questionText) {
+  let tableData = null;
+  if (!questionText) return { questionText, tableData };
+  if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
+    let cleaned = questionText
+      .replace(/<\s*table[^>]*>/gi, '<table>')
+      .replace(/<\s*\/table\s*>/gi, '</table>')
+      .replace(/<\s*tr[^>]*>/gi, '<tr>')
+      .replace(/<\s*\/tr\s*>/gi, '</tr>')
+      .replace(/<\s*th[^>]*>/gi, '<th>')
+      .replace(/<\s*\/th\s*>/gi, '</th>')
+      .replace(/<\s*td[^>]*>/gi, '<td>')
+      .replace(/<\s*\/td\s*>/gi, '</td>');
+
+    const tableRegex = /<table>([\s\S]*?)<\/table>/i;
+    const match = cleaned.match(tableRegex);
+    if (match) {
+      const tableContent = match[1];
+      const trRegex = /<tr>([\s\S]*?)<\/tr>/gi;
+      let trMatch;
+      const headers = [];
+      const rows = [];
+      
+      while ((trMatch = trRegex.exec(tableContent)) !== null) {
+        const rowContent = trMatch[1];
+        const thRegex = /<th>([\s\S]*?)<\/th>/gi;
+        let thMatch;
+        const ths = [];
+        while ((thMatch = thRegex.exec(rowContent)) !== null) {
+          ths.push(thMatch[1].trim());
+        }
+        if (ths.length > 0) {
+          headers.push(...ths);
+          continue;
+        }
+        
+        const tdRegex = /<td>([\s\S]*?)<\/td>/gi;
+        let tdMatch;
+        const tds = [];
+        while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
+          tds.push(tdMatch[1].trim());
+        }
+        if (tds.length > 0) {
+          rows.push(tds);
+        }
+      }
+
+      if (rows.length > 0) {
+        tableData = {
+          headers: headers.length > 0 ? headers : rows[0],
+          rows: headers.length > 0 ? rows : rows.slice(1)
+        };
+        
+        const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
+        const tableEndIdx = questionText.toLowerCase().search(/<\s*\/\s*table\s*>/i);
+        if (tableStartIdx !== -1 && tableEndIdx !== -1) {
+          const endBracketIdx = questionText.indexOf('>', tableEndIdx);
+          if (endBracketIdx !== -1) {
+            const originalTableHtml = questionText.substring(tableStartIdx, endBracketIdx + 1);
+            questionText = questionText.replace(originalTableHtml, '').trim();
+          }
+        }
+      }
+    }
+  }
+  return { questionText, tableData };
+}
+
+export function healQuizQuestionObject(q) {
+  if (q && typeof q === 'object') {
+    if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
+      const parsed = parseQuestionTableText(q.question);
+      if (parsed.tableData) {
+        q.tableData = parsed.tableData;
+        q.question = parsed.questionText;
+      }
+    }
+  }
+  return healDeep(q);
+}
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
 export function healAnswersheetQuestionObject(a) { return healDeep(a); }
