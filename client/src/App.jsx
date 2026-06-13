@@ -1392,7 +1392,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                 <th 
                   key={hIdx} 
                   className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
-                    isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                    isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
@@ -1441,7 +1441,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     <td 
                       key={cIdx} 
                       className={`p-0.5 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[100px] sm:min-w-[130px] ${
-                        isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                        isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
                       }`}
                     >
                       <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
@@ -1495,7 +1495,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     <td 
                       key={cIdx} 
                       className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text ${
-                        isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                        isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
                       }`}
                     >
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
