@@ -10337,8 +10337,8 @@ export default function App() {
                 }`}
               >
           {/* Review Header */}
-          <div className="w-full flex flex-col items-stretch md:flex-row md:items-center justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 md:gap-8 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full md:w-auto px-1.5 md:px-0">
+          <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
+            <div className="flex items-start gap-3 min-w-0 w-full px-1.5 md:px-0">
               <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Brain size={20} />
               </div>
@@ -10364,7 +10364,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:w-auto md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
@@ -11681,8 +11681,8 @@ export default function App() {
               }`}
             >
           {/* Exam Header */}
-          <div className="w-full flex flex-col sm:flex-row sm:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-4 sm:gap-8 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
+          <div className="w-full flex flex-col items-stretch justify-start px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
+            <div className="flex items-start gap-3 min-w-0 w-full">
               <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Award size={20} />
               </div>
@@ -11695,13 +11695,20 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
-                  {examTopic?.title}
-                </h3>
+                <div className="flex items-center justify-between gap-3 mt-1.5 w-full">
+                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
+                    {examTopic?.title}
+                  </h3>
+                  {examTopic && (
+                    <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                      {getExamTotalScore()} / 100점
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full sm:w-auto justify-start border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
@@ -11774,9 +11781,6 @@ export default function App() {
               >
                 종료
               </button>
-              <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none hidden sm:inline-block" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                {getExamTotalScore()} / 100점
-              </span>
             </div>
           </div>
               <div 
