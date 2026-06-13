@@ -1454,16 +1454,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <div className="flex flex-col gap-0.5 items-center w-full">
-                            <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                              {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                            </span>
-                            {!isCorrect && gradingResult?.reason && (
-                              <span className="text-[9px] text-rose-400 font-bold leading-tight select-text mt-0.5 text-center max-w-[180px] break-words">
-                                이유: {gradingResult.reason}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                            {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                          </span>
                         ) : (
                           showAnswers && (
                             <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
@@ -10406,7 +10399,7 @@ export default function App() {
                   >
                     종료
                   </button>
-                  <span className="text-2xl sm:text-3xl font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                  <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
                     {getReviewTotalScore()} / 100점
                   </span>
                 </>
@@ -10915,6 +10908,37 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
+                                  {/* 테이블 주관식 개별 피드백 */}
+                                  {(() => {
+                                    const inputIds = Object.keys(q.answers || {});
+                                    const wrongFeedbacks = [];
+                                    inputIds.forEach(inputId => {
+                                      const grading = tableGradingResults[`${idx}_${inputId}`];
+                                      if (grading && !grading.isCorrect && grading.reason) {
+                                        const match = inputId.match(/\d+/);
+                                        const inputNum = match ? parseInt(match[0], 10) : 1;
+                                        const inputLetter = String.fromCharCode(64 + inputNum);
+                                        wrongFeedbacks.push({ letter: inputLetter, reason: grading.reason });
+                                      }
+                                    });
+                                    if (wrongFeedbacks.length > 0) {
+                                      return (
+                                        <div className="p-3.5 bg-rose-950/30 border border-rose-500/20 rounded-xl space-y-2 text-left animate-fade-in my-2">
+                                          <div className="text-xs font-black text-rose-400 flex items-center gap-1.5">
+                                            <span>❌ 감점 및 오답 사유 피드백</span>
+                                          </div>
+                                          <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
+                                            {wrongFeedbacks.map((fb, fIdx) => (
+                                              <li key={fIdx}>
+                                                <span className="font-extrabold text-rose-350">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   {q.explanation && (
                                     <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
@@ -11720,7 +11744,7 @@ export default function App() {
               >
                 종료
               </button>
-              <span className="text-2xl sm:text-3xl font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+              <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
                 {getExamTotalScore()} / 100점
               </span>
             </div>
@@ -12223,6 +12247,37 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
+                                  {/* 테이블 주관식 개별 피드백 */}
+                                  {(() => {
+                                    const inputIds = Object.keys(q.answers || {});
+                                    const wrongFeedbacks = [];
+                                    inputIds.forEach(inputId => {
+                                      const grading = tableGradingResults[`${idx}_${inputId}`];
+                                      if (grading && !grading.isCorrect && grading.reason) {
+                                        const match = inputId.match(/\d+/);
+                                        const inputNum = match ? parseInt(match[0], 10) : 1;
+                                        const inputLetter = String.fromCharCode(64 + inputNum);
+                                        wrongFeedbacks.push({ letter: inputLetter, reason: grading.reason });
+                                      }
+                                    });
+                                    if (wrongFeedbacks.length > 0) {
+                                      return (
+                                        <div className="p-3.5 bg-rose-950/30 border border-rose-500/20 rounded-xl space-y-2 text-left animate-fade-in my-2">
+                                          <div className="text-xs font-black text-rose-400 flex items-center gap-1.5">
+                                            <span>❌ 감점 및 오답 사유 피드백</span>
+                                          </div>
+                                          <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
+                                            {wrongFeedbacks.map((fb, fIdx) => (
+                                              <li key={fIdx}>
+                                                <span className="font-extrabold text-rose-350">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   {q.explanation && (
                                     <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
