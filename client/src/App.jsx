@@ -7898,27 +7898,7 @@ export default function App() {
   // Formula AI Tutor handlers
   const handleFormulaSelect = (idx) => {
     setSelectedFormulaIdx(idx);
-    if (idx === -1) {
-      setFormulaChatHistory([]);
-      return;
-    }
-    const q = formulaQuestions[idx];
-    const greetingText = `안녕하세요! 선택하신 **[${q.title || `공식 카드 ${idx + 1}`}]** 공식에 대해 논해보겠습니다.
-    
-공식 식:
-$$ ${q.formula || ''} $$
-
-이 공식의 핵심 개념, 역학적 유도 과정, 설계상 적용 조건이나 시험 기출 문제에 대해 궁금하신 점을 말씀해 주세요!`;
-    
-    setFormulaChatHistory([
-      { role: 'model', text: greetingText }
-    ]);
-
-    requestAnimationFrame(() => {
-      if (formulaChatBodyRef.current) {
-        formulaChatBodyRef.current.scrollTop = 0;
-      }
-    });
+    setFormulaChatHistory([]);
   };
 
   const handleSendFormulaChatMessage = async (e) => {
@@ -12139,7 +12119,19 @@ $$ ${q.formula || ''} $$
                       </div>
                       <p className="text-xs text-slate-300 font-bold">공식에 대해 AI 튜터와 논의해 보세요!</p>
                       <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-                        상단의 드롭다운 메뉴나 왼쪽 공식 카드에서 <strong>[튜터토론]</strong> 버튼을 눌러 공식 대화를 시작하세요.
+                        상단의 드롭다운 메뉴나 왼쪽 공식 카드에서 <strong>[AI 토론]</strong> 버튼을 눌러 공식 대화를 시작하세요.
+                      </p>
+                    </div>
+                  ) : formulaChatHistory.length === 0 ? (
+                    <div className="text-center py-16 px-4 opacity-50 flex flex-col items-center justify-center h-full">
+                      <div className="p-4 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-3">
+                        <MessageSquare size={32} />
+                      </div>
+                      <p className="text-xs text-slate-200 font-extrabold text-white">
+                        선택된 공식: {formulaQuestions[selectedFormulaIdx]?.title || `공식 ${selectedFormulaIdx + 1}`}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1.5 max-w-[240px] leading-relaxed">
+                        이 공식에 대해 궁금한 점(핵심 개념, 유도 과정, 적용 조건 등)을 아래 입력창에 질문해 보세요.
                       </p>
                     </div>
                   ) : (
