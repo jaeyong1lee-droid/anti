@@ -3542,7 +3542,7 @@ function FloatingCalculator({ isVisible, onClose }) {
       <div 
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border-b border-slate-200/80 cursor-move select-none"
+        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slate-200 border-b border-slate-300 cursor-move select-none"
       >
         <div className="flex items-center gap-2">
           <span className="text-[10px] bg-slate-900 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-800/20">CASIO</span>
@@ -3550,7 +3550,7 @@ function FloatingCalculator({ isVisible, onClose }) {
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer flex items-center justify-center"
+          className="p-1 rounded-lg hover:bg-slate-300 text-slate-600 hover:text-slate-950 transition-colors cursor-pointer flex items-center justify-center"
         >
           <X size={14} />
         </button>
