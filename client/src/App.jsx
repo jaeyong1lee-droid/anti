@@ -10364,9 +10364,12 @@ export default function App() {
           {/* Review Header */}
           <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
             <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
-              <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
-                {selectedTopic.title}
-              </h3>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Brain className="w-6 h-6 sm:w-7 sm:h-7 text-violet-400 shrink-0" />
+                <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
+                  {selectedTopic.title}
+                </h3>
+              </div>
               {selectedTopic && (
                 <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
                   {getReviewTotalScore()} / 100점
@@ -11709,32 +11712,20 @@ export default function App() {
             >
           {/* Exam Header */}
           <div className="w-full flex flex-col items-stretch justify-start px-5 py-4 bg-slateCustom-950 border-b border-amber-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full">
-              <div className="p-2 bg-amber-950/80 text-amber-400 rounded-xl flex-shrink-0 mt-0.5">
-                <Award size={20} />
+            <div className="flex items-center justify-between gap-3 min-w-0 w-full">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Award className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400 shrink-0" />
+                <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={examTopic?.title}>
+                  {examTopic?.title}
+                </h3>
               </div>
-              <div className="min-w-0 flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider whitespace-nowrap">종합평가 (Gemini AI)</span>
-                  {!loadingExam && examQuestions.length > 0 && (
-                    <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
-                      {examQuestions.length}문항
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-3 mt-1.5 w-full">
-                  <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={examTopic?.title}>
-                    {examTopic?.title}
-                  </h3>
-                  {examTopic && (
-                    <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                      {getExamTotalScore()} / 100점
-                    </span>
-                  )}
-                </div>
-              </div>
+              {examTopic && (
+                <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                  {getExamTotalScore()} / 100점
+                </span>
+              )}
             </div>
-            
+
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
               <button
                 onClick={handleAddExamQuestions}
