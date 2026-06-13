@@ -3995,6 +3995,38 @@ function FloatingCalculator({ isVisible, onClose }) {
 export default function App() {
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
+  const getSubjectiveColorClasses = (idx, isRevd) => {
+    if (!isRevd) return 'border-slate-750 text-white';
+    
+    const hasAnswer = !!tableAnswers[`${idx}_INPUT`];
+    if (!hasAnswer) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
+    
+    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    if (score === undefined) return 'border-slate-750 text-white';
+    if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
+    if (score >= 6) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
+    if (score >= 3) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
+    return 'border-rose-500 bg-rose-950/20 text-rose-300';
+  };
+
+  const getSubjectiveBannerClasses = (idx) => {
+    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    if (score === undefined) return 'bg-slate-900 border-slate-800 text-slate-355';
+    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
+    if (score >= 6) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
+    if (score >= 3) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
+    return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
+  };
+
+  const getSubjectiveStatusText = (idx) => {
+    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    if (score === undefined) return '채점 완료';
+    if (score >= 9) return '✅ 정답 인정';
+    if (score >= 6) return '⚠️ 부분 인정 (우수)';
+    if (score >= 3) return '⚠️ 부분 인정 (보통)';
+    return '❌ 오답 판정';
+  };
+
   // Dynamic KaTeX Loader State
   const [katexLoaded, setKatexLoaded] = useState(false);
   useEffect(() => {
@@ -4155,16 +4187,19 @@ export default function App() {
 
   const getReviewTotalScore = () => {
     let total = 0;
-    const scoredList = aiQuestions.filter((_, i) => i >= 2);
-    const M = scoredList.length;
+    const scoredIndices = [];
+    aiQuestions.forEach((_, i) => {
+      if (i !== 1) scoredIndices.push(i);
+    });
+    const M = scoredIndices.length;
     if (M === 0) return 0;
     const baseWeight = Math.floor(100 / M);
     const remainder = 100 - (baseWeight * M);
 
     aiQuestions.forEach((q, idx) => {
-      if (idx < 2) return;
-      const scoredIndex = idx - 2;
-      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
+      if (idx === 1) return;
+      const sIdx = scoredIndices.indexOf(idx);
+      const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
 
       if (isMC) {
@@ -4198,16 +4233,19 @@ export default function App() {
 
   const getExamTotalScore = () => {
     let total = 0;
-    const scoredList = examQuestions.filter((_, i) => i >= 2);
-    const M = scoredList.length;
+    const scoredIndices = [];
+    examQuestions.forEach((_, i) => {
+      if (i !== 1) scoredIndices.push(i);
+    });
+    const M = scoredIndices.length;
     if (M === 0) return 0;
     const baseWeight = Math.floor(100 / M);
     const remainder = 100 - (baseWeight * M);
 
     examQuestions.forEach((q, idx) => {
-      if (idx < 2) return;
-      const scoredIndex = idx - 2;
-      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
+      if (idx === 1) return;
+      const sIdx = scoredIndices.indexOf(idx);
+      const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
 
       if (isMC) {
@@ -4245,6 +4283,7 @@ export default function App() {
     const userAnswer = tableAnswers[`${qIdx}_INPUT`] || '';
     const correctAnswer = q.answer || q.concept || '';
     
+    let newResult = null;
     try {
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
         method: 'POST',
@@ -4256,29 +4295,68 @@ export default function App() {
         })
       });
       const data = await res.json();
-      setTableGradingResults(prev => ({
-        ...prev,
-        [`${qIdx}_INPUT`]: {
-          isCorrect: data.isCorrect,
-          score: data.score,
-          reason: data.reason
-        }
-      }));
+      newResult = {
+        isCorrect: data.isCorrect,
+        score: data.score,
+        reason: data.reason
+      };
     } catch (err) {
       console.error('Grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
       const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-      setTableGradingResults(prev => ({
-        ...prev,
-        [`${qIdx}_INPUT`]: {
-          isCorrect,
-          score: isCorrect ? 10 : 0,
-          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
-        }
-      }));
-    } finally {
-      setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+      newResult = {
+        isCorrect,
+        score: isCorrect ? 10 : 0,
+        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+      };
     }
+
+    if (newResult) {
+      setTableGradingResults(prev => {
+        const nextResults = {
+          ...prev,
+          [`${qIdx}_INPUT`]: newResult
+        };
+
+        // 즉시 DB 저장하여 지속성 보장
+        if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+          fetch(`${API_BASE}/api/session/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicId: selectedTopic.id,
+              scheduleId: selectedTopic.schedule_id,
+              questions: aiQuestions,
+              selectedAnswers,
+              revealedQuestions,
+              tableAnswers,
+              tableGradingResults: nextResults,
+              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+            })
+          }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+        }
+
+        if (examQuestions.length > 0 && !loadingExam) {
+          fetch(`${API_BASE}/api/session/exam`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              examQuestions,
+              examRevealed,
+              examAnswers,
+              examTopic,
+              tableAnswers,
+              tableGradingResults: nextResults,
+              savedExamScroll: examBodyRef.current?.scrollTop || 0
+            })
+          }).catch(e => console.warn('시험 세션 동기화 실패:', e));
+        }
+
+        return nextResults;
+      });
+    }
+
+    setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
   };
 
   const [isFallback, setIsFallback] = useState(false);
@@ -5581,20 +5659,23 @@ export default function App() {
       }
     }
 
-    // Q1, Q2 제외하고 Q3부터 종합 점수(배점) 계산
+    // Q2 제외하고 종합 점수(배점) 계산
     let totalScoreObtained = 0;
     let correctCount = 0;
 
-    const scoredList = aiQuestions.filter((_, i) => i >= 2);
-    const M = scoredList.length;
+    const scoredIndices = [];
+    aiQuestions.forEach((_, i) => {
+      if (i !== 1) scoredIndices.push(i);
+    });
+    const M = scoredIndices.length;
     const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
     const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
 
     aiQuestions.forEach((q, idx) => {
-      if (idx < 2) return; // Q1, Q2 제외
+      if (idx === 1) return; // Q2 제외
       
-      const scoredIndex = idx - 2;
-      const W = scoredIndex < remainder ? (baseWeight + 1) : baseWeight;
+      const sIdx = scoredIndices.indexOf(idx);
+      const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
 
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
@@ -10509,11 +10590,15 @@ export default function App() {
                       return !itemMC;
                     }).length : -1;
 
-                    const scoredList = aiQuestions.filter((_, i) => i >= 2);
-                    const M = scoredList.length;
+                    const scoredIndices = [];
+                    aiQuestions.forEach((_, i) => {
+                      if (i !== 1) scoredIndices.push(i);
+                    });
+                    const M = scoredIndices.length;
                     const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
                     const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                    const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                    const sIdx = scoredIndices.indexOf(idx);
+                    const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
 
                     const subtypeBadgeColor =
                       q.type?.includes('개요') || q.type?.includes('인출') ? 'bg-sky-700' :
@@ -10918,11 +11003,15 @@ export default function App() {
                           q.type === '주관식 (표채우기)' ? (
                             <div className="space-y-3 w-full">
                               {(() => {
-                                const scoredList = aiQuestions.filter((_, i) => i >= 2);
-                                const M = scoredList.length;
+                                const scoredIndices = [];
+                                aiQuestions.forEach((_, i) => {
+                                  if (i !== 1) scoredIndices.push(i);
+                                });
+                                const M = scoredIndices.length;
                                 const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
                                 const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                                const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                const sIdx = scoredIndices.indexOf(idx);
+                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
                                 return (
                                   <TableQuiz 
                                     questionIdx={idx} 
@@ -11018,15 +11107,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[100px] py-2 text-xs focus:outline-none transition-all ${
-                                          isRevd
-                                            ? (tableAnswers[`${idx}_INPUT`]
-                                                ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
-                                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
-                                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                                                : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
-                                            : 'border-slate-750 text-white'
-                                        }`}
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[110px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -11037,13 +11118,13 @@ export default function App() {
                                             await gradeSubjectiveQuestion(idx, q);
                                           }}
                                           disabled={gradingLoading[idx]}
-                                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[9px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-0.5"
+                                          className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1"
                                           title="AI에게 답안 재채점 요청"
                                         >
                                           {gradingLoading[idx] ? (
-                                            <RefreshCw size={8} className="animate-spin text-slate-400" />
+                                            <RefreshCw size={10} className="animate-spin text-slate-400" />
                                           ) : (
-                                            <RefreshCw size={8} className="text-slate-400" />
+                                            <RefreshCw size={10} className="text-slate-400" />
                                           )}
                                           <span>재평가</span>
                                         </button>
@@ -11055,15 +11136,11 @@ export default function App() {
                                   </div>
                                 </div>
                                 {tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
-                                    tableGradingResults[`${idx}_INPUT`].isCorrect
-                                      ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450'
-                                      : 'bg-rose-950/20 border-rose-500/30 text-rose-450'
-                                  }`}>
-                                    <div className="text-[10px] font-black flex items-center gap-1.5 mb-0.5">
-                                      <span>{tableGradingResults[`${idx}_INPUT`].isCorrect ? '✅ 정답 인정' : '❌ 오답 판정'}</span>
+                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                    <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                      <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[10px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                    <p className="text-[12px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
                                   </div>
                                 )}
                               </div>
@@ -11842,11 +11919,15 @@ export default function App() {
                   const isCorrect = answered && normalizeAns(examAnswers[idx]) === normalizeAns(q.answer);
                   const isRevd = !!examRevealed[idx];
 
-                  const scoredList = examQuestions.filter((_, i) => i >= 2);
-                  const M = scoredList.length;
+                  const scoredIndices = [];
+                  examQuestions.forEach((_, i) => {
+                    if (i !== 1) scoredIndices.push(i);
+                  });
+                  const M = scoredIndices.length;
                   const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
                   const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                  const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                  const sIdx = scoredIndices.indexOf(idx);
+                  const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
 
                   const subtypeBadgeColor =
                     q.subtype === '개요' ? 'bg-sky-700' :
@@ -12269,11 +12350,15 @@ export default function App() {
                           q.type === '주관식 (표채우기)' ? (
                             <div className="space-y-3 w-full">
                               {(() => {
-                                const scoredList = examQuestions.filter((_, i) => i >= 2);
-                                const M = scoredList.length;
+                                const scoredIndices = [];
+                                examQuestions.forEach((_, i) => {
+                                  if (i !== 1) scoredIndices.push(i);
+                                });
+                                const M = scoredIndices.length;
                                 const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
                                 const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                                const W = idx >= 2 ? (idx - 2 < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                const sIdx = scoredIndices.indexOf(idx);
+                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
                                 return (
                                   <TableQuiz 
                                     questionIdx={idx} 
@@ -12369,15 +12454,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[100px] py-2 text-xs focus:outline-none transition-all ${
-                                          !!examRevealed[idx]
-                                            ? (tableAnswers[`${idx}_INPUT`]
-                                                ? (tableGradingResults[`${idx}_INPUT`]?.isCorrect
-                                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
-                                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                                                : 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium')
-                                            : 'border-slate-750 text-white'
-                                        }`}
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[110px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -12388,13 +12465,13 @@ export default function App() {
                                             await gradeSubjectiveQuestion(idx, q);
                                           }}
                                           disabled={gradingLoading[idx]}
-                                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[9px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-0.5"
+                                          className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1"
                                           title="AI에게 답안 재채점 요청"
                                         >
                                           {gradingLoading[idx] ? (
-                                            <RefreshCw size={8} className="animate-spin text-slate-400" />
+                                            <RefreshCw size={10} className="animate-spin text-slate-400" />
                                           ) : (
-                                            <RefreshCw size={8} className="text-slate-400" />
+                                            <RefreshCw size={10} className="text-slate-400" />
                                           )}
                                           <span>재평가</span>
                                         </button>
@@ -12406,15 +12483,11 @@ export default function App() {
                                   </div>
                                 </div>
                                 {tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
-                                    tableGradingResults[`${idx}_INPUT`].isCorrect
-                                      ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450'
-                                      : 'bg-rose-950/20 border-rose-500/30 text-rose-450'
-                                  }`}>
-                                    <div className="text-[10px] font-black flex items-center gap-1.5 mb-0.5">
-                                      <span>{tableGradingResults[`${idx}_INPUT`].isCorrect ? '✅ 정답 인정' : '❌ 오답 판정'}</span>
+                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                    <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                      <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[10px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                    <p className="text-[12px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
                                   </div>
                                 )}
                               </div>
