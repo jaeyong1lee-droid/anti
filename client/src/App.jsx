@@ -44,7 +44,8 @@ import {
   Battery,
   BatteryCharging,
   Wifi,
-  Signal
+  Signal,
+  HelpCircle
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -7901,6 +7902,55 @@ export default function App() {
     setFormulaChatHistory([]);
   };
 
+  const handleGenerateFormulaProblem = async (idx) => {
+    if (idx === -1) return;
+    setSelectedFormulaIdx(idx);
+    setFormulaMobileTab('tutor');
+    setFormulaChatHistory([{ role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
+    setIsFormulaChatLoading(true);
+
+    const selected = formulaQuestions[idx];
+    if (!selected) {
+      setIsFormulaChatLoading(false);
+      return;
+    }
+
+    const promptText = `[수험생이 선택하여 문제를 출제받고자 하는 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]
+
+위 공식을 활용하여 풀 수 있는 정량적(수치 계산이 포함된) 주관식 문제를 하나 출제해주세요.
+반드시 다음 지침을 준수해야 합니다:
+1. 계산에 필요한 조건과 수치(예: 탄성계수 E = 200 GPa, 포아송비 v = 0.3 등)를 구체적이고 명확하게 제시하세요.
+2. 처음 출제하는 답변에는 절대 정답 수치나 풀이 과정(해설)을 함께 적지 마세요. 사용자가 직접 주관식 답안을 계산하여 입력하고 피드백을 받을 수 있도록 오직 문제 내용과 질문만 제공해야 합니다.
+3. 사용자가 주관식 답안을 입력할 수 있도록 "답안을 댓글(채팅)창에 주관식으로 입력해 주세요."와 같은 안내를 덧붙여 주세요.
+4. 친절하고 전문적인 AI 공학 튜터의 톤앤매너로 출제해주세요.`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: promptText,
+          image: null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '문제 출제 실패');
+      setFormulaChatHistory([{ role: 'model', text: data.text }]);
+    } catch (err) {
+      setFormulaChatHistory([
+        { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }
+      ]);
+    } finally {
+      setIsFormulaChatLoading(false);
+      requestAnimationFrame(() => {
+        if (formulaChatBodyRef.current) {
+          formulaChatBodyRef.current.scrollTop = 0;
+        }
+      });
+    }
+  };
+
   const handleSendFormulaChatMessage = async (e) => {
     if (e) e.preventDefault();
     if (isFormulaChatLoading || !formulaChatInput.trim() || selectedFormulaIdx === -1) return;
@@ -11867,6 +11917,20 @@ export default function App() {
                               </button>
                             )}
 
+                            {/* AI Tutor Problem Generator Button */}
+                            {!isNewEmptyCard && (
+                              <button
+                                onClick={() => {
+                                  handleGenerateFormulaProblem(idx);
+                                }}
+                                className="p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40"
+                                title="이 공식으로 푸는 정량적 문제 출제 받기"
+                              >
+                                <HelpCircle size={12} />
+                                <span>문제출제</span>
+                              </button>
+                            )}
+
                             {/* Toggle Input Editor */}
                             {q.isDirectlyAdded && (
                               <button
@@ -12104,6 +12168,16 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+                    {selectedFormulaIdx !== -1 && (
+                      <button
+                        onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
+                        disabled={isFormulaChatLoading}
+                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <HelpCircle size={11} className="text-rose-400" />
+                        <span>이 공식으로 문제 출제 받기 📝</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -12159,7 +12233,7 @@ export default function App() {
                           <span className="text-[10px] text-slate-400 font-bold px-1">
                             {isUser ? '수험생' : 'AI 튜터'}
                           </span>
-                          <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed select-text break-words ${
+                          <div className={`${isUser ? 'max-w-[92%]' : 'max-w-[97%]'} rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed select-text break-words ${
                             isUser 
                               ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
                               : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
