@@ -1383,20 +1383,29 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-sm">
+      <table className="w-full text-center border-collapse text-[11px] sm:text-sm">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
-            {headers.map((header, hIdx) => (
-              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text">
-                <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
-              </th>
-            ))}
+            {headers.map((header, hIdx) => {
+              const isFirstCol = hIdx === 0;
+              return (
+                <th 
+                  key={hIdx} 
+                  className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
+                    isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                  }`}
+                >
+                  <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, rIdx) => (
             <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
               {row.map((cell, cIdx) => {
+                const isFirstCol = cIdx === 0;
                 const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
                 if (isInput) {
                   const inputId = cell.replace('[', '').replace(']', '').trim();
@@ -1413,7 +1422,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-xs pl-2 pr-12 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
+                  let inputClassName = `w-full text-[10px] sm:text-xs pl-1.5 pr-8 py-0.5 sm:pl-2 sm:pr-12 sm:py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 `;
                   if (revealed) {
                     if (value) {
                       if (isCorrect) {
@@ -1429,13 +1438,18 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   }
 
                   return (
-                    <td key={cIdx} className="p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[130px]">
-                      <div className="flex flex-col gap-1 justify-center items-center w-full">
-                        <div className="flex items-center gap-1.5 w-full">
-                          <span className="text-xs font-bold text-slate-400 select-none min-w-[14px] text-right">{inputLetter}</span>
+                    <td 
+                      key={cIdx} 
+                      className={`p-0.5 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[100px] sm:min-w-[130px] ${
+                        isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                      }`}
+                    >
+                      <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
+                        <div className="flex items-center gap-1 sm:gap-1.5 w-full">
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 select-none min-w-[12px] sm:min-w-[14px] text-right">{inputLetter}</span>
                           <div className="relative flex-grow">
                             {revealed && value && !isCorrect ? (
-                              <div className={`${inputClassName} flex items-center flex-wrap gap-1 select-text min-h-[30px] pr-8`}>
+                              <div className={`${inputClassName} flex items-center flex-wrap gap-1 select-text min-h-[26px] sm:min-h-[30px] pr-6 sm:pr-8`}>
                                 <span className="line-through opacity-60">{value}</span>
                                 <span className="text-emerald-450 font-black flex items-center gap-0.5">
                                   → <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
@@ -1455,7 +1469,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                               const displayScore = Math.round(cellObtained * 10) / 10;
                               return (
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
+                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-[9px] font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
                                   {displayScore}점
                                 </span>
                               );
@@ -1463,12 +1477,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
+                          <span className="text-[8.5px] sm:text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         ) : (
                           showAnswers && (
-                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
+                            <span className="text-[8.5px] sm:text-[10px] text-slate-400 font-bold flex items-center gap-1 select-text">
                               {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                             </span>
                           )
@@ -1478,7 +1492,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   );
                 } else {
                   return (
-                    <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text">
+                    <td 
+                      key={cIdx} 
+                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text ${
+                        isFirstCol ? 'w-[58px] min-w-[58px] max-w-[58px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all whitespace-normal' : ''
+                      }`}
+                    >
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
                     </td>
                   );
@@ -10332,10 +10351,15 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col gap-1.5 mt-1">
+                <div className="flex items-center justify-between gap-3 mt-1.5 w-full">
                   <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
                     {selectedTopic.title}
                   </h3>
+                  {selectedTopic && (
+                    <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                      {getReviewTotalScore()} / 100점
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -10344,7 +10368,7 @@ export default function App() {
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="flex-1 md:flex-none px-2 py-1.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
                   <FileText size={12} className="flex-shrink-0" />
@@ -10354,7 +10378,7 @@ export default function App() {
               {selectedTopic && (
                 <button
                   onClick={handleRetakeReviewQuiz}
-                  className="flex-1 md:flex-none px-2 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
                   title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
                 >
                   <RefreshCw size={12} className="text-amber-400 flex-shrink-0" />
@@ -10365,7 +10389,7 @@ export default function App() {
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
-                  className="flex-1 md:flex-none px-2 py-1.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                 >
                   {loadingAI ? (
@@ -10395,27 +10419,22 @@ export default function App() {
                 닫기
               </button>
               {selectedTopic && (
-                <>
-                  <button
-                    onClick={() => { 
-                      if (selectedTopic?.id) {
-                        const deleteUrl = selectedTopic.schedule_id
-                          ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
-                          : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                        fetch(deleteUrl, { method: 'DELETE' })
-                          .catch(e => console.warn('세션 초기화 실패:', e));
-                      }
-                      setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
-                    }}
-                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                    title="문제 초기화 (재개 시 새 문제 생성)"
-                  >
-                    종료
-                  </button>
-                  <span className="text-sm sm:text-base font-black text-amber-400 ml-3 whitespace-nowrap self-center select-none" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                    {getReviewTotalScore()} / 100점
-                  </span>
-                </>
+                <button
+                  onClick={() => { 
+                    if (selectedTopic?.id) {
+                      const deleteUrl = selectedTopic.schedule_id
+                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                      fetch(deleteUrl, { method: 'DELETE' })
+                        .catch(e => console.warn('세션 초기화 실패:', e));
+                    }
+                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                  }}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                  title="문제 초기화 (재개 시 새 문제 생성)"
+                >
+                  종료
+                </button>
               )}
             </div>
           </div>
