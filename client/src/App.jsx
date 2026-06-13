@@ -3542,15 +3542,15 @@ function FloatingCalculator({ isVisible, onClose }) {
       <div 
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slate-200 border-b border-slate-300 cursor-move select-none"
+        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-slate-800 border-b border-slate-700 cursor-move select-none"
       >
         <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-slate-900 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-800/20">CASIO</span>
-          <span className="text-[10px] text-slate-800 font-black tracking-wider">공학용 계산기</span>
+          <span className="text-[10px] bg-slate-950 text-slate-300 font-black px-1.5 py-0.5 rounded border border-slate-800/50">CASIO</span>
+          <span className="text-[10px] text-slate-200 font-black tracking-wider">공학용 계산기</span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg hover:bg-slate-300 text-slate-600 hover:text-slate-950 transition-colors cursor-pointer flex items-center justify-center"
+          className="p-1 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
         >
           <X size={14} />
         </button>
@@ -10167,15 +10167,24 @@ export default function App() {
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
-              <div className="landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800">
-                {isDesktop && <ScientificCalculator />}
-              </div>
-
-              {!isDesktop && (
-                <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                  <div className="flex items-center gap-2">
-                    <Brain size={16} className="text-violet-500" />
-                  </div>
+              {/* Sidebar Header */}
+              <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
+                <div className="flex items-center gap-2">
+                  <Brain size={16} className="text-violet-500" />
+                  <span className="text-xs font-bold text-slate-300">AI 튜터</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFloatingCalculator(prev => !prev)}
+                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                      showFloatingCalculator 
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                        : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                    }`}
+                    title="공학용 계산기 토글"
+                  >
+                    <span>🧮 계산기</span>
+                  </button>
                   <button
                     onClick={() => {
                       if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
@@ -10195,7 +10204,7 @@ export default function App() {
                     <span>🧹 튜터클린</span>
                   </button>
                 </div>
-              )}
+              </div>
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
@@ -11318,15 +11327,24 @@ export default function App() {
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
-              <div className="landscape-hide w-full flex-shrink-0 overflow-hidden flex flex-col border-b border-slate-800">
-                {isDesktop && <ScientificCalculator />}
-              </div>
-
-              {!isDesktop && (
-                <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                  <div className="flex items-center gap-2">
-                    <Brain size={16} className="text-amber-500" />
-                  </div>
+              {/* Sidebar Header */}
+              <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
+                <div className="flex items-center gap-2">
+                  <Brain size={16} className="text-amber-500" />
+                  <span className="text-xs font-bold text-slate-300">AI 튜터</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFloatingCalculator(prev => !prev)}
+                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                      showFloatingCalculator 
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                        : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                    }`}
+                    title="공학용 계산기 토글"
+                  >
+                    <span>🧮 계산기</span>
+                  </button>
                   <button
                     onClick={() => {
                       if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
@@ -11346,7 +11364,7 @@ export default function App() {
                     <span>🧹 튜터클린</span>
                   </button>
                 </div>
-              )}
+              </div>
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.length === 0 ? (
@@ -13482,7 +13500,7 @@ export default function App() {
       )}
 
       <FloatingCalculator 
-        isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet)} 
+        isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
         onClose={() => setShowFloatingCalculator(false)} 
       />
     </div>
