@@ -11005,7 +11005,6 @@ export default function App() {
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
                                 <div className="space-y-1">
-                                  <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
                                   <div className="relative">
                                     {isRevd && tableAnswers[`${idx}_INPUT`] && !tableGradingResults[`${idx}_INPUT`]?.isCorrect ? (
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
@@ -12364,7 +12363,6 @@ export default function App() {
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
                                 <div className="space-y-1">
-                                  <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
                                   <div className="relative">
                                     {!!examRevealed[idx] && tableAnswers[`${idx}_INPUT`] && !tableGradingResults[`${idx}_INPUT`]?.isCorrect ? (
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
