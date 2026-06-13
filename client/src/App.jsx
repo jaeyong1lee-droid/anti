@@ -9564,26 +9564,7 @@ export default function App() {
                   >
                     종료
                   </button>
-                  {isDesktop && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                          setChatHistory([]);
-                          if (typeof setCurrentAttachedImage === 'function') {
-                            setCurrentAttachedImage(null);
-                          }
-                          setTimeout(() => {
-                            forceSaveActiveSessions();
-                          }, 50);
-                          alert("튜터 데이터가 초기화되었습니다.");
-                        }
-                      }}
-                      className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0 shadow-lg shadow-rose-950/20"
-                      title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-                    >
-                      튜터클린
-                    </button>
-                  )}
+
                 </>
               )}
             </div>
@@ -10753,26 +10734,7 @@ export default function App() {
               >
                 종료
               </button>
-              {isDesktop && (
-                <button
-                  onClick={() => {
-                    if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                      setChatHistory([]);
-                      if (typeof setCurrentAttachedImage === 'function') {
-                        setCurrentAttachedImage(null);
-                      }
-                      setTimeout(() => {
-                        forceSaveActiveSessions();
-                      }, 50);
-                      alert("튜터 데이터가 초기화되었습니다.");
-                    }
-                  }}
-                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center shadow-lg shadow-rose-950/20"
-                  title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-                >
-                  튜터클린
-                </button>
-              )}
+
             </div>
           </div>
               <div 
