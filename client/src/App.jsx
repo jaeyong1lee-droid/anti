@@ -3603,11 +3603,6 @@ export default function App() {
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
-
-  // Close floating calculator when switching views/tabs
-  useEffect(() => {
-    setShowFloatingCalculator(false);
-  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic?.id, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
   const [lastActiveReview, setLastActiveReview] = useState(null);
   useEffect(() => {
     const saved = localStorage.getItem('anti_last_active_review');
@@ -3697,36 +3692,6 @@ export default function App() {
   const [isFormulaChatLoading, setIsFormulaChatLoading] = useState(false);
   const formulaChatBodyRef = useRef(null);
   const [formulaChatInput, setFormulaChatInput] = useState('');
-
-  // Load chat history when selectedTopic changes
-  useEffect(() => {
-    const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setFormulaChatHistory(parsed);
-        } else {
-          setFormulaChatHistory([]);
-        }
-      } catch (e) {
-        setFormulaChatHistory([]);
-      }
-    } else {
-      setFormulaChatHistory([]);
-    }
-  }, [selectedTopic?.id]);
-
-  const saveFormulaChatHistory = (historyOrFn) => {
-    setFormulaChatHistory(prev => {
-      const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
-      const nextArray = Array.isArray(next) ? next : [];
-      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
-      localStorage.setItem(key, JSON.stringify(nextArray));
-      return nextArray;
-    });
-  };
 
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
@@ -3921,6 +3886,41 @@ export default function App() {
   const answersheetSplitContainerRef = useRef(null);
   const answersheetBodyRef = useRef(null);
   const savedAnswersheetScroll = useRef(0);
+
+  // Close floating calculator when switching views/tabs
+  useEffect(() => {
+    setShowFloatingCalculator(false);
+  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic?.id, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
+
+  // Load chat history when selectedTopic changes
+  useEffect(() => {
+    const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setFormulaChatHistory(parsed);
+        } else {
+          setFormulaChatHistory([]);
+        }
+      } catch (e) {
+        setFormulaChatHistory([]);
+      }
+    } else {
+      setFormulaChatHistory([]);
+    }
+  }, [selectedTopic?.id]);
+
+  const saveFormulaChatHistory = (historyOrFn) => {
+    setFormulaChatHistory(prev => {
+      const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
+      const nextArray = Array.isArray(next) ? next : [];
+      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
+      localStorage.setItem(key, JSON.stringify(nextArray));
+      return nextArray;
+    });
+  };
 
   // Desktop view state (width >= 768px)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
