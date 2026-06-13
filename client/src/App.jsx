@@ -10364,7 +10364,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
@@ -11708,7 +11708,7 @@ export default function App() {
               </div>
             </div>
             
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
