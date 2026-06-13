@@ -6438,6 +6438,53 @@ export default function App() {
     }
   };
 
+  const handleGenerateTopicProblem = async (topic) => {
+    if (!topic) return;
+    
+    setChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
+    setIsChatLoading(true);
+
+    const promptText = `[수험생이 선택하여 문제를 출제받고자 하는 토픽 정보: 토픽명 - ${topic.title || ''}]
+
+위 토픽의 핵심 이론과 공식을 활용하여 풀 수 있는 정량적(수치 계산이 포함된) 주관식 문제를 하나 출제해주세요.
+반드시 다음 지침을 준수해야 합니다:
+1. 계산에 필요한 조건과 수치(예: 탄성계수 E = 200 GPa, 포아송비 v = 0.3 등)를 구체적이고 명확하게 제시하세요.
+2. 처음 출제하는 답변에는 절대 정답 수치나 풀이 과정(해설)을 함께 적지 마세요. 사용자가 직접 주관식 답안을 계산하여 입력하고 피드백을 받을 수 있도록 오직 문제 내용과 질문만 제공해야 합니다.
+3. 사용자가 주관식 답안을 입력할 수 있도록 "답안을 댓글(채팅)창에 주관식으로 입력해 주세요."와 같은 안내를 덧붙여 주세요.
+4. 친절하고 전문적인 AI 공학 튜터의 톤앤매너로 출제해주세요.`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: promptText,
+          image: null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '문제 출제 실패');
+      
+      setChatHistory(prev => {
+        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
+        return [...filtered, { role: 'model', text: data.text }];
+      });
+    } catch (err) {
+      setChatHistory(prev => {
+        const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
+        return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
+      });
+    } finally {
+      setIsChatLoading(false);
+      requestAnimationFrame(() => {
+        if (chatBodyRef.current) {
+          chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+        }
+      });
+    }
+  };
+
   // Open Comprehensive Exam (70 questions from ALL topics via Gemini)
   const handleOpenExam = async () => {
     setExamMobileTab('list');
@@ -10162,42 +10209,56 @@ export default function App() {
             }`}
           >
               {/* Sidebar Header */}
-              <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                <div className="flex items-center gap-2">
-                  <Brain size={16} className="text-violet-500" />
-                  <span className="text-xs font-bold text-slate-300">AI 튜터</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowFloatingCalculator(prev => !prev)}
-                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
-                      showFloatingCalculator 
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
-                        : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
-                    }`}
-                    title="공학용 계산기 토글"
-                  >
-                    <span>🧮 계산기</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                        setChatHistory([]);
-                        if (typeof setCurrentAttachedImage === 'function') {
-                          setCurrentAttachedImage(null);
+              <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain size={16} className="text-violet-500" />
+                    <span className="text-xs font-bold text-slate-300">AI 튜터</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFloatingCalculator(prev => !prev)}
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                        showFloatingCalculator 
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                          : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                      }`}
+                      title="공학용 계산기 토글"
+                    >
+                      <span>🧮 계산기</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                          setChatHistory([]);
+                          if (typeof setCurrentAttachedImage === 'function') {
+                            setCurrentAttachedImage(null);
+                          }
+                          setTimeout(() => {
+                            forceSaveActiveSessions();
+                          }, 50);
+                          alert("튜터 데이터가 초기화되었습니다.");
                         }
-                        setTimeout(() => {
-                          forceSaveActiveSessions();
-                        }, 50);
-                        alert("튜터 데이터가 초기화되었습니다.");
-                      }
-                    }}
-                    className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-                  >
-                    <span>🧹 튜터클린</span>
-                  </button>
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                      title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                    >
+                      <span>🧹 튜터클린</span>
+                    </button>
+                  </div>
                 </div>
+
+                {selectedTopic && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateTopicProblem(selectedTopic)}
+                    disabled={isChatLoading}
+                    className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <HelpCircle size={11} className="text-amber-400" />
+                    <span>이 토픽으로 문제 출제 받기 📝</span>
+                  </button>
+                )}
               </div>
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
@@ -11303,42 +11364,56 @@ export default function App() {
               }`}
             >
               {/* Sidebar Header */}
-              <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                <div className="flex items-center gap-2">
-                  <Brain size={16} className="text-amber-500" />
-                  <span className="text-xs font-bold text-slate-300">AI 튜터</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowFloatingCalculator(prev => !prev)}
-                    className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
-                      showFloatingCalculator 
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
-                        : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
-                    }`}
-                    title="공학용 계산기 토글"
-                  >
-                    <span>🧮 계산기</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
-                        setChatHistory([]);
-                        if (typeof setCurrentAttachedImage === 'function') {
-                          setCurrentAttachedImage(null);
+              <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain size={16} className="text-amber-500" />
+                    <span className="text-xs font-bold text-slate-300">AI 튜터</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFloatingCalculator(prev => !prev)}
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 ${
+                        showFloatingCalculator 
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                          : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                      }`}
+                      title="공학용 계산기 토글"
+                    >
+                      <span>🧮 계산기</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
+                          setChatHistory([]);
+                          if (typeof setCurrentAttachedImage === 'function') {
+                            setCurrentAttachedImage(null);
+                          }
+                          setTimeout(() => {
+                            forceSaveActiveSessions();
+                          }, 50);
+                          alert("튜터 데이터가 초기화되었습니다.");
                         }
-                        setTimeout(() => {
-                          forceSaveActiveSessions();
-                        }, 50);
-                        alert("튜터 데이터가 초기화되었습니다.");
-                      }
-                    }}
-                    className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                    title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
-                  >
-                    <span>🧹 튜터클린</span>
-                  </button>
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                      title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
+                    >
+                      <span>🧹 튜터클린</span>
+                    </button>
+                  </div>
                 </div>
+
+                {examTopic && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateTopicProblem(examTopic)}
+                    disabled={isChatLoading}
+                    className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <HelpCircle size={11} className="text-amber-400" />
+                    <span>이 토픽으로 문제 출제 받기 📝</span>
+                  </button>
+                )}
               </div>
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
@@ -12354,9 +12429,9 @@ export default function App() {
                       <button
                         onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
                         disabled={isFormulaChatLoading}
-                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <HelpCircle size={11} className="text-rose-400" />
+                        <HelpCircle size={11} className="text-amber-400" />
                         <span>이 공식으로 문제 출제 받기 📝</span>
                       </button>
                     )}
