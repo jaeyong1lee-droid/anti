@@ -3546,7 +3546,7 @@ function FloatingCalculator({ isVisible, onClose }) {
       >
         <div className="flex items-center gap-2">
           <span className="text-[10px] bg-slate-950 text-slate-300 font-black px-1.5 py-0.5 rounded border border-slate-800/50">CASIO</span>
-          <span className="text-[10px] text-slate-200 font-black tracking-wider">공학용 계산기</span>
+          <span className="text-[10px] text-amber-400 font-black tracking-wider">공학용 계산기</span>
         </div>
         <button
           onClick={onClose}
