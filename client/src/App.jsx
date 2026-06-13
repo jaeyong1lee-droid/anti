@@ -10364,7 +10364,7 @@ export default function App() {
           {/* Review Header */}
           <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
             <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
-              <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={selectedTopic.title}>
+              <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
                 {selectedTopic.title}
               </h3>
               {selectedTopic && (
@@ -11723,7 +11723,7 @@ export default function App() {
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-3 mt-1.5 w-full">
-                  <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal" title={examTopic?.title}>
+                  <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={examTopic?.title}>
                     {examTopic?.title}
                   </h3>
                   {examTopic && (
