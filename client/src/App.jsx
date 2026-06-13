@@ -12393,6 +12393,7 @@ export default function App() {
                               text={formulaOnly} 
                               katexLoaded={katexLoaded} 
                               isMarkdown={true} 
+                              enableAddFormula={true}
                             />
                           </div>
                         ) : null;
@@ -12414,7 +12415,7 @@ export default function App() {
                                 ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
                                 : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
                             }`}>
-                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                             </div>
                           </div>
                         );
