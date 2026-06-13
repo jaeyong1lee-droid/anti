@@ -90,7 +90,7 @@ function mergeVerticalText(text) {
 // Helper: Clean quiz questions by removing redundant PE question style suffixes like "을 제시하고, 각 기호의 정의를 서술하시오"
 function cleanQuizQuestion(q) {
   if (!q) return q;
-  return q.trim();
+  return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // 로컬 공식 매칭 사전 (AI API 장애 대책용)

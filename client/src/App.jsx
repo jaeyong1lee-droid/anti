@@ -10046,13 +10046,11 @@ export default function App() {
 
                         {(() => {
                           const { questionText, tableData } = parseQuestionTable(q);
-                          const cleanMcQuestionText = isMC 
-                            ? questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ') 
-                            : questionText;
+                          const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                           return (
                             <>
                               <div className="text-[17px] font-bold text-white leading-relaxed">
-                                <LatexRenderer text={cleanMcQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                               {isMC && tableData && (
                                 <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
@@ -11241,13 +11239,11 @@ export default function App() {
 
                       {(() => {
                         const { questionText, tableData } = parseQuestionTable(q);
-                        const cleanMcQuestionText = isMC 
-                          ? questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ') 
-                          : questionText;
+                        const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                         return (
                           <>
                             <div className="text-[17px] font-bold text-white leading-relaxed">
-                              <LatexRenderer text={cleanMcQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+                              <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                             </div>
                             {isMC && tableData && (
                               <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
