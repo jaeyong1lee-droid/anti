@@ -151,10 +151,21 @@ export function healLatexFormulas(text) {
       let t = healBackslashes(token.content);
       
       // 날것의 수식 패턴 자동 포착 및 인라인 감싸기 (별표 * 제외로 마크다운 충돌 방지)
+      const htmlCssBlacklist = [
+        'margin', 'padding', 'display', 'width', 'height', 'color', 'background', 
+        'font', 'border', 'position', 'static', 'absolute', 'relative', 'overflow',
+        'box-sizing', 'transform', 'none', 'auto', 'important', 'solid', 'px', 'em', 'rem',
+        'script', 'style', 'class', 'id', 'div', 'span', 'table', 'html', 'body'
+      ];
+
       const formulaPattern = /([a-zA-Z0-9_\-\+\/()\[\]\{\} \t=<>\\.,\^·~']{3,})/g;
       return t.replace(formulaPattern, (match) => {
         const trimmed = match.trim();
         if (/^[a-zA-Z0-9\s]+$/.test(trimmed) || trimmed.startsWith('$')) return match;
+        
+        // [치유 레이어] 감지된 단어에 CSS 찌꺼기 키워드가 포함되어 있다면 수식 변환 탈출!
+        const isHtmlNoise = htmlCssBlacklist.some(noise => trimmed.toLowerCase().includes(noise));
+        if (isHtmlNoise) return match; // 달러($) 기호 씌우지 않고 통과
         
         const hasMath = /[\\_^{}<>=+\-\/']/.test(trimmed);
         if (hasMath) {
