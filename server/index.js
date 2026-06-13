@@ -2998,10 +2998,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       try {
         const parsed = JSON.parse(cached.value);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return res.json({ questions: parsed, isFallback: false, isCached: true });
+          const healed = parsed.map(q => healQuizQuestionObject(q));
+          return res.json({ questions: healed, isFallback: false, isCached: true });
         } else if (parsed && Array.isArray(parsed.questions)) {
+          const healed = parsed.questions.map(q => healQuizQuestionObject(q));
           return res.json({
-            questions: parsed.questions,
+            questions: healed,
             selectedAnswers: parsed.selectedAnswers || {},
             revealedQuestions: parsed.revealedQuestions || {},
             savedQuizScroll: parsed.savedQuizScroll || 0,
@@ -5581,7 +5583,11 @@ app.get('/api/session/exam', async (req, res) => {
       ['exam_session']
     );
     if (rows.length > 0 && rows[0].value) {
-      res.json({ data: JSON.parse(rows[0].value) });
+      const data = JSON.parse(rows[0].value);
+      if (data && Array.isArray(data.questions)) {
+        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+      }
+      res.json({ data });
     } else {
       res.json({ data: null });
     }
@@ -5679,7 +5685,11 @@ app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
       [`completed_review_schedule_${scheduleId}`]
     );
     if (row && row.value) {
-      res.json({ success: true, data: JSON.parse(row.value) });
+      const data = JSON.parse(row.value);
+      if (data && Array.isArray(data.questions)) {
+        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+      }
+      res.json({ success: true, data });
     } else {
       res.json({ success: false, error: '해당 복습의 저장된 풀이 기록이 없습니다.' });
     }
@@ -5841,6 +5851,9 @@ app.get('/api/session/formula', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.formulaQuestions)) {
+        parsed.formulaQuestions = parsed.formulaQuestions.map(q => healFormulaQuestionObject(q));
+      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
@@ -5883,6 +5896,9 @@ app.get('/api/session/answersheet', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.questions)) {
+        parsed.questions = parsed.questions.map(q => healAnswersheetQuestionObject(q));
+      }
       res.json({ data: parsed });
     } else {
       res.json({ data: null });
