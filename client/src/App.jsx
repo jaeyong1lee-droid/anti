@@ -4979,6 +4979,7 @@ export default function App() {
         if (s.isFallback !== undefined) setIsFallback(s.isFallback);
         if (s.chatHistory) setChatHistory(s.chatHistory);
         if (s.tableAnswers) setTableAnswers(s.tableAnswers);
+        if (s.tableGradingResults) setTableGradingResults(s.tableGradingResults);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
@@ -4999,6 +5000,7 @@ export default function App() {
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
           if (data.tableAnswers) setTableAnswers(data.tableAnswers);
+          if (data.tableGradingResults) setTableGradingResults(data.tableGradingResults);
           if (data.savedExamScroll) savedExamScroll.current = data.savedExamScroll;
           requestAnimationFrame(() => {
             if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
@@ -5043,17 +5045,18 @@ export default function App() {
         examRevealed,
         examAnswers,
         tableAnswers,
+        tableGradingResults,
         chatHistory,
       }));
     } catch (e) {
       console.warn('localStorage 저장 실패:', e);
     }
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, chatHistory]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, chatHistory]);
 
   // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
   useEffect(() => {
     if (selectedTopic && selectedTopic.id) {
-      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0) {
+      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0) {
         try {
           const key = selectedTopic.schedule_id 
             ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
@@ -5061,14 +5064,15 @@ export default function App() {
           localStorage.setItem(key, JSON.stringify({
             revealedQuestions,
             selectedAnswers,
-            tableAnswers
+            tableAnswers,
+            tableGradingResults
           }));
         } catch (e) {
           console.warn('localStorage 복습 진행률 저장 실패:', e);
         }
       }
     }
-  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers]);
+  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -5083,6 +5087,7 @@ export default function App() {
             examAnswers,
             examTopic,
             tableAnswers,
+            tableGradingResults,
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
@@ -5090,7 +5095,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults]);
 
   const forceSaveActiveSessions = () => {
     // 1) Save active review session immediately
@@ -5106,6 +5111,7 @@ export default function App() {
           selectedAnswers,
           revealedQuestions,
           tableAnswers,
+          tableGradingResults,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
@@ -5123,6 +5129,7 @@ export default function App() {
           examAnswers,
           examTopic,
           tableAnswers,
+          tableGradingResults,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
@@ -5140,7 +5147,7 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults]);
 
   // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
@@ -5156,6 +5163,7 @@ export default function App() {
             selectedAnswers,
             revealedQuestions,
             tableAnswers,
+            tableGradingResults,
             savedQuizScroll: quizBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
@@ -5163,7 +5171,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults]);
 
   const getCurrentTabIndex = () => {
     if (showAnswerSheet) return 3;
@@ -5434,6 +5442,8 @@ export default function App() {
           questions: aiQuestions,
           selectedAnswers: selectedAnswers,
           revealedQuestions: revealedQuestions,
+          tableAnswers: tableAnswers,
+          tableGradingResults: tableGradingResults,
           referenceDate: referenceDate
         })
       });
@@ -5579,6 +5589,8 @@ export default function App() {
     setRevealedQuestions({});
     setSelectedAnswers({});
     setReviewOptionExplanations({});
+    setTableAnswers({});
+    setTableGradingResults({});
     setIsFallback(false);
     setAiError('');
     setShowFullReport(false);
@@ -5592,6 +5604,8 @@ export default function App() {
         setAiQuestions(data.data.questions || []);
         setSelectedAnswers(data.data.selectedAnswers || {});
         setRevealedQuestions(data.data.revealedQuestions || {});
+        setTableAnswers(data.data.tableAnswers || {});
+        setTableGradingResults(data.data.tableGradingResults || {});
       } else {
         // [Fallback] 이전 데이터 기록이 존재하지 않는 경우 (업데이트 이전 항목 등), 실시간 API를 통해 가볍게 기출문제만 재조회
         showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
@@ -5823,10 +5837,11 @@ export default function App() {
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
         
         // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
-        if (data.isCached && (data.selectedAnswers || data.revealedQuestions || data.tableAnswers)) {
+        if (data.isCached && (data.selectedAnswers || data.revealedQuestions || data.tableAnswers || data.tableGradingResults)) {
           setSelectedAnswers(data.selectedAnswers || {});
           setRevealedQuestions(data.revealedQuestions || {});
           setTableAnswers(data.tableAnswers || {});
+          setTableGradingResults(data.tableGradingResults || {});
           if (data.savedQuizScroll) {
             savedQuizScroll.current = data.savedQuizScroll;
             requestAnimationFrame(() => {
@@ -5836,6 +5851,8 @@ export default function App() {
         } else {
           let initialSelectedAnswers = {};
           let initialRevealedQuestions = {};
+          let initialTableAnswers = {};
+          let initialTableGradingResults = {};
           try {
             const key = finalScheduleId 
               ? `anti_review_progress_sched_${finalScheduleId}`
@@ -5845,18 +5862,25 @@ export default function App() {
               const parsed = JSON.parse(savedProgress);
               if (parsed.revealedQuestions) initialRevealedQuestions = parsed.revealedQuestions;
               if (parsed.selectedAnswers) initialSelectedAnswers = parsed.selectedAnswers;
-              if (parsed.tableAnswers) setTableAnswers(parsed.tableAnswers);
-              if (parsed.revealedQuestions) setRevealedQuestions(parsed.revealedQuestions);
-              if (parsed.selectedAnswers) setSelectedAnswers(parsed.selectedAnswers);
+              if (parsed.tableAnswers) initialTableAnswers = parsed.tableAnswers;
+              if (parsed.tableGradingResults) initialTableGradingResults = parsed.tableGradingResults;
+              
+              setTableAnswers(initialTableAnswers);
+              setTableGradingResults(initialTableGradingResults);
+              setRevealedQuestions(initialRevealedQuestions);
+              setSelectedAnswers(initialSelectedAnswers);
             } else {
               setRevealedQuestions({});
               setSelectedAnswers({});
               setTableAnswers({});
+              setTableGradingResults({});
             }
           } catch (e) {
             console.warn('복습 진행률 복원 실패:', e);
             setRevealedQuestions({});
             setSelectedAnswers({});
+            setTableAnswers({});
+            setTableGradingResults({});
           }
 
           // 즉시 DB 저장
@@ -5869,6 +5893,8 @@ export default function App() {
               questions: data.questions || [],
               selectedAnswers: initialSelectedAnswers,
               revealedQuestions: initialRevealedQuestions,
+              tableAnswers: initialTableAnswers,
+              tableGradingResults: initialTableGradingResults,
               savedQuizScroll: 0
             })
           }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
@@ -5965,6 +5991,7 @@ export default function App() {
     setRevealedQuestions({});
     setReviewOptionExplanations({});
     setTableAnswers({});
+    setTableGradingResults({});
     setOpenSections({}); // Clear accordion open sections if any
     
     // Remove localStorage progress
@@ -5989,6 +6016,8 @@ export default function App() {
           questions: aiQuestions,
           selectedAnswers: {},
           revealedQuestions: {},
+          tableAnswers: {},
+          tableGradingResults: {},
           savedQuizScroll: 0
         })
       });
@@ -6056,6 +6085,7 @@ export default function App() {
     setSelectedAnswers({});
     setReviewOptionExplanations({});
     setTableAnswers({});
+    setTableGradingResults({});
     setIsFallback(false);
     setAiError('');
     
@@ -7039,6 +7069,7 @@ export default function App() {
         setExamAnswers(d.examAnswers || {});
         setExamTopic(d.examTopic || { title: '전체 토픽 통합 종합평가' });
         if (d.savedExamScroll) savedExamScroll.current = d.savedExamScroll;
+        if (d.tableGradingResults) setTableGradingResults(d.tableGradingResults);
         
         setLoadingExam(false);
         requestAnimationFrame(() => {
@@ -7053,6 +7084,7 @@ export default function App() {
         setExamAnswers({});
         setExamTopic(null);
         setTableAnswers({});
+        setTableGradingResults({});
       }
     } catch (e) {
       console.warn('서버 세션 확인 실패, 로컬 상태를 사용합니다:', e);
@@ -7073,6 +7105,7 @@ export default function App() {
     setExamAnswers({});
     setExamOptionExplanations({});
     setTableAnswers({});
+    setTableGradingResults({});
     try {
       const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
       const data = await res.json();
@@ -11170,6 +11203,8 @@ export default function App() {
                         examRevealed, 
                         examAnswers, 
                         examTopic,
+                        tableAnswers,
+                        tableGradingResults,
                         savedExamScroll: savedExamScroll.current 
                       }),
                     });
@@ -11191,7 +11226,7 @@ export default function App() {
                   if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
                     fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                       .catch(e => console.warn('세션 삭제 실패:', e));
-                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({});
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({});
                   }
                 }}
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
@@ -11312,6 +11347,8 @@ export default function App() {
                         examRevealed, 
                         examAnswers, 
                         examTopic,
+                        tableAnswers,
+                        tableGradingResults,
                         savedExamScroll: savedExamScroll.current 
                       }),
                     });
@@ -11332,7 +11369,7 @@ export default function App() {
                   // 서버 세션 삭제 (종료 = 새로 시작)
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({});
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({});
                 }}
                 className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
                 title="종합평가 종료 (재개 시 새 문제 생성)"

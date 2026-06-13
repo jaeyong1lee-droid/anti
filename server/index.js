@@ -2310,7 +2310,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, referenceDate } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -2407,7 +2407,13 @@ app.post('/api/quiz/submit', async (req, res) => {
     // [핵심] 복습 완료 시, 풀이한 문제 세트, 객관식 마킹 내역, 주관식 풀이 열람 이력을 기기 간 완벽 복원하기 위해 세션 테이블에 세이브
     if (questions && questions.length > 0) {
       const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
-      const solvedSessionValue = JSON.stringify({ questions, selectedAnswers, revealedQuestions });
+      const solvedSessionValue = JSON.stringify({ 
+        questions, 
+        selectedAnswers: selectedAnswers || {}, 
+        revealedQuestions: revealedQuestions || {},
+        tableAnswers: tableAnswers || {},
+        tableGradingResults: tableGradingResults || {}
+      });
       await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
       await dbQuery.run(
         'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
@@ -3006,6 +3012,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
             questions: healed,
             selectedAnswers: parsed.selectedAnswers || {},
             revealedQuestions: parsed.revealedQuestions || {},
+            tableAnswers: parsed.tableAnswers || {},
+            tableGradingResults: parsed.tableGradingResults || {},
             savedQuizScroll: parsed.savedQuizScroll || 0,
             isFallback: false,
             isCached: true
@@ -5601,8 +5609,8 @@ app.get('/api/session/exam', async (req, res) => {
 app.post('/api/session/exam', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll } = req.body;
-    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll });
+    const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, savedExamScroll } = req.body;
+    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, savedExamScroll });
     // DELETE + INSERT (모든 DB 호환 UPSERT)
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     await dbQuery.run(
@@ -5632,7 +5640,7 @@ app.delete('/api/session/exam', async (req, res) => {
 app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, savedQuizScroll } = req.body;
+    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, savedQuizScroll } = req.body;
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
@@ -5643,6 +5651,8 @@ app.post('/api/session/review', async (req, res) => {
       questions,
       selectedAnswers: selectedAnswers || {},
       revealedQuestions: revealedQuestions || {},
+      tableAnswers: tableAnswers || {},
+      tableGradingResults: tableGradingResults || {},
       savedQuizScroll: savedQuizScroll || 0
     });
     
