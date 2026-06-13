@@ -904,6 +904,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   };
 
   let renderText = cleanAndSanitizeMathText(text);
+  if (typeof renderText === 'string') {
+    renderText = renderText.replace(/INPUT_?(\d+)/gi, (match, p1) => {
+      const num = parseInt(p1, 10);
+      return String.fromCharCode(64 + num);
+    });
+  }
   if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
       const trimmedText = renderText.trim();
@@ -1304,31 +1310,37 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     ? gradingResult.isCorrect 
                     : (normalize(value) === normalize(correctAnswer));
  
+                  const match = inputId.match(/\d+/);
+                  const inputNum = match ? parseInt(match[0], 10) : 1;
+                  const inputLetter = String.fromCharCode(64 + inputNum);
                   return (
-                    <td key={cIdx} className="p-1 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[110px]">
-                      <div className="flex flex-col gap-1 justify-center items-center">
-                        <input
-                          type="text"
-                          disabled={revealed}
-                          value={value}
-                          onChange={(e) => handleInputChange(inputId, e.target.value)}
-                          placeholder={`빈칸 입력`}
-                          className={`w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
-                            revealed 
-                              ? (isCorrect 
-                                  ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
-                                  : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                              : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
-                          }`}
-                        />
+                    <td key={cIdx} className="p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[130px]">
+                      <div className="flex flex-col gap-1 justify-center items-center w-full">
+                        <div className="flex items-center gap-1.5 w-full">
+                          <span className="text-xs font-bold text-slate-400 select-none min-w-[14px] text-right">{inputLetter}</span>
+                          <input
+                            type="text"
+                            disabled={revealed}
+                            value={value}
+                            onChange={(e) => handleInputChange(inputId, e.target.value)}
+                            placeholder={`${inputLetter} 입력`}
+                            className={`w-full text-xs px-2 py-1 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                              revealed 
+                                ? (isCorrect 
+                                    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
+                                    : 'border-rose-500 bg-rose-950/20 text-rose-300')
+                                : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
+                            }`}
+                          />
+                        </div>
                         {revealed && !isCorrect && (
                           <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                            정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                            {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         )}
                         {revealed && isCorrect && (
                           <span className="text-[10px] text-emerald-450 font-black flex items-center gap-1 select-text">
-                            ✓ 일치함
+                            {inputLetter} 일치함
                           </span>
                         )}
                       </div>
