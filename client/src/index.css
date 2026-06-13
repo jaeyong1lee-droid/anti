@@ -596,16 +596,10 @@ html, body {
     display: block !important;
   }
 
-  .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:start:decrement,
-  .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:end:increment {
-    display: block !important;
-    height: 30vh !important;
-    background: transparent !important;
-  }
-
   .custom-vertical-scrollbar::-webkit-scrollbar-track {
     background: transparent !important;
-    border: none !important;
+    border-top: 25vh solid transparent !important;
+    border-bottom: 25vh solid transparent !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-thumb {

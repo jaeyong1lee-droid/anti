@@ -12123,15 +12123,24 @@ export default function App() {
                       </p>
                     </div>
                   ) : formulaChatHistory.length === 0 ? (
-                    <div className="text-center py-16 px-4 opacity-50 flex flex-col items-center justify-center h-full">
-                      <div className="p-4 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-3">
-                        <MessageSquare size={32} />
+                    <div className="text-center py-12 px-4 flex flex-col items-center justify-center min-h-full">
+                      <div className="p-3 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-4 select-none">
+                        <Sigma size={24} />
                       </div>
-                      <p className="text-xs text-slate-200 font-extrabold text-white">
-                        선택된 공식: {formulaQuestions[selectedFormulaIdx]?.title || `공식 ${selectedFormulaIdx + 1}`}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-1.5 max-w-[240px] leading-relaxed">
-                        이 공식에 대해 궁금한 점(핵심 개념, 유도 과정, 적용 조건 등)을 아래 입력창에 질문해 보세요.
+                      <h4 className="text-xs text-slate-350 font-black mb-3 select-text px-2 text-center">
+                        [{formulaQuestions[selectedFormulaIdx]?.title || `공식 ${selectedFormulaIdx + 1}`}]
+                      </h4>
+                      {formulaQuestions[selectedFormulaIdx]?.formula && (
+                        <div className="w-full max-w-[290px] bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-slate-200 select-text mb-4 text-center overflow-x-auto custom-vertical-scrollbar">
+                          <LatexRenderer 
+                            text={formulaQuestions[selectedFormulaIdx].formula} 
+                            katexLoaded={katexLoaded} 
+                            isMarkdown={true} 
+                          />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-slate-500 max-w-[220px] leading-relaxed select-none">
+                        이 공식에 대해 궁금한 점(개념, 유도과정, 적용조건 등)을 아래 입력창에 질문해 보세요.
                       </p>
                     </div>
                   ) : (
