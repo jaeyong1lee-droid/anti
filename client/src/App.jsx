@@ -11025,7 +11025,7 @@ export default function App() {
                               ) : (
                                 <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                   <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                                    <span>📝 모범 답안 및 해설</span>
+                                    <span>📝 상세 해설</span>
                                     <button
                                       onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
                                       className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
@@ -11034,16 +11034,10 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
-                                  <div className="space-y-1 text-left">
-                                    <span className="text-[10px] font-black text-indigo-400">💡 모범 답안: </span>
-                                    <div className="text-xs text-slate-200 leading-relaxed font-bold bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">{q.answer}</div>
-                                  </div>
                                   {q.explanation && (
-                                    <div className="space-y-1 pt-2 border-t border-amber-500/10 text-left">
-                                      <span className="text-[10px] font-black text-rose-400">🔍 해설: </span>
-                                      <div className="text-xs text-slate-200 leading-relaxed bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
+                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
+                                  {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
                               )}
                             </div>
@@ -12373,7 +12367,7 @@ export default function App() {
                               ) : (
                                 <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                   <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                                    <span>📝 모범 답안 및 해설</span>
+                                    <span>📝 상세 해설</span>
                                     <button
                                       onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
                                       className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
@@ -12382,16 +12376,10 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
-                                  <div className="space-y-1 text-left">
-                                    <span className="text-[10px] font-black text-indigo-400">💡 모범 답안: </span>
-                                    <div className="text-xs text-slate-200 leading-relaxed font-bold bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">{q.answer}</div>
-                                  </div>
                                   {q.explanation && (
-                                    <div className="space-y-1 pt-2 border-t border-amber-500/10 text-left">
-                                      <span className="text-[10px] font-black text-rose-400">🔍 해설: </span>
-                                      <div className="text-xs text-slate-200 leading-relaxed bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
+                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
+                                  {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
                               )}
                             </div>
