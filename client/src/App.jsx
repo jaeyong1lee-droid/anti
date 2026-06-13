@@ -10337,8 +10337,8 @@ export default function App() {
                 }`}
               >
           {/* Review Header */}
-          <div className="w-full flex flex-col items-stretch md:flex-row md:items-center justify-start px-5 py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 md:gap-8 landscape-hide">
-            <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
+          <div className="w-full flex flex-col items-stretch md:flex-row md:items-center justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-4 md:gap-8 landscape-hide">
+            <div className="flex items-start gap-3 min-w-0 w-full md:w-auto px-1.5 md:px-0">
               <div className="p-2 bg-violet-950/80 text-violet-400 rounded-xl flex-shrink-0 mt-0.5">
                 <Brain size={20} />
               </div>
@@ -10364,7 +10364,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-1.5 w-full md:w-auto md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:w-auto md:justify-start border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-0">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
