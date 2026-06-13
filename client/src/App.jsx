@@ -12388,23 +12388,13 @@ export default function App() {
                         </option>
                       ))}
                     </select>
-                    {selectedFormulaIdx !== -1 && (
-                      <button
-                        onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
-                        disabled={isFormulaChatLoading}
-                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <HelpCircle size={11} className="text-rose-400" />
-                        <span>이 공식으로 문제 출제 받기 📝</span>
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {/* Chat Message History */}
                 <div 
                   ref={formulaChatBodyRef}
-                  className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:pr-2 space-y-4 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar"
+                  className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-1.5 md:pr-2 space-y-4 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar"
                 >
                   {selectedFormulaIdx === -1 ? (
                     <div className="text-center py-16 px-4 opacity-50 flex flex-col items-center justify-center h-full">
@@ -12417,7 +12407,7 @@ export default function App() {
                       </p>
                     </div>
                   ) : formulaChatHistory.length === 0 ? (
-                    <div className="w-full px-4 py-4 flex flex-col items-center justify-start min-h-0">
+                    <div className="w-full px-4 pt-0.5 pb-4 flex flex-col items-center justify-start min-h-0">
                       {(() => {
                         const formulaStr = formulaQuestions[selectedFormulaIdx]?.formula || '';
                         const lines = formulaStr.split('\n');
