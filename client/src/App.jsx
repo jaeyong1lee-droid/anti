@@ -10351,7 +10351,7 @@ export default function App() {
                   <span className="whitespace-nowrap">원보고서</span>
                 </button>
               )}
-              {isDesktop && selectedTopic && (
+              {selectedTopic && (
                 <button
                   onClick={handleRetakeReviewQuiz}
                   className="flex-1 md:flex-none px-2 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-lg text-[10px] font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
