@@ -5992,6 +5992,10 @@ export default function App() {
     setRevealedQuestions({}); // Reset revealed answers
     setSelectedAnswers({}); // Reset MC selected answers
     setReviewOptionExplanations({}); // Reset Option Explanations
+    setTableAnswers({}); // Reset table cell inputs
+    setTableGradingResults({}); // Reset table cell grading results
+    setShowAnswersState({}); // Reset show answer states
+    setExamShowAnswersState({}); // Reset exam show answer states
     setIsFallback(false);
     setAiError('');
     setShowFullReport(false);
