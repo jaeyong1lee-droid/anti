@@ -121,7 +121,7 @@ function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   }
 
   return (
-    <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-850">
+    <div className="flex-grow flex flex-col items-center overflow-y-auto max-h-[55vh] px-2 bg-slateCustom-950 rounded-2xl border border-slate-800">
       {loading && (
         <div className="py-20 flex flex-col items-center justify-center gap-3">
           <div className="relative">
@@ -1282,7 +1282,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => (
-              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-850 last:border-r-0 select-text">
+              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text">
                 <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
               </th>
             ))}
@@ -1290,7 +1290,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         </thead>
         <tbody>
           {rows.map((row, rIdx) => (
-            <tr key={rIdx} className="border-b border-slate-850 last:border-b-0 hover:bg-slate-900/20">
+            <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
               {row.map((cell, cIdx) => {
                 const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
                 if (isInput) {
@@ -1303,9 +1303,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const isCorrect = gradingResult 
                     ? gradingResult.isCorrect 
                     : (normalize(value) === normalize(correctAnswer));
-
+ 
                   return (
-                    <td key={cIdx} className="p-3 border-r border-slate-850 last:border-r-0 text-slate-200 min-w-[150px]">
+                    <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[150px]">
                       <div className="flex flex-col gap-1.5 justify-center items-center">
                         <input
                           type="text"
@@ -1318,7 +1318,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               ? (isCorrect 
                                   ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold' 
                                   : 'border-rose-500 bg-rose-950/20 text-rose-300')
-                              : 'border-slate-700 focus:border-violet-500 focus:ring-1 focus:ring-violet-500'
+                              : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
                           }`}
                         />
                         {revealed && !isCorrect && (
@@ -1336,7 +1336,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   );
                 } else {
                   return (
-                    <td key={cIdx} className="p-3 border-r border-slate-850 last:border-r-0 text-slate-350 select-text">
+                    <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text">
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
                     </td>
                   );
@@ -3821,6 +3821,46 @@ export default function App() {
     await Promise.all(promises);
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
   };
+
+  const gradeSubjectiveQuestion = async (qIdx, q) => {
+    setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
+    const userAnswer = tableAnswers[`${qIdx}_INPUT`] || '';
+    const correctAnswer = q.answer || '';
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/grade-subjective`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q.question,
+          correctAnswer,
+          userAnswer
+        })
+      });
+      const data = await res.json();
+      setTableGradingResults(prev => ({
+        ...prev,
+        [`${qIdx}_INPUT`]: {
+          isCorrect: data.isCorrect,
+          reason: data.reason
+        }
+      }));
+    } catch (err) {
+      console.error('Grading error:', err);
+      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+      setTableGradingResults(prev => ({
+        ...prev,
+        [`${qIdx}_INPUT`]: {
+          isCorrect,
+          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+        }
+      }));
+    } finally {
+      setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    }
+  };
+
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
@@ -9817,6 +9857,20 @@ export default function App() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {/* 답안보기 버튼 */}
+                            <button
+                              onClick={() => {
+                                if (isMC) {
+                                  setSelectedAnswers(prev => ({ ...prev, [idx]: q.answer }));
+                                } else {
+                                  setRevealedQuestions(prev => ({ ...prev, [idx]: !prev[idx] }));
+                                }
+                              }}
+                              className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                              title="정답 및 해설 바로 확인"
+                            >
+                              <span>👁️ 답안보기</span>
+                            </button>
                             {/* 추천/비추천 피드백 버튼 */}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -10032,7 +10086,7 @@ export default function App() {
                                             }
                                           }}
                                           placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500 mb-2 resize-none"
+                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-2 resize-none"
                                         />
                                         <div className="flex gap-2 justify-end">
                                           <button
@@ -10044,7 +10098,7 @@ export default function App() {
                                           <button
                                             disabled={tutorAnswers[`r_${idx}`]?.loading || !(tutorInputText[`r_${idx}`] || '').trim()}
                                             onClick={() => handleAskCardTutor(`r_${idx}`, q)}
-                                            className="text-[10px] px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800/50 disabled:text-violet-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-300 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 font-bold transition-all cursor-pointer active:scale-95 duration-200"
                                           >
                                             {tutorAnswers[`r_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
                                           </button>
@@ -10123,7 +10177,7 @@ export default function App() {
                                     await gradeTableQuestion(idx, q);
                                     setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-violet-600 hover:bg-violet-550 border border-violet-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-violet-600/20 font-black disabled:opacity-50"
+                                  className="w-full py-3 bg-slate-300 hover:bg-slate-200 text-slate-900 border border-slate-400/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-300/10 font-black disabled:opacity-50"
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -10145,11 +10199,76 @@ export default function App() {
                                 </div>
                               )}
                             </div>
+                          ) : q.type === '주관식 (단답형)' ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
+                                <div className="space-y-1">
+                                  <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      disabled={isRevd}
+                                      value={tableAnswers[`${idx}_INPUT`] || ''}
+                                      onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                      placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                      className="w-full bg-slate-900 border border-slate-750 focus:border-slate-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
+                                    />
+                                  </div>
+                                </div>
+                                {tableGradingResults[`${idx}_INPUT`] && (
+                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
+                                    tableGradingResults[`${idx}_INPUT`].isCorrect
+                                      ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450'
+                                      : 'bg-rose-950/20 border-rose-500/30 text-rose-450'
+                                  }`}>
+                                    <div className="text-[10px] font-black flex items-center gap-1.5 mb-0.5">
+                                      <span>{tableGradingResults[`${idx}_INPUT`].isCorrect ? '✅ 정답 인정' : '❌ 오답 판정'}</span>
+                                    </div>
+                                    <p className="text-[10px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {!isRevd ? (
+                                <button
+                                  disabled={gradingLoading[idx]}
+                                  onClick={async () => {
+                                    await gradeSubjectiveQuestion(idx, q);
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className="w-full py-3 bg-slate-300 hover:bg-slate-200 text-slate-900 border border-slate-400/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-300/10 font-black disabled:opacity-50"
+                                >
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                </button>
+                              ) : (
+                                <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                    <span>📝 모범 답안 및 해설</span>
+                                    <button
+                                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                      title="답안 접기"
+                                    >
+                                      접기 ✕
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1 text-left">
+                                    <span className="text-[10px] font-black text-indigo-400">💡 모범 답안: </span>
+                                    <div className="text-xs text-slate-200 leading-relaxed font-bold bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">{q.answer}</div>
+                                  </div>
+                                  {q.explanation && (
+                                    <div className="space-y-1 pt-2 border-t border-amber-500/10 text-left">
+                                      <span className="text-[10px] font-black text-rose-400">🔍 해설: </span>
+                                      <div className="text-xs text-slate-200 leading-relaxed bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             !isRevd ? (
                               <button
                                 onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
-                                className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-violet-500 rounded-xl text-xs font-bold text-slate-400 hover:text-violet-300 transition-all duration-200"
+                                className="w-full py-3 border-2 border-dashed border-slate-600 hover:border-slate-400 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 transition-all duration-200"
                               >
                                 💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
                               </button>
@@ -10241,12 +10360,12 @@ export default function App() {
             <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
             <div 
-              className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-violet-500/10 hover:border-violet-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
+              className="flex flex-col gap-2.5 p-2 rounded-full bg-slateCustom-950/90 border border-slate-700/40 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.9)] hover:shadow-slate-500/10 hover:border-slate-500/30 select-none z-30 transition-all duration-300 hover:scale-105 cursor-default"
               title="문제 위/아래 이동"
             >
               <button 
                 onClick={(e) => { e.stopPropagation(); handleScrollQuestion('up'); }}
-                className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group/btn"
+                className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-slate-500 hover:shadow-slate-700/30 cursor-pointer flex items-center justify-center group/btn"
                 title="이전 문제로 스크롤"
               >
                 <ChevronUp size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
@@ -10254,7 +10373,7 @@ export default function App() {
               
               <button 
                 onClick={(e) => { e.stopPropagation(); handleScrollQuestion('down'); }}
-                className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-violet-600 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-violet-400 hover:shadow-violet-650/30 cursor-pointer flex items-center justify-center group/btn"
+                className="p-2 sm:p-2.5 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-300 active:scale-90 shadow-md border border-slate-700/60 hover:border-slate-500 hover:shadow-slate-700/30 cursor-pointer flex items-center justify-center group/btn"
                 title="다음 문제로 스크롤"
               >
                 <ChevronDown size={14} className="group-hover/btn:translate-y-0.5 transition-transform" />
@@ -10401,9 +10520,9 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={!chatInput.trim() || isChatLoading}
-                    className="w-8 h-8 bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-violet-600/10 active:scale-95 flex-shrink-0"
+                    className="w-8 h-8 bg-slate-300 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-slate-300/10 active:scale-95 flex-shrink-0"
                   >
-                    <Send size={12} className="text-white" />
+                    <Send size={12} className="text-slate-900" />
                   </button>
                 </form>
               </div>
@@ -10440,7 +10559,7 @@ export default function App() {
                   setFormulaConfirmTarget(null);
                   handleAddSpecificFormula(target.math, target.fullText);
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-slate-300/10"
               >
                 추가하기
               </button>
@@ -10904,6 +11023,20 @@ export default function App() {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          {/* 답안보기 버튼 */}
+                          <button
+                            onClick={() => {
+                              if (isMC) {
+                                setExamAnswers(prev => ({ ...prev, [idx]: q.answer }));
+                              } else {
+                                setExamRevealed(prev => ({ ...prev, [idx]: !prev[idx] }));
+                              }
+                            }}
+                            className="flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none"
+                            title="정답 및 해설 바로 확인"
+                          >
+                            <span>👁️ 답안보기</span>
+                          </button>
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -11245,6 +11378,71 @@ export default function App() {
                                   </div>
                                   {q.explanation && (
                                     <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : q.type === '주관식 (단답형)' ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
+                                <div className="space-y-1">
+                                  <div className="text-[10px] text-slate-500 font-bold">답안 입력:</div>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      disabled={!!examRevealed[idx]}
+                                      value={tableAnswers[`${idx}_INPUT`] || ''}
+                                      onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                      placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                      className="w-full bg-slate-900 border border-slate-750 focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-all"
+                                    />
+                                  </div>
+                                </div>
+                                {tableGradingResults[`${idx}_INPUT`] && (
+                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${
+                                    tableGradingResults[`${idx}_INPUT`].isCorrect
+                                      ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450'
+                                      : 'bg-rose-950/20 border-rose-500/30 text-rose-450'
+                                  }`}>
+                                    <div className="text-[10px] font-black flex items-center gap-1.5 mb-0.5">
+                                      <span>{tableGradingResults[`${idx}_INPUT`].isCorrect ? '✅ 정답 인정' : '❌ 오답 판정'}</span>
+                                    </div>
+                                    <p className="text-[10px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {!examRevealed[idx] ? (
+                                <button
+                                  disabled={gradingLoading[idx]}
+                                  onClick={async () => {
+                                    await gradeSubjectiveQuestion(idx, q);
+                                    setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className="w-full py-3 bg-amber-600 hover:bg-amber-550 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black disabled:opacity-50"
+                                >
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                </button>
+                              ) : (
+                                <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                    <span>📝 모범 답안 및 해설</span>
+                                    <button
+                                      onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                      title="답안 접기"
+                                    >
+                                      접기 ✕
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1 text-left">
+                                    <span className="text-[10px] font-black text-indigo-400">💡 모범 답안: </span>
+                                    <div className="text-xs text-slate-200 leading-relaxed font-bold bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40">{q.answer}</div>
+                                  </div>
+                                  {q.explanation && (
+                                    <div className="space-y-1 pt-2 border-t border-amber-500/10 text-left">
+                                      <span className="text-[10px] font-black text-rose-400">🔍 해설: </span>
+                                      <div className="text-xs text-slate-200 leading-relaxed bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -12454,7 +12652,7 @@ export default function App() {
                     <button
                       type="submit"
                       disabled={selectedFormulaIdx === -1 || isFormulaChatLoading || !formulaChatInput.trim()}
-                      className="px-4 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-850 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
+                      className="px-4 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
                     >
                       <span>보내기</span>
                     </button>

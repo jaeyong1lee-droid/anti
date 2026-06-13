@@ -1,5 +1,7 @@
-﻿// Technical and high-quality PE questions offline fallback generator
+// Technical and high-quality PE questions offline fallback generator
 // Developed to support dynamic source document based quiz generation
+
+import { getPluginQuestionsByTopic } from './questions_plugin.js';
 
 // Helper to shuffle choices
 function shuffleArray(array) {
@@ -2134,8 +2136,70 @@ function padTo12Questions(questions, title, keywords) {
 }
 
 function generateFallbackQuestions(title, keywords, fileText = '') {
+  // 1. Get raw questions (these contain the handcrafted Q1 and Q2)
   const rawQuestions = routeFallbackQuestions(title, keywords, fileText);
-  return padTo12Questions(rawQuestions, title, keywords);
+  
+  // 2. Load plugin questions
+  const pluginData = getPluginQuestionsByTopic(title, keywords);
+  
+  // 3. Extract Q1 and Q2 (definition & formula) from rawQuestions
+  const q1 = rawQuestions.find(q => q.type === '주관식 (개요)') || rawQuestions[0];
+  const q2 = rawQuestions.find(q => q.type === '주관식 (공식)') || rawQuestions[1];
+  
+  // 4. Retrieve shortSubjective, tableSubjective, and mcQuestions from the plugin
+  let shortSubj = pluginData ? pluginData.shortSubjective : [];
+  let tableSubj = pluginData ? pluginData.tableSubjective : [];
+  let mcQs = pluginData ? pluginData.mcQuestions : [];
+  
+  // If not found in plugin, fallback to filters from rawQuestions
+  if (shortSubj.length === 0) {
+    shortSubj = rawQuestions.filter(q => q.type === '주관식 (단답형)');
+  }
+  if (tableSubj.length === 0) {
+    tableSubj = rawQuestions.filter(q => q.type === '주관식 (표채우기)');
+  }
+  if (mcQs.length === 0) {
+    mcQs = rawQuestions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
+  }
+  
+  // Ensure we have at least one short subjective
+  if (shortSubj.length === 0) {
+    shortSubj = [{
+      type: '주관식 (단답형)',
+      question: `[${title}]와 관련하여 공학적 메커니즘을 설명하는 가장 중요한 핵심 개념 명칭은?`,
+      answer: '핵심 개념',
+      explanation: '기본적인 개념과 원리를 의미합니다.'
+    }];
+  }
+  
+  // Ensure we have at least one table subjective
+  if (tableSubj.length === 0) {
+    tableSubj = [{
+      type: '주관식 (표채우기)',
+      question: `다음 ${title} 관련 비교표 빈칸에 알맞은 답을 쓰시오.`,
+      tableData: {
+        headers: ["항목", "내용"],
+        rows: [["비교", "[INPUT_1]"]]
+      },
+      answers: { "INPUT_1": "정답" },
+      explanation: '설명'
+    }];
+  }
+  
+  // Mix them:
+  // - 2 standard subjective (q1, q2)
+  // - 1 short subjective
+  // - 1 table subjective (additional table subjective questions are added during final assembly in index.js)
+  // - all MC questions
+  const finalQuestions = [
+    q1,
+    q2,
+    ...shortSubj.slice(0, 1),
+    ...tableSubj.slice(0, 1),
+    ...mcQs
+  ];
+  
+  return padTo12Questions(finalQuestions, title, keywords);
 }
 
 function routeFallbackQuestions(title, keywords, fileText = '') {

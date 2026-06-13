@@ -2879,21 +2879,49 @@ function createLocalFallbackTableQuestion(idx, title, keywords) {
 
 function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
   const subjsIntroFormula = questions.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
+  const subjsShort = questions.filter(q => q.type === '주관식 (단답형)');
   const subjsTable = questions.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
   const mcs = questions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
 
+  // 1. Q1, Q2 (Intro/Formula) - exactly 2
   let finalSubjsIntroFormula = [...subjsIntroFormula].slice(0, 2);
   if (finalSubjsIntroFormula.length < 2) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackSubjs = fallbackQs.filter(q => !q.options || q.options.length === 0);
+    const fallbackSubjs = fallbackQs.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
     finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
   }
 
-  // 1. DEDUPLICATED MULTIPLE CHOICE QUESTIONS
+  // 2. Q3 (Short Answer) - exactly 1
+  let finalSubjsShort = [...subjsShort].slice(0, 1);
+  if (finalSubjsShort.length < 1) {
+    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+    const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)');
+    finalSubjsShort = [...finalSubjsShort, ...fallbackShorts].slice(0, 1);
+  }
+  if (finalSubjsShort.length < 1) {
+    finalSubjsShort = [{
+      type: "주관식 (단답형)",
+      question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
+      answer: "핵심 메커니즘",
+      explanation: `${topic.title}의 기본적인 공학적 개념과 핵심 작동 메커니즘입니다.`
+    }];
+  }
+
+  // 3. Q4, Q5, Q6 (Table Quiz) - exactly 3
+  let finalSubjsTable = [...subjsTable].slice(0, 3);
+  if (finalSubjsTable.length < 3) {
+    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+    const fallbackTables = fallbackQs.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
+    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 3);
+  }
+  while (finalSubjsTable.length < 3) {
+    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
+  }
+
+  // 4. MC questions (7 questions)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
 
-  // Add from AI-generated MCs
   mcs.forEach(q => {
     if (finalMcs.length >= 7) return;
     const cleanQ = (q.question || '').trim();
@@ -2903,7 +2931,6 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  // Add from carry over questions
   if (finalMcs.length < 7 && carryOverQuestions && carryOverQuestions.length > 0) {
     const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
     shuffledCarryOvers.forEach(q => {
@@ -2916,7 +2943,6 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     });
   }
 
-  // Add from fallback MCs
   if (finalMcs.length < 7) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
     const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
@@ -2930,13 +2956,6 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  // 2. PREPARE TABLE SUBJECTIVE QUESTIONS
-  let finalSubjsTable = [...subjsTable].slice(0, 3);
-  while (finalSubjsTable.length < 3) {
-    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
-  }
-
-  // 3. FILL MCQ DEFICIT WITH TABLE SUBJECTIVE QUESTIONS (No duplicate MCQs!)
   if (finalMcs.length < 7) {
     const deficit = 7 - finalMcs.length;
     console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
@@ -2945,7 +2964,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  return [...finalSubjsIntroFormula, ...finalSubjsTable, ...finalMcs];
+  const shuffledRest = shuffleArray([...finalSubjsShort, ...finalSubjsTable, ...finalMcs]);
+  return [...finalSubjsIntroFormula, ...shuffledRest];
 }
 
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
