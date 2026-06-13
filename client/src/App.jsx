@@ -3704,7 +3704,12 @@ export default function App() {
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        setFormulaChatHistory(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setFormulaChatHistory(parsed);
+        } else {
+          setFormulaChatHistory([]);
+        }
       } catch (e) {
         setFormulaChatHistory([]);
       }
@@ -3716,9 +3721,10 @@ export default function App() {
   const saveFormulaChatHistory = (historyOrFn) => {
     setFormulaChatHistory(prev => {
       const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
+      const nextArray = Array.isArray(next) ? next : [];
       const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
-      localStorage.setItem(key, JSON.stringify(next));
-      return next;
+      localStorage.setItem(key, JSON.stringify(nextArray));
+      return nextArray;
     });
   };
 
