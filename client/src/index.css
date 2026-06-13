@@ -592,32 +592,33 @@ html, body {
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar {
-    width: 2.5px !important;
+    width: 6px !important;
     display: block !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:start:decrement,
   .custom-vertical-scrollbar::-webkit-scrollbar-button:vertical:end:increment {
     display: block !important;
-    height: 35% !important;
+    height: 30vh !important;
     background: transparent !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.5) !important;
-    border-radius: 9999px !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: transparent !important;
+    border: none !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-thumb {
     background: rgba(250, 204, 21, 0.85) !important;
     border-radius: 9999px !important;
-    border: none !important;
-    box-shadow: 0 0 6px rgba(250, 204, 21, 0.45) !important;
+    border: 2px solid transparent !important;
+    background-clip: padding-box !important;
   }
 
   .custom-vertical-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(250, 204, 21, 1.0) !important;
+    border: 2px solid transparent !important;
+    background-clip: padding-box !important;
   }
 }
 
