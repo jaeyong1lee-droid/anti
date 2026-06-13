@@ -3460,7 +3460,12 @@ function MobileStatusBar() {
 
 // Floating Casio Calculator Component
 function FloatingCalculator({ onClose }) {
-  const [position, setPosition] = useState(() => ({ x: Math.max(10, window.innerWidth - 360), y: 150 }));
+  const dragRef = useRef(null);
+  const [position, setPosition] = useState(() => {
+    const isMobile = window.innerWidth < 768;
+    const width = isMobile ? window.innerWidth * 0.9 : 660;
+    return { x: Math.max(10, window.innerWidth - width - 20), y: 150 };
+  });
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
@@ -3478,8 +3483,10 @@ function FloatingCalculator({ onClose }) {
     if (!isDragging.current) return;
     const newX = e.clientX - dragStart.current.x;
     const newY = e.clientY - dragStart.current.y;
-    const boundedX = Math.max(10, Math.min(window.innerWidth - 340, newX));
-    const boundedY = Math.max(10, Math.min(window.innerHeight - 500, newY));
+    const width = dragRef.current?.clientWidth || 660;
+    const height = dragRef.current?.clientHeight || 500;
+    const boundedX = Math.max(10, Math.min(window.innerWidth - width - 10, newX));
+    const boundedY = Math.max(10, Math.min(window.innerHeight - height - 10, newY));
     setPosition({ x: boundedX, y: boundedY });
   };
 
@@ -3504,8 +3511,10 @@ function FloatingCalculator({ onClose }) {
     const touch = e.touches[0];
     const newX = touch.clientX - dragStart.current.x;
     const newY = touch.clientY - dragStart.current.y;
-    const boundedX = Math.max(10, Math.min(window.innerWidth - 340, newX));
-    const boundedY = Math.max(10, Math.min(window.innerHeight - 500, newY));
+    const width = dragRef.current?.clientWidth || 660;
+    const height = dragRef.current?.clientHeight || 500;
+    const boundedX = Math.max(10, Math.min(window.innerWidth - width - 10, newX));
+    const boundedY = Math.max(10, Math.min(window.innerHeight - height - 10, newY));
     setPosition({ x: boundedX, y: boundedY });
     e.preventDefault();
   };
@@ -3518,6 +3527,7 @@ function FloatingCalculator({ onClose }) {
 
   return (
     <div
+      ref={dragRef}
       style={{
         position: 'fixed',
         left: `${position.x}px`,
@@ -3525,7 +3535,7 @@ function FloatingCalculator({ onClose }) {
         zIndex: 9999,
         touchAction: 'none'
       }}
-      className="w-[330px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
+      className="w-[90vw] md:w-[660px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
     >
       {/* Draggable Header */}
       <div 
@@ -3593,6 +3603,11 @@ export default function App() {
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
+
+  // Close floating calculator when switching views/tabs
+  useEffect(() => {
+    setShowFloatingCalculator(false);
+  }, [viewMode, showFormulaExam, showAnswerSheet, selectedTopic, showExam, showTheoryExam, formulaMobileTab, answersheetMobileTab]);
   const [lastActiveReview, setLastActiveReview] = useState(null);
   useEffect(() => {
     const saved = localStorage.getItem('anti_last_active_review');
@@ -3682,6 +3697,30 @@ export default function App() {
   const [isFormulaChatLoading, setIsFormulaChatLoading] = useState(false);
   const formulaChatBodyRef = useRef(null);
   const [formulaChatInput, setFormulaChatInput] = useState('');
+
+  // Load chat history when selectedTopic changes
+  useEffect(() => {
+    const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        setFormulaChatHistory(JSON.parse(saved));
+      } catch (e) {
+        setFormulaChatHistory([]);
+      }
+    } else {
+      setFormulaChatHistory([]);
+    }
+  }, [selectedTopic?.id]);
+
+  const saveFormulaChatHistory = (historyOrFn) => {
+    setFormulaChatHistory(prev => {
+      const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
+      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}`;
+      localStorage.setItem(key, JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
@@ -8000,7 +8039,7 @@ export default function App() {
     if (idx === -1) return;
     setSelectedFormulaIdx(idx);
     setFormulaMobileTab('tutor');
-    setFormulaChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
+    saveFormulaChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
     setIsFormulaChatLoading(true);
 
     const selected = formulaQuestions[idx];
@@ -8030,12 +8069,12 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '문제 출제 실패');
-      setFormulaChatHistory(prev => {
+      saveFormulaChatHistory(prev => {
         const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
         return [...filtered, { role: 'model', text: data.text }];
       });
     } catch (err) {
-      setFormulaChatHistory(prev => {
+      saveFormulaChatHistory(prev => {
         const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
         return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
       });
@@ -8057,7 +8096,7 @@ export default function App() {
     setFormulaChatInput('');
     
     const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage }];
-    setFormulaChatHistory(updatedHistory);
+    saveFormulaChatHistory(updatedHistory);
     setIsFormulaChatLoading(true);
     
     requestAnimationFrame(() => {
@@ -8081,9 +8120,9 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답변 생성 실패');
-      setFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+      saveFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
-      setFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+      saveFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsFormulaChatLoading(false);
       requestAnimationFrame(() => {
@@ -11594,7 +11633,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     if (window.confirm("AI 튜터와의 모든 대화 기록을 지우시겠습니까?")) {
-                      setFormulaChatHistory([]);
+                      saveFormulaChatHistory([]);
                     }
                   }}
                   className="px-3 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
