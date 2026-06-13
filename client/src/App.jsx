@@ -1262,7 +1262,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 });
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -1299,7 +1299,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const correctAnswer = q.answers?.[inputId] || '';
                   
                   const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-                  const isCorrect = normalize(value) === normalize(correctAnswer);
+                  const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                  const isCorrect = gradingResult 
+                    ? gradingResult.isCorrect 
+                    : (normalize(value) === normalize(correctAnswer));
 
                   return (
                     <td key={cIdx} className="p-3 border-r border-slate-850 last:border-r-0 text-slate-200 min-w-[150px]">
@@ -3772,6 +3775,52 @@ export default function App() {
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
+  const [tableGradingResults, setTableGradingResults] = useState({});
+  const [gradingLoading, setGradingLoading] = useState({});
+
+  const gradeTableQuestion = async (qIdx, q) => {
+    setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
+    const inputs = Object.keys(q.answers || {});
+    
+    const promises = inputs.map(async (inputId) => {
+      const userAnswer = tableAnswers[`${qIdx}_${inputId}`] || '';
+      const correctAnswer = q.answers[inputId] || '';
+      
+      try {
+        const res = await fetch(`${API_BASE}/api/grade-subjective`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: q.question,
+            correctAnswer,
+            userAnswer
+          })
+        });
+        const data = await res.json();
+        setTableGradingResults(prev => ({
+          ...prev,
+          [`${qIdx}_${inputId}`]: {
+            isCorrect: data.isCorrect,
+            reason: data.reason
+          }
+        }));
+      } catch (err) {
+        console.error('Grading error:', err);
+        const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+        const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+        setTableGradingResults(prev => ({
+          ...prev,
+          [`${qIdx}_${inputId}`]: {
+            isCorrect,
+            reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+          }
+        }));
+      }
+    });
+
+    await Promise.all(promises);
+    setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+  };
   const [isFallback, setIsFallback] = useState(false);
   const [aiError, setAiError] = useState('');
   const [openSections, setOpenSections] = useState({}); // { 'qIdx-sIdx': bool } for section accordion
@@ -10065,13 +10114,18 @@ export default function App() {
                                 setTableAnswers={setTableAnswers} 
                                 revealed={isRevd} 
                                 katexLoaded={katexLoaded} 
+                                tableGradingResults={tableGradingResults}
                               />
                               {!isRevd ? (
                                 <button
-                                  onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: true }))}
-                                  className="w-full py-3 bg-violet-600 hover:bg-violet-550 border border-violet-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-violet-600/20 font-black"
+                                  disabled={gradingLoading[idx]}
+                                  onClick={async () => {
+                                    await gradeTableQuestion(idx, q);
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className="w-full py-3 bg-violet-600 hover:bg-violet-550 border border-violet-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-violet-600/20 font-black disabled:opacity-50"
                                 >
-                                  제출하고 채점하기 →
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
                                 <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
@@ -11164,13 +11218,18 @@ export default function App() {
                                 setTableAnswers={setTableAnswers} 
                                 revealed={!!examRevealed[idx]} 
                                 katexLoaded={katexLoaded} 
+                                tableGradingResults={tableGradingResults}
                               />
                               {!examRevealed[idx] ? (
                                 <button
-                                  onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: true }))}
-                                  className="w-full py-3 bg-amber-600 hover:bg-amber-500 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black"
+                                  disabled={gradingLoading[idx]}
+                                  onClick={async () => {
+                                    await gradeTableQuestion(idx, q);
+                                    setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className="w-full py-3 bg-amber-600 hover:bg-amber-500 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black disabled:opacity-50"
                                 >
-                                  제출하고 채점하기 →
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
                                 <div className="md:bg-amber-950/30 md:border md:border-amber-500/20 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">

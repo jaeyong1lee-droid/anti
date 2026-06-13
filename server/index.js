@@ -2820,63 +2820,59 @@ function shuffleMultipleChoice(q) {
 
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
 function createLocalFallbackTableQuestion(idx, title, keywords) {
-  const cleanKeywords = (keywords || '지반공학').split(',').map(s => s.trim()).filter(Boolean);
-  const keyword1 = cleanKeywords[0] || '지반거동';
-  const keyword2 = cleanKeywords[1] || '설계기준';
-  
   if (idx === 0) {
     return {
       type: "주관식 (표채우기)",
-      question: `다음 ${title} 토픽 관련 공학적 특징 및 연관 매개변수 표의 빈칸 (A), (B)에 들어갈 적합한 용어를 제시하시오.`,
+      question: "다음 소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 알맞은 핵심 개념을 서술하시오.",
       tableData: {
-        headers: ["평가 항목", "공학적 특성 / 매개변수 설명"],
+        headers: ["구분 항목", "소일네일링 (Soil Nailing)", "어스앵커 (Earth Anchor)"],
         rows: [
-          ["해석 대상", `${title}의 핵심 거동 메커니즘`],
-          ["주요 설계 파라미터", "[INPUT_1]"],
-          ["설계 시 핵심 고려사항", "[INPUT_2]"]
+          ["보강 방식 및 지지력 메커니즘", "[INPUT_1]", "[INPUT_2]"],
+          ["긴장력 도입 여부", "수동적 보강 (긴장력 도입 없음)", "능동적 보강 (프리스트레스 긴장력 도입)"],
+          ["주요 구성 요소", "강봉 또는 네일, 시멘트 그라우팅", "PC 강연선, 인장재, 자유장 및 정착장"]
         ]
       },
       answers: {
-        "INPUT_1": keyword1,
-        "INPUT_2": keyword2
+        "INPUT_1": "수동적 전단 및 인장 저항",
+        "INPUT_2": "선단 지지력 및 주면 마찰력"
       },
-      explanation: `${title} 설계 및 거동 특성 평가를 위해 고려해야 할 매개변수는 ${keyword1} 및 ${keyword2} 등입니다.`
+      explanation: "소일네일링은 지반 변형 시 가동되는 수동적 저항 메커니즘을 가지며, 어스앵커는 프리스트레스를 이용해 능동적으로 지반을 지지하는 특성을 갖습니다."
     };
   } else if (idx === 1) {
     return {
       type: "주관식 (표채우기)",
-      question: `다음 ${title} 지반공학적 상태 분류 및 판정 표의 빈칸 (A), (B)에 들어갈 명칭을 서술하시오.`,
+      question: "다음 얕은기초(확대기초)와 깊은기초(말뚝기초)의 공학적 설계 조건 및 하중 전이 경로 비교표 빈칸 (A), (B)에 들어갈 핵심 용어를 작성하시오.",
       tableData: {
-        headers: ["거동 범주", "물리적 상태 및 거동적 의미"],
+        headers: ["비교 구분 항목", "얕은기초 (확대기초)", "깊은기초 (말뚝기초)"],
         rows: [
-          ["기본 정의", `${title}의 안정 상태 및 허용 기준`],
-          ["한계 상태 판정", "[INPUT_1]"],
-          ["안전율 확보 방안", "[INPUT_2]"]
+          ["근입 깊이 기하학적 조건", "근입깊이가 기초 폭보다 작거나 같음 (Df <= B)", "근입깊이가 기초 폭보다 훨씬 큼 (Df >> B)"],
+          ["하중 전이 경로 및 저항 기전", "[INPUT_1]", "[INPUT_2]"],
+          ["적용 지층의 조건", "상부 지반의 지지력이 양호함", "상부 연약 지반 아래에 견고한 지지층이 존재함"]
         ]
       },
       answers: {
-        "INPUT_1": "극한계상태",
-        "INPUT_2": "보강 및 개량공법 적용"
+        "INPUT_1": "기초 저면 지반의 직접 지지력",
+        "INPUT_2": "선단 지지력 및 주면 마찰력"
       },
-      explanation: `${title}의 공학적 안정성 평가는 극한계상태 및 사용성계상태를 종합적으로 검토해야 합니다.`
+      explanation: "얕은기초는 저면 지반의 지지력을 직접 이용하며, 깊은기초는 얕은 지층이 연약할 때 하부 암반층까지 말뚝을 박아 선단 지지력과 주면 마찰력으로 저항합니다."
     };
   } else {
     return {
       type: "주관식 (표채우기)",
-      question: `다음 ${title} 실무 설계 및 시공 시 유의사항 정리표의 빈칸 (A), (B)에 들어갈 내용을 채우시오.`,
+      question: "터널 굴착면 상부의 보강 공법인 강관다단 그라우팅과 천단 훠폴링 공법의 비교표 빈칸 (A), (B)에 들어갈 공학적 설명을 기술하시오.",
       tableData: {
-        headers: ["단계", "시공/설계 핵심 유의사항"],
+        headers: ["비교 항목", "강관다단 그라우팅 공법", "천단 훠폴링 (Forepoling) 공법"],
         rows: [
-          ["사전 조사", "지반 물성치의 불확실성 및 지층 분포 특성 파악"],
-          ["해석 및 설계", "[INPUT_1]"],
-          ["현장 관리", "[INPUT_2]"]
+          ["보강재 규격 및 특성", "대구경 강관 주입재 가압 그라우팅", "[INPUT_1]"],
+          ["주요 역할 및 역학적 기전", "[INPUT_2]", "천단 낙석 방지 및 국부 붕괴 방지"],
+          ["시공 길이 및 범위", "10m ~ 15m (중첩 시공 필요)", "3m ~ 6m 내외"]
         ]
       },
       answers: {
-        "INPUT_1": "수치해석 및 현장 계측 계획 수립",
-        "INPUT_2": "시공 중 계측을 통한 설계 정합성 검증"
+        "INPUT_1": "소구경 강봉 또는 이형철근 주입",
+        "INPUT_2": "터널 상부 종방향 아치 형성 및 차수"
       },
-      explanation: `${title} 관련 실무 진행 시 사전조사부터 시공 중 계측 관리까지 통합적인 엔지니어링 관리가 필수적입니다.`
+      explanation: "강관다단 그라우팅은 대구경 강관과 가압 주입을 통해 천단부에 종방향 아치를 형성하고 차수 효과를 극대화하는 반면, 훠폴링은 소구경 보강재로 천단의 국부 탈락 및 낙석 방지에 초점을 둡니다."
     };
   }
 }
@@ -2893,32 +2889,59 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
   }
 
-  let finalSubjsTable = [...subjsTable].slice(0, 3);
-  while (finalSubjsTable.length < 3) {
-    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
-  }
+  // 1. DEDUPLICATED MULTIPLE CHOICE QUESTIONS
+  let finalMcs = [];
+  const uniqueMcQuestions = new Set();
 
-  let finalMcs = [...mcs].slice(0, 7);
+  // Add from AI-generated MCs
+  mcs.forEach(q => {
+    if (finalMcs.length >= 7) return;
+    const cleanQ = (q.question || '').trim();
+    if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
+      uniqueMcQuestions.add(cleanQ);
+      finalMcs.push(q);
+    }
+  });
+
+  // Add from carry over questions
   if (finalMcs.length < 7 && carryOverQuestions && carryOverQuestions.length > 0) {
     const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
     shuffledCarryOvers.forEach(q => {
       if (finalMcs.length >= 7) return;
-      if (!finalMcs.some(existing => existing.question === q.question)) {
+      const cleanQ = (q.question || '').trim();
+      if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
+        uniqueMcQuestions.add(cleanQ);
         finalMcs.push(q);
       }
     });
   }
+
+  // Add from fallback MCs
   if (finalMcs.length < 7) {
     const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
     const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
     for (const fQ of fallbackMcs) {
       if (finalMcs.length >= 7) break;
-      if (!finalMcs.some(q => q.question === fQ.question)) {
+      const cleanQ = (fQ.question || '').trim();
+      if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
+        uniqueMcQuestions.add(cleanQ);
         finalMcs.push(fQ);
       }
     }
-    while (finalMcs.length < 7 && fallbackMcs.length > 0) {
-      finalMcs.push(fallbackMcs[finalMcs.length % fallbackMcs.length]);
+  }
+
+  // 2. PREPARE TABLE SUBJECTIVE QUESTIONS
+  let finalSubjsTable = [...subjsTable].slice(0, 3);
+  while (finalSubjsTable.length < 3) {
+    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
+  }
+
+  // 3. FILL MCQ DEFICIT WITH TABLE SUBJECTIVE QUESTIONS (No duplicate MCQs!)
+  if (finalMcs.length < 7) {
+    const deficit = 7 - finalMcs.length;
+    console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
+    for (let i = 0; i < deficit; i++) {
+      finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
     }
   }
 
@@ -3248,13 +3271,14 @@ ${adjustmentsPrompt}
    - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
    [3번~5번 문제] 주관식 (표채우기):
-   - 목적: 핵심 공학 이론, 공식, 또는 개념의 세부 속성/의미들을 표(Table) 형태의 빈칸을 채우며 유기적으로 학습하게 하는 고차원 주관식 질문.
+   - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법(예: 소일네일링 vs 어스앵커, 얕은기초 vs 깊은기초 등)의 특징을 대조하는 유기적 표(Table) 질문 출제.
+   - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(예: 보강방식, 지지메커니즘, 활용방안, 설계 시 주의사항 등)을 둔 뒤, 알맞은 핵심 공학 내용을 채워넣는 형식을 매우 강력히 권장합니다.
    - "type" 값: 반드시 "주관식 (표채우기)"
-   - "question": 표의 빈칸에 알맞은 답을 서술하라는 질문 (예: "다음 테르자기 극한지지력 공식의 지지력 계수별 역학적 의미 표 빈칸 (A), (B), (C)에 들어갈 내용을 알맞게 서술하시오.")
+   - "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 소일네일링과 어스앵커 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 내용을 기술하십시오.")
    - "tableData": 표의 데이터를 구조화한 객체. 반드시 다음 키를 포함하는 오브젝트여야 합니다:
-     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["지지력 계수", "연관된 지반 물성 및 영향 인자"])
-     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 채워넣어야 하는 빈칸 자리에는 반드시 "[INPUT_1]", "[INPUT_2]", "[INPUT_3]" 등의 토큰을 삽입하십시오. (예: [["$N_c$", "[INPUT_1]"], ["$N_q$", "[INPUT_2]"], ["$N_\gamma$", "[INPUT_3]"]])
-   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "흙의 점착력", "INPUT_2": "상재하중", "INPUT_3": "단위중량"}). 각 모범 답안은 가급적 핵심 명사형 또는 간단한 구문(20자 이내)으로 구성하십시오.
+     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["구분 항목", "소일네일링", "어스앵커"])
+     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 채워넣어야 하는 빈칸 자리에는 반드시 "[INPUT_1]", "[INPUT_2]" 등의 토큰을 삽입하십시오. (예: [["보강 방식 및 지지력 메커니즘", "[INPUT_1]", "[INPUT_2]"]])
+   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "수동적 전단 및 인장 저항", "INPUT_2": "선단 지지력 및 주면 마찰력"}). 각 모범 답안은 1음절짜리 지나치게 짧은 단어 대신, **가급적 10자에서 15자 내외의 기술적으로 정밀하고 중요한 공학 명사구 또는 문장형 단답**으로 구성하십시오.
    - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
 
    [6번~${totalAiQuestionsCount}번 문제] 객관식 (4지선다):
@@ -3387,6 +3411,63 @@ try {
   } catch (error) {
     console.error('Error in AI question generation route:', error);
     res.status(500).json({ error: '서버 오류로 AI 기출문제를 생성하지 못했습니다.' });
+  }
+});
+
+// 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정
+app.post('/api/grade-subjective', async (req, res) => {
+  const { question, correctAnswer, userAnswer } = req.body;
+
+  if (!correctAnswer || !userAnswer) {
+    return res.json({ isCorrect: false, reason: '답안이 비어 있습니다.' });
+  }
+
+  // 1차 필터링: 공백 제거 후 단순 일치하는 경우 API 호출 없이 바로 정답 처리
+  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (normalize(userAnswer) === normalize(correctAnswer)) {
+    return res.json({ isCorrect: true, reason: '텍스트가 모범 답안과 정확히 일치합니다.' });
+  }
+
+  // 2차 필터링: Gemini API를 사용하여 의미적 유사성 판단 (tutor 시나리오로 호출 시 gemini-3.1-flash-lite가 우선 배치됨)
+  try {
+    const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
+주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 사용자의 답이 맞았는지(correct) 틀렸는지(incorrect) 판정하십시오.
+
+[채점 규칙]:
+1. 의미적 유사성 판단: 맞춤법, 띄어쓰기, 주관식 조사 사용 여부, 또는 핵심 의미가 통하는 유의어(예: '단위중량' vs '단위 무게', '흙의 점착력' vs '점착력', '소일네일링' vs '소일네일', '수동저항' vs '수동적 저항')인 경우 반드시 정답(correct)으로 인정하십시오.
+2. 약어/동의어 인정: 공학 용어상 동의어는 유연하게 정답 처리해 주십시오.
+3. 정답 여부만 판단하며, 응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
+{
+  "isCorrect": true 또는 false,
+  "reason": "왜 정답/오답으로 판정했는지 설명하는 한 줄의 한국어 요약 (예: '핵심 의미가 모범 답안과 부합하여 정답 인정', '설명이 모범 답안의 범주를 벗어나서 오답 판정')"
+}
+반드시 마크다운 코드 블록(예: \`\`\`json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
+
+    const userPrompt = `
+- 문제/맥락: ${question || '주관식 빈칸 채우기'}
+- 모범 답안: ${correctAnswer}
+- 사용자의 답안: ${userAnswer}
+`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
+    let text = responseText.trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    
+    const result = JSON.parse(text);
+    res.json({
+      isCorrect: !!result.isCorrect,
+      reason: result.reason || 'AI 채점 완료'
+    });
+  } catch (err) {
+    console.error('AI grading error:', err);
+    // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
+    const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
+    res.json({
+      isCorrect: localCorrect,
+      reason: localCorrect ? '로컬 단순 비교로 정답 판정' : '모범 답안과 일치하지 않습니다.'
+    });
   }
 });
 
