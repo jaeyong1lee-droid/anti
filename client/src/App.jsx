@@ -4239,7 +4239,7 @@ export default function App() {
   const gradeSubjectiveQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     const userAnswer = tableAnswers[`${qIdx}_INPUT`] || '';
-    const correctAnswer = q.answer || '';
+    const correctAnswer = q.answer || q.concept || '';
     
     try {
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
@@ -10998,7 +10998,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : q.type === '주관식 (단답형)' ? (
+                          ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
                                 <div className="space-y-1">
@@ -11008,16 +11008,16 @@ export default function App() {
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
                                         <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
                                         <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                                          → 정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
                                         </span>
                                       </div>
                                     ) : (
                                       <input
                                         type="text"
                                         disabled={isRevd}
-                                        value={isRevd && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
+                                        value={isRevd && !tableAnswers[`${idx}_INPUT`] ? (q.answer || q.concept) : (tableAnswers[`${idx}_INPUT`] || '')}
                                         onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
-                                        placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                           isRevd
                                             ? (tableAnswers[`${idx}_INPUT`]
@@ -11029,7 +11029,7 @@ export default function App() {
                                         }`}
                                       />
                                     )}
-                                    {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
                                         {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                       </span>
@@ -11038,7 +11038,7 @@ export default function App() {
                                 </div>
                                 {!isRevd && showAnswersState[idx] && (
                                   <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
-                                    정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
                                   </div>
                                 )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
@@ -11077,8 +11077,17 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
+                                  {q.concept && (
+                                    <div className="space-y-1 text-left">
+                                      <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
+                                  )}
                                   {q.explanation && (
-                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
+                                      <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
                                   )}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
@@ -12339,7 +12348,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : q.type === '주관식 (단답형)' ? (
+                          ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
                                 <div className="space-y-1">
@@ -12349,16 +12358,16 @@ export default function App() {
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
                                         <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
                                         <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                                          → 정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
                                         </span>
                                       </div>
                                     ) : (
                                       <input
                                         type="text"
                                         disabled={!!examRevealed[idx]}
-                                        value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? q.answer : (tableAnswers[`${idx}_INPUT`] || '')}
+                                        value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? (q.answer || q.concept) : (tableAnswers[`${idx}_INPUT`] || '')}
                                         onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
-                                        placeholder="답안을 입력하세요 (한글 10~15자 내외)"
+                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                           !!examRevealed[idx]
                                             ? (tableAnswers[`${idx}_INPUT`]
@@ -12370,7 +12379,7 @@ export default function App() {
                                         }`}
                                       />
                                     )}
-                                    {idx >= 2 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-amber-400 select-none">
                                         {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                       </span>
@@ -12379,7 +12388,7 @@ export default function App() {
                                 </div>
                                 {!examRevealed[idx] && examShowAnswersState[idx] && (
                                   <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
-                                    정답: <LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" />
+                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
                                   </div>
                                 )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
@@ -12418,8 +12427,17 @@ export default function App() {
                                       접기 ✕
                                     </button>
                                   </div>
+                                  {q.concept && (
+                                    <div className="space-y-1 text-left">
+                                      <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
+                                  )}
                                   {q.explanation && (
-                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
+                                      <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
                                   )}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
