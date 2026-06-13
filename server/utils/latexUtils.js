@@ -456,6 +456,48 @@ export function healQuizQuestionObject(q) {
         q.question = parsed.questionText;
       }
     }
+
+    // For table subjective fill-in questions, empty out all cell contents 
+    // (except headers and row-label column) and turn them into inputs!
+    if (q.type === '주관식 (표채우기)' && q.tableData && q.tableData.rows) {
+      const { rows } = q.tableData;
+      const oldAnswers = q.answers || {};
+      const newAnswers = {};
+      let inputCount = 1;
+
+      const newRows = rows.map((row) => {
+        return row.map((cell, cIdx) => {
+          if (cIdx === 0) return cell; // Keep the row label intact
+
+          const inputId = `INPUT_${inputCount}`;
+          inputCount++;
+
+          // Extract correct answer:
+          let correctAnswer = '';
+          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
+          
+          if (trimmedCell.includes('[INPUT_')) {
+            // It was already an input field. Find its original input number (e.g. [INPUT_1] -> 1)
+            const match = trimmedCell.match(/INPUT_(\d+)/i);
+            if (match) {
+              const origId = `INPUT_${match[1]}`;
+              correctAnswer = oldAnswers[origId] || '';
+            } else {
+              correctAnswer = '';
+            }
+          } else {
+            // It was plain text, so the text itself is the correct answer
+            correctAnswer = cell;
+          }
+
+          newAnswers[inputId] = correctAnswer;
+          return `[${inputId}]`;
+        });
+      });
+
+      q.tableData.rows = newRows;
+      q.answers = newAnswers;
+    }
   }
   return healDeep(q);
 }
@@ -487,6 +529,11 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 
 [JSON String Escape Rule]:
 When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse() without crashing the backend system.
+
+[🚨 수학적/산술적 검증 및 모순 방지 규칙 - 극도로 중요!]:
+- 객관식 문제 출제 시, 정답("answer")으로 지정하는 값은 반드시 해설("explanation")에서 풀이하여 유도한 최종 계산값과 완벽하게 일치해야 합니다.
+- 수식 계산(예: 비례 관계, 제곱근 계산 등)을 수행할 때는 종이에 적듯 단계별로 산술적 검증을 한 뒤, 최종 정답값의 보기(options) 문자열이 "answer" 필드에 오타 없이 똑같이 들어가도록 하십시오.
+- 예를 들어 해설에서 '1/4배(0.25배)가 된다'고 올바르게 풀이해 놓고, 정답 필드("answer")에 '0.125배' 같은 엉뚱한 값을 세팅하는 논리적 모순/환각을 절대 저지르지 마십시오.
 `;
 
 export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `

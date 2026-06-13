@@ -456,6 +456,48 @@ export function healQuizQuestionObject(q) {
         q.question = parsed.questionText;
       }
     }
+
+    // For table subjective fill-in questions, empty out all cell contents 
+    // (except headers and row-label column) and turn them into inputs!
+    if (q.type === '주관식 (표채우기)' && q.tableData && q.tableData.rows) {
+      const { rows } = q.tableData;
+      const oldAnswers = q.answers || {};
+      const newAnswers = {};
+      let inputCount = 1;
+
+      const newRows = rows.map((row) => {
+        return row.map((cell, cIdx) => {
+          if (cIdx === 0) return cell; // Keep the row label intact
+
+          const inputId = `INPUT_${inputCount}`;
+          inputCount++;
+
+          // Extract correct answer:
+          let correctAnswer = '';
+          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
+          
+          if (trimmedCell.includes('[INPUT_')) {
+            // It was already an input field. Find its original input number (e.g. [INPUT_1] -> 1)
+            const match = trimmedCell.match(/INPUT_(\d+)/i);
+            if (match) {
+              const origId = `INPUT_${match[1]}`;
+              correctAnswer = oldAnswers[origId] || '';
+            } else {
+              correctAnswer = '';
+            }
+          } else {
+            // It was plain text, so the text itself is the correct answer
+            correctAnswer = cell;
+          }
+
+          newAnswers[inputId] = correctAnswer;
+          return `[${inputId}]`;
+        });
+      });
+
+      q.tableData.rows = newRows;
+      q.answers = newAnswers;
+    }
   }
   return healDeep(q);
 }
