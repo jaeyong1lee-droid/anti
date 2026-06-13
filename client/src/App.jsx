@@ -1591,8 +1591,11 @@ function parseMarkdownTable(questionText) {
 }
 
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
-function parseQuestionTable(q) {
+function parseQuestionTable(q, topicTitle) {
   let questionText = q.question || '';
+  if (q.type === '주관식 (개요)' && topicTitle) {
+    questionText = `${topicTitle}(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.`;
+  }
   let tableData = q.tableData || null;
 
   if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
@@ -10685,7 +10688,7 @@ export default function App() {
                         </div>
 
                         {(() => {
-                          const { questionText, tableData } = parseQuestionTable(q);
+                          const { questionText, tableData } = parseQuestionTable(q, selectedTopic?.title);
                           const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                           return (
                             <>
@@ -11008,7 +11011,7 @@ export default function App() {
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
                                         <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
                                         <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
+                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" isMarkdown={true} />
                                         </span>
                                       </div>
                                     ) : (
@@ -11017,6 +11020,15 @@ export default function App() {
                                         disabled={isRevd}
                                         value={isRevd && !tableAnswers[`${idx}_INPUT`] ? (q.answer || q.concept) : (tableAnswers[`${idx}_INPUT`] || '')}
                                         onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                        onKeyDown={async (e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (!gradingLoading[idx]) {
+                                              await gradeSubjectiveQuestion(idx, q);
+                                              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                            }
+                                          }
+                                        }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                           isRevd
@@ -11038,7 +11050,7 @@ export default function App() {
                                 </div>
                                 {!isRevd && showAnswersState[idx] && (
                                   <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
-                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
+                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" isMarkdown={true} />
                                   </div>
                                 )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
@@ -12035,7 +12047,7 @@ export default function App() {
                       </div>
 
                       {(() => {
-                        const { questionText, tableData } = parseQuestionTable(q);
+                        const { questionText, tableData } = parseQuestionTable(q, examTopic?.title);
                         const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                         return (
                           <>
@@ -12358,7 +12370,7 @@ export default function App() {
                                       <div className="w-full bg-slate-900 border border-rose-500 bg-rose-950/20 rounded-xl pl-3 pr-12 py-2 text-xs text-rose-300 flex items-center flex-wrap gap-2 select-text min-h-[34px]">
                                         <span className="line-through opacity-60">{tableAnswers[`${idx}_INPUT`]}</span>
                                         <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
+                                          → 정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" isMarkdown={true} />
                                         </span>
                                       </div>
                                     ) : (
@@ -12367,6 +12379,15 @@ export default function App() {
                                         disabled={!!examRevealed[idx]}
                                         value={!!examRevealed[idx] && !tableAnswers[`${idx}_INPUT`] ? (q.answer || q.concept) : (tableAnswers[`${idx}_INPUT`] || '')}
                                         onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                        onKeyDown={async (e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (!gradingLoading[idx]) {
+                                              await gradeSubjectiveQuestion(idx, q);
+                                              setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                            }
+                                          }
+                                        }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-12 py-2 text-xs focus:outline-none transition-all ${
                                           !!examRevealed[idx]
@@ -12388,7 +12409,7 @@ export default function App() {
                                 </div>
                                 {!examRevealed[idx] && examShowAnswersState[idx] && (
                                   <div className="mt-1 text-[10px] text-slate-400 font-bold select-text text-left pl-1">
-                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" />
+                                    정답: <LatexRenderer text={q.answer || q.concept} katexLoaded={katexLoaded} className="inline" isMarkdown={true} />
                                   </div>
                                 )}
                                 {tableGradingResults[`${idx}_INPUT`] && (
