@@ -7356,7 +7356,7 @@ export default function App() {
   const renderCardTutorChat = (key, q) => {
     return (
       <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
-        <label className="block text-[14px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <label className="block text-[14px] sm:text-[17px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -7376,12 +7376,12 @@ export default function App() {
               }
             }}
             placeholder=""
-            className="flex-1 text-[14px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+            className="flex-1 text-[14px] sm:text-[17px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
             onClick={() => handleAskCardTutor(key, q)}
-            className="text-[10px] px-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-extrabold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap active:scale-95 duration-200"
+            className="text-[10px] sm:text-xs px-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-extrabold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap active:scale-95 duration-200"
           >
             {tutorAnswers[key]?.loading ? '작성 중...' : '질문'}
           </button>
@@ -7390,7 +7390,7 @@ export default function App() {
         {/* AI Tutor In-Card Answer Panel */}
         {tutorAnswers[key]?.loading && (
           <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
-            <div className="text-[14px] text-violet-400 font-bold flex items-center gap-1.5">
+            <div className="text-[14px] sm:text-[17px] text-violet-400 font-bold flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
               <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
             </div>
@@ -7399,12 +7399,12 @@ export default function App() {
           </div>
         )}
         {tutorAnswers[key]?.error && (
-          <div className="text-[14px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+          <div className="text-[14px] sm:text-[17px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
         )}
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
           <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
-            <div className="text-[14px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="text-[14px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
+            <div className="text-[14px] sm:text-[17px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
@@ -10944,59 +10944,86 @@ export default function App() {
                       <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
-                          <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                              {isMC ? '객관식' : '주관식'}
-                            </span>
-                            {idx >= 2 && (() => {
-                              if (isMC) {
-                                const userAnswer = selectedAnswers[idx];
-                                if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-                                  const isCorrect = userAnswer === q.answer;
-                                  return (
-                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {isCorrect ? W : 0} / {W}점
-                                    </span>
-                                  );
-                                }
-                              } else {
-                                if (q.tableData) {
-                                  const inputIds = Object.keys(q.answers || {});
-                                  let obtainedVal = 0;
-                                  let hasGradedVal = false;
-                                  inputIds.forEach(inputId => {
-                                    const grading = tableGradingResults[`${idx}_${inputId}`];
-                                    if (grading && grading.score !== undefined) {
-                                      obtainedVal += grading.score;
-                                      hasGradedVal = true;
-                                    }
-                                  });
-                                  if (hasGradedVal) {
-                                    const countVal = inputIds.length;
-                                    const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
-                                    const displayScore = Math.round(questionScore * 100) / 100;
+                          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                                {isMC ? '객관식' : '주관식'}
+                              </span>
+                              {idx >= 2 && (() => {
+                                if (isMC) {
+                                  const userAnswer = selectedAnswers[idx];
+                                  if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
+                                    const isCorrect = userAnswer === q.answer;
                                     return (
                                       <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {displayScore} / {W}점
+                                        득점: {isCorrect ? W : 0} / {W}점
                                       </span>
                                     );
                                   }
                                 } else {
-                                  const grading = tableGradingResults[`${idx}_INPUT`];
-                                  if (grading && grading.score !== undefined) {
-                                    const questionScore = (grading.score / 10) * W;
-                                    const displayScore = Math.round(questionScore * 100) / 100;
-                                    return (
-                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                        득점: {displayScore} / {W}점
-                                      </span>
-                                    );
+                                  if (q.tableData) {
+                                    const inputIds = Object.keys(q.answers || {});
+                                    let obtainedVal = 0;
+                                    let hasGradedVal = false;
+                                    inputIds.forEach(inputId => {
+                                      const grading = tableGradingResults[`${idx}_${inputId}`];
+                                      if (grading && grading.score !== undefined) {
+                                        obtainedVal += grading.score;
+                                        hasGradedVal = true;
+                                      }
+                                    });
+                                    if (hasGradedVal) {
+                                      const countVal = inputIds.length;
+                                      const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                      const displayScore = Math.round(questionScore * 100) / 100;
+                                      return (
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                          득점: {displayScore} / {W}점
+                                        </span>
+                                      );
+                                    }
+                                  } else {
+                                    const grading = tableGradingResults[`${idx}_INPUT`];
+                                    if (grading && grading.score !== undefined) {
+                                      const questionScore = (grading.score / 10) * W;
+                                      const displayScore = Math.round(questionScore * 100) / 100;
+                                      return (
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                          득점: {displayScore} / {W}점
+                                        </span>
+                                      );
+                                    }
                                   }
                                 }
-                              }
-                              return null;
-                            })()}
+                                return null;
+                              })()}
+                            </div>
+
+                            {/* 재평가 버튼 배치 */}
+                            {isSubj && isRevd && idx !== 1 && (
+                              <button
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (q.type === '주관식 (표채우기)') {
+                                    await gradeTableQuestion(idx, q);
+                                  } else {
+                                    await gradeSubjectiveQuestion(idx, q);
+                                  }
+                                }}
+                                disabled={gradingLoading[idx]}
+                                className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                                title="AI에게 답안 재채점 요청"
+                              >
+                                {gradingLoading[idx] ? (
+                                  <RefreshCw size={10} className="animate-spin text-slate-400" />
+                                ) : (
+                                  <RefreshCw size={10} className="text-slate-400" />
+                                )}
+                                <span>재평가</span>
+                              </button>
+                            )}
                           </div>
                           <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
                             {/* 다시풀기 버튼 */}
@@ -11118,35 +11145,8 @@ export default function App() {
                           const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                           return (
                             <>
-                              <div className="flex justify-between items-start gap-3 w-full">
-                                <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
-                                  <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
-                                </div>
-                                {isSubj && isRevd && idx !== 1 && (
-                                  <div className="flex-shrink-0 pt-0.5">
-                                    <button
-                                      onClick={async (e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (q.type === '주관식 (표채우기)') {
-                                          await gradeTableQuestion(idx, q);
-                                        } else {
-                                          await gradeSubjectiveQuestion(idx, q);
-                                        }
-                                      }}
-                                      disabled={gradingLoading[idx]}
-                                      className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
-                                      title="AI에게 답안 재채점 요청"
-                                    >
-                                      {gradingLoading[idx] ? (
-                                        <RefreshCw size={10} className="animate-spin text-slate-400" />
-                                      ) : (
-                                        <RefreshCw size={10} className="text-slate-400" />
-                                      )}
-                                      <span>재평가</span>
-                                    </button>
-                                  </div>
-                                )}
+                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed text-left w-full">
+                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                               {tableData && q.type !== '주관식 (표채우기)' && (
                                 <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
@@ -12380,59 +12380,86 @@ export default function App() {
                     <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                       {/* Q Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
-                            {isMC ? '객관식' : '주관식'}
-                          </span>
-                          {idx >= 2 && (() => {
-                            if (isMC) {
-                              const userAnswer = examAnswers[idx];
-                              if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-                                const isCorrect = normalizeAns(userAnswer) === normalizeAns(q.answer);
-                                return (
-                                  <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                    득점: {isCorrect ? W : 0} / {W}점
-                                  </span>
-                                );
-                              }
-                            } else {
-                              if (q.tableData) {
-                                const inputIds = Object.keys(q.answers || {});
-                                let obtainedVal = 0;
-                                let hasGradedVal = false;
-                                inputIds.forEach(inputId => {
-                                  const grading = tableGradingResults[`${idx}_${inputId}`];
-                                  if (grading && grading.score !== undefined) {
-                                    obtainedVal += grading.score;
-                                    hasGradedVal = true;
-                                  }
-                                });
-                                if (hasGradedVal) {
-                                  const countVal = inputIds.length;
-                                  const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
-                                  const displayScore = Math.round(questionScore * 100) / 100;
+                        <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black bg-slate-700 text-slate-200 px-2 py-0.5 rounded">Q{idx + 1}</span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
+                              {isMC ? '객관식' : '주관식'}
+                            </span>
+                            {idx >= 2 && (() => {
+                              if (isMC) {
+                                const userAnswer = examAnswers[idx];
+                                if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
+                                  const isCorrect = normalizeAns(userAnswer) === normalizeAns(q.answer);
                                   return (
                                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {displayScore} / {W}점
+                                      득점: {isCorrect ? W : 0} / {W}점
                                     </span>
                                   );
                                 }
                               } else {
-                                const grading = tableGradingResults[`${idx}_INPUT`];
-                                if (grading && grading.score !== undefined) {
-                                  const questionScore = (grading.score / 10) * W;
-                                  const displayScore = Math.round(questionScore * 100) / 100;
-                                  return (
-                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
-                                      득점: {displayScore} / {W}점
-                                    </span>
-                                  );
+                                if (q.tableData) {
+                                  const inputIds = Object.keys(q.answers || {});
+                                  let obtainedVal = 0;
+                                  let hasGradedVal = false;
+                                  inputIds.forEach(inputId => {
+                                    const grading = tableGradingResults[`${idx}_${inputId}`];
+                                    if (grading && grading.score !== undefined) {
+                                      obtainedVal += grading.score;
+                                      hasGradedVal = true;
+                                    }
+                                  });
+                                  if (hasGradedVal) {
+                                    const countVal = inputIds.length;
+                                    const questionScore = countVal > 0 ? (obtainedVal / (countVal * 10)) * W : 0;
+                                    const displayScore = Math.round(questionScore * 100) / 100;
+                                    return (
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                        득점: {displayScore} / {W}점
+                                      </span>
+                                    );
+                                  }
+                                } else {
+                                  const grading = tableGradingResults[`${idx}_INPUT`];
+                                  if (grading && grading.score !== undefined) {
+                                    const questionScore = (grading.score / 10) * W;
+                                    const displayScore = Math.round(questionScore * 100) / 100;
+                                    return (
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 ml-1">
+                                        득점: {displayScore} / {W}점
+                                      </span>
+                                    );
+                                  }
                                 }
                               }
-                            }
-                            return null;
-                          })()}
+                              return null;
+                            })()}
+                          </div>
+
+                          {/* 재평가 버튼 배치 */}
+                          {isSubj && isRevd && idx !== 1 && (
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (q.type === '주관식 (표채우기)') {
+                                  await gradeTableQuestion(idx, q);
+                                } else {
+                                  await gradeSubjectiveQuestion(idx, q);
+                                }
+                              }}
+                              disabled={gradingLoading[idx]}
+                              className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                              title="AI에게 답안 재채점 요청"
+                            >
+                              {gradingLoading[idx] ? (
+                                <RefreshCw size={10} className="animate-spin text-slate-400" />
+                              ) : (
+                                <RefreshCw size={10} className="text-slate-400" />
+                              )}
+                              <span>재평가</span>
+                            </button>
+                          )}
                         </div>
                         
                         <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
@@ -12572,36 +12599,9 @@ export default function App() {
                         const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                         return (
                           <>
-                            <div className="flex justify-between items-start gap-3 w-full">
-                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
+                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed text-left w-full">
                                 <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
-                              {isSubj && isRevd && idx !== 1 && (
-                                <div className="flex-shrink-0 pt-0.5">
-                                  <button
-                                    onClick={async (e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (q.type === '주관식 (표채우기)') {
-                                        await gradeTableQuestion(idx, q);
-                                      } else {
-                                        await gradeSubjectiveQuestion(idx, q);
-                                      }
-                                    }}
-                                    disabled={gradingLoading[idx]}
-                                    className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
-                                    title="AI에게 답안 재채점 요청"
-                                  >
-                                    {gradingLoading[idx] ? (
-                                      <RefreshCw size={10} className="animate-spin text-slate-400" />
-                                    ) : (
-                                      <RefreshCw size={10} className="text-slate-400" />
-                                    )}
-                                    <span>재평가</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
                             {tableData && q.type !== '주관식 (표채우기)' && (
                               <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
                             )}
