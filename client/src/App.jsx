@@ -1443,6 +1443,23 @@ const getTableFeedbackTextColor = (gradingResult) => {
   return 'text-rose-400';
 };
 
+const isSameConditionValue = (val) => {
+  if (typeof val !== 'string') return false;
+  const clean = val.trim().replace(/\s+/g, '');
+  return clean === '동일조건적용' || 
+         clean === '동일조건' || 
+         clean === '동일' || 
+         clean === '상동' || 
+         clean === '동일적용';
+};
+
+const areCellsEqual = (cellA, cellB) => {
+  if (cellA === cellB) return true;
+  if (isSameConditionValue(cellB)) return true;
+  if (isSameConditionValue(cellA)) return true;
+  return false;
+};
+
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
 const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   if (!value) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
@@ -1508,7 +1525,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         <tbody>
           {rows.map((row, rIdx) => {
             const canMerge = colCount > 2 && 
-                             row.slice(1).every(cellVal => cellVal === row[1]) && 
+                             row.slice(1).every(cellVal => areCellsEqual(row[1], cellVal)) && 
                              !row.slice(1).some(cellVal => typeof cellVal === 'string' && cellVal.includes('[INPUT_'));
 
             return (
@@ -1655,7 +1672,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
         <tbody>
           {rows.map((row, rIdx) => {
             const canMerge = colCount > 2 && 
-                             row.slice(1).every(cellVal => cellVal === row[1]);
+                             row.slice(1).every(cellVal => areCellsEqual(row[1], cellVal));
 
             return (
               <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
