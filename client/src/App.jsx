@@ -790,6 +790,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
     tempText = tempText.replace(/\n/g, '<br/>');
   }
 
+  // Remove any <br/> or spacer divs immediately surrounding BLOCK math placeholders to prevent double spacing
+  tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)*\s*(___BLOCK_MATH_\d+___)\s*(?:<br\/>|<div style="height: [^"]*"><\/div>)*/g, '$1');
+
   // Restore math blocks — MUST use function replacer to prevent $ from being treated as special pattern ($1, $&, etc.)
   mathBlocks.forEach(block => {
     while (tempText.includes(block.placeholder)) {
