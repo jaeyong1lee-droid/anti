@@ -687,7 +687,7 @@ const handleOpenHtmlAnswerPopup = (title, text) => {
   }
 };
 
-function convertMarkdownToHtml(mdText, isMarkdown = false) {
+function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false) {
   const mathBlocks = [];
   let placeholderIndex = 0;
   
@@ -717,7 +717,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
   // 3. Bold text
-  const boldColor = isMarkdown ? '#fbbf24' : '#f1f5f9';
+  const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
   tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
 
   // 3.5. Force line breaks before *** or * * * if they are in the middle of a line and not preceded by a newline
@@ -898,7 +898,7 @@ function convertMarkdownTablesToHtml(text) {
 }
 
 // Dynamic KaTeX loader & Math text renderer
-const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false }) {
   if (!text) return null;
 
   const longPressTimer = useRef(null);
@@ -1056,7 +1056,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
   // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
   if (!isHeavy && isMarkdown) {
-    cleanedText = convertMarkdownToHtml(cleanedText, true);
+    cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold);
   }
 
   if (isHeavy) {
@@ -4084,6 +4084,49 @@ export default function App() {
     if (score >= 8) return '⚠️ 부분 인정 (우수)';
     if (score >= 5) return '⚠️ 부분 인정 (보통)';
     return '❌ 오답 판정';
+  };
+
+  const renderCompareKeywords = (correctAnswerText, userAnswerText) => {
+    if (!correctAnswerText) return null;
+    
+    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+    
+    // Split user keywords by comma
+    const userKws = (userAnswerText || '')
+      .split(/[,|]/)
+      .map(k => normalize(k))
+      .filter(Boolean);
+      
+    // Split correct keywords by comma
+    const correctKws = correctAnswerText
+      .split(/[,|]/)
+      .map(k => k.trim())
+      .filter(Boolean);
+
+    return (
+      <div className="flex flex-wrap gap-x-1.5 gap-y-1 items-center">
+        {correctKws.map((kw, i) => {
+          // Clean asterisks if present
+          const cleanKw = kw.replace(/\*\*/g, '');
+          const normKw = normalize(cleanKw);
+          
+          // Check if user input contains this keyword
+          const isMatched = userKws.some(ukw => {
+            return ukw && (normKw.includes(ukw) || ukw.includes(normKw));
+          });
+          
+          const colorClass = isMatched ? 'text-yellow-400 font-bold' : 'text-orange-500 font-bold'; // Yellow vs Dark Orange
+          return (
+            <span key={i} className="inline-flex items-center select-text">
+              <span className={colorClass}>
+                <LatexRenderer text={cleanKw} katexLoaded={katexLoaded} isMarkdown={false} enableAddFormula={true} />
+              </span>
+              {i < correctKws.length - 1 && <span className="text-slate-500 ml-1">,</span>}
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   const getTableAverageScore = (idx, q) => {
@@ -11416,9 +11459,18 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        {idx === 0 ? (
+                                          <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        ) : (
+                                          renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
+                                        )}
                                       </div>
                                     </div>
+                                    {idx === 0 && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-left">
+                                        {renderCardTutorChat(`r_${idx}`, q)}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -11434,31 +11486,33 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                                    <span>📝 상세 해설</span>
-                                    <button
-                                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
-                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                      title="답안 접기"
-                                    >
-                                      접기 ✕
-                                    </button>
+                                idx !== 0 && (
+                                  <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                    <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                      <span>📝 상세 해설</span>
+                                      <button
+                                        onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                        title="답안 접기"
+                                      >
+                                        접기 ✕
+                                      </button>
+                                    </div>
+                                    {q.concept && (
+                                      <div className="space-y-1 text-left">
+                                        <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                      </div>
+                                    )}
+                                    {q.explanation && (
+                                      <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
+                                        <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                      </div>
+                                    )}
+                                    {renderCardTutorChat(`r_${idx}`, q)}
                                   </div>
-                                  {q.concept && (
-                                    <div className="space-y-1 text-left">
-                                      <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
-                                  )}
-                                  {q.explanation && (
-                                    <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
-                                      <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
-                                  )}
-                                  {renderCardTutorChat(`r_${idx}`, q)}
-                                </div>
+                                )
                               )}
                             </div>
                           ) : (
@@ -12836,9 +12890,18 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        {idx === 0 ? (
+                                          <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        ) : (
+                                          renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
+                                        )}
                                       </div>
                                     </div>
+                                    {idx === 0 && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-left">
+                                        {renderCardTutorChat(`e_${idx}`, q)}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -12854,31 +12917,33 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
-                                    <span>📝 상세 해설</span>
-                                    <button
-                                      onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
-                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                      title="답안 접기"
-                                    >
-                                      접기 ✕
-                                    </button>
+                                idx !== 0 && (
+                                  <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                                    <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                      <span>📝 상세 해설</span>
+                                      <button
+                                        onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
+                                        title="답안 접기"
+                                      >
+                                        접기 ✕
+                                      </button>
+                                    </div>
+                                    {q.concept && (
+                                      <div className="space-y-1 text-left">
+                                        <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    </div>
+                                    )}
+                                    {q.explanation && (
+                                      <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
+                                        <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
+                                        <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                      </div>
+                                    )}
+                                    {renderCardTutorChat(`e_${idx}`, q)}
                                   </div>
-                                  {q.concept && (
-                                    <div className="space-y-1 text-left">
-                                      <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
-                                  )}
-                                  {q.explanation && (
-                                    <div className="space-y-1 text-left pt-2 border-t border-amber-500/10">
-                                      <span className="text-[10px] font-black text-amber-400">📝 해설: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
-                                    </div>
-                                  )}
-                                  {renderCardTutorChat(`e_${idx}`, q)}
-                                </div>
+                                )
                               )}
                             </div>
                           ) : (
