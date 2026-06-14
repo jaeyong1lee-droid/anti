@@ -3544,6 +3544,27 @@ function ScientificCalculator() {
     );
   };
 
+  const handleLcdClick = (e) => {
+    const target = e.target.closest('[data-index]');
+    if (target) {
+      const idx = parseInt(target.getAttribute('data-index'), 10);
+      if (!isNaN(idx)) {
+        setCursorPosition(idx);
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.setSelectionRange(idx, idx);
+          }
+        }, 10);
+        e.stopPropagation();
+        return;
+      }
+    }
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   const renderLcdDisplay = () => {
     if (!isOn) {
       return (
@@ -3583,7 +3604,7 @@ function ScientificCalculator() {
     
     return (
       <div 
-        onClick={() => inputRef.current && inputRef.current.focus()}
+        onClick={handleLcdClick}
         className="bg-[#E3E8E5] border-2 border-[#b8c2be] rounded-md pt-2 pb-2 px-3 font-mono shadow-inner text-[#202528] mb-2 relative overflow-hidden h-[90px] flex flex-col justify-between select-text cursor-text"
       >
         <div className="flex gap-3 text-[12px] font-black select-none h-3.5 leading-none text-[#202528] tracking-wider">
