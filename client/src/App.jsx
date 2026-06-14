@@ -1394,7 +1394,7 @@ const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   return 'border-rose-500 bg-rose-950/20 text-rose-300';
 };
 
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, showAnswers, katexLoaded, tableGradingResults, weight = 10 }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10 }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -1511,16 +1511,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             })()}
                           </div>
                         </div>
-                        {revealed ? (
+                        {revealed && (
                           <span className="text-[17px] sm:text-xs text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
-                        ) : (
-                          showAnswers && (
-                            <span className="text-[17px] sm:text-xs text-slate-400 font-bold flex items-center gap-1 select-text whitespace-normal break-words">
-                              {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                            </span>
-                          )
                         )}
                       </div>
                     </td>
@@ -11030,18 +11024,7 @@ export default function App() {
                                 <span className="hidden sm:inline">🔄 </span>다시풀기
                               </button>
                             )}
-                            {/* 답안보기 버튼 */}
-                            {!isMC && (
-                              <button
-                                onClick={() => {
-                                  setShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
-                                }}
-                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                                title="정답 바로 확인"
-                              >
-                                <span className="hidden sm:inline">👁️ </span>답안보기
-                              </button>
-                            )}
+
                             {/* 추천/비추천 피드백 버튼 */}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -11386,7 +11369,6 @@ export default function App() {
                                     tableAnswers={tableAnswers} 
                                     setTableAnswers={setTableAnswers} 
                                     revealed={isRevd} 
-                                    showAnswers={!!showAnswersState[idx]}
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
                                     weight={W}
@@ -12465,18 +12447,7 @@ export default function App() {
                               <span className="hidden sm:inline">🔄 </span>다시풀기
                             </button>
                           )}
-                          {/* 답안보기 버튼 */}
-                          {!isMC && (
-                            <button
-                              onClick={() => {
-                                setExamShowAnswersState(prev => ({ ...prev, [idx]: !prev[idx] }));
-                              }}
-                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                              title="정답 바로 확인"
-                            >
-                              <span className="hidden sm:inline">👁️ </span>답안보기
-                            </button>
-                          )}
+
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -12838,7 +12809,6 @@ export default function App() {
                                     tableAnswers={tableAnswers} 
                                     setTableAnswers={setTableAnswers} 
                                     revealed={!!examRevealed[idx]} 
-                                    showAnswers={!!examShowAnswersState[idx]}
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
                                     weight={W}
