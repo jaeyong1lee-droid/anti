@@ -5276,6 +5276,8 @@ export default function App() {
   const savedQuizScroll = useRef(0);    // 퀴즈 패널 저장된 스크롤 위치
   const examBodyRef = useRef(null);     // 종합평가 패널 스크롤 컨테이너
   const savedExamScroll = useRef(0);    // 종합평가 패널 저장된 스크롤 위치
+  const lastQuizScrollbarClickTime = useRef(0);
+  const lastExamScrollbarClickTime = useRef(0);
 
   // Latest values refs to prevent stale closure bugs in modal headers
   const latestTheoryQuestionsRef = { current: [] };
@@ -10792,11 +10794,15 @@ export default function App() {
           </div>
               <div 
                 ref={quizBodyRef} 
-                onDoubleClick={(e) => {
+                onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const clickX = e.clientX - rect.left;
                   if (clickX > e.currentTarget.clientWidth) {
-                    scrollToLastSolvedQuestion(false);
+                    const now = Date.now();
+                    if (now - lastQuizScrollbarClickTime.current < 400) {
+                      scrollToLastSolvedQuestion(false);
+                    }
+                    lastQuizScrollbarClickTime.current = now;
                   }
                 }}
                 className={`flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
@@ -12206,11 +12212,15 @@ export default function App() {
           </div>
               <div 
                 ref={examBodyRef} 
-                onDoubleClick={(e) => {
+                onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const clickX = e.clientX - rect.left;
                   if (clickX > e.currentTarget.clientWidth) {
-                    scrollToLastSolvedQuestion(true);
+                    const now = Date.now();
+                    if (now - lastExamScrollbarClickTime.current < 400) {
+                      scrollToLastSolvedQuestion(true);
+                    }
+                    lastExamScrollbarClickTime.current = now;
                   }
                 }}
                 className={`flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
