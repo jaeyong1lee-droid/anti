@@ -12030,22 +12030,23 @@ export default function App() {
                                             const correctAnswer = q.answers?.[inputId] || '';
                                             const grading = tableGradingResults[`${idx}_${inputId}`];
                                             const reason = grading?.reason ? grading.reason : '';
+                                            const feedbackColor = getTableFeedbackTextColor(grading);
 
                                             return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text text-slate-100">
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
                                                 {reason ? (
                                                   <div className="space-y-0.5">
                                                     <div>
-                                                      <span className="font-extrabold text-slate-100">{inputLetter} :</span> <span className="text-slate-100">{renderHighlightedFeedback(reason)}</span>
+                                                      <span className={`font-extrabold ${feedbackColor}`}>{inputLetter} :</span> <span className={feedbackColor}>{renderHighlightedFeedback(reason)}</span>
                                                     </div>
-                                                    <div className="pl-4 text-emerald-400 font-semibold">
+                                                    <div className="pl-4 text-slate-100 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                                                     </div>
                                                   </div>
                                                 ) : (
                                                   <div>
                                                     <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
-                                                    <span className="text-emerald-400 font-semibold">
+                                                    <span className="text-slate-100 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                                                     </span>
                                                   </div>
@@ -13546,22 +13547,23 @@ export default function App() {
                                             const correctAnswer = q.answers?.[inputId] || '';
                                             const grading = tableGradingResults[`${idx}_${inputId}`];
                                             const reason = grading?.reason ? grading.reason : '';
+                                            const feedbackColor = getTableFeedbackTextColor(grading);
 
                                             return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text text-slate-100">
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
                                                 {reason ? (
                                                   <div className="space-y-0.5">
                                                     <div>
-                                                      <span className="font-extrabold text-slate-100">{inputLetter} :</span> <span className="text-slate-100">{renderHighlightedFeedback(reason)}</span>
+                                                      <span className={`font-extrabold ${feedbackColor}`}>{inputLetter} :</span> <span className={feedbackColor}>{renderHighlightedFeedback(reason)}</span>
                                                     </div>
-                                                    <div className="pl-4 text-emerald-400 font-semibold">
+                                                    <div className="pl-4 text-slate-100 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                                                     </div>
                                                   </div>
                                                 ) : (
                                                   <div>
                                                     <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
-                                                    <span className="text-emerald-400 font-semibold">
+                                                    <span className="text-slate-100 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                                                     </span>
                                                   </div>
