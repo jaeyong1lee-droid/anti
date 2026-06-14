@@ -747,3 +747,40 @@ div[class*="overflow-y-auto"] {
   }
 }
 
+
+/* AI Tutor Response - Enforce uniform sizes and normal weight, preserving KaTeX relative layouts */
+.tutor-response-content,
+.tutor-response-content h1,
+.tutor-response-content h2,
+.tutor-response-content h3,
+.tutor-response-content h4,
+.tutor-response-content h5,
+.tutor-response-content h6,
+.tutor-response-content p,
+.tutor-response-content li,
+.tutor-response-content td,
+.tutor-response-content th,
+.tutor-response-content strong,
+.tutor-response-content b {
+  font-size: 14px !important;
+  font-weight: 400 !important; /* normal weight */
+}
+
+@media (min-width: 768px) {
+  .tutor-response-content,
+  .tutor-response-content h1,
+  .tutor-response-content h2,
+  .tutor-response-content h3,
+  .tutor-response-content h4,
+  .tutor-response-content h5,
+  .tutor-response-content h6,
+  .tutor-response-content p,
+  .tutor-response-content li,
+  .tutor-response-content td,
+  .tutor-response-content th,
+  .tutor-response-content strong,
+  .tutor-response-content b {
+    font-size: 16px !important;
+  }
+}
+
