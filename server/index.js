@@ -5156,6 +5156,8 @@ app.post('/api/chat', async (req, res) => {
    - 정의(개요), 작동 원리/메커니즘, 실무 설계 및 시공 시 공학적 시사점(대책), 결론의 체계적이고 논리적인 단락 구성을 취하십시오.
 6. [지반공학 용어 준수 철칙]:
    - 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 가상의 단어로 번역/표기하지 마십시오. 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.
+7. [중요 키워드 강조 규칙]:
+   - 답변 작성 시 지반역학 및 토목공학의 핵심 용어, 중요 공학 기전, 핵심 물리량 및 설계 조치 등의 중요 키워드들은 수험생이 한눈에 파악할 수 있도록 반드시 **더블 별표**(**키워드**) 또는 '싱글 쿼트'('키워드')로 감싸서 작성해 주십시오. (예: **아칭 효과**, **상대적 변위**, '응력 재분배', **테르자기 트랩도어** 등)
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용

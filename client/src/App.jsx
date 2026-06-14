@@ -719,6 +719,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   // 3. Bold text
   if (isTutor) {
     tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<span style="color: #fbbf24; font-weight: normal;">$1</span>`);
+    tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
   } else {
     const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
     tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
@@ -1395,6 +1396,32 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 const formatGradingReason = (reason) => {
   if (!reason) return '';
   return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');
+};
+
+const renderHighlightedFeedback = (reason) => {
+  if (!reason) return '';
+  const formatted = formatGradingReason(reason);
+  const regex = /('([^']+)'|\*\*([^*]+)\*\*)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(formatted)) !== null) {
+    const matchIndex = match.index;
+    if (matchIndex > lastIndex) {
+      parts.push(formatted.substring(lastIndex, matchIndex));
+    }
+    const keyword = match[2] || match[3];
+    parts.push(
+      <span key={matchIndex} className="text-yellow-400 font-extrabold">
+        {keyword}
+      </span>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < formatted.length) {
+    parts.push(formatted.substring(lastIndex));
+  }
+  return parts.length > 0 ? parts : formatted;
 };
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
@@ -11917,8 +11944,8 @@ export default function App() {
                                     const inputIds = Object.keys(q.answers || {});
                                     if (inputIds.length === 0) return null;
                                     return (
-                                      <div className={`mt-2 p-0 select-text text-left animate-fade-in my-2 ${getTableBannerTitleClasses(idx, q)}`}>
-                                        <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1">
+                                      <div className="mt-2 p-0 select-text text-left animate-fade-in my-2 text-slate-100">
+                                        <div className={`text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1 ${getTableBannerTitleClasses(idx, q)}`}>
                                           <span>{getTableBannerStatusText(idx, q)}</span>
                                         </div>
                                         <div className="space-y-1.5 mt-1.5">
@@ -11928,14 +11955,14 @@ export default function App() {
                                             const inputLetter = String.fromCharCode(64 + inputNum);
                                             const correctAnswer = q.answers?.[inputId] || '';
                                             const grading = tableGradingResults[`${idx}_${inputId}`];
-                                            const reason = grading?.reason ? formatGradingReason(grading.reason) : '';
+                                            const reason = grading?.reason ? grading.reason : '';
 
                                             return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text text-slate-100">
                                                 {reason ? (
                                                   <div className="space-y-0.5">
                                                     <div>
-                                                      <span className="font-extrabold text-amber-400">{inputLetter} :</span> <span className="text-slate-355">{reason}</span>
+                                                      <span className="font-extrabold text-slate-100">{inputLetter} :</span> <span className="text-slate-100">{renderHighlightedFeedback(reason)}</span>
                                                     </div>
                                                     <div className="pl-4 text-emerald-400 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
@@ -12000,11 +12027,11 @@ export default function App() {
                                   </div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
+                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
-                                      <span>{getSubjectiveStatusText(idx)}</span>
+                                      <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{renderHighlightedFeedback(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -13382,8 +13409,8 @@ export default function App() {
                                     const inputIds = Object.keys(q.answers || {});
                                     if (inputIds.length === 0) return null;
                                     return (
-                                      <div className={`mt-2 p-0 select-text text-left animate-fade-in my-2 ${getTableBannerTitleClasses(idx, q)}`}>
-                                        <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1">
+                                      <div className="mt-2 p-0 select-text text-left animate-fade-in my-2 text-slate-100">
+                                        <div className={`text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1 ${getTableBannerTitleClasses(idx, q)}`}>
                                           <span>{getTableBannerStatusText(idx, q)}</span>
                                         </div>
                                         <div className="space-y-1.5 mt-1.5">
@@ -13393,14 +13420,14 @@ export default function App() {
                                             const inputLetter = String.fromCharCode(64 + inputNum);
                                             const correctAnswer = q.answers?.[inputId] || '';
                                             const grading = tableGradingResults[`${idx}_${inputId}`];
-                                            const reason = grading?.reason ? formatGradingReason(grading.reason) : '';
+                                            const reason = grading?.reason ? grading.reason : '';
 
                                             return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text text-slate-100">
                                                 {reason ? (
                                                   <div className="space-y-0.5">
                                                     <div>
-                                                      <span className="font-extrabold text-amber-400">{inputLetter} :</span> <span className="text-slate-355">{reason}</span>
+                                                      <span className="font-extrabold text-slate-100">{inputLetter} :</span> <span className="text-slate-100">{renderHighlightedFeedback(reason)}</span>
                                                     </div>
                                                     <div className="pl-4 text-emerald-400 font-semibold">
                                                       (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
@@ -13465,11 +13492,11 @@ export default function App() {
                                   </div>
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
+                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
-                                      <span>{getSubjectiveStatusText(idx)}</span>
+                                      <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{renderHighlightedFeedback(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
