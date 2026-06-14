@@ -6842,12 +6842,79 @@ export default function App() {
       }
     });
 
+    const newTableAnswers = {};
+    Object.keys(tableAnswers).forEach(key => {
+      const parts = key.split('_');
+      const idx = parseInt(parts[0], 10);
+      if (isNaN(idx)) {
+        newTableAnswers[key] = tableAnswers[key];
+      } else {
+        if (idx >= deleteCount) {
+          const suffix = parts.slice(1).join('_');
+          newTableAnswers[`${idx - deleteCount}_${suffix}`] = tableAnswers[key];
+        }
+      }
+    });
+
+    const newTableGradingResults = {};
+    Object.keys(tableGradingResults).forEach(key => {
+      const parts = key.split('_');
+      const idx = parseInt(parts[0], 10);
+      if (isNaN(idx)) {
+        newTableGradingResults[key] = tableGradingResults[key];
+      } else {
+        if (idx >= deleteCount) {
+          const suffix = parts.slice(1).join('_');
+          newTableGradingResults[`${idx - deleteCount}_${suffix}`] = tableGradingResults[key];
+        }
+      }
+    });
+
+    const newTutorAnswers = {};
+    Object.keys(tutorAnswers).forEach(key => {
+      if (key.startsWith('e_')) {
+        const parts = key.split('_');
+        const idx = parseInt(parts[1], 10);
+        if (idx >= deleteCount) {
+          newTutorAnswers[`e_${idx - deleteCount}`] = tutorAnswers[key];
+        }
+      } else {
+        newTutorAnswers[key] = tutorAnswers[key];
+      }
+    });
+
+    const newTutorInputText = {};
+    Object.keys(tutorInputText).forEach(key => {
+      if (key.startsWith('e_')) {
+        const parts = key.split('_');
+        const idx = parseInt(parts[1], 10);
+        if (idx >= deleteCount) {
+          newTutorInputText[`e_${idx - deleteCount}`] = tutorInputText[key];
+        }
+      } else {
+        newTutorInputText[key] = tutorInputText[key];
+      }
+    });
+
+    const newExamShowAnswersState = {};
+    Object.keys(examShowAnswersState).forEach(key => {
+      const idx = parseInt(key, 10);
+      if (idx >= deleteCount) {
+        newExamShowAnswersState[idx - deleteCount] = examShowAnswersState[key];
+      }
+    });
+
     // Update state to immediately reflect the deletion & shifts (so they can keep playing!)
     setExamQuestions(remainingQuestions);
     setExamAnswers(newAnswers);
     setExamRevealed(newRevealed);
     setExamOptionExplanations(newOptionExplanations);
     setDetailedAnswers(newDetailedAnswers);
+    setTableAnswers(newTableAnswers);
+    setTableGradingResults(newTableGradingResults);
+    setTutorAnswers(newTutorAnswers);
+    setTutorInputText(newTutorInputText);
+    setExamShowAnswersState(newExamShowAnswersState);
 
     setLoadingExam(true);
     
@@ -6975,11 +7042,88 @@ export default function App() {
       }
     });
 
+    const newTableAnswers = {};
+    Object.keys(tableAnswers).forEach(key => {
+      const parts = key.split('_');
+      const idx = parseInt(parts[0], 10);
+      if (isNaN(idx)) {
+        newTableAnswers[key] = tableAnswers[key];
+      } else {
+        if (idx < deleteIdx) {
+          newTableAnswers[key] = tableAnswers[key];
+        } else if (idx > deleteIdx) {
+          const suffix = parts.slice(1).join('_');
+          newTableAnswers[`${idx - 1}_${suffix}`] = tableAnswers[key];
+        }
+      }
+    });
+
+    const newTableGradingResults = {};
+    Object.keys(tableGradingResults).forEach(key => {
+      const parts = key.split('_');
+      const idx = parseInt(parts[0], 10);
+      if (isNaN(idx)) {
+        newTableGradingResults[key] = tableGradingResults[key];
+      } else {
+        if (idx < deleteIdx) {
+          newTableGradingResults[key] = tableGradingResults[key];
+        } else if (idx > deleteIdx) {
+          const suffix = parts.slice(1).join('_');
+          newTableGradingResults[`${idx - 1}_${suffix}`] = tableGradingResults[key];
+        }
+      }
+    });
+
+    const newTutorAnswers = {};
+    Object.keys(tutorAnswers).forEach(key => {
+      if (key.startsWith('e_')) {
+        const parts = key.split('_');
+        const idx = parseInt(parts[1], 10);
+        if (idx < deleteIdx) {
+          newTutorAnswers[key] = tutorAnswers[key];
+        } else if (idx > deleteIdx) {
+          newTutorAnswers[`e_${idx - 1}`] = tutorAnswers[key];
+        }
+      } else {
+        newTutorAnswers[key] = tutorAnswers[key];
+      }
+    });
+
+    const newTutorInputText = {};
+    Object.keys(tutorInputText).forEach(key => {
+      if (key.startsWith('e_')) {
+        const parts = key.split('_');
+        const idx = parseInt(parts[1], 10);
+        if (idx < deleteIdx) {
+          newTutorInputText[key] = tutorInputText[key];
+        } else if (idx > deleteIdx) {
+          newTutorInputText[`e_${idx - 1}`] = tutorInputText[key];
+        }
+      } else {
+        newTutorInputText[key] = tutorInputText[key];
+      }
+    });
+
+    const newExamShowAnswersState = {};
+    Object.keys(examShowAnswersState).forEach(key => {
+      const idx = parseInt(key, 10);
+      if (idx < deleteIdx) {
+        newExamShowAnswersState[idx] = examShowAnswersState[key];
+      } else if (idx > deleteIdx) {
+        newExamShowAnswersState[idx - 1] = examShowAnswersState[key];
+      }
+    });
+
     setExamQuestions(updatedQuestions);
     setExamAnswers(newAnswers);
     setExamRevealed(newRevealed);
     setExamOptionExplanations(newOptionExplanations);
     setDetailedAnswers(newDetailedAnswers);
+    setTableAnswers(newTableAnswers);
+    setTableGradingResults(newTableGradingResults);
+    setTutorAnswers(newTutorAnswers);
+    setTutorInputText(newTutorInputText);
+    setExamShowAnswersState(newExamShowAnswersState);
 
     // Sync to server session
     fetch(`${API_BASE}/api/session/exam`, {
@@ -7035,6 +7179,36 @@ export default function App() {
           setSelectedAnswers(nextSelectedAnswers);
           setRevealedQuestions(nextRevealedQuestions);
 
+          setTableAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTableGradingResults(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[`r_${idx}`];
+            return copy;
+          });
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            delete copy[`r_${idx}`];
+            return copy;
+          });
+          setShowAnswersState(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+
           // 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
           setOpenSections(prev => {
             const copy = { ...prev };
@@ -7069,6 +7243,36 @@ export default function App() {
           setExamQuestions(updated);
           setExamAnswers(nextExamAnswers);
           setExamRevealed(nextExamRevealed);
+
+          setTableAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTableGradingResults(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[`e_${idx}`];
+            return copy;
+          });
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            delete copy[`e_${idx}`];
+            return copy;
+          });
+          setExamShowAnswersState(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
 
           // 즉시 DB 저장
           fetch(`${API_BASE}/api/session/exam`, {
@@ -7148,6 +7352,35 @@ export default function App() {
             delete copy[idx];
             return copy;
           });
+          setTableAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTableGradingResults(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[`r_${idx}`];
+            return copy;
+          });
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            delete copy[`r_${idx}`];
+            return copy;
+          });
+          setShowAnswersState(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
           // 3. 주관식인 경우 혹시 열려있는 아코디언 섹션도 초기화
           setOpenSections(prev => {
             const copy = { ...prev };
@@ -7187,6 +7420,35 @@ export default function App() {
             return copy;
           });
           setExamRevealed(prev => {
+            const copy = { ...prev };
+            delete copy[idx];
+            return copy;
+          });
+          setTableAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTableGradingResults(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith(`${idx}_`)) delete copy[k];
+            });
+            return copy;
+          });
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            delete copy[`e_${idx}`];
+            return copy;
+          });
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            delete copy[`e_${idx}`];
+            return copy;
+          });
+          setExamShowAnswersState(prev => {
             const copy = { ...prev };
             delete copy[idx];
             return copy;
@@ -7356,7 +7618,7 @@ export default function App() {
   const renderCardTutorChat = (key, q) => {
     return (
       <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
-        <label className="block text-[14px] sm:text-[17px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <label className="block text-[14px] sm:text-[16px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -7376,7 +7638,7 @@ export default function App() {
               }
             }}
             placeholder=""
-            className="flex-1 text-[14px] sm:text-[17px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+            className="flex-1 text-[14px] sm:text-[16px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
@@ -7390,7 +7652,7 @@ export default function App() {
         {/* AI Tutor In-Card Answer Panel */}
         {tutorAnswers[key]?.loading && (
           <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
-            <div className="text-[14px] sm:text-[17px] text-violet-400 font-bold flex items-center gap-1.5">
+            <div className="text-[14px] sm:text-[16px] text-violet-400 font-bold flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
               <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
             </div>
@@ -7399,12 +7661,12 @@ export default function App() {
           </div>
         )}
         {tutorAnswers[key]?.error && (
-          <div className="text-[14px] sm:text-[17px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+          <div className="text-[14px] sm:text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
         )}
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
           <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
-            <div className="text-[14px] sm:text-[17px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
+            <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
@@ -11145,7 +11407,7 @@ export default function App() {
                           const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                           return (
                             <>
-                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed text-left w-full">
+                              <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
                                 <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                               {tableData && q.type !== '주관식 (표채우기)' && (
@@ -11159,7 +11421,7 @@ export default function App() {
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-sm font-semibold transition-all duration-200 ";
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
                               if (!answered) {
                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                               } else if (opt === q.answer) {
@@ -11200,14 +11462,14 @@ export default function App() {
                               );
                             })}
                             {answered && (
-                              <div className={`mt-2 p-3 rounded-xl text-sm leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                              <div className={`mt-2 p-3 rounded-xl text-[14px] sm:text-[16px] leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                                 {!isCorrect && (
                                   <span className="ml-2 inline-flex items-center gap-1">
                                     정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                   </span>
                                 )}
-                                {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
 
                                  {/* AI 해설 및 보기분석 버튼 패널 */}
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
@@ -11357,8 +11619,8 @@ export default function App() {
                                    )}
                                    {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
-                                       <div className="text-[11px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
-                                       <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                       <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                       <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                          <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
                                        </div>
                                      </div>
@@ -11409,7 +11671,7 @@ export default function App() {
                                 </button>
                               ) : (
                                 <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[14px] sm:text-[17px] font-black text-amber-400">
+                                  <div className="flex justify-between items-center text-[14px] sm:text-[16px] font-black text-amber-400">
                                     <span>📝 상세 해설</span>
                                   </div>
                                   {/* 테이블 주관식 개별 피드백 */}
@@ -11428,12 +11690,12 @@ export default function App() {
                                     if (wrongFeedbacks.length > 0) {
                                       return (
                                         <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[14px] sm:text-[17px] font-black flex items-center gap-1.5 mb-0.5">
+                                          <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">
+                                              <p key={fIdx} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </p>
                                             ))}
@@ -11444,7 +11706,7 @@ export default function App() {
                                     return null;
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
@@ -11470,7 +11732,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -11483,13 +11745,13 @@ export default function App() {
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
-                                    <div className="text-[14px] sm:text-[17px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -11498,17 +11760,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -12592,7 +12854,7 @@ export default function App() {
                         const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
                         return (
                           <>
-                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed text-left w-full">
+                              <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
                                 <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                             {tableData && q.type !== '주관식 (표채우기)' && (
@@ -12606,7 +12868,7 @@ export default function App() {
                       {isMC && (
                         <div className="space-y-2">
                           {q.options?.map((opt, oIdx) => {
-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-sm font-semibold transition-all duration-200 ";
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
                             if (!answered) {
                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                             } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
@@ -12647,14 +12909,14 @@ export default function App() {
                             );
                           })}
                           {answered && (
-                            <div className={`mt-2 p-3 rounded-xl text-sm leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                            <div className={`mt-2 p-3 rounded-xl text-[14px] sm:text-[16px] leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && (
                                 <span className="ml-2 inline-flex items-center gap-1">
                                   정답: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
                                 </span>
                               )}
-                              {q.explanation && <div className="mt-1.5 text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
                               
                               {/* AI 해설 및 보기분석 버튼 패널 */}
                               <div className="mt-2 pt-2 border-t border-slate-700/40">
@@ -12804,8 +13066,8 @@ export default function App() {
                                 )}
                                 {examOptionExplanations[idx]?.text && !examOptionExplanations[idx]?.loading && (
                                   <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
-                                    <div className="text-[11px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
-                                    <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                    <div className="text-[14px] sm:text-[16px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                       <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
                                     </div>
                                   </div>
@@ -12856,7 +13118,7 @@ export default function App() {
                                 </button>
                               ) : (
                                 <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[14px] sm:text-[17px] font-black text-amber-400">
+                                  <div className="flex justify-between items-center text-[14px] sm:text-[16px] font-black text-amber-400">
                                     <span>📝 상세 해설</span>
                                   </div>
                                   {/* 테이블 주관식 개별 피드백 */}
@@ -12875,12 +13137,12 @@ export default function App() {
                                     if (wrongFeedbacks.length > 0) {
                                       return (
                                         <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[14px] sm:text-[17px] font-black flex items-center gap-1.5 mb-0.5">
+                                          <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">
+                                              <p key={fIdx} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </p>
                                             ))}
@@ -12891,7 +13153,7 @@ export default function App() {
                                     return null;
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
@@ -12917,7 +13179,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -12930,13 +13192,13 @@ export default function App() {
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
-                                    <div className="text-[14px] sm:text-[17px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -12945,17 +13207,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
