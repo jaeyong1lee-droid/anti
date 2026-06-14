@@ -1413,9 +1413,19 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     }));
   };
 
+  const colCount = headers.length;
+  const firstColWidth = colCount > 1 ? '22%' : '100%';
+  const otherColWidth = colCount > 1 ? `${78 / (colCount - 1)}%` : '0%';
+
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[14px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[650px] text-center border-collapse text-[14px] sm:text-sm">
+        <colgroup>
+          <col style={{ width: firstColWidth }} />
+          {Array.from({ length: colCount - 1 }).map((_, idx) => (
+            <col key={idx} style={{ width: otherColWidth }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1424,9 +1434,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                 <th 
                   key={hIdx} 
                   className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
-                    isFirstCol 
-                      ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
-                      : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                    isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
@@ -1469,9 +1477,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     <td 
                       key={cIdx} 
                       className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-sm whitespace-normal break-words ${
-                        isFirstCol 
-                          ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
-                          : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                        isFirstCol ? 'text-left break-all' : ''
                       }`}
                     >
                       <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
@@ -1515,7 +1521,6 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             })()}
                           </div>
                         </div>
-                        {/* Removed cell-level correct answer label to show in feedback panel */}
                       </div>
                     </td>
                   );
@@ -1524,9 +1529,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     <td 
                       key={cIdx} 
                       className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-sm select-text whitespace-normal break-words ${
-                        isFirstCol 
-                          ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
-                          : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                        isFirstCol ? 'text-left break-all' : ''
                       }`}
                     >
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
@@ -1546,9 +1549,19 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded }) {
   if (!tableData || !tableData.headers || !tableData.rows) return null;
   const { headers, rows } = tableData;
+  const colCount = headers.length;
+  const firstColWidth = colCount > 1 ? '22%' : '100%';
+  const otherColWidth = colCount > 1 ? `${78 / (colCount - 1)}%` : '0%';
+
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[14px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[650px] text-center border-collapse text-[14px] sm:text-sm">
+        <colgroup>
+          <col style={{ width: firstColWidth }} />
+          {Array.from({ length: colCount - 1 }).map((_, idx) => (
+            <col key={idx} style={{ width: otherColWidth }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1557,9 +1570,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                 <th 
                   key={hIdx} 
                   className={`p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
-                    isFirstCol 
-                      ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
-                      : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                    isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
@@ -1577,9 +1588,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                   <td 
                     key={cIdx} 
                     className={`p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
-                      isFirstCol 
-                        ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
-                        : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                      isFirstCol ? 'text-left break-all' : ''
                     }`}
                   >
                     <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
