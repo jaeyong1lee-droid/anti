@@ -11388,7 +11388,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
@@ -12313,6 +12313,58 @@ export default function App() {
                     <span className="text-xs font-bold text-slate-300">AI 튜터</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {selectedTopic && (
+                      <div className="hidden md:flex items-center gap-1.5 mr-1.5">
+                        {selectedTopic.pdf_name && (
+                          <button
+                            onClick={handleOpenOriginalReport}
+                            className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                            title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                          >
+                            <FileText size={10} className="flex-shrink-0" />
+                            <span>원보고서</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={handleRetakeReviewQuiz}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                        >
+                          <RefreshCw size={10} className="text-amber-400 flex-shrink-0" />
+                          <span>다시풀기</span>
+                        </button>
+                        <button
+                          onClick={handleRefreshReviewQuestions}
+                          disabled={loadingAI}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 disabled:opacity-50"
+                          title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                        >
+                          {loadingAI ? (
+                            <svg className="animate-spin h-2.5 w-2.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <span className="text-violet-300 flex-shrink-0">🔄</span>
+                          )}
+                          <span>리프레쉬</span>
+                        </button>
+                        <button
+                          onClick={() => { 
+                            savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                            if (selectedTopic?.isReadOnly) {
+                              setSelectedTopic(null); 
+                            } else {
+                              forceSaveActiveSessions();
+                              setSelectedTopic(null); 
+                            }
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md"
+                        >
+                          종료
+                        </button>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center gap-1 ${
@@ -14104,6 +14156,58 @@ export default function App() {
               </div>
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+                {selectedTopic && (
+                      <div className="hidden md:flex items-center gap-1.5 mr-1.5">
+                        {selectedTopic.pdf_name && (
+                          <button
+                            onClick={handleOpenOriginalReport}
+                            className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                            title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                          >
+                            <FileText size={12} className="flex-shrink-0" />
+                            <span>원보고서</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={handleRetakeReviewQuiz}
+                          className="px-3 py-2 text-xs font-black rounded-xl bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                          title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                        >
+                          <RefreshCw size={12} className="text-amber-400 flex-shrink-0" />
+                          <span>다시풀기</span>
+                        </button>
+                        <button
+                          onClick={handleRefreshReviewQuestions}
+                          disabled={loadingAI}
+                          className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
+                        >
+                          {loadingAI ? (
+                            <svg className="animate-spin h-3 w-3 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <span className="text-violet-300 flex-shrink-0">🔄</span>
+                          )}
+                          <span>리프레쉬</span>
+                        </button>
+                        <button
+                          onClick={() => { 
+                            savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                            if (selectedTopic?.isReadOnly) {
+                              setSelectedTopic(null); 
+                            } else {
+                              forceSaveActiveSessions();
+                              setSelectedTopic(null); 
+                            }
+                          }}
+                          className="px-3 py-2 text-xs font-black rounded-xl bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md text-center"
+                        >
+                          종료
+                        </button>
+                      </div>
+                    )}
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 ${
