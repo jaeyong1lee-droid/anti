@@ -416,6 +416,17 @@ html, body {
   .pc-enlarged-text .text-xl { font-size: calc(1.25rem * 1.2) !important; }
   .pc-enlarged-text .text-2xl { font-size: calc(1.5rem * 1.2) !important; }
   .pc-enlarged-text .text-\[17px\] { font-size: calc(17px * 1.2) !important; }
+  
+  /* Support Tailwind responsive text sizing classes on PC */
+  .pc-enlarged-text .sm\:text-xs { font-size: calc(0.75rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-sm { font-size: calc(0.875rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-base { font-size: calc(1rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-lg { font-size: calc(1.125rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-xl { font-size: calc(1.25rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-2xl { font-size: calc(1.5rem * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-\[11px\] { font-size: calc(11px * 1.2) !important; }
+  .pc-enlarged-text .sm\:text-\[14px\] { font-size: calc(14px * 1.2) !important; }
+  
   .pc-enlarged-text {
     font-size: 1.2rem;
   }
