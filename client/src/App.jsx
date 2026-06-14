@@ -713,6 +713,13 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
     return placeholder;
   });
 
+  // Collapse consecutive newlines (or empty lines) to at most 2 newlines (\n\n)
+  tempText = tempText.replace(/\n\s*\n/g, '\n\n');
+  tempText = tempText.replace(/\n{3,}/g, '\n\n');
+
+  // Collapse excess newlines around block math placeholders to prevent massive spaces
+  tempText = tempText.replace(/\n+(___BLOCK_MATH_\d+___)\n+/g, '\n$1\n');
+
   // 2. Headings on same line: "Text ### Title" -> "Text\n\n### Title"
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
@@ -776,7 +783,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
 
   // 6. Spacers for paragraph gaps
   if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.5rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 0.4rem;"></div>');
