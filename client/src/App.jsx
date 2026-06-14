@@ -1411,7 +1411,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[17px] sm:text-sm">
+      <table className="w-full text-center border-collapse text-[14px] sm:text-sm">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1453,7 +1453,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
                   const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
-                  let inputClassName = `w-full text-[15px] sm:text-sm px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                  let inputClassName = `w-full text-[14px] sm:text-sm px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
                     hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
                   } ${
                     revealed
@@ -1464,7 +1464,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[17px] sm:text-sm whitespace-normal break-words ${
+                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-sm whitespace-normal break-words ${
                         isFirstCol 
                           ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
                           : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
@@ -1529,7 +1529,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[17px] sm:text-sm select-text whitespace-normal break-words ${
+                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-sm select-text whitespace-normal break-words ${
                         isFirstCol 
                           ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
                           : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
@@ -1554,7 +1554,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   const { headers, rows } = tableData;
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[17px] sm:text-sm">
+      <table className="w-full text-center border-collapse text-[14px] sm:text-sm">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -7343,7 +7343,7 @@ export default function App() {
   const renderCardTutorChat = (key, q) => {
     return (
       <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
-        <label className="block text-[17px] sm:text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <label className="block text-[14px] sm:text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -7363,7 +7363,7 @@ export default function App() {
               }
             }}
             placeholder="이 문제의 계산 과정이나 특정 보기가 정오답인 근거를 물어보세요..."
-            className="flex-1 text-[15px] sm:text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+            className="flex-1 text-[14px] sm:text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
@@ -7377,7 +7377,7 @@ export default function App() {
         {/* AI Tutor In-Card Answer Panel */}
         {tutorAnswers[key]?.loading && (
           <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
-            <div className="text-[17px] sm:text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+            <div className="text-[14px] sm:text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
               <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
             </div>
@@ -7386,12 +7386,12 @@ export default function App() {
           </div>
         )}
         {tutorAnswers[key]?.error && (
-          <div className="text-[17px] sm:text-[10px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+          <div className="text-[14px] sm:text-[10px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
         )}
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
           <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
-            <div className="text-[17px] sm:text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="text-[17px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
+            <div className="text-[14px] sm:text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-[14px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
@@ -11096,7 +11096,7 @@ export default function App() {
                           return (
                             <>
                               <div className="flex justify-between items-start gap-3 w-full">
-                                <div className="text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
+                                <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
                                   <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                                 </div>
                                 {isSubj && isRevd && idx !== 1 && (
@@ -11136,7 +11136,7 @@ export default function App() {
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[17px] sm:text-sm font-semibold transition-all duration-200 ";
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-sm font-semibold transition-all duration-200 ";
                               if (!answered) {
                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                               } else if (opt === q.answer) {
@@ -11455,7 +11455,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[15px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -11468,7 +11468,7 @@ export default function App() {
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[17px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
                                         onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
@@ -11478,10 +11478,10 @@ export default function App() {
                                         접기 ✕
                                       </button>
                                     </div>
-                                    <p className="text-[17px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                    <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -11490,17 +11490,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -12548,7 +12548,7 @@ export default function App() {
                         return (
                           <>
                             <div className="flex justify-between items-start gap-3 w-full">
-                              <div className="text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
+                              <div className="text-[14px] sm:text-[17px] font-bold text-white leading-relaxed flex-grow text-left">
                                 <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
                               </div>
                               {isSubj && isRevd && idx !== 1 && (
@@ -12588,7 +12588,7 @@ export default function App() {
                       {isMC && (
                         <div className="space-y-2">
                           {q.options?.map((opt, oIdx) => {
-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[17px] sm:text-sm font-semibold transition-all duration-200 ";
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-sm font-semibold transition-all duration-200 ";
                             if (!answered) {
                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                             } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
@@ -12907,7 +12907,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[15px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -12920,7 +12920,7 @@ export default function App() {
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[17px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
                                         onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
@@ -12930,10 +12930,10 @@ export default function App() {
                                         접기 ✕
                                       </button>
                                     </div>
-                                    <p className="text-[17px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                    <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -12942,17 +12942,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
