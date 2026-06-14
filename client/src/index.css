@@ -427,6 +427,22 @@ html, body {
   .pc-enlarged-text .sm\:text-\[11px\] { font-size: calc(11px * 1.2) !important; }
   .pc-enlarged-text .sm\:text-\[14px\] { font-size: calc(14px * 1.2) !important; }
   
+  /* Decrease table text size specifically to 0.8x (approx 11px) on PC to prevent wrapping */
+  .pc-enlarged-text table,
+  .pc-enlarged-text table th,
+  .pc-enlarged-text table td,
+  .pc-enlarged-text table input {
+    font-size: 11px !important;
+  }
+  .pc-enlarged-text table span,
+  .pc-enlarged-text table div {
+    font-size: 11px !important;
+  }
+  .pc-enlarged-text table .text-emerald-450,
+  .pc-enlarged-text table .text-slate-400 {
+    font-size: 10px !important;
+  }
+  
   .pc-enlarged-text {
     font-size: 1.2rem;
   }
