@@ -778,7 +778,10 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 // Helper to render KaTeX with display-style fractions (\dfrac) for improved readability
 const renderKatexString = (math, options) => {
   if (!math) return '';
-  const processedMath = math.replace(/\\frac\b/g, '\\dfrac');
+  let processedMath = math.replace(/\\frac\b/g, '\\dfrac');
+  // Escape bare % signs that are not already escaped (\%), since % is a comment
+  // character in TeX/KaTeX and causes "Unexpected end of input" parse errors.
+  processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');
   if (window.katex) {
     try {
       // Force throwOnError: true to prevent KaTeX from generating title strings with '$'
