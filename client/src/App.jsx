@@ -1771,7 +1771,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
   const { questionText, tableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
-  const conditionMatch = cleanQuestionText.match(/\[조건\s*\]/);
+  const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
   
   if (conditionMatch) {
     const splitIdx = conditionMatch.index;
