@@ -66,7 +66,7 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, cal
 - 사용자의 답안: ${userAnswer}
 `;
 
-  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
+  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'grading');
   let text = responseText.trim();
   if (text.startsWith('```')) {
     text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
