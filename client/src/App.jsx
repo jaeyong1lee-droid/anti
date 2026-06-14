@@ -5652,6 +5652,8 @@ export default function App() {
         if (s.chatHistory) setChatHistory(s.chatHistory);
         if (s.tableAnswers) setTableAnswers(s.tableAnswers);
         if (s.tableGradingResults) setTableGradingResults(s.tableGradingResults);
+        if (s.tutorAnswers) setTutorAnswers(s.tutorAnswers);
+        if (s.tutorInputText) setTutorInputText(s.tutorInputText);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
@@ -5673,6 +5675,24 @@ export default function App() {
           if (data.examTopic) setExamTopic(data.examTopic);
           if (data.tableAnswers) setTableAnswers(data.tableAnswers);
           if (data.tableGradingResults) setTableGradingResults(data.tableGradingResults);
+          if (data.tutorAnswers) {
+            setTutorAnswers(prev => {
+              const copy = { ...prev };
+              Object.keys(copy).forEach(k => {
+                if (k.startsWith('e_')) delete copy[k];
+              });
+              return { ...copy, ...data.tutorAnswers };
+            });
+          }
+          if (data.tutorInputText) {
+            setTutorInputText(prev => {
+              const copy = { ...prev };
+              Object.keys(copy).forEach(k => {
+                if (k.startsWith('e_')) delete copy[k];
+              });
+              return { ...copy, ...data.tutorInputText };
+            });
+          }
           const localProgress = localStorage.getItem('anti_exam_progress');
           let localScroll = undefined;
           if (localProgress) {
@@ -5730,16 +5750,18 @@ export default function App() {
         tableAnswers,
         tableGradingResults,
         chatHistory,
+        tutorAnswers,
+        tutorInputText,
       }));
     } catch (e) {
       console.warn('localStorage 저장 실패:', e);
     }
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, chatHistory]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, chatHistory, tutorAnswers, tutorInputText]);
 
   // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
   useEffect(() => {
     if (selectedTopic && selectedTopic.id) {
-      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0) {
+      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0 || Object.keys(tutorAnswers).length > 0 || Object.keys(tutorInputText).length > 0) {
         try {
           const key = selectedTopic.schedule_id 
             ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
@@ -5748,14 +5770,16 @@ export default function App() {
             revealedQuestions,
             selectedAnswers,
             tableAnswers,
-            tableGradingResults
+            tableGradingResults,
+            tutorAnswers,
+            tutorInputText
           }));
         } catch (e) {
           console.warn('localStorage 복습 진행률 저장 실패:', e);
         }
       }
     }
-  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults]);
+  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -5771,6 +5795,8 @@ export default function App() {
             examTopic,
             tableAnswers,
             tableGradingResults,
+            tutorAnswers,
+            tutorInputText,
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
@@ -5778,7 +5804,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText]);
 
   const forceSaveActiveSessions = () => {
     // 1) Save active review session immediately
@@ -5795,6 +5821,8 @@ export default function App() {
           revealedQuestions,
           tableAnswers,
           tableGradingResults,
+          tutorAnswers,
+          tutorInputText,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
@@ -5813,6 +5841,8 @@ export default function App() {
           examTopic,
           tableAnswers,
           tableGradingResults,
+          tutorAnswers,
+          tutorInputText,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
       }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
