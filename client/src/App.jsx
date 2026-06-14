@@ -1767,6 +1767,85 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
+const renderQuestionContent = (q, topicTitle, katexLoaded) => {
+  const { questionText, tableData } = parseQuestionTable(q, topicTitle);
+  const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
+  
+  const conditionMatch = cleanQuestionText.match(/\[조건\s*\]/);
+  
+  if (conditionMatch) {
+    const splitIdx = conditionMatch.index;
+    let mainText = cleanQuestionText.substring(0, splitIdx).trim();
+    let conditionText = cleanQuestionText.substring(splitIdx + conditionMatch[0].length).trim();
+    
+    if (conditionText.startsWith('-') || conditionText.startsWith(':')) {
+      conditionText = conditionText.substring(1).trim();
+    }
+    
+    mainText = mainText.replace(/(몇\s*%\s*감소하는가\??)/g, '$1\n');
+    
+    const rawBullets = conditionText.split(/\s*-\s+(?=[가-힣\\])/).map(b => b.trim()).filter(Boolean);
+    const conditions = [];
+    
+    rawBullets.forEach(bullet => {
+      if (bullet.includes(',')) {
+        const segments = bullet.split(',').map(s => s.trim()).filter(Boolean);
+        const areAllShort = segments.every(s => s.length <= 35);
+        if (areAllShort) {
+          conditions.push(...segments);
+          return;
+        }
+      }
+      conditions.push(bullet);
+    });
+    
+    return (
+      <div className="space-y-3 w-full">
+        <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
+          <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
+        </div>
+        {conditions.length > 0 && (
+          <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-4 my-2.5 text-left w-full">
+            <div className="text-indigo-400 font-extrabold text-[12px] sm:text-xs mb-2.5 flex items-center gap-1.5 select-none">
+              <span>📋 평가 조건</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[13px] sm:text-[14px] text-slate-200">
+              {conditions.map((cond, cIdx) => (
+                <div 
+                  key={cIdx} 
+                  className={`p-2.5 rounded-xl bg-slate-950/30 border border-slate-800/50 flex items-start gap-2.5 leading-relaxed ${
+                    cond.length > 45 ? 'sm:col-span-2' : ''
+                  }`}
+                >
+                  <span className="text-indigo-400/80 mt-0.5 select-none font-bold">·</span>
+                  <div className="flex-grow select-text">
+                    <LatexRenderer text={cond} katexLoaded={katexLoaded} enableAddFormula={true} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {tableData && q.type !== '주관식 (표채우기)' && (
+          <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <>
+      <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
+        <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+      </div>
+      {tableData && q.type !== '주관식 (표채우기)' && (
+        <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+      )}
+    </>
+  );
+};
+
+
 function computeParenthesisPairs(str) {
   const parentMap = {};
   const stack = [];
@@ -11531,20 +11610,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {(() => {
-                          const { questionText, tableData } = parseQuestionTable(q, selectedTopic?.title);
-                          const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
-                          return (
-                            <>
-                              <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
-                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
-                              </div>
-                              {tableData && q.type !== '주관식 (표채우기)' && (
-                                <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
-                              )}
-                            </>
-                          );
-                        })()}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -13009,20 +13075,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {(() => {
-                        const { questionText, tableData } = parseQuestionTable(q, examTopic?.title);
-                        const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
-                        return (
-                          <>
-                              <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
-                                <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
-                              </div>
-                            {tableData && q.type !== '주관식 (표채우기)' && (
-                              <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
-                            )}
-                          </>
-                        );
-                      })()}
+                      {renderQuestionContent(q, examTopic?.title, katexLoaded)}
 
                       {/* MC Options */}
                       {isMC && (
