@@ -1462,7 +1462,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-fixed min-w-[420px] sm:min-w-[650px] text-center border-collapse text-[13px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[300px] sm:min-w-[650px] text-center border-collapse text-[11.5px] sm:text-sm">
         <colgroup>
           <col style={{ width: firstColWidth }} />
           {Array.from({ length: colCount - 1 }).map((_, idx) => (
@@ -1609,7 +1609,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-fixed min-w-[420px] sm:min-w-[650px] text-center border-collapse text-[13px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[300px] sm:min-w-[650px] text-center border-collapse text-[11.5px] sm:text-sm">
         <colgroup>
           <col style={{ width: firstColWidth }} />
           {Array.from({ length: colCount - 1 }).map((_, idx) => (
@@ -1623,7 +1623,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-1.5 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
+                  className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
@@ -1648,7 +1648,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                     <td 
                       key={cIdx} 
                       colSpan={cellColSpan}
-                      className={`p-1.5 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
+                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
                         isFirstCol ? 'text-left break-all' : 'text-center'
                       }`}
                     >
@@ -1867,7 +1867,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
           <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
         </div>
         {conditions.length > 0 && (
-          <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-4 my-2.5 text-left w-full">
+          <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-2.5 sm:p-4 my-2.5 text-left w-full">
             <div className="text-indigo-400 font-extrabold text-[12px] sm:text-xs mb-2.5 flex items-center gap-1.5 select-none">
               <span>📋 평가 조건</span>
             </div>
@@ -1875,7 +1875,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
               {conditions.map((cond, cIdx) => (
                 <div 
                   key={cIdx} 
-                  className={`p-2.5 rounded-xl bg-slate-950/30 border border-slate-800/50 flex items-start gap-2.5 leading-relaxed ${
+                  className={`p-1.5 sm:p-2.5 rounded-xl bg-slate-950/30 border border-slate-800/50 flex items-start gap-2.5 leading-relaxed ${
                     cond.length > 45 ? 'sm:col-span-2' : ''
                   }`}
                 >
