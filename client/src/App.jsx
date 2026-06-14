@@ -4131,6 +4131,35 @@ export default function App() {
     return '❌ 감점 및 오답 사유 피드백';
   };
 
+  const scrollToLastSolvedQuestion = (isExam = false) => {
+    const questions = isExam ? examQuestions : aiQuestions;
+    if (questions.length === 0) return;
+    
+    let lastIndex = 0;
+    questions.forEach((q, idx) => {
+      let solved = false;
+      const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
+      if (isMC) {
+        solved = isExam ? (examAnswers[idx] !== undefined) : (selectedAnswers[idx] !== undefined);
+      } else if (q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        solved = inputIds.some(inputId => tableAnswers[`${idx}_${inputId}`]);
+      } else {
+        solved = !!tableAnswers[`${idx}_INPUT`];
+      }
+      if (solved) {
+        lastIndex = idx;
+      }
+    });
+
+    const bodyRef = isExam ? examBodyRef : quizBodyRef;
+    const cardClass = isExam ? '.exam-card-item' : '.quiz-card-item';
+    const cards = bodyRef.current?.querySelectorAll(cardClass);
+    if (cards && cards[lastIndex]) {
+      bodyRef.current?.scrollTo({ top: cards[lastIndex].offsetTop, behavior: 'smooth' });
+    }
+  };
+
   // Dynamic KaTeX Loader State
   const [katexLoaded, setKatexLoaded] = useState(false);
   useEffect(() => {
@@ -10763,6 +10792,13 @@ export default function App() {
           </div>
               <div 
                 ref={quizBodyRef} 
+                onDoubleClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  if (clickX > e.currentTarget.clientWidth) {
+                    scrollToLastSolvedQuestion(false);
+                  }
+                }}
                 className={`flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
               >
               {loadingAI ? (
@@ -12170,6 +12206,13 @@ export default function App() {
           </div>
               <div 
                 ref={examBodyRef} 
+                onDoubleClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  if (clickX > e.currentTarget.clientWidth) {
+                    scrollToLastSolvedQuestion(true);
+                  }
+                }}
                 className={`flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
               >
             {loadingExam && examQuestions.length === 0 ? (
