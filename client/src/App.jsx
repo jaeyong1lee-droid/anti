@@ -1623,11 +1623,60 @@ function parseMarkdownTable(questionText) {
   return null;
 }
 
+function getCoreSubjectFromTitle(title) {
+  if (!title) return '';
+  let subject = title;
+  const suffixes = [
+    /\s*상세\s*기술\s*보고서$/gi,
+    /\s*기술\s*보고서$/gi,
+    /\s*상세\s*보고서$/gi,
+    /\s*보고서$/gi,
+    /\s*유도\s*공식$/gi,
+    /\s*유도공식$/gi,
+    /\s*산정\s*공식$/gi,
+    /\s*산정공식$/gi,
+    /\s*유도$/gi,
+    /\s*증명$/gi,
+    /\s*해석$/gi,
+    /\s*산정$/gi,
+    /\s*설계$/gi,
+    /\s*분석$/gi,
+    /\s*평가$/gi,
+    /\s*대책$/gi
+  ];
+  for (const regex of suffixes) {
+    if (regex.test(subject)) {
+      subject = subject.replace(regex, '');
+      break;
+    }
+  }
+  return subject.trim();
+}
+
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
 function parseQuestionTable(q, topicTitle) {
   let questionText = q.question || '';
-  if (q.type === '주관식 (개요)' && topicTitle) {
-    questionText = `${topicTitle}(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.`;
+  
+  // Clean question title for Q1 / Overview questions macroscopically
+  const isOverview = q.type === '주관식 (개요)' || 
+                     questionText.includes('(개념, 원리, 정의 등)의 핵심 키워드') || 
+                     questionText.includes('의 핵심 개념, 정의, 원리 등을 설명하는 키워드') ||
+                     (questionText.includes('핵심 키워드') && questionText.includes('입력하세요') && !questionText.includes('표채우기'));
+
+  if (isOverview) {
+    let subject = '';
+    if (topicTitle) {
+      subject = getCoreSubjectFromTitle(topicTitle);
+    } else {
+      // Fallback: extract subject from questionText itself
+      const match = questionText.match(/^(.*?)(?:\(개념|의 핵심 개념|의 핵심 키워드)/);
+      if (match && match[1]) {
+        subject = getCoreSubjectFromTitle(match[1].trim());
+      }
+    }
+    if (subject) {
+      questionText = `${subject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요.`;
+    }
   }
   let tableData = q.tableData || null;
 
@@ -4561,8 +4610,21 @@ export default function App() {
   }, [isResizing, rightSidebarWidth]);
 
   const startResize = useCallback((e) => {
-    if (e.target.closest('button')) return;
-    e.preventDefault();
+    // If it's a mouse event and click targets a button, do not resize.
+    // But for touch events, allow dragging even if it started on a button (like the capsule scroll buttons)
+    // because touch targets are imprecise and fingers may overlap buttons.
+    const isTouchEvent = e.type.startsWith('touch');
+    if (!isTouchEvent && e.target.closest('button')) return;
+    
+    if (isTouchEvent) {
+      // Don't call preventDefault immediately on touchstart for buttons
+      // so their standard tap behavior (click) remains functional.
+      if (!e.target.closest('button') && e.cancelable) {
+        e.preventDefault();
+      }
+    } else {
+      e.preventDefault();
+    }
     setIsResizing(true);
   }, []);
 
@@ -4577,7 +4639,13 @@ export default function App() {
     document.body.style.userSelect = 'none';
 
     const handleMouseMove = (e) => {
-      const newWidth = window.innerWidth - e.clientX - 25;
+      // Prevent browser default panning/scrolling while dragging to resize
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+      if (clientX === null) return;
+      const newWidth = window.innerWidth - clientX - 25;
       const minWidth = 250;
       const maxWidth = window.innerWidth * 0.7;
       setRightSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
@@ -4589,10 +4657,14 @@ export default function App() {
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleMouseMove, { passive: false });
+    window.addEventListener('touchend', handleMouseUp);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleMouseMove);
+      window.removeEventListener('touchend', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -10890,7 +10962,7 @@ export default function App() {
                                   </div>
                                 )}
                               </div>
-                              {isMC && tableData && (
+                              {tableData && q.type !== '주관식 (표채우기)' && (
                                 <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
                               )}
                             </>
@@ -11370,6 +11442,8 @@ export default function App() {
           {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
           <div 
             onMouseDown={startResize}
+            onTouchStart={startResize}
+            style={{ touchAction: 'none' }}
             className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
           >
             <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
@@ -12287,7 +12361,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                            {isMC && tableData && (
+                            {tableData && q.type !== '주관식 (표채우기)' && (
                               <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
                             )}
                           </>
@@ -12746,6 +12820,8 @@ export default function App() {
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
               onMouseDown={startResize}
+              onTouchStart={startResize}
+              style={{ touchAction: 'none' }}
               className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-amber-500/50 transition-colors pointer-events-none" />
@@ -13716,6 +13792,8 @@ export default function App() {
             {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
               onMouseDown={startResize}
+              onTouchStart={startResize}
+              style={{ touchAction: 'none' }}
               className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-rose-500/50 transition-colors pointer-events-none" />
@@ -14551,6 +14629,8 @@ export default function App() {
             {/* Middle Gutter (Takes exactly 50px width on Desktop) */}
             <div 
               onMouseDown={startResize}
+              onTouchStart={startResize}
+              style={{ touchAction: 'none' }}
               className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-emerald-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-emerald-500/50 transition-colors pointer-events-none" />

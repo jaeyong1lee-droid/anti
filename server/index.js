@@ -94,6 +94,37 @@ function cleanQuizQuestion(q) {
   return q.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function getCoreSubjectFromTitle(title) {
+  if (!title) return '';
+  let subject = title;
+  const suffixes = [
+    /\s*상세\s*기술\s*보고서$/i,
+    /\s*기술\s*보고서$/i,
+    /\s*상세\s*보고서$/i,
+    /\s*보고서$/i,
+    /\s*유도\s*공식$/i,
+    /\s*유도공식$/i,
+    /\s*산정\s*공식$/i,
+    /\s*산정공식$/i,
+    /\s*유도$/i,
+    /\s*증명$/i,
+    /\s*해석$/i,
+    /\s*산정$/i,
+    /\s*설계$/i,
+    /\s*분석$/i,
+    /\s*평가$/i,
+    /\s*대책$/i
+  ];
+  for (const regex of suffixes) {
+    const replaced = subject.replace(regex, '');
+    if (replaced !== subject) {
+      subject = replaced;
+      break;
+    }
+  }
+  return subject.trim();
+}
+
 // 로컬 공식 매칭 사전 (AI API 장애 대책용)
 const LOCAL_FORMULA_DICTIONARY = [
   {
@@ -3298,6 +3329,8 @@ ${adjustments.map((a, idx) => `
       console.warn('문제 조정 이력 로드 실패:', adjErr);
     }
 
+    const coreSubject = getCoreSubjectFromTitle(topic.title);
+
     const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
@@ -3316,7 +3349,7 @@ ${adjustmentsPrompt}
    [1번 문제] 주관식 (개요):
    - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
    - "type" 값: 반드시 "주관식 (개요)"
-   - "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
+   - "question": 반드시 "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요.")
    - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. (절대 너무 짧거나 1~2줄 요약식으로 쓰지 말고, 반드시 4~6줄 분량을 엄격히 준수하여 학술적 설명의 깊이를 확보할 것). 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
    - "formula": 반드시 빈 문자열 ""
    - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
@@ -3694,10 +3727,11 @@ app.post('/api/question/regenerate', async (req, res) => {
       let typeRequirement = '';
       let formatRequirement = '';
       if (targetType === '주관식 (개요)') {
+        const coreSubject = getCoreSubjectFromTitle(topic.title);
         typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
 - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
 - "type" 값: 반드시 "주관식 (개요)"
-- "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
+- "question": 반드시 "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요.")
 - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
 - "formula": 반드시 빈 문자열 ""
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
@@ -4116,10 +4150,11 @@ app.post('/api/question/adjust', async (req, res) => {
       let typeRequirement = '';
       let formatRequirement = '';
       if (targetType === '주관식 (개요)') {
+        const coreSubject = getCoreSubjectFromTitle(topic.title);
         typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
 - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
 - "type" 값: 반드시 "주관식 (개요)"
-- "question": 반드시 "[토픽명](개념, 원리, 정의 등)의 핵심 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "Laplace 방정식(개념, 원리, 정의 등)의 핵심 키워드를 입력하세요.")
+- "question": 반드시 "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요." 형식으로 고정하여 작성하십시오. (예: "${coreSubject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요.")
 - "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
 - "formula": 반드시 빈 문자열 ""
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
