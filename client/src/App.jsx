@@ -4833,6 +4833,70 @@ export default function App() {
     return h > 0 && w > 0 && (h / w < 1.5);
   });
 
+  // Tablet auto-hide left nav panel
+  // On tablets (768px ~ 1366px, portrait/landscape with height > 600px), the nav auto-hides.
+  // Swiping right from the left edge (x < 40px) reveals it for 2 seconds then hides again.
+  const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1366 && window.innerHeight > 600;
+  const [tabletNavHidden, setTabletNavHidden] = useState(isTablet);
+  const tabletNavTimerRef = useRef(null);
+  const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
+
+  // Check if current screen qualifies as tablet (recalculated when window resizes)
+  const isTabletScreen = isDesktop && !isMobileLandscape && window.innerWidth <= 1366;
+
+  // Show nav for 2s on swipe from left edge
+  const showTabletNavBriefly = useCallback(() => {
+    if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+    setTabletNavHidden(false);
+    tabletNavTimerRef.current = setTimeout(() => {
+      setTabletNavHidden(true);
+    }, 2000);
+  }, []);
+
+  // Global touch handler for tablet left-edge swipe detection
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      if (!isTabletScreen) return;
+      const touch = e.touches[0];
+      if (touch.clientX <= 40) {
+        tabletSwipeStartRef.current = { x: touch.clientX, y: touch.clientY, active: true };
+      } else {
+        tabletSwipeStartRef.current = { x: 0, y: 0, active: false };
+      }
+    };
+    const handleTouchEnd = (e) => {
+      if (!isTabletScreen || !tabletSwipeStartRef.current.active) return;
+      const touch = e.changedTouches[0];
+      const diffX = touch.clientX - tabletSwipeStartRef.current.x;
+      const diffY = touch.clientY - tabletSwipeStartRef.current.y;
+      // Right swipe: at least 50px horizontal, dominant over vertical
+      if (diffX >= 50 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+        showTabletNavBriefly();
+      }
+      tabletSwipeStartRef.current.active = false;
+    };
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isTabletScreen, showTabletNavBriefly]);
+
+  // Sync tabletNavHidden when screen size changes
+  useEffect(() => {
+    const updateTabletState = () => {
+      const tablet = window.innerWidth >= 768 && window.innerWidth <= 1366 && window.innerHeight > 600;
+      if (!tablet) {
+        // Not tablet anymore – always show nav
+        setTabletNavHidden(false);
+        if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+      }
+    };
+    window.addEventListener('resize', updateTabletState);
+    return () => window.removeEventListener('resize', updateTabletState);
+  }, []);
+
   // Mobile Status Bar States
   const [statusBarTime, setStatusBarTime] = useState('');
   const [batteryLevel, setBatteryLevel] = useState(88);
@@ -9609,7 +9673,14 @@ export default function App() {
 
 
       {/* Main Content Area */}
-      <main className={`w-full mx-auto px-3 md:px-12 md:pl-36 landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}>
+      <main
+        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}
+        style={isTabletScreen ? {
+          paddingLeft: tabletNavHidden ? '12px' : '144px',
+          paddingRight: '12px',
+          transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        } : {}}
+      >
         {isMobileLandscape && landscapeSidebarHidden && (
           <button
             onClick={() => setLandscapeSidebarHidden(false)}
@@ -14851,110 +14922,134 @@ export default function App() {
       )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
       {(!isModalOpen || isDesktop) && (
-        <div className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in landscape-hide">
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setViewMode('dashboard');
-              setSelectedTopic(null);
-              setShowExam(false);
-              setShowFormulaExam(false);
-              setShowTheoryExam(false);
-              setShowAnswerSheet(false);
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
-                ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-            }`}
-            title="오늘의 복습"
+        <>
+          {/* Tablet: invisible left-edge swipe zone (40px wide) shown when nav is hidden */}
+          {isTabletScreen && tabletNavHidden && (
+            <div
+              className="fixed left-0 top-0 w-10 h-full z-[95] landscape-hide"
+              style={{ touchAction: 'none' }}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Nav panel – slides in/out on tablet, always visible on wide desktop */}
+          <div
+            className="fixed left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-4 glass-panel p-3 border border-slate-800 shadow-2xl z-[90] rounded-2xl glow-purple animate-fade-in landscape-hide"
+            style={isTabletScreen ? {
+              transform: `translateX(${tabletNavHidden ? 'calc(-100% - 2rem)' : '0'}) translateY(-50%)`,
+              transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+            } : {}}
           >
-            <Calendar size={20} />
-            <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
-          </button>
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setViewMode('all_topics');
-              setSelectedTopic(null);
-              setShowExam(false);
-              setShowFormulaExam(false);
-              setShowTheoryExam(false);
-              setShowAnswerSheet(false);
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
-                ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-            }`}
-            title={`복습토픽 (${allTopics.length})`}
-          >
-            <List size={20} />
-            <span className="text-[10px] font-bold tracking-tight">복습토픽</span>
-            <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
-          </button>
-          {/* 종합평가 버튼 */}
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setSelectedTopic(null);
-              setShowFormulaExam(false);
-              setShowTheoryExam(false);
-              setShowAnswerSheet(false);
-              handleOpenExam();
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              showExam
-                ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white shadow-lg glow-amber'
-                : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/40'
-            }`}
-            title="전체 소스 기반 70문항 종합평가"
-          >
-            <Award size={20} />
-            <span className="text-[10px] font-bold tracking-tight">종합평가</span>
-          </button>
-          {/* 필수공식 버튼 */}
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setSelectedTopic(null);
-              setShowExam(false);
-              setShowTheoryExam(false);
-              setShowAnswerSheet(false);
-              handleOpenFormulaExam();
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              showFormulaExam
-                ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
-                : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
-            }`}
-            title="전공 필수 공식 집중 평가 (주관식 인출)"
-          >
-            <Sigma size={20} />
-            <span className="text-[10px] font-bold tracking-tight">필수공식</span>
-          </button>
-          
-          {/* 답안지 버튼 */}
-          <button
-            onClick={() => {
-              forceSaveActiveSessions();
-              setSelectedTopic(null);
-              setShowExam(false);
-              setShowFormulaExam(false);
-              setShowTheoryExam(false);
-              handleOpenAnswerSheet();
-            }}
-            className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              showAnswerSheet
-                ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg glow-emerald'
-                : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/40'
-            }`}
-            title="모범 답안지 및 기술 보고서 학습"
-          >
-            <FileText size={20} />
-            <span className="text-[10px] font-bold tracking-tight">답안지</span>
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                forceSaveActiveSessions();
+                setViewMode('dashboard');
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowFormulaExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                // Keep visible briefly after click on tablet
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
+                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+              title="오늘의 복습"
+            >
+              <Calendar size={20} />
+              <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
+            </button>
+            <button
+              onClick={() => {
+                forceSaveActiveSessions();
+                setViewMode('all_topics');
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowFormulaExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
+                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+              title={`복습토픽 (${allTopics.length})`}
+            >
+              <List size={20} />
+              <span className="text-[10px] font-bold tracking-tight">복습토픽</span>
+              <span className="text-[9px] px-1.5 py-0.5 bg-slateCustom-950 text-brand-400 rounded-full border border-brand-500/20 font-black">{allTopics.length}</span>
+            </button>
+            {/* 종합평가 버튼 */}
+            <button
+              onClick={() => {
+                forceSaveActiveSessions();
+                setSelectedTopic(null);
+                setShowFormulaExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                handleOpenExam();
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showExam
+                  ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white shadow-lg glow-amber'
+                  : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/40'
+              }`}
+              title="전체 소스 기반 70문항 종합평가"
+            >
+              <Award size={20} />
+              <span className="text-[10px] font-bold tracking-tight">종합평가</span>
+            </button>
+            {/* 필수공식 버튼 */}
+            <button
+              onClick={() => {
+                forceSaveActiveSessions();
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                handleOpenFormulaExam();
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showFormulaExam
+                  ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
+                  : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
+              }`}
+              title="전공 필수 공식 집중 평가 (주관식 인출)"
+            >
+              <Sigma size={20} />
+              <span className="text-[10px] font-bold tracking-tight">필수공식</span>
+            </button>
+
+            {/* 답안지 버튼 */}
+            <button
+              onClick={() => {
+                forceSaveActiveSessions();
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowFormulaExam(false);
+                setShowTheoryExam(false);
+                handleOpenAnswerSheet();
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showAnswerSheet
+                  ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg glow-emerald'
+                  : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/40'
+              }`}
+              title="모범 답안지 및 기술 보고서 학습"
+            >
+              <FileText size={20} />
+              <span className="text-[10px] font-bold tracking-tight">답안지</span>
+            </button>
+          </div>
+        </>
       )}
 
       {selectedTopic && !isDesktop && (
