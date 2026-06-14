@@ -1736,8 +1736,36 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
+function computeParenthesisPairs(str) {
+  const parentMap = {};
+  const stack = [];
+  const rightCloseCount = new Array(str.length + 1).fill(0);
+  let count = 0;
+  for (let j = str.length - 1; j >= 0; j--) {
+    if (str[j] === ')') count++;
+    rightCloseCount[j] = count;
+  }
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '(') {
+      stack.push(i);
+      while (stack.length > rightCloseCount[i]) {
+        stack.pop();
+      }
+    } else if (str[i] === ')') {
+      if (stack.length > 0) {
+        const openIdx = stack.pop();
+        parentMap[openIdx] = i;
+        parentMap[i] = openIdx;
+      }
+    }
+  }
+  return parentMap;
+}
+
+
 // ── 공학용 계산기 컴포넌트 ──────────────────
 function parseFormula(str) {
+  const parentMap = computeParenthesisPairs(str);
   let i = 0;
   
   function parseExpr() {
@@ -1745,52 +1773,34 @@ function parseFormula(str) {
     while (i < str.length) {
       if (str.startsWith('frac(', i)) {
         let fracStart = i;
-        i += 5; // skip 'frac('
+        const openIdx = fracStart + 4;
+        const closeIdx = parentMap[openIdx];
+        
+        if (closeIdx === undefined) {
+          nodes.push({ type: 'text', content: 'frac(', startIdx: fracStart, endIdx: fracStart + 5 });
+          i = fracStart + 5;
+          continue;
+        }
         
         let level = 0;
         let commaIdx = -1;
-        let numStart = i;
-        
-        while (i < str.length) {
-          if (str[i] === '(') level++;
-          else if (str[i] === ')') level--;
-          else if (str[i] === ',' && level === 0) {
-            commaIdx = i;
+        for (let j = openIdx + 1; j < closeIdx; j++) {
+          if (str[j] === '(') level++;
+          else if (str[j] === ')') level--;
+          else if (str[j] === ',' && level === 0) {
+            commaIdx = j;
             break;
           }
-          i++;
         }
         
         if (commaIdx === -1) {
-          nodes.push({ type: 'text', content: 'frac(', startIdx: fracStart, endIdx: numStart });
-          i = numStart;
+          nodes.push({ type: 'text', content: str.substring(fracStart, openIdx + 1), startIdx: fracStart, endIdx: openIdx + 1 });
+          i = openIdx + 1;
           continue;
         }
         
-        i++; // skip ','
-        let denStart = i;
-        
-        level = 0;
-        let closeIdx = -1;
-        while (i < str.length) {
-          if (str[i] === '(') level++;
-          else if (str[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
-          i++;
-        }
-        
-        if (closeIdx === -1) {
-          nodes.push({ type: 'text', content: str.substring(fracStart, denStart), startIdx: fracStart, endIdx: denStart });
-          i = denStart;
-          continue;
-        }
-        
+        const numStart = openIdx + 1;
+        const denStart = commaIdx + 1;
         const numStr = str.substring(numStart, commaIdx);
         const denStr = str.substring(denStart, closeIdx);
         
@@ -1809,29 +1819,16 @@ function parseFormula(str) {
         i = closeIdx + 1;
       } else if (str.startsWith('^(', i)) {
         let expStart = i;
-        i += 2; // skip '^('
-        let contentStart = i;
-        let level = 0;
-        let closeIdx = -1;
-        while (i < str.length) {
-          if (str[i] === '(') level++;
-          else if (str[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
-          i++;
-        }
+        const openIdx = expStart + 1;
+        const closeIdx = parentMap[openIdx];
         
-        if (closeIdx === -1) {
-          nodes.push({ type: 'text', content: '^(', startIdx: expStart, endIdx: contentStart });
-          i = contentStart;
+        if (closeIdx === undefined) {
+          nodes.push({ type: 'text', content: '^(', startIdx: expStart, endIdx: expStart + 2 });
+          i = expStart + 2;
           continue;
         }
         
+        const contentStart = openIdx + 1;
         const expStr = str.substring(contentStart, closeIdx);
         nodes.push({
           type: 'exponent',
@@ -1845,29 +1842,16 @@ function parseFormula(str) {
         i = closeIdx + 1;
       } else if (str.startsWith('sqrt(', i)) {
         let sqrtStart = i;
-        i += 5; // skip 'sqrt('
-        let contentStart = i;
-        let level = 0;
-        let closeIdx = -1;
-        while (i < str.length) {
-          if (str[i] === '(') level++;
-          else if (str[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
-          i++;
-        }
+        const openIdx = sqrtStart + 4;
+        const closeIdx = parentMap[openIdx];
         
-        if (closeIdx === -1) {
-          nodes.push({ type: 'text', content: 'sqrt(', startIdx: sqrtStart, endIdx: contentStart });
-          i = contentStart;
+        if (closeIdx === undefined) {
+          nodes.push({ type: 'text', content: 'sqrt(', startIdx: sqrtStart, endIdx: sqrtStart + 5 });
+          i = sqrtStart + 5;
           continue;
         }
         
+        const contentStart = openIdx + 1;
         const sqrtStr = str.substring(contentStart, closeIdx);
         nodes.push({
           type: 'sqrt',
@@ -2040,48 +2024,40 @@ function ScientificCalculator() {
   };
 
   const getFractions = (currentStr) => {
+    const parentMap = computeParenthesisPairs(currentStr);
     const fracs = [];
     let i = 0;
     while (i < currentStr.length) {
       if (currentStr.startsWith('frac(', i)) {
         let fracStart = i;
-        i += 5;
+        const openIdx = fracStart + 4;
+        const closeIdx = parentMap[openIdx];
+        if (closeIdx === undefined) {
+          i++;
+          continue;
+        }
+        
         let level = 0;
         let commaIdx = -1;
-        let numStart = i;
-        while (i < currentStr.length) {
-          if (currentStr[i] === '(') level++;
-          else if (currentStr[i] === ')') level--;
-          else if (currentStr[i] === ',' && level === 0) {
-            commaIdx = i;
+        for (let j = openIdx + 1; j < closeIdx; j++) {
+          if (currentStr[j] === '(') level++;
+          else if (currentStr[j] === ')') level--;
+          else if (currentStr[j] === ',' && level === 0) {
+            commaIdx = j;
             break;
           }
-          i++;
         }
-        if (commaIdx === -1) continue;
-        i++;
-        let denStart = i;
-        level = 0;
-        let closeIdx = -1;
-        while (i < currentStr.length) {
-          if (currentStr[i] === '(') level++;
-          else if (currentStr[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
+        
+        if (commaIdx === -1) {
           i++;
+          continue;
         }
-        if (closeIdx === -1) continue;
         
         fracs.push({
           startIdx: fracStart,
-          numStartIdx: numStart,
+          numStartIdx: openIdx + 1,
           numEndIdx: commaIdx,
-          denStartIdx: denStart,
+          denStartIdx: commaIdx + 1,
           denEndIdx: closeIdx,
           endIdx: closeIdx + 1
         });
@@ -2094,34 +2070,21 @@ function ScientificCalculator() {
   };
 
   const getExponents = (currentStr) => {
+    const parentMap = computeParenthesisPairs(currentStr);
     const exps = [];
     let i = 0;
     while (i < currentStr.length) {
       if (currentStr.startsWith('^(', i)) {
         let expStart = i;
-        i += 2;
-        let level = 0;
-        let closeIdx = -1;
-        let contentStart = i;
-        while (i < currentStr.length) {
-          if (currentStr[i] === '(') level++;
-          else if (currentStr[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
+        const openIdx = expStart + 1;
+        const closeIdx = parentMap[openIdx];
+        if (closeIdx === undefined) {
           i++;
-        }
-        if (closeIdx === -1) {
-          i = contentStart;
           continue;
         }
         exps.push({
           startIdx: expStart,
-          expStartIdx: contentStart,
+          expStartIdx: openIdx + 1,
           expEndIdx: closeIdx,
           endIdx: closeIdx + 1
         });
@@ -2134,34 +2097,21 @@ function ScientificCalculator() {
   };
 
   const getSqrts = (currentStr) => {
+    const parentMap = computeParenthesisPairs(currentStr);
     const sqrts = [];
     let i = 0;
     while (i < currentStr.length) {
       if (currentStr.startsWith('sqrt(', i)) {
         let sqrtStart = i;
-        i += 5;
-        let level = 0;
-        let closeIdx = -1;
-        let contentStart = i;
-        while (i < currentStr.length) {
-          if (currentStr[i] === '(') level++;
-          else if (currentStr[i] === ')') {
-            if (level === 0) {
-              closeIdx = i;
-              break;
-            } else {
-              level--;
-            }
-          }
+        const openIdx = sqrtStart + 4;
+        const closeIdx = parentMap[openIdx];
+        if (closeIdx === undefined) {
           i++;
-        }
-        if (closeIdx === -1) {
-          i = contentStart;
           continue;
         }
         sqrts.push({
           startIdx: sqrtStart,
-          sqrtStartIdx: contentStart,
+          sqrtStartIdx: openIdx + 1,
           sqrtEndIdx: closeIdx,
           endIdx: closeIdx + 1
         });
@@ -2449,19 +2399,12 @@ function ScientificCalculator() {
     let processed = expr;
     while (processed.includes('frac(')) {
       const idx = processed.indexOf('frac(');
-      let parenCount = 1;
-      let endIdx = -1;
-      for (let i = idx + 5; i < processed.length; i++) {
-        if (processed[i] === '(') parenCount++;
-        else if (processed[i] === ')') parenCount--;
-        if (parenCount === 0) {
-          endIdx = i;
-          break;
-        }
-      }
-      if (endIdx === -1) break;
+      const parentMap = computeParenthesisPairs(processed);
+      const openIdx = idx + 4;
+      const endIdx = parentMap[openIdx];
+      if (endIdx === undefined) break;
       
-      const content = processed.substring(idx + 5, endIdx);
+      const content = processed.substring(openIdx + 1, endIdx);
       const args = [];
       let currentArg = '';
       let level = 0;
