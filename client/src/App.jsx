@@ -741,9 +741,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
 
   // 5. Render list items (both bullet points * and - and numbered lists)
   if (isMarkdown) {
-    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.6rem; margin-bottom: 0.6rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
   } else {
     tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
     tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
@@ -755,7 +755,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
 
   // 6. Spacers for paragraph gaps
   if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.5rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
     tempText = tempText.replace(/\n\n/g, '<div style="height: 0.4rem;"></div>');
@@ -1411,7 +1411,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[11px] sm:text-sm">
+      <table className="w-full text-center border-collapse text-[17px] sm:text-sm">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1420,7 +1420,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                 <th 
                   key={hIdx} 
                   className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
-                    isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
+                    isFirstCol 
+                      ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
+                      : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
@@ -1450,7 +1452,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-[10px] sm:text-sm pl-1.5 py-0.5 pr-8 sm:pl-3 sm:pr-14 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                  const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
+                  let inputClassName = `w-full text-[17px] sm:text-sm px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                    hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
+                  } ${
                     revealed
                       ? getTableInputColorClasses(gradingResult, isCorrect, value)
                       : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
@@ -1459,13 +1464,14 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[100px] sm:min-w-[140px] whitespace-normal break-words ${
-                        isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
+                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[17px] sm:text-sm whitespace-normal break-words ${
+                        isFirstCol 
+                          ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
+                          : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
                       }`}
                     >
                       <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
                         <div className="flex items-center gap-1 sm:gap-1.5 w-full">
-                          <span className="text-[10px] sm:text-sm font-bold text-slate-400 select-none min-w-[12px] sm:min-w-[14px] text-right">{inputLetter}</span>
                           <div className="relative flex-grow">
                             {revealed ? (
                               <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
@@ -1484,7 +1490,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                 value={value}
                                 onChange={(e) => handleInputChange(inputId, e.target.value)}
                                 placeholder={`${inputLetter} 입력`}
-                                className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5 pr-8 sm:pr-14`}
+                                className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5`}
                                 rows={1}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -1506,12 +1512,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <span className="text-[8.5px] sm:text-xs text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
+                          <span className="text-[17px] sm:text-xs text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         ) : (
                           showAnswers && (
-                            <span className="text-[8.5px] sm:text-xs text-slate-400 font-bold flex items-center gap-1 select-text whitespace-normal break-words">
+                            <span className="text-[17px] sm:text-xs text-slate-400 font-bold flex items-center gap-1 select-text whitespace-normal break-words">
                               {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                             </span>
                           )
@@ -1523,8 +1529,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text whitespace-normal break-words ${
-                        isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
+                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[17px] sm:text-sm select-text whitespace-normal break-words ${
+                        isFirstCol 
+                          ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
+                          : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
                       }`}
                     >
                       <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
@@ -1546,24 +1554,44 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   const { headers, rows } = tableData;
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-sm">
+      <table className="w-full text-center border-collapse text-[17px] sm:text-sm">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
-            {headers.map((header, hIdx) => (
-              <th key={hIdx} className="p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text">
-                <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
-              </th>
-            ))}
+            {headers.map((header, hIdx) => {
+              const isFirstCol = hIdx === 0;
+              return (
+                <th 
+                  key={hIdx} 
+                  className={`p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
+                    isFirstCol 
+                      ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
+                      : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                  }`}
+                >
+                  <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, rIdx) => (
             <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
-              {row.map((cell, cIdx) => (
-                <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-350 select-text">
-                  <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
-                </td>
-              ))}
+              {row.map((cell, cIdx) => {
+                const isFirstCol = cIdx === 0;
+                return (
+                  <td 
+                    key={cIdx} 
+                    className={`p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
+                      isFirstCol 
+                        ? 'w-[6em] min-w-[6em] max-w-[6em] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' 
+                        : 'w-[10em] min-w-[10em] max-w-[10em] sm:w-auto sm:min-w-[140px] sm:max-w-none'
+                    }`}
+                  >
+                    <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -10836,7 +10864,7 @@ export default function App() {
                     lastQuizScrollbarClickTime.current = now;
                   }
                 }}
-                className={`flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
+                className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
               >
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -10900,7 +10928,7 @@ export default function App() {
                       'bg-amber-700';
 
                     return (
-                      <div key={idx} className={`quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
+                      <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                         {/* Q Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
                           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -11108,7 +11136,7 @@ export default function App() {
                         {isMC && (
                           <div className="space-y-2">
                             {q.options?.map((opt, oIdx) => {
-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ";
+                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[17px] sm:text-sm font-semibold transition-all duration-200 ";
                               if (!answered) {
                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                               } else if (opt === q.answer) {
@@ -11427,7 +11455,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[17px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -11439,8 +11467,8 @@ export default function App() {
                                   </div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[12px] font-black flex justify-between items-center mb-0.5">
+                                  <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                    <div className="text-[17px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
                                         onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
@@ -11450,10 +11478,10 @@ export default function App() {
                                         접기 ✕
                                       </button>
                                     </div>
-                                    <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
+                                    <p className="text-[17px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -11462,17 +11490,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -11574,7 +11602,7 @@ export default function App() {
                   })}
 
                   {aiQuestions.length > 0 && (
-                    <div className={`quiz-card-item text-center py-6 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
+                    <div className="quiz-card-item text-center py-6">
                       <div className="flex justify-center gap-3 flex-wrap">
                         {selectedTopic?.isReadOnly ? (
                           <>
@@ -12292,7 +12320,7 @@ export default function App() {
                     lastExamScrollbarClickTime.current = now;
                   }
                 }}
-                className={`flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile ${(!isDesktop && !isMobileLandscape) ? 'snap-y snap-mandatory' : ''}`}
+                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
@@ -12334,7 +12362,7 @@ export default function App() {
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className={`exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
+                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
                       {/* Q Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
                         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -12560,7 +12588,7 @@ export default function App() {
                       {isMC && (
                         <div className="space-y-2">
                           {q.options?.map((opt, oIdx) => {
-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ";
+                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[17px] sm:text-sm font-semibold transition-all duration-200 ";
                             if (!answered) {
                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
                             } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
@@ -12879,7 +12907,7 @@ export default function App() {
                                           }
                                         }}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
+                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[17px] sm:text-xs focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
@@ -12891,8 +12919,8 @@ export default function App() {
                                   </div>
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[12px] font-black flex justify-between items-center mb-0.5">
+                                  <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                    <div className="text-[17px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
                                         onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
@@ -12902,10 +12930,10 @@ export default function App() {
                                         접기 ✕
                                       </button>
                                     </div>
-                                    <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
+                                    <p className="text-[17px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -12914,17 +12942,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[17px] sm:text-[12px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[17px] sm:text-[12px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -13026,7 +13054,7 @@ export default function App() {
                 )}
 
                 {examQuestions.length > 0 && !loadingExam && (
-                  <div className={`exam-card-item text-center py-6 ${(!isDesktop && !isMobileLandscape) ? 'snap-start scroll-mt-4' : ''}`}>
+                  <div className="exam-card-item text-center py-6">
                     <div className="inline-flex items-center gap-3 bg-amber-950/60 border border-amber-500/20 rounded-2xl px-6 py-4">
                       <Award size={20} className="text-amber-400" />
                       <div className="text-left">
