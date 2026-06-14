@@ -687,7 +687,7 @@ const handleOpenHtmlAnswerPopup = (title, text) => {
   }
 };
 
-function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false) {
+function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false, isTutor = false) {
   const mathBlocks = [];
   let placeholderIndex = 0;
   
@@ -717,8 +717,12 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   tempText = tempText.replace(/([^\n])\s*(#{2,6}\s+)/g, '$1\n\n$2');
 
   // 3. Bold text
-  const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
-  tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
+  if (isTutor) {
+    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<span style="color: #fbbf24; font-weight: normal;">$1</span>`);
+  } else {
+    const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
+    tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
+  }
 
   // 3.5. Force line breaks before *** or * * * if they are in the middle of a line and not preceded by a newline
   tempText = tempText.replace(/([^\n])[ \t]*(?:\* * \*|\*\*\*)[ \t]*/g, '$1\n* * * ');
@@ -1056,7 +1060,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
   // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
   if (!isHeavy && isMarkdown) {
-    cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold);
+    cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold, formulaSource === 'tutor');
   }
 
   if (isHeavy) {
@@ -11915,7 +11919,7 @@ export default function App() {
             onMouseDown={startResize}
             onTouchStart={startResize}
             style={{ touchAction: 'none' }}
-            className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
+            className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
           >
             <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -11945,7 +11949,7 @@ export default function App() {
           <div 
             style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
             className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
-              (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
+              isDesktop ? 'hidden' : ((!isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : '')
             }`}
           >
               {/* Sidebar Header */}
@@ -13341,7 +13345,7 @@ export default function App() {
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
+              className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-amber-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -13371,7 +13375,7 @@ export default function App() {
             <div 
               style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
               className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
-                (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
+                isDesktop ? 'hidden' : ((!isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : '')
               }`}
             >
               {/* Sidebar Header */}
@@ -14317,7 +14321,7 @@ export default function App() {
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
+              className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-rose-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -14347,7 +14351,7 @@ export default function App() {
               <div 
                 style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
                 className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
-                  (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
+                  isDesktop ? 'hidden' : ((!isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : '')
                 }`}
               >
                 {/* Header with Formula Selector */}
