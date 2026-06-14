@@ -1406,7 +1406,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full text-center border-collapse text-[16.8px]">
+      <table className="w-full text-center border-collapse text-[11px] sm:text-[16.8px]">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1414,7 +1414,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-1.5 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                  className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                     isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
                   }`}
                 >
@@ -1445,7 +1445,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputNum = match ? parseInt(match[0], 10) : 1;
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
-                  let inputClassName = `w-full text-[16.8px] pl-2 py-1.5 pr-10 sm:pl-3 sm:pr-14 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                  let inputClassName = `w-full text-[10px] sm:text-[16.8px] pl-1.5 py-0.5 pr-8 sm:pl-3 sm:pr-14 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
                     revealed
                       ? getTableInputColorClasses(gradingResult, isCorrect, value)
                       : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
@@ -1454,16 +1454,16 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-1 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[110px] sm:min-w-[140px] whitespace-normal break-words ${
+                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 min-w-[100px] sm:min-w-[140px] whitespace-normal break-words ${
                         isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
                       }`}
                     >
-                      <div className="flex flex-col gap-1 justify-center items-center w-full">
+                      <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
                         <div className="flex items-center gap-1 sm:gap-1.5 w-full">
-                          <span className="text-[16.8px] font-bold text-slate-400 select-none min-w-[14px] text-right">{inputLetter}</span>
+                          <span className="text-[10px] sm:text-[16.8px] font-bold text-slate-400 select-none min-w-[12px] sm:min-w-[14px] text-right">{inputLetter}</span>
                           <div className="relative flex-grow">
                             {revealed ? (
-                              <div className={`${inputClassName} select-text min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
+                              <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
                                 {value ? (
                                   isCorrect ? (
                                     <span className="font-bold text-slate-100">
@@ -1488,7 +1488,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                 value={value}
                                 onChange={(e) => handleInputChange(inputId, e.target.value)}
                                 placeholder={`${inputLetter} 입력`}
-                                className={`${inputClassName} resize-none min-h-[38px] py-1.5 pr-10 sm:pr-14`}
+                                className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5 pr-8 sm:pr-14`}
                                 rows={1}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -1502,7 +1502,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                               const displayScore = Math.round(cellObtained * 10) / 10;
                               return (
-                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-xs font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
+                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-xs font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
                                   {displayScore}점
                                 </span>
                               );
@@ -1510,12 +1510,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <span className="text-[16.8px] text-emerald-450 font-black flex items-center gap-1 select-text whitespace-normal break-words">
+                          <span className="text-[8.5px] sm:text-[14.4px] text-emerald-450 font-black flex items-center gap-1 select-text whitespace-normal break-words">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         ) : (
                           showAnswers && (
-                            <span className="text-[16.8px] text-slate-400 font-bold flex items-center gap-1 select-text whitespace-normal break-words">
+                            <span className="text-[8.5px] sm:text-[14.4px] text-slate-400 font-bold flex items-center gap-1 select-text whitespace-normal break-words">
                               {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                             </span>
                           )
@@ -1527,7 +1527,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   return (
                     <td 
                       key={cIdx} 
-                      className={`p-1.5 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text whitespace-normal break-words ${
+                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text whitespace-normal break-words ${
                         isFirstCol ? 'w-[80px] min-w-[80px] max-w-[80px] sm:w-auto sm:min-w-0 sm:max-w-none text-left break-all' : ''
                       }`}
                     >
