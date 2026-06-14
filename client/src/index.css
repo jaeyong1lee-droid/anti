@@ -78,6 +78,12 @@ html, body {
   height: 100vh !important;
 }
 
+/* Prevent layout shift when scrollbars appear inside scrollable containers */
+.overflow-y-auto,
+div[class*="overflow-y-auto"] {
+  scrollbar-gutter: stable;
+}
+
 /* Hide scrollbars but keep functionality */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
