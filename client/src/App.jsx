@@ -1470,21 +1470,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             {revealed ? (
                               <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
                                 {value ? (
-                                  isCorrect ? (
-                                    <span className="font-bold text-slate-100">
-                                      <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
-                                    </span>
-                                  ) : (
-                                    <div className="flex flex-col gap-1 w-full text-xs">
-                                      <span className="line-through opacity-50 block">{value}</span>
-                                      <span className="text-emerald-450 font-black flex items-center gap-1 flex-wrap">
-                                        → <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                      </span>
-                                    </div>
-                                  )
+                                  <span className="font-bold text-slate-100">
+                                    <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                                  </span>
                                 ) : (
                                   <span className="text-rose-300 italic font-medium">
-                                    (미입력) → <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                    (미입력)
                                   </span>
                                 )}
                               </div>
@@ -11320,17 +11311,17 @@ export default function App() {
                                     });
                                     if (wrongFeedbacks.length > 0) {
                                       return (
-                                        <div className={`p-3.5 border rounded-xl space-y-2 text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className={`text-xs font-black flex items-center gap-1.5 ${getTableBannerTitleClasses(idx, q)}`}>
+                                        <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
+                                          <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
-                                          <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
+                                          <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <li key={fIdx}>
+                                              <p key={fIdx} className="text-[12px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
-                                              </li>
+                                              </p>
                                             ))}
-                                          </ul>
+                                          </div>
                                         </div>
                                       );
                                     }
@@ -12723,17 +12714,17 @@ export default function App() {
                                     });
                                     if (wrongFeedbacks.length > 0) {
                                       return (
-                                        <div className={`p-3.5 border rounded-xl space-y-2 text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className={`text-xs font-black flex items-center gap-1.5 ${getTableBannerTitleClasses(idx, q)}`}>
+                                        <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
+                                          <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
-                                          <ul className="space-y-1.5 list-disc pl-4 text-xs text-slate-350 leading-relaxed">
+                                          <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <li key={fIdx}>
+                                              <p key={fIdx} className="text-[12px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
-                                              </li>
+                                              </p>
                                             ))}
-                                          </ul>
+                                          </div>
                                         </div>
                                       );
                                     }
