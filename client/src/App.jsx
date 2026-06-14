@@ -4870,6 +4870,15 @@ export default function App() {
     };
   }, [isTabletScreen, showTabletNavBriefly]);
 
+  // 퀴즈나 종합평가 모달이 열리면 사이드바를 즉시 강제 숨김 처리
+  useEffect(() => {
+    const hasModal = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam);
+    if (hasModal && isTabletScreen) {
+      setTabletNavHidden(true);
+      if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
+    }
+  }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, isTabletScreen]);
+
   // Sync tabletNavHidden when screen size changes
   useEffect(() => {
     const updateTabletState = () => {
