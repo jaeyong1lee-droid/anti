@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
+import { gradeSubjective } from './plugins/gradingPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3498,90 +3499,22 @@ try {
   }
 });
 
-// 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정
+// 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정 (플러그인 방식 적용)
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer } = req.body;
 
-  if (!correctAnswer || !userAnswer) {
-    return res.json({ isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' });
-  }
-
-  // 1차 필터링: 공백 제거 후 단순 일치하는 경우 API 호출 없이 바로 정답 처리
-  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-  if (normalize(userAnswer) === normalize(correctAnswer)) {
-    return res.json({ isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' });
-  }
-
-  // 2차 필터링: Gemini API를 사용하여 의미적 유사성 판단 및 부분점수 부여 (tutor 시나리오로 호출 시 gemini-3.1-flash-lite가 우선 배치됨)
   try {
-    const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
-주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
-
-[의미 중심의 동적 채점 프레임워크 (Dynamic Semantic Grading Framework)]:
-어휘의 단순 일치(Literal Matching)에 의존하여 오판하는 것을 원천 방지하고, 모든 공학적 주관식 질문을 일관되고 공평하게 평가하기 위해 다음 4단계 채점 프로세스를 엄격히 준수하십시오.
-
-1단계: 모범 답안의 핵심 공학적 요소(Core Semantic Components) 분해
-- 모범 답안(correctAnswer)을 읽고, 해당 문항이 평가하고자 하는 핵심 공학적 사실, 물리적 인과관계, 수치적/상태적 변화 방향, 혹은 설계적 조치(Action)를 1~3개의 핵심 채점 요소로 머릿속에서 분석하십시오.
-- 예: "A 조건에서 B를 수행함" -> ① A 조건 인지 여부, ② B 행위 수행 여부.
-- 예: "이중층 두께 감소로 전단강도 향상" -> ① 이중층 두께 감소, ② 전단강도 향상.
-
-2단계: 공학적 등가 표현(Engineering Equivalence) 및 동의어 사전의 유연한 확장
-- 수험생이 사용할 수 있는 다양한 표현 방식(공학적 동의어, 서술적 대안)을 동적으로 고려하십시오.
-- 학술적/실무적 동의어의 전면 인정: 교과서, 참고서, 교수자별 번역 차이 및 관례적 용어(예: "축적변환", "축척변환", "좌표변환", "좌표축척변환" / "등가투수계수", "평균투수계수", "환산투수계수")는 공학적으로 의미가 통한다면 전적으로 동일하게 정답으로 인정하고 절대 감점하지 마십시오.
-- 물리적 대조나 부정형을 통한 동가적 기술도 완벽한 정답으로 인정합니다.
-  (예: "좌표 축적 변환이 필요하지 않음" ↔ "별도 변환이나 보정 없이 Laplace 방정식을 그대로 적용 가능")
-  (예: "두께가 얇아짐" ↔ "이중층 두께 감소", "투수성이 나빠짐" ↔ "투수계수 감소" ↔ "차수 성능 증대")
-
-3단계: 단답/표 빈칸 채우기의 맥락 복원 (Contextual Reconstruction)
-- 사용자의 답안(userAnswer)이 짧거나 단어 형태로 입력된 경우, 독단적으로 오답 처리하지 마십시오.
-- 질문(question)의 내용 및 표의 행/열 헤더 맥락을 종합하여, 수험생의 짧은 답안이 완성된 문장으로 치환되었을 때 모범 답안의 핵심 채점 요소와 일치하는지 평가하십시오.
-- 특히 상태 변화나 물리적 방향성(예: '증가', '감소', '동일', '필요 없음', '보정 없음')만 적혀 있어도, 헤더 맥락상 정답이 확실하면 만점(10점)을 부여하십시오.
-
-4단계: 등급별 점수 부여 기준 및 감점 원칙
-- 10점 (만점): 모범 답안의 모든 핵심 요소가 사용자 답안에 표현되었으며, 공학적 의미 및 인과관계가 완벽하게 일치하는 경우. (자구 불일치 감점 절대 불가)
-- 8~9점 (우수): 공학적 방향성과 핵심 기전은 완벽히 서술했으나, 디테일한 공학 용어나 명칭 기술이 약 2% 미흡한 경우.
-- 5~7점 (보통/부분점수): 질문의 취지를 이해했고 핵심 용어나 방향은 일치하지만, 논리적 선후 관계나 상세 설명이 다소 부족한 경우.
-- 1~4점 (미흡): 오답에 가까우나 문항 주제와 연관된 기초적인 공학적 지식이 일부 언급된 경우.
-- 0점 (오답/무효): 문제의 핵심 논점과 전혀 무관한 엉뚱한 답변을 했거나, 오개념을 서술했거나, 답안을 작성하지 않은 경우.
-- [엄격한 감점 통제 원칙]:
-  1. 공학적/과학적 오류(잘못된 인과관계, 오개념 서술, 필수 요소의 누락)가 없는 한 절대 감점하지 마십시오.
-  2. "용어 사용이 다소 생소하다", "단어 선택이 어색하다", "문장 표현이 매끄럽지 않다"와 같이 채점관의 주관적 느낌이나 자구적 트집 잡기식의 미세 감점은 절대 엄금합니다.
-  3. 채점 엔진이 다른 문항에서 스스로 정답의 핵심 요소로 제시한 적이 있는 용어(예: 타 문항에서 '축적 변환'이 정답 핵심 개념으로 나열된 경우)는 어떤 경우에도 생소한 용어라며 감점할 수 없습니다.
-
-[채점 사유(reason) 작성 원칙]:
-- 왜 해당 점수를 부여했는지(어떤 핵심 요소가 부합했는지, 혹은 어떤 부분에서 감점되었는지)를 명확한 공학적 이유와 함께 수험생에게 한 줄로 설명하십시오. (예: '등방성 지반 해석 시 좌표 변환이 불필요하다는 물리적 기전을 등가적으로 완벽히 기술하여 만점 인정')
-- 주의: 실제 문항 배점에 따라 최종 반영되는 감점 수치가 달라지므로, 사유 작성 시 절대적인 점수 수치(예: '1점 감점', '2점 감점')를 서술하면 학생에게 혼란을 줍니다. 대신 '10점 만점 기준 1점 감점' 혹은 '10% 감점'과 같이 비율/기준점수를 명시하거나, 수치를 언급하지 않고 '어떤 핵심 요소 또는 개념 용어가 누락되어 감점되었습니다'와 같이 감점의 질적 사유만 기술하십시오.
-
-[응답 포맷 제한]:
-응답은 오직 JSON 형식으로만 다음의 형식에 맞춰 제공하십시오:
-{
-  "isCorrect": true 또는 false (5점 이상인 경우 true, 5점 미만인 경우 false),
-  "score": 0에서 10 사이의 정수,
-  "reason": "구체적인 채점 사유 한 줄 요약"
-}
-반드시 마크다운 코드 블록(예: \`\`\`json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
-
-    const userPrompt = `
-- 문제/맥락: ${question || '주관식 빈칸 채우기'}
-- 모범 답안: ${correctAnswer}
-- 사용자의 답안: ${userAnswer}
-`;
-
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
-    let text = responseText.trim();
-    if (text.startsWith('```')) {
-      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    }
-    
-    const result = JSON.parse(text);
-    res.json({
-      isCorrect: !!result.isCorrect,
-      score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
-      reason: result.reason || 'AI 채점 완료'
+    const result = await gradeSubjective({
+      question,
+      correctAnswer,
+      userAnswer,
+      callLLMWithFailover
     });
+    res.json(result);
   } catch (err) {
     console.error('AI grading error:', err);
     // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
+    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
     const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
     res.json({
       isCorrect: localCorrect,
