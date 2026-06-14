@@ -4088,6 +4088,16 @@ export default function App() {
     return 'border-rose-500/30 bg-rose-950/25';
   };
 
+  const getTableContainerClasses = (idx, q, isRevd) => {
+    if (!isRevd) return 'border-slate-800 bg-slate-950/40';
+    const score = getTableAverageScore(idx, q);
+    if (score === undefined) return 'border-slate-800 bg-slate-950/40';
+    if (score >= 9) return 'border-emerald-500/30 bg-emerald-950/25';
+    if (score >= 8) return 'border-yellow-500/30 bg-yellow-950/25';
+    if (score >= 5) return 'border-orange-500/30 bg-orange-950/25';
+    return 'border-rose-500/30 bg-rose-950/25';
+  };
+
   const getSubjectiveTextColorClass = (idx) => {
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'text-slate-355';
@@ -11780,10 +11790,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[14px] sm:text-[16px] font-black text-amber-400">
-                                    <span>📝 상세 해설</span>
-                                  </div>
+                                <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
@@ -11829,7 +11836,12 @@ export default function App() {
                                     );
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                      </div>
+                                    </div>
                                   )}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
@@ -13256,10 +13268,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[14px] sm:text-[16px] font-black text-amber-400">
-                                    <span>📝 상세 해설</span>
-                                  </div>
+                                <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
@@ -13305,7 +13314,12 @@ export default function App() {
                                     );
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                      </div>
+                                    </div>
                                   )}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
