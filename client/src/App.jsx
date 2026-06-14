@@ -11413,6 +11413,12 @@ export default function App() {
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
                                     <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
+                                      <span className="font-extrabold">💡 모범 답안:</span>
+                                      <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -12827,6 +12833,12 @@ export default function App() {
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
                                     <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
+                                      <span className="font-extrabold">💡 모범 답안:</span>
+                                      <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
