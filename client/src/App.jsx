@@ -7342,8 +7342,8 @@ export default function App() {
 
   const renderCardTutorChat = (key, q) => {
     return (
-      <div className="mt-2.5 p-3.5 bg-violet-955/20 border border-violet-500/25 rounded-2xl w-full text-left">
-        <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+      <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
+        <label className="block text-[17px] sm:text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -7363,7 +7363,7 @@ export default function App() {
               }
             }}
             placeholder="이 문제의 계산 과정이나 특정 보기가 정오답인 근거를 물어보세요..."
-            className="flex-1 text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+            className="flex-1 text-[17px] sm:text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
@@ -7376,8 +7376,8 @@ export default function App() {
 
         {/* AI Tutor In-Card Answer Panel */}
         {tutorAnswers[key]?.loading && (
-          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
-            <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
+            <div className="text-[17px] sm:text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
               <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
             </div>
@@ -7386,12 +7386,12 @@ export default function App() {
           </div>
         )}
         {tutorAnswers[key]?.error && (
-          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+          <div className="text-[17px] sm:text-[10px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
         )}
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
-          <div className="mt-2.5 pt-2.5 border-t border-violet-500/20 select-text">
-            <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-slate-900/60 p-3 rounded-xl border border-violet-500/10 shadow-inner">
+          <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
+            <div className="text-[17px] sm:text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-[17px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
@@ -11505,7 +11505,7 @@ export default function App() {
                                         </div>
                                       </div>
                                     )}
-                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 text-left">
+                                    <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
                                       {renderCardTutorChat(`r_${idx}`, q)}
                                     </div>
                                   </div>
@@ -12957,7 +12957,7 @@ export default function App() {
                                         </div>
                                       </div>
                                     )}
-                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 text-left">
+                                    <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
                                       {renderCardTutorChat(`e_${idx}`, q)}
                                     </div>
                                   </div>
