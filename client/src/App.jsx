@@ -1434,6 +1434,15 @@ const renderHighlightedFeedback = (reason) => {
   return parts.length > 0 ? parts : formatted;
 };
 
+const getTableFeedbackTextColor = (gradingResult) => {
+  const score = gradingResult?.score;
+  if (score === undefined) return 'text-slate-100';
+  if (score >= 9) return 'text-emerald-400';
+  if (score >= 8) return 'text-yellow-400';
+  if (score >= 5) return 'text-orange-400';
+  return 'text-rose-400';
+};
+
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
 const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   if (!value) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
@@ -12348,6 +12357,22 @@ export default function App() {
                             <span className="text-violet-300 flex-shrink-0">🔄</span>
                           )}
                           <span>리프레쉬</span>
+                        </button>
+                        <button
+                          onClick={() => { 
+                            if (selectedTopic?.id) {
+                              const deleteUrl = selectedTopic.schedule_id
+                                ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                                : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                              fetch(deleteUrl, { method: 'DELETE' })
+                                .catch(e => console.warn('세션 초기화 실패:', e));
+                            }
+                            setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); lastQuizTopicId.current = null; 
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-700/50 transition-all cursor-pointer active:scale-95 shadow-md"
+                          title="문제 초기화 (재개 시 새 문제 생성)"
+                        >
+                          종료
                         </button>
                         <button
                           onClick={() => { 
