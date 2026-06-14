@@ -4084,6 +4084,25 @@ export default function App() {
     return 'border-rose-500 bg-rose-950/20 text-rose-300';
   };
 
+  const getSubjectiveContainerClasses = (idx, isRevd) => {
+    if (!isRevd) return 'border-slate-800 bg-slate-950/40';
+    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    if (score === undefined) return 'border-slate-800 bg-slate-950/40';
+    if (score >= 9) return 'border-emerald-500/30 bg-emerald-950/25';
+    if (score >= 8) return 'border-yellow-500/30 bg-yellow-950/25';
+    if (score >= 5) return 'border-orange-500/30 bg-orange-950/25';
+    return 'border-rose-500/30 bg-rose-950/25';
+  };
+
+  const getSubjectiveTextColorClass = (idx) => {
+    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    if (score === undefined) return 'text-slate-355';
+    if (score >= 9) return 'text-emerald-400';
+    if (score >= 8) return 'text-yellow-400';
+    if (score >= 5) return 'text-orange-400';
+    return 'text-rose-400';
+  };
+
   const getSubjectiveBannerClasses = (idx) => {
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'bg-slate-900 border-slate-800 text-slate-355';
@@ -7362,7 +7381,7 @@ export default function App() {
                 }
               }
             }}
-            placeholder="이 문제의 계산 과정이나 특정 보기가 정오답인 근거를 물어보세요..."
+            placeholder=""
             className="flex-1 text-[14px] sm:text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
@@ -11437,7 +11456,7 @@ export default function App() {
                             </div>
                           ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
-                              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
+                              <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <input
@@ -11467,7 +11486,7 @@ export default function App() {
                                   </div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                  <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
                                     <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
@@ -12889,7 +12908,7 @@ export default function App() {
                             </div>
                           ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
-                              <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40 space-y-3 text-left">
+                              <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <input
@@ -12919,7 +12938,7 @@ export default function App() {
                                   </div>
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className={`mt-2 p-0 sm:p-2.5 border-0 sm:border rounded-none sm:rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
+                                  <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
                                     <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                       <button
