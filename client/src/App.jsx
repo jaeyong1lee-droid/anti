@@ -1506,7 +1506,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed ? (
-                          <span className="text-[8.5px] sm:text-xs text-emerald-450 font-black flex items-center gap-1 select-text whitespace-normal break-words">
+                          <span className="text-[8.5px] sm:text-xs text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         ) : (
@@ -4106,11 +4106,11 @@ export default function App() {
 
   const getTableBannerClasses = (idx, q) => {
     const score = getTableAverageScore(idx, q);
-    if (score === undefined) return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
-    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450';
-    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-450';
-    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-450';
-    return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
+    if (score === undefined) return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
+    if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
+    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
+    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
+    return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
   };
 
   const getTableBannerTitleClasses = (idx, q) => {
@@ -10927,7 +10927,7 @@ export default function App() {
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                               className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                                 questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
-                                  ? 'bg-emerald-950/60 border-emerald-500 text-emerald-450 font-black' 
+                                  ? 'bg-emerald-950/60 border-emerald-500 text-emerald-400 font-black' 
                                   : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
                               }`}
                               title="추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 높입니다."
@@ -10939,7 +10939,7 @@ export default function App() {
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
                               className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                                 questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
-                                  ? 'bg-rose-950/60 border-rose-500 text-rose-450 font-black' 
+                                  ? 'bg-rose-950/60 border-rose-500 text-rose-400 font-black' 
                                   : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
                               }`}
                               title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
@@ -11476,7 +11476,7 @@ export default function App() {
                             </button>
                             <button
                               onClick={handleQuizCompleteClick}
-                              className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 hover:border-emerald-450 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 hover:border-emerald-400 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
                               title="다시 풀이한 내용과 성적으로 DB 기록을 업데이트합니다."
                             >
                               <Award size={20} className="text-emerald-200" />
@@ -12313,7 +12313,7 @@ export default function App() {
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
                             className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                               questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'upvote'
-                                ? 'bg-emerald-950/60 border-emerald-500 text-emerald-450 font-black' 
+                                ? 'bg-emerald-950/60 border-emerald-500 text-emerald-400 font-black' 
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-emerald-950/20 hover:border-emerald-500/30 hover:text-emerald-400'
                             }`}
                             title="추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 높깁니다."
@@ -12325,7 +12325,7 @@ export default function App() {
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
                             className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
                               questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
-                                ? 'bg-rose-950/60 border-rose-500 text-rose-450 font-black' 
+                                ? 'bg-rose-950/60 border-rose-500 text-rose-400 font-black' 
                                 : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
                             }`}
                             title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
