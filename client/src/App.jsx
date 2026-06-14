@@ -11393,10 +11393,17 @@ export default function App() {
                                     )}
                                   </div>
                                 </div>
-                                {tableGradingResults[`${idx}_INPUT`] && (
+                                {isRevd && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                    <div className="text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
+                                      <button
+                                        onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
+                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold shrink-0"
+                                        title="답안 접기"
+                                      >
+                                        접기 ✕
+                                      </button>
                                     </div>
                                     <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
@@ -11409,11 +11416,25 @@ export default function App() {
                                         )}
                                       </div>
                                     </div>
-                                    {idx === 0 && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-left">
-                                        {renderCardTutorChat(`r_${idx}`, q)}
+                                    {idx !== 0 && q.concept && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                        <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
+                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
                                       </div>
                                     )}
+                                    {idx !== 0 && q.explanation && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                        <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
+                                      </div>
+                                    )}
+                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 text-left">
+                                      {renderCardTutorChat(`r_${idx}`, q)}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -11429,7 +11450,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                idx !== 0 && (
+                                false && (
                                   <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                     <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                       <span>📝 상세 해설</span>
@@ -12824,10 +12845,17 @@ export default function App() {
                                     )}
                                   </div>
                                 </div>
-                                {tableGradingResults[`${idx}_INPUT`] && (
+                                {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in ${getSubjectiveBannerClasses(idx)}`}>
-                                    <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                    <div className="text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
+                                      <button
+                                        onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
+                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold shrink-0"
+                                        title="답안 접기"
+                                      >
+                                        접기 ✕
+                                      </button>
                                     </div>
                                     <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[12px] select-text">
@@ -12840,11 +12868,25 @@ export default function App() {
                                         )}
                                       </div>
                                     </div>
-                                    {idx === 0 && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-left">
-                                        {renderCardTutorChat(`e_${idx}`, q)}
+                                    {idx !== 0 && q.concept && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                        <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
+                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
                                       </div>
                                     )}
+                                    {idx !== 0 && q.explanation && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[12px] select-text">
+                                        <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                        <div className="mt-1 text-[12px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
+                                      </div>
+                                    )}
+                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 text-left">
+                                      {renderCardTutorChat(`e_${idx}`, q)}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -12860,7 +12902,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                idx !== 0 && (
+                                false && (
                                   <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                     <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                       <span>📝 상세 해설</span>
