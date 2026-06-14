@@ -11567,7 +11567,7 @@ export default function App() {
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                                 {isMC ? '객관식' : '주관식'}
                               </span>
-                              {idx >= 2 && (() => {
+                              {idx !== 1 && (() => {
                                 if (isMC) {
                                   const userAnswer = selectedAnswers[idx];
                                   if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
@@ -13065,7 +13065,7 @@ export default function App() {
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                               {isMC ? '객관식' : '주관식'}
                             </span>
-                            {idx >= 2 && (() => {
+                            {idx !== 1 && (() => {
                               if (isMC) {
                                 const userAnswer = examAnswers[idx];
                                 if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
