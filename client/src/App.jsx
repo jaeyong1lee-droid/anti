@@ -1462,7 +1462,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-fixed min-w-[650px] text-center border-collapse text-[14px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[420px] sm:min-w-[650px] text-center border-collapse text-[13px] sm:text-sm">
         <colgroup>
           <col style={{ width: firstColWidth }} />
           {Array.from({ length: colCount - 1 }).map((_, idx) => (
@@ -1470,13 +1470,13 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           ))}
         </colgroup>
         <thead>
-          <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+          <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
             {headers.map((header, hIdx) => {
               const isFirstCol = hIdx === 0;
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-1 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                  className={`p-1.5 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
@@ -1487,101 +1487,112 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rIdx) => (
-            <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
-              {row.map((cell, cIdx) => {
-                const isFirstCol = cIdx === 0;
-                const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
-                if (isInput) {
-                  const inputId = cell.replace('[', '').replace(']', '').trim();
-                  const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
-                  const correctAnswer = q.answers?.[inputId] || '';
-                  
-                  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-                  const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
-                  const isCorrect = gradingResult 
-                    ? gradingResult.isCorrect 
-                    : (normalize(value) === normalize(correctAnswer));
- 
-                  const match = inputId.match(/\d+/);
-                  const inputNum = match ? parseInt(match[0], 10) : 1;
-                  const inputLetter = String.fromCharCode(64 + inputNum);
+          {rows.map((row, rIdx) => {
+            const canMerge = colCount > 2 && 
+                             row.slice(1).every(cellVal => cellVal === row[1]) && 
+                             !row.slice(1).some(cellVal => typeof cellVal === 'string' && cellVal.includes('[INPUT_'));
 
-                  const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
-                  let inputClassName = `w-full text-[14px] sm:text-[16px] px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
-                    hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
-                  } ${
-                    revealed
-                      ? getTableInputColorClasses(gradingResult, isCorrect, value)
-                      : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
-                  }`;
+            return (
+              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                {row.map((cell, cIdx) => {
+                  if (canMerge && cIdx > 1) return null;
+                  const isFirstCol = cIdx === 0;
+                  const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
+                  const cellColSpan = (canMerge && cIdx === 1) ? colCount - 1 : 1;
 
-                  return (
-                    <td 
-                      key={cIdx} 
-                      className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-sm whitespace-normal break-words ${
-                        isFirstCol ? 'text-left break-all' : ''
-                      }`}
-                    >
-                      <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
-                        <div className="flex items-center gap-1 sm:gap-1.5 w-full">
-                          <div className="relative flex-grow">
-                            {revealed ? (
-                              <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
-                                {value ? (
-                                  <span className="font-bold text-slate-100">
-                                    <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                  if (isInput) {
+                    const inputId = cell.replace('[', '').replace(']', '').trim();
+                    const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                    const correctAnswer = q.answers?.[inputId] || '';
+                    
+                    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+                    const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                    const isCorrect = gradingResult 
+                      ? gradingResult.isCorrect 
+                      : (normalize(value) === normalize(correctAnswer));
+   
+                    const match = inputId.match(/\d+/);
+                    const inputNum = match ? parseInt(match[0], 10) : 1;
+                    const inputLetter = String.fromCharCode(64 + inputNum);
+
+                    const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
+                    let inputClassName = `w-full text-[13px] sm:text-[16px] px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                      hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
+                    } ${
+                      revealed
+                        ? getTableInputColorClasses(gradingResult, isCorrect, value)
+                        : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
+                    }`;
+
+                    return (
+                      <td 
+                        key={cIdx} 
+                        colSpan={cellColSpan}
+                        className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-sm whitespace-normal break-words ${
+                          isFirstCol ? 'text-left break-all' : 'text-center'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
+                          <div className="flex items-center gap-1 sm:gap-1.5 w-full">
+                            <div className="relative flex-grow">
+                              {revealed ? (
+                                <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
+                                  {value ? (
+                                    <span className="font-bold text-slate-100">
+                                      <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                                    </span>
+                                  ) : (
+                                    <span className="text-rose-300 italic font-medium">
+                                      (미입력)
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <textarea
+                                  value={value}
+                                  onChange={(e) => handleInputChange(inputId, e.target.value)}
+                                  placeholder={`${inputLetter} 입력`}
+                                  className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5`}
+                                  rows={1}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      e.target.blur();
+                                    }
+                                  }}
+                                />
+                              )}
+                              {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
+                                const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                                const displayScore = Math.round(cellObtained * 10) / 10;
+                                return (
+                                  <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-xs font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
+                                    {displayScore}점
                                   </span>
-                                ) : (
-                                  <span className="text-rose-300 italic font-medium">
-                                    (미입력)
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <textarea
-                                value={value}
-                                onChange={(e) => handleInputChange(inputId, e.target.value)}
-                                placeholder={`${inputLetter} 입력`}
-                                className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5`}
-                                rows={1}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    e.target.blur();
-                                  }
-                                }}
-                              />
-                            )}
-                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
-                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
-                              const displayScore = Math.round(cellObtained * 10) / 10;
-                              return (
-                                <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-xs font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
-                                  {displayScore}점
-                                </span>
-                              );
-                            })()}
+                                );
+                              })()}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                  );
-                } else {
-                  return (
-                    <td 
-                      key={cIdx} 
-                      className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-sm select-text whitespace-normal break-words ${
-                        isFirstCol ? 'text-left break-all' : ''
-                      }`}
-                    >
-                      <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
-                    </td>
-                  );
-                }
-              })}
-            </tr>
-          ))}
+                      </td>
+                    );
+                  } else {
+                    return (
+                      <td 
+                        key={cIdx} 
+                        colSpan={cellColSpan}
+                        className={`p-1 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 text-[13px] sm:text-sm select-text whitespace-normal break-words ${
+                          isFirstCol ? 'text-left break-all' : 'text-center'
+                        }`}
+                      >
+                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                      </td>
+                    );
+                  }
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1598,7 +1609,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-fixed min-w-[650px] text-center border-collapse text-[14px] sm:text-sm">
+      <table className="w-full table-fixed min-w-[420px] sm:min-w-[650px] text-center border-collapse text-[13px] sm:text-sm">
         <colgroup>
           <col style={{ width: firstColWidth }} />
           {Array.from({ length: colCount - 1 }).map((_, idx) => (
@@ -1612,7 +1623,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
+                  className={`p-1.5 sm:p-3 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
@@ -1623,23 +1634,31 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rIdx) => (
-            <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
-              {row.map((cell, cIdx) => {
-                const isFirstCol = cIdx === 0;
-                return (
-                  <td 
-                    key={cIdx} 
-                    className={`p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
-                      isFirstCol ? 'text-left break-all' : ''
-                    }`}
-                  >
-                    <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {rows.map((row, rIdx) => {
+            const canMerge = colCount > 2 && 
+                             row.slice(1).every(cellVal => cellVal === row[1]);
+
+            return (
+              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                {row.map((cell, cIdx) => {
+                  if (canMerge && cIdx > 1) return null;
+                  const isFirstCol = cIdx === 0;
+                  const cellColSpan = (canMerge && cIdx === 1) ? colCount - 1 : 1;
+                  return (
+                    <td 
+                      key={cIdx} 
+                      colSpan={cellColSpan}
+                      className={`p-1.5 sm:p-3 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
+                        isFirstCol ? 'text-left break-all' : 'text-center'
+                      }`}
+                    >
+                      <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
