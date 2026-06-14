@@ -1389,8 +1389,8 @@ const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   }
   
   if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
-  if (score >= 6) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
-  if (score >= 3) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
+  if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
+  if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
   return 'border-rose-500 bg-rose-950/20 text-rose-300';
 };
 
@@ -4063,8 +4063,8 @@ export default function App() {
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'border-slate-750 text-white';
     if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
-    if (score >= 6) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
-    if (score >= 3) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
+    if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
+    if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
     return 'border-rose-500 bg-rose-950/20 text-rose-300';
   };
 
@@ -4072,8 +4072,8 @@ export default function App() {
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'bg-slate-900 border-slate-800 text-slate-355';
     if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
-    if (score >= 6) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
-    if (score >= 3) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
+    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
+    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
     return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
   };
 
@@ -4081,8 +4081,8 @@ export default function App() {
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return '채점 완료';
     if (score >= 9) return '✅ 정답 인정';
-    if (score >= 6) return '⚠️ 부분 인정 (우수)';
-    if (score >= 3) return '⚠️ 부분 인정 (보통)';
+    if (score >= 8) return '⚠️ 부분 인정 (우수)';
+    if (score >= 5) return '⚠️ 부분 인정 (보통)';
     return '❌ 오답 판정';
   };
 
@@ -4108,8 +4108,8 @@ export default function App() {
     const score = getTableAverageScore(idx, q);
     if (score === undefined) return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
     if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-450';
-    if (score >= 6) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-450';
-    if (score >= 3) return 'bg-orange-950/20 border-orange-500/30 text-orange-450';
+    if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-450';
+    if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-450';
     return 'bg-rose-950/20 border-rose-500/30 text-rose-450';
   };
 
@@ -4117,8 +4117,8 @@ export default function App() {
     const score = getTableAverageScore(idx, q);
     if (score === undefined) return 'text-rose-400';
     if (score >= 9) return 'text-emerald-400';
-    if (score >= 6) return 'text-yellow-400';
-    if (score >= 3) return 'text-orange-400';
+    if (score >= 8) return 'text-yellow-400';
+    if (score >= 5) return 'text-orange-400';
     return 'text-rose-400';
   };
 
@@ -4126,8 +4126,8 @@ export default function App() {
     const score = getTableAverageScore(idx, q);
     if (score === undefined) return '❌ 감점 및 오답 사유 피드백';
     if (score >= 9) return '✅ 채점 피드백 (정답인정)';
-    if (score >= 6) return '⚠️ 채점 피드백 (우수)';
-    if (score >= 3) return '⚠️ 채점 피드백 (보통)';
+    if (score >= 8) return '⚠️ 채점 피드백 (우수)';
+    if (score >= 5) return '⚠️ 채점 피드백 (보통)';
     return '❌ 감점 및 오답 사유 피드백';
   };
 
