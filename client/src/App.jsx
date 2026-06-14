@@ -12317,10 +12317,7 @@ export default function App() {
           >
               {/* Sidebar Header */}
               <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Brain size={16} className="text-violet-500" />
-                  </div>
+                <div className="flex items-center justify-end">
                   <div className="flex items-center gap-2">
                     {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
@@ -13829,10 +13826,7 @@ export default function App() {
             >
               {/* Sidebar Header */}
               <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Brain size={16} className="text-amber-500" />
-                  </div>
+                <div className="flex items-center justify-end">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
