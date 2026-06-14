@@ -1366,6 +1366,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   );
 });
 
+// 채점 사유 포맷터 (배점 스케일링 혼란 방지)
+const formatGradingReason = (reason) => {
+  if (!reason) return '';
+  return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');
+};
+
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
 const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   if (!value) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
@@ -7066,7 +7072,7 @@ export default function App() {
             
             userAttemptInfo += `- [빈칸 ${inputLetter}] 사용자 입력: "${userVal}" (모범 답안: "${correctVal}")`;
             if (grading) {
-              userAttemptInfo += ` → 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason})`;
+              userAttemptInfo += ` → 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${formatGradingReason(grading.reason)})`;
             }
             userAttemptInfo += `\n`;
           });
@@ -7078,7 +7084,7 @@ export default function App() {
           userAttemptInfo += `■ 사용자가 입력한 답안: "${userVal}"\n`;
           const grading = tableGradingResults[`${idx}_INPUT`];
           if (grading) {
-            userAttemptInfo += `■ 채점 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${grading.reason})\n`;
+            userAttemptInfo += `■ 채점 결과: ${grading.isCorrect ? '정답 인정' : '오답 판정'} (사유: ${formatGradingReason(grading.reason)})\n`;
           }
         }
       }
@@ -11166,7 +11172,7 @@ export default function App() {
                                         const match = inputId.match(/\d+/);
                                         const inputNum = match ? parseInt(match[0], 10) : 1;
                                         const inputLetter = String.fromCharCode(64 + inputNum);
-                                        wrongFeedbacks.push({ letter: inputLetter, reason: grading.reason });
+                                        wrongFeedbacks.push({ letter: inputLetter, reason: formatGradingReason(grading.reason) });
                                       }
                                     });
                                     if (wrongFeedbacks.length > 0) {
@@ -11230,7 +11236,7 @@ export default function App() {
                                     <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[12px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                    <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                   </div>
                                 )}
                               </div>
@@ -12563,7 +12569,7 @@ export default function App() {
                                         const match = inputId.match(/\d+/);
                                         const inputNum = match ? parseInt(match[0], 10) : 1;
                                         const inputLetter = String.fromCharCode(64 + inputNum);
-                                        wrongFeedbacks.push({ letter: inputLetter, reason: grading.reason });
+                                        wrongFeedbacks.push({ letter: inputLetter, reason: formatGradingReason(grading.reason) });
                                       }
                                     });
                                     if (wrongFeedbacks.length > 0) {
@@ -12627,7 +12633,7 @@ export default function App() {
                                     <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[12px] leading-relaxed opacity-90">{tableGradingResults[`${idx}_INPUT`].reason}</p>
+                                    <p className="text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                   </div>
                                 )}
                               </div>
