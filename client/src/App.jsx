@@ -4229,23 +4229,23 @@ export default function App() {
   };
 
   const getSubjectiveContainerClasses = (idx, isRevd) => {
-    if (!isRevd) return 'border-slate-800 bg-slate-950/40';
+    if (!isRevd) return 'sm:border-slate-800 sm:bg-slate-950/40';
     const score = tableGradingResults[`${idx}_INPUT`]?.score;
-    if (score === undefined) return 'border-slate-800 bg-slate-950/40';
-    if (score >= 9) return 'border-emerald-500/30 bg-emerald-950/25';
-    if (score >= 8) return 'border-yellow-500/30 bg-yellow-950/25';
-    if (score >= 5) return 'border-orange-500/30 bg-orange-950/25';
-    return 'border-rose-500/30 bg-rose-950/25';
+    if (score === undefined) return 'sm:border-slate-800 sm:bg-slate-950/40';
+    if (score >= 9) return 'sm:border-emerald-500/30 sm:bg-emerald-950/25';
+    if (score >= 8) return 'sm:border-yellow-500/30 sm:bg-yellow-950/25';
+    if (score >= 5) return 'sm:border-orange-500/30 sm:bg-orange-950/25';
+    return 'sm:border-rose-500/30 sm:bg-rose-950/25';
   };
 
   const getTableContainerClasses = (idx, q, isRevd) => {
-    if (!isRevd) return 'border-slate-800 bg-slate-950/40';
+    if (!isRevd) return 'sm:border-slate-800 sm:bg-slate-950/40';
     const score = getTableAverageScore(idx, q);
-    if (score === undefined) return 'border-slate-800 bg-slate-950/40';
-    if (score >= 9) return 'border-emerald-500/30 bg-emerald-950/25';
-    if (score >= 8) return 'border-yellow-500/30 bg-yellow-950/25';
-    if (score >= 5) return 'border-orange-500/30 bg-orange-950/25';
-    return 'border-rose-500/30 bg-rose-950/25';
+    if (score === undefined) return 'sm:border-slate-800 sm:bg-slate-950/40';
+    if (score >= 9) return 'sm:border-emerald-500/30 sm:bg-emerald-950/25';
+    if (score >= 8) return 'sm:border-yellow-500/30 sm:bg-yellow-950/25';
+    if (score >= 5) return 'sm:border-orange-500/30 sm:bg-orange-950/25';
+    return 'sm:border-rose-500/30 sm:bg-rose-950/25';
   };
 
   const getSubjectiveTextColorClass = (idx) => {
@@ -12002,7 +12002,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
@@ -12061,7 +12061,7 @@ export default function App() {
                             </div>
                           ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
-                              <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
+                              <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <input
@@ -13467,7 +13467,7 @@ export default function App() {
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
                               ) : (
-                                <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
+                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
@@ -13526,7 +13526,7 @@ export default function App() {
                             </div>
                           ) : (q.type === '주관식 (단답형)' || q.type === '주관식 (개요)') ? (
                             <div className="space-y-3 w-full animate-fade-in">
-                              <div className={`p-4 rounded-xl border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
+                              <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <input
