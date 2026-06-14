@@ -6356,6 +6356,74 @@ async function healPendingSchedules() {
 }
 
 // 과거에 풀이했던 복습 일정 중 성적(score, correct_count, total_count)이 누락되었거나 불일치하지만 app_session에 풀이 이력이 존재하는 경우 채점하여 백필
+// Helper to compute overall score (including subjective and table grading) matching the client logic
+function computeOverallScore(parsed) {
+  if (!parsed || !Array.isArray(parsed.questions)) return null;
+
+  const aiQuestions = parsed.questions;
+  const selectedAnswers = parsed.selectedAnswers || {};
+  const tableGradingResults = parsed.tableGradingResults || {};
+
+  let totalScoreObtained = 0;
+  let correctCount = 0;
+
+  const scoredIndices = [];
+  aiQuestions.forEach((_, i) => {
+    if (i !== 1) scoredIndices.push(i);
+  });
+  const M = scoredIndices.length;
+  const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+  const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+
+  aiQuestions.forEach((q, idx) => {
+    if (idx === 1) return; // Q2 제외
+
+    const sIdx = scoredIndices.indexOf(idx);
+    const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+
+    const isMC = q.options && q.options.length > 0;
+    if (isMC) {
+      const userAnswer = selectedAnswers[idx];
+      const isCorrect = userAnswer === q.answer;
+      if (isCorrect) {
+        totalScoreObtained += W;
+        correctCount++;
+      }
+    } else if (q.tableData) {
+      const inputIds = Object.keys(q.answers || {});
+      let sumVal = 0;
+      let countVal = inputIds.length;
+      inputIds.forEach(inputId => {
+        const grading = tableGradingResults[`${idx}_${inputId}`];
+        if (grading && grading.score !== undefined) {
+          sumVal += grading.score;
+        }
+      });
+      if (countVal > 0) {
+        const questionScore = (sumVal / (countVal * 10)) * W;
+        totalScoreObtained += questionScore;
+        if (questionScore >= (W / 2)) {
+          correctCount++;
+        }
+      }
+    } else {
+      const grading = tableGradingResults[`${idx}_INPUT`];
+      if (grading && grading.score !== undefined) {
+        const questionScore = (grading.score / 10) * W;
+        totalScoreObtained += questionScore;
+        if (questionScore >= (W / 2)) {
+          correctCount++;
+        }
+      }
+    }
+  });
+
+  const totalCount = M;
+  const score = totalCount > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained))) : 100;
+  return { score, correctCount, totalCount };
+}
+
+// 과거에 풀이했던 복습 일정 중 성적(score, correct_count, total_count)이 누락되었거나 불일치하지만 app_session에 풀이 이력이 존재하는 경우 채점하여 백필
 async function backfillPastScheduleScores() {
   console.log('[Backfill] Checking and backfilling past schedule scores from app_session...');
   try {
@@ -6373,28 +6441,19 @@ async function backfillPastScheduleScores() {
         if (parsed && Array.isArray(parsed.questions)) {
           const sched = await dbQuery.get('SELECT id, score, correct_count, total_count FROM schedules WHERE id = ?', [scheduleId]);
           if (sched) {
-            // 객관식 문제 추출 및 채점
-            const totalMC = parsed.questions.filter(q => q.options && q.options.length > 0).length;
-            const correctMC = Object.keys(parsed.selectedAnswers || {}).filter(
-              (i) => {
-                const qIdx = parseInt(i, 10);
-                const q = parsed.questions[qIdx];
-                const selected = parsed.selectedAnswers[i];
-                if (!q || !selected) return false;
-                const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
-                return normalizeAns(selected) === normalizeAns(q.answer);
+            const computed = computeOverallScore(parsed);
+            if (computed) {
+              const { score: computedScore, correctCount: computedCorrect, totalCount: computedTotal } = computed;
+              
+              // 데이터베이스의 현재 값과 비교하여 다르면 업데이트 진행 (주관식/표채점이 포함된 종합 점수와 비교)
+              if (sched.score === null || sched.correct_count === null || sched.total_count === null || sched.score !== computedScore) {
+                await dbQuery.run(
+                  'UPDATE schedules SET score = ?, correct_count = ?, total_count = ? WHERE id = ?',
+                  [computedScore, computedCorrect, computedTotal, scheduleId]
+                );
+                updatedCount++;
+                console.log(`[Backfill] Updated schedule ${scheduleId} with computed score ${computedScore} (${computedCorrect}/${computedTotal})`);
               }
-            ).length;
-            const computedScore = totalMC > 0 ? Math.round((correctMC / totalMC) * 100) : null;
-            
-            // 데이터베이스의 현재 값과 비교하여 다르면 업데이트 진행
-            if (sched.score === null || sched.correct_count === null || sched.total_count === null || sched.score !== computedScore) {
-              await dbQuery.run(
-                'UPDATE schedules SET score = ?, correct_count = ?, total_count = ? WHERE id = ?',
-                [computedScore, correctMC, totalMC, scheduleId]
-              );
-              updatedCount++;
-              console.log(`[Backfill] Updated schedule ${scheduleId} with computed score ${computedScore} (${correctMC}/${totalMC})`);
             }
           }
         }
