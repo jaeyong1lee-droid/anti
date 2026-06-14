@@ -12310,7 +12310,6 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Brain size={16} className="text-violet-500" />
-                    <span className="text-xs font-bold text-slate-300">AI 튜터</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedTopic && (
@@ -12361,7 +12360,7 @@ export default function App() {
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md"
                         >
-                          종료
+                          닫기
                         </button>
                       </div>
                     )}
@@ -13806,7 +13805,6 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Brain size={16} className="text-amber-500" />
-                    <span className="text-xs font-bold text-slate-300">AI 튜터</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
