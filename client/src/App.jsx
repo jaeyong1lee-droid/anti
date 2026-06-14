@@ -1453,7 +1453,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   const inputLetter = String.fromCharCode(64 + inputNum);
 
                   const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
-                  let inputClassName = `w-full text-[14px] sm:text-sm px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
+                  let inputClassName = `w-full text-[14px] sm:text-[16px] px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
                     hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
                   } ${
                     revealed
@@ -1512,7 +1512,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         </div>
                         {revealed && (
-                          <span className="text-[17px] sm:text-xs text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
+                          <span className="text-[14px] sm:text-[16px] text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
                             {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
                           </span>
                         )}
