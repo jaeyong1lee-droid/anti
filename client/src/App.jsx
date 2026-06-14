@@ -6462,6 +6462,20 @@ export default function App() {
           setRevealedQuestions(data.revealedQuestions || {});
           setTableAnswers(data.tableAnswers || {});
           setTableGradingResults(data.tableGradingResults || {});
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith('r_')) delete copy[k];
+            });
+            return { ...copy, ...(data.tutorInputText || {}) };
+          });
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith('r_')) delete copy[k];
+            });
+            return { ...copy, ...(data.tutorAnswers || {}) };
+          });
           if (data.savedQuizScroll) {
             savedQuizScroll.current = data.savedQuizScroll;
             requestAnimationFrame(() => {
@@ -6473,6 +6487,8 @@ export default function App() {
           let initialRevealedQuestions = {};
           let initialTableAnswers = {};
           let initialTableGradingResults = {};
+          let initialTutorInputText = {};
+          let initialTutorAnswers = {};
           try {
             const key = finalScheduleId 
               ? `anti_review_progress_sched_${finalScheduleId}`
@@ -6484,11 +6500,27 @@ export default function App() {
               if (parsed.selectedAnswers) initialSelectedAnswers = parsed.selectedAnswers;
               if (parsed.tableAnswers) initialTableAnswers = parsed.tableAnswers;
               if (parsed.tableGradingResults) initialTableGradingResults = parsed.tableGradingResults;
+              if (parsed.tutorInputText) initialTutorInputText = parsed.tutorInputText;
+              if (parsed.tutorAnswers) initialTutorAnswers = parsed.tutorAnswers;
               
               setTableAnswers(initialTableAnswers);
               setTableGradingResults(initialTableGradingResults);
               setRevealedQuestions(initialRevealedQuestions);
               setSelectedAnswers(initialSelectedAnswers);
+              setTutorInputText(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('r_')) delete copy[k];
+                });
+                return { ...copy, ...initialTutorInputText };
+              });
+              setTutorAnswers(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('r_')) delete copy[k];
+                });
+                return { ...copy, ...initialTutorAnswers };
+              });
               setShowAnswersState({});
               setExamShowAnswersState({});
             } else {
@@ -6496,6 +6528,20 @@ export default function App() {
               setSelectedAnswers({});
               setTableAnswers({});
               setTableGradingResults({});
+              setTutorInputText(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('r_')) delete copy[k];
+                });
+                return copy;
+              });
+              setTutorAnswers(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('r_')) delete copy[k];
+                });
+                return copy;
+              });
               setShowAnswersState({});
               setExamShowAnswersState({});
             }
@@ -6505,6 +6551,20 @@ export default function App() {
             setSelectedAnswers({});
             setTableAnswers({});
             setTableGradingResults({});
+            setTutorInputText(prev => {
+              const copy = { ...prev };
+              Object.keys(copy).forEach(k => {
+                if (k.startsWith('r_')) delete copy[k];
+              });
+              return copy;
+            });
+            setTutorAnswers(prev => {
+              const copy = { ...prev };
+              Object.keys(copy).forEach(k => {
+                if (k.startsWith('r_')) delete copy[k];
+              });
+              return copy;
+            });
             setShowAnswersState({});
             setExamShowAnswersState({});
           }
@@ -6521,6 +6581,8 @@ export default function App() {
               revealedQuestions: initialRevealedQuestions,
               tableAnswers: initialTableAnswers,
               tableGradingResults: initialTableGradingResults,
+              tutorInputText: initialTutorInputText,
+              tutorAnswers: initialTutorAnswers,
               savedQuizScroll: 0
             })
           }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
@@ -11919,7 +11981,7 @@ export default function App() {
             onMouseDown={startResize}
             onTouchStart={startResize}
             style={{ touchAction: 'none' }}
-            className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
+            className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-violet-500/10 transition-colors group"
           >
             <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-violet-500/50 transition-colors pointer-events-none" />
             {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -11949,7 +12011,7 @@ export default function App() {
           <div 
             style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
             className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
-              isDesktop ? 'hidden' : ((!isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : '')
+              (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
               {/* Sidebar Header */}
@@ -13345,7 +13407,7 @@ export default function App() {
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-amber-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-amber-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -13375,7 +13437,7 @@ export default function App() {
             <div 
               style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
               className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
-                isDesktop ? 'hidden' : ((!isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : '')
+                (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
               {/* Sidebar Header */}
@@ -14321,7 +14383,7 @@ export default function App() {
               onMouseDown={startResize}
               onTouchStart={startResize}
               style={{ touchAction: 'none' }}
-              className="hidden md:hidden landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
+              className="hidden md:flex landscape-hide md:w-[50px] h-full shrink-0 relative items-center justify-center bg-slateCustom-950/20 cursor-col-resize select-none hover:bg-slate-800/25 active:bg-rose-500/10 transition-colors group"
             >
               <div className="absolute inset-y-0 w-px bg-slate-800/80 group-hover:bg-slate-700/80 group-active:bg-rose-500/50 transition-colors pointer-events-none" />
               {/* Floating Scroll Button Capsule (Floats beautifully in the center of the empty gutter) */}
@@ -14351,7 +14413,7 @@ export default function App() {
               <div 
                 style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
                 className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
-                  isDesktop ? 'hidden' : ((!isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : '')
+                  (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
                 }`}
               >
                 {/* Header with Formula Selector */}
