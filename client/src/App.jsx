@@ -4823,21 +4823,21 @@ export default function App() {
   // Tablet auto-hide left nav panel
   // On tablets (768px ~ 1366px, portrait/landscape with height > 600px), the nav auto-hides.
   // Swiping right from the left edge (x < 40px) reveals it for 2 seconds then hides again.
-  const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1366 && window.innerHeight > 600;
+  const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1280 && window.innerHeight > 600;
   const [tabletNavHidden, setTabletNavHidden] = useState(isTablet);
   const tabletNavTimerRef = useRef(null);
   const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
 
   // Check if current screen qualifies as tablet (recalculated when window resizes)
-  const isTabletScreen = isDesktop && !isMobileLandscape && window.innerWidth <= 1366;
+  const isTabletScreen = isDesktop && !isMobileLandscape && window.innerWidth <= 1280;
 
-  // Show nav for 2s on swipe from left edge
+  // Show nav for 2.5s on swipe from left edge
   const showTabletNavBriefly = useCallback(() => {
     if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
     setTabletNavHidden(false);
     tabletNavTimerRef.current = setTimeout(() => {
       setTabletNavHidden(true);
-    }, 2000);
+    }, 2500);
   }, []);
 
   // Global touch handler for tablet left-edge swipe detection
@@ -4873,7 +4873,7 @@ export default function App() {
   // Sync tabletNavHidden when screen size changes
   useEffect(() => {
     const updateTabletState = () => {
-      const tablet = window.innerWidth >= 768 && window.innerWidth <= 1366 && window.innerHeight > 600;
+      const tablet = window.innerWidth >= 768 && window.innerWidth <= 1280 && window.innerHeight > 600;
       if (!tablet) {
         // Not tablet anymore – always show nav
         setTabletNavHidden(false);
@@ -9661,7 +9661,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main
-        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} landscape-pl-0 mt-8 flex-grow ${viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}
+        className={`w-full mx-auto px-3 ${!isTabletScreen ? 'md:px-12 md:pl-36' : ''} landscape-pl-0 mt-8 flex-grow ${isTabletScreen || viewMode === 'all_topics' ? 'max-w-none xl:max-w-none 2xl:max-w-none' : 'max-w-7xl xl:max-w-[85rem] 2xl:max-w-[95rem]'}`}
         style={isTabletScreen ? {
           paddingLeft: tabletNavHidden ? '12px' : '144px',
           paddingRight: '12px',
