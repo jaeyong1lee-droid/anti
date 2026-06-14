@@ -1663,26 +1663,8 @@ function parseQuestionTable(q, topicTitle) {
   let questionText = q.question || '';
   
   // Clean question title for Q1 / Overview questions macroscopically
-  const isOverview = q.type === '주관식 (개요)' || 
-                     questionText.includes('(개념, 원리, 정의 등)의 핵심 키워드') || 
-                     questionText.includes('의 핵심 개념, 정의, 원리 등을 설명하는 키워드') ||
-                     (questionText.includes('핵심 키워드') && questionText.includes('입력하세요') && !questionText.includes('표채우기'));
-
-  if (isOverview) {
-    let subject = '';
-    if (topicTitle) {
-      subject = getCoreSubjectFromTitle(topicTitle);
-    } else {
-      // Fallback: extract subject from questionText itself
-      const match = questionText.match(/^(.*?)(?:\(개념|의 핵심 개념|의 핵심 키워드)/);
-      if (match && match[1]) {
-        subject = getCoreSubjectFromTitle(match[1].trim());
-      }
-    }
-    if (subject) {
-      questionText = `${subject}의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요.`;
-    }
-  }
+  // 백엔드 AI 프롬프트가 대주제 및 자연스러운 지문을 동적으로 생성하도록 개선되었으므로,
+  // 클라이언트 단에서 획일화된 질문 템플릿으로 덮어씌우는 로직은 비활성화합니다.
   let tableData = q.tableData || null;
 
   if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
