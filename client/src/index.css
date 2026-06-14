@@ -440,6 +440,35 @@ div[class*="overflow-y-auto"] {
   }
 }
 
+/* 📱 Tablet font size override: scale back to 1.0x (PC 1.2x 대비 약 20% 감소)
+   태블릿 범위: 768px ~ 1366px 너비, 높이 > 600px (일반 세로/가로 태블릿)
+   아래 규칙이 PC(1.2x) 규칙보다 더 구체적(max-width 추가)이므로 우선 적용됨 */
+@media (min-width: 768px) and (max-width: 1366px) and (min-height: 601px) {
+  .pc-enlarged-text .text-\[10px\] { font-size: 10px !important; }
+  .pc-enlarged-text .text-\[11px\] { font-size: 11px !important; }
+  .pc-enlarged-text .text-\[12px\] { font-size: 12px !important; }
+  .pc-enlarged-text .text-xs { font-size: 0.75rem !important; }
+  .pc-enlarged-text .text-sm { font-size: 0.875rem !important; }
+  .pc-enlarged-text .text-base { font-size: 1rem !important; }
+  .pc-enlarged-text .text-lg { font-size: 1.125rem !important; }
+  .pc-enlarged-text .text-xl { font-size: 1.25rem !important; }
+  .pc-enlarged-text .text-2xl { font-size: 1.5rem !important; }
+  .pc-enlarged-text .text-\[17px\] { font-size: 17px !important; }
+
+  .pc-enlarged-text .sm\:text-xs { font-size: 0.75rem !important; }
+  .pc-enlarged-text .sm\:text-sm { font-size: 0.875rem !important; }
+  .pc-enlarged-text .sm\:text-base { font-size: 1rem !important; }
+  .pc-enlarged-text .sm\:text-lg { font-size: 1.125rem !important; }
+  .pc-enlarged-text .sm\:text-xl { font-size: 1.25rem !important; }
+  .pc-enlarged-text .sm\:text-2xl { font-size: 1.5rem !important; }
+  .pc-enlarged-text .sm\:text-\[11px\] { font-size: 11px !important; }
+  .pc-enlarged-text .sm\:text-\[14px\] { font-size: 14px !important; }
+
+  .pc-enlarged-text {
+    font-size: 1rem !important;
+  }
+}
+
 /* 📱 Mobile Portrait Layout Optimizations for Review and Comprehensive Exam Modals */
 @media (max-width: 767px) and (orientation: portrait), (max-width: 599px) {
   .quiz-card-item button.w-full, .exam-card-item button.w-full, .formula-quiz-option-btn {
