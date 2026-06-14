@@ -11409,15 +11409,8 @@ export default function App() {
                                 </button>
                               ) : (
                                 <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                  <div className="flex justify-between items-center text-[14px] sm:text-[17px] font-black text-amber-400">
                                     <span>📝 상세 해설</span>
-                                    <button
-                                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
-                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                      title="답안 접기"
-                                    >
-                                      접기 ✕
-                                    </button>
                                   </div>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
@@ -11435,12 +11428,12 @@ export default function App() {
                                     if (wrongFeedbacks.length > 0) {
                                       return (
                                         <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                          <div className="text-[14px] sm:text-[17px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[12px] leading-relaxed opacity-90">
+                                              <p key={fIdx} className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </p>
                                             ))}
@@ -11451,7 +11444,7 @@ export default function App() {
                                     return null;
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
@@ -11490,13 +11483,13 @@ export default function App() {
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
-                                    <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[17px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                    <p className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -11505,17 +11498,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -12863,15 +12856,8 @@ export default function App() {
                                 </button>
                               ) : (
                                 <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
-                                  <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
+                                  <div className="flex justify-between items-center text-[14px] sm:text-[17px] font-black text-amber-400">
                                     <span>📝 상세 해설</span>
-                                    <button
-                                      onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
-                                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                      title="답안 접기"
-                                    >
-                                      접기 ✕
-                                    </button>
                                   </div>
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
@@ -12889,12 +12875,12 @@ export default function App() {
                                     if (wrongFeedbacks.length > 0) {
                                       return (
                                         <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[12px] font-black flex items-center gap-1.5 mb-0.5">
+                                          <div className="text-[14px] sm:text-[17px] font-black flex items-center gap-1.5 mb-0.5">
                                             <span>{getTableBannerStatusText(idx, q)}</span>
                                           </div>
                                           <div className="space-y-1 mt-1">
                                             {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[12px] leading-relaxed opacity-90">
+                                              <p key={fIdx} className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">
                                                 <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
                                               </p>
                                             ))}
@@ -12905,7 +12891,7 @@ export default function App() {
                                     return null;
                                   })()}
                                   {q.explanation && (
-                                    <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
+                                    <div className="text-[14px] sm:text-[17px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   )}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
@@ -12944,13 +12930,13 @@ export default function App() {
                                 </div>
                                 {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
-                                    <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
+                                    <div className="text-[14px] sm:text-[17px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                    <p className="text-[14px] sm:text-[17px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                         {idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
@@ -12959,17 +12945,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[17px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[12px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[14px] sm:text-[17px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
