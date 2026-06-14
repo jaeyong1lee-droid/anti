@@ -7356,7 +7356,7 @@ export default function App() {
   const renderCardTutorChat = (key, q) => {
     return (
       <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
-        <label className="block text-[14px] sm:text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <label className="block text-[14px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -7376,7 +7376,7 @@ export default function App() {
               }
             }}
             placeholder=""
-            className="flex-1 text-[14px] sm:text-xs p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+            className="flex-1 text-[14px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
           />
           <button
             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
@@ -7390,7 +7390,7 @@ export default function App() {
         {/* AI Tutor In-Card Answer Panel */}
         {tutorAnswers[key]?.loading && (
           <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
-            <div className="text-[14px] sm:text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+            <div className="text-[14px] text-violet-400 font-bold flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
               <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
             </div>
@@ -7399,12 +7399,12 @@ export default function App() {
           </div>
         )}
         {tutorAnswers[key]?.error && (
-          <div className="text-[14px] sm:text-[10px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+          <div className="text-[14px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
         )}
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
           <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
-            <div className="text-[14px] sm:text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="text-[14px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
+            <div className="text-[14px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+            <div className="text-[14px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
@@ -11025,6 +11025,27 @@ export default function App() {
                               </button>
                             )}
 
+                            {/* 답안 접기/열기 버튼 (채점 완료 후 활성화) */}
+                            {!isMC && Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`)) && (
+                              <button
+                                onClick={() => {
+                                  setRevealedQuestions(prev => ({ ...prev, [idx]: !prev[idx] }));
+                                }}
+                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                                title="답안 접기 및 열기"
+                              >
+                                {isRevd ? (
+                                  <>
+                                    <span className="hidden sm:inline">🙈 </span>답안 접기
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="hidden sm:inline">👁️ </span>답안 열기
+                                  </>
+                                )}
+                              </button>
+                            )}
+
                             {/* 추천/비추천 피드백 버튼 */}
                             <button
                               onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -11471,13 +11492,6 @@ export default function App() {
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
                                     <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
-                                      <button
-                                        onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
-                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold shrink-0"
-                                        title="답안 접기"
-                                      >
-                                        접기 ✕
-                                      </button>
                                     </div>
                                     <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
@@ -12448,6 +12462,27 @@ export default function App() {
                             </button>
                           )}
 
+                          {/* 답안 접기/열기 버튼 (채점 완료 후 활성화) */}
+                          {!isMC && Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`)) && (
+                            <button
+                              onClick={() => {
+                                setExamRevealed(prev => ({ ...prev, [idx]: !prev[idx] }));
+                              }}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                              title="답안 접기 및 열기"
+                            >
+                              {examRevealed[idx] ? (
+                                <>
+                                  <span className="hidden sm:inline">🙈 </span>답안 접기
+                                </>
+                              ) : (
+                                <>
+                                  <span className="hidden sm:inline">👁️ </span>답안 열기
+                                </>
+                              )}
+                            </button>
+                          )}
+
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
                             onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'upvote')}
@@ -12911,13 +12946,6 @@ export default function App() {
                                   <div className={`mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in ${getSubjectiveTextColorClass(idx)}`}>
                                     <div className="text-[14px] sm:text-[12px] font-black flex justify-between items-center mb-0.5">
                                       <span>{getSubjectiveStatusText(idx)}</span>
-                                      <button
-                                        onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
-                                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold shrink-0"
-                                        title="답안 접기"
-                                      >
-                                        접기 ✕
-                                      </button>
                                     </div>
                                     <p className="text-[14px] sm:text-[12px] leading-relaxed opacity-90">{formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)}</p>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[12px] select-text">
