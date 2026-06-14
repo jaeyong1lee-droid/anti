@@ -3553,7 +3553,7 @@ app.post('/api/grade-subjective', async (req, res) => {
   "score": 0에서 10 사이의 정수,
   "reason": "구체적인 채점 사유 한 줄 요약"
 }
-반드시 마크다운 코드 블록(예: ```json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
+반드시 마크다운 코드 블록(예: \`\`\`json) 없이 순수한 JSON 객체 텍스트로만 반환하십시오.`;
 
     const userPrompt = `
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
