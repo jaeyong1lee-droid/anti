@@ -1749,7 +1749,7 @@ function computeParenthesisPairs(str) {
     if (str[i] === '(') {
       stack.push(i);
       while (stack.length > rightCloseCount[i]) {
-        stack.pop();
+        stack.shift();
       }
     } else if (str[i] === ')') {
       if (stack.length > 0) {
@@ -1980,12 +1980,23 @@ function ScientificCalculator() {
       setStatusMessage('');
     }
     
+    // Auto-prepend 0 to dot if not preceded by a digit
+    if (val === '.') {
+      const before = text.substring(0, start);
+      if (start === 0 || !/\d/.test(before[before.length - 1])) {
+        val = '0.';
+      }
+    }
+    
     const before = text.substring(0, start);
     const after = text.substring(start);
     const newText = before + val + after;
-    setCalcInput(newText);
     
-    let newCursorPos = start + val.length;
+    const formattedText = newText.replace(/(?<!\d)\./g, '0.');
+    setCalcInput(formattedText);
+    
+    const addedLen = formattedText.length - newText.length;
+    let newCursorPos = start + val.length + addedLen;
     if (val === 'frac(,)') {
       newCursorPos = start + 5;
     } else if (val === 'sqrt()') {
@@ -2722,7 +2733,7 @@ function ScientificCalculator() {
     return null;
   };
 
-  const evaluateExpr = (expr, angleMode, isInternal = false) => {
+  const evaluateExpr = (expr, angleMode, isInternal = false, skipStateUpdate = false) => {
     try {
       if (!expr.trim()) return '';
       
@@ -2759,7 +2770,9 @@ function ScientificCalculator() {
         }
         if (isNaN(numToStore)) numToStore = 0;
         
-        setVariables(prev => ({ ...prev, [varName]: numToStore }));
+        if (!skipStateUpdate) {
+          setVariables(prev => ({ ...prev, [varName]: numToStore }));
+        }
         return solvedVal.toString();
       }
       
@@ -2895,7 +2908,7 @@ function ScientificCalculator() {
   const previewResult = useMemo(() => {
     if (!calcInput.trim()) return '';
     try {
-      const res = evaluateExpr(calcInput, calcAngleMode);
+      const res = evaluateExpr(calcInput, calcAngleMode, false, true);
       if (res && res !== 'Error') {
         return res;
       }
@@ -3311,6 +3324,7 @@ function ScientificCalculator() {
           {topLabel || ' '}
         </span>
         <button
+          type="button"
           onClick={() => handleKeyClick(keyId)}
           className={`w-full py-1 rounded text-[11px] font-black transition-all shadow-sm select-none h-8 flex items-center justify-center border ${activeCls}`}
         >
@@ -3329,6 +3343,7 @@ function ScientificCalculator() {
           <span className="text-[8px] font-black text-rose-400 truncate max-w-[50%] leading-none self-end">{alphaLabel || ' '}</span>
         </div>
         <button
+          type="button"
           onClick={() => handleKeyClick(keyId)}
           className={`w-full py-1 rounded bg-[#2c3230] border border-[#404845] text-slate-100 font-extrabold active:scale-95 hover:bg-[#383f3d] transition-all cursor-pointer shadow-md select-none h-9 flex items-center justify-center relative ${
             isDms ? 'text-[16px] tracking-wider pt-0 pb-0.5' : 'text-[11px]'
@@ -3353,7 +3368,7 @@ function ScientificCalculator() {
     }
 
     return (
-      <button onClick={onClick} className={btnCls}>
+      <button type="button" onClick={onClick} className={btnCls}>
         {label}
       </button>
     );
@@ -3736,8 +3751,17 @@ function ScientificCalculator() {
               return;
             }
             
-            setCalcInput(val);
-            setCursorPosition(e.target.selectionStart);
+            // Format input using standard decimal formatting rules:
+            const originalCursor = e.target.selectionStart;
+            const textBeforeCursor = val.substring(0, originalCursor);
+            const matches = textBeforeCursor.match(/(?<!\d)\./g);
+            const addedZeros = matches ? matches.length : 0;
+            
+            const formattedVal = val.replace(/(?<!\d)\./g, '0.');
+            const newCursor = originalCursor + addedZeros;
+            
+            setCalcInput(formattedVal);
+            setCursorPosition(newCursor);
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={(e) => {
