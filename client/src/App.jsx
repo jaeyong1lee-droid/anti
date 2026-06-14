@@ -4823,13 +4823,13 @@ export default function App() {
   // Tablet auto-hide left nav panel
   // On tablets (768px ~ 1366px, portrait/landscape with height > 600px), the nav auto-hides.
   // Swiping right from the left edge (x < 40px) reveals it for 2 seconds then hides again.
-  const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1280 && window.innerHeight > 600;
+  const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1400 && window.innerHeight > 600;
   const [tabletNavHidden, setTabletNavHidden] = useState(isTablet);
   const tabletNavTimerRef = useRef(null);
   const tabletSwipeStartRef = useRef({ x: 0, y: 0, active: false });
 
   // Check if current screen qualifies as tablet (recalculated when window resizes)
-  const isTabletScreen = isDesktop && !isMobileLandscape && window.innerWidth <= 1280;
+  const isTabletScreen = isDesktop && !isMobileLandscape && window.innerWidth <= 1400;
 
   // Show nav for 2.5s on swipe from left edge
   const showTabletNavBriefly = useCallback(() => {
@@ -4873,7 +4873,7 @@ export default function App() {
   // Sync tabletNavHidden when screen size changes
   useEffect(() => {
     const updateTabletState = () => {
-      const tablet = window.innerWidth >= 768 && window.innerWidth <= 1280 && window.innerHeight > 600;
+      const tablet = window.innerWidth >= 768 && window.innerWidth <= 1400 && window.innerHeight > 600;
       if (!tablet) {
         // Not tablet anymore – always show nav
         setTabletNavHidden(false);
@@ -10500,7 +10500,11 @@ export default function App() {
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, reviewMobileTab, setReviewMobileTab)}
-          className="fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+          className={`fixed inset-y-0 right-0 left-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          style={isTabletScreen ? {
+            paddingLeft: tabletNavHidden ? '12px' : '144px',
+            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+          } : {}}
         >
           
 
@@ -11853,7 +11857,11 @@ export default function App() {
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, examMobileTab, setExamMobileTab)}
-          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          style={isTabletScreen ? {
+            paddingLeft: tabletNavHidden ? '12px' : '144px',
+            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+          } : {}}
         >
           
 
@@ -13075,7 +13083,11 @@ export default function App() {
         <div 
           onTouchStart={handleSwipeTouchStart}
           onTouchEnd={(e) => handleSwipeTouchEnd(e, formulaMobileTab, setFormulaMobileTab)}
-          className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile"
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          style={isTabletScreen ? {
+            paddingLeft: tabletNavHidden ? '12px' : '144px',
+            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+          } : {}}
         >
           
           {/* Formula Header */}
@@ -14054,7 +14066,13 @@ export default function App() {
 
       {/* ===== ESSENTIAL ANSWERSHEET STUDY MODAL ===== */}
       {showAnswerSheet && (
-        <div className="fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col md:pl-36 landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile">
+        <div 
+          className={`fixed inset-y-0 right-0 left-0 z-[60] bg-black/80 backdrop-blur-sm flex flex-col ${!isTabletScreen ? 'md:pl-36' : ''} landscape-pl-0 pc-enlarged-text overflow-hidden scrollbar-none-mobile`}
+          style={isTabletScreen ? {
+            paddingLeft: tabletNavHidden ? '12px' : '144px',
+            transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+          } : {}}
+        >
           
           {/* Header */}
           {(!isDesktop && !isMobileLandscape) ? (
