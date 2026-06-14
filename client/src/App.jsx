@@ -2531,28 +2531,56 @@ function ScientificCalculator() {
         }
       }
       
-      if (direction === 'up') {
-        if (history.length > 0) {
-          const nextIndex = Math.min(historyIndex + 1, history.length - 1);
-          setHistoryIndex(nextIndex);
-          const histVal = history[history.length - 1 - nextIndex];
-          setCalcInput(histVal);
-          setCursorPosition(histVal.length);
-          setCalcResult('');
+      // If we are not inside any fraction/exponent, but fractions exist, jump to the closest fraction's numerator/denominator
+      if (fracs.length > 0) {
+        let closestFrac = fracs[0];
+        let minDistance = Math.min(
+          Math.abs(cursorPosition - fracs[0].numStartIdx),
+          Math.abs(cursorPosition - fracs[0].denStartIdx)
+        );
+        for (const f of fracs) {
+          const distNum = Math.abs(cursorPosition - f.numStartIdx);
+          const distDen = Math.abs(cursorPosition - f.denStartIdx);
+          const dist = Math.min(distNum, distDen);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestFrac = f;
+          }
         }
-      } else if (direction === 'down') {
-        if (historyIndex > 0) {
-          const nextIndex = historyIndex - 1;
-          setHistoryIndex(nextIndex);
-          const histVal = history[history.length - 1 - nextIndex];
-          setCalcInput(histVal);
-          setCursorPosition(histVal.length);
-          setCalcResult('');
-        } else if (historyIndex === 0) {
-          setHistoryIndex(-1);
-          setCalcInput('');
-          setCursorPosition(0);
-          setCalcResult('');
+        if (direction === 'up') {
+          setCursorPosition(closestFrac.numEndIdx);
+          return;
+        } else if (direction === 'down') {
+          setCursorPosition(closestFrac.denStartIdx);
+          return;
+        }
+      }
+
+      // ONLY load history if the formula input is completely empty
+      if (calcInput === '') {
+        if (direction === 'up') {
+          if (history.length > 0) {
+            const nextIndex = Math.min(historyIndex + 1, history.length - 1);
+            setHistoryIndex(nextIndex);
+            const histVal = history[history.length - 1 - nextIndex];
+            setCalcInput(histVal);
+            setCursorPosition(histVal.length);
+            setCalcResult('');
+          }
+        } else if (direction === 'down') {
+          if (historyIndex > 0) {
+            const nextIndex = historyIndex - 1;
+            setHistoryIndex(nextIndex);
+            const histVal = history[history.length - 1 - nextIndex];
+            setCalcInput(histVal);
+            setCursorPosition(histVal.length);
+            setCalcResult('');
+          } else if (historyIndex === 0) {
+            setHistoryIndex(-1);
+            setCalcInput('');
+            setCursorPosition(0);
+            setCalcResult('');
+          }
         }
       }
     } else if (direction === 'left' || direction === 'right') {
