@@ -779,6 +779,8 @@ function convertMarkdownToHtml(mdText, isMarkdown = false) {
 const renderKatexString = (math, options) => {
   if (!math) return '';
   let processedMath = math.replace(/\\frac\b/g, '\\dfrac');
+  // Collapse double or multiple backslashes before % to single backslash
+  processedMath = processedMath.replace(/\\{2,}%/g, '\\%');
   // Escape bare % signs that are not already escaped (\%), since % is a comment
   // character in TeX/KaTeX and causes "Unexpected end of input" parse errors.
   processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');

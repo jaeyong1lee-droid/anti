@@ -159,6 +159,8 @@ export function healLatexFormulas(text, isNested = false) {
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
+  // Collapse double or multiple backslashes before % to single backslash
+  processed = processed.replace(/\\{2,}%/g, '\\%');
 
   // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
   processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
