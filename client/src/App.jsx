@@ -5777,6 +5777,51 @@ export default function App() {
       });
   }, []); // mount 시 1회만
 
+  // ── Restore scroll position on topic/question load or refresh (PC/모바일 공통 스크롤 유지)
+  useEffect(() => {
+    if (selectedTopic && aiQuestions.length > 0) {
+      const key = selectedTopic.finalScheduleId 
+        ? `anti_review_progress_sched_${selectedTopic.finalScheduleId}`
+        : `anti_review_progress_${selectedTopic.id}`;
+      const localProgress = localStorage.getItem(key);
+      if (localProgress) {
+        try {
+          const parsed = JSON.parse(localProgress);
+          if (parsed.savedQuizScroll !== undefined) {
+            savedQuizScroll.current = parsed.savedQuizScroll;
+            requestAnimationFrame(() => {
+              if (quizBodyRef.current) quizBodyRef.current.scrollTop = parsed.savedQuizScroll;
+            });
+            // DOM이 완전히 로드되고 그려지기까지 약간의 텀이 있을 수 있으므로 2중 처리
+            setTimeout(() => {
+              if (quizBodyRef.current) quizBodyRef.current.scrollTop = parsed.savedQuizScroll;
+            }, 100);
+          }
+        } catch (e) {}
+      }
+    }
+  }, [selectedTopic, aiQuestions]);
+
+  useEffect(() => {
+    if (examTopic && examQuestions.length > 0) {
+      const localProgress = localStorage.getItem('anti_exam_progress');
+      if (localProgress) {
+        try {
+          const parsed = JSON.parse(localProgress);
+          if (parsed.savedExamScroll !== undefined) {
+            savedExamScroll.current = parsed.savedExamScroll;
+            requestAnimationFrame(() => {
+              if (examBodyRef.current) examBodyRef.current.scrollTop = parsed.savedExamScroll;
+            });
+            setTimeout(() => {
+              if (examBodyRef.current) examBodyRef.current.scrollTop = parsed.savedExamScroll;
+            }, 100);
+          }
+        } catch (e) {}
+      }
+    }
+  }, [examTopic, examQuestions]);
+
   // ── Save state to localStorage whenever key state changes
   useEffect(() => {
     try {
