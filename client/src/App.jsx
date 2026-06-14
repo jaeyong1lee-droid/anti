@@ -1515,11 +1515,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             })()}
                           </div>
                         </div>
-                        {revealed && (
-                          <span className="text-[14px] sm:text-[16px] text-emerald-400 font-black flex items-center gap-1 select-text whitespace-normal break-words">
-                            {inputLetter} 정답: <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                          </span>
-                        )}
+                        {/* Removed cell-level correct answer label to show in feedback panel */}
                       </div>
                     </td>
                   );
@@ -4182,7 +4178,7 @@ export default function App() {
 
   const getTableBannerClasses = (idx, q) => {
     const score = getTableAverageScore(idx, q);
-    if (score === undefined) return 'bg-rose-950/20 border-rose-500/30 text-rose-400';
+    if (score === undefined) return 'bg-slate-900/50 border-slate-800 text-slate-350';
     if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
     if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
     if (score >= 5) return 'bg-orange-950/20 border-orange-500/30 text-orange-400';
@@ -4191,7 +4187,7 @@ export default function App() {
 
   const getTableBannerTitleClasses = (idx, q) => {
     const score = getTableAverageScore(idx, q);
-    if (score === undefined) return 'text-rose-400';
+    if (score === undefined) return 'text-slate-300';
     if (score >= 9) return 'text-emerald-400';
     if (score >= 8) return 'text-yellow-400';
     if (score >= 5) return 'text-orange-400';
@@ -4200,7 +4196,7 @@ export default function App() {
 
   const getTableBannerStatusText = (idx, q) => {
     const score = getTableAverageScore(idx, q);
-    if (score === undefined) return '❌ 감점 및 오답 사유 피드백';
+    if (score === undefined) return '💡 모범 답안';
     if (score >= 9) return '✅ 채점 피드백 (정답인정)';
     if (score >= 8) return '⚠️ 채점 피드백 (우수)';
     if (score >= 5) return '⚠️ 채점 피드백 (보통)';
@@ -5563,10 +5559,21 @@ export default function App() {
           if (data.examTopic) setExamTopic(data.examTopic);
           if (data.tableAnswers) setTableAnswers(data.tableAnswers);
           if (data.tableGradingResults) setTableGradingResults(data.tableGradingResults);
-          if (data.savedExamScroll) savedExamScroll.current = data.savedExamScroll;
-          requestAnimationFrame(() => {
-            if (examBodyRef.current) examBodyRef.current.scrollTop = savedExamScroll.current;
-          });
+          const localProgress = localStorage.getItem('anti_exam_progress');
+          let localScroll = undefined;
+          if (localProgress) {
+            try {
+              const parsed = JSON.parse(localProgress);
+              if (parsed.savedExamScroll !== undefined) localScroll = parsed.savedExamScroll;
+            } catch(e){}
+          }
+          const targetScroll = localScroll !== undefined ? localScroll : (data.savedExamScroll || 0);
+          if (targetScroll) {
+            savedExamScroll.current = targetScroll;
+            requestAnimationFrame(() => {
+              if (examBodyRef.current) examBodyRef.current.scrollTop = targetScroll;
+            });
+          }
         } else {
           // 서버 세션에 데이터가 없더라도, 로컬스토리지 복원을 통해 이미 메모리에 로드된 종합평가 문제가 있다면 유지
           setExamQuestions(prev => {
@@ -6476,10 +6483,22 @@ export default function App() {
             });
             return { ...copy, ...(data.tutorAnswers || {}) };
           });
-          if (data.savedQuizScroll) {
-            savedQuizScroll.current = data.savedQuizScroll;
+          const key = finalScheduleId 
+            ? `anti_review_progress_sched_${finalScheduleId}`
+            : `anti_review_progress_${topicId}`;
+          const localProgress = localStorage.getItem(key);
+          let localScroll = undefined;
+          if (localProgress) {
+            try {
+              const parsed = JSON.parse(localProgress);
+              if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
+            } catch(e){}
+          }
+          const targetScroll = localScroll !== undefined ? localScroll : (data.savedQuizScroll || 0);
+          if (targetScroll) {
+            savedQuizScroll.current = targetScroll;
             requestAnimationFrame(() => {
-              if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
+              if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
             });
           }
         } else {
@@ -6523,6 +6542,12 @@ export default function App() {
               });
               setShowAnswersState({});
               setExamShowAnswersState({});
+              if (parsed.savedQuizScroll) {
+                savedQuizScroll.current = parsed.savedQuizScroll;
+                requestAnimationFrame(() => {
+                  if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
+                });
+              }
             } else {
               setRevealedQuestions({});
               setSelectedAnswers({});
@@ -11194,6 +11219,25 @@ export default function App() {
           </div>
               <div 
                 ref={quizBodyRef} 
+                onScroll={(e) => {
+                  const scrollTop = e.currentTarget.scrollTop;
+                  savedQuizScroll.current = scrollTop;
+                  if (selectedTopic) {
+                    const key = selectedTopic.finalScheduleId 
+                      ? `anti_review_progress_sched_${selectedTopic.finalScheduleId}`
+                      : `anti_review_progress_${selectedTopic.id}`;
+                    const savedProgress = localStorage.getItem(key);
+                    if (savedProgress) {
+                      try {
+                        const parsed = JSON.parse(savedProgress);
+                        parsed.savedQuizScroll = scrollTop;
+                        localStorage.setItem(key, JSON.stringify(parsed));
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }
+                  }
+                }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const clickX = e.clientX - rect.left;
@@ -11743,33 +11787,46 @@ export default function App() {
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
-                                    const wrongFeedbacks = [];
-                                    inputIds.forEach(inputId => {
-                                      const grading = tableGradingResults[`${idx}_${inputId}`];
-                                      if (grading && (grading.score < 10 || !grading.isCorrect) && grading.reason) {
-                                        const match = inputId.match(/\d+/);
-                                        const inputNum = match ? parseInt(match[0], 10) : 1;
-                                        const inputLetter = String.fromCharCode(64 + inputNum);
-                                        wrongFeedbacks.push({ letter: inputLetter, reason: formatGradingReason(grading.reason) });
-                                      }
-                                    });
-                                    if (wrongFeedbacks.length > 0) {
-                                      return (
-                                        <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-0.5">
-                                            <span>{getTableBannerStatusText(idx, q)}</span>
-                                          </div>
-                                          <div className="space-y-1 mt-1">
-                                            {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">
-                                                <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
-                                              </p>
-                                            ))}
-                                          </div>
+                                    if (inputIds.length === 0) return null;
+                                    return (
+                                      <div className={`mt-2 p-0 select-text text-left animate-fade-in my-2 ${getTableBannerTitleClasses(idx, q)}`}>
+                                        <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1">
+                                          <span>{getTableBannerStatusText(idx, q)}</span>
                                         </div>
-                                      );
-                                    }
-                                    return null;
+                                        <div className="space-y-1.5 mt-1.5">
+                                          {inputIds.map((inputId) => {
+                                            const match = inputId.match(/\d+/);
+                                            const inputNum = match ? parseInt(match[0], 10) : 1;
+                                            const inputLetter = String.fromCharCode(64 + inputNum);
+                                            const correctAnswer = q.answers?.[inputId] || '';
+                                            const grading = tableGradingResults[`${idx}_${inputId}`];
+                                            const reason = grading?.reason ? formatGradingReason(grading.reason) : '';
+
+                                            return (
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
+                                                {reason ? (
+                                                  <div className="space-y-0.5">
+                                                    <div>
+                                                      <span className="font-extrabold text-amber-400">{inputLetter} :</span> <span className="text-slate-355">{reason}</span>
+                                                    </div>
+                                                    <div className="pl-4 text-emerald-400 font-semibold">
+                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <div>
+                                                    <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
+                                                    <span className="text-emerald-400 font-semibold">
+                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
                                   })()}
                                   {q.explanation && (
                                     <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
@@ -12645,6 +12702,22 @@ export default function App() {
           </div>
               <div 
                 ref={examBodyRef} 
+                onScroll={(e) => {
+                  const scrollTop = e.currentTarget.scrollTop;
+                  savedExamScroll.current = scrollTop;
+                  if (showExam) {
+                    const savedExamProgress = localStorage.getItem('anti_exam_progress');
+                    if (savedExamProgress) {
+                      try {
+                        const parsed = JSON.parse(savedExamProgress);
+                        parsed.savedExamScroll = scrollTop;
+                        localStorage.setItem('anti_exam_progress', JSON.stringify(parsed));
+                      } catch (err) {
+                        console.warn(err);
+                      }
+                    }
+                  }
+                }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const clickX = e.clientX - rect.left;
@@ -13190,33 +13263,46 @@ export default function App() {
                                   {/* 테이블 주관식 개별 피드백 */}
                                   {(() => {
                                     const inputIds = Object.keys(q.answers || {});
-                                    const wrongFeedbacks = [];
-                                    inputIds.forEach(inputId => {
-                                      const grading = tableGradingResults[`${idx}_${inputId}`];
-                                      if (grading && (grading.score < 10 || !grading.isCorrect) && grading.reason) {
-                                        const match = inputId.match(/\d+/);
-                                        const inputNum = match ? parseInt(match[0], 10) : 1;
-                                        const inputLetter = String.fromCharCode(64 + inputNum);
-                                        wrongFeedbacks.push({ letter: inputLetter, reason: formatGradingReason(grading.reason) });
-                                      }
-                                    });
-                                    if (wrongFeedbacks.length > 0) {
-                                      return (
-                                        <div className={`mt-2 p-2.5 border rounded-xl select-text text-left animate-fade-in my-2 ${getTableBannerClasses(idx, q)}`}>
-                                          <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-0.5">
-                                            <span>{getTableBannerStatusText(idx, q)}</span>
-                                          </div>
-                                          <div className="space-y-1 mt-1">
-                                            {wrongFeedbacks.map((fb, fIdx) => (
-                                              <p key={fIdx} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">
-                                                <span className="font-extrabold">{fb.letter} 입력창 검토 의견:</span> {fb.reason}
-                                              </p>
-                                            ))}
-                                          </div>
+                                    if (inputIds.length === 0) return null;
+                                    return (
+                                      <div className={`mt-2 p-0 select-text text-left animate-fade-in my-2 ${getTableBannerTitleClasses(idx, q)}`}>
+                                        <div className="text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1">
+                                          <span>{getTableBannerStatusText(idx, q)}</span>
                                         </div>
-                                      );
-                                    }
-                                    return null;
+                                        <div className="space-y-1.5 mt-1.5">
+                                          {inputIds.map((inputId) => {
+                                            const match = inputId.match(/\d+/);
+                                            const inputNum = match ? parseInt(match[0], 10) : 1;
+                                            const inputLetter = String.fromCharCode(64 + inputNum);
+                                            const correctAnswer = q.answers?.[inputId] || '';
+                                            const grading = tableGradingResults[`${idx}_${inputId}`];
+                                            const reason = grading?.reason ? formatGradingReason(grading.reason) : '';
+
+                                            return (
+                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
+                                                {reason ? (
+                                                  <div className="space-y-0.5">
+                                                    <div>
+                                                      <span className="font-extrabold text-amber-400">{inputLetter} :</span> <span className="text-slate-355">{reason}</span>
+                                                    </div>
+                                                    <div className="pl-4 text-emerald-400 font-semibold">
+                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <div>
+                                                    <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
+                                                    <span className="text-emerald-400 font-semibold">
+                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
                                   })()}
                                   {q.explanation && (
                                     <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
