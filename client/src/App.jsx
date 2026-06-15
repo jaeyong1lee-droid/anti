@@ -5066,6 +5066,9 @@ export default function App() {
   const selectedTopicRefForFormula = useRef(null);
   selectedTopicRefForFormula.current = selectedTopic;
 
+  const selectedTopicRef = useRef(null);
+  selectedTopicRef.current = selectedTopic;
+
   const examTopicRefForFormula = useRef(null);
   examTopicRefForFormula.current = examTopic;
 
@@ -6690,7 +6693,7 @@ export default function App() {
     });
 
     setLoadingAI(true);
-    setSelectedTopic({ 
+    const targetTopic = { 
       id: topicId, 
       title: topicTitle, 
       keywords,
@@ -6698,7 +6701,9 @@ export default function App() {
       schedule_id: scheduleId, 
       review_round: round, 
       isReadOnly: true 
-    });
+    };
+    setSelectedTopic(targetTopic);
+    selectedTopicRef.current = targetTopic;
     setAiQuestions([]);
     setRevealedQuestions({});
     setSelectedAnswers({});
@@ -6716,6 +6721,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
       const data = await res.json();
+      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
+        console.log(`[handleOpenCompletedReview] Topic changed. Ignoring loaded data for topicId=${topicId}`);
+        return;
+      }
       if (res.ok && data.success) {
         setAiQuestions(data.data.questions || []);
         setSelectedAnswers(data.data.selectedAnswers || {});
@@ -6727,6 +6736,10 @@ export default function App() {
         showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
         const fbRes = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`, { method: 'POST' });
         const fbData = await fbRes.json();
+        if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
+          console.log(`[handleOpenCompletedReview] Topic changed during fallback. Ignoring loaded data for topicId=${topicId}`);
+          return;
+        }
         if (fbRes.ok) {
           setAiQuestions(fbData.questions || []);
         } else {
@@ -6734,10 +6747,15 @@ export default function App() {
         }
       }
     } catch (err) {
+      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
+        return;
+      }
       console.error('Load completed review error:', err);
       showNotification('통신 오류로 복습 풀이 기록을 가져오지 못했습니다.', 'error');
     } finally {
-      setLoadingAI(false);
+      if (selectedTopicRef.current?.id === topicId && selectedTopicRef.current?.schedule_id === scheduleId) {
+        setLoadingAI(false);
+      }
     }
   };
 
@@ -6913,14 +6931,18 @@ export default function App() {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && selectedTopic?.schedule_id === finalScheduleId) {
       console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
-      setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus });
+      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus };
+      setSelectedTopic(targetTopic);
+      selectedTopicRef.current = targetTopic;
       // 이전 스크롤 위치 복원
       requestAnimationFrame(() => {
         if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
       });
       return;
     }
-    setSelectedTopic({ id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus });
+    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus };
+    setSelectedTopic(targetTopic);
+    selectedTopicRef.current = targetTopic;
     setLoadingAI(true);
     setAiQuestions([]);
     setRevealedQuestions({}); // Reset revealed answers
@@ -6949,6 +6971,11 @@ export default function App() {
       console.log(`[handleOpenAIQuestions] Response status: ${res.status} (${res.statusText})`);
       const data = await res.json();
       console.log(`[handleOpenAIQuestions] Parsed response data:`, data);
+
+      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
+        console.log(`[handleOpenAIQuestions] Topic changed. Ignoring loaded data for topicId=${topicId}`);
+        return;
+      }
 
       if (res.ok) {
         setAiQuestions(data.questions || []);
@@ -7109,11 +7136,16 @@ export default function App() {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
+      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
+        return;
+      }
       console.error('AI call error:', err);
       showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
       setAiError(err.message || '서버 통신 오류');
     } finally {
-      setLoadingAI(false);
+      if (selectedTopicRef.current?.id === topicId && selectedTopicRef.current?.schedule_id === finalScheduleId) {
+        setLoadingAI(false);
+      }
     }
   };
 
@@ -7323,14 +7355,22 @@ export default function App() {
         : `anti_review_progress_${selectedTopic.id}`;
       localStorage.removeItem(progressKey); // 전체 재생성 시 로컬 복습 기록도 제거
         
+      const currentRefreshTopicId = selectedTopic.id;
+      const currentRefreshScheduleId = selectedTopic.schedule_id;
+
       // 2. 실시간 AI 생성 요청
-      let url = `${API_BASE}/api/topics/${selectedTopic.id}/ai-questions`;
-      if (selectedTopic.schedule_id) {
-        url += `?scheduleId=${selectedTopic.schedule_id}`;
+      let url = `${API_BASE}/api/topics/${currentRefreshTopicId}/ai-questions`;
+      if (currentRefreshScheduleId) {
+        url += `?scheduleId=${currentRefreshScheduleId}`;
       }
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       
+      if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
+        console.log(`[handleRefreshReviewQuestions] Topic changed. Ignoring refreshed data.`);
+        return;
+      }
+
       if (res.ok) {
         const newQuestions = data.questions || [];
         setAiQuestions(newQuestions);
@@ -7376,11 +7416,16 @@ export default function App() {
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
+      if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
+        return;
+      }
       console.error('AI refresh call error:', err);
       showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
       setAiError(err.message || '서버 통신 오류');
     } finally {
-      setLoadingAI(false);
+      if (selectedTopicRef.current?.id === currentRefreshTopicId && selectedTopicRef.current?.schedule_id === currentRefreshScheduleId) {
+        setLoadingAI(false);
+      }
     }
   };
 
