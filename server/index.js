@@ -5158,6 +5158,8 @@ app.post('/api/chat', async (req, res) => {
    - 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 가상의 단어로 번역/표기하지 마십시오. 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.
 7. [중요 키워드 강조 규칙]:
    - 답변 작성 시 지반역학 및 토목공학의 핵심 용어, 중요 공학 기전, 핵심 물리량 및 설계 조치 등의 중요 키워드들은 수험생이 한눈에 파악할 수 있도록 반드시 **더블 별표**(**키워드**) 또는 '싱글 쿼트'('키워드')로 감싸서 작성해 주십시오. (예: **아칭 효과**, **상대적 변위**, '응력 재분배', **테르자기 트랩도어** 등)
+8. [표(Table) 작성 철칙]:
+   - 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(\`| 열1 | 열2 |\`과 구분선 \`| --- | --- |\`)으로 작성하십시오.
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
