@@ -1463,7 +1463,13 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-[15px] whitespace-normal break-words text-center align-middle"
+                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-[15px] whitespace-normal break-words text-center align-middle ${
+                          !revealed ? 'cursor-text' : ''
+                        }`}
+                        onClick={!revealed ? (e) => {
+                          const textarea = e.currentTarget.querySelector('textarea');
+                          if (textarea) textarea.focus();
+                        } : undefined}
                       >
                         {revealed ? (
                           <div className={`w-full text-left p-1 sm:p-1.5 text-[13px] sm:text-[15px] space-y-0.5 ${
