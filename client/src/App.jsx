@@ -1536,12 +1536,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         } : undefined}
                       >
                         {revealed ? (
-                          <div className={`w-full text-left p-1 sm:p-1.5 text-[13px] sm:text-[15px] space-y-0.5 ${
+                          <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[13px] sm:text-[15px] ${
                             isCorrect 
                               ? 'bg-emerald-950/20 text-emerald-200' 
                               : 'bg-rose-950/20 text-rose-200'
                           }`}>
-                            <div>
+                            <div className="text-left font-medium">
                               <span className="text-xs opacity-75 mr-1 select-none">내 답변:</span>
                               {value ? (
                                 <span className="font-bold text-slate-100">
@@ -1553,24 +1553,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                 </span>
                               )}
                             </div>
-                            <div className="pt-0.5 border-t border-current/10">
-                              <span className="text-emerald-400 font-extrabold mr-1">정답:</span>
-                              <span className="text-slate-100 font-semibold">
-                                <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                              </span>
-                            </div>
-                            {gradingResult?.reason && (
-                              <div className="text-[11px] sm:text-[12px] opacity-90 pt-0.5">
-                                <span className="font-bold text-amber-400 mr-1">피드백:</span>
-                                {renderHighlightedFeedback(gradingResult.reason)}
-                              </div>
-                            )}
                             {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
                               const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                               const displayScore = Math.round(cellObtained * 10) / 10;
                               return (
-                                <div className="text-[11px] text-amber-400 font-bold pt-0.5 border-t border-current/10 select-none">
-                                  득점: {displayScore}점
+                                <div className="text-right font-extrabold text-amber-400 select-none whitespace-nowrap pl-2 text-xs sm:text-sm">
+                                  {displayScore}점
                                 </div>
                               );
                             })()}
@@ -4471,6 +4459,54 @@ export default function App() {
     if (score >= 8) return '⚠️ 채점 피드백 (우수)';
     if (score >= 5) return '⚠️ 채점 피드백 (보통)';
     return '❌ 감점 및 오답 사유 피드백';
+  };
+
+  const renderDetailedTableFeedback = (idx, q) => {
+    const inputIds = Object.keys(q.answers || {});
+    if (inputIds.length === 0) return null;
+    return (
+      <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
+        <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
+        <div className="grid grid-cols-1 gap-2.5 mt-1">
+          {inputIds.map((inputId) => {
+            const value = tableAnswers[`${idx}_${inputId}`] || '';
+            const correctAnswer = q.answers?.[inputId] || '';
+            const gradingResult = tableGradingResults?.[`${idx}_${inputId}`];
+            
+            const match = inputId.match(/\d+/);
+            const inputNum = match ? parseInt(match[0], 10) : 1;
+            const inputLetter = String.fromCharCode(64 + inputNum);
+            
+            return (
+              <div key={inputId} className="bg-slate-900/60 rounded-lg p-2.5 border border-slate-800 text-[13px] sm:text-[15px] space-y-1">
+                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/60 pb-1 mb-1">
+                  <span className="text-amber-400">빈칸 ({inputLetter})</span>
+                  {gradingResult && gradingResult.score !== undefined && (
+                    <span className="text-amber-500">{gradingResult.score}점</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-slate-400 mr-1.5 font-bold">내 답변:</span>
+                  <span className="text-slate-100 font-semibold">{value || '(미입력)'}</span>
+                </div>
+                <div>
+                  <span className="text-emerald-400 mr-1.5 font-bold">정답:</span>
+                  <span className="text-slate-200 font-semibold">{correctAnswer}</span>
+                </div>
+                {gradingResult?.reason && (
+                  <div>
+                    <span className="text-amber-500 mr-1.5 font-bold">피드백:</span>
+                    <span className="text-slate-300 font-normal leading-relaxed">
+                      {renderHighlightedFeedback(gradingResult.reason)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const scrollToLastSolvedQuestion = (isExam = false) => {
@@ -12141,6 +12177,7 @@ export default function App() {
                                       </div>
                                     </div>
                                   )}
+                                  {renderDetailedTableFeedback(idx, q)}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
                               )}
@@ -13646,6 +13683,7 @@ export default function App() {
                                       </div>
                                     </div>
                                   )}
+                                  {renderDetailedTableFeedback(idx, q)}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
                               )}
