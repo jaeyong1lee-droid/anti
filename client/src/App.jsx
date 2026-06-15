@@ -1647,7 +1647,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                 const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                                 const displayScore = Math.round(cellObtained * 10) / 10;
                                 return (
-                                  <div className={`text-right font-extrabold select-none whitespace-nowrap pl-2 text-xs sm:text-sm ${theme.text}`}>
+                                  <div className={`text-right font-extrabold select-none whitespace-nowrap pl-2 text-[11px] sm:text-[13px] ${theme.text}`}>
                                     {displayScore}점
                                   </div>
                                 );
