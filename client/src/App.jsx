@@ -5743,6 +5743,8 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatBodyRef = useRef(null);
+  const tutorFileInputRef = useRef(null);
+  const mobileTutorFileInputRef = useRef(null);
   const [attachedImage, setAttachedImage] = useState(null); // { name, mimeType, data }
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
@@ -12739,10 +12741,49 @@ export default function App() {
               </div>
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
+                {/* 첨부 이미지 미리보기 */}
+                {attachedImage && (
+                  <div className="mb-2 p-2 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="미리보기" 
+                        className="w-8 h-8 rounded-lg object-contain bg-slate-950 border border-slate-800"
+                      />
+                      <span className="text-[11px] text-slate-400 truncate max-w-[180px] font-semibold">{attachedImage.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearAttachedImage}
+                      className="w-5 h-5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+                
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-1 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/20 transition-all shadow-lg"
                 >
+                  {/* 파일 첨부 버튼 및 숨겨진 input */}
+                  <button
+                    type="button"
+                    onClick={() => tutorFileInputRef.current?.click()}
+                    disabled={isChatLoading}
+                    className="w-8 h-8 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0"
+                    title="이미지 첨부"
+                  >
+                    <Paperclip size={13} />
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={tutorFileInputRef} 
+                    onChange={handleImageAttachment} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
@@ -12755,6 +12796,7 @@ export default function App() {
                           handleSendChat();
                         }
                       }}
+                      onPaste={handlePasteImage}
                       placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
@@ -12764,7 +12806,7 @@ export default function App() {
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
+                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
                     className="w-8 h-8 bg-slate-300 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-300 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-slate-300/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-slate-900" />
@@ -14168,10 +14210,49 @@ export default function App() {
               </div>
 
               <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0 landscape-tutor-input-wrapper">
+                {/* 첨부 이미지 미리보기 */}
+                {attachedImage && (
+                  <div className="mb-2 p-2 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <img 
+                        src={`data:${attachedImage.mimeType};base64,${attachedImage.data}`} 
+                        alt="미리보기" 
+                        className="w-8 h-8 rounded-lg object-contain bg-slate-950 border border-slate-800"
+                      />
+                      <span className="text-[11px] text-slate-400 truncate max-w-[180px] font-semibold">{attachedImage.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearAttachedImage}
+                      className="w-5 h-5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSendChat(); }} 
-                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-2 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
+                  className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-2 flex items-center gap-1 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all shadow-lg"
                 >
+                  {/* 파일 첨부 버튼 및 숨겨진 input */}
+                  <button
+                    type="button"
+                    onClick={() => mobileTutorFileInputRef.current?.click()}
+                    disabled={isChatLoading}
+                    className="w-8 h-8 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0"
+                    title="이미지 첨부"
+                  >
+                    <Paperclip size={13} />
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={mobileTutorFileInputRef} 
+                    onChange={handleImageAttachment} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
@@ -14184,6 +14265,7 @@ export default function App() {
                           handleSendChat();
                         }
                       }}
+                      onPaste={handlePasteImage}
                       placeholder="기술사 용어나 개념 질문..."
                       disabled={isChatLoading}
                       className="w-full bg-transparent border-0 p-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-0 resize-none"
@@ -14193,7 +14275,7 @@ export default function App() {
                   {/* 전송 버튼 */}
                   <button
                     type="submit"
-                    disabled={!chatInput.trim() || isChatLoading}
+                    disabled={(!chatInput.trim() && !attachedImage) || isChatLoading}
                     className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/10 active:scale-95 flex-shrink-0"
                   >
                     <Send size={12} className="text-white" />
