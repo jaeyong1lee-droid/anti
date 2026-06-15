@@ -11858,7 +11858,11 @@ export default function App() {
                               );
                             })}
                             {answered && (
-                              <div className={`mt-2 p-3 rounded-xl text-[14px] sm:text-[16px] leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                              <div className={`mt-2 text-[14px] sm:text-[16px] leading-relaxed ${
+                                (!isDesktop && !isMobileLandscape)
+                                  ? `p-0 bg-transparent border-0 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`
+                                  : `p-3 rounded-xl ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`
+                              }`}>
                                 <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                                 {!isCorrect && (
                                   <span className="ml-2 inline-flex items-center gap-1">
@@ -11901,7 +11905,11 @@ export default function App() {
 
                                    {/* 문제조정 입력 및 결과 보드 */}
                                     {adjustingInputKey === `r_${idx}` && (
-                                      <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                      <div className={`mt-2 w-full ${
+                                        (!isDesktop && !isMobileLandscape)
+                                          ? 'p-0 bg-transparent border-0'
+                                          : 'p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl'
+                                      }`}>
                                         <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                         <textarea
                                           rows={2}
@@ -11936,7 +11944,11 @@ export default function App() {
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
                                     {activeTutorInputKey === `r_${idx}` && (
-                                      <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl w-full">
+                                      <div className={`mt-2 w-full ${
+                                        (!isDesktop && !isMobileLandscape)
+                                          ? 'p-0 bg-transparent border-0'
+                                          : 'p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl'
+                                      }`}>
                                         <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
                                         <textarea
                                           rows={3}
@@ -12014,7 +12026,11 @@ export default function App() {
                                      <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {reviewOptionExplanations[idx].error}</div>
                                    )}
                                    {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
-                                     <div className="mt-2 p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl select-text">
+                                     <div className={`mt-2 select-text ${
+                                       (!isDesktop && !isMobileLandscape)
+                                         ? 'p-0 bg-transparent border-0'
+                                         : 'p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl'
+                                     }`}>
                                        <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                        <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                          <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
@@ -13388,7 +13404,11 @@ export default function App() {
                             );
                           })}
                           {answered && (
-                            <div className={`mt-2 p-3 rounded-xl text-[14px] sm:text-[16px] leading-relaxed ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`}>
+                            <div className={`mt-2 text-[14px] sm:text-[16px] leading-relaxed ${
+                              (!isDesktop && !isMobileLandscape)
+                                ? `p-0 bg-transparent border-0 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`
+                                : `p-3 rounded-xl ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`
+                            }`}>
                               <span className="font-black">{isCorrect ? '✅ 정답!' : '❌ 오답'}</span>
                               {!isCorrect && (
                                 <span className="ml-2 inline-flex items-center gap-1">
@@ -13431,7 +13451,11 @@ export default function App() {
 
                                 {/* 문제조정 입력 및 결과 보드 */}
                                 {adjustingInputKey === `e_${idx}` && (
-                                  <div className="mt-2 p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl w-full">
+                                  <div className={`mt-2 w-full ${
+                                    (!isDesktop && !isMobileLandscape)
+                                      ? 'p-0 bg-transparent border-0'
+                                      : 'p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl'
+                                  }`}>
                                     <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                     <textarea
                                       rows={2}
@@ -13466,7 +13490,11 @@ export default function App() {
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
                                     {activeTutorInputKey === `e_${idx}` && (
-                                      <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl w-full">
+                                      <div className={`mt-2 w-full ${
+                                        (!isDesktop && !isMobileLandscape)
+                                          ? 'p-0 bg-transparent border-0'
+                                          : 'p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl'
+                                      }`}>
                                         <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
                                         <textarea
                                           rows={3}
@@ -13544,7 +13572,11 @@ export default function App() {
                                   <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {examOptionExplanations[idx].error}</div>
                                 )}
                                 {examOptionExplanations[idx]?.text && !examOptionExplanations[idx]?.loading && (
-                                  <div className="mt-2 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl select-text">
+                                  <div className={`mt-2 select-text ${
+                                    (!isDesktop && !isMobileLandscape)
+                                      ? 'p-0 bg-transparent border-0'
+                                      : 'p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl'
+                                  }`}>
                                     <div className="text-[14px] sm:text-[16px] font-black text-amber-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
                                     <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
                                       <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
