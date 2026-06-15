@@ -4,7 +4,7 @@ export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
   // Match table blocks or inline/display math blocks
-  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,1000}\$)/gs;
+  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\b)|(\$[^\$\n]{1,200}\$)/gs;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -187,166 +187,6 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
-function splitEndMath(str) {
-  let i = str.length - 1;
-  let closeParenCount = 0;
-  let closeBracketCount = 0;
-  let closeBraceCount = 0;
-  
-  while (i >= 0) {
-    const char = str[i];
-    if (/[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/.test(char) || char === '*' || char === '#') {
-      break;
-    }
-    
-    if (char === ')') closeParenCount++;
-    else if (char === '(') {
-      if (closeParenCount === 0) break;
-      closeParenCount--;
-    }
-    else if (char === ']') {
-      closeBracketCount++;
-    }
-    else if (char === '[') {
-      if (closeBracketCount === 0) break;
-      closeBracketCount--;
-    }
-    else if (char === '}') {
-      closeBraceCount++;
-    }
-    else if (char === '{') {
-      if (closeBraceCount === 0) break;
-      closeBraceCount--;
-    }
-    
-    i--;
-  }
-  const plain = str.substring(0, i + 1);
-  const math = str.substring(i + 1);
-  return [plain, math];
-}
-
-function splitStartMath(str) {
-  let i = 0;
-  let openParenCount = 0;
-  let openBracketCount = 0;
-  let openBraceCount = 0;
-  
-  while (i < str.length) {
-    const char = str[i];
-    if (/[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/.test(char) || char === '*' || char === '#') {
-      break;
-    }
-    
-    if (char === '(') openParenCount++;
-    else if (char === ')') {
-      if (openParenCount === 0) break;
-      openParenCount--;
-    }
-    else if (char === '[') openBracketCount++;
-    else if (char === ']') {
-      if (openBracketCount === 0) break;
-      openBracketCount--;
-    }
-    else if (char === '{') openBraceCount++;
-    else if (char === '}') {
-      if (openBraceCount === 0) break;
-      openBraceCount--;
-    }
-    
-    i++;
-  }
-  const math = str.substring(0, i);
-  const plain = str.substring(i);
-  return [math, plain];
-}
-
-export function healMismatchedDollars(text) {
-  if (!text || typeof text !== 'string') return text;
-  
-  // 1. 달러 기호($)로 감싸진 영역에 한글이 한 글자 이상 포함되어 있고 그 외 수식 기호가 전혀 없거나 단순 한글 제목 형태인 경우,
-  //    이를 일반 텍스트로 오파싱한 것으로 간주하여 달러 기호를 강제 제거합니다.
-  //    예: $2) CIP 주열식 공법 적용 시:$ -> 2) CIP 주열식 공법 적용 시:
-  text = text.replace(/\$(?!\s)([^$\n]*?[\uAC00-\uD7A3]+[^$\n]*?)\$/g, (match, content) => {
-    if (!content.includes('\\') && !content.includes('_') && !content.includes('^') && !content.includes('{') && !content.includes('}')) {
-      return content;
-    }
-    return match;
-  });
-
-  const paragraphs = text.split('\n');
-  const healedParagraphs = paragraphs.map(para => {
-    if (!para.includes('$')) {
-      return para;
-    }
-    
-    // Split paragraph by display math blocks ($$) to avoid messing them up
-    const parts = para.split(/(\$\$[\s\S]*?\$\$)/g);
-    const healedParts = parts.map((part, index) => {
-      // Odd indices are the display math blocks (e.g. $$...$$), keep them as-is
-      if (index % 2 === 1) {
-        return part;
-      }
-      
-      // Even indices are plain text or inline math blocks, apply single-dollar healing
-      if (!part.includes('$')) {
-        return part;
-      }
-      
-      const segments = part.split(/(?<!\\)\$/);
-      if (segments.length <= 1) {
-        return part;
-      }
-      
-      let oddPlainCount = 0;
-      for (let i = 1; i < segments.length; i += 2) {
-        if (/[\uAC00-\uD7A3]/.test(segments[i])) {
-          oddPlainCount++;
-        }
-      }
-      
-      if (oddPlainCount === 0) {
-        return part;
-      }
-      
-      let result = '';
-      const n = segments.length - 1;
-      
-      const [plain0, math0] = splitEndMath(segments[0]);
-      result += plain0;
-      if (math0.trim()) {
-        result += `$${math0.trim()}$`;
-      }
-      
-      for (let i = 1; i < n; i++) {
-        if (i % 2 === 1) {
-          result += segments[i];
-        } else {
-          if (segments[i].trim()) {
-            result += `$${segments[i].trim()}$`;
-          }
-        }
-      }
-      
-      if (n % 2 === 0) {
-        const [mathN, plainN] = splitStartMath(segments[n]);
-        if (mathN.trim()) {
-          result += `$${mathN.trim()}$`;
-        }
-        result += plainN;
-      } else {
-        result += segments[n];
-      }
-      
-      return result;
-    });
-    
-    return healedParts.join('');
-  });
-  
-  return healedParagraphs.join('\n');
-}
-
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
@@ -354,18 +194,9 @@ export function healLatexFormulas(text, isNested = false) {
   // 1. Convert HTML tables to Markdown tables (only on outer call)
   let processed = text;
   if (!isNested) {
-    processed = healMismatchedDollars(processed);
     processed = htmlTableToMarkdown(processed);
     processed = wrapMarkdownTables(processed);
   }
-
-  // 🟢 [보완 반영 1] 게으른 매칭 및 다른 수식 납치 차단 (글자수 제한 해제)
-  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, content) => {
-    if (content.includes('$')) {
-      return `$${content}$`;
-    }
-    return match;
-  });
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
@@ -457,7 +288,7 @@ export function healLatexFormulas(text, isNested = false) {
     if (section.startsWith('<!--START_TABLE-->')) {
       return section; // 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지
     }
-    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.|\d+\)|\$))/g, ' ');
+    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|-|•|\d+\.))/g, ' ');
   }).join('');
 
   // 불필요한 HTML 태그 정제
@@ -509,8 +340,8 @@ export function healLatexFormulas(text, isNested = false) {
     result += needSpace ? ' ' + current.content : current.content;
   }
 
-  // 🟢 [보완 반영 2] 공백 허용 + 개행 방지 + 100자 이내 매칭
-  result = result.replace(/(\$[^\$\n]{1,100}\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+  // 한국어 조사 결합 어미 공백 규격 조율
+  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
   result = result.replace(/[ \t]+/g, ' ').trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
@@ -689,32 +520,63 @@ export function healQuizQuestionObject(q) {
   }
   return healDeep(q);
 }
+
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
 export function healAnswersheetQuestionObject(a) { return healDeep(a); }
 
-export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
+export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
-0. 🚨 [절대 금지 - JSON 응답 금지]: 당신은 실시간 대화형 챗봇/해설사이므로 절대로 JSON 형식(예: {"concept": "...", "explanation": "..."})으로 응답을 감싸서 출력하지 마십시오. 중괄호({ })나 큰따옴표가 들어간 JSON 키-값 구조는 렌더링 오류를 발생시킵니다. 오직 일반적인 한글 대화 문장 및 마크다운 포맷으로만 직접 답변하십시오.
-1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \phi, \sigma, \tau, $u$, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기, 해설 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \gamma_w)는 엄격히 금지합니다. 반드시 $\gamma_w$ 와 같이 감싸십시오. 답변에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
-2. 모든 LaTeX 명령어의 역슬래시(\)는 단일 역슬래시(\frac, \sigma)로 작성하십시오. (※ JSON이 아닌 일반 마크다운 출력이므로 이중 역슬래시가 아닌 단일 역슬래시로 출력해야 정상 렌더링됩니다.)
+1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, $u$, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기, 해설 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\gamma_w)는 엄격히 금지합니다. 반드시 $\\gamma_w$ 와 같이 감싸십시오. 보기 문항과 해설(explanation, answer 등)에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
+2. 모든 LaTeX 명령어의 역슬래시(\\)는 JSON 파싱 에러 방지를 위해 반드시 이중 역슬래시(\\\\)로 작성하십시오. (예: \\\\frac{a}{b}, \\\\sigma, \\\\cdot 등)
 3. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
 4. 외부 공백 필수 조건: $ 기호의 앞과 뒤가 한글, 숫자, 문장 부호와 맞닿을 경우 반드시 앞뒤로 '한 칸의 공백(스페이스)'을 명시적으로 두어 격리하십시오. 한국어 조사('가', '는', '입니다' 등)와 결합할 때도 예외 없이 한 칸 띄우고 조사를 작성하십시오. (예: $B$ 가 4배로 증가 (O) / $B$가 4배로 증가 (X))
 5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
-6. 분수(\\frac), 거듭제곱근(\\sqrt), 미분방정식 항이 중첩된 복잡한 전개 수식은 문장 중간에 절대 섞어 쓰지 말고, 반드시 수식 블록 위아래로 빈 줄을 한 칸씩 띄운 뒤 디스플레이 수식 블록($$\text{수식}$$)으로 완벽히 독립시켜 독자 단락으로 분리 출력하십시오.
+6. 분수(\\\\frac), 거듭제곱근(\\\\sqrt), 미분방정식 항이 중첩된 복잡한 전개 수식은 문장 중간에 절대 섞어 쓰지 말고, 반드시 수식 블록 위아래로 빈 줄을 한 칸씩 띄운 뒤 디스플레이 수식 블록($$수식$$)으로 완벽히 독립시켜 독자 단락으로 분리 출력하십시오.
+7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
+8. 수식 내부에서 특수 기호인 '작다' 기호는 \\\\lt 로, '크다' 기호는 \\\\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
+9. 아래첨자('_')나 괄호 기호 앞에 마크다운 렌더링 충돌 방지라는 핑계로 임의의 역슬래시(\\)를 붙여 시스템 깨짐(₩)을 유발하는 거동을 절대 하지 마십시오.
+10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\\\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
+11. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다.
+12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: JSON 응답 내에서 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
+14. 🚨 [문단 격리 규칙]: JSON 내부의 문자열 항목(concept, explanation, answer 등) 구조에서 새로운 제목(###)이나 글머리 기호(*, -)가 시작될 때는, 반드시 바로 직전 문장 끝에 명시적인 줄바꿈 기호 두 개(\\n\\n)를 삽입하여 완벽한 독자 단락으로 분리 출력하라. 절대로 앞 문장과 같은 줄에 공백만 띄우고 이어서 붙이지 마라.
+13. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\\\n\\\\n) 사용하여 명확하게 문단을 분리하십시오.
+15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
+
+[원시 JSON 출력 엄격 준수 규칙]
+- JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
+- 절대로 단일 백슬래시('\\frac') 형태로 가공되지 않은 원시 문자열을 JSON 내부에 주입하여 문법 에러(Cartesian/Escape Syntax Error)를 유발하지 마십시오.
+
+[JSON String Escape Rule]:
+When generating LaTeX formulas inside a JSON string, you must strictly escape the backslash twice (e.g., "\\\\frac", "\\\\alpha") to ensure that the response remains perfectly valid for native JSON.parse() without crashing the backend system.
+
+[🚨 수학적/산술적 검증 및 모순 방지 규칙 - 극도로 중요!]:
+- 객관식 문제 출제 시, 정답("answer")으로 지정하는 값은 반드시 해설("explanation")에서 풀이하여 유도한 최종 계산값과 완벽하게 일치해야 합니다.
+- 수식 계산(예: 비례 관계, 제곱근 계산 등)을 수행할 때는 종이에 적듯 단계별로 산술적 검증을 한 뒤, 최종 정답값의 보기(options) 문자열이 "answer" 필드에 오타 없이 똑같이 들어가도록 하십시오.
+- 예를 들어 해설에서 '1/4배(0.25배)가 된다'고 올바르게 풀이해 놓고, 정답 필드("answer")에 '0.125배' 같은 엉뚱한 값을 세팅하는 논리적 모순/환각을 절대 저지르지 마십시오.
+`;
+
+export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
+[🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
+0. 🚨 [절대 금지 - JSON 응답 금지]: 당신은 실시간 대화형 챗봇/해설사이므로 절대로 JSON 형식(예: {"concept": "...", "explanation": "..."})으로 응답을 감싸서 출력하지 마십시오. 중괄호({ })나 큰따옴표가 들어간 JSON 키-값 구조는 렌더링 오류를 발생시킵니다. 오직 일반적인 한글 대화 문장 및 마크다운 포맷으로만 직접 답변하십시오.
+1. 모든 수학 공식 및 개별 물리/공학 변수 기호(예: $K_s$, $k_h$, $e$, $c$, \\phi, \\sigma, \\tau, $u$, $z_c$, $F.S.$ 등)는 단독 문장 혹은 보기, 해설 내에 노출될 때도 무조건 인라인 LaTeX 기호 포맷인 $변수명$ 형태로 감싸서 출력하십시오. 날것의 텍스트 표기(예: \\gamma_w)는 엄격히 금지합니다. 반드시 $\\gamma_w$ 와 같이 감싸십시오. 답변에도 수식을 적극적으로 활용하되 반드시 기호로 감싸야 합니다.
+2. 모든 LaTeX 명령어의 역슬래시(\\)는 단일 역슬래시(\\frac, \\sigma)로 작성하십시오. (※ JSON이 아닌 일반 마크다운 출력이므로 이중 역슬래시가 아닌 단일 역슬래시로 출력해야 정상 렌더링됩니다.)
+3. 인라인 수식 작성 시 $ 기호와 수식 내용 사이에 절대 공백(스페이스)을 두지 마십시오. (예: $수식$ (O) / $ 수식 $ (X))
+4. 외부 공백 필수 조건: $ 기호의 앞과 뒤가 한글, 숫자, 문장 부호와 맞닿을 경우 반드시 앞뒤로 '한 칸의 공백(스페이스)'을 명시적으로 두어 격리하십시오. 한국어 조사('가', '는', '입니다' 등)와 결합할 때도 예외 없이 한 칸 띄우고 조사를 작성하십시오. (예: $B$ 가 4배로 증가 (O) / $B$가 4배로 증가 (X))
+5. 인라인 수식 내 줄바꿈 절대 금지: 문장 중간의 $ 기호 사이 내용에서는 엔터(줄바꿈)를 절대 하지 말고 단일 줄로 이어서 작성하십시오.
+6. 분수(\\frac), 거듭제곱근(\\sqrt), 미분방정식 항이 중첩된 복잡한 전개 수식은 문장 중간에 절대 섞어 쓰지 말고, 반드시 수식 블록 위아래로 빈 줄을 한 칸씩 띄운 뒤 디스플레이 수식 블록($$\\text{수식}$$)으로 완벽히 독립시켜 독자 단락으로 분리 출력하십시오.
 7. 단순 수치나 단위(예: 10m, 20% 등)에는 LaTeX 기호($)를 쓰지 말고 일반 텍스트로 작성하십시오.
 8. 수식 내부에서 특수 기호인 '작다' 기호는 \\lt 로, '크다' 기호는 \\gt 로 표기하여 마크다운 파싱 에러를 원천 차단하십시오.
-9. 아래첨자('_')나 괄호 기호 앞에 임의의 역슬래시(\)를 붙이지 마십시오.
+9. 아래첨자('_')나 괄호 기호 앞에 임의의 역슬래시(\\)를 붙이지 마십시오.
 10. LaTeX 공식 내부 중괄호 내에 한글을 결합하는 \\text{한글} 과 같은 행위는 철저히 금지합니다. 한글과 만날 때는 수식을 즉시 닫고 공백을 준 뒤 한글을 배치하십시오. (예: $B$ 가 4배로 증가)
 11. 달러 기호($ 또는 $$)는 반드시 수식 전체를 감싸는 가장 바깥쪽에만 위치해야 하며, 중괄호({}) 내부에 달러 기호가 침투하지 않도록 이중 마킹을 엄격히 금지합니다.
 12. 🚨 [마크다운 리스트 및 줄바꿈 수칙]: 항목을 나열하기 위해 리스트 기호(* 또는 -)를 사용할 때는 반드시 기호 뒤에 스페이스(공백)를 한 칸 띄우고 텍스트를 작성하십시오. (예: "* k: 투수계수" (O) / "*k: 투수계수" (X)). 
-13. 새로운 단락(문단)이나 글머리 기호(*, -), 번호 매기기(1), 2) 등), 또는 제목(###)이 시작될 때는 반드시 그 직전에 진행 중이던 수식을 닫고 줄바꿈 기호 두 개(\n\n)를 명시적으로 삽입하십시오. (수식 영역 안에 한글 제목이 납치되는 현상 방지)
-14. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\n\n) 사용하여 명확하게 문단을 분리하십시오.
+13. 새로운 단락(문단)이나 글머리 기호(*, -), 번호 매기기(1), 2) 등), 또는 제목(###)이 시작될 때는 반드시 그 직전에 진행 중이던 수식을 닫고 줄바꿈 기호 두 개(\\n\\n)를 명시적으로 삽입하십시오. (수식 영역 안에 한글 제목이 납치되는 현상 방지)
+14. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\n\\n) 사용하여 명확하게 문단을 분리하십시오.
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 16. 🚨 [표(Table) 작성 철칙]: 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(| 열1 | 열2 |과 구분선 | --- | --- |)으로만 작성하십시오.
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
-    - ⭕ [올바른 모범 예시]: $d_{H,max1} = ...$ \n\n 2) CIP 공법 적용 시: \n\n $d_{H,max2} = ...$ (한글 제목은 반드시 달러 기호 밖으로 탈출시키고 앞뒤로 줄바꿈과 수식 블록을 분리하십시오.)
-
+    - ⭕ [올바른 모범 예시]: $d_{H,max1} = ...$ \\n\\n 2) CIP 공법 적용 시: \\n\\n $d_{H,max2} = ...$ (한글 제목은 반드시 달러 기호 밖으로 탈출시키고 앞뒤로 줄바꿈과 수식 블록을 분리하십시오.)
 `;
