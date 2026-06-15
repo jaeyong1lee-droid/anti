@@ -147,6 +147,46 @@ function parseMarkdownTable(questionText) {
   return null;
 }
 
+export function wrapMarkdownTables(text) {
+  if (!text) return text;
+  
+  const lines = text.split('\n');
+  const resultLines = [];
+  let i = 0;
+  
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    if (trimmed.includes('|')) {
+      const potentialTableLines = [];
+      let j = i;
+      while (j < lines.length && lines[j].trim().includes('|')) {
+        potentialTableLines.push(lines[j]);
+        j++;
+      }
+      
+      if (potentialTableLines.length >= 2) {
+        const secondLine = potentialTableLines[1].trim();
+        const isSeparator = secondLine.includes('-') && secondLine.includes('|') && /^[\s|:\-]+$/.test(secondLine);
+        
+        if (isSeparator) {
+          resultLines.push('<!--START_TABLE-->');
+          resultLines.push(...potentialTableLines);
+          resultLines.push('<!--END_TABLE-->');
+          i = j;
+          continue;
+        }
+      }
+    }
+    
+    resultLines.push(line);
+    i++;
+  }
+  
+  return resultLines.join('\n');
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
@@ -155,6 +195,7 @@ export function healLatexFormulas(text, isNested = false) {
   let processed = text;
   if (!isNested) {
     processed = htmlTableToMarkdown(processed);
+    processed = wrapMarkdownTables(processed);
   }
 
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
