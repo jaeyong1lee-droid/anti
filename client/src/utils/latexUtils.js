@@ -198,6 +198,14 @@ export function healLatexFormulas(text, isNested = false) {
     processed = wrapMarkdownTables(processed);
   }
 
+  // $$ Normalization: Convert outer $$ ... $$ to $ ... $ if internal $ signs are present
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, content) => {
+    if (content.includes('$')) {
+      return `$${content}$`;
+    }
+    return match;
+  });
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
@@ -542,4 +550,5 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 13. 새로운 단락(문단)이나 글머리 기호(*, -), 또는 제목(###)이 시작될 때는 반드시 바로 앞에 줄바꿈 기호 두 개(\\n\\n)를 명시적으로 삽입하십시오. 절대로 앞 문장에 이어서 작성하지 마십시오. (예: "...예측합니다.\\n\\n* 응력 전이:" (O) / "...예측합니다.* 응력 전이:" (X))
 14. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\n\\n) 사용하여 명확하게 문단을 분리하십시오.
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
+17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
 `;
