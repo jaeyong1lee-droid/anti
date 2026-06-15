@@ -982,14 +982,24 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   // 1) 불필요한 연속 빈 행을 최대 2개로 압축하여 컴팩트하게 정리
-  let cleanedText = isHeavy
-    ? processedText.replace(/\\r\\n/g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim()
-    : healFormulas(processedText)
-        .replace(/\\r\\n/g, '\n')  // escaped \r\n → real newline
-        .replace(/\\n/g, '\n')      // escaped \n → real newline
-        .replace(/\r\n/g, '\n')     // CR+LF → LF
-        .replace(/\n{3,}/g, '\n\n') // max 2 consecutive newlines
-        .trim();
+  let cleanedText = processedText;
+  if (typeof cleanedText === 'string') {
+    cleanedText = cleanedText
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n');
+  }
+
+  if (isHeavy) {
+    if (typeof cleanedText === 'string') {
+      cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+    }
+  } else {
+    cleanedText = healFormulas(cleanedText);
+    if (typeof cleanedText === 'string') {
+      cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+    }
+  }
 
   if (typeof cleanedText === 'string') {
     cleanedText = convertMarkdownTablesToHtml(cleanedText);
