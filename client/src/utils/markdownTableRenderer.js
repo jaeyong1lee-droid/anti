@@ -21,7 +21,10 @@ function renderTableToHtml(tableLines) {
   const bodyRows = tableLines.slice(2).map(line => parseRow(line));
   
   let html = `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="w-full table-auto min-w-[480px] sm:min-w-full text-center border-collapse text-[13px] sm:text-[15px]">`;
+  const colCount = headers.length;
+  html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
+    colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
+  }">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach(h => {
