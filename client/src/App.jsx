@@ -1403,8 +1403,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   const [colWidths, setColWidths] = React.useState(() => {
     if (colCount <= 1) return ['100%'];
-    const first = 30;
-    const others = 70 / (colCount - 1);
+    const first = colCount >= 3 ? 15 : 25;
+    const others = (100 - first) / (colCount - 1);
     return [first, ...Array(colCount - 1).fill(others)];
   });
 
@@ -1456,7 +1456,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table ref={tableRef} className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+      <table ref={tableRef} className="w-full table-fixed min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
         <colgroup>
           {colWidths.map((w, idx) => (
             <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
@@ -1621,8 +1621,8 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
   const [colWidths, setColWidths] = React.useState(() => {
     if (colCount <= 1) return ['100%'];
-    const first = 30;
-    const others = 70 / (colCount - 1);
+    const first = colCount >= 3 ? 15 : 25;
+    const others = (100 - first) / (colCount - 1);
     return [first, ...Array(colCount - 1).fill(others)];
   });
 
@@ -1674,7 +1674,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table ref={tableRef} className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+      <table ref={tableRef} className="w-full table-fixed min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
         <colgroup>
           {colWidths.map((w, idx) => (
             <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
