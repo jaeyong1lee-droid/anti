@@ -198,9 +198,9 @@ export function healLatexFormulas(text, isNested = false) {
     processed = wrapMarkdownTables(processed);
   }
 
-  // $$ Normalization: Convert outer $$ ... $$ to $ ... $ if internal $ signs are present
+  // 🟢 [보완 반영 1] 게으른 매칭 및 300자 제한으로 다른 수식 납치 차단
   processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, content) => {
-    if (content.includes('$')) {
+    if (content.length <= 1000 && content.includes('$')) {
       return `$${content}$`;
     }
     return match;
@@ -348,8 +348,8 @@ export function healLatexFormulas(text, isNested = false) {
     result += needSpace ? ' ' + current.content : current.content;
   }
 
-  // 한국어 조사 결합 어미 공백 규격 조율
-  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
+  // 🟢 [보완 반영 2] 공백 허용 + 개행 방지 + 100자 이내 매칭
+  result = result.replace(/(\$[^\$\n]{1,100}\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
   result = result.replace(/[ \t]+/g, ' ').trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
