@@ -12052,11 +12052,7 @@ export default function App() {
 
                                    {/* 문제조정 입력 및 결과 보드 */}
                                     {adjustingInputKey === `r_${idx}` && (
-                                      <div className={`mt-2 w-full ${
-                                        (!isDesktop && !isMobileLandscape)
-                                          ? 'p-0 bg-transparent border-0'
-                                          : 'p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl'
-                                      }`}>
+                                      <div className="mt-2 w-full">
                                         <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                         <textarea
                                           rows={2}
@@ -13550,11 +13546,7 @@ export default function App() {
 
                                 {/* 문제조정 입력 및 결과 보드 */}
                                 {adjustingInputKey === `e_${idx}` && (
-                                  <div className={`mt-2 w-full ${
-                                    (!isDesktop && !isMobileLandscape)
-                                      ? 'p-0 bg-transparent border-0'
-                                      : 'p-3 bg-indigo-950/20 border border-indigo-500/30 rounded-xl'
-                                  }`}>
+                                  <div className="mt-2 w-full">
                                     <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                     <textarea
                                       rows={2}
