@@ -707,7 +707,11 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   });
 
   // Protect $ ... $ (Allowing newlines inside inline math blocks so they don't break during split)
-  tempText = tempText.replace(/\$([^\$]+?)\$/g, (match) => {
+  tempText = tempText.replace(/\$([^\$]+?)\$/g, (match, math) => {
+    const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+    if (!isReal) {
+      return match;
+    }
     const placeholder = `___INLINE_MATH_${placeholderIndex}___`;
     mathBlocks.push({ placeholder, content: match });
     placeholderIndex++;
@@ -1102,6 +1106,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       });
       // Render inline math $ ... $
       htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
+        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+        if (!isReal) {
+          return m;
+        }
         return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
       });
     }

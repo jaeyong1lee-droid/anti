@@ -187,6 +187,58 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
+export function healMismatchedDollars(text) {
+  if (!text || typeof text !== 'string') return text;
+  
+  const paragraphs = text.split('\n');
+  const healedParagraphs = paragraphs.map(para => {
+    const hasMathIndicators = /\\/.test(para) || /_/.test(para) || /\^/.test(para) || /\\cdot\b/.test(para);
+    const hasKorean = /[\uAC00-\uD7A3]/.test(para);
+    if (!para.includes('$') || para.includes('$$') || !hasMathIndicators || !hasKorean) {
+      return para;
+    }
+    
+    const segments = para.split(/(?<!\\)\$/);
+    if (segments.length <= 1) {
+      return para;
+    }
+    
+    const isFormula = (str) => {
+      const trimmed = str.trim();
+      if (!trimmed) return false;
+      
+      const hasKoreanChar = /[\uAC00-\uD7A3]/.test(trimmed);
+      const hasMathOperators = /[=+\-*\/<>]/.test(trimmed) || /\\(cdot|times|partial|frac|dfrac|sqrt|alpha|beta|gamma|delta|theta|sigma|tau|phi|omega|pi|lambda|mu|psi|rho|eta|Delta|Sigma|Gamma|Phi|Theta|Omega|nu)\b/.test(trimmed);
+      const hasLaTexCommand = /\\[a-zA-Z]+/.test(trimmed);
+      const hasSubSuperscript = /[_^]/.test(trimmed);
+      
+      if (hasKoreanChar) {
+        return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
+      }
+      
+      if (trimmed.length < 10) {
+        return true;
+      }
+      
+      return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
+    };
+    
+    let result = '';
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      if (isFormula(seg)) {
+        result += `$${seg.trim()}$`;
+      } else {
+        result += seg;
+      }
+    }
+    
+    return result.replace(/\s+/g, ' ');
+  });
+  
+  return healedParagraphs.join('\n');
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
@@ -194,6 +246,7 @@ export function healLatexFormulas(text, isNested = false) {
   // 1. Convert HTML tables to Markdown tables (only on outer call)
   let processed = text;
   if (!isNested) {
+    processed = healMismatchedDollars(processed);
     processed = htmlTableToMarkdown(processed);
     processed = wrapMarkdownTables(processed);
   }

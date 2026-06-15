@@ -187,6 +187,58 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
+export function healMismatchedDollars(text) {
+  if (!text || typeof text !== 'string') return text;
+  
+  const paragraphs = text.split('\n');
+  const healedParagraphs = paragraphs.map(para => {
+    const hasMathIndicators = /\\/.test(para) || /_/.test(para) || /\^/.test(para) || /\\cdot\b/.test(para);
+    const hasKorean = /[\uAC00-\uD7A3]/.test(para);
+    if (!para.includes('$') || para.includes('$$') || !hasMathIndicators || !hasKorean) {
+      return para;
+    }
+    
+    const segments = para.split(/(?<!\\)\$/);
+    if (segments.length <= 1) {
+      return para;
+    }
+    
+    const isFormula = (str) => {
+      const trimmed = str.trim();
+      if (!trimmed) return false;
+      
+      const hasKoreanChar = /[\uAC00-\uD7A3]/.test(trimmed);
+      const hasMathOperators = /[=+\-*\/<>]/.test(trimmed) || /\\(cdot|times|partial|frac|dfrac|sqrt|alpha|beta|gamma|delta|theta|sigma|tau|phi|omega|pi|lambda|mu|psi|rho|eta|Delta|Sigma|Gamma|Phi|Theta|Omega|nu)\b/.test(trimmed);
+      const hasLaTexCommand = /\\[a-zA-Z]+/.test(trimmed);
+      const hasSubSuperscript = /[_^]/.test(trimmed);
+      
+      if (hasKoreanChar) {
+        return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
+      }
+      
+      if (trimmed.length < 10) {
+        return true;
+      }
+      
+      return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
+    };
+    
+    let result = '';
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      if (isFormula(seg)) {
+        result += `$${seg.trim()}$`;
+      } else {
+        result += seg;
+      }
+    }
+    
+    return result.replace(/\s+/g, ' ');
+  });
+  
+  return healedParagraphs.join('\n');
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false) {
   if (!text || typeof text !== 'string') return text;
@@ -194,6 +246,7 @@ export function healLatexFormulas(text, isNested = false) {
   // 1. Convert HTML tables to Markdown tables (only on outer call)
   let processed = text;
   if (!isNested) {
+    processed = healMismatchedDollars(processed);
     processed = htmlTableToMarkdown(processed);
     processed = wrapMarkdownTables(processed);
   }
@@ -550,6 +603,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 13. 문단 구분이나 줄바꿈을 할 때는 프론트엔드 마크다운 렌더러가 텍스트를 한 줄로 뭉개지 않도록 반드시 줄바꿈 기호를 두 번 연속(\\\\n\\\\n) 사용하여 명확하게 문단을 분리하십시오.
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
+18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오. (예: "d_{H,max1} = ... $ 2) 고강성 ... :$ d_{H,max2} ..." (X - 절대 금지, 2번 제목이 수식 영역에 납치됨) -> "$d_{H,max1} = ...$ 2) 고강성 ... : $d_{H,max2} = ...$" (O - 올바른 격리 및 표기))
 
 [원시 JSON 출력 엄격 준수 규칙]
 - JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
@@ -584,4 +638,5 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 16. 🚨 [표(Table) 작성 철칙]: 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(| 열1 | 열2 |과 구분선 | --- | --- |)으로만 작성하십시오.
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
+18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오. (예: "d_{H,max1} = ... $ 2) 고강성 ... :$ d_{H,max2} ..." (X - 절대 금지, 2번 제목이 수식 영역에 납치됨) -> "$d_{H,max1} = ...$ 2) 고강성 ... : $d_{H,max2} = ...$" (O - 올바른 격리 및 표기))
 `;
