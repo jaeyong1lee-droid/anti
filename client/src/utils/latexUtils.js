@@ -299,7 +299,7 @@ export function healMismatchedDollars(text) {
         return part;
       }
       
-      let result = ';
+      let result = '';
       const n = segments.length - 1;
       
       const [plain0, math0] = splitEndMath(segments[0]);
