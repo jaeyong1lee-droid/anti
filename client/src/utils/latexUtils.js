@@ -187,14 +187,86 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
+function splitEndMath(str) {
+  let i = str.length - 1;
+  let closeParenCount = 0;
+  let closeBracketCount = 0;
+  let closeBraceCount = 0;
+  
+  while (i >= 0) {
+    const char = str[i];
+    if (/[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/.test(char) || char === '*' || char === '#') {
+      break;
+    }
+    
+    if (char === ')') closeParenCount++;
+    else if (char === '(') {
+      if (closeParenCount === 0) break;
+      closeParenCount--;
+    }
+    else if (char === ']') {
+      closeBracketCount++;
+    }
+    else if (char === '[') {
+      if (closeBracketCount === 0) break;
+      closeBracketCount--;
+    }
+    else if (char === '}') {
+      closeBraceCount++;
+    }
+    else if (char === '{') {
+      if (closeBraceCount === 0) break;
+      closeBraceCount--;
+    }
+    
+    i--;
+  }
+  const plain = str.substring(0, i + 1);
+  const math = str.substring(i + 1);
+  return [plain, math];
+}
+
+function splitStartMath(str) {
+  let i = 0;
+  let openParenCount = 0;
+  let openBracketCount = 0;
+  let openBraceCount = 0;
+  
+  while (i < str.length) {
+    const char = str[i];
+    if (/[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/.test(char) || char === '*' || char === '#') {
+      break;
+    }
+    
+    if (char === '(') openParenCount++;
+    else if (char === ')') {
+      if (openParenCount === 0) break;
+      openParenCount--;
+    }
+    else if (char === '[') openBracketCount++;
+    else if (char === ']') {
+      if (openBracketCount === 0) break;
+      openBracketCount--;
+    }
+    else if (char === '{') openBraceCount++;
+    else if (char === '}') {
+      if (openBraceCount === 0) break;
+      openBraceCount--;
+    }
+    
+    i++;
+  }
+  const math = str.substring(0, i);
+  const plain = str.substring(i);
+  return [math, plain];
+}
+
 export function healMismatchedDollars(text) {
   if (!text || typeof text !== 'string') return text;
   
   const paragraphs = text.split('\n');
   const healedParagraphs = paragraphs.map(para => {
-    const hasMathIndicators = /\\/.test(para) || /_/.test(para) || /\^/.test(para) || /\\cdot\b/.test(para);
-    const hasKorean = /[\uAC00-\uD7A3]/.test(para);
-    if (!para.includes('$') || para.includes('$$') || !hasMathIndicators || !hasKorean) {
+    if (!para.includes('$') || para.includes('$$')) {
       return para;
     }
     
@@ -203,37 +275,47 @@ export function healMismatchedDollars(text) {
       return para;
     }
     
-    const isFormula = (str) => {
-      const trimmed = str.trim();
-      if (!trimmed) return false;
-      
-      const hasKoreanChar = /[\uAC00-\uD7A3]/.test(trimmed);
-      const hasMathOperators = /[=+\-*\/<>]/.test(trimmed) || /\\(cdot|times|partial|frac|dfrac|sqrt|alpha|beta|gamma|delta|theta|sigma|tau|phi|omega|pi|lambda|mu|psi|rho|eta|Delta|Sigma|Gamma|Phi|Theta|Omega|nu)\b/.test(trimmed);
-      const hasLaTexCommand = /\\[a-zA-Z]+/.test(trimmed);
-      const hasSubSuperscript = /[_^]/.test(trimmed);
-      
-      if (hasKoreanChar) {
-        return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
-      }
-      
-      if (trimmed.length < 10) {
-        return true;
-      }
-      
-      return hasMathOperators || hasLaTexCommand || hasSubSuperscript;
-    };
-    
-    let result = '';
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      if (isFormula(seg)) {
-        result += `$${seg.trim()}$`;
-      } else {
-        result += seg;
+    let oddPlainCount = 0;
+    for (let i = 1; i < segments.length; i += 2) {
+      if (/[\uAC00-\uD7A3]/.test(segments[i])) {
+        oddPlainCount++;
       }
     }
     
-    return result.replace(/\s+/g, ' ');
+    if (oddPlainCount === 0) {
+      return para;
+    }
+    
+    let result = '';
+    const n = segments.length - 1;
+    
+    const [plain0, math0] = splitEndMath(segments[0]);
+    result += plain0;
+    if (math0.trim()) {
+      result += `$${math0.trim()}$`;
+    }
+    
+    for (let i = 1; i < n; i++) {
+      if (i % 2 === 1) {
+        result += segments[i];
+      } else {
+        if (segments[i].trim()) {
+          result += `$${segments[i].trim()}$`;
+        }
+      }
+    }
+    
+    if (n % 2 === 0) {
+      const [mathN, plainN] = splitStartMath(segments[n]);
+      if (mathN.trim()) {
+        result += `$${mathN.trim()}$`;
+      }
+      result += plainN;
+    } else {
+      result += segments[n];
+    }
+    
+    return result;
   });
   
   return healedParagraphs.join('\n');
