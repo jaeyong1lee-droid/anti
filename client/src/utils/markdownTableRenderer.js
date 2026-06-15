@@ -21,7 +21,7 @@ function renderTableToHtml(tableLines) {
   const bodyRows = tableLines.slice(2).map(line => parseRow(line));
   
   let html = `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="w-full text-center border-collapse text-sm">`;
+  html += `<table class="w-full text-center border-collapse text-[14px] sm:text-[16px]">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach(h => {
