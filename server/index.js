@@ -6585,6 +6585,12 @@ async function startServer() {
   }
 }
 
+// Express global error handler to prevent raw HTML gateway errors and enforce JSON responses
+app.use((err, req, res, next) => {
+  console.error('Express global error handler:', err);
+  res.status(500).json({ error: err.message || '서버 내부 오류가 발생했습니다.' });
+});
+
 // Vercel Serverless 환경 대응: Vercel이 아닌 로컬 구동 시에만 포트 리스너(app.listen)를 시작합니다.
 export default app;
 
