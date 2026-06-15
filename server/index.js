@@ -3855,14 +3855,33 @@ ${formatRequirement}
 
     } else if (mode === 'exam') {
       // 종합평가 모드 재생성
-      const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+      // 1. Fetch metadata of all topics (very fast, no binary payload)
+      const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name FROM topics ORDER BY created_at DESC`);
       if (!topics || topics.length === 0) {
         return res.status(400).json({ error: '등록된 토픽이 없습니다.' });
       }
 
-      // 텍스트 간략 추출
-      const topicTexts = [];
-      for (const topic of topics.slice(0, 8)) {
+      // 2. We only need the pdf_data for the first 8 topics
+      const targetTopics = topics.slice(0, 8);
+      const targetIds = targetTopics.map(t => t.id);
+      
+      // Fetch pdf_data only for those target topics
+      const pdfDataRows = await dbQuery.all(
+        `SELECT id, pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
+        targetIds
+      );
+      
+      // Map pdf_data back to targetTopics
+      const pdfDataMap = {};
+      for (const row of pdfDataRows) {
+        pdfDataMap[row.id] = row.pdf_data;
+      }
+      for (const topic of targetTopics) {
+        topic.pdf_data = pdfDataMap[topic.id] || null;
+      }
+
+      // 텍스트 간략 추출 (Promise.all 병렬 처리)
+      const topicTexts = await Promise.all(targetTopics.map(async (topic) => {
         let fileText = '';
         if (topic.pdf_data) {
           const isHtml = topic.pdf_name && (
@@ -3880,8 +3899,8 @@ ${formatRequirement}
           fileText = mergeVerticalText(fileText);
           if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         }
-        topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`);
-      }
+        return `[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`;
+      }));
 
       const combinedText = topicTexts.join('\n\n---\n\n');
       const topicTitles = topics.map(t => t.title).join(', ');
@@ -3892,17 +3911,22 @@ ${formatRequirement}
       if (!hasAnyAiKey) {
         // AI 키가 없는 경우 종합평가 예비 문항 fallback 선택
         const selectedTopic = topics[Math.floor(Math.random() * topics.length)];
+        
+        // Fetch pdf_data for this fallback topic
+        const topicWithData = await dbQuery.get(`SELECT pdf_data FROM topics WHERE id = ?`, [selectedTopic.id]);
+        const pdfData = topicWithData?.pdf_data || null;
+
         let fileText = '';
-        if (selectedTopic.pdf_data) {
+        if (pdfData) {
           const isHtml = selectedTopic.pdf_name && (
             selectedTopic.pdf_name.toLowerCase().endsWith('.html') ||
             selectedTopic.pdf_name.toLowerCase().endsWith('.htm') ||
-            isBufferHtml(selectedTopic.pdf_data)
+            isBufferHtml(pdfData)
           );
           try {
-            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(selectedTopic.pdf_data));
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(pdfData));
             else {
-              const parsed = await pdfParse(selectedTopic.pdf_data);
+              const parsed = await pdfParse(pdfData);
               fileText = parsed.text || '';
             }
           } catch (e) {}
@@ -4285,13 +4309,33 @@ ${formatRequirement}
       });
 
     } else if (mode === 'exam') {
-      const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+      // 1. Fetch metadata of all topics (very fast, no binary payload)
+      const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name FROM topics ORDER BY created_at DESC`);
       if (!topics || topics.length === 0) {
         return res.status(400).json({ error: '등록된 토픽이 없습니다.' });
       }
 
-      const topicTexts = [];
-      for (const topic of topics.slice(0, 8)) {
+      // 2. We only need the pdf_data for the first 8 topics
+      const targetTopics = topics.slice(0, 8);
+      const targetIds = targetTopics.map(t => t.id);
+      
+      // Fetch pdf_data only for those target topics
+      const pdfDataRows = await dbQuery.all(
+        `SELECT id, pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
+        targetIds
+      );
+      
+      // Map pdf_data back to targetTopics
+      const pdfDataMap = {};
+      for (const row of pdfDataRows) {
+        pdfDataMap[row.id] = row.pdf_data;
+      }
+      for (const topic of targetTopics) {
+        topic.pdf_data = pdfDataMap[topic.id] || null;
+      }
+
+      // 텍스트 간략 추출 (Promise.all 병렬 처리)
+      const topicTexts = await Promise.all(targetTopics.map(async (topic) => {
         let fileText = '';
         if (topic.pdf_data) {
           const isHtml = topic.pdf_name && (
@@ -4309,8 +4353,8 @@ ${formatRequirement}
           fileText = mergeVerticalText(fileText);
           if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         }
-        topicTexts.push(`[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`);
-      }
+        return `[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`;
+      }));
 
       const combinedText = topicTexts.join('\n\n---\n\n');
       const topicTitles = topics.map(t => t.title).join(', ');
@@ -4493,9 +4537,8 @@ app.post('/api/exam/all', async (req, res) => {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
 
-    // Extract text from each topic (limit per topic to avoid token overflow)
-    const topicTexts = [];
-    for (const topic of topics) {
+    // Extract text from each topic in parallel to avoid timeouts
+    const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
       if (topic.pdf_data) {
         const isHtml = topic.pdf_name && (
@@ -4510,13 +4553,14 @@ app.post('/api/exam/all', async (req, res) => {
             const parsed = await pdfParse(topic.pdf_data);
             fileText = parsed.text || '';
           }
-        } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
+        } catch (e) {
+          console.warn(`Topic ${topic.id} parse error:`, e.message);
+        }
         fileText = mergeVerticalText(fileText);
-        // Smart limit per topic to avoid prompt token bloating and text corruption
         fileText = smartTruncate(fileText, 10000);
       }
-      topicTexts.push(`<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`);
-    }
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+    }));
 
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
@@ -4826,9 +4870,8 @@ app.post('/api/exam/additional', async (req, res) => {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
 
-    // Extract text from each topic (limit per topic to avoid token overflow)
-    const topicTexts = [];
-    for (const topic of topics) {
+    // Extract text from each topic in parallel to avoid timeouts
+    const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
       if (topic.pdf_data) {
         const isHtml = topic.pdf_name && (
@@ -4843,13 +4886,14 @@ app.post('/api/exam/additional', async (req, res) => {
             const parsed = await pdfParse(topic.pdf_data);
             fileText = parsed.text || '';
           }
-        } catch (e) { console.warn(`Topic ${topic.id} parse error:`, e.message); }
+        } catch (e) {
+          console.warn(`Topic ${topic.id} parse error:`, e.message);
+        }
         fileText = mergeVerticalText(fileText);
-        // Smart limit per topic to avoid prompt token bloating and text corruption
         fileText = smartTruncate(fileText, 10000);
       }
-      topicTexts.push(`<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`);
-    }
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+    }));
 
     const combinedText = topicTexts.join('\n\n---\n\n');
     const topicTitles = topics.map(t => t.title).join(', ');
