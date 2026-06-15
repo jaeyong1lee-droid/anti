@@ -1572,15 +1572,27 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           <div className="flex items-center gap-1 sm:gap-1.5 w-full">
                             <div className="relative flex-grow">
                               {revealed ? (
-                                <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
-                                  {value ? (
-                                    <span className="font-bold text-slate-100">
-                                      <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
-                                    </span>
-                                  ) : (
-                                    <span className="text-rose-300 italic font-medium">
-                                      (미입력)
-                                    </span>
+                                <div className="flex flex-col gap-1 w-full text-left p-1 select-text">
+                                  <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
+                                    <span className="text-xs opacity-75 mr-1 select-none">내 답변:</span>
+                                    {value ? (
+                                      <span className="font-bold text-slate-100">
+                                        <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                                      </span>
+                                    ) : (
+                                      <span className="text-rose-350 italic font-medium">
+                                        (미입력)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[12px] sm:text-[14px] text-slate-355 font-semibold mt-1">
+                                    <span className="text-emerald-400 font-extrabold mr-1">정답:</span>
+                                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                                  </div>
+                                  {gradingResult?.reason && (
+                                    <div className={`text-[11px] sm:text-[13px] leading-relaxed opacity-95 ${getTableFeedbackTextColor(gradingResult)} mt-0.5 whitespace-normal break-words`}>
+                                      <span className="font-black">피드백:</span> {renderHighlightedFeedback(gradingResult.reason)}
+                                    </div>
                                   )}
                                 </div>
                               ) : (
@@ -12084,50 +12096,9 @@ export default function App() {
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
-                                  {(() => {
-                                    const inputIds = Object.keys(q.answers || {});
-                                    if (inputIds.length === 0) return null;
-                                    return (
-                                      <div className="mt-2 p-0 select-text text-left animate-fade-in my-2 text-slate-100">
-                                        <div className={`text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1 ${getTableBannerTitleClasses(idx, q)}`}>
-                                          <span>{getTableBannerStatusText(idx, q)}</span>
-                                        </div>
-                                        <div className="space-y-1.5 mt-1.5">
-                                          {inputIds.map((inputId) => {
-                                            const match = inputId.match(/\d+/);
-                                            const inputNum = match ? parseInt(match[0], 10) : 1;
-                                            const inputLetter = String.fromCharCode(64 + inputNum);
-                                            const correctAnswer = q.answers?.[inputId] || '';
-                                            const grading = tableGradingResults[`${idx}_${inputId}`];
-                                            const reason = grading?.reason ? grading.reason : '';
-                                            const feedbackColor = getTableFeedbackTextColor(grading);
-
-                                            return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
-                                                {reason ? (
-                                                  <div className="space-y-0.5">
-                                                    <div>
-                                                      <span className={`font-extrabold ${feedbackColor}`}>{inputLetter} :</span> <span className={feedbackColor}>{renderHighlightedFeedback(reason)}</span>
-                                                    </div>
-                                                    <div className="pl-4 text-slate-100 font-semibold">
-                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                                    </div>
-                                                  </div>
-                                                ) : (
-                                                  <div>
-                                                    <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
-                                                    <span className="text-slate-100 font-semibold">
-                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                                    </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
+                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                    <span>{getTableBannerStatusText(idx, q)}</span>
+                                  </div>
                                   {q.explanation && (
                                     <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold text-amber-400">📝 해설:</span>
@@ -13630,50 +13601,9 @@ export default function App() {
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
-                                  {(() => {
-                                    const inputIds = Object.keys(q.answers || {});
-                                    if (inputIds.length === 0) return null;
-                                    return (
-                                      <div className="mt-2 p-0 select-text text-left animate-fade-in my-2 text-slate-100">
-                                        <div className={`text-[14px] sm:text-[16px] font-black flex items-center gap-1.5 mb-1 border-b border-current/10 pb-1 ${getTableBannerTitleClasses(idx, q)}`}>
-                                          <span>{getTableBannerStatusText(idx, q)}</span>
-                                        </div>
-                                        <div className="space-y-1.5 mt-1.5">
-                                          {inputIds.map((inputId) => {
-                                            const match = inputId.match(/\d+/);
-                                            const inputNum = match ? parseInt(match[0], 10) : 1;
-                                            const inputLetter = String.fromCharCode(64 + inputNum);
-                                            const correctAnswer = q.answers?.[inputId] || '';
-                                            const grading = tableGradingResults[`${idx}_${inputId}`];
-                                            const reason = grading?.reason ? grading.reason : '';
-                                            const feedbackColor = getTableFeedbackTextColor(grading);
-
-                                            return (
-                                              <div key={inputId} className="text-[14px] sm:text-[16px] leading-relaxed opacity-90 select-text">
-                                                {reason ? (
-                                                  <div className="space-y-0.5">
-                                                    <div>
-                                                      <span className={`font-extrabold ${feedbackColor}`}>{inputLetter} :</span> <span className={feedbackColor}>{renderHighlightedFeedback(reason)}</span>
-                                                    </div>
-                                                    <div className="pl-4 text-slate-100 font-semibold">
-                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                                    </div>
-                                                  </div>
-                                                ) : (
-                                                  <div>
-                                                    <span className="font-extrabold text-emerald-400">{inputLetter} :</span>{' '}
-                                                    <span className="text-slate-100 font-semibold">
-                                                      (답안) <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                                    </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
+                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                    <span>{getTableBannerStatusText(idx, q)}</span>
+                                  </div>
                                   {q.explanation && (
                                     <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold text-amber-400">📝 해설:</span>
