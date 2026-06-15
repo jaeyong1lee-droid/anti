@@ -5127,6 +5127,7 @@ export default function App() {
   const [activeTutorInputKey, setActiveTutorInputKey] = useState(null);
   const [tutorInputText, setTutorInputText] = useState({});
   const [tutorAnswers, setTutorAnswers] = useState({});
+  const [tutorCollapsed, setTutorCollapsed] = useState({});
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
@@ -8153,9 +8154,22 @@ export default function App() {
   };
 
   const renderCardTutorChat = (key, q) => {
+    const isCollapsed = !!tutorCollapsed[key];
+    const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
+
     return (
       <div className="mt-2.5 w-full text-left">
-        <label className="block text-[14px] sm:text-[16px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+        <div className="flex justify-between items-center mb-1">
+          <label className="block text-[14px] sm:text-[16px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+          {hasPanel && (
+            <button
+              onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
+              className="text-[10px] sm:text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+            >
+              {isCollapsed ? '열기 ▾' : '접기 ▴'}
+            </button>
+          )}
+        </div>
         <div className="flex gap-2">
           <textarea
             rows={1}
@@ -8187,26 +8201,30 @@ export default function App() {
         </div>
 
         {/* AI Tutor In-Card Answer Panel */}
-        {tutorAnswers[key]?.loading && (
-          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
-            <div className="text-[14px] sm:text-[16px] text-violet-400 font-bold flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-            </div>
-            <div className="h-4 bg-slate-850 rounded w-5/6"></div>
-            <div className="h-4 bg-slate-850 rounded w-4/6"></div>
-          </div>
-        )}
-        {tutorAnswers[key]?.error && (
-          <div className="text-[14px] sm:text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
-        )}
-        {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
-          <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
-            <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
-              <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
-            </div>
-          </div>
+        {!isCollapsed && (
+          <>
+            {tutorAnswers[key]?.loading && (
+              <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
+                <div className="text-[14px] sm:text-[16px] text-violet-400 font-bold flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                  <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                </div>
+                <div className="h-4 bg-slate-850 rounded w-5/6"></div>
+                <div className="h-4 bg-slate-850 rounded w-4/6"></div>
+              </div>
+            )}
+            {tutorAnswers[key]?.error && (
+              <div className="text-[14px] sm:text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+            )}
+            {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+              <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
+                <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+                <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
+                  <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -12086,69 +12104,88 @@ export default function App() {
                                     )}
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
-                                    {activeTutorInputKey === `r_${idx}` && (
-                                      <div className="mt-2 w-full">
-                                        <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
-                                        <textarea
-                                          rows={3}
-                                          value={tutorInputText[`r_${idx}`] || ''}
-                                          onChange={(e) => {
-                                            const text = e.target.value;
-                                            setTutorInputText(prev => ({ ...prev, [`r_${idx}`]: text }));
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                              e.preventDefault();
-                                              const isPending = tutorAnswers[`r_${idx}`]?.loading;
-                                              const hasText = (tutorInputText[`r_${idx}`] || '').trim();
-                                              if (!isPending && hasText) {
-                                                handleAskCardTutor(`r_${idx}`, q);
+                                    {activeTutorInputKey === `r_${idx}` && (() => {
+                                      const key = `r_${idx}`;
+                                      const isCollapsed = !!tutorCollapsed[key];
+                                      const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
+                                      return (
+                                        <div className="mt-2 w-full">
+                                          <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-[10px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                            {hasPanel && (
+                                              <button
+                                                onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
+                                                className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+                                              >
+                                                {isCollapsed ? '열기 ▾' : '접기 ▴'}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <textarea
+                                            rows={3}
+                                            value={tutorInputText[key] || ''}
+                                            onChange={(e) => {
+                                              const text = e.target.value;
+                                              setTutorInputText(prev => ({ ...prev, [key]: text }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                const isPending = tutorAnswers[key]?.loading;
+                                                const hasText = (tutorInputText[key] || '').trim();
+                                                if (!isPending && hasText) {
+                                                  handleAskCardTutor(key, q);
+                                                }
                                               }
-                                            }
-                                          }}
-                                          placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-2 resize-none"
-                                        />
-                                        <div className="flex gap-2 justify-end">
-                                          <button
-                                            onClick={() => setActiveTutorInputKey(null)}
-                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                          >
-                                            취소
-                                          </button>
-                                          <button
-                                            disabled={tutorAnswers[`r_${idx}`]?.loading || !(tutorInputText[`r_${idx}`] || '').trim()}
-                                            onClick={() => handleAskCardTutor(`r_${idx}`, q)}
-                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-300 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 font-bold transition-all cursor-pointer active:scale-95 duration-200"
-                                          >
-                                            {tutorAnswers[`r_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
-                                          </button>
-                                        </div>
+                                            }}
+                                            placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                            className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-2 resize-none"
+                                          />
+                                          <div className="flex gap-2 justify-end">
+                                            <button
+                                              onClick={() => setActiveTutorInputKey(null)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                            >
+                                              취소
+                                            </button>
+                                            <button
+                                              disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+                                              onClick={() => handleAskCardTutor(key, q)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-300 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                            >
+                                              {tutorAnswers[key]?.loading ? '답변 작성 중...' : '질문하기'}
+                                            </button>
+                                          </div>
 
-                                        {/* AI Tutor In-Card Answer Panel */}
-                                        {tutorAnswers[`r_${idx}`]?.loading && (
-                                          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
-                                            <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
-                                              <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-                                              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-                                            </div>
-                                            <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                            <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                          </div>
-                                        )}
-                                        {tutorAnswers[`r_${idx}`]?.error && (
-                                          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`r_${idx}`].error}</div>
-                                        )}
-                                        {tutorAnswers[`r_${idx}`]?.text && !tutorAnswers[`r_${idx}`]?.loading && (
-                                          <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
-                                            <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-                                            <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                              <LatexRenderer text={tutorAnswers[`r_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
+                                          {/* AI Tutor In-Card Answer Panel */}
+                                          {!isCollapsed && (
+                                            <>
+                                              {tutorAnswers[key]?.loading && (
+                                                <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
+                                                  <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                                    <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                                  </div>
+                                                  <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                                  <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                                </div>
+                                              )}
+                                              {tutorAnswers[key]?.error && (
+                                                <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+                                              )}
+                                              {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+                                                <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
+                                                  <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                                    <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
 
                                    {/* 보기별 정밀 분석 결과 */}
                                    {reviewOptionExplanations[idx]?.loading && (
@@ -13580,69 +13617,88 @@ export default function App() {
                                 )}
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
-                                    {activeTutorInputKey === `e_${idx}` && (
-                                      <div className="mt-2 w-full">
-                                        <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
-                                        <textarea
-                                          rows={3}
-                                          value={tutorInputText[`e_${idx}`] || ''}
-                                          onChange={(e) => {
-                                            const text = e.target.value;
-                                            setTutorInputText(prev => ({ ...prev, [`e_${idx}`]: text }));
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                              e.preventDefault();
-                                              const isPending = tutorAnswers[`e_${idx}`]?.loading;
-                                              const hasText = (tutorInputText[`e_${idx}`] || '').trim();
-                                              if (!isPending && hasText) {
-                                                handleAskCardTutor(`e_${idx}`, q);
+                                    {activeTutorInputKey === `e_${idx}` && (() => {
+                                      const key = `e_${idx}`;
+                                      const isCollapsed = !!tutorCollapsed[key];
+                                      const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
+                                      return (
+                                        <div className="mt-2 w-full">
+                                          <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-[10px] font-black text-amber-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                            {hasPanel && (
+                                              <button
+                                                onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
+                                                className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+                                              >
+                                                {isCollapsed ? '열기 ▾' : '접기 ▴'}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <textarea
+                                            rows={3}
+                                            value={tutorInputText[key] || ''}
+                                            onChange={(e) => {
+                                              const text = e.target.value;
+                                              setTutorInputText(prev => ({ ...prev, [key]: text }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                const isPending = tutorAnswers[key]?.loading;
+                                                const hasText = (tutorInputText[key] || '').trim();
+                                                if (!isPending && hasText) {
+                                                  handleAskCardTutor(key, q);
+                                                }
                                               }
-                                            }
-                                          }}
-                                          placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                          className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
-                                        />
-                                        <div className="flex gap-2 justify-end">
-                                          <button
-                                            onClick={() => setActiveTutorInputKey(null)}
-                                            className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                          >
-                                            취소
-                                          </button>
-                                          <button
-                                            disabled={tutorAnswers[`e_${idx}`]?.loading || !(tutorInputText[`e_${idx}`] || '').trim()}
-                                            onClick={() => handleAskCardTutor(`e_${idx}`, q)}
-                                            className="text-[10px] px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/50 disabled:text-amber-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
-                                          >
-                                            {tutorAnswers[`e_${idx}`]?.loading ? '답변 작성 중...' : '질문하기'}
-                                          </button>
-                                        </div>
+                                            }}
+                                            placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                            className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 mb-2 resize-none"
+                                          />
+                                          <div className="flex gap-2 justify-end">
+                                            <button
+                                              onClick={() => setActiveTutorInputKey(null)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                            >
+                                              취소
+                                            </button>
+                                            <button
+                                              disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+                                              onClick={() => handleAskCardTutor(key, q)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800/50 disabled:text-amber-400 text-white font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                            >
+                                              {tutorAnswers[key]?.loading ? '답변 작성 중...' : '질문하기'}
+                                            </button>
+                                          </div>
 
-                                        {/* AI Tutor In-Card Answer Panel */}
-                                        {tutorAnswers[`e_${idx}`]?.loading && (
-                                          <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-amber-500/10">
-                                            <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
-                                              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
-                                              <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-                                            </div>
-                                            <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                            <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                          </div>
-                                        )}
-                                        {tutorAnswers[`e_${idx}`]?.error && (
-                                          <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-amber-500/10 pt-2">❌ 답변 오류: {tutorAnswers[`e_${idx}`].error}</div>
-                                        )}
-                                        {tutorAnswers[`e_${idx}`]?.text && !tutorAnswers[`e_${idx}`]?.loading && (
-                                          <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
-                                            <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
-                                            <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                              <LatexRenderer text={tutorAnswers[`e_${idx}`].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
+                                          {/* AI Tutor In-Card Answer Panel */}
+                                          {!isCollapsed && (
+                                            <>
+                                              {tutorAnswers[key]?.loading && (
+                                                <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-amber-500/10">
+                                                  <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping"></div>
+                                                    <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                                  </div>
+                                                  <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                                  <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                                </div>
+                                              )}
+                                              {tutorAnswers[key]?.error && (
+                                                <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-amber-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+                                              )}
+                                              {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+                                                <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
+                                                  <div className="text-[11px] font-black text-amber-400 mb-1.5">💬 AI 튜터 답변</div>
+                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                                    <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
 
                                     {/* 보기별 정밀 분석 결과 */}
                                 {examOptionExplanations[idx]?.loading && (
