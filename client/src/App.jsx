@@ -1384,6 +1384,65 @@ const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
   return 'border-rose-500 bg-rose-950/20 text-rose-300';
 };
 
+const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
+  if (!value) {
+    return {
+      cellBg: 'bg-emerald-950/10 text-emerald-350 italic font-medium',
+      border: 'border-emerald-800/40',
+      text: 'text-emerald-400',
+      scoreText: 'text-emerald-500'
+    };
+  }
+  
+  const score = gradingResult?.score;
+  if (score === undefined) {
+    return isCorrect
+      ? {
+          cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
+          border: 'border-emerald-800/40',
+          text: 'text-emerald-400',
+          scoreText: 'text-emerald-400'
+        }
+      : {
+          cellBg: 'bg-rose-950/20 text-rose-300',
+          border: 'border-rose-800/40',
+          text: 'text-rose-400',
+          scoreText: 'text-rose-400'
+        };
+  }
+  
+  if (score >= 9) {
+    return {
+      cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
+      border: 'border-emerald-800/60',
+      text: 'text-emerald-400',
+      scoreText: 'text-emerald-400'
+    };
+  }
+  if (score >= 8) {
+    return {
+      cellBg: 'bg-yellow-950/20 text-yellow-300 font-bold',
+      border: 'border-yellow-800/60',
+      text: 'text-yellow-400',
+      scoreText: 'text-yellow-400'
+    };
+  }
+  if (score >= 5) {
+    return {
+      cellBg: 'bg-orange-950/20 text-orange-300 font-bold',
+      border: 'border-orange-800/60',
+      text: 'text-orange-400',
+      scoreText: 'text-orange-400'
+    };
+  }
+  return {
+    cellBg: 'bg-rose-950/20 text-rose-300',
+    border: 'border-rose-800/60',
+    text: 'text-rose-400',
+    scoreText: 'text-rose-400'
+  };
+};
+
 const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10 }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
@@ -1535,34 +1594,33 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           if (textarea) textarea.focus();
                         } : undefined}
                       >
-                        {revealed ? (
-                          <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[13px] sm:text-[15px] ${
-                            isCorrect 
-                              ? 'bg-emerald-950/20 text-emerald-200' 
-                              : 'bg-rose-950/20 text-rose-200'
-                          }`}>
-                            <div className="text-left font-medium">
-                              {value ? (
-                                <span className="font-bold text-slate-100">
-                                  <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
-                                </span>
-                              ) : (
-                                <span className="text-rose-400/80 italic font-medium">
-                                  (미입력)
-                                </span>
-                              )}
+                        {revealed ? (() => {
+                          const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
+                          return (
+                            <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[13px] sm:text-[15px] ${theme.cellBg}`}>
+                              <div className="text-left font-medium">
+                                {value ? (
+                                  <span className="font-bold">
+                                    <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                                  </span>
+                                ) : (
+                                  <span className="text-rose-400/80 italic font-medium">
+                                    (미입력)
+                                  </span>
+                                )}
+                              </div>
+                              {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
+                                const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                                const displayScore = Math.round(cellObtained * 10) / 10;
+                                return (
+                                  <div className={`text-right font-extrabold select-none whitespace-nowrap pl-2 text-xs sm:text-sm ${theme.text}`}>
+                                    {displayScore}점
+                                  </div>
+                                );
+                              })()}
                             </div>
-                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
-                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
-                              const displayScore = Math.round(cellObtained * 10) / 10;
-                              return (
-                                <div className="text-right font-extrabold text-amber-400 select-none whitespace-nowrap pl-2 text-xs sm:text-sm">
-                                  {displayScore}점
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ) : (
+                          );
+                        })() : (
                           <textarea
                             ref={(el) => {
                               if (el) {
@@ -4476,12 +4534,18 @@ export default function App() {
             const inputNum = match ? parseInt(match[0], 10) : 1;
             const inputLetter = String.fromCharCode(64 + inputNum);
             
+            const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+            const isCorrect = gradingResult 
+              ? gradingResult.isCorrect 
+              : (normalize(value) === normalize(correctAnswer));
+            const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
+            
             return (
-              <div key={inputId} className="bg-slate-900/60 rounded-lg p-2.5 border border-slate-800 text-[13px] sm:text-[15px] space-y-1">
+              <div key={inputId} className={`bg-slate-900/60 rounded-lg p-2.5 border text-[13px] sm:text-[15px] space-y-1 ${theme.border}`}>
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/60 pb-1 mb-1">
-                  <span className="text-amber-400">({inputLetter})</span>
+                  <span className={theme.text}>({inputLetter})</span>
                   {gradingResult && gradingResult.score !== undefined && (
-                    <span className="text-amber-500">{gradingResult.score}점</span>
+                    <span className={theme.text}>{gradingResult.score}점</span>
                   )}
                 </div>
                 <div>
@@ -4494,7 +4558,7 @@ export default function App() {
                 </div>
                 {gradingResult?.reason && (
                   <div>
-                    <span className="text-amber-500 mr-1.5 font-bold">피드백:</span>
+                    <span className={`mr-1.5 font-bold ${theme.text}`}>피드백:</span>
                     <span className="text-slate-300 font-normal leading-relaxed">
                       {renderHighlightedFeedback(gradingResult.reason)}
                     </span>
