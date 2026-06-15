@@ -4524,7 +4524,7 @@ export default function App() {
     return (
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
-        <div className="grid grid-cols-1 gap-2.5 mt-1">
+        <div className="divide-y divide-slate-800/80 mt-1">
           {inputIds.map((inputId) => {
             const value = tableAnswers[`${idx}_${inputId}`] || '';
             const correctAnswer = q.answers?.[inputId] || '';
@@ -4541,25 +4541,27 @@ export default function App() {
             const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
             
             return (
-              <div key={inputId} className={`bg-slate-900/60 rounded-lg p-2.5 border text-[13px] sm:text-[15px] space-y-1 ${theme.border}`}>
-                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/60 pb-1 mb-1">
+              <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
+                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
                   <span className={theme.text}>({inputLetter})</span>
                   {gradingResult && gradingResult.score !== undefined && (
                     <span className={theme.text}>{gradingResult.score}점</span>
                   )}
                 </div>
                 <div>
-                  <span className="text-slate-400 mr-1.5 font-bold">내 답변:</span>
-                  <span className="text-slate-100 font-semibold">{value || '(미입력)'}</span>
+                  <span className={`mr-1.5 font-bold ${theme.text}`}>내 답변:</span>
+                  <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
                 </div>
                 <div>
-                  <span className="text-emerald-400 mr-1.5 font-bold">정답:</span>
-                  <span className="text-slate-200 font-semibold">{correctAnswer}</span>
+                  <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
+                  <span className="text-slate-100 font-semibold">
+                    {renderHighlightedFeedback(correctAnswer)}
+                  </span>
                 </div>
                 {gradingResult?.reason && (
                   <div>
-                    <span className={`mr-1.5 font-bold ${theme.text}`}>피드백:</span>
-                    <span className="text-slate-300 font-normal leading-relaxed">
+                    <span className="text-slate-100 mr-1.5 font-bold">피드백:</span>
+                    <span className="text-slate-100 font-normal leading-relaxed">
                       {renderHighlightedFeedback(gradingResult.reason)}
                     </span>
                   </div>
