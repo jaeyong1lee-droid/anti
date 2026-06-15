@@ -1403,7 +1403,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[14px] sm:text-[16px]">
+      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
         <thead>
           <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1463,10 +1463,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle"
+                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-[15px] whitespace-normal break-words text-center align-middle"
                       >
                         {revealed ? (
-                          <div className={`w-full text-left p-1 sm:p-1.5 text-[14px] sm:text-[16px] space-y-0.5 ${
+                          <div className={`w-full text-left p-1 sm:p-1.5 text-[13px] sm:text-[15px] space-y-0.5 ${
                             isCorrect 
                               ? 'bg-emerald-950/20 text-emerald-200' 
                               : 'bg-rose-950/20 text-rose-200'
@@ -1510,7 +1510,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             value={value}
                             onChange={(e) => handleInputChange(inputId, e.target.value)}
                             placeholder={`${inputLetter} 입력`}
-                            className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
+                            className="w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
                             rows={1}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
@@ -1527,7 +1527,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] select-text whitespace-normal break-words ${
+                        className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[13px] sm:text-[15px] select-text whitespace-normal break-words ${
                           isFirstCol ? 'text-left break-all' : 'text-center'
                         }`}
                       >
@@ -1553,7 +1553,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[14px] sm:text-[16px]">
+      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
         <thead>
           <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1586,7 +1586,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                     <td 
                       key={cIdx} 
                       colSpan={cellColSpan}
-                      className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 select-text ${
+                      className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[13px] sm:text-[15px] select-text ${
                         isFirstCol ? 'text-left break-all' : 'text-center'
                       }`}
                     >
