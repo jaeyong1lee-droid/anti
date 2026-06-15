@@ -6602,3 +6602,4 @@ if (!process.env.VERCEL) {
     global.dbInitError = dbErr.message;
   });
 }
+// Trigger redeployment to apply absolute path fixes and BOM-less UTF-8 configuration.
