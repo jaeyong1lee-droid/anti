@@ -1401,9 +1401,67 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
   const colCount = headers.length;
 
+  const [colWidths, setColWidths] = React.useState(() => {
+    if (colCount <= 1) return ['100%'];
+    const first = 30;
+    const others = 70 / (colCount - 1);
+    return [first, ...Array(colCount - 1).fill(others)];
+  });
+
+  const tableRef = React.useRef(null);
+  const dragInfo = React.useRef({ startX: 0, startWidths: [], totalWidth: 0, colIdx: -1 });
+
+  const handleMouseDown = React.useCallback((e, idx) => {
+    e.preventDefault();
+    if (!tableRef.current) return;
+
+    const thElements = tableRef.current.querySelectorAll('th');
+    const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
+    const totalWidth = widths.reduce((a, b) => a + b, 0);
+    const percentWidths = widths.map(w => (w / totalWidth) * 100);
+
+    dragInfo.current = {
+      startX: e.clientX,
+      startWidths: percentWidths,
+      totalWidth,
+      colIdx: idx
+    };
+
+    const handleMouseMove = (ev) => {
+      const { startX, startWidths, totalWidth, colIdx } = dragInfo.current;
+      const deltaX = ev.clientX - startX;
+      const deltaPercent = (deltaX / totalWidth) * 100;
+
+      setColWidths(prev => {
+        const next = [...prev];
+        const sum = startWidths[colIdx] + startWidths[colIdx + 1];
+        const newLeftWidth = Math.max(10, startWidths[colIdx] + deltaPercent);
+        const actualLeft = Math.min(sum - 10, newLeftWidth);
+        const actualRight = sum - actualLeft;
+
+        next[colIdx] = actualLeft;
+        next[colIdx + 1] = actualRight;
+        return next;
+      });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, []);
+
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+      <table ref={tableRef} className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+        <colgroup>
+          {colWidths.map((w, idx) => (
+            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
             {headers.map((header, hIdx) => {
@@ -1411,11 +1469,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                  className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                  {hIdx < colCount - 1 && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50"
+                      onMouseDown={(e) => handleMouseDown(e, hIdx)}
+                    />
+                  )}
                 </th>
               );
             })}
@@ -1513,8 +1577,18 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                           </div>
                         ) : (
                           <textarea
+                            ref={(el) => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = `${el.scrollHeight}px`;
+                              }
+                            }}
                             value={value}
-                            onChange={(e) => handleInputChange(inputId, e.target.value)}
+                            onChange={(e) => {
+                              handleInputChange(inputId, e.target.value);
+                              e.target.style.height = 'auto';
+                              e.target.style.height = `${e.target.scrollHeight}px`;
+                            }}
                             placeholder={`${inputLetter} 입력`}
                             className="w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
                             rows={1}
@@ -1557,21 +1631,85 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   const { headers, rows } = tableData;
   const colCount = headers.length;
 
+  const [colWidths, setColWidths] = React.useState(() => {
+    if (colCount <= 1) return ['100%'];
+    const first = 30;
+    const others = 70 / (colCount - 1);
+    return [first, ...Array(colCount - 1).fill(others)];
+  });
+
+  const tableRef = React.useRef(null);
+  const dragInfo = React.useRef({ startX: 0, startWidths: [], totalWidth: 0, colIdx: -1 });
+
+  const handleMouseDown = React.useCallback((e, idx) => {
+    e.preventDefault();
+    if (!tableRef.current) return;
+
+    const thElements = tableRef.current.querySelectorAll('th');
+    const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
+    const totalWidth = widths.reduce((a, b) => a + b, 0);
+    const percentWidths = widths.map(w => (w / totalWidth) * 100);
+
+    dragInfo.current = {
+      startX: e.clientX,
+      startWidths: percentWidths,
+      totalWidth,
+      colIdx: idx
+    };
+
+    const handleMouseMove = (ev) => {
+      const { startX, startWidths, totalWidth, colIdx } = dragInfo.current;
+      const deltaX = ev.clientX - startX;
+      const deltaPercent = (deltaX / totalWidth) * 100;
+
+      setColWidths(prev => {
+        const next = [...prev];
+        const sum = startWidths[colIdx] + startWidths[colIdx + 1];
+        const newLeftWidth = Math.max(10, startWidths[colIdx] + deltaPercent);
+        const actualLeft = Math.min(sum - 10, newLeftWidth);
+        const actualRight = sum - actualLeft;
+
+        next[colIdx] = actualLeft;
+        next[colIdx + 1] = actualRight;
+        return next;
+      });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, []);
+
   return (
     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+      <table ref={tableRef} className="w-full table-auto min-w-[480px] sm:min-w-[700px] text-center border-collapse text-[13px] sm:text-[15px]">
+        <colgroup>
+          {colWidths.map((w, idx) => (
+            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+          ))}
+        </colgroup>
         <thead>
-          <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+          <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
             {headers.map((header, hIdx) => {
               const isFirstCol = hIdx === 0;
               return (
                 <th 
                   key={hIdx} 
-                  className={`p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
+                  className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
                     isFirstCol ? 'text-left break-all' : ''
                   }`}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                  {hIdx < colCount - 1 && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50"
+                      onMouseDown={(e) => handleMouseDown(e, hIdx)}
+                    />
+                  )}
                 </th>
               );
             })}
