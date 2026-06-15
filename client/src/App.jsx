@@ -8487,7 +8487,7 @@ export default function App() {
       apiMessage = `[수험생이 첨부한 공식: ${tutorAttachedFormula}]\n\n${userMessage}`;
     }
     const sentAttachedFormula = tutorAttachedFormula;
-    setTutorAttachedFormula(null); // 전송 후 비움
+    // setTutorAttachedFormula(null); // 전송 후 비우지 않고 그대로 유지
 
     const userMsgIdx = chatHistory.length;
     setChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
@@ -12646,27 +12646,28 @@ export default function App() {
               </div>
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {tutorAttachedFormula && (
+                  <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setTutorAttachedFormula(null)}
+                      className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
+                      title="공식 제거"
+                    >
+                      ✕
+                    </button>
+                    <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
+                    <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
+                      <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                      이 공식에 대해 아래 입력창에 질문해보세요!
+                    </p>
+                  </div>
+                )}
+
                 {chatHistory.length === 0 ? (
                   <div className="flex flex-col gap-4 w-full">
-                    {tutorAttachedFormula && (
-                      <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
-                        <button
-                          type="button"
-                          onClick={() => setTutorAttachedFormula(null)}
-                          className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
-                          title="공식 제거"
-                        >
-                          ✕
-                        </button>
-                        <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
-                        <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
-                          <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-2 font-semibold">
-                          이 공식에 대해 아래 입력창에 질문해보세요!
-                        </p>
-                      </div>
-                    )}
                     <div className="text-center py-10 opacity-50">
                       <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
                       <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
@@ -12807,6 +12808,21 @@ export default function App() {
                   AI 튜터로 전송
                 </button>
               )}
+              <button
+                onClick={async () => {
+                  const target = formulaConfirmTarget;
+                  setFormulaConfirmTarget(null);
+                  try {
+                    await navigator.clipboard.writeText(target.math);
+                    showNotification('수식이 클립보드에 복사되었습니다.', 'success');
+                  } catch (err) {
+                    showNotification('클립보드 복사에 실패했습니다.', 'error');
+                  }
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-700/10"
+              >
+                수식 복사하기
+              </button>
               <button
                 onClick={() => setFormulaConfirmTarget(null)}
                 className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 active:scale-98 cursor-pointer"
