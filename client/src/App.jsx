@@ -6,6 +6,7 @@ import {
   healFormulaQuestionObject, 
   healAnswersheetQuestionObject 
 } from './utils/latexUtils';
+import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
 import { 
   Brain, 
   UploadCloud, 
@@ -833,100 +834,6 @@ const renderKatexString = (math, options) => {
   }
   return options.displayMode ? `$$${math}$$` : `$${math}$`;
 };
-
-function buildHtmlTableFromMarkdownRows(rows) {
-  if (rows.length < 2) return rows.join('\n');
-
-  const headers = rows[0]
-    .split('|')
-    .slice(1, -1)
-    .map(cell => cell.trim());
-
-  const separator = rows[1];
-  if (!separator.includes('---')) {
-    return rows.join('\n');
-  }
-
-  const bodyRows = [];
-  for (let i = 2; i < rows.length; i++) {
-    const cells = rows[i]
-      .split('|')
-      .slice(1, -1)
-      .map(cell => cell.trim());
-    bodyRows.push(cells);
-  }
-
-  let html = `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="w-full text-center border-collapse text-sm">`;
-  html += `<thead>`;
-  html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
-  headers.forEach(h => {
-    html += `<th class="p-3 font-extrabold border-r border-slate-800 last:border-r-0">${h}</th>`;
-  });
-  html += `</tr>`;
-  html += `</thead>`;
-  html += `<tbody>`;
-  bodyRows.forEach(row => {
-    html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
-    row.forEach(cell => {
-      html += `<td class="p-3 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
-    });
-    html += `</tr>`;
-  });
-  html += `</tbody>`;
-  html += `</table>`;
-  html += `</div>`;
-
-  return html;
-}
-
-function convertMarkdownTablesToHtml(text) {
-  if (!text) return text;
-  const lines = text.split('\n');
-  let inTable = false;
-  let tableRows = [];
-  const processedLines = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    const hasPipe = trimmed.includes('|');
-
-    if (hasPipe) {
-      let normalizedRow = trimmed;
-      if (!normalizedRow.startsWith('|')) normalizedRow = '| ' + normalizedRow;
-      if (!normalizedRow.endsWith('|')) normalizedRow = normalizedRow + ' |';
-
-      if (!inTable) {
-        const nextLine = lines[i + 1];
-        const nextTrimmed = nextLine ? nextLine.trim() : '';
-        const isNextSeparator = nextTrimmed.includes('|') && 
-                                /^[\s|:-]+$/.test(nextTrimmed) && 
-                                nextTrimmed.includes('-');
-        if (isNextSeparator) {
-          inTable = true;
-          tableRows = [normalizedRow];
-        } else {
-          processedLines.push(line);
-        }
-      } else {
-        tableRows.push(normalizedRow);
-      }
-    } else {
-      if (inTable) {
-        const htmlTable = buildHtmlTableFromMarkdownRows(tableRows);
-        processedLines.push(htmlTable);
-        inTable = false;
-      }
-      processedLines.push(line);
-    }
-  }
-  if (inTable) {
-    const htmlTable = buildHtmlTableFromMarkdownRows(tableRows);
-    processedLines.push(htmlTable);
-  }
-  return processedLines.join('\n');
-}
 
 // Dynamic KaTeX loader & Math text renderer
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false }) {
