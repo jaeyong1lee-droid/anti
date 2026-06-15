@@ -8152,7 +8152,7 @@ export default function App() {
 
   const renderCardTutorChat = (key, q) => {
     return (
-      <div className="mt-2.5 p-0 sm:p-3.5 bg-transparent sm:bg-violet-955/20 border-0 sm:border sm:border-violet-500/25 rounded-none sm:rounded-2xl w-full text-left">
+      <div className="mt-2.5 w-full text-left">
         <label className="block text-[14px] sm:text-[16px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
         <div className="flex gap-2">
           <textarea
@@ -12089,11 +12089,7 @@ export default function App() {
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
                                     {activeTutorInputKey === `r_${idx}` && (
-                                      <div className={`mt-2 w-full ${
-                                        (!isDesktop && !isMobileLandscape)
-                                          ? 'p-0 bg-transparent border-0'
-                                          : 'p-3 bg-violet-950/20 border border-violet-500/20 rounded-xl'
-                                      }`}>
+                                      <div className="mt-2 w-full">
                                         <label className="block text-[10px] font-black text-violet-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
                                         <textarea
                                           rows={3}
@@ -13595,11 +13591,7 @@ export default function App() {
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
                                     {activeTutorInputKey === `e_${idx}` && (
-                                      <div className={`mt-2 w-full ${
-                                        (!isDesktop && !isMobileLandscape)
-                                          ? 'p-0 bg-transparent border-0'
-                                          : 'p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl'
-                                      }`}>
+                                      <div className="mt-2 w-full">
                                         <label className="block text-[10px] font-black text-amber-400 mb-1">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
                                         <textarea
                                           rows={3}
