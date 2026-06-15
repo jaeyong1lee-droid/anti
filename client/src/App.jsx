@@ -11782,8 +11782,31 @@ export default function App() {
                         : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
                       fetch(deleteUrl, { method: 'DELETE' })
                         .catch(e => console.warn('세션 초기화 실패:', e));
+
+                      // Remove both schedule-specific and topic-specific progress keys to guarantee complete cleanup
+                      if (selectedTopic.schedule_id) {
+                        localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}`);
+                      }
+                      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
                     }
-                    setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); lastQuizTopicId.current = null; 
+                    localStorage.removeItem('anti_last_active_review');
+                    setLastActiveReview(null);
+                    setSelectedTopic(null);
+                    setAiQuestions([]);
+                    setRevealedQuestions({});
+                    setSelectedAnswers({});
+                    setOpenSections({});
+                    setReviewOptionExplanations({});
+                    setTableAnswers({});
+                    setTableGradingResults({});
+                    setTutorAnswers({});
+                    setTutorInputText({});
+                    setShowAnswersState({});
+                    setExamShowAnswersState({});
+                    setChatHistory([]);
+                    setIsFallback(false);
+                    setAiError('');
+                    lastQuizTopicId.current = null; 
                   }}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                   title="문제 초기화 (재개 시 새 문제 생성)"
@@ -12677,8 +12700,31 @@ export default function App() {
                                 : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
                               fetch(deleteUrl, { method: 'DELETE' })
                                 .catch(e => console.warn('세션 초기화 실패:', e));
+
+                              // Remove both schedule-specific and topic-specific progress keys to guarantee complete cleanup
+                              if (selectedTopic.schedule_id) {
+                                localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}`);
+                              }
+                              localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
                             }
-                            setSelectedTopic(null); setAiQuestions([]); setRevealedQuestions({}); setSelectedAnswers({}); setOpenSections({}); setReviewOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); lastQuizTopicId.current = null; 
+                            localStorage.removeItem('anti_last_active_review');
+                            setLastActiveReview(null);
+                            setSelectedTopic(null);
+                            setAiQuestions([]);
+                            setRevealedQuestions({});
+                            setSelectedAnswers({});
+                            setOpenSections({});
+                            setReviewOptionExplanations({});
+                            setTableAnswers({});
+                            setTableGradingResults({});
+                            setTutorAnswers({});
+                            setTutorInputText({});
+                            setShowAnswersState({});
+                            setExamShowAnswersState({});
+                            setChatHistory([]);
+                            setIsFallback(false);
+                            setAiError('');
+                            lastQuizTopicId.current = null; 
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-700/50 transition-all cursor-pointer active:scale-95 shadow-md"
                           title="문제 초기화 (재개 시 새 문제 생성)"
