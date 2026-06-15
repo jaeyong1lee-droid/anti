@@ -8164,9 +8164,9 @@ export default function App() {
           {hasPanel && (
             <button
               onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
-              className="text-[10px] sm:text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+              className="text-[10px] sm:text-xs text-slate-500 hover:text-slate-300 transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 bg-transparent border-0 p-0 hover:underline"
             >
-              {isCollapsed ? '열기 ▾' : '접기 ▴'}
+              {isCollapsed ? '[열기]' : '[접기]'}
             </button>
           )}
         </div>
@@ -12115,9 +12115,9 @@ export default function App() {
                                             {hasPanel && (
                                               <button
                                                 onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
-                                                className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+                                                className="text-[9px] sm:text-[10px] text-slate-500 hover:text-slate-300 transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 bg-transparent border-0 p-0 hover:underline"
                                               >
-                                                {isCollapsed ? '열기 ▾' : '접기 ▴'}
+                                                {isCollapsed ? '[열기]' : '[접기]'}
                                               </button>
                                             )}
                                           </div>
@@ -13628,9 +13628,9 @@ export default function App() {
                                             {hasPanel && (
                                               <button
                                                 onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
-                                                className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold select-none active:scale-95 duration-150 border border-slate-750/30"
+                                                className="text-[9px] sm:text-[10px] text-slate-500 hover:text-slate-300 transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 bg-transparent border-0 p-0 hover:underline"
                                               >
-                                                {isCollapsed ? '열기 ▾' : '접기 ▴'}
+                                                {isCollapsed ? '[열기]' : '[접기]'}
                                               </button>
                                             )}
                                           </div>
