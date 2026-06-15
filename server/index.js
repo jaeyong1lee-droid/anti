@@ -5138,6 +5138,42 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
   }
 });
 
+// 6-2.5. Generate Hint for a Question
+app.post('/api/hint', async (req, res) => {
+  try {
+    const { questionText } = req.body;
+    if (!questionText) {
+      return res.status(400).json({ error: '질문(문제) 텍스트가 제공되지 않았습니다.' });
+    }
+
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+
+    const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
+수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
+
+[지침]:
+1. 복잡한 공식이나 유도 과정을 설명하지 말고, 이 문제를 해결하기 위해 가장 핵심적으로 생각해야 하는 개념이나 물리적 거동을 일상적이고 직관적인 비유로 설명하십시오.
+2. 수험생이 스스로 문제를 풀 수 있도록 유도해야 하며, 직접적인 해답이나 최종 정답 수치를 제공해서는 절대 안 됩니다.
+3. 친절하고 부드러운 튜터의 말투를 사용하십시오.`;
+
+    const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
+    
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'question');
+    const healedText = healLatexFormulas(responseText);
+    res.json({ hint: healedText });
+  } catch (err) {
+    console.error('Hint generation error:', err);
+    res.status(500).json({ error: err.message || '힌트를 생성하는 데 실패했습니다.' });
+  }
+});
+
 // 6-3. Freeform Chat Search
 app.post('/api/chat', async (req, res) => {
   try {

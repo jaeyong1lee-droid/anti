@@ -5746,6 +5746,9 @@ export default function App() {
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
   const [attachedImage, setAttachedImage] = useState(null); // { name, mimeType, data }
+  const [hintText, setHintText] = useState(null);
+  const [isHintLoading, setIsHintLoading] = useState(false);
+  const [showHintModal, setShowHintModal] = useState(false);
   const [resetConfirmTarget, setResetConfirmTarget] = useState(null); // { scheduleId, topicTitle, round }
   const [showFullReport, setShowFullReport] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -8487,6 +8490,27 @@ export default function App() {
           return;
         }
       }
+    }
+  };
+
+  const handleRequestHint = async (questionText) => {
+    if (!questionText) return;
+    setHintText('');
+    setIsHintLoading(true);
+    setShowHintModal(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/hint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionText })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '힌트 생성 실패');
+      setHintText(data.hint);
+    } catch (err) {
+      setHintText(`힌트를 가져오지 못했습니다: ${err.message}`);
+    } finally {
+      setIsHintLoading(false);
     }
   };
 
@@ -11902,6 +11926,15 @@ export default function App() {
                             )}
                           </div>
                           <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
+                            {/* 힌트 버튼 */}
+                            <button
+                              onClick={() => handleRequestHint(q.question)}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-amber-500/20 bg-amber-950/40 text-amber-350 hover:bg-amber-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                              title="문제 풀이 힌트 보기"
+                            >
+                              <span className="hidden sm:inline">💡 </span>힌트
+                            </button>
+
                             {/* 다시풀기 버튼 */}
                             {!isMC && (
                               <button
@@ -12819,6 +12852,57 @@ export default function App() {
         </div>
       </div>
       )}
+      {/* 💡 힌트 보기 모달 (Hint Modal) */}
+      {showHintModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowHintModal(false)}>
+          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <Brain size={18} className="text-amber-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">💡 문제 풀이 힌트</h3>
+              </div>
+              <button
+                onClick={() => setShowHintModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 text-slate-300 leading-relaxed text-xs max-h-[60vh] overflow-y-auto min-h-[100px] flex flex-col justify-center select-text">
+              {isHintLoading ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2 w-full">
+                  <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-amber-400 font-bold animate-pulse">Gemini 3.1 Flash Lite가 힌트를 생성 중입니다...</span>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap prose prose-invert prose-xs max-w-none">
+                  {hintText ? (
+                    <LatexRenderer text={hintText} katexLoaded={katexLoaded} />
+                  ) : (
+                    '생성된 힌트가 없습니다.'
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowHintModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 공식 추가 확인 모달 (Formula Add Confirmation Modal) */}
       {formulaConfirmTarget && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
@@ -13454,6 +13538,15 @@ export default function App() {
                         </div>
                         
                         <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
+                          {/* 힌트 버튼 */}
+                          <button
+                            onClick={() => handleRequestHint(q.question)}
+                            className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-amber-500/20 bg-amber-950/40 text-amber-350 hover:bg-amber-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                            title="문제 풀이 힌트 보기"
+                          >
+                            <span className="hidden sm:inline">💡 </span>힌트
+                          </button>
+
                           {/* 다시풀기 버튼 */}
                           {!isMC && (
                             <button
