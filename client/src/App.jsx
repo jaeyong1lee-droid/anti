@@ -1542,7 +1542,6 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               : 'bg-rose-950/20 text-rose-200'
                           }`}>
                             <div className="text-left font-medium">
-                              <span className="text-xs opacity-75 mr-1 select-none">내 답변:</span>
                               {value ? (
                                 <span className="font-bold text-slate-100">
                                   <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
@@ -4480,7 +4479,7 @@ export default function App() {
             return (
               <div key={inputId} className="bg-slate-900/60 rounded-lg p-2.5 border border-slate-800 text-[13px] sm:text-[15px] space-y-1">
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/60 pb-1 mb-1">
-                  <span className="text-amber-400">빈칸 ({inputLetter})</span>
+                  <span className="text-amber-400">({inputLetter})</span>
                   {gradingResult && gradingResult.score !== undefined && (
                     <span className="text-amber-500">{gradingResult.score}점</span>
                   )}
