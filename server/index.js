@@ -611,7 +611,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         'gemini-2.0-flash',
         'gemini-1.5-flash'
       ];
-      if (scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation' || scenario === 'grading') {
+      if (scenario === 'question' || scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation' || scenario === 'grading') {
         MODELS = [
           'gemini-3.1-flash-lite',
           'gemini-3.5-flash',

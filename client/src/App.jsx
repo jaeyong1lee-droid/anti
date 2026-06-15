@@ -990,15 +990,9 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       .replace(/\r\n/g, '\n');
   }
 
-  if (isHeavy) {
-    if (typeof cleanedText === 'string') {
-      cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
-    }
-  } else {
-    cleanedText = healFormulas(cleanedText);
-    if (typeof cleanedText === 'string') {
-      cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
-    }
+  cleanedText = healFormulas(cleanedText);
+  if (typeof cleanedText === 'string') {
+    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
   }
 
   if (typeof cleanedText === 'string') {
