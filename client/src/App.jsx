@@ -8201,7 +8201,7 @@ export default function App() {
         {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
           <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
             <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-            <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full bg-transparent sm:bg-slate-900/60 p-0 sm:p-3 rounded-none sm:rounded-xl border-0 sm:border sm:border-violet-500/10 shadow-none sm:shadow-inner">
+            <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
               <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
             </div>
           </div>
