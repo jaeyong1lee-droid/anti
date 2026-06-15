@@ -745,6 +745,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   } else {
     const boldColor = (isMarkdown && highlightBold) ? '#fbbf24' : '#f1f5f9';
     tempText = tempText.replace(/\*\*([^\*]+?)\*\*/g, `<strong style="color: ${boldColor}; font-weight: 700;">$1</strong>`);
+    if (isMarkdown && highlightBold) {
+      tempText = tempText.replace(/'([^'\n]+?)'/g, `<span style="color: #fbbf24; font-weight: normal;">'$1'</span>`);
+    }
   }
 
   // 3.5. Force line breaks before *** or * * * if they are in the middle of a line and not preceded by a newline
@@ -4593,14 +4596,14 @@ export default function App() {
                 <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <span className="text-slate-100 font-semibold">
-                    {renderHighlightedFeedback(correctAnswer)}
+                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                   </span>
                 </div>
                 {gradingResult?.reason && (
                   <div>
                     <span className="text-slate-100 mr-1.5 font-bold">피드백:</span>
                     <span className="text-slate-100 font-normal leading-relaxed">
-                      {renderHighlightedFeedback(gradingResult.reason)}
+                      <LatexRenderer text={formatGradingReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                     </span>
                   </div>
                 )}
@@ -12381,7 +12384,7 @@ export default function App() {
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{renderHighlightedFeedback(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
@@ -14010,7 +14013,7 @@ export default function App() {
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <p className="text-[14px] sm:text-[16px] leading-relaxed opacity-90">{renderHighlightedFeedback(tableGradingResults[`${idx}_INPUT`].reason)}</p>
+                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
