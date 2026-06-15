@@ -1564,64 +1564,63 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className={`p-0.5 sm:p-1 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-sm whitespace-normal break-words ${
-                          isFirstCol ? 'text-left break-all' : 'text-center'
-                        }`}
+                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-sm whitespace-normal break-words text-center align-middle"
                       >
-                        <div className="flex flex-col gap-0.5 sm:gap-1 justify-center items-center w-full">
-                          <div className="flex items-center gap-1 sm:gap-1.5 w-full">
-                            <div className="relative flex-grow">
-                              {revealed ? (
-                                <div className="flex flex-col gap-1 w-full text-left p-1 select-text">
-                                  <div className={`${inputClassName} select-text min-h-[26px] sm:min-h-[36px] flex items-center text-left whitespace-normal break-words`}>
-                                    <span className="text-xs opacity-75 mr-1 select-none">내 답변:</span>
-                                    {value ? (
-                                      <span className="font-bold text-slate-100">
-                                        <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
-                                      </span>
-                                    ) : (
-                                      <span className="text-rose-350 italic font-medium">
-                                        (미입력)
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[12px] sm:text-[14px] text-slate-355 font-semibold mt-1">
-                                    <span className="text-emerald-400 font-extrabold mr-1">정답:</span>
-                                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
-                                  </div>
-                                  {gradingResult?.reason && (
-                                    <div className={`text-[11px] sm:text-[13px] leading-relaxed opacity-95 ${getTableFeedbackTextColor(gradingResult)} mt-0.5 whitespace-normal break-words`}>
-                                      <span className="font-black">피드백:</span> {renderHighlightedFeedback(gradingResult.reason)}
-                                    </div>
-                                  )}
-                                </div>
+                        {revealed ? (
+                          <div className={`w-full text-left p-2.5 text-[13px] sm:text-sm space-y-1 ${
+                            isCorrect 
+                              ? 'bg-emerald-950/20 text-emerald-200' 
+                              : 'bg-rose-950/20 text-rose-200'
+                          }`}>
+                            <div>
+                              <span className="text-xs opacity-75 mr-1 select-none">내 답변:</span>
+                              {value ? (
+                                <span className="font-bold text-slate-100">
+                                  <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
+                                </span>
                               ) : (
-                                <textarea
-                                  value={value}
-                                  onChange={(e) => handleInputChange(inputId, e.target.value)}
-                                  placeholder={`${inputLetter} 입력`}
-                                  className={`${inputClassName} resize-none min-h-[26px] sm:min-h-[38px] py-0.5 sm:py-1.5`}
-                                  rows={1}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      e.target.blur();
-                                    }
-                                  }}
-                                />
+                                <span className="text-rose-400/80 italic font-medium">
+                                  (미입력)
+                                </span>
                               )}
-                              {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
-                                const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
-                                const displayScore = Math.round(cellObtained * 10) / 10;
-                                return (
-                                  <span className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 text-[8px] sm:text-xs font-black text-amber-400 select-none" title={`배점: ${Math.round((weight / inputIds.length) * 10) / 10}점`}>
-                                    {displayScore}점
-                                  </span>
-                                );
-                              })()}
                             </div>
+                            <div className="pt-0.5 border-t border-current/10">
+                              <span className="text-emerald-400 font-extrabold mr-1">정답:</span>
+                              <span className="text-slate-100 font-semibold">
+                                <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} className="inline" />
+                              </span>
+                            </div>
+                            {gradingResult?.reason && (
+                              <div className="text-[11px] sm:text-[12px] opacity-90 pt-0.5">
+                                <span className="font-bold text-amber-400 mr-1">피드백:</span>
+                                {renderHighlightedFeedback(gradingResult.reason)}
+                              </div>
+                            )}
+                            {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
+                              const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                              const displayScore = Math.round(cellObtained * 10) / 10;
+                              return (
+                                <div className="text-[11px] text-amber-400 font-bold pt-0.5 border-t border-current/10 select-none">
+                                  득점: {displayScore}점
+                                </div>
+                              );
+                            })()}
                           </div>
-                        </div>
+                        ) : (
+                          <textarea
+                            value={value}
+                            onChange={(e) => handleInputChange(inputId, e.target.value)}
+                            placeholder={`${inputLetter} 입력`}
+                            className="w-full text-center text-[13px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-2.5 px-3 resize-none min-h-[38px] block align-middle"
+                            rows={1}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                e.target.blur();
+                              }
+                            }}
+                          />
+                        )}
                       </td>
                     );
                   } else {
