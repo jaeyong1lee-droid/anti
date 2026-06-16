@@ -3534,13 +3534,15 @@ try {
 
 // 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정 (플러그인 방식 적용)
 app.post('/api/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer } = req.body;
+  const { question, correctAnswer, userAnswer, rowHeader, colHeader } = req.body;
 
   try {
     const result = await gradeSubjective({
       question,
       correctAnswer,
       userAnswer,
+      rowHeader,
+      colHeader,
       callLLMWithFailover
     });
     res.json(result);

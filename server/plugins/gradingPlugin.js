@@ -33,6 +33,12 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
   3. 맞춤법 오류나 학술적 동의어 선택의 차이처럼 본질적 의미 전달에 지장이 없는 단순 자구적 트집 잡기식 감점은 절대 엄금합니다.
   4. 채점 엔진이 다른 문항에서 스스로 정답의 핵심 요소로 제시한 적이 있는 용어는 어떤 경우에도 생소한 용어라며 감점할 수 없습니다.
 
+5단계: 표 빈칸 채우기 맥락 및 데이터 오류 대처 (Table Context & Mismatch Overrides)
+- 만약 표 행 제목(Row Header)이나 열 제목(Column Header) 정보가 주어지는 경우, 모범 답안(correctAnswer)과 사용자 답안을 행/열 맥락에서 비교하십시오.
+- [중요 - 출제 오류 극복]: 간혹 AI 문제 생성 시의 데이터 매핑 오작동으로 인해, 특정 셀의 '모범 답안(correctAnswer)'과 해당 셀의 '행/열 제목 맥락'이 서로 어긋나 있는 경우가 발생합니다.
+  * 예: 표의 행 제목이 '강도 정수 적용'인데, 해당 셀의 모범 답안이 '비배수 조건의 단기 안정성 검토에 활용'(활용 목적/설명에 해당)으로 잘못 등록되어 있는 경우.
+  * 이 경우, 사용자가 해당 행/열 맥락인 '강도 정수 적용'에 완전하고 정확히 부합하는 공학적 대답(예: 'C, 파이' 또는 'c, \\phi' 등)을 작성했다면, 모범 답안(비배수 조건...)과 의미적/자구적으로 맞지 않더라도 행/열 맥락상 가장 올바른 정답이므로 절대 오답 처리하지 말고 만점(10점)을 부여해야 합니다. 반대로 행 제목이 '활용 목적'인데 모범 답안이 기호이고 사용자가 목적 서술을 쓴 경우도 만점으로 인정해야 합니다.
+
 [채점 사유(reason) 작성 원칙]:
 - 왜 해당 점수를 부여했는지(어떤 핵심 요소가 부합했는지, 혹은 어떤 부분에서 감점되었는지)를 명확한 공학적 이유와 함께 수험생에게 한 줄로 설명하십시오.
 - 주의: 실제 문항 배점에 따라 최종 반영되는 감점 수치가 달라지므로, 사유 작성 시 절대적인 점수 수치(예: '1점 감점', '2점 감점')를 서술하면 학생에게 혼란을 줍니다. 대신 '10점 만점 기준 1점 감점' 혹은 '10% 감점'과 같이 비율/기준점수를 명시하거나, 수치를 언급하지 않고 '어떤 핵심 요소 또는 개념 용어가 누락되어 감점되었습니다'와 같이 감점의 질적 사유만 기술하십시오.
@@ -48,7 +54,7 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, callLLMWithFailover }) {
+export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, callLLMWithFailover }) {
   if (!correctAnswer || !userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
   }
@@ -59,6 +65,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, cal
 
   const userPrompt = `
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
+${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
+${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
 - 모범 답안: ${correctAnswer}
 - 사용자의 답안: ${userAnswer}
 `;

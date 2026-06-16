@@ -4794,6 +4794,19 @@ export default function App() {
       const userAnswer = tableAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q.answers[inputId] || '';
       
+      let rowHeader = '';
+      let colHeader = '';
+      if (q.tableData && q.tableData.rows && q.tableData.headers) {
+        q.tableData.rows.forEach((row) => {
+          row.forEach((cell, colIdx) => {
+            if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+              rowHeader = row[0] || '';
+              colHeader = q.tableData.headers[colIdx] || '';
+            }
+          });
+        });
+      }
+      
       try {
         const res = await fetch(`${API_BASE}/api/grade-subjective`, {
           method: 'POST',
@@ -4801,7 +4814,9 @@ export default function App() {
           body: JSON.stringify({
             question: q.question,
             correctAnswer,
-            userAnswer
+            userAnswer,
+            rowHeader,
+            colHeader
           })
         });
         const data = await res.json();
