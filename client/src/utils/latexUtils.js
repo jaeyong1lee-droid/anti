@@ -127,7 +127,7 @@ function parseMarkdownTable(questionText) {
       .map(cell => cell.trim());
     
     const separatorLine = lines[startIdx + 1];
-    if (separatorLine.includes('---')) {
+    if (separatorLine.includes('-') && /^[|:\s\-]+$/.test(separatorLine)) {
       const rows = [];
       for (let i = startIdx + 2; i <= endIdx; i++) {
         const rowCells = lines[i]
@@ -192,7 +192,7 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
   const healedLines = lines.map(line => {
     const trimmed = line.trim();
     if (!trimmed.includes('|')) return line;
-    if (trimmed.includes('---') && /^[|:\s\-]+$/.test(trimmed)) return line;
+    if (trimmed.includes('-') && /^[|:\s\-]+$/.test(trimmed)) return line;
     
     const startsWithPipe = trimmed.startsWith('|');
     const endsWithPipe = trimmed.endsWith('|');
@@ -408,7 +408,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
 
   if (!isNested) {
-    result = result.replace(/<!--START_TABLE-->\n?/g, '').replace(/\n?<!--END_TABLE-->/g, '');
+    result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
   }
 
   return result;
