@@ -4637,18 +4637,92 @@ ${adjustments.map((a, idx) => `
     }
 
     // 💡 5문제씩 분할 생성 아키텍처 가동
-    let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 12; // 12회 * 5문제 = 60문제 AI 생성 + 로컬 10문제 = 총 70문제 완성
-    
-    console.log(`[종합평가 분할 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    // 1) Collect past questions from app_session
+    let pastQuestionsPool = [];
+    try {
+      await ensureSessionTable();
+      const sessionRows = await dbQuery.all(
+        `SELECT value FROM app_session 
+         WHERE key LIKE 'review_questions_schedule_%' 
+            OR key LIKE 'review_questions_topic_%' 
+            OR key LIKE 'completed_review_schedule_%'`
+      );
+      for (const row of sessionRows) {
+        if (row.value) {
+          try {
+            const parsed = JSON.parse(row.value);
+            const qs = parsed.questions || parsed.examQuestions || (Array.isArray(parsed) ? parsed : []);
+            if (Array.isArray(qs)) {
+              for (const q of qs) {
+                if (q && q.question) {
+                  pastQuestionsPool.push(q);
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+      console.log(`[종합평가] 수집된 기존 복습 문항 수: ${pastQuestionsPool.length}개`);
+    } catch (dbErr) {
+      console.warn('[종합평가] 기존 문항 로드 실패:', dbErr);
+    }
 
-    for (let i = 0; i < TOTAL_BATCHES; i++) {
+    const uniqueQuestionsMap = new Map();
+    for (const q of pastQuestionsPool) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        uniqueQuestionsMap.set(cleanedText, q);
+      }
+    }
+    const uniquePastQuestions = Array.from(uniqueQuestionsMap.values());
+    console.log(`[종합평가] 중복 제거 후 고유 기존 복습 문항 수: ${uniquePastQuestions.length}개`);
+
+    // 2) Collect local fallback questions for all topics
+    let fallbackQuestionsPool = [];
+    try {
+      for (const t of topics) {
+        let topicText = '';
+        if (t.pdf_data) {
+          try {
+            const isHtml = t.pdf_name && (
+              t.pdf_name.toLowerCase().endsWith('.html') ||
+              t.pdf_name.toLowerCase().endsWith('.htm') ||
+              isBufferHtml(t.pdf_data)
+            );
+            if (isHtml) {
+              topicText = htmlToPlainText(decodeHtmlBuffer(t.pdf_data));
+            } else {
+              const parsed = await pdfParse(t.pdf_data);
+              topicText = parsed.text || '';
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+          topicText = mergeVerticalText(topicText);
+        }
+        const fallbackQs = generateFallbackQuestions(t.title, t.keywords, topicText);
+        if (Array.isArray(fallbackQs)) {
+          fallbackQuestionsPool.push(...fallbackQs);
+        }
+      }
+      console.log(`[종합평가] 로컬 생성 예비 문항 수: ${fallbackQuestionsPool.length}개`);
+    } catch (fallbackErr) {
+      console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
+    }
+
+    // 3) Generate 15 new AI questions in parallel (3 batches of 5)
+    let aggregatedAiQuestions = [];
+    const TOTAL_BATCHES = 3;
+    console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
+
+    const batchPromises = Array.from({ length: TOTAL_BATCHES }).map(async (_, idx) => {
       const randomSeed = Math.floor(Math.random() * 10000);
-      
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
 아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
-(현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
+(현재 분할 출제 회차: ${idx + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
 1. 반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**의 각 '<Topic>...</Topic>' 태그에 직접 기술되어 있는 구체적인 개념, 공식, 이론 및 지식의 범위 안에서만 시험 문제를 생성하십시오.
@@ -4675,7 +4749,7 @@ ${adjustmentsPrompt}
      * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
      * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
    
-   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
+   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
    - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
    - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
    - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
@@ -4712,90 +4786,77 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   }
 ] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
 `;
-
       try {
-        console.log(`[종합평가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 중...`);
+        console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
         const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
         }
-
-        let batchQuestions = null;
+        let parsedList = null;
         try {
-          batchQuestions = parseLlmJson(text);
+          parsedList = parseLlmJson(text);
         } catch {
-          batchQuestions = extractJsonArray(rawText);
+          parsedList = extractJsonArray(rawText);
         }
+        if (parsedList && Array.isArray(parsedList)) {
+          return parsedList;
+        }
+      } catch (err) {
+        console.warn(`[종합평가 병렬 생성 실패] #${idx + 1}번째 배치 에러:`, err.message);
+      }
+      return [];
+    });
 
-        if (batchQuestions && Array.isArray(batchQuestions)) {
-          aggregatedAiQuestions.push(...batchQuestions);
-          console.log(`[종합평가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
-        }
+    const results = await Promise.all(batchPromises);
+    for (const r of results) {
+      if (r) aggregatedAiQuestions.push(...r);
+    }
+    console.log(`[종합평가 병렬 생성 완료] AI 신규 문항 수: ${aggregatedAiQuestions.length}개`);
 
-        // 💡 분당 요청 수(RPM) 차단을 우회하기 위해 배치 사이에 1.2초의 미세 대기 텀(휴식)을 줍니다.
-        if (i < TOTAL_BATCHES - 1) {
-          await sleep(1200);
+    // 4) Merge all pools (AI questions, unique past study questions, fallback questions)
+    const uniquePoolMap = new Map();
+    // 4-a) Priority 1: Newly generated AI questions
+    for (const q of aggregatedAiQuestions) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        uniquePoolMap.set(cleanedText, q);
+      }
+    }
+    // 4-b) Priority 2: Past study questions from DB sessions
+    for (const q of uniquePastQuestions) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        if (!uniquePoolMap.has(cleanedText)) {
+          uniquePoolMap.set(cleanedText, q);
         }
-      } catch (batchError) {
-        // 특정 배차가 실패해도 전체 시스템이 셧다운되지 않고 끈질기게 다음 루프를 수행하도록 예외 흡수
-        console.warn(`[배치 우회 경고] ${i + 1}회차 생성 중 429/네트워크 에러 발생. 폴백 연동을 위해 계속 진행합니다:`, batchError.message);
+      }
+    }
+    // 4-c) Priority 3: Local fallback questions
+    for (const q of fallbackQuestionsPool) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        if (!uniquePoolMap.has(cleanedText)) {
+          uniquePoolMap.set(cleanedText, q);
+        }
       }
     }
 
-    if (aggregatedAiQuestions.length === 0) {
-      console.warn('[종합평가 비상 폴백 가동] AI 생성 결과가 0건입니다. 지반공학 콤팩트 기출문제 데이터셋을 활성화합니다.');
-      
-      // 고품격 폴백 종합평가 15문항 (객관식)
-      aggregatedAiQuestions = [
-        {
-          type: "객관식",
-          question: "지반 공학에서 흙의 유효응력(Effective Stress) 개념에 대한 설명 중 가장 타당하지 않은 것은?",
-          options: [
-            "유효응력은 흙입자가 직접 부담하는 평균 접촉 응력으로 간극수압의 영향을 받지 않는다.",
-            "전응력에서 간극수압을 차감한 값으로 정의된다 ($σ' = σ - u$).",
-            "지반의 압밀 침하와 전단 강도 거동을 지배하는 실질적인 응력이다.",
-            "지하수위가 상승하여 간극수압이 증가하면 유효응력은 감소하고 지반 전단 강도는 저하된다."
-          ],
-          answer: "유효응력은 흙입자가 직접 부담하는 평균 접촉 응력으로 간극수압의 영향을 받지 않는다.",
-          explanation: "유효응력은 간극수압($u$)의 변화에 직접 영향을 받으며, 간극수압이 증가하면 유효응력이 감소합니다."
-        },
-        {
-          type: "객관식",
-          question: "점성토 지반의 1차원 압밀 과정에서 시간계수($T_v$)와 압밀도($U$)의 관계에 대한 설명으로 옳은 것은?",
-          options: [
-            "압밀도 $U$가 60% 이하일 때, 시간계수 $T_v$는 압밀도의 제곱에 비례한다 ($T_v \\approx \\frac{\\pi}{4} U^2$).",
-            "시간계수는 배수거리의 제곱에 비례하고 압밀계수에 반비례한다.",
-            "압밀도가 100%에 근접할수록 시간계수는 0에 수렴한다.",
-            "동일한 시간계수 조건에서 양면 배수는 단면 배수보다 압밀 속도가 2배 느리다."
-          ],
-          answer: "압밀도 $U$가 60% 이하일 때, 시간계수 $T_v$는 압밀도의 제곱에 비례한다 ($T_v \\approx \\frac{\\pi}{4} U^2$).",
-          explanation: "Terzaghi 압밀이론에서 압밀도가 60% 이하인 초기 단계에는 $T_v = \\frac{\\pi}{4} (U/100)^2$ 수식이 성립하여 압밀도의 제곱에 비례합니다."
-        },
-        {
-          type: "객관식",
-          question: "지반의 한계 평형 상태를 다루는 Mohr-Coulomb 파괴 포락선에서 내부마찰각이 $\\phi$ 이고 점착력이 $c$ 일 때, 파괴면이 최대주응력면과 이루는 각도($\\theta$)는?",
-          options: [
-            "$\\theta = 45^\\circ + \\phi/2$",
-            "$\\theta = 45^\\circ - \\phi/2$",
-            "$\\theta = 90^\\circ - \\phi$",
-            "$\\theta = 30^\\circ + \\phi$"
-          ],
-          answer: "$\\theta = 45^\\circ + \\phi/2$",
-          explanation: "응력원 기하학적 분석 상, 파괴면은 최대주응력 작용면과 $45^\\circ + \\phi/2$ 각도를 이룹니다."
-        },
-        ...topics.flatMap(t => generateFallbackQuestions(t.title, t.keywords, fileText).filter(q => q.type.includes('객관식')))
-      ];
-    }
+    const finalQuestionPool = Array.from(uniquePoolMap.values());
+    console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
 
-    // Clean generated questions & Map topic_title to topic_id
+    // 5) Select up to 60 questions from the pool
+    const shuffledPool = [...finalQuestionPool].sort(() => 0.5 - Math.random());
+    const selectedQuestions = shuffledPool.slice(0, 60);
+
+    // 6) Clean selected questions & Map topic_title to topic_id
     const topicMap = {};
     topics.forEach(t => {
       topicMap[t.title.toLowerCase().trim()] = t.id;
     });
 
-    const cleanedQuestions = aggregatedAiQuestions.map(q => {
-      let topicId = null;
+    const cleanedQuestions = selectedQuestions.map(q => {
+      let topicId = q.topic_id || null;
       if (q.topic_title) {
         const cleanedTitle = q.topic_title.toLowerCase().trim();
         if (topicMap[cleanedTitle]) {
@@ -4811,9 +4872,15 @@ ${LATEX_PROMPT_INSTRUCTIONS}
         topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
       }
       return {
-        ...q,
-        topic_id: topicId,
-        question: cleanQuizQuestion(q.question)
+        type: q.type || "객관식",
+        subtype: q.subtype || null,
+        question: cleanQuizQuestion(q.question),
+        tableData: q.tableData || null,
+        options: q.options || [],
+        answer: q.answer,
+        explanation: q.explanation || '',
+        concept: q.concept || '',
+        topic_id: topicId
       };
     });
 
