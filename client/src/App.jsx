@@ -867,6 +867,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   const longPressTimer = useRef(null);
   const isLongPressActive = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
+  const iframeRef = useRef(null);
 
   const triggerAddFormula = (katexEl) => {
     const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
@@ -994,6 +995,39 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   const isHeavy = isHeavyHtml(renderText);
+
+  // Manage iframe resize event listener and message listener cleanly
+  useEffect(() => {
+    if (!isHeavy) return;
+
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'mathRendered') {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.contentWindow === event.source) {
+          try {
+            const doc = iframe.contentWindow?.document;
+            if (doc && doc.body) {
+              const height = Math.max(
+                doc.body.scrollHeight,
+                doc.documentElement.scrollHeight,
+                doc.body.offsetHeight,
+                doc.documentElement.offsetHeight
+              );
+              iframe.style.height = (height + 28) + 'px';
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isHeavy, text]);
+
   let processedText = renderText;
   if (typeof processedText === 'string' && !isHeavy) {
     processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
@@ -1056,6 +1090,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return (
       <div className="w-full my-3 overflow-hidden rounded-2xl border border-slate-700/40 shadow-2xl bg-white animate-fade-in">
         <iframe
+          ref={iframeRef}
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
           className="w-full border-0 block"
@@ -1082,20 +1117,9 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
             adjustHeight();
 
-            const handleMessage = (event) => {
-              if (event.data && event.data.type === 'mathRendered') {
-                adjustHeight();
-              }
-            };
-            window.addEventListener('message', handleMessage);
-
             const intervals = [100, 300, 600, 1000, 2000, 4000];
             intervals.forEach((delay) => {
               setTimeout(adjustHeight, delay);
-            });
-
-            iframe.addEventListener('unload', () => {
-              window.removeEventListener('message', handleMessage);
             });
           }}
           title="Interactive Simulator Drawing"
