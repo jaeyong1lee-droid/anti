@@ -3536,27 +3536,44 @@ try {
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader } = req.body;
 
-  try {
-    const result = await gradeSubjective({
-      question,
-      correctAnswer,
-      userAnswer,
-      rowHeader,
-      colHeader,
-      callLLMWithFailover
-    });
-    res.json(result);
-  } catch (err) {
-    console.error('AI grading error:', err);
-    // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
-    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-    const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
-    res.json({
-      isCorrect: localCorrect,
-      score: localCorrect ? 10 : 0,
-      reason: localCorrect ? '로컬 단순 비교로 정답 판정' : '모범 답안과 일치하지 않습니다.'
-    });
+  let attempt = 0;
+  const maxAttempts = 3;
+  let delay = 2000;
+  let lastError = null;
+
+  while (attempt < maxAttempts) {
+    try {
+      const result = await gradeSubjective({
+        question,
+        correctAnswer,
+        userAnswer,
+        rowHeader,
+        colHeader,
+        callLLMWithFailover
+      });
+      return res.json(result);
+    } catch (err) {
+      lastError = err;
+      attempt++;
+      if (attempt < maxAttempts) {
+        console.warn(`[AI grading retry] Attempt ${attempt} failed. Retrying in ${delay}ms...`, err.message || err);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+      }
+    }
   }
+
+  console.error('All AI grading attempts failed:', lastError);
+  // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
+  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+  const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
+  res.json({
+    isCorrect: localCorrect,
+    score: localCorrect ? 10 : 0,
+    reason: localCorrect 
+      ? '로컬 단순 비교로 정답 판정' 
+      : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)'
+  });
 });
 
 // 6-2-1. GET /api/topics/:id/question-feedback → 특정 토픽의 문제 추천/비추천 피드백 목록 반환

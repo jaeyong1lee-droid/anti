@@ -4825,7 +4825,8 @@ export default function App() {
           [`${qIdx}_${inputId}`]: {
             isCorrect: data.isCorrect,
             score: data.score,
-            reason: data.reason
+            reason: data.reason,
+            suggestedModelAnswer: data.suggestedModelAnswer
           }
         }));
       } catch (err) {
@@ -4960,7 +4961,8 @@ export default function App() {
       newResult = {
         isCorrect: data.isCorrect,
         score: data.score,
-        reason: data.reason
+        reason: data.reason,
+        suggestedModelAnswer: data.suggestedModelAnswer
       };
     } catch (err) {
       console.error('Grading error:', err);
