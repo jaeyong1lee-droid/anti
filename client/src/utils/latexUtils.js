@@ -198,6 +198,9 @@ export function healLatexFormulas(text, isNested = false) {
     processed = wrapMarkdownTables(processed);
   }
 
+  // [Self-Healing] Restore collapsed newlines for variable list items
+  processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
