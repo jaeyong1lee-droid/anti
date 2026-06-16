@@ -198,6 +198,25 @@ export function healLatexFormulas(text, isNested = false) {
     processed = wrapMarkdownTables(processed);
   }
 
+  // [Self-Healing] 포아송비 기호 오류 자가치유 (u 나 v 기호를 그리스 문자 \nu 로 변환)
+  let poissonSymbol = null;
+  if (/포아송비\s*(?:기호\s*)?\$?u\$?/i.test(processed) || /\$?u\$?\s*(?:는|은|이|가)?\s*포아송비/i.test(processed)) {
+    poissonSymbol = 'u';
+  } else if (/포아송비\s*(?:기호\s*)?\$?v\$?/i.test(processed) || /\$?v\$?\s*(?:는|은|이|가)?\s*포아송비/i.test(processed)) {
+    poissonSymbol = 'v';
+  }
+
+  if (poissonSymbol) {
+    const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$|\\b${poissonSymbol}\\b)`, 'g');
+    processed = processed.replace(standaloneRegex, (match) => {
+      return match.includes('$') ? '$\\nu$' : '\\nu';
+    });
+  }
+
+  // 항상 변환해야 하는 일반적인 포아송비 수식 관계식 치유 (예: 3(1-2u), 2(1+u), 3(1-2v), 2(1+v))
+  processed = processed.replace(/(?<=\b1\s*-\s*2\s*)[uv]\b/g, '\\nu');
+  processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
+
   // [Self-Healing] Restore collapsed newlines for variable list items
   processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
 
