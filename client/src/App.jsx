@@ -4625,7 +4625,7 @@ export default function App() {
                 <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <span className="text-slate-100 font-semibold">
-                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
+                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
                   </span>
                 </div>
                 {gradingResult?.reason && (
@@ -12500,7 +12500,9 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        {idx === 0 ? (
+                                        {tableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
+                                          <LatexRenderer text={tableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        ) : idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
                                           renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
@@ -14152,7 +14154,9 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        {idx === 0 ? (
+                                        {tableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
+                                          <LatexRenderer text={tableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        ) : idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
                                           renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
