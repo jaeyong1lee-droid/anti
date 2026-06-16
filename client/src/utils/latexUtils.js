@@ -47,7 +47,7 @@ export function healBackslashes(str) {
   return healed;
 }
 
-export function htmlTableToMarkdown(html) {
+export function htmlTableToMarkdown(html, poissonSymbol = null) {
   if (!html) return html;
 
   // 1. 깨진 공백 및 태그 정제 (시작 태그 및 끝 태그)
@@ -75,7 +75,7 @@ export function htmlTableToMarkdown(html) {
       const cellRegex = /<(?:th|td)[^>]*>([\s\S]*?)<\/\s*(?:th|td)>/gi;
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(healLatexFormulas(cellMatch[1].trim(), true));
+        cells.push(healLatexFormulas(cellMatch[1].trim(), true, poissonSymbol));
       }
       
       if (cells.length > 0) {
@@ -187,14 +187,41 @@ export function wrapMarkdownTables(text) {
   return resultLines.join('\n');
 }
 
+function healMarkdownTable(tableText, poissonSymbol = null) {
+  const lines = tableText.split('\n');
+  const healedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed.includes('|')) return line;
+    if (trimmed.includes('---') && /^[|:\s\-]+$/.test(trimmed)) return line;
+    
+    const startsWithPipe = trimmed.startsWith('|');
+    const endsWithPipe = trimmed.endsWith('|');
+    
+    let cells = trimmed.split('|');
+    if (startsWithPipe) cells.shift();
+    if (endsWithPipe) cells.pop();
+    
+    const healedCells = cells.map(cell => healLatexFormulas(cell.trim(), true, poissonSymbol));
+    
+    let resultLine = '';
+    if (startsWithPipe) resultLine += '| ';
+    resultLine += healedCells.join(' | ');
+    if (endsWithPipe) resultLine += ' |';
+    
+    const leadingSpace = line.match(/^\s*/)[0];
+    return leadingSpace + resultLine;
+  });
+  return healedLines.join('\n');
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
-export function healLatexFormulas(text, isNested = false) {
+export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
   // 1. Convert HTML tables to Markdown tables (only on outer call)
   let processed = text;
   if (!isNested) {
-    processed = htmlTableToMarkdown(processed);
+    processed = htmlTableToMarkdown(processed, passedPoissonSymbol);
     processed = wrapMarkdownTables(processed);
   }
 
@@ -253,13 +280,17 @@ export function healLatexFormulas(text, isNested = false) {
 
   // [Self-Healing] 포아송비 기호 오류 자가치유 (u 나 v 기호를 그리스 문자 \nu 로 변환)
   // 포아송비 또는 비배수 조건 관련 문맥이 존재하는 경우에만 자가치유 작동 (간극수압 u 기호 오염 방지)
-  let poissonSymbol = null;
-  const hasPoissonContext = /포아송비|비배수\s*조건/i.test(processed);
-  if (hasPoissonContext) {
-    if (/(?:포아송비|조건)\s*(?:기호\s*)?\$?u\$?/i.test(processed) || /\$?u\$?\s*(?:는|은|이|가)?\s*(?:포아송비|조건)/i.test(processed)) {
-      poissonSymbol = 'u';
-    } else if (/(?:포아송비|조건)\s*(?:기호\s*)?\$?v\$?/i.test(processed) || /\$?v\$?\s*(?:는|은|이|가)?\s*(?:포아송비|조건)/i.test(processed)) {
-      poissonSymbol = 'v';
+  let poissonSymbol = passedPoissonSymbol;
+  if (!poissonSymbol) {
+    if (/포아송/i.test(processed)) {
+      if (/(?:포아송)[^a-zA-Z0-9$]*\$?u\$?/i.test(processed) || /\$?u\$?[^a-zA-Z0-9$]*(?:포아송)/i.test(processed)) {
+        poissonSymbol = 'u';
+      }
+    }
+    if (!poissonSymbol && /포아송|비배수|탄성/i.test(processed)) {
+      if (/(?:포아송|비배수|탄성)[^a-zA-Z0-9$]*\$?v\$?/i.test(processed) || /\$?v\$?[^a-zA-Z0-9$]*(?:포아송|비배수|탄성)/i.test(processed)) {
+        poissonSymbol = 'v';
+      }
     }
   }
 
@@ -270,9 +301,10 @@ export function healLatexFormulas(text, isNested = false) {
     });
   }
 
-  // 항상 변환해야 하는 일반적인 포아송비 수식 관계식 치유 (예: 3(1-2u), 2(1+u), 3(1-2v), 2(1+v))
+  // 항상 변환해야 하는 일반적인 포아송비 수식 관계식 치유 (예: 3(1-2u), 2(1+u), 3(1-2v), 2(1+v), 1-u, 1-v)
   processed = processed.replace(/(?<=\b1\s*-\s*2\s*)[uv]\b/g, '\\nu');
   processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
+  processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
 
   // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
   const isMathVariable = (str) => {
@@ -314,7 +346,7 @@ export function healLatexFormulas(text, isNested = false) {
   const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
   processed = sections.map(section => {
     if (section.startsWith('<!--START_TABLE-->')) {
-      return section; // 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지
+      return healMarkdownTable(section, poissonSymbol); // 표 영역은 개별 셀 치유 및 원본 구조 유지
     }
     return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|[-–—−•·▪▫▶▷]|\d+\.|\d+\)|[a-zA-Z가-힣]\.|[a-zA-Z가-힣]\)|[a-zA-Z0-9_\\\^\(\)\{\}\$]+\s*:))/g, ' ');
   }).join('');
@@ -383,8 +415,30 @@ export function healLatexFormulas(text, isNested = false) {
 }
 
 // 오브젝트 딥 힐러 트리구조
-export function healDeep(obj, parentKey = null) {
+export function healDeep(obj, parentKey = null, context = null) {
   if (obj === null || obj === undefined) return obj;
+  
+  let currentContext = context;
+  if (!currentContext && typeof obj === 'object') {
+    try {
+      const serialized = JSON.stringify(obj);
+      let symbol = null;
+      if (/포아송/i.test(serialized)) {
+        if (/(?:포아송)[^a-zA-Z0-9$]*\$?u\$?/i.test(serialized) || /\$?u\$?[^a-zA-Z0-9$]*(?:포아송)/i.test(serialized)) {
+          symbol = 'u';
+        }
+      }
+      if (!symbol && /포아송|비배수|탄성/i.test(serialized)) {
+        if (/(?:포아송|비배수|탄성)[^a-zA-Z0-9$]*\$?v\$?/i.test(serialized) || /\$?v\$?[^a-zA-Z0-9$]*(?:포아송|비배수|탄성)/i.test(serialized)) {
+          symbol = 'v';
+        }
+      }
+      currentContext = { poissonSymbol: symbol };
+    } catch (e) {
+      // ignore
+    }
+  }
+
   if (typeof obj === 'string') {
     const skipKeys = [
       'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
@@ -397,16 +451,16 @@ export function healDeep(obj, parentKey = null) {
       }
       return cleanVal;
     }
-    return healLatexFormulas(obj);
+    return healLatexFormulas(obj, false, currentContext?.poissonSymbol);
   }
   if (Array.isArray(obj)) {
-    return obj.map(item => healDeep(item, parentKey));
+    return obj.map(item => healDeep(item, parentKey, currentContext));
   }
   if (typeof obj === 'object') {
     const healed = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        healed[key] = healDeep(obj[key], key);
+        healed[key] = healDeep(obj[key], key, currentContext);
       }
     }
     return healed;
