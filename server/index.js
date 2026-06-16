@@ -4740,9 +4740,12 @@ ${feedbackPrompt}
 ${adjustmentsPrompt}
 
 [출제 규칙]:
-1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 비율을 사수할 것:
-   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
-   - 객관식 (type: "객관식"): 4문제 (4지선다형)
+1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 유형별로 각각 정확히 1문제씩 골고루 구성하여 비율을 사수하십시오:
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안)
+   - 주관식 (type: "주관식", subtype: "공식"): 1문제 (해당 토픽의 대표적인 공학적 수식 및 물리적 관계식을 제시하고 수식을 구성하는 기호들의 정의를 나열하는 공식 문제)
+   - 주관식 (type: "주관식", subtype: "표채우기"): 1문제 (질문에는 비교/특성 표가 필요한 공학적 분석 지식을 물어보며, 아래 "tableData" 필드에 <table> 태그 대신 표 데이터 객체 구조를 채워넣는 칸채우기 주관식 문제)
+   - 주관식 (type: "주관식", subtype: "단답형"): 1문제 (구체적인 실무 문제점/시나리오를 질문으로 제시하고 핵심 키워드 강조가 들어간 1줄 서술형 모범답안으로 답하는 단답형 문제)
+   - 객관식 (type: "객관식"): 1문제 (4지선다형 객관식 문제)
 2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
    - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
      * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
@@ -4845,9 +4848,58 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     const finalQuestionPool = Array.from(uniquePoolMap.values());
     console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
 
-    // 5) Select up to 60 questions from the pool
-    const shuffledPool = [...finalQuestionPool].sort(() => 0.5 - Math.random());
-    const selectedQuestions = shuffledPool.slice(0, 60);
+    // 5) Select up to 60 questions from the pool with exact type combination:
+    // - 개요 (1번): 10개
+    // - 공식 (2번): 10개
+    // - 표채우기 (칸채우기): 10개
+    // - 단답형 (12, 13번): 10개
+    // - 객관식 (6~11번): 20개
+    const poolGaeyo = [];
+    const poolGongsik = [];
+    const poolTable = [];
+    const poolDandap = [];
+    const poolMC = [];
+
+    for (const q of finalQuestionPool) {
+      if (q.type === '주관식') {
+        if (q.subtype === '개요') poolGaeyo.push(q);
+        else if (q.subtype === '공식') poolGongsik.push(q);
+        else if (q.subtype === '표채우기') poolTable.push(q);
+        else if (q.subtype === '단답형' || !q.subtype) poolDandap.push(q);
+      } else if (q.type === '객관식') {
+        poolMC.push(q);
+      }
+    }
+
+    console.log(`[종합평가 분류] 개요: ${poolGaeyo.length}, 공식: ${poolGongsik.length}, 표채우기: ${poolTable.length}, 단답형: ${poolDandap.length}, 객관식: ${poolMC.length}`);
+
+    const shuffleArray = (arr) => [...arr].sort(() => 0.5 - Math.random());
+    const shufGaeyo = shuffleArray(poolGaeyo);
+    const shufGongsik = shuffleArray(poolGongsik);
+    const shufTable = shuffleArray(poolTable);
+    const shufDandap = shuffleArray(poolDandap);
+    const shufMC = shuffleArray(poolMC);
+
+    const selectedQuestions = [];
+    const take = (arr, n) => {
+      const result = arr.slice(0, n);
+      arr.splice(0, n);
+      return result;
+    };
+
+    selectedQuestions.push(...take(shufGaeyo, 10));
+    selectedQuestions.push(...take(shufGongsik, 10));
+    selectedQuestions.push(...take(shufTable, 10));
+    selectedQuestions.push(...take(shufDandap, 10));
+    selectedQuestions.push(...take(shufMC, 20));
+
+    // If total selected is less than 60, fill from remaining questions in other pools
+    const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
+    const shufRemaining = shuffleArray(remainingPool);
+    const needed = Math.max(0, 60 - selectedQuestions.length);
+    selectedQuestions.push(...take(shufRemaining, needed));
+
+    console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
 
     // 6) Clean selected questions & Map topic_title to topic_id
     const topicMap = {};
