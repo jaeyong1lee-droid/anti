@@ -3071,6 +3071,9 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
             revealedQuestions: parsed.revealedQuestions || {},
             tableAnswers: parsed.tableAnswers || {},
             tableGradingResults: parsed.tableGradingResults || {},
+            tutorAnswers: parsed.tutorAnswers || {},
+            tutorInputText: parsed.tutorInputText || {},
+            chatHistory: parsed.chatHistory || [],
             savedQuizScroll: parsed.savedQuizScroll || 0,
             isFallback: false,
             isCached: true
@@ -5769,8 +5772,8 @@ app.get('/api/session/exam', async (req, res) => {
 app.post('/api/session/exam', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, savedExamScroll } = req.body;
-    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, tutorAnswers: tutorAnswers || {}, tutorInputText: tutorInputText || {}, savedExamScroll });
+    const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedExamScroll } = req.body;
+    const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, tutorAnswers: tutorAnswers || {}, tutorInputText: tutorInputText || {}, chatHistory: chatHistory || [], savedExamScroll });
     // DELETE + INSERT (모든 DB 호환 UPSERT)
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
     await dbQuery.run(
@@ -5800,7 +5803,7 @@ app.delete('/api/session/exam', async (req, res) => {
 app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, savedQuizScroll } = req.body;
+    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
@@ -5815,6 +5818,7 @@ app.post('/api/session/review', async (req, res) => {
       tableGradingResults: tableGradingResults || {},
       tutorAnswers: tutorAnswers || {},
       tutorInputText: tutorInputText || {},
+      chatHistory: chatHistory || [],
       savedQuizScroll: savedQuizScroll || 0
     });
     
