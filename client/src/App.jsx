@@ -4790,6 +4790,8 @@ export default function App() {
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
   const [tableGradingResults, setTableGradingResults] = useState({});
+  const [examTableAnswers, setExamTableAnswers] = useState({});
+  const [examTableGradingResults, setExamTableGradingResults] = useState({});
   const [showAnswersState, setShowAnswersState] = useState({});
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
   const [gradingLoading, setGradingLoading] = useState({});
@@ -4797,9 +4799,11 @@ export default function App() {
   const gradeTableQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     const inputs = Object.keys(q.answers || {});
+    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
     const promises = inputs.map(async (inputId) => {
-      const userAnswer = tableAnswers[`${qIdx}_${inputId}`] || '';
+      const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q.answers[inputId] || '';
       
       let rowHeader = '';
@@ -4828,7 +4832,7 @@ export default function App() {
           })
         });
         const data = await res.json();
-        setTableGradingResults(prev => ({
+        activeSetGradingResults(prev => ({
           ...prev,
           [`${qIdx}_${inputId}`]: {
             isCorrect: data.isCorrect,
@@ -4841,7 +4845,7 @@ export default function App() {
         console.error('Grading error:', err);
         const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
         const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-        setTableGradingResults(prev => ({
+        activeSetGradingResults(prev => ({
           ...prev,
           [`${qIdx}_${inputId}`]: {
             isCorrect,
@@ -4931,7 +4935,7 @@ export default function App() {
         let sumVal = 0;
         let countVal = inputIds.length;
         inputIds.forEach(inputId => {
-          const grading = tableGradingResults[`${idx}_${inputId}`];
+          const grading = examTableGradingResults[`${idx}_${inputId}`];
           if (grading && grading.score !== undefined) {
             sumVal += grading.score;
           }
@@ -4940,7 +4944,7 @@ export default function App() {
           total += (sumVal / (countVal * 10)) * W;
         }
       } else {
-        const grading = tableGradingResults[`${idx}_INPUT`];
+        const grading = examTableGradingResults[`${idx}_INPUT`];
         if (grading && grading.score !== undefined) {
           total += (grading.score / 10) * W;
         }
@@ -4951,7 +4955,10 @@ export default function App() {
 
   const gradeSubjectiveQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
-    const userAnswer = tableAnswers[`${qIdx}_INPUT`] || '';
+    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
+
+    const userAnswer = activeAnswers[`${qIdx}_INPUT`] || '';
     const correctAnswer = q.answer || q.concept || '';
     
     let newResult = null;
@@ -4984,14 +4991,14 @@ export default function App() {
     }
 
     if (newResult) {
-      setTableGradingResults(prev => {
+      activeSetGradingResults(prev => {
         const nextResults = {
           ...prev,
           [`${qIdx}_INPUT`]: newResult
         };
 
         // 즉시 DB 저장하여 지속성 보장
-        if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+        if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
           fetch(`${API_BASE}/api/session/review`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5008,7 +5015,7 @@ export default function App() {
           }).catch(e => console.warn('복습 세션 동기화 실패:', e));
         }
 
-        if (examQuestions.length > 0 && !loadingExam) {
+        if (showExam && examQuestions.length > 0 && !loadingExam) {
           fetch(`${API_BASE}/api/session/exam`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5017,7 +5024,7 @@ export default function App() {
               examRevealed,
               examAnswers,
               examTopic,
-              tableAnswers,
+              tableAnswers: examTableAnswers,
               tableGradingResults: nextResults,
               savedExamScroll: examBodyRef.current?.scrollTop || 0
             })
@@ -6013,6 +6020,8 @@ export default function App() {
         if (s.chatHistory) setChatHistory(s.chatHistory);
         if (s.tableAnswers) setTableAnswers(s.tableAnswers);
         if (s.tableGradingResults) setTableGradingResults(s.tableGradingResults);
+        if (s.examTableAnswers) setExamTableAnswers(s.examTableAnswers);
+        if (s.examTableGradingResults) setExamTableGradingResults(s.examTableGradingResults);
         if (s.tutorAnswers) setTutorAnswers(s.tutorAnswers);
         if (s.tutorInputText) setTutorInputText(s.tutorInputText);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
@@ -6034,8 +6043,8 @@ export default function App() {
           if (data.examRevealed) setExamRevealed(data.examRevealed);
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
-          if (data.tableAnswers) setTableAnswers(data.tableAnswers);
-          if (data.tableGradingResults) setTableGradingResults(data.tableGradingResults);
+          if (data.tableAnswers) setExamTableAnswers(data.tableAnswers);
+          if (data.tableGradingResults) setExamTableGradingResults(data.tableGradingResults);
           if (data.chatHistory) setChatHistory(data.chatHistory);
           if (data.tutorAnswers) {
             setTutorAnswers(prev => {
@@ -6156,6 +6165,8 @@ export default function App() {
         examAnswers,
         tableAnswers,
         tableGradingResults,
+        examTableAnswers,
+        examTableGradingResults,
         chatHistory,
         tutorAnswers,
         tutorInputText,
@@ -6163,7 +6174,7 @@ export default function App() {
     } catch (e) {
       console.warn('localStorage 저장 실패:', e);
     }
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, chatHistory, tutorAnswers, tutorInputText]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults, chatHistory, tutorAnswers, tutorInputText]);
 
   // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
   useEffect(() => {
@@ -6201,8 +6212,8 @@ export default function App() {
             examRevealed,
             examAnswers,
             examTopic,
-            tableAnswers,
-            tableGradingResults,
+            tableAnswers: examTableAnswers,
+            tableGradingResults: examTableGradingResults,
             tutorAnswers,
             tutorInputText,
             chatHistory,
@@ -6213,7 +6224,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
   const forceSaveActiveSessions = () => {
     // 1) Save active review session immediately
@@ -6249,8 +6260,8 @@ export default function App() {
           examRevealed,
           examAnswers,
           examTopic,
-          tableAnswers,
-          tableGradingResults,
+          tableAnswers: examTableAnswers,
+          tableGradingResults: examTableGradingResults,
           tutorAnswers,
           tutorInputText,
           chatHistory,
@@ -6271,7 +6282,7 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults]);
 
   // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
@@ -8754,7 +8765,8 @@ export default function App() {
         setExamAnswers(d.examAnswers || {});
         setExamTopic(d.examTopic || { title: '전체 토픽 통합 종합평가' });
         if (d.savedExamScroll) savedExamScroll.current = d.savedExamScroll;
-        if (d.tableGradingResults) setTableGradingResults(d.tableGradingResults);
+        if (d.tableAnswers) setExamTableAnswers(d.tableAnswers);
+        if (d.tableGradingResults) setExamTableGradingResults(d.tableGradingResults);
         
         setLoadingExam(false);
         requestAnimationFrame(() => {
@@ -8768,8 +8780,8 @@ export default function App() {
         setExamRevealed({});
         setExamAnswers({});
         setExamTopic(null);
-        setTableAnswers({});
-        setTableGradingResults({});
+        setExamTableAnswers({});
+        setExamTableGradingResults({});
         setShowAnswersState({});
         setExamShowAnswersState({});
       }
@@ -8791,8 +8803,8 @@ export default function App() {
     setExamRevealed({});
     setExamAnswers({});
     setExamOptionExplanations({});
-    setTableAnswers({});
-    setTableGradingResults({});
+    setExamTableAnswers({});
+    setExamTableGradingResults({});
     setShowAnswersState({});
     setExamShowAnswersState({});
     try {
@@ -8816,6 +8828,8 @@ export default function App() {
             examRevealed: {}, 
             examAnswers: {}, 
             examTopic: { title: '전체 토픽 통합 종합평가' },
+            tableAnswers: {},
+            tableGradingResults: {},
             savedExamScroll: 0 
           }),
         }).catch(e => console.warn('서버 세션 초기 저장 실패:', e));
@@ -13376,8 +13390,8 @@ export default function App() {
                         examRevealed, 
                         examAnswers, 
                         examTopic,
-                        tableAnswers,
-                        tableGradingResults,
+                        tableAnswers: examTableAnswers,
+                        tableGradingResults: examTableGradingResults,
                         savedExamScroll: savedExamScroll.current 
                       }),
                     });
@@ -13399,7 +13413,7 @@ export default function App() {
                   if (window.confirm("종합평가를 완전히 종료하고 결과 리포트를 저장하시겠습니까?")) {
                     fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                       .catch(e => console.warn('세션 삭제 실패:', e));
-                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                   }
                 }}
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-rose-950/60 hover:bg-rose-900/65 text-rose-300 hover:text-white border-rose-500/20 transition-all cursor-pointer active:scale-95"
@@ -13513,8 +13527,8 @@ export default function App() {
                         examRevealed, 
                         examAnswers, 
                         examTopic,
-                        tableAnswers,
-                        tableGradingResults,
+                        tableAnswers: examTableAnswers,
+                        tableGradingResults: examTableGradingResults,
                         savedExamScroll: savedExamScroll.current 
                       }),
                     });
@@ -13534,7 +13548,7 @@ export default function App() {
                 onClick={() => {
                   fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
                     .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setTableAnswers({}); setTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
+                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
                 }}
                 className="px-1 py-1.5 sm:px-4 sm:py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center whitespace-nowrap"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
@@ -14097,11 +14111,11 @@ export default function App() {
                                   <TableQuiz 
                                     questionIdx={idx} 
                                     q={q} 
-                                    tableAnswers={tableAnswers} 
-                                    setTableAnswers={setTableAnswers} 
+                                    tableAnswers={examTableAnswers} 
+                                    setTableAnswers={setExamTableAnswers} 
                                     revealed={!!examRevealed[idx]} 
                                     katexLoaded={katexLoaded} 
-                                    tableGradingResults={tableGradingResults}
+                                    tableGradingResults={examTableGradingResults}
                                     weight={W}
                                   />
                                 );
@@ -14144,8 +14158,8 @@ export default function App() {
                                       <input
                                         type="text"
                                         disabled={!!examRevealed[idx]}
-                                        value={tableAnswers[`${idx}_INPUT`] || ''}
-                                        onChange={(e) => setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
+                                        value={examTableAnswers[`${idx}_INPUT`] || ''}
+                                        onChange={(e) => setExamTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }))}
                                         onKeyDown={async (e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
@@ -14158,30 +14172,30 @@ export default function App() {
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
-                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                    {idx !== 1 && examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
                                         <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
-                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
+                                          {Math.round(((examTableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                         </span>
                                       </div>
                                     )}
                                   </div>
                                 </div>
-                                {examRevealed[idx] && tableGradingResults[`${idx}_INPUT`] && (
+                                {examRevealed[idx] && examTableGradingResults[`${idx}_INPUT`] && (
                                   <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
                                     <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        {tableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
-                                          <LatexRenderer text={tableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        {examTableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
+                                          <LatexRenderer text={examTableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : idx === 0 ? (
                                           <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                         ) : (
-                                          renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
+                                          renderCompareKeywords(q.answer || q.concept || '', examTableAnswers[`${idx}_INPUT`] || '')
                                         )}
                                       </div>
                                     </div>
