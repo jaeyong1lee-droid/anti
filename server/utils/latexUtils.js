@@ -288,7 +288,7 @@ export function healLatexFormulas(text, isNested = false) {
     if (section.startsWith('<!--START_TABLE-->')) {
       return section; // 표 영역은 줄바꿈 병합을 하지 않고 원본 철저히 유지
     }
-    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|[-–—−•·▪▫▶▷]|\d+\.|\d+\)|[a-zA-Z가-힣]\.|[a-zA-Z가-힣]\)))/g, ' ');
+    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|[-–—−•·▪▫▶▷]|\d+\.|\d+\)|[a-zA-Z가-힣]\.|[a-zA-Z가-힣]\)|[a-zA-Z0-9_\\\^\(\)\{\}\$]+\s*:))/g, ' ');
   }).join('');
 
   // 불필요한 HTML 태그 정제
