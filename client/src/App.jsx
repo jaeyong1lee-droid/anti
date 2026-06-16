@@ -756,55 +756,68 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   // 4. Render headings to styled HTML
   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
     if (isTutor) {
-      return `<h3 class="text-[14px] sm:text-[16px]" style="margin-top: 0.6rem; margin-bottom: 0.3rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${title}</h3>`;
+      return `<h3 class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${title}</h3>`;
     }
     if (isMarkdown) {
-      return `<h3 style="margin-top: 1.6rem; margin-bottom: 0.6rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+      return `<h3 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
     } else {
       return `<h3 style="margin-top: 0.8rem; margin-bottom: 0.4rem; font-weight: 800; color: #f1f5f9; font-size: 1rem; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.2rem;">${title}</h3>`;
     }
   });
   tempText = tempText.replace(/^(##)\s+(.*?)$/gm, (match, hashes, title) => {
     if (isTutor) {
-      return `<h2 class="text-[14px] sm:text-[16px]" style="margin-top: 0.8rem; margin-bottom: 0.4rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${title}</h2>`;
+      return `<h2 class="text-[14px] sm:text-[16px]" style="margin-top: 2.2rem; margin-bottom: 0.8rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${title}</h2>`;
     }
     if (isMarkdown) {
-      return `<h2 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+      return `<h2 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
     } else {
       return `<h2 style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 900; color: #f8fafc; font-size: 1.1rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.3rem;">${title}</h2>`;
     }
   });
   tempText = tempText.replace(/^(#)\s+(.*?)$/gm, (match, hashes, title) => {
     if (isTutor) {
-      return `<h1 class="text-[14px] sm:text-[16px]" style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${title}</h1>`;
+      return `<h1 class="text-[14px] sm:text-[16px]" style="margin-top: 2.6rem; margin-bottom: 1rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${title}</h1>`;
     }
     if (isMarkdown) {
-      return `<h1 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 950; color: #f8fafc; font-size: 1.35rem; border-bottom: 1px solid #475569; padding-bottom: 0.5rem;">${title}</h1>`;
+      return `<h1 style="margin-top: 2.4rem; margin-bottom: 1.2rem; font-weight: 950; color: #f8fafc; font-size: 1.35rem; border-bottom: 1px solid #475569; padding-bottom: 0.5rem;">${title}</h1>`;
     } else {
       return `<h1 style="margin-top: 1.2rem; margin-bottom: 0.6rem; font-weight: 950; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid rgba(71, 85, 105, 0.3); padding-bottom: 0.35rem;">${title}</h1>`;
     }
   });
 
-  // 5. Render list items (both bullet points * and - and numbered lists)
+  // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists)
   if (isMarkdown) {
+    // Treat \d+\. as a prominent section header for tutor
+    if (isTutor) {
+      tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 2.2rem; margin-bottom: 1rem; font-weight: 800; color: #f8fafc; font-size: 1.15rem; line-height: 1.6; border-bottom: 1px solid rgba(244, 63, 94, 0.15); padding-bottom: 0.3rem;">$1. $2</div>');
+    } else {
+      tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
+    }
+
     tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
+    
+    tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
+    tempText = tempText.replace(/^[ \t]*([a-zA-Z가-힣]\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
+    tempText = tempText.replace(/^[ \t]*([①-⑳])\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
   } else {
     tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
-    tempText = tempText.replace(/^[ \t]*(?:\*|-)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
+    tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1. $2</div>');
+    tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
+    tempText = tempText.replace(/^[ \t]*([a-zA-Z가-힣]\))\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
+    tempText = tempText.replace(/^[ \t]*([①-⑳])\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
   }
 
   // 5.5. Remove extra newlines around list divs to prevent spacers/br from adding huge gaps
-  tempText = tempText.replace(/(<\/div>)\n+(<div style="[^"]*">(?:•|\d+\.))/g, '$1$2');
+  tempText = tempText.replace(/(<\/div>)\n+(<div style="[^"]*">(?:•|\d+\.|\d+\)|[a-zA-Z가-힣]\)|[①-⑳]))/g, '$1$2');
 
   // 6. Spacers for paragraph gaps
   if (isMarkdown) {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.8rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 1.2rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   } else {
-    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.4rem;"></div>');
+    tempText = tempText.replace(/\n\n/g, '<div style="height: 0.6rem;"></div>');
     tempText = tempText.replace(/\n/g, '<br/>');
   }
 
