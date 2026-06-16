@@ -306,7 +306,7 @@ export function healLatexFormulas(text, isNested = false) {
       return token.content; // Skip healing on the table structure itself!
     }
     if (token.type === 'text') {
-      let t = healBackslashes(token.content);
+      let t = token.content;
       // Remove greedy formulaPattern wrapper and only escape angle brackets for safety
       return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
     } else {
