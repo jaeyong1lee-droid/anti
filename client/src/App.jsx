@@ -4583,7 +4583,7 @@ export default function App() {
     return '❌ 감점 및 오답 사유 피드백';
   };
 
-  const renderDetailedTableFeedback = (idx, q) => {
+  const renderDetailedTableFeedback = (idx, q, weight = 10) => {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return null;
     return (
@@ -4605,12 +4605,17 @@ export default function App() {
               : (normalize(value) === normalize(correctAnswer));
             const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
             
+            const cellObtained = gradingResult && gradingResult.score !== undefined
+              ? (gradingResult.score / 10) * (weight / inputIds.length)
+              : 0;
+            const displayScore = Math.round(cellObtained * 10) / 10;
+            
             return (
               <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
                   <span className={theme.text}>({inputLetter})</span>
                   {gradingResult && gradingResult.score !== undefined && (
-                    <span className={theme.text}>{gradingResult.score}점</span>
+                    <span className={theme.text}>{displayScore}점</span>
                   )}
                 </div>
                 <div>
@@ -12435,7 +12440,7 @@ export default function App() {
                                       </div>
                                     </div>
                                   )}
-                                  {renderDetailedTableFeedback(idx, q)}
+                                  {renderDetailedTableFeedback(idx, q, W)}
                                   {renderCardTutorChat(`r_${idx}`, q)}
                                 </div>
                               )}
@@ -14087,7 +14092,7 @@ export default function App() {
                                       </div>
                                     </div>
                                   )}
-                                  {renderDetailedTableFeedback(idx, q)}
+                                  {renderDetailedTableFeedback(idx, q, W)}
                                   {renderCardTutorChat(`e_${idx}`, q)}
                                 </div>
                               )}
