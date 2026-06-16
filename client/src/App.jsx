@@ -787,12 +787,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
 
   // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists)
   if (isMarkdown) {
-    // Treat \d+\. as a prominent section header for tutor
-    if (isTutor) {
-      tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 2.2rem; margin-bottom: 1rem; font-weight: 800; color: #f8fafc; font-size: 1.15rem; line-height: 1.6; border-bottom: 1px solid rgba(244, 63, 94, 0.15); padding-bottom: 0.3rem;">$1. $2</div>');
-    } else {
-      tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
-    }
+    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
 
     tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
     tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
