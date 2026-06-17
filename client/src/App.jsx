@@ -702,11 +702,12 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
     return placeholder;
   });
 
-  // 0. Normalize escaped and actual newlines
-  tempText = tempText
-    .replace(/\\r\\n/g, '\n')
-    .replace(/\\n/g, '\n')
-    .replace(/\r\n/g, '\n');
+  // 0. Normalize actual Windows line endings only (NOT literal \\n sequences).
+  // NOTE: Literal \\n → \n normalization is intentionally omitted here because
+  // healLatexFormulas (which runs BEFORE this function) already converts 'u' to '\nu'.
+  // If we replace \\n → \n again here, it corrupts \nu → [newline]u, \neq → [newline]eq, etc.
+  // The literal \\n normalization is already done in LatexRenderer (lines 1050-1053) BEFORE healing.
+  tempText = tempText.replace(/\r\n/g, '\n');
 
   // Protect $$ ... $$
   tempText = tempText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match) => {
