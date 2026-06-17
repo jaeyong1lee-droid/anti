@@ -2192,7 +2192,7 @@ async function generateWeakPointRecommendation(queryDate) {
     );
 
     let scheduleId;
-    const scoreVal = Math.round(selectedCandidate.avg_score);
+    const scoreVal = Math.round(selectedCandidate.avg_score * 10) / 10;
     if (existingBonus) {
       scheduleId = existingBonus.id;
       await dbQuery.run(
@@ -2564,7 +2564,7 @@ app.put('/api/schedules/:id/score', async (req, res) => {
       return res.status(400).json({ error: '완료 또는 실패 상태인 항목만 점수를 입력할 수 있습니다.' });
     }
 
-    const targetScore = Math.round(Number(score));
+    const targetScore = Math.round(Number(score) * 10) / 10;
     
     // Status is updated: if score >= 60, status = 'completed'; else status = 'failed'
     const newStatus = targetScore >= 60 ? 'completed' : 'failed';
@@ -6651,7 +6651,7 @@ function computeOverallScore(parsed) {
   });
 
   const totalCount = M;
-  const score = totalCount > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained))) : 100;
+  const score = totalCount > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained * 10) / 10)) : 100;
   return { score, correctCount, totalCount };
 }
 

@@ -4446,10 +4446,12 @@ export default function App() {
   const getSubjectiveColorClasses = (idx, isRevd) => {
     if (!isRevd) return 'border-slate-750 text-white';
     
-    const hasAnswer = !!tableAnswers[`${idx}_INPUT`];
+    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    const hasAnswer = !!activeAnswers[`${idx}_INPUT`];
     if (!hasAnswer) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
     
-    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'border-slate-750 text-white';
     if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
     if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
@@ -4459,7 +4461,8 @@ export default function App() {
 
   const getSubjectiveContainerClasses = (idx, isRevd) => {
     if (!isRevd) return 'sm:border-slate-800 sm:bg-slate-950/40';
-    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'sm:border-slate-800 sm:bg-slate-950/40';
     if (score >= 9) return 'sm:border-emerald-500/30 sm:bg-emerald-950/25';
     if (score >= 8) return 'sm:border-yellow-500/30 sm:bg-yellow-950/25';
@@ -4478,7 +4481,8 @@ export default function App() {
   };
 
   const getSubjectiveTextColorClass = (idx) => {
-    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'text-slate-355';
     if (score >= 9) return 'text-emerald-400';
     if (score >= 8) return 'text-yellow-400';
@@ -4487,7 +4491,8 @@ export default function App() {
   };
 
   const getSubjectiveBannerClasses = (idx) => {
-    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'bg-slate-900 border-slate-800 text-slate-355';
     if (score >= 9) return 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400';
     if (score >= 8) return 'bg-yellow-950/20 border-yellow-500/30 text-yellow-400';
@@ -4496,7 +4501,8 @@ export default function App() {
   };
 
   const getSubjectiveStatusText = (idx) => {
-    const score = tableGradingResults[`${idx}_INPUT`]?.score;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return '채점 완료';
     if (score >= 9) return '✅ 정답 인정';
     if (score >= 8) return '⚠️ 부분 인정 (우수)';
@@ -4551,10 +4557,11 @@ export default function App() {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return 10;
     
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
     let sumScore = 0;
     let gradedCount = 0;
     inputIds.forEach(inputId => {
-      const grading = tableGradingResults[`${idx}_${inputId}`];
+      const grading = activeGradingResults[`${idx}_${inputId}`];
       if (grading && grading.score !== undefined) {
         sumScore += grading.score;
         gradedCount++;
@@ -4595,14 +4602,18 @@ export default function App() {
   const renderDetailedTableFeedback = (idx, q, weight = 10) => {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return null;
+    
+    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    
     return (
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {inputIds.map((inputId) => {
-            const value = tableAnswers[`${idx}_${inputId}`] || '';
+            const value = activeAnswers[`${idx}_${inputId}`] || '';
             const correctAnswer = q.answers?.[inputId] || '';
-            const gradingResult = tableGradingResults?.[`${idx}_${inputId}`];
+            const gradingResult = activeGradingResults?.[`${idx}_${inputId}`];
             
             const match = inputId.match(/\d+/);
             const inputNum = match ? parseInt(match[0], 10) : 1;
@@ -6601,7 +6612,7 @@ export default function App() {
 
     const totalMC = M;
     const correctMC = correctCount;
-    const scoreMC = totalMC > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained))) : 100;
+    const scoreMC = totalMC > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained * 10) / 10)) : 100;
 
     // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
     if (selectedTopic.id) {
@@ -13655,7 +13666,7 @@ export default function App() {
                                   let obtainedVal = 0;
                                   let hasGradedVal = false;
                                   inputIds.forEach(inputId => {
-                                    const grading = tableGradingResults[`${idx}_${inputId}`];
+                                    const grading = examTableGradingResults[`${idx}_${inputId}`];
                                     if (grading && grading.score !== undefined) {
                                       obtainedVal += grading.score;
                                       hasGradedVal = true;
@@ -13672,7 +13683,7 @@ export default function App() {
                                     );
                                   }
                                 } else {
-                                  const grading = tableGradingResults[`${idx}_INPUT`];
+                                  const grading = examTableGradingResults[`${idx}_INPUT`];
                                   if (grading && grading.score !== undefined) {
                                     const questionScore = (grading.score / 10) * W;
                                     const displayScore = Math.round(questionScore * 100) / 100;
