@@ -786,18 +786,18 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
     }
   });
 
+  // 4.5. Render horizontal rules (divider lines) to HTML
+  tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 1.2rem 0;" />');
+
   // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists)
   if (isMarkdown) {
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
-
-    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 1.2rem; margin-bottom: 1.2rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
     tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
     
     tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
     tempText = tempText.replace(/^[ \t]*([a-zA-Z가-힣]\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
     tempText = tempText.replace(/^[ \t]*([①-⑳])\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
   } else {
-    tempText = tempText.replace(/^[ \t]*(?:\* \* \*|\*\*\*)[ \t]*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
     tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
     tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1. $2</div>');
     tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
@@ -1057,7 +1057,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
     // Clean empty bullet headers that have no content (e.g. '• 메커니즘:')
-    cleanedText = cleanedText.replace(/^[ \t]*(?:\*|-|•)\s*([^:\n]+:)\s*\n*(?=\s*(?:\*|-|•)|$)/gm, '');
+    cleanedText = cleanedText.replace(/(?:^|\n)[ \t]*(?:\*|-|•)[ \t]*([^:\n]+:)[ \t]*(?=\n\s*(?:\*|-|•)|\s*$)/g, '');
 
     // Collapse empty lines between colon-ended lines and list items
     cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
