@@ -283,18 +283,27 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   let poissonSymbol = passedPoissonSymbol;
   if (!poissonSymbol) {
     if (/포아송/i.test(processed)) {
-      if (/(?:포아송)[^a-zA-Z0-9$]*\$?u\$?/i.test(processed) || /\$?u\$?[^a-zA-Z0-9$]*(?:포아송)/i.test(processed)) {
+      // Check for 'u' used as Poisson's ratio ANYWHERE in the text (not just adjacent to 포아송).
+      // Patterns: 1+u, 1-u, 1-2u, $u$, $u_u$, $u'$, 포아송비(u), etc.
+      if (/(?:\b1\s*[-+]\s*(?:2\s*)?u\b|\$u[_']|\$u\$|포아송[^.]{0,20}u)/i.test(processed)) {
         poissonSymbol = 'u';
       }
     }
     if (!poissonSymbol && /포아송|비배수|탄성/i.test(processed)) {
-      if (/(?:포아송|비배수|탄성)[^a-zA-Z0-9$]*\$?v\$?/i.test(processed) || /\$?v\$?[^a-zA-Z0-9$]*(?:포아송|비배수|탄성)/i.test(processed)) {
+      if (/(?:\b1\s*[-+]\s*(?:2\s*)?v\b|\$v[_']|\$v\$|포아송[^.]{0,20}v)/i.test(processed)) {
         poissonSymbol = 'v';
       }
     }
   }
 
   if (poissonSymbol) {
+    // Handle subscripted notation: $u_u$ → $\nu_u$, $v_u$ → $\nu_u$ (undrained Poisson's ratio)
+    processed = processed.replace(new RegExp(`\\$${poissonSymbol}(_[a-zA-Z0-9])\\$`, 'g'), (match, sub) => {
+      return `$\\nu${sub}$`;
+    });
+    // Handle primed notation: $u'$ → $\nu'$ (drained Poisson's ratio)
+    processed = processed.replace(new RegExp(`\\$${poissonSymbol}'\\$`, 'g'), "$\\nu'$");
+
     const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$|\\b${poissonSymbol}\\b)`, 'g');
     processed = processed.replace(standaloneRegex, (match) => {
       return match.includes('$') ? '$\\nu$' : '\\nu';
