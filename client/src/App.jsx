@@ -1441,22 +1441,56 @@ const areCellsEqual = (cellA, cellB) => {
 
 // ── 주관식 표채우기 퀴즈 렌더러 ──────────────────
 const getTableInputColorClasses = (gradingResult, isCorrect, value) => {
+  const score = gradingResult?.score;
+  if (score !== undefined) {
+    if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
+    if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
+    if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
+    return 'border-rose-500 bg-rose-950/20 text-rose-300';
+  }
+
   if (!value) return 'border-emerald-500/30 bg-emerald-950/10 text-emerald-300/40 italic font-medium';
   
-  const score = gradingResult?.score;
-  if (score === undefined) {
-    return isCorrect 
-      ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
-      : 'border-rose-500 bg-rose-950/20 text-rose-300';
-  }
-  
-  if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
-  if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
-  if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
-  return 'border-rose-500 bg-rose-950/20 text-rose-300';
+  return isCorrect 
+    ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold'
+    : 'border-rose-500 bg-rose-950/20 text-rose-300';
 };
 
 const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
+  const score = gradingResult?.score;
+  if (score !== undefined) {
+    if (score >= 9) {
+      return {
+        cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
+        border: 'border-emerald-800/60',
+        text: 'text-emerald-400',
+        scoreText: 'text-emerald-400'
+      };
+    }
+    if (score >= 8) {
+      return {
+        cellBg: 'bg-yellow-950/20 text-yellow-300 font-bold',
+        border: 'border-yellow-800/60',
+        text: 'text-yellow-400',
+        scoreText: 'text-yellow-400'
+      };
+    }
+    if (score >= 5) {
+      return {
+        cellBg: 'bg-orange-950/20 text-orange-300 font-bold',
+        border: 'border-orange-800/60',
+        text: 'text-orange-400',
+        scoreText: 'text-orange-400'
+      };
+    }
+    return {
+      cellBg: 'bg-rose-950/20 text-rose-300',
+      border: 'border-rose-800/60',
+      text: 'text-rose-400',
+      scoreText: 'text-rose-400'
+    };
+  }
+
   if (!value) {
     return {
       cellBg: 'bg-emerald-950/10 text-emerald-350 italic font-medium',
@@ -1466,53 +1500,19 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
     };
   }
   
-  const score = gradingResult?.score;
-  if (score === undefined) {
-    return isCorrect
-      ? {
-          cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
-          border: 'border-emerald-800/40',
-          text: 'text-emerald-400',
-          scoreText: 'text-emerald-400'
-        }
-      : {
-          cellBg: 'bg-rose-950/20 text-rose-300',
-          border: 'border-rose-800/40',
-          text: 'text-rose-400',
-          scoreText: 'text-rose-400'
-        };
-  }
-  
-  if (score >= 9) {
-    return {
-      cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
-      border: 'border-emerald-800/60',
-      text: 'text-emerald-400',
-      scoreText: 'text-emerald-400'
-    };
-  }
-  if (score >= 8) {
-    return {
-      cellBg: 'bg-yellow-950/20 text-yellow-300 font-bold',
-      border: 'border-yellow-800/60',
-      text: 'text-yellow-400',
-      scoreText: 'text-yellow-400'
-    };
-  }
-  if (score >= 5) {
-    return {
-      cellBg: 'bg-orange-950/20 text-orange-300 font-bold',
-      border: 'border-orange-800/60',
-      text: 'text-orange-400',
-      scoreText: 'text-orange-400'
-    };
-  }
-  return {
-    cellBg: 'bg-rose-950/20 text-rose-300',
-    border: 'border-rose-800/60',
-    text: 'text-rose-400',
-    scoreText: 'text-rose-400'
-  };
+  return isCorrect
+    ? {
+        cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
+        border: 'border-emerald-800/40',
+        text: 'text-emerald-400',
+        scoreText: 'text-emerald-400'
+      }
+    : {
+        cellBg: 'bg-rose-950/20 text-rose-300',
+        border: 'border-rose-800/40',
+        text: 'text-rose-400',
+        scoreText: 'text-rose-400'
+      };
 };
 
 const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10 }) {
