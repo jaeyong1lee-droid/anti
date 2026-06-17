@@ -1056,6 +1056,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
+    // Clean empty bullet headers that have no content (e.g. '• 메커니즘:')
+    cleanedText = cleanedText.replace(/^[ \t]*(?:\*|-|•)\s*([^:\n]+:)\s*\n*(?=\s*(?:\*|-|•)|$)/gm, '');
+
+    // Collapse empty lines between colon-ended lines and list items
+    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
+
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
   }
 
@@ -1330,7 +1336,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                   return <div key={lIdx} className="h-2 select-none" />;
                 }
                 // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
-                const isHeading = /^\s*\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
+                const isHeading = /^\s*\d+\.\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
                 
                 if (isHeading) {
                   return (
