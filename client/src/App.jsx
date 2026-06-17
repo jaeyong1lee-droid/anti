@@ -4639,26 +4639,26 @@ export default function App() {
             return (
               <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
-                  <span className={theme.text}>({inputLetter})</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={theme.text}>({inputLetter})</span>
+                    <span className={`font-bold ${theme.text}`}>내 답변:</span>
+                    <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
+                  </div>
                   {gradingResult && gradingResult.score !== undefined && (
                     <span className={theme.text}>{displayScore}점</span>
                   )}
                 </div>
                 <div>
-                  <span className={`mr-1.5 font-bold ${theme.text}`}>내 답변:</span>
-                  <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
-                </div>
-                <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
-                  <span className="text-slate-100 font-semibold">
-                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
+                  <span className="text-slate-100 font-semibold inline">
+                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                   </span>
                 </div>
                 {gradingResult?.reason && (
                   <div>
                     <span className="text-slate-100 mr-1.5 font-bold">피드백:</span>
-                    <span className="text-slate-100 font-normal leading-relaxed">
-                      <LatexRenderer text={formatGradingReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} />
+                    <span className="text-slate-100 font-normal leading-relaxed inline">
+                      <LatexRenderer text={formatGradingReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                     </span>
                   </div>
                 )}
