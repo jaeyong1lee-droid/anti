@@ -3733,8 +3733,22 @@ app.post('/api/question/regenerate', async (req, res) => {
 
       // targetType 결정
       let targetType = '객관식 (4지선다)';
-      if (questionIdx === 0) targetType = '주관식 (개요)';
-      else if (questionIdx === 1) targetType = '주관식 (공식)';
+      const currentType = currentQuestion?.type || '';
+      const isMC = currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0);
+      
+      if (isMC) {
+        // 객관식 -> 주관식(주관식 OR 칸채우기)으로 변경
+        const subjs = ['주관식 (개요)', '주관식 (공식)', '주관식 (표채우기)'];
+        targetType = subjs[Math.floor(Math.random() * subjs.length)];
+      } else if (currentType.includes('주관식')) {
+        // 주관식 -> 객관식으로 변경
+        targetType = '객관식 (4지선다)';
+      } else {
+        // fallback
+        if (questionIdx === 0) targetType = '주관식 (개요)';
+        else if (questionIdx === 1) targetType = '주관식 (공식)';
+        else targetType = '객관식 (4지선다)';
+      }
 
       if (!hasAnyAiKey) {
         // API Key가 없으면 예비 풀(generateFallbackQuestions)에서 추출하여 다른 문항 반환
@@ -3743,6 +3757,8 @@ app.post('/api/question/regenerate', async (req, res) => {
         const candidates = fallbackList.filter(q => {
           if (targetType === '주관식 (개요)') return q.type?.includes('개요');
           if (targetType === '주관식 (공식)') return q.type?.includes('공식');
+          if (targetType === '주관식 (표채우기)') return q.type?.includes('표채우기') || q.subtype?.includes('표채우기');
+          if (targetType === '주관식 (단답형)') return q.type?.includes('단답') || q.subtype?.includes('단답');
           return q.type?.includes('객관식');
         });
         
@@ -3764,59 +3780,92 @@ app.post('/api/question/regenerate', async (req, res) => {
       let formatRequirement = '';
       if (targetType === '주관식 (개요)') {
         const coreSubject = getCoreSubjectFromTitle(topic.title);
-        typeRequirement = `[1번 문제] 주관식 (개요) 유형으로 생성하십시오:
-- 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
-- "type" 값: 반드시 "주관식 (개요)"
-- "question": 제공된 본문 텍스트 전체를 아우를 수 있는 핵심 공학적 대주제(대제목)를 도출하고, 그 주제에 관한 개요, 원리, 개념적 정의를 깊이 있게 묻는 자연스럽고 전문적인 지문(서술형 질문 문장)을 직접 작성하십시오. 토픽 제목을 단순히 그대로 적용하거나 획일화된 고정 템플릿(예: "~의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요")을 사용하는 것을 엄격히 금지합니다.
-- "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)
-- "formula": 반드시 빈 문자열 ""
-- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
-        formatRequirement = `{
-  "type": "주관식 (개요)",
-  "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",
-  "concept": "핵심 키워드가 **강조**된 4~6줄 분량의 개요 설명 답변",
-  "formula": "",
-    "structure": ""
-}`;
+        typeRequirement = BT + '[1번 문제] 주관식 (개요) 유형으로 생성하십시오:\n' +
+  '- 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.\n' +
+  '- "type" 값: 반드시 "주관식 (개요)"\n' +
+  '- "question": 제공된 본문 텍스트 전체를 아우를 수 있는 핵심 공학적 대주제(대제목)를 도출하고, 그 주제에 관한 개요, 원리, 개념적 정의를 깊이 있게 묻는 자연스럽고 전문적인 지문(서술형 질문 문장)을 직접 작성하십시오. 토픽 제목을 단순히 그대로 적용하거나 획일화된 고정 템플릿(예: "~의 핵심 개념, 정의, 원리 등을 설명하는 키워드를 입력하세요")을 사용하는 것을 엄격히 금지합니다.\n' +
+  '- "concept": 질문에 정확히 부합하며, 최소 4줄에서 최대 6줄 사이의 분량으로 아주 전문적이고 직관적인 개요 및 개념 설명을 서술하십시오. 또한, 이 설명 내에서 채점관이 식별해야 할 핵심 공학적 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 표현해 주십시오. (예: **숏크리트 두께**, **지반 압력** 등)\n' +
+  '- "formula": 반드시 빈 문자열 ""\n' +
+  '- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "주관식 (개요)",\n' +
+  '  "question": "토픽의 기본 정의와 핵심 개념을 묻는 질문 내용",\n' +
+  '  "concept": "핵심 키워드가 **강조**된 4~6줄 분량의 개요 설명 답변",\n' +
+  '  "formula": "",\n' +
+  '    "structure": ""\n' +
+  '}' + BT;
       } else if (targetType === '주관식 (공식)') {
-        typeRequirement = `[2번 문제] 주관식 (공식) 유형으로 생성하십시오:
-- 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.
-- "type" 값: 반드시 "주관식 (공식)"
-- "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.
-- "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \frac{P - 2C \sin\varphi}{\gamma \tan\varphi + \frac{2S}{D}}$")
-- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")`;
-        formatRequirement = `{
-  "type": "주관식 (공식)",
-  "question": "토픽의 대표 공식명칭 (사족 배제)",
-  "concept": "공식에 대한 한 줄 요약",
-  "formula": "$LaTeX공식",
-  "structure": "- $기호1$: 간단한 명사형 의미\n- $기호2$: 간단한 명사형 의미"
-}`;
+        typeRequirement = BT + '[2번 문제] 주관식 (공식) 유형으로 생성하십시오:\n' +
+  '- 목적: 토픽에 적용되는 가장 대표적이고 단순한 공식만 묻는 질문.\n' +
+  '- "type" 값: 반드시 "주관식 (공식)"\n' +
+  '- "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성하십시오. 뒤에 사족은 붙이지 말고 핵심 명사형 공식 제목만 구성해 주십시오.\n' +
+  '- "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.\n' +
+  '- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$")\n' +
+  '- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "주관식 (공식)",\n' +
+  '  "question": "토픽의 대표 공식명칭 (사족 배제)",\n' +
+  '  "concept": "공식에 대한 한 줄 요약",\n' +
+  '  "formula": "$LaTeX공식",\n' +
+  '  "structure": "- $기호1$: 간단한 명사형 의미\\n- $기호2$: 간단한 명사형 의미"\n' +
+  '}' + BT;
+      } else if (targetType === '주관식 (표채우기)') {
+        typeRequirement = BT + '[주관식 (표채우기)] 유형으로 생성하십시오:\n' +
+  '- 목적: 토픽의 핵심 개념이나 비교 공법들을 표 형식으로 대조하는 칸채우기 질문.\n' +
+  '- "type" 값: 반드시 "주관식 (표채우기)"\n' +
+  '- "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 비교표 빈칸 (A), (B)에 들어갈 내용을 기술하십시오."). 지문 내에 [INPUT_1] 같은 시스템 토큰을 적지 말고 (A), (B) 등으로 표기하십시오.\n' +
+  '- "tableData": 표의 데이터를 구조화한 객체. headers(열 제목 배열)와 rows(각 행의 셀 데이터 배열)를 포함해야 합니다. 구분 컬럼을 제외한 내부는 전부 입력 토큰([INPUT_1], [INPUT_2] 등)으로 비워두십시오.\n' +
+  '- "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체. 각 모범 답안은 핵심 메커니즘을 상세히 기술하는 15자~20자 내외의 서술형 문구여야 합니다. 단순 용어 명칭은 제외하십시오.\n' +
+  '- "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "주관식 (표채우기)",\n' +
+  '  "question": "다음 비교표 빈칸 (A), (B)에 들어갈 내용을 기술하십시오.",\n' +
+  '  "tableData": {\n' +
+  '    "headers": ["구분 항목", "비교대상 A", "비교대상 B"],\n' +
+  '    "rows": [["구분", "[INPUT_1]", "[INPUT_2]"]]\n' +
+  '  },\n' +
+  '  "answers": {\n' +
+  '    "INPUT_1": "인장 및 전단력에 대한 수동적 저항",\n' +
+  '    "INPUT_2": "정착지반 마찰저항 및 인장력 선도입"\n' +
+  '  },\n' +
+  '  "explanation": "상세 해설"\n' +
+  '}' + BT;
+      } else if (targetType === '주관식 (단답형)') {
+        typeRequirement = BT + '[주관식 (단답형)] 유형으로 생성하십시오:\n' +
+  '- 목적: 구체적인 실무 문제 상황이나 공학적 개념에 대해 서술형으로 묻고 1줄짜리 명확한 답을 요구하는 질문.\n' +
+  '- "type" 값: 반드시 "주관식 (단답형)"\n' +
+  '- "question": 토픽과 관련된 중요 이론이나 실무 시나리오에 대해 묻는 질문.\n' +
+  '- "answer": 핵심 키워드가 **강조**된 1줄 서술형 모범답안 (최소 15자에서 최대 30자 내외).\n' +
+  '- "explanation": 답안에 대한 논리적이고 전문적인 상세 해설.' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "주관식 (단답형)",\n' +
+  '  "answer": "핵심 키워드가 **강조**된 1줄 서술형 답안",\n' +
+  '  "explanation": "상세 해설"\n' +
+  '}' + BT;
       } else {
-        typeRequirement = `[객관식 4지선다] 유형으로 생성하십시오:
-- "type" 값: 반드시 "객관식 (4지선다)"
-- "question": 구체적이고 학술적인 내용 일치, 원리 분석 또는 공식 분석/정량적 계산 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
-- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).
-- "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
-- "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-- [문제 출제 전략]:
-   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
-   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나, 공식에 들어가는 특정 수치 범위(예: $E_u = (200 \sim 500)s_u$ 등)를 지문에 미리 알려주지 마십시오. 오직 공식 명칭이나 변수들의 이름만을 제시해야 합니다. (단, 해설(explanation)에서는 자세하게 공식을 명시해야 합니다.)
-   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
-- [환각 방지 철칙 (Anti-Hallucination Constraints)]:
-   1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
-   2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
-- **오답 보기 구성 주의사항 (매우 중요)**: 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.`;
-        formatRequirement = `{
-  "type": "객관식 (4지선다)",
-  "question": "질문 내용",
-  "tableData": null,
-  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
-  "answer": "정확히 일치하는 정답 보기 텍스트",
-  "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+        typeRequirement = BT + '[객관식 4지선다] 유형으로 생성하십시오:\n' +
+  '- "type" 값: 반드시 "객관식 (4지선다)"\n' +
+  '- "question": 구체적이고 학술적인 내용 일치, 원리 분석 또는 공식 분석/정량적 계산 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)\n' +
+  '- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})\n' +
+  '- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개로 구성).\n' +
+  '- "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.\n' +
+  '- "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.\n' +
+  '- [문제 출제 전략]:\n' +
+  '   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**\n' +
+  '   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나, 공식에 들어가는 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등)를 지문에 미리 알려주지 마십시오. 오직 공식 명칭이나 변수들의 이름만을 제시해야 합니다. (단, 해설(explanation)에서는 자세하게 공식을 명시해야 합니다.)\n' +
+  '   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.\n' +
+  '- [환각 방지 철칙 (Anti-Hallucination Constraints)]:\n' +
+  '   1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.\n' +
+  '   2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.\n' +
+  '- **오답 보기 구성 주의사항 (매우 중요)**: 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: \'무한대로 상승시킴\', \'실시간으로 기하급수적으로 증가함\', \'영원히 변하지 않음\', \'아예 발생하지 않음\', \'폭발함\' 등)은 절대로 사용하지 마십시오**. 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "객관식 (4지선다)",\n' +
+  '  "question": "질문 내용",\n' +
+  '  "tableData": null,\n' +
+  '  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],\n' +
+  '  "answer": "정확히 일치하는 정답 보기 텍스트",\n' +
+  '  "explanation": "상세한 해설"\n' +
+  '} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)' + BT;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
@@ -3942,8 +3991,22 @@ ${formatRequirement}
       const combinedText = topicTexts.join('\n\n---\n\n');
       const topicTitles = topics.map(t => t.title).join(', ');
 
-      const qType = currentQuestion?.type || '객관식';
-      const qSubtype = currentQuestion?.subtype || '';
+      const currentType = currentQuestion?.type || '';
+      const currentSubtype = currentQuestion?.subtype || '';
+      
+      let qType = '객관식';
+      let qSubtype = '';
+      
+      const isMC = currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0);
+      
+      if (isMC) {
+        qType = '주관식';
+        const subtypes = ['개요', '공식', '서술', '표채우기', '단답형'];
+        qSubtype = subtypes[Math.floor(Math.random() * subtypes.length)];
+      } else {
+        qType = '객관식';
+        qSubtype = '';
+      }
 
       if (!hasAnyAiKey) {
         // AI 키가 없는 경우 종합평가 예비 문항 fallback 선택
@@ -3973,11 +4036,13 @@ ${formatRequirement}
         const fallbackList = generateFallbackQuestions(selectedTopic.title, selectedTopic.keywords, fileText);
         const candidates = fallbackList.filter(q => {
           if (qType === '주관식') {
-            if (qSubtype === '공식') return q.type?.includes('공식');
-            if (qSubtype === '서술') return q.type?.includes('서술') || q.type?.includes('유도');
-            return q.type?.includes('개요');
+            if (qSubtype === '공식') return q.type?.includes('공식') || q.subtype?.includes('공식');
+            if (qSubtype === '서술') return q.type?.includes('서술') || q.type?.includes('유도') || q.subtype?.includes('서술') || q.subtype?.includes('유도');
+            if (qSubtype === '표채우기') return q.type?.includes('표채우기') || q.subtype?.includes('표채우기');
+            if (qSubtype === '단답형') return q.type?.includes('단답') || q.subtype?.includes('단답');
+            return q.type?.includes('개요') || q.subtype?.includes('개요');
           }
-          return q.type?.includes('객관식');
+          return q.type?.includes('객관식') || q.subtype?.includes('객관식');
         });
         
         let selectedQ = candidates.find(c => c.question !== currentQuestion?.question);
@@ -4002,66 +4067,102 @@ ${formatRequirement}
 
       if (qType === '주관식') {
         if (qSubtype === '공식') {
-          typeRequirement = `[주관식 공식 유형]으로 생성하십시오:
-- "type": "주관식"
-- "subtype": "공식"
-- "question": "[필수공식] (공식명칭) 공식을 제시하고, 각 기호의 정의를 서술하시오." 와 같은 완성형 질문
-- "answer": 상세 작성된 공식 및 각 기호의 의미
-- "concept": 핵심 개념 1줄 요약`;
-          formatRequirement = `{
-  "type": "주관식",
-  "subtype": "공식",
-  "question": "[필수공식] 랭킨(Rankine) 주동토압 공식...",
-  "answer": "$$p_a = \\\\gamma z K_a$$...",
-  "concept": "벽체 배면의 수평 토압 산정 공식"
-}`;
+          typeRequirement = BT + '[주관식 공식 유형]으로 생성하십시오:\n' +
+  '- "type": "주관식"\n' +
+  '- "subtype": "공식"\n' +
+  '- "question": "[필수공식] (공식명칭) 공식을 제시하고, 각 기호의 정의를 서술하시오." 와 같은 완성형 질문\n' +
+  '- "answer": 상세 작성된 공식 및 각 기호의 의미\n' +
+  '- "concept": 핵심 개념 1줄 요약' + BT;
+          formatRequirement = BT + '{\n' +
+  '  "type": "주관식",\n' +
+  '  "subtype": "공식",\n' +
+  '  "question": "[필수공식] 랭킨(Rankine) 주동토압 공식...",\n' +
+  '  "answer": "$p_a = \\gamma z K_a$...",\n' +
+  '  "concept": "벽체 배면의 수평 토압 산정 공식"\n' +
+  '}' + BT;
         } else if (qSubtype === '서술') {
-          typeRequirement = `[주관식 서술/유도 유형]으로 생성하십시오:
-- "type": "주관식"
-- "subtype": "서술"
-- "question": "[이론유도] (유도개념)의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오." 형태의 완성형 질문
-- "answer": 심도 있는 이론적 유도 메커니즘 설명
-- "concept": 핵심 개념 1줄 요약`;
-          formatRequirement = `{
-  "type": "주관식",
-  "subtype": "서술",
-  "question": "[이론유도] Terzaghi 1차원 압밀...",
-  "answer": "$$\\\\frac{\\\\partial u}{\\\\partial t} = C_v \\\\frac{\\\\partial^2 u}{\\\\partial z^2}$$...",
-  "concept": "과잉간극수압 소산 지배 미분방정식"
-}`;
+          typeRequirement = BT + '[주관식 서술/유도 유형]으로 생성하십시오:\n' +
+  '- "type": "주관식"\n' +
+  '- "subtype": "서술"\n' +
+  '- "question": "[이론유도] (유도개념)의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오." 형태의 완성형 질문\n' +
+  '- "answer": 심도 있는 이론적 유도 메커니즘 설명\n' +
+  '- "concept": 핵심 개념 1줄 요약' + BT;
+          formatRequirement = BT + '{\n' +
+  '  "type": "주관식",\n' +
+  '  "subtype": "서술",\n' +
+  '  "question": "[이론유도] Terzaghi 1차원 압밀...",\n' +
+  '  "answer": "$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$...",\n' +
+  '  "concept": "과잉간극수압 소산 지배 미분방정식"\n' +
+  '}' + BT;
+        } else if (qSubtype === '표채우기') {
+          typeRequirement = BT + '[주관식 표채우기 유형]으로 생성하십시오:\n' +
+  '- "type": "주관식"\n' +
+  '- "subtype": "표채우기"\n' +
+  '- "question": "다음 비교표 빈칸 (A), (B)에 들어갈 알맞은 핵심 개념을 서술하시오." 와 같은 표 지시 질문\n' +
+  '- "tableData": {"headers": ["구분 항목", "공법 A", "공법 B"], "rows": [["비교기준", "[INPUT_1]", "[INPUT_2]"]]} 형식의 표 데이터 객체\n' +
+  '- "answers": {"INPUT_1": "모범 답안 1", "INPUT_2": "모범 답안 2"} 형식의 정답 객체\n' +
+  '- "concept": 핵심 개념 1줄 요약' + BT;
+          formatRequirement = BT + '{\n' +
+  '  "type": "주관식",\n' +
+  '  "subtype": "표채우기",\n' +
+  '  "question": "다음 비교표 빈칸 (A), (B)...",\n' +
+  '  "tableData": {\n' +
+  '    "headers": ["구분 항목", "비교대상A", "비교대상B"],\n' +
+  '    "rows": [["구분", "[INPUT_1]", "[INPUT_2]"]]\n' +
+  '  },\n' +
+  '  "answers": {\n' +
+  '    "INPUT_1": "모범 답안 1",\n' +
+  '    "INPUT_2": "모범 답안 2"\n' +
+  '  },\n' +
+  '  "concept": "비교 테이블 설명"\n' +
+  '}' + BT;
+        } else if (qSubtype === '단답형') {
+          typeRequirement = BT + '[주관식 단답형 유형]으로 생성하십시오:\n' +
+  '- "type": "주관식"\n' +
+  '- "subtype": "단답형"\n' +
+  '- "question": 구체적인 실무 문제점/시나리오를 지문으로 제시하고 해결책/대안을 요구하는 질문\n' +
+  '- "answer": 핵심 키워드 강조가 들어간 1줄 서술형 모범답안\n' +
+  '- "concept": 핵심 개념 1줄 요약' + BT;
+          formatRequirement = BT + '{\n' +
+  '  "type": "주관식",\n' +
+  '  "subtype": "단답형",\n' +
+  '  "question": "구체적인 실무 시나리오 질문...",\n' +
+  '  "answer": "핵심 키워드가 **강조**된 1줄 서술형 답안",\n' +
+  '  "concept": "단답형 설명"\n' +
+  '}' + BT;
         } else {
           // 주관식 개요
-          typeRequirement = `[주관식 개요 유형]으로 생성하십시오:
-- "type": "주관식"
-- "subtype": "개요"
-- "question": 공학적 중요 정의와 핵심 메커니즘을 서술형으로 묻는 핵심 질문
-- "answer": 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분). 지나치게 1~2줄로 축약하거나 불필요하게 장황하지 않도록 적절한 학술적 깊이를 확보해야 합니다.
-- "concept": 핵심 개념 1줄 요약`;
-          formatRequirement = `{
-  "type": "주관식",
-  "subtype": "개요",
-  "question": "샌드매트(Sand Mat)의 공학적 목적...",
-  "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명...",
-  "concept": "연약지반 상부 모래 배수층 역할"
-}`;
+          typeRequirement = BT + '[주관식 개요 유형]으로 생성하십시오:\n' +
+  '- "type": "주관식"\n' +
+  '- "subtype": "개요"\n' +
+  '- "question": 공학적 중요 정의와 핵심 메커니즘을 서술형으로 묻는 핵심 질문\n' +
+  '- "answer": 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분). 지나치게 1~2줄로 축약하거나 불필요하게 장황하지 않도록 적절한 학술적 깊이를 확보해야 합니다.\n' +
+  '- "concept": 핵심 개념 1줄 요약' + BT;
+          formatRequirement = BT + '{\n' +
+  '  "type": "주관식",\n' +
+  '  "subtype": "개요",\n' +
+  '  "question": "샌드매트(Sand Mat)의 공학적 목적...",\n' +
+  '  "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명...",\n' +
+  '  "concept": "연약지반 상부 모래 배수층 역할"\n' +
+  '}' + BT;
         }
       } else {
-        // 객관식
-        typeRequirement = `[4지선다 객관식] 유형으로 생성하십시오:
-- "type": "객관식"
-- "question": 공학적 원리 또는 현상 분석 고난도 질문 (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
-- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
-- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개)
-- "answer": "options" 배열 내의 정확한 정답 보기 텍스트와 토씨 하나 틀리지 않는 값
-- "explanation": 명쾌하고 공학적으로 깊이 있는 정밀 해설`;
-        formatRequirement = `{
-  "type": "객관식",
-  "question": "공학적 현상 분석 질문 내용",
-  "tableData": null,
-  "options": ["보기1", "보기2", "보기3", "보기4"],
-  "answer": "정확히 일치하는 정답 보기 텍스트",
-  "explanation": "상세한 해설"
-} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
+        // 객관식\n' +
+        typeRequirement = BT + '[4지선다 객관식] 유형으로 생성하십시오:\n' +
+  '- "type": "객관식"\n' +
+  '- "question": 공학적 원리 또는 현상 분석 고난도 질문 (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)\n' +
+  '- "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})\n' +
+  '- "options": 4개의 보기 문항으로 구성된 문자열 배열 (반드시 정답 1개와 매력적인 오답 3개)\n' +
+  '- "answer": "options" 배열 내의 정확한 정답 보기 텍스트와 토씨 하나 틀리지 않는 값\n' +
+  '- "explanation": 명쾌하고 공학적으로 깊이 있는 정밀 해설' + BT;
+        formatRequirement = BT + '{\n' +
+  '  "type": "객관식",\n' +
+  '  "question": "공학적 현상 분석 질문 내용",\n' +
+  '  "tableData": null,\n' +
+  '  "options": ["보기1", "보기2", "보기3", "보기4"],\n' +
+  '  "answer": "정확히 일치하는 정답 보기 텍스트",\n' +
+  '  "explanation": "상세한 해설"\n' +
+  '} (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)' + BT;
       }
 
       const sourceQuestionText = currentQuestion?.question || '';
