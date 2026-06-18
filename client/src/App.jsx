@@ -4882,7 +4882,7 @@ export default function App() {
     let total = 0;
     const scoredIndices = [];
     aiQuestions.forEach((_, i) => {
-      if (i !== 1) scoredIndices.push(i);
+      scoredIndices.push(i);
     });
     const M = scoredIndices.length;
     if (M === 0) return 0;
@@ -4890,7 +4890,6 @@ export default function App() {
     const remainder = 100 - (baseWeight * M);
 
     aiQuestions.forEach((q, idx) => {
-      if (idx === 1) return;
       const sIdx = scoredIndices.indexOf(idx);
       const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
@@ -4928,7 +4927,7 @@ export default function App() {
     let total = 0;
     const scoredIndices = [];
     examQuestions.forEach((_, i) => {
-      if (i !== 1) scoredIndices.push(i);
+      scoredIndices.push(i);
     });
     const M = scoredIndices.length;
     if (M === 0) return 0;
@@ -4936,7 +4935,6 @@ export default function App() {
     const remainder = 100 - (baseWeight * M);
 
     examQuestions.forEach((q, idx) => {
-      if (idx === 1) return;
       const sIdx = scoredIndices.indexOf(idx);
       const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
@@ -6561,20 +6559,19 @@ export default function App() {
       }
     }
 
-    // Q2 제외하고 종합 점수(배점) 계산
+    // 종합 점수(배점) 계산
     let totalScoreObtained = 0;
     let correctCount = 0;
 
     const scoredIndices = [];
     aiQuestions.forEach((_, i) => {
-      if (i !== 1) scoredIndices.push(i);
+      scoredIndices.push(i);
     });
     const M = scoredIndices.length;
     const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
     const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
 
     aiQuestions.forEach((q, idx) => {
-      if (idx === 1) return; // Q2 제외
       
       const sIdx = scoredIndices.indexOf(idx);
       const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
@@ -12038,7 +12035,7 @@ export default function App() {
 
                     const scoredIndices = [];
                     aiQuestions.forEach((_, i) => {
-                      if (i !== 1) scoredIndices.push(i);
+                      scoredIndices.push(i);
                     });
                     const M = scoredIndices.length;
                     const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
@@ -12062,7 +12059,7 @@ export default function App() {
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                                 {isMC ? '객관식' : '주관식'}
                               </span>
-                              {idx !== 1 && (() => {
+                              {(() => {
                                 if (isMC) {
                                   const userAnswer = selectedAnswers[idx];
                                   if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
@@ -12113,7 +12110,7 @@ export default function App() {
                             </div>
 
                             {/* 재평가 버튼 배치 */}
-                            {isSubj && isRevd && idx !== 1 && (
+                            {isSubj && isRevd && (
                               <button
                                 onClick={async (e) => {
                                   e.preventDefault();
@@ -12507,7 +12504,7 @@ export default function App() {
                               {(() => {
                                 const scoredIndices = [];
                                 aiQuestions.forEach((_, i) => {
-                                  if (i !== 1) scoredIndices.push(i);
+                                  scoredIndices.push(i);
                                 });
                                 const M = scoredIndices.length;
                                 const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
@@ -13674,7 +13671,7 @@ export default function App() {
 
                   const scoredIndices = [];
                   examQuestions.forEach((_, i) => {
-                    if (i !== 1) scoredIndices.push(i);
+                    scoredIndices.push(i);
                   });
                   const M = scoredIndices.length;
                   const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
@@ -13698,7 +13695,7 @@ export default function App() {
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded text-white ${isMC ? 'bg-emerald-700' : subtypeBadgeColor}`}>
                               {isMC ? '객관식' : '주관식'}
                             </span>
-                            {idx !== 1 && (() => {
+                            {(() => {
                               if (isMC) {
                                 const userAnswer = examAnswers[idx];
                                 if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
@@ -13749,7 +13746,7 @@ export default function App() {
                           </div>
 
                           {/* 재평가 버튼 배치 */}
-                          {isSubj && isRevd && idx !== 1 && (
+                          {isSubj && isRevd && (
                             <button
                               onClick={async (e) => {
                                 e.preventDefault();
@@ -14161,7 +14158,7 @@ export default function App() {
                               {(() => {
                                 const scoredIndices = [];
                                 examQuestions.forEach((_, i) => {
-                                  if (i !== 1) scoredIndices.push(i);
+                                  scoredIndices.push(i);
                                 });
                                 const M = scoredIndices.length;
                                 const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
@@ -14233,7 +14230,7 @@ export default function App() {
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
-                                    {idx !== 1 && examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                    {examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
                                         <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
                                           {Math.round(((examTableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점

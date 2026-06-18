@@ -6633,14 +6633,13 @@ function computeOverallScore(parsed) {
 
   const scoredIndices = [];
   aiQuestions.forEach((_, i) => {
-    if (i !== 1) scoredIndices.push(i);
+    scoredIndices.push(i);
   });
   const M = scoredIndices.length;
   const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
   const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
 
   aiQuestions.forEach((q, idx) => {
-    if (idx === 1) return; // Q2 제외
 
     const sIdx = scoredIndices.indexOf(idx);
     const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
