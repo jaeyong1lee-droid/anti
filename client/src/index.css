@@ -14,6 +14,8 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.07);
+  will-change: backdrop-filter;
+  contain: layout style;
 }
 
 .glass-panel-light {
@@ -21,6 +23,8 @@
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.04);
+  will-change: backdrop-filter;
+  contain: layout style;
 }
 
 .glow-purple {
@@ -558,6 +562,8 @@ div[class*="overflow-y-auto"] {
   background-size: 300% 300% !important;
   animation: rainbowBackgroundShift 8s ease infinite, rainbowGlowShadow 8s ease infinite !important;
   border-width: 1px !important;
+  will-change: background-position, box-shadow, border-color;
+  transform: translateZ(0);
 }
 
 /* Ensure cards never stretch or overflow horizontally, keeping layouts locked */

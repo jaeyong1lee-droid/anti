@@ -5107,28 +5107,38 @@ export default function App() {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
+    let resizeTimer = null;
     const handleResize = () => {
-      const current = window.innerWidth;
-      setWindowWidth(prev => {
-        if (prev !== current) {
-          setRightSidebarWidth(oldWidth => {
-            const ratio = oldWidth / prev;
-            const newWidth = Math.round(current * ratio);
-            const minWidth = 250;
-            const maxWidth = current * 0.7;
-            return Math.max(minWidth, Math.min(maxWidth, newWidth));
-          });
-        }
-        return current;
+      if (resizeTimer) cancelAnimationFrame(resizeTimer);
+      resizeTimer = requestAnimationFrame(() => {
+        const current = window.innerWidth;
+        setWindowWidth(prev => {
+          if (prev !== current) {
+            setRightSidebarWidth(oldWidth => {
+              const ratio = oldWidth / prev;
+              const newWidth = Math.round(current * ratio);
+              const minWidth = 250;
+              const maxWidth = current * 0.7;
+              return Math.max(minWidth, Math.min(maxWidth, newWidth));
+            });
+          }
+          return current;
+        });
       });
     };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimer) cancelAnimationFrame(resizeTimer);
+    };
   }, []);
 
-  // Sync rightSidebarWidth to localStorage
+  // Sync rightSidebarWidth to localStorage (debounced)
   useEffect(() => {
-    localStorage.setItem('anti_right_sidebar_width', rightSidebarWidth.toString());
+    const timer = setTimeout(() => {
+      localStorage.setItem('anti_right_sidebar_width', rightSidebarWidth.toString());
+    }, 300);
+    return () => clearTimeout(timer);
   }, [rightSidebarWidth]);
 
   // Load rightSidebarWidth from server database on mount
@@ -5614,20 +5624,27 @@ export default function App() {
     updateTime();
     const timeInterval = setInterval(updateTime, 10000);
 
+    let batteryRef = null;
+    let updateBatteryRef = null;
     if (navigator.getBattery) {
       navigator.getBattery().then((battery) => {
-        const updateBattery = () => {
+        batteryRef = battery;
+        updateBatteryRef = () => {
           setBatteryLevel(Math.round(battery.level * 100));
           setIsCharging(battery.charging);
         };
-        updateBattery();
-        battery.addEventListener('levelchange', updateBattery);
-        battery.addEventListener('chargingchange', updateBattery);
+        updateBatteryRef();
+        battery.addEventListener('levelchange', updateBatteryRef);
+        battery.addEventListener('chargingchange', updateBatteryRef);
       });
     }
 
     return () => {
       clearInterval(timeInterval);
+      if (batteryRef && updateBatteryRef) {
+        batteryRef.removeEventListener('levelchange', updateBatteryRef);
+        batteryRef.removeEventListener('chargingchange', updateBatteryRef);
+      }
     };
   }, []);
 
@@ -5872,9 +5889,11 @@ export default function App() {
   // Success Notification banner
   const [notification, setNotification] = useState(null);
 
+  const notificationTimerRef = useRef(null);
   const showNotification = (message, type = 'success') => {
+    if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 4000);
+    notificationTimerRef.current = setTimeout(() => setNotification(null), 4000);
   };
 
     // Fetch reviews based on selected reference date
@@ -6175,56 +6194,62 @@ export default function App() {
     }
   }, [examTopic, examQuestions]);
 
-  // ── Save state to localStorage whenever key state changes
+  // ── Save state to localStorage whenever key state changes (debounced for performance)
   useEffect(() => {
-    try {
-      localStorage.setItem('anti_app_state', JSON.stringify({
-        viewMode,
-        selectedTopic,
-        aiQuestions,
-        revealedQuestions,
-        selectedAnswers,
-        openSections,
-        isFallback,
-        showExam,
-        examTopic,
-        examQuestions,
-        examRevealed,
-        examAnswers,
-        tableAnswers,
-        tableGradingResults,
-        examTableAnswers,
-        examTableGradingResults,
-        chatHistory,
-        tutorAnswers,
-        tutorInputText,
-      }));
-    } catch (e) {
-      console.warn('localStorage 저장 실패:', e);
-    }
+    const debounceTimer = setTimeout(() => {
+      try {
+        localStorage.setItem('anti_app_state', JSON.stringify({
+          viewMode,
+          selectedTopic,
+          aiQuestions,
+          revealedQuestions,
+          selectedAnswers,
+          openSections,
+          isFallback,
+          showExam,
+          examTopic,
+          examQuestions,
+          examRevealed,
+          examAnswers,
+          tableAnswers,
+          tableGradingResults,
+          examTableAnswers,
+          examTableGradingResults,
+          chatHistory,
+          tutorAnswers,
+          tutorInputText,
+        }));
+      } catch (e) {
+        console.warn('localStorage 저장 실패:', e);
+      }
+    }, 500);
+    return () => clearTimeout(debounceTimer);
   }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults, chatHistory, tutorAnswers, tutorInputText]);
 
-  // ── Sync current topic's review progress (revealed subjective questions, chosen options) to topic-specific localStorage
+  // ── Sync current topic's review progress to topic-specific localStorage (debounced for performance)
   useEffect(() => {
     if (selectedTopic && selectedTopic.id) {
-      if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0 || Object.keys(tutorAnswers).length > 0 || Object.keys(tutorInputText).length > 0 || chatHistory.length > 0) {
-        try {
-          const key = selectedTopic.schedule_id 
-            ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-            : `anti_review_progress_${selectedTopic.id}`;
-          localStorage.setItem(key, JSON.stringify({
-            revealedQuestions,
-            selectedAnswers,
-            tableAnswers,
-            tableGradingResults,
-            tutorAnswers,
-            tutorInputText,
-            chatHistory
-          }));
-        } catch (e) {
-          console.warn('localStorage 복습 진행률 저장 실패:', e);
+      const debounceTimer = setTimeout(() => {
+        if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0 || Object.keys(tutorAnswers).length > 0 || Object.keys(tutorInputText).length > 0 || chatHistory.length > 0) {
+          try {
+            const key = selectedTopic.schedule_id 
+              ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+              : `anti_review_progress_${selectedTopic.id}`;
+            localStorage.setItem(key, JSON.stringify({
+              revealedQuestions,
+              selectedAnswers,
+              tableAnswers,
+              tableGradingResults,
+              tutorAnswers,
+              tutorInputText,
+              chatHistory
+            }));
+          } catch (e) {
+            console.warn('localStorage 복습 진행률 저장 실패:', e);
+          }
         }
-      }
+      }, 500);
+      return () => clearTimeout(debounceTimer);
     }
   }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
@@ -6299,10 +6324,12 @@ export default function App() {
     }
   };
 
-  // ── Auto-save active sessions when leaving/reloading the page
+  // ── Auto-save active sessions when leaving/reloading the page (using ref to avoid re-registering listeners)
+  const forceSaveRef = useRef(forceSaveActiveSessions);
+  forceSaveRef.current = forceSaveActiveSessions;
   useEffect(() => {
     const handleBeforeUnload = () => {
-      forceSaveActiveSessions();
+      forceSaveRef.current();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handleBeforeUnload);
@@ -6310,7 +6337,7 @@ export default function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults]);
+  }, []);
 
   // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
