@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
+import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2931,6 +2932,7 @@ ${adjustmentsPrompt}
   }
   ... (총 ${totalAiQuestionsCount}개가 되도록 객관식 계속)
 ]
+${ENGINEERING_STANDARDS}
 `;
 
 try {
@@ -3308,6 +3310,7 @@ ${typeRequirement}
 
 [응답 JSON 포맷]:
 ${formatRequirement}
+${ENGINEERING_STANDARDS}
 `;
 
       const responseText = await callLLMWithFailover(null, prompt, null, 'question');
@@ -3524,6 +3527,7 @@ ${typeRequirement}
 
 [JSON 포맷]:
 ${formatRequirement}
+${ENGINEERING_STANDARDS}
 `;
 
       const responseText = await callLLMWithFailover(null, prompt, null, 'question');
@@ -3723,6 +3727,7 @@ ${typeRequirement}
 
 [응답 JSON 포맷]:
 ${formatRequirement}
+${ENGINEERING_STANDARDS}
 `;
 
       const responseText = await callLLMWithFailover(null, prompt, null, 'question');
@@ -3902,6 +3907,7 @@ ${typeRequirement}
 
 [JSON 포맷]:
 ${formatRequirement}
+${ENGINEERING_STANDARDS}
 `;
 
       const responseText = await callLLMWithFailover(null, prompt, null, 'question');
@@ -4118,6 +4124,7 @@ ${adjustmentsPrompt}
     "explanation": "이유와 오답 정밀 해설"
   }
 ]
+${ENGINEERING_STANDARDS}
 `;
 
       try {
@@ -4521,6 +4528,7 @@ app.post('/api/exam/additional', async (req, res) => {
     "explanation": "이유와 오답 정밀 해설"
   }
 ]
+${ENGINEERING_STANDARDS}
 `;
 
       try {
@@ -4633,6 +4641,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
 2. 수식이나 공식이 있다면 반드시 LaTeX 형식($수식$ 또는 $$수식$$)을 사용하십시오.
 3. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+${ENGINEERING_STANDARDS}
 `;
 
     try {
@@ -4851,7 +4860,8 @@ JSON 형식:
   "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 명쾌하게 분석한 설명 리스트. [매우 중요 규칙]: 1) 반드시 제공된 [수식]에 명시적으로 표기된 기호와 상수들에 한해서만 기호 정의 목록을 작성하십시오. 공식에 포함되지 않은 엉뚱한 변수나 다른 공식의 기호를 리스트에 포함하는 것은 절대 엄금합니다. 수식에 등장하지 않는 기호(예: 수식에는 c나 B가 없는데 Terzaghi 공식을 상상해 c나 B를 적는 행위 등)가 단 하나라도 포함되면 절대 안 됩니다. 2) 각 기호의 뜻뿐만 아니라 그 값이 수식에서 분자/분모/계수 등에 위치함으로써 가지는 물리적/역학적 의의(예: 'A는 단면적으로, 분모에 있어 면적이 넓어질수록... 등')를 기호당 1~2줄씩 LaTeX($ 기호)를 섞어서 친절하게 서술해주세요. 반드시 순수한 기호 및 상수 설명 목록만 Markdown 불릿 리스트 형태로 반환하고, '각 기호와 상수의 의미를 대화 맥락을 기반으로 복습해 보세요' 등 학습을 유도하는 사족 문장은 절대 포함하지 마십시오."
 }
 
-반드시 다른 잡설 없이 오직 JSON 객체만 반환하시오. 마크다운 코드 블록(\`\`\`json) 등은 감싸지 말고 순수 JSON만 반환하시오.`;
+반드시 다른 잡설 없이 오직 JSON 객체만 반환하시오. 마크다운 코드 블록(\`\`\`json) 등은 감싸지 말고 순수 JSON만 반환하시오.
+${ENGINEERING_STANDARDS}`;
 
     const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
 
@@ -5603,6 +5613,7 @@ app.post('/api/question/option-explanation', async (req, res) => {
 - **② ${options[1]}** : [정답/오답 핵심 분석] ...
 - **③ ${options[2]}** : [정답/오답 핵심 분석] ...
 - **④ ${options[3]}** : [정답/오답 핵심 분석] ...
+${ENGINEERING_STANDARDS}
 `;
 
     const responseText = await callLLMWithFailover(null, prompt, null, 'option-explanation');
@@ -5938,7 +5949,8 @@ JSON 규격:
   ]
 }
 
-반드시 다른 군더더기 텍스트나 마크다운 블록 (\`\`\`json) 없이 오직 지정된 JSON 구조로만 반환해 주세요.`;
+반드시 다른 군더더기 텍스트나 마크다운 블록 (\`\`\`json) 없이 오직 지정된 JSON 구조로만 반환해 주세요.
+${ENGINEERING_STANDARDS}`;
 
     const userPrompt = `[문서 원본 텍스트]:\n${fileText}`;
 
@@ -6175,7 +6187,8 @@ JSON 규격:
   "answer": "기초 가정 및 물리적 모델 상태 설명부터 시작하여, 각 변수의 평형 방정식, 적분/미분 수학적 대입 및 이항, 최종 유도 공식에 이르는 전체 수식 유도 단계를 처음부터 끝까지 생략 없이 상세히 기술. (수식은 KaTeX 기호 $...$ 또는 $$...$$로 작성하고 줄바꿈과 단락을 일목요연하고 깊이 있게 구성)"
 }
 
-반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.`;
+반드시 다른 군더더기 텍스트 없이 순수 JSON 객체만 반환해 주세요.
+${ENGINEERING_STANDARDS}`;
 
     const userPrompt = `[기존 제목]: ${title}\n\n[기존 유도 및 증명 내용]:\n${answer}`;
 

@@ -1,6 +1,7 @@
 /**
  * 주관식 채점 플러그인 (Grading Plugin)
  */
+import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 
 export const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
@@ -63,7 +64,9 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
 - 제공된 모범 답안(correctAnswer)과 사용자의 답안(userAnswer)을 모두 분석하십시오.
 - 만약 모범 답안이 너무 단순하거나 공학적 분석이 결여되어 있는 경우, 또는 사용자의 답안이 더 설득력 있는 공학적 근거를 담고 있는 경우, AI 본연의 전문 지반공학 지식과 원보고서의 맥락을 비교·평가하십시오.
 - 두 답안의 장점을 살리고 공학적 인과관계(예: 점착력 상실 기전, 구속압 변화, 유효응력 원리 등)와 LaTeX 수식/기호를 풍부하게 포함하여 **질문에 가장 적합한 '고도화된 모범 답안'을 동적으로 작성**하십시오.
-- 만약 1단계 데이터 정합성 검사에서 모범 답안의 매칭 오류(출제 오류)를 발견한 경우에는, 잘못된 모범 답안을 완전히 무시하고 **헤더 맥락에 완전히 부합하는 최적의 진짜 공학적 답안(예: 'C, 파이' 등)을 이 필드에 적어 반환**하십시오.`;
+- 만약 1단계 데이터 정합성 검사에서 모범 답안의 매칭 오류(출제 오류)를 발견한 경우에는, 잘못된 모범 답안을 완전히 무시하고 **헤더 맥락에 완전히 부합하는 최적의 진짜 공학적 답안(예: 'C, 파이' 등)을 이 필드에 적어 반환**하십시오.
+
+${ENGINEERING_STANDARDS}`;
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 

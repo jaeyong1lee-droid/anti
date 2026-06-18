@@ -13,6 +13,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import { gradeSubjective } from './plugins/gradingPlugin.js';
+import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3407,6 +3408,7 @@ ${adjustmentsPrompt}
        🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.** (예: 공식 $A = B \times C$에 대해 "B가 증가할 때 A의 변화"를 묻는 문제를 출제했다면, 동일한 테스트 세트 내에 "C가 증가할 때 A의 변화"를 묻는 질문은 사실상 동일한 비례 관계 메커니즘을 묻는 중복 문제이므로 **절대로 같이 내지 말고**, 완전히 다른 공학적 개념이나 새로운 지식을 묻는 독립적인 문제로만 구성하십시오.)
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 
 3. 중복 질문 및 꼬임 금지:
    - 각 문제의 논점이 서로 중복되지 않도록 다양한 원리나 현상을 안배하십시오.
@@ -3849,6 +3851,7 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 ${typeRequirement}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 - 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
 
 [응답 JSON 포맷]:
@@ -4092,6 +4095,7 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 ${typeRequirement}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 - 추가 설명 텍스트 없이 오직 순수 JSON 데이터만 반환하십시오.
 
 [JSON 포맷]:
@@ -4290,6 +4294,7 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 ${typeRequirement}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 - 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
 
 [응답 JSON 포맷]:
@@ -4491,6 +4496,7 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 ${typeRequirement}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 - 추가 설명 텍스트 없이 오직 순수 JSON 데이터만 반환하십시오.
 
 [JSON 포맷]:
@@ -4773,6 +4779,7 @@ ${adjustmentsPrompt}
 2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -5136,6 +5143,7 @@ ${formulasText || '저장된 내용 없음'}
 2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
 [JSON 포맷]:
@@ -5269,6 +5277,7 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
 1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
 2. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
 
+${ENGINEERING_STANDARDS}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 `;
 
@@ -5309,8 +5318,8 @@ app.post('/api/hint', async (req, res) => {
 [지침]:
 1. 복잡한 공식이나 유도 과정을 설명하지 말고, 이 문제를 해결하기 위해 가장 핵심적으로 생각해야 하는 개념이나 물리적 거동을 일상적이고 직관적인 비유로 설명하십시오.
 2. 수험생이 스스로 문제를 풀 수 있도록 유도해야 하며, 직접적인 해답이나 최종 정답 수치를 제공해서는 절대 안 됩니다.
-3. 친절하고 부드러운 튜터의 말투를 사용하십시오.`;
-
+3. 친절하고 부드러운 튜터의 말투를 사용하십시오.
+${ENGINEERING_STANDARDS}`;
     const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
     
     const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'question');
@@ -5413,6 +5422,7 @@ app.post('/api/chat', async (req, res) => {
      | 구분 | 테르자기 이론 | 쌍곡선법 | 아사오카법 |
      | --- | --- | --- | --- |
      | 분류 | 이론적 해석법 | 경험적/역해석법 | 경험적/역해석법 |
+${ENGINEERING_STANDARDS}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
@@ -5544,6 +5554,7 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
 4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 
 [JSON 반환 규격]:
 {
@@ -6151,6 +6162,7 @@ app.post('/api/question/option-explanation', async (req, res) => {
 [요구사항]:
 1. ①, ②, ③, ④ 각 보기별 오답/정답 요인 분석을 한눈에 들어오도록 콤팩트하게 작성하십시오 (각 보기당 1~2줄 이내 권장).
 2. ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
 3. 마크다운의 '\`\`\`' 등의 특수 기호는 감싸지 말고 다음의 문자열 형식으로만 곧바로 반환해 주십시오:
 
 - **① ${options[0]}** : [정답/오답 핵심 분석] (여기에 명확하고 압축된 공학적 해설 기재)
