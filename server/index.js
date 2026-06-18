@@ -17,6 +17,7 @@ import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const BT = '```';
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
