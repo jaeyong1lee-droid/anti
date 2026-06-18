@@ -11367,6 +11367,22 @@ export default function App() {
                     (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
                   )
                 : -1;
+
+              // Calculate bottom 5% threshold logic (only among studied topics to prevent unstudied 0-scores skewing the metric)
+              const studiedScores = allTopics
+                .map(t => {
+                  const completedAll = t.schedules?.filter(s => s.status === 'completed') || [];
+                  return completedAll.length > 0
+                    ? Math.round(completedAll.reduce((sum, s) => sum + (s.score || 0), 0) / completedAll.length)
+                    : -1;
+                })
+                .filter(score => score >= 0);
+
+              const sortedScores = [...studiedScores].sort((a, b) => a - b);
+              const cutoffIndex = Math.floor(sortedScores.length * 0.05);
+              const thresholdScore = sortedScores.length > 0 ? sortedScores[cutoffIndex] : -1;
+              const minScore = sortedScores.length > 0 ? sortedScores[0] : 0;
+              const maxScore = sortedScores.length > 0 ? sortedScores[sortedScores.length - 1] : 0;
               return (
                 <div className={`overflow-x-auto landscape-overflow-x-auto md:pr-2 custom-vertical-scrollbar ${
                   (isDesktop && !isMobileLandscape) 
@@ -11389,6 +11405,26 @@ export default function App() {
                     <tbody className="divide-y divide-slate-800 text-sm">
                       {allTopics.map((topic, idx) => {
                         const isFirstMatch = searchQuery && idx === matchedIndex;
+                        
+                        const completedNormal = topic.schedules?.filter(s => s.status === 'completed' && s.review_round < 99) || [];
+                        const completedWeak = topic.schedules?.filter(s => s.status === 'completed' && s.review_round === 99) || [];
+                        const completedAll = topic.schedules?.filter(s => s.status === 'completed') || [];
+
+                        const reviewScore = completedNormal.length > 0 
+                          ? Math.round(completedNormal.reduce((sum, s) => sum + (s.score || 0), 0) / completedNormal.length)
+                          : 0;
+
+                        const weaknessScore = completedWeak.length > 0
+                          ? Math.round(completedWeak.reduce((sum, s) => sum + (s.score || 0), 0) / completedWeak.length)
+                          : 0;
+
+                        const totalScore = completedAll.length > 0
+                          ? Math.round(completedAll.reduce((sum, s) => sum + (s.score || 0), 0) / completedAll.length)
+                          : 0;
+
+                        const hasCompleted = completedAll.length > 0;
+                        const isRed = hasCompleted && minScore !== maxScore && totalScore <= thresholdScore;
+
                         return (
                           <tr 
                             key={topic.id} 
@@ -11443,17 +11479,20 @@ export default function App() {
                                       >
                                         {topic.title}
                                       </h4>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
-                                        }}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs md:text-[14px] font-bold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
-                                        title="소스 + Gemini AI로 고난도 문제 생성"
-                                      >
-                                        <Brain size={14} />
-                                        <span>복습</span>
-                                      </button>
+                                      <div className="inline-flex items-center gap-1.5 font-mono select-none shrink-0 border border-slate-800/80 bg-slate-950/40 rounded-xl px-2.5 py-0.5">
+                                        <span className={`text-[13px] md:text-[15px] font-extrabold ${isRed ? 'text-rose-500 font-black animate-pulse' : 'text-slate-200'}`} title="전체 평균 점수">
+                                          {totalScore}점
+                                        </span>
+                                        <span className="text-slate-700 text-xs">|</span>
+                                        <div className="flex flex-col items-center justify-center text-[9px] md:text-[10px] leading-none">
+                                          <span className="pb-0.5 border-b border-slate-700 font-bold text-violet-400" title="복습 평균 점수 (분자)">
+                                            {reviewScore}점
+                                          </span>
+                                          <span className="pt-0.5 font-bold text-amber-500" title="약점 평균 점수 (분모)">
+                                            {weaknessScore}점
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : (
                                     /* Mobile: Double line title with ellipsis + inline review button */
@@ -11480,16 +11519,20 @@ export default function App() {
                                       >
                                         {topic.title}
                                       </h4>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai');
-                                        }}
-                                        className="inline-flex items-center justify-center p-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer shrink-0"
-                                        title="소스 + Gemini AI로 고난도 문제 생성"
-                                      >
-                                        <Brain size={12} />
-                                      </button>
+                                      <div className="inline-flex items-center gap-1 font-mono select-none shrink-0 border border-slate-800/80 bg-slate-950/40 rounded-lg px-1.5 py-0.5">
+                                        <span className={`text-[11px] font-extrabold ${isRed ? 'text-rose-500 font-black' : 'text-slate-200'}`} title="전체 평균 점수">
+                                          {totalScore}점
+                                        </span>
+                                        <span className="text-slate-800 text-[10px]">|</span>
+                                        <div className="flex flex-col items-center justify-center text-[8px] leading-none">
+                                          <span className="pb-0.5 border-b border-slate-700 font-bold text-violet-400" title="복습 평균 점수 (분자)">
+                                            {reviewScore}점
+                                          </span>
+                                          <span className="pt-0.5 font-bold text-amber-500" title="약점 평균 점수 (분모)">
+                                            {weaknessScore}점
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
                                   )
                                 )}
