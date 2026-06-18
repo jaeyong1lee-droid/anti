@@ -4648,12 +4648,6 @@ export default function App() {
                     <span className={theme.text}>{displayScore}점</span>
                   )}
                 </div>
-                <div>
-                  <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
-                  <span className="text-slate-100 font-semibold inline">
-                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
-                  </span>
-                </div>
                 {gradingResult?.reason && (
                   <div>
                     <span className="text-slate-100 mr-1.5 font-bold">피드백:</span>
@@ -4662,6 +4656,12 @@ export default function App() {
                     </span>
                   </div>
                 )}
+                <div>
+                  <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
+                  <span className="text-slate-100 font-semibold inline">
+                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
+                  </span>
+                </div>
               </div>
             );
           })}

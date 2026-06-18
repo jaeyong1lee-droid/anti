@@ -17,11 +17,32 @@ function parseRow(rowText) {
 function renderTableToHtml(tableLines) {
   if (tableLines.length < 2) return tableLines.join('\n');
 
-  const headers = parseRow(tableLines[0]);
-  const bodyRows = tableLines.slice(2).map(line => parseRow(line));
-  
-  let html = `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
+  let headers = parseRow(tableLines[0]);
+  let titleHeader = null;
+
+  // If the first header cell starts with '#' (e.g. '### 요약 비교')
+  if (headers[0] && headers[0].trim().startsWith('#')) {
+    titleHeader = headers[0];
+    headers.shift(); // Shift headers left
+  }
+
   const colCount = headers.length;
+  const bodyRows = tableLines.slice(2).map(line => {
+    const row = parseRow(line);
+    return row.slice(0, colCount);
+  });
+  
+  let html = '';
+  if (titleHeader) {
+    const match = titleHeader.match(/^(#+)\s*(.*)/);
+    if (match) {
+      const level = match[1].length;
+      const text = match[2].trim();
+      html += `<h${level} class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${text}</h${level}>`;
+    }
+  }
+
+  html += `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
   html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
     colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
   }">`;
@@ -40,6 +61,11 @@ function renderTableToHtml(tableLines) {
     row.forEach(cell => {
       html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
     });
+    if (row.length < colCount) {
+      for (let k = row.length; k < colCount; k++) {
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350"></td>`;
+      }
+    }
     html += `</tr>`;
   });
   html += `</tbody>`;
