@@ -235,6 +235,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
+  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
+
   // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
   processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
                        .replace(/\x0a\s*u\b/g, '\\nu')
@@ -634,6 +638,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 14. 🚨 [목록 시작 시 줄 띄우기 금지]: 대주제/소주제 구분선이나 콜론으로 끝나는 행(예: "• 주요 가정:", "• 메커니즘:") 바로 다음에 목록 항목(1., 2. 또는 *, - 등)이 올 경우에는 절대로 그 사이에 빈 줄(두 번 엔터 \\n\\n)을 넣지 말고, 단일 줄바꿈(\\n)으로만 연결하여 불필요한 빈 간격이 생기지 않도록 하십시오.
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 19. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩그러니 남겨두는 행위는 엄격히 금지합니다.
+20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 
 [원시 JSON 출력 엄격 준수 규칙]
 - JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
@@ -671,5 +676,6 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
+20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
