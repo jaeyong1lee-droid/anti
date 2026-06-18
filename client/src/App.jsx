@@ -7910,6 +7910,7 @@ export default function App() {
     const setRegenerating = isReview ? setRegeneratingReview : setRegeneratingExam;
     
     setRegenerating(prev => ({ ...prev, [idx]: true }));
+    showNotification('문제 변환을 요청 중입니다... AI 응답을 기다리는 중', 'info');
 
     try {
       const body = {
@@ -7919,12 +7920,15 @@ export default function App() {
         questionIdx: idx
       };
 
+      console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type });
+
       const res = await fetch(`${API_BASE}/api/question/regenerate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       
+      console.log('[변환] 응답 수신:', { status: res.status, ok: res.ok });
       const data = await res.json();
 
       if (res.ok && data.question) {
@@ -8053,7 +8057,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Regenerate question error:', err);
-      showNotification('서버 통신 오류로 문제를 변환하지 못했습니다.', 'error');
+      showNotification(`서버 통신 오류로 문제를 변환하지 못했습니다. (${err.message || '알 수 없는 오류'})`, 'error');
     } finally {
       setRegenerating(prev => ({ ...prev, [idx]: false }));
     }
