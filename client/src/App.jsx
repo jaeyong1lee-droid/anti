@@ -11368,7 +11368,7 @@ export default function App() {
               // Calculate bottom 5% threshold logic (only among studied topics to prevent unstudied 0-scores skewing the metric)
               const studiedScores = allTopics
                 .map(t => {
-                  const completedAll = t.schedules?.filter(s => s.status === 'completed') || [];
+                  const completedAll = t.schedules?.filter(s => s.status === 'completed' && s.score !== null && s.score !== undefined) || [];
                   return completedAll.length > 0
                     ? Math.round(completedAll.reduce((sum, s) => sum + (s.score || 0), 0) / completedAll.length)
                     : -1;
@@ -11403,9 +11403,9 @@ export default function App() {
                       {allTopics.map((topic, idx) => {
                         const isFirstMatch = searchQuery && idx === matchedIndex;
                         
-                        const completedNormal = topic.schedules?.filter(s => s.status === 'completed' && s.review_round < 99) || [];
-                        const completedWeak = topic.schedules?.filter(s => s.status === 'completed' && s.review_round === 99) || [];
-                        const completedAll = topic.schedules?.filter(s => s.status === 'completed') || [];
+                        const completedNormal = topic.schedules?.filter(s => s.status === 'completed' && s.review_round < 99 && s.score !== null && s.score !== undefined) || [];
+                        const completedWeak = topic.schedules?.filter(s => s.status === 'completed' && s.review_round === 99 && s.score !== null && s.score !== undefined) || [];
+                        const completedAll = topic.schedules?.filter(s => s.status === 'completed' && s.score !== null && s.score !== undefined) || [];
 
                         const reviewScore = completedNormal.length > 0 
                           ? Math.round(completedNormal.reduce((sum, s) => sum + (s.score || 0), 0) / completedNormal.length)
