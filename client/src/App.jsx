@@ -4650,8 +4650,8 @@ export default function App() {
                 </div>
                 {gradingResult?.reason && (
                   <div>
-                    <span className="text-slate-100 mr-1.5 font-bold">피드백:</span>
-                    <span className="text-slate-100 font-normal leading-relaxed inline">
+                    <span className={`mr-1.5 font-bold ${theme.text}`}>피드백:</span>
+                    <span className={`font-normal leading-relaxed inline ${theme.text}`}>
                       <LatexRenderer text={formatGradingReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                     </span>
                   </div>
