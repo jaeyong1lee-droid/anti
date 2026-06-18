@@ -380,7 +380,19 @@ const cleanAndSanitizeMathText = (rawText) => {
   
   // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
   cleaned = cleaned.replace(/_따라서/g, '따라서');
-  
+
+  // 3. LaTeX 디스플레이 수식 구분자 \[...\] → $$...$$ 변환 (LatexRenderer는 $$만 인식)
+  cleaned = cleaned.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => {
+    return `$$${math}$$`;
+  });
+
+  // 4. LaTeX 인라인 수식 구분자 \(...\) → $...$ 변환
+  cleaned = cleaned.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => {
+    // 한국어만 있는 괄호 내용은 수식이 아닌 일반 텍스트이므로 제외
+    if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
+    return `$${math}$`;
+  });
+
   return cleaned;
 };
 
