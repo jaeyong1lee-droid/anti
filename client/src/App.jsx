@@ -7929,7 +7929,21 @@ export default function App() {
       });
       
       console.log('[변환] 응답 수신:', { status: res.status, ok: res.ok });
-      const data = await res.json();
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        console.error('[변환] 응답 JSON 파싱 실패:', jsonErr);
+        showNotification(`서버 응답을 처리할 수 없습니다 (HTTP ${res.status}). Vercel 서버리스 함수 타임아웃일 수 있습니다.`, 'error');
+        return;
+      }
+
+      if (!res.ok) {
+        console.error('[변환] 서버 에러:', data);
+        showNotification(data.error || `서버 오류 (HTTP ${res.status})`, 'error');
+        return;
+      }
 
       if (res.ok && data.question) {
         if (isReview) {
