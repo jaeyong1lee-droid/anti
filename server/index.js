@@ -3663,9 +3663,32 @@ app.get('/api/question-feedback/all', async (req, res) => {
 
 // 6-3. Single Question Regeneration API
 app.post('/api/question/regenerate', async (req, res) => {
-  const { mode, topicId, currentQuestion, questionIdx } = req.body;
+  const { mode, topicId, currentQuestion, questionIdx, allQuestions } = req.body;
 
   try {
+    let duplicatePreventionPrompt = '';
+    if (Array.isArray(allQuestions) && allQuestions.length > 0) {
+      const otherQs = allQuestions.filter((_, i) => i !== questionIdx);
+      if (otherQs.length > 0) {
+        duplicatePreventionPrompt = `
+[🚨 중복 출제 금지 규칙 - 극도로 중요!]:
+현재 이 문제 세트(13문항) 내에 아래 문제들이 이미 출제되어 있습니다. 새로 생성하는 문제는 아래 기존 문제들(질문 내용, 공식, 표의 구분 항목, 정답 등)과 **절대 중복되거나 유사해서는 안 됩니다.** 완전히 새로운 관점, 다른 공식, 다른 개념, 혹은 다른 실무 시나리오를 적용해 주십시오:
+${otherQs.map((q, i) => {
+  let qSummary = `기존 문제 ${i + 1} (유형: ${q.type || q.subtype || '미정'}):
+- 질문: ${q.question || '없음'}`;
+  if (q.formula) qSummary += `\n- 공식: ${q.formula}`;
+  if (q.tableData && q.tableData.headers) {
+    qSummary += `\n- 비교 헤더: ${JSON.stringify(q.tableData.headers)}`;
+    if (q.tableData.rows) {
+      const rowHeaders = q.tableData.rows.map(r => r[0]).filter(Boolean);
+      qSummary += `\n- 표 구분항목(행 제목): ${JSON.stringify(rowHeaders)}`;
+    }
+  }
+  return qSummary;
+}).join('\n\n')}
+`;
+      }
+    }
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -3889,6 +3912,8 @@ app.post('/api/question/regenerate', async (req, res) => {
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+${duplicatePreventionPrompt}
+
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
@@ -4188,6 +4213,8 @@ ${formatRequirement}
 
       const prompt = `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+${duplicatePreventionPrompt}
+
 [평가 범위 토픽 목록]: ${topicTitles}
 [통합 소스 텍스트]:
 ${combinedText}

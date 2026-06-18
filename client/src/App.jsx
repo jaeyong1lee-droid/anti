@@ -7917,7 +7917,8 @@ export default function App() {
         mode,
         topicId: isReview ? selectedTopic?.id : null,
         currentQuestion: currentQ,
-        questionIdx: idx
+        questionIdx: idx,
+        allQuestions: isReview ? aiQuestions : examQuestions
       };
 
       console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type });
