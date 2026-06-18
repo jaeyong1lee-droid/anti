@@ -12593,7 +12593,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (공식)' && q.subtype !== '공식' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -14247,7 +14247,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (공식)' && q.subtype !== '공식' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
