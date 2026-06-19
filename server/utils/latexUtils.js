@@ -579,28 +579,35 @@ export function healQuizQuestionObject(q) {
       const newAnswers = {};
       let inputCount = 1;
 
+      // Check if the table already contains at least one '[INPUT_' placeholder
+      const hasExistingInput = rows.some(row => 
+        row.some(cell => typeof cell === 'string' && cell.includes('[INPUT_'))
+      );
+
       const newRows = rows.map((row) => {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
+
+          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
+          const isOriginalInput = trimmedCell.includes('[INPUT_');
+
+          if (hasExistingInput && !isOriginalInput) {
+            // Keep non-input cells as plain text
+            return cell;
+          }
 
           const inputId = `INPUT_${inputCount}`;
           inputCount++;
 
           // Extract correct answer:
           let correctAnswer = '';
-          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
-          
-          if (trimmedCell.includes('[INPUT_')) {
-            // It was already an input field. Find its original input number (e.g. [INPUT_1] -> 1)
+          if (isOriginalInput) {
             const match = trimmedCell.match(/INPUT_(\d+)/i);
             if (match) {
               const origId = `INPUT_${match[1]}`;
               correctAnswer = oldAnswers[origId] || '';
-            } else {
-              correctAnswer = '';
             }
           } else {
-            // It was plain text, so the text itself is the correct answer
             correctAnswer = cell;
           }
 
