@@ -14255,7 +14255,7 @@ export default function App() {
                                     await gradeTableQuestion(idx, q);
                                     setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-amber-600 hover:bg-amber-500 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black disabled:opacity-50"
+                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -14356,7 +14356,7 @@ export default function App() {
                                     await gradeSubjectiveQuestion(idx, q);
                                     setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-amber-600 hover:bg-amber-550 border border-amber-500/50 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-amber-600/20 font-black disabled:opacity-50"
+                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
