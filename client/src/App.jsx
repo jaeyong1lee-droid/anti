@@ -7503,9 +7503,12 @@ export default function App() {
     setIsFallback(false);
     setAiError('');
     
+    const currentRefreshTopicId = selectedTopic.id;
+    const currentRefreshScheduleId = selectedTopic.schedule_id;
+
     try {
-      if (isReadOnly && selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999) {
-        const resetRes = await fetch(`${API_BASE}/api/schedules/${selectedTopic.schedule_id}/reset`, {
+      if (isReadOnly && currentRefreshScheduleId && currentRefreshScheduleId !== 9999) {
+        const resetRes = await fetch(`${API_BASE}/api/schedules/${currentRefreshScheduleId}/reset`, {
           method: 'POST',
         });
         if (!resetRes.ok) {
@@ -7516,19 +7519,16 @@ export default function App() {
       }
 
       // 1. 기존의 복습 세션 데이터를 API를 통해 삭제
-      const deleteUrl = selectedTopic.schedule_id
-        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
-        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+      const deleteUrl = currentRefreshScheduleId
+        ? `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}?scheduleId=${currentRefreshScheduleId}`
+        : `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}`;
       await fetch(deleteUrl, { method: 'DELETE' })
         .catch(e => console.warn('복습 세션 초기화 실패:', e));
       
-      const progressKey = selectedTopic.schedule_id 
-        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-        : `anti_review_progress_${selectedTopic.id}`;
+      const progressKey = currentRefreshScheduleId 
+        ? `anti_review_progress_sched_${currentRefreshScheduleId}`
+        : `anti_review_progress_${currentRefreshTopicId}`;
       localStorage.removeItem(progressKey); // 전체 재생성 시 로컬 복습 기록도 제거
-        
-      const currentRefreshTopicId = selectedTopic.id;
-      const currentRefreshScheduleId = selectedTopic.schedule_id;
 
       // 2. 실시간 AI 생성 요청
       let url = `${API_BASE}/api/topics/${currentRefreshTopicId}/ai-questions`;
