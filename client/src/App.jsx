@@ -12093,6 +12093,7 @@ export default function App() {
                   )}
 
                   {aiQuestions.map((q, idx) => {
+                    const rKey = selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`;
                     const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
                     const isSubj = !isMC;
                     const answered = selectedAnswers[idx] !== undefined;
@@ -13732,6 +13733,7 @@ export default function App() {
             ) : (
               <div className="w-full space-y-5 pb-32">
                 {examQuestions.map((q, idx) => {
+                  const eKey = examTopic ? `e_${examTopic.id || 'integrated'}_${idx}` : `e_${idx}`;
                   const isMC = q.type === '객관식';
                   const isSubj = !isMC;
                   const answered = examAnswers[idx] !== undefined;
