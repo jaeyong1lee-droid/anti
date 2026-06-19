@@ -4664,23 +4664,17 @@ export default function App() {
             return (
               <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
                 {(rowHeader || colHeader) && (
-                  <div className="text-[11px] sm:text-[12px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
-                    <span className="text-slate-500 font-bold text-[10px] sm:text-[11px] bg-slate-800/60 px-1 py-0.5 rounded mr-1">위치</span>
+                  <div className="text-[14px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
+                    <span className="text-slate-500 font-bold text-[14px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
                     {rowHeader && (
-                      <span className="flex items-center gap-1">
-                        <span className="text-slate-500 text-[10px] sm:text-[11px]">행:</span>
-                        <span className="text-slate-300 font-semibold">
-                          <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
-                        </span>
+                      <span className="text-slate-300 font-semibold">
+                        <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
                       </span>
                     )}
-                    {rowHeader && colHeader && <span className="text-slate-700">|</span>}
+                    {rowHeader && colHeader && <span className="text-slate-500">/</span>}
                     {colHeader && (
-                      <span className="flex items-center gap-1">
-                        <span className="text-slate-500 text-[10px] sm:text-[11px]">열:</span>
-                        <span className="text-slate-300 font-semibold">
-                          <LatexRenderer text={colHeader} katexLoaded={katexLoaded} className="inline" />
-                        </span>
+                      <span className="text-slate-300 font-semibold">
+                        <LatexRenderer text={colHeader} katexLoaded={katexLoaded} className="inline" />
                       </span>
                     )}
                   </div>
