@@ -7675,9 +7675,17 @@ export default function App() {
     Object.keys(tutorAnswers).forEach(key => {
       if (key.startsWith('e_')) {
         const parts = key.split('_');
-        const idx = parseInt(parts[1], 10);
-        if (idx >= deleteCount) {
-          newTutorAnswers[`e_${idx - deleteCount}`] = tutorAnswers[key];
+        if (parts.length === 3) {
+          const topicId = parts[1];
+          const idx = parseInt(parts[2], 10);
+          if (idx >= deleteCount) {
+            newTutorAnswers[`e_${topicId}_${idx - deleteCount}`] = tutorAnswers[key];
+          }
+        } else if (parts.length === 2) {
+          const idx = parseInt(parts[1], 10);
+          if (idx >= deleteCount) {
+            newTutorAnswers[`e_${idx - deleteCount}`] = tutorAnswers[key];
+          }
         }
       } else {
         newTutorAnswers[key] = tutorAnswers[key];
@@ -7688,9 +7696,17 @@ export default function App() {
     Object.keys(tutorInputText).forEach(key => {
       if (key.startsWith('e_')) {
         const parts = key.split('_');
-        const idx = parseInt(parts[1], 10);
-        if (idx >= deleteCount) {
-          newTutorInputText[`e_${idx - deleteCount}`] = tutorInputText[key];
+        if (parts.length === 3) {
+          const topicId = parts[1];
+          const idx = parseInt(parts[2], 10);
+          if (idx >= deleteCount) {
+            newTutorInputText[`e_${topicId}_${idx - deleteCount}`] = tutorInputText[key];
+          }
+        } else if (parts.length === 2) {
+          const idx = parseInt(parts[1], 10);
+          if (idx >= deleteCount) {
+            newTutorInputText[`e_${idx - deleteCount}`] = tutorInputText[key];
+          }
         }
       } else {
         newTutorInputText[key] = tutorInputText[key];
@@ -7879,11 +7895,21 @@ export default function App() {
     Object.keys(tutorAnswers).forEach(key => {
       if (key.startsWith('e_')) {
         const parts = key.split('_');
-        const idx = parseInt(parts[1], 10);
-        if (idx < deleteIdx) {
-          newTutorAnswers[key] = tutorAnswers[key];
-        } else if (idx > deleteIdx) {
-          newTutorAnswers[`e_${idx - 1}`] = tutorAnswers[key];
+        if (parts.length === 3) {
+          const topicId = parts[1];
+          const idx = parseInt(parts[2], 10);
+          if (idx < deleteIdx) {
+            newTutorAnswers[key] = tutorAnswers[key];
+          } else if (idx > deleteIdx) {
+            newTutorAnswers[`e_${topicId}_${idx - 1}`] = tutorAnswers[key];
+          }
+        } else if (parts.length === 2) {
+          const idx = parseInt(parts[1], 10);
+          if (idx < deleteIdx) {
+            newTutorAnswers[key] = tutorAnswers[key];
+          } else if (idx > deleteIdx) {
+            newTutorAnswers[`e_${idx - 1}`] = tutorAnswers[key];
+          }
         }
       } else {
         newTutorAnswers[key] = tutorAnswers[key];
@@ -7894,11 +7920,21 @@ export default function App() {
     Object.keys(tutorInputText).forEach(key => {
       if (key.startsWith('e_')) {
         const parts = key.split('_');
-        const idx = parseInt(parts[1], 10);
-        if (idx < deleteIdx) {
-          newTutorInputText[key] = tutorInputText[key];
-        } else if (idx > deleteIdx) {
-          newTutorInputText[`e_${idx - 1}`] = tutorInputText[key];
+        if (parts.length === 3) {
+          const topicId = parts[1];
+          const idx = parseInt(parts[2], 10);
+          if (idx < deleteIdx) {
+            newTutorInputText[key] = tutorInputText[key];
+          } else if (idx > deleteIdx) {
+            newTutorInputText[`e_${topicId}_${idx - 1}`] = tutorInputText[key];
+          }
+        } else if (parts.length === 2) {
+          const idx = parseInt(parts[1], 10);
+          if (idx < deleteIdx) {
+            newTutorInputText[key] = tutorInputText[key];
+          } else if (idx > deleteIdx) {
+            newTutorInputText[`e_${idx - 1}`] = tutorInputText[key];
+          }
         }
       } else {
         newTutorInputText[key] = tutorInputText[key];
@@ -7948,6 +7984,9 @@ export default function App() {
       return;
     }
     const isReview = mode === 'review';
+    const key = isReview
+      ? (selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`)
+      : (examTopic ? `e_${examTopic.id || 'integrated'}_${idx}` : `e_${idx}`);
     const setRegenerating = isReview ? setRegeneratingReview : setRegeneratingExam;
     
     setRegenerating(prev => ({ ...prev, [idx]: true }));
@@ -8015,12 +8054,12 @@ export default function App() {
           });
           setTutorAnswers(prev => {
             const copy = { ...prev };
-            delete copy[`r_${idx}`];
+            delete copy[key];
             return copy;
           });
           setTutorInputText(prev => {
             const copy = { ...prev };
-            delete copy[`r_${idx}`];
+            delete copy[key];
             return copy;
           });
           setShowAnswersState(prev => {
@@ -8080,12 +8119,12 @@ export default function App() {
           });
           setTutorAnswers(prev => {
             const copy = { ...prev };
-            delete copy[`e_${idx}`];
+            delete copy[key];
             return copy;
           });
           setTutorInputText(prev => {
             const copy = { ...prev };
-            delete copy[`e_${idx}`];
+            delete copy[key];
             return copy;
           });
           setExamShowAnswersState(prev => {
@@ -8122,7 +8161,9 @@ export default function App() {
   // Adjust a single question based on user feedback (mode: 'review' or 'exam')
   const handleAdjustQuestion = async (mode, idx, currentQ) => {
     const isReview = mode === 'review';
-    const key = isReview ? `r_${idx}` : `e_${idx}`;
+    const key = isReview
+      ? (selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`)
+      : (examTopic ? `e_${examTopic.id || 'integrated'}_${idx}` : `e_${idx}`);
     const feedbackText = adjustingText[key] || '';
 
     if (!feedbackText.trim()) {
@@ -8188,12 +8229,12 @@ export default function App() {
           });
           setTutorAnswers(prev => {
             const copy = { ...prev };
-            delete copy[`r_${idx}`];
+            delete copy[key];
             return copy;
           });
           setTutorInputText(prev => {
             const copy = { ...prev };
-            delete copy[`r_${idx}`];
+            delete copy[key];
             return copy;
           });
           setShowAnswersState(prev => {
@@ -8260,12 +8301,12 @@ export default function App() {
           });
           setTutorAnswers(prev => {
             const copy = { ...prev };
-            delete copy[`e_${idx}`];
+            delete copy[key];
             return copy;
           });
           setTutorInputText(prev => {
             const copy = { ...prev };
-            delete copy[`e_${idx}`];
+            delete copy[key];
             return copy;
           });
           setExamShowAnswersState(prev => {
@@ -12459,7 +12500,7 @@ export default function App() {
                                           value={adjustingText[rKey] || ''}
                                           onChange={(e) => {
                                             const text = e.target.value;
-                                            setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
+                                            setAdjustingText(prev => ({ ...prev, [rKey]: text }));
                                           }}
                                           placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
                                           className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
@@ -14114,7 +14155,7 @@ export default function App() {
                                       value={adjustingText[eKey] || ''}
                                       onChange={(e) => {
                                         const text = e.target.value;
-                                        setAdjustingText(prev => ({ ...prev, [`e_${idx}`]: text }));
+                                        setAdjustingText(prev => ({ ...prev, [eKey]: text }));
                                       }}
                                       placeholder="예: 수치를 20m로 변경해줘, 난이도를 낮춰줘 등..."
                                       className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none"
