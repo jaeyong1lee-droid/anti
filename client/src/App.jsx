@@ -4648,8 +4648,43 @@ export default function App() {
               : 0;
             const displayScore = Math.round(cellObtained * 10) / 10;
             
+            let rowHeader = '';
+            let colHeader = '';
+            if (q.tableData && q.tableData.rows && q.tableData.headers) {
+              q.tableData.rows.forEach((row) => {
+                row.forEach((cell, colIdx) => {
+                  if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+                    rowHeader = row[0] || '';
+                    colHeader = q.tableData.headers[colIdx] || '';
+                  }
+                });
+              });
+            }
+            
             return (
               <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
+                {(rowHeader || colHeader) && (
+                  <div className="text-[11px] sm:text-[12px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
+                    <span className="text-slate-500 font-bold text-[10px] sm:text-[11px] bg-slate-800/60 px-1 py-0.5 rounded mr-1">위치</span>
+                    {rowHeader && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-500 text-[10px] sm:text-[11px]">행:</span>
+                        <span className="text-slate-300 font-semibold">
+                          <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
+                        </span>
+                      </span>
+                    )}
+                    {rowHeader && colHeader && <span className="text-slate-700">|</span>}
+                    {colHeader && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-500 text-[10px] sm:text-[11px]">열:</span>
+                        <span className="text-slate-300 font-semibold">
+                          <LatexRenderer text={colHeader} katexLoaded={katexLoaded} className="inline" />
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className={theme.text}>({inputLetter})</span>
