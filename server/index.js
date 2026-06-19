@@ -486,7 +486,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
               body: JSON.stringify({
                 model: modelName,
                 messages: messages,
-                temperature: 0.2
+                temperature: 0.2,
+                ...(scenario === 'grading' ? { response_format: { type: "json_object" } } : {})
               })
             });
 
@@ -637,7 +638,10 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
             const model = genAI.getGenerativeModel({
               model: modelName,
               systemInstruction: systemInstruction || undefined,
-              generationConfig: { temperature: 0.2 }
+              generationConfig: {
+                temperature: 0.2,
+                ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
+              }
             });
             
             let generateContentArg = userPrompt;
@@ -2073,7 +2077,7 @@ app.get('/api/dashboard', async (req, res) => {
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
-      ORDER BY s.planned_date ASC, s.review_round ASC
+      ORDER BY s.planned_date ASC, CASE WHEN s.review_round = 99 THEN 0 ELSE 1 END ASC, s.review_round ASC
     `;
 
     const pendingReviews = await dbQuery.all(sql, [queryDate]);
@@ -2082,8 +2086,9 @@ app.get('/api/dashboard', async (req, res) => {
     // review_round ASC 정렬이므로 첫 번째 삽입 항목이 항상 가장 긴급한(낮은) 차수
     const uniqueReviewsMap = new Map();
     for (const r of pendingReviews) {
-      if (!uniqueReviewsMap.has(r.topic_id)) {
-        uniqueReviewsMap.set(r.topic_id, r);
+      const mapKey = r.review_round === 99 ? `${r.topic_id}_bonus` : String(r.topic_id);
+      if (!uniqueReviewsMap.has(mapKey)) {
+        uniqueReviewsMap.set(mapKey, r);
       }
     }
     
@@ -3416,7 +3421,8 @@ ${adjustmentsPrompt}
    - "options": 4개의 보기 문항으로 구성된 문자열 배열.
    - "answer": "options" 배열 안에 있는 값 중 정확히 일치하는 정답 문자열.
    - "explanation": 왜 이 보기가 정답이고 다른 보기들이 오답인지에 대한 논리적이고 전문적인 상세 해설.
-   - 중요 특화 출제 사항 (공식 은닉 원칙 - 극도로 중요):
+   - 🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    - 중요 특화 출제 사항 (공식 은닉 원칙 - 극도로 중요):
       🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \sim 500)s_u$ 등), 비례 관계 식 등을 **절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
        🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.** (예: 공식 $A = B \times C$에 대해 "B가 증가할 때 A의 변화"를 묻는 문제를 출제했다면, 동일한 테스트 세트 내에 "C가 증가할 때 A의 변화"를 묻는 질문은 사실상 동일한 비례 관계 메커니즘을 묻는 중복 문제이므로 **절대로 같이 내지 말고**, 완전히 다른 공학적 개념이나 새로운 지식을 묻는 독립적인 문제로만 구성하십시오.)
 
@@ -3563,7 +3569,7 @@ app.post('/api/grade-subjective', async (req, res) => {
 
   let attempt = 0;
   const maxAttempts = 3;
-  let delay = 2000;
+  let delay = 1000;
   let lastError = null;
 
   while (attempt < maxAttempts) {
@@ -4919,7 +4925,8 @@ ${adjustmentsPrompt}
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
-4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
 
 [환각 방지 철칙 (Anti-Hallucination Constraints)]:
 1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
@@ -5283,7 +5290,8 @@ ${formulasText || '저장된 내용 없음'}
 3. 오답 보기 구성 주의사항 (매우 중요):
    - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
    - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
-4. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
+- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    4. 소스 자료에 존재하는 구체적인 수식, 기호, 이론유도 논리, 토픽 내용만을 결합하여 학술적이고 깊이 있는 문제를 만드십시오.
 
 [환각 방지 철칙 (Anti-Hallucination Constraints)]:
 1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
@@ -5696,7 +5704,8 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
 [출제 요구사항]:
 1. **실제 공학적 수치 대입 계산 문제**: 공식에 포함된 변수들에 합리적이고 타당성 있는 토목/지반공학적 설계 조건 수치(예: 수평 저항력, 부착 강도, 압밀계수, 또는 토압 조건 등)를 제시하고, 최종 계산 결과를 묻는 정량 계산 문제를 출제하십시오.
 2. **보기(options) 구성**: 4개의 보기를 제공하며, 그 중 정확히 1개만 정답이어야 합니다. 나머지 3개의 오답 보기는 단순 임의 날조 숫자가 아닌, 계산 과정에서 흔히 범할 수 있는 전형적인 오차/착오(예: 단위 변환 누락, 특정 분모/분자 위치 오류 등)를 반영한 그럴듯한 오답 수치(distractors)로 설계하십시오.
-3. **🚨 [공식 자체 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나 공식에 포함되는 기호들의 대수적 식 자체를 텍스트로 노출하지 마십시오. 학생이 변수값들만 보고 머릿속에서 공식 자체를 떠올려서 직접 수치 계산을 하도록 설계하십시오. (단, 해설(explanation)에서는 공식을 명시하고 자세한 계산 전개 과정을 기술하십시오.)
+- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    3. **🚨 [공식 자체 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나 공식에 포함되는 기호들의 대수적 식 자체를 텍스트로 노출하지 마십시오. 학생이 변수값들만 보고 머릿속에서 공식 자체를 떠올려서 직접 수치 계산을 하도록 설계하십시오. (단, 해설(explanation)에서는 공식을 명시하고 자세한 계산 전개 과정을 기술하십시오.)
 3. **가독성 높은 LaTeX 적용**: 문제 질문(question), 보기(options), 해설(explanation)에 포함되는 모든 물리량 기호와 수식은 반드시 LaTeX 기호($)로 감싸십시오.
 4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
 
@@ -6222,7 +6231,8 @@ app.get('/api/session/last-active-review', async (req, res) => {
             mode: 'completed',
             scheduleId: sched.id,
             reviewRound: sched.review_round,
-            isReadOnly: true
+            isReadOnly: true,
+            isBonus: sched.review_round === 99
           }
         });
       }
@@ -6246,7 +6256,8 @@ app.get('/api/session/last-active-review', async (req, res) => {
             mode: 'ai',
             scheduleId: sched.id,
             reviewRound: sched.review_round,
-            isReadOnly: false
+            isReadOnly: false,
+            isBonus: sched.review_round === 99
           }
         });
       }
@@ -6266,7 +6277,8 @@ app.get('/api/session/last-active-review', async (req, res) => {
             mode: 'ai',
             scheduleId: sched ? sched.id : null,
             reviewRound: sched ? sched.review_round : null,
-            isReadOnly: false
+            isReadOnly: false,
+            isBonus: sched ? sched.review_round === 99 : false
           }
         });
       }

@@ -5916,6 +5916,12 @@ export default function App() {
           const dateA = a.planned_date || '';
           const dateB = b.planned_date || '';
           if (dateA !== dateB) return dateA.localeCompare(dateB);
+          
+          const isAWeakness = a.review_round === 99 || a.isBonus;
+          const isBWeakness = b.review_round === 99 || b.isBonus;
+          if (isAWeakness && !isBWeakness) return -1;
+          if (!isAWeakness && isBWeakness) return 1;
+          
           return (a.review_round || 0) - (b.review_round || 0);
         });
         setTodayReviews(uniqueList);
@@ -6760,6 +6766,12 @@ export default function App() {
             const dateA = a.planned_date || '';
             const dateB = b.planned_date || '';
             if (dateA !== dateB) return dateA.localeCompare(dateB);
+            
+            const isAWeakness = a.review_round === 99 || a.isBonus;
+            const isBWeakness = b.review_round === 99 || b.isBonus;
+            if (isAWeakness && !isBWeakness) return -1;
+            if (!isAWeakness && isBWeakness) return 1;
+            
             return (a.review_round || 0) - (b.review_round || 0);
           });
           return merged;
@@ -12380,9 +12392,9 @@ export default function App() {
                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
                                    <div className="flex flex-wrap items-center gap-2 mb-2">
                                      {/* 문제조정 버튼 */}
-                                      {adjustingInputKey !== `r_${idx}` && (
+                                      {adjustingInputKey !== rKey && (
                                         <button
-                                          onClick={() => setAdjustingInputKey(`r_${idx}`)}
+                                          onClick={() => setAdjustingInputKey(rKey)}
                                           className="text-[10px] px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                         >
                                           🛠️ 문제조정 (AI 피드백)
@@ -12401,7 +12413,7 @@ export default function App() {
 
                                      {/* AI 튜터 버튼 */}
                                      <button
-                                       onClick={() => setActiveTutorInputKey(prev => prev === `r_${idx}` ? null : `r_${idx}`)}
+                                       onClick={() => setActiveTutorInputKey(prev => prev === rKey ? null : rKey)}
                                        className="text-[10px] px-3 py-1.5 rounded-lg border border-violet-500/30 text-violet-300 hover:bg-violet-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-200"
                                      >
                                        💬 AI 튜터
@@ -12409,12 +12421,12 @@ export default function App() {
                                    </div>
 
                                    {/* 문제조정 입력 및 결과 보드 */}
-                                    {adjustingInputKey === `r_${idx}` && (
+                                    {adjustingInputKey === rKey && (
                                       <div className="mt-2 w-full">
                                         <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                         <textarea
                                           rows={2}
-                                          value={adjustingText[`r_${idx}`] || ''}
+                                          value={adjustingText[rKey] || ''}
                                           onChange={(e) => {
                                             const text = e.target.value;
                                             setAdjustingText(prev => ({ ...prev, [`r_${idx}`]: text }));
@@ -12431,21 +12443,21 @@ export default function App() {
                                           </button>
                                           <button
                                             onClick={() => handleAdjustQuestion('review', idx, q)}
-                                            disabled={adjustingLoading[`r_${idx}`]}
+                                            disabled={adjustingLoading[rKey]}
                                             className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
                                           >
-                                            {adjustingLoading[`r_${idx}`] ? '조정 중...' : '조정하기'}
+                                            {adjustingLoading[rKey] ? '조정 중...' : '조정하기'}
                                           </button>
                                         </div>
-                                        {adjustingLoading[`r_${idx}`] && (
+                                        {adjustingLoading[rKey] && (
                                           <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
                                         )}
                                       </div>
                                     )}
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
-                                    {activeTutorInputKey === `r_${idx}` && (() => {
-                                      const key = `r_${idx}`;
+                                    {activeTutorInputKey === rKey && (() => {
+                                      const key = rKey;
                                       const isCollapsed = !!tutorCollapsed[key];
                                       const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
                                       return (
@@ -12608,7 +12620,7 @@ export default function App() {
                                     </div>
                                   )}
                                   {renderDetailedTableFeedback(idx, q, W)}
-                                  {renderCardTutorChat(`r_${idx}`, q)}
+                                  {renderCardTutorChat(rKey, q)}
                                 </div>
                               )}
                             </div>
@@ -12678,7 +12690,7 @@ export default function App() {
                                       </div>
                                     )}
                                     <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
-                                      {renderCardTutorChat(`r_${idx}`, q)}
+                                      {renderCardTutorChat(rKey, q)}
                                     </div>
                                   </div>
                                 )}
@@ -12719,7 +12731,7 @@ export default function App() {
                                         <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                       </div>
                                     )}
-                                    {renderCardTutorChat(`r_${idx}`, q)}
+                                    {renderCardTutorChat(rKey, q)}
                                   </div>
                                 )
                               )}
@@ -14034,9 +14046,9 @@ export default function App() {
                               <div className="mt-2 pt-2 border-t border-slate-700/40">
                                 <div className="flex flex-wrap items-center justify-center gap-1.5 mb-1.5">
                                   {/* 문제조정 버튼 */}
-                                  {adjustingInputKey !== `e_${idx}` && (
+                                  {adjustingInputKey !== eKey && (
                                     <button
-                                      onClick={() => setAdjustingInputKey(`e_${idx}`)}
+                                      onClick={() => setAdjustingInputKey(eKey)}
                                       className="text-[9.5px] px-2 py-1 rounded-md border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10 font-bold transition-all cursor-pointer"
                                     >
                                       🛠️ 문제조정 (AI 피드백)
@@ -14055,7 +14067,7 @@ export default function App() {
                                   
                                   {/* AI 튜터 버튼 */}
                                   <button
-                                    onClick={() => setActiveTutorInputKey(prev => prev === `e_${idx}` ? null : `e_${idx}`)}
+                                    onClick={() => setActiveTutorInputKey(prev => prev === eKey ? null : eKey)}
                                     className="text-[9.5px] px-2 py-1 rounded-md border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 duration-250"
                                   >
                                     💬 AI 튜터
@@ -14063,12 +14075,12 @@ export default function App() {
                                 </div>
 
                                 {/* 문제조정 입력 및 결과 보드 */}
-                                {adjustingInputKey === `e_${idx}` && (
+                                {adjustingInputKey === eKey && (
                                   <div className="mt-2 w-full">
                                     <label className="block text-[10px] font-black text-indigo-400 mb-1">🛠️ 문제조정 의견을 제시해 주세요:</label>
                                     <textarea
                                       rows={2}
-                                      value={adjustingText[`e_${idx}`] || ''}
+                                      value={adjustingText[eKey] || ''}
                                       onChange={(e) => {
                                         const text = e.target.value;
                                         setAdjustingText(prev => ({ ...prev, [`e_${idx}`]: text }));
@@ -14085,21 +14097,21 @@ export default function App() {
                                       </button>
                                       <button
                                         onClick={() => handleAdjustQuestion('exam', idx, q)}
-                                        disabled={adjustingLoading[`e_${idx}`]}
+                                        disabled={adjustingLoading[eKey]}
                                         className="text-[10px] px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
                                       >
-                                        {adjustingLoading[`e_${idx}`] ? '조정 중...' : '조정하기'}
+                                        {adjustingLoading[eKey] ? '조정 중...' : '조정하기'}
                                       </button>
                                     </div>
-                                    {adjustingLoading[`e_${idx}`] && (
+                                    {adjustingLoading[eKey] && (
                                       <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 문제를 조율 중입니다...</div>
                                     )}
                                   </div>
                                 )}
 
                                     {/* AI 튜터 입력 및 답변 보드 */}
-                                    {activeTutorInputKey === `e_${idx}` && (() => {
-                                      const key = `e_${idx}`;
+                                    {activeTutorInputKey === eKey && (() => {
+                                      const key = examTopic ? `e_${examTopic.id || 'integrated'}_${idx}` : `e_${idx}`;
                                       const isCollapsed = !!tutorCollapsed[key];
                                       const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
                                       return (
@@ -14262,7 +14274,7 @@ export default function App() {
                                     </div>
                                   )}
                                   {renderDetailedTableFeedback(idx, q, W)}
-                                  {renderCardTutorChat(`e_${idx}`, q)}
+                                  {renderCardTutorChat(eKey, q)}
                                 </div>
                               )}
                             </div>
@@ -14332,7 +14344,7 @@ export default function App() {
                                       </div>
                                     )}
                                     <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-current/10 text-left">
-                                      {renderCardTutorChat(`e_${idx}`, q)}
+                                      {renderCardTutorChat(eKey, q)}
                                     </div>
                                   </div>
                                 )}
@@ -14373,7 +14385,7 @@ export default function App() {
                                         <div className="text-sm text-slate-200 leading-relaxed"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                       </div>
                                     )}
-                                    {renderCardTutorChat(`e_${idx}`, q)}
+                                    {renderCardTutorChat(eKey, q)}
                                   </div>
                                 )
                               )}

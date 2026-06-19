@@ -56,6 +56,9 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
 
 [채점 사유(reason) 작성 원칙]:
 - 왜 해당 점수를 부여했는지(어떤 핵심 요소가 부합했는지, 혹은 어떤 부분에서 감점되었는지)를 명확한 공학적 이유와 함께 수험생에게 한 줄로 설명하십시오.
+- 🚨 **[채점 사유와 점수의 완벽한 일치 원칙]**:
+  * 만약 만점(10점)이 아닌 감점된 점수(9점 이하)를 부여하는 경우, **채점 사유(reason)에 구체적으로 어떤 내용이나 키워드가 누락되어 감점되었는지 명확한 질적 감점 이유를 반드시 포함**해야 합니다. 단순히 칭찬 피드백만 남기며 점수를 감점하는 모순을 절대 저지르지 마십시오.
+  * 사용자가 적은 답안이 "급속시공 미배수"와 같이 핵심 공학적 본질과 기전을 정확히 짚었다면, 사소한 목적어 서술(예: '안정 해석' 등의 용어 생략)이나 부차적인 설명이 빠졌더라도 감점하지 말고 **반드시 10점 만점**을 부여하십시오.
 - 주의: 실제 문항 배점에 따라 최종 반영되는 감점 수치가 달라지므로, 사유 작성 시 절대적인 점수 수치(예: '1점 감점', '2점 감점')를 서술하면 학생에게 혼란을 줍니다. 대신 '10점 만점 기준 1점 감점' 혹은 '10% 감점'과 같이 비율/기준점수를 명시하거나, 수치를 언급하지 않고 '어떤 핵심 요소 또는 개념 용어가 누락되어 감점되었습니다'와 같이 감점의 질적 사유만 기술하십시오.
 - 🚫 **[시스템 내부 용어 노출 금지 - 극도로 중요!]**: 채점 사유(reason) 및 suggestedModelAnswer에는 이 시스템 프롬프트에서 사용된 내부 지시 용어나 메타 언어를 **절대로 노출하지 마십시오.** 다음 표현들은 학생에게 보이는 피드백에 사용 금지입니다:
   * '동문서답', '답변 범주 불일치', '범주가 일치하지 않', '카테고리 매치', '행 제목이 요구하는', 'N단계 검사', '데이터 정합성', '출제 오류', '매핑 오류', '의미적 동등성', '빈칸 토큰'
@@ -102,12 +105,9 @@ ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
 
   const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'grading');
   let text = responseText.trim();
-  if (text.startsWith('```')) {
-    text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  }
   
   try {
-    const result = JSON.parse(text);
+    const result = robustJSONParse(text);
     return {
       isCorrect: !!result.isCorrect,
       score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
@@ -115,21 +115,36 @@ ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
       suggestedModelAnswer: result.suggestedModelAnswer || null
     };
   } catch (parseErr) {
-    console.error('Failed to parse AI grading JSON. Raw text:', text, parseErr);
-    try {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const result = JSON.parse(match[0]);
-        return {
-          isCorrect: !!result.isCorrect,
-          score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
-          reason: result.reason || 'AI 채점 완료 (JSON 추출)',
-          suggestedModelAnswer: result.suggestedModelAnswer || null
-        };
-      }
-    } catch (regexParseErr) {
-      console.error('Failed to parse extracted JSON:', regexParseErr);
-    }
+    console.error('All JSON parsing attempts failed in AI grading. Raw text:', text, parseErr);
     throw parseErr;
+  }
+}
+
+export function robustJSONParse(text) {
+  let cleanText = text.trim();
+  if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  }
+
+  try {
+    return JSON.parse(cleanText);
+  } catch (err) {
+    console.warn('[robustJSONParse] Standard JSON.parse failed, trying recovery on raw text:', cleanText);
+    const match = cleanText.match(/\{[\s\S]*\}/);
+    if (match) {
+      const extracted = match[0];
+      try {
+        return JSON.parse(extracted);
+      } catch (regexErr) {
+        try {
+          // Fix standalone backslashes (often in LaTeX math symbols like \cdot) causing parse errors
+          const repaired = extracted.replace(/(?<!\\)\\(?![btnfr"/\\]|[uU][0-9a-fA-F]{4})/g, '\\\\');
+          return JSON.parse(repaired);
+        } catch (healErr) {
+          throw regexErr;
+        }
+      }
+    }
+    throw err;
   }
 }
