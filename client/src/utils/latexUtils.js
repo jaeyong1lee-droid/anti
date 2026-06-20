@@ -233,6 +233,20 @@ const formulaRegex = new RegExp(
   'g'
 );
 
+// Regex matching simple math variables/relations (without backslash commands)
+const simpleVariableRegex = new RegExp(
+  // 1. Relations (most specific, e.g. k_h = 10, y(x) = ax + b, z < z_c)
+  `\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+(?:\\s*(?:[+=<>]|\\s+[-/\\*]\\s+)\\s*[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]]+)*\\b|` +
+  // 2. Function notation (e.g. p(z), w(z))
+  `\\b[a-zA-Z]\\([a-zA-Z0-9_']+\\)(?![a-zA-Z0-9_'])|` +
+  // 3. Subscripted variables (e.g. k_h, z_c)
+  `\\b[a-zA-Z0-9]+_[a-zA-Z0-9_']+\\b|` +
+  // 4. Constants
+  `\\b(?:EI|EA|FS)\\b|` +
+  `\\bF\\.S\\.(?![a-zA-Z0-9_'])`,
+  'g'
+);
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
@@ -426,6 +440,21 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
         return `$${formula}$${punc}${trailingSpaces}`;
       });
+      // Re-tokenize and wrap simple variables in remaining text to prevent double-wrapping
+      const subTokens = tokenizeForHealing(t);
+      t = subTokens.map(subToken => {
+        if (subToken.type === 'text') {
+          return subToken.content.replace(simpleVariableRegex, (match) => {
+            const trailingSpaces = match.match(/\s*$/)[0];
+            const trimmed = match.trim();
+            const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
+            const punc = trailingPunctuation ? trailingPunctuation[0] : '';
+            const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
+            return `$${formula}$${punc}${trailingSpaces}`;
+          });
+        }
+        return subToken.content;
+      }).join('');
       // Escape angle brackets for safety
       return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
     } else {
