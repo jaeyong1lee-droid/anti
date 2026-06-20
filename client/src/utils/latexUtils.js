@@ -370,6 +370,14 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
                        .replace(/\n{3,}/g, '\n\n');
 
+  // [Self-Healing] 여는 $ 없이 닫는 $만 있는 LaTeX 수식 패턴 자동 복구
+  // AI가 숫자로 시작하는 보기에서 여는 $ 기호를 누락하는 경우 복구
+  // 예: 2\Delta\sigma_3$ → $2\Delta\sigma_3$, 0.5\Delta\sigma_3$ → $0.5\Delta\sigma_3$
+  processed = processed.replace(
+    /(?<!\$)([\d.]*\\[a-zA-Z]+(?:[_^{}\d\\a-zA-Z.']*)*)\$(?!\$)/g,
+    '$$$1$$'
+  );
+
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
     if (token.type === 'table') {
