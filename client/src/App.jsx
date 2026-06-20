@@ -6922,6 +6922,11 @@ export default function App() {
 
   // 약점 보완 추천 토픽 수동 추가 요청 핸들러
   const handleRequestWeakPoints = async () => {
+    const activeReviewCount = todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length;
+    if (activeReviewCount > 10) {
+      showNotification('오늘의 복습 토픽이 10개를 초과하여 약점 추천이 보류되었습니다.', 'info');
+      return;
+    }
     setLoadingWeakPoints(true);
     try {
       const res = await fetch(`${API_BASE}/api/dashboard/weak-points?date=${referenceDate}`);
@@ -11326,14 +11331,24 @@ export default function App() {
                     <Clock size={20} className="text-brand-400" />
                     <h2 className="text-lg font-bold text-white">오늘의 복습 토픽 목록</h2>
                   </div>
-                  <button
-                    onClick={handleRequestWeakPoints}
-                    disabled={loadingWeakPoints}
-                    className="text-[10px] px-2.5 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-500/30 font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed glow-amber-hover"
-                    title="이전 복습 성적이 낮았던 약점 토픽을 추가 추천받아 복습 (하루 최대 2개)"
-                  >
-                    {loadingWeakPoints ? '⏳ 불러오는 중...' : '💡 약점 추천 받기'}
-                  </button>
+                  {(() => {
+                    const activeReviewCount = todayReviews.filter(r => !(r.isBonus && hiddenBonusTopicIds.includes(r.topic_id))).length;
+                    const isSuspended = activeReviewCount > 10;
+                    return (
+                      <button
+                        onClick={handleRequestWeakPoints}
+                        disabled={loadingWeakPoints || isSuspended}
+                        className={`text-[10px] px-2.5 py-1.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isSuspended 
+                            ? 'bg-slate-800 border-slate-700 text-slate-400' 
+                            : 'bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-500/30 glow-amber-hover'
+                        }`}
+                        title={isSuspended ? "오늘 복습할 토픽이 10개를 초과하여 약점 추천이 보류되었습니다." : "이전 복습 성적이 낮았던 약점 토픽을 추가 추천받아 복습 (하루 최대 2개)"}
+                      >
+                        {loadingWeakPoints ? '⏳ 불러오는 중...' : isSuspended ? '💡 약점 추천 보류' : '💡 약점 추천 받기'}
+                      </button>
+                    );
+                  })()}
                 </div>
                 {(!(!isDesktop && !isMobileLandscape)) && (
                   <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
