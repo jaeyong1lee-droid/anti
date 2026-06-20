@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import { gradeSubjective } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
+import { validateAndHealQuestion } from './plugins/validationPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3512,11 +3513,14 @@ try {
         }
 
         const finalQuestions = assembleFinalQuestions(questions, topic, carryOverQuestions, fileText);
-        const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
+        const healedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           topic_id: Number(topicId),
           question: cleanQuizQuestion(q.question)
         }));
+        const cleanedQuestions = await Promise.all(
+          healedQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+        );
 
         // 세션에 자동 저장
         try {
@@ -3979,11 +3983,14 @@ ${formatRequirement}
         throw new Error('AI 재생성 문항 파싱에 실패했습니다.');
       }
 
+      const healedQ = healQuizQuestionObject({
+        ...parsedQuestion,
+        question: cleanQuizQuestion(parsedQuestion.question)
+      });
+      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+
       return res.json({
-        question: healQuizQuestionObject({
-          ...parsedQuestion,
-          question: cleanQuizQuestion(parsedQuestion.question)
-        }),
+        question: validatedQ,
         isFallback: false
       });
 
@@ -4305,12 +4312,15 @@ ${formatRequirement}
       }
 
       const finalTopicId = topicId || currentQuestion?.topic_id;
+      const healedQ = healQuizQuestionObject({
+        ...parsedQuestion,
+        topic_id: finalTopicId ? Number(finalTopicId) : null,
+        question: cleanQuizQuestion(parsedQuestion.question)
+      });
+      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+
       return res.json({
-        question: healQuizQuestionObject({
-          ...parsedQuestion,
-          topic_id: finalTopicId ? Number(finalTopicId) : null,
-          question: cleanQuizQuestion(parsedQuestion.question)
-        }),
+        question: validatedQ,
         isFallback: false
       });
     } else {
@@ -4532,12 +4542,15 @@ ${formatRequirement}
         }
       }
 
+      const healedQ = healQuizQuestionObject({
+        ...parsedQuestion,
+        topic_id: finalTopicId,
+        question: cleanQuizQuestion(parsedQuestion.question)
+      });
+      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+
       return res.json({
-        question: healQuizQuestionObject({
-          ...parsedQuestion,
-          topic_id: finalTopicId,
-          question: cleanQuizQuestion(parsedQuestion.question)
-        })
+        question: validatedQ
       });
 
     } else if (mode === 'exam') {
@@ -4734,12 +4747,15 @@ ${formatRequirement}
         }
       }
 
+      const healedQ = healQuizQuestionObject({
+        ...parsedQuestion,
+        topic_id: finalTopicId,
+        question: cleanQuizQuestion(parsedQuestion.question)
+      });
+      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+
       return res.json({
-        question: healQuizQuestionObject({
-          ...parsedQuestion,
-          topic_id: finalTopicId,
-          question: cleanQuizQuestion(parsedQuestion.question)
-        })
+        question: validatedQ
       });
     } else {
       return res.status(400).json({ error: '올바르지 않은 모드(mode)입니다.' });
@@ -5193,9 +5209,11 @@ ${ENGINEERING_STANDARDS}
     // 최종 결합: 로컬 DB 핵심 기출 10문항 + 분할 마이닝된 AI 문항들 병합
     const finalQuestions = [...customSubjs, ...cleanedQuestions];
 
-    console.log(`[종합평가 출제 완료] 총 ${finalQuestions.length}문항이 성공적으로 준비되었습니다.`);
     const healedFinalQuestions = finalQuestions.map(q => healQuizQuestionObject(q));
-    res.json({ questions: healedFinalQuestions, total: healedFinalQuestions.length, topicCount: topics.length });
+    const validatedFinalQuestions = await Promise.all(
+      healedFinalQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+    );
+    res.json({ questions: validatedFinalQuestions, total: validatedFinalQuestions.length, topicCount: topics.length });
 
   } catch (err) {
     console.error('Exam route error:', err);
@@ -5440,7 +5458,11 @@ ${ENGINEERING_STANDARDS}
       [finalQuestions[i], finalQuestions[j]] = [finalQuestions[j], finalQuestions[i]];
     }
 
-    res.json({ questions: finalQuestions });
+    const validatedFinalQuestions = await Promise.all(
+      finalQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+    );
+
+    res.json({ questions: validatedFinalQuestions });
 
   } catch (err) {
     console.error('Exam additional route error:', err);
