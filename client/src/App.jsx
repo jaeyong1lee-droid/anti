@@ -3418,18 +3418,27 @@ function ScientificCalculator() {
     let text = calcInput;
     let operandStart = start;
     
-    // Scan backwards to find digits, decimals, variables, pi, or e that form the numerator
-    while (operandStart > 0) {
-      const char = text[operandStart - 1];
-      if (/[\d.XYABCDEFMπe]/.test(char)) {
-        operandStart--;
-      } else {
-        break;
+    const beforeCursor = text.substring(0, start);
+    let numStr = '';
+    
+    // If the text immediately preceding the cursor ends with 'Ans', use 'Ans' as the numerator
+    if (beforeCursor.endsWith('Ans')) {
+      operandStart = start - 3;
+      numStr = 'Ans';
+    } else {
+      // Scan backwards to find digits, decimals, variables, pi, or e that form the numerator
+      while (operandStart > 0) {
+        const char = text[operandStart - 1];
+        if (/[\d.XYABCDEFMπe]/.test(char)) {
+          operandStart--;
+        } else {
+          break;
+        }
       }
+      numStr = text.substring(operandStart, start);
     }
     
     const before = text.substring(0, operandStart);
-    const numStr = text.substring(operandStart, start);
     const after = text.substring(start);
     const val = `frac(${numStr},)`;
     
@@ -4167,17 +4176,24 @@ function ScientificCalculator() {
               
               // Scan backwards to find operand prefix
               let operandStart = beforeSlash.length;
-              while (operandStart > 0) {
-                const char = beforeSlash[operandStart - 1];
-                if (/[\d.XYABCDEFMπe]/.test(char)) {
-                  operandStart--;
-                } else {
-                  break;
+              let numStr = '';
+              
+              if (beforeSlash.endsWith('Ans')) {
+                operandStart = beforeSlash.length - 3;
+                numStr = 'Ans';
+              } else {
+                while (operandStart > 0) {
+                  const char = beforeSlash[operandStart - 1];
+                  if (/[\d.XYABCDEFMπe]/.test(char)) {
+                    operandStart--;
+                  } else {
+                    break;
+                  }
                 }
+                numStr = beforeSlash.substring(operandStart);
               }
               
               const before = beforeSlash.substring(0, operandStart);
-              const numStr = beforeSlash.substring(operandStart);
               const fracVal = `frac(${numStr},)`;
               const finalVal = before + fracVal + afterSlash;
               
