@@ -4703,7 +4703,7 @@ export default function App() {
                     <LatexRenderer 
                       text={
                         (() => {
-                          const trimmed = (correctAnswer || '').trim();
+                          const trimmed = (correctAnswer || '').trim().replace(/\$/g, '').trim();
                           const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                           if (isPl && gradingResult?.suggestedModelAnswer) {
                             return gradingResult.suggestedModelAnswer;
@@ -12922,7 +12922,7 @@ export default function App() {
                                           text={
                                             (() => {
                                               const ans = q.answer || q.concept || '';
-                                              const trimmed = ans.trim();
+                                              const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
                                               if (isPl && grading?.suggestedModelAnswer) {
@@ -14588,7 +14588,7 @@ export default function App() {
                                           text={
                                             (() => {
                                               const ans = q.answer || q.concept || '';
-                                              const trimmed = ans.trim();
+                                              const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
                                               if (isPl && grading?.suggestedModelAnswer) {
