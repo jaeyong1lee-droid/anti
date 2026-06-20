@@ -715,6 +715,50 @@ export function healQuizQuestionObject(q) {
       }
     }
 
+    // For multiple choice questions, heal mismatched answer field
+    if (q.options && Array.isArray(q.options) && q.answer) {
+      const hasExactMatch = q.options.includes(q.answer);
+      if (!hasExactMatch) {
+        let bestOpt = null;
+        let maxScore = -1;
+        
+        const getOptionMatchScore = (opt, answer) => {
+          const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+          const cOpt = clean(opt);
+          const cAns = clean(answer);
+          
+          if (cOpt === cAns) return 1000;
+          
+          if (opt.includes('=')) {
+            const parts = opt.split('=');
+            const rhs = parts[parts.length - 1];
+            if (clean(rhs) === cAns) return 900;
+          }
+          
+          if (opt.trim().endsWith(answer.trim())) return 800;
+          if (opt.trim().startsWith(answer.trim())) return 700;
+          
+          if (cAns && cOpt.includes(cAns)) {
+            return 500 - (cOpt.length - cAns.length);
+          }
+          return 0;
+        };
+
+        for (const opt of q.options) {
+          const score = getOptionMatchScore(opt, q.answer);
+          if (score > maxScore) {
+            maxScore = score;
+            bestOpt = opt;
+          }
+        }
+
+        if (bestOpt && maxScore > 0) {
+          console.log(`[HealMC] Overwriting q.answer from "${q.answer}" to exact option: "${bestOpt}" (score: ${maxScore})`);
+          q.answer = bestOpt;
+        }
+      }
+    }
+
     // For table subjective fill-in questions, empty out all cell contents 
     // (except headers and row-label column) and turn them into inputs!
     if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q.tableData && q.tableData.rows) {
