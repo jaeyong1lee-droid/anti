@@ -1,6 +1,8 @@
 /**
  * 자가 검증 및 교정 플러그인 (Validation & Healing Plugin)
  */
+import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
+
 
 /**
  * 생성된 문제의 오류를 검증하고 치료(Self-Healing)하여 반환합니다.
@@ -92,6 +94,9 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
    - 질문 발문이 어조가 어색하거나 모호하지 않은지, 묻고자 하는 전제와 요구사항이 명확한지 검수하십시오.
    - 만약 문제의 가정 조건이 불충분하거나 단위가 불분명해 해석의 오해 소지가 있다면, 학생이 학술적으로 오류 없이 문제를 정확하게 풀 수 있도록 발문을 구체적이고 정교하게 수정 보강하십시오.
 6. 마크다운 백틱(\`\`\`) 기호나 부가 설명 없이 오직 완성된 최종 JSON 객체 텍스트만 출력하십시오.
+
+[공학적 검증 표준 기준]:
+${ENGINEERING_STANDARDS}
 `;
       const userPrompt = `다음 문제 객체를 철저히 검수하고, 올바르게 수정한 최종 문제 JSON만 출력하십시오:\n${JSON.stringify(question)}`;
       

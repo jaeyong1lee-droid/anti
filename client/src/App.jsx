@@ -12456,14 +12456,16 @@ export default function App() {
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
+                                  if (gradingLoading[idx]) return;
                                   if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
                                     await gradeTableQuestion(idx, q);
                                   } else {
                                     await gradeSubjectiveQuestion(idx, q);
                                   }
                                 }}
-                                disabled={gradingLoading[idx]}
-                                className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                                className={`px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap ${
+                                  gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                }`}
                                 title="AI에게 답안 재채점 요청"
                               >
                                 {gradingLoading[idx] ? (
@@ -12867,12 +12869,14 @@ export default function App() {
                               })()}
                               {!isRevd ? (
                                 <button
-                                  disabled={gradingLoading[idx]}
                                   onClick={async () => {
+                                    if (gradingLoading[idx]) return;
                                     await gradeTableQuestion(idx, q);
                                     setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -12979,12 +12983,14 @@ export default function App() {
                               </div>
                               {!isRevd ? (
                                 <button
-                                  disabled={gradingLoading[idx]}
                                   onClick={async () => {
+                                    if (gradingLoading[idx]) return;
                                     await gradeSubjectiveQuestion(idx, q);
                                     setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -14104,14 +14110,16 @@ export default function App() {
                               onClick={async (e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
+                                if (gradingLoading[idx]) return;
                                 if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
                                   await gradeTableQuestion(idx, q);
                                 } else {
                                   await gradeSubjectiveQuestion(idx, q);
                                 }
                               }}
-                              disabled={gradingLoading[idx]}
-                              className="px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap"
+                              className={`px-2.5 py-0.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-[11px] text-slate-350 hover:text-white border border-slate-700 hover:border-slate-500 rounded font-bold cursor-pointer transition-all flex items-center gap-1 shadow-md whitespace-nowrap ${
+                                gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                              }`}
                               title="AI에게 답안 재채점 요청"
                             >
                               {gradingLoading[idx] ? (
@@ -14533,12 +14541,14 @@ export default function App() {
                               })()}
                               {!examRevealed[idx] ? (
                                 <button
-                                  disabled={gradingLoading[idx]}
                                   onClick={async () => {
+                                    if (gradingLoading[idx]) return;
                                     await gradeTableQuestion(idx, q);
                                     setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
@@ -14645,12 +14655,14 @@ export default function App() {
                               </div>
                               {!examRevealed[idx] ? (
                                 <button
-                                  disabled={gradingLoading[idx]}
                                   onClick={async () => {
+                                    if (gradingLoading[idx]) return;
                                     await gradeSubjectiveQuestion(idx, q);
                                     setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                   }}
-                                  className="w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black disabled:opacity-50"
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
                                 >
                                   {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                 </button>
