@@ -29,6 +29,110 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Global AI progress tracker map
+global.progressTracker = global.progressTracker || new Map();
+
+function updateProgress(progressId, step, message, percentage = null) {
+  if (!progressId) return;
+  const existing = global.progressTracker.get(progressId) || {};
+  global.progressTracker.set(progressId, {
+    step: step !== undefined ? step : existing.step || 1,
+    message: message || existing.message || '',
+    percentage: percentage !== null ? percentage : existing.percentage || 0,
+    timestamp: Date.now()
+  });
+}
+
+function reportLlmProgress(options, scenario, modelName) {
+  if (options && options.progressId) {
+    const step = scenario === 'validation' ? 2 : 1;
+    let stageText = '';
+    const modelUpper = modelName ? modelName.toUpperCase() : 'AI';
+    if (scenario === 'question') {
+      stageText = `1단계: ${modelUpper} 엔진으로 예상 문제 생성 중...`;
+    } else if (scenario === 'validation') {
+      stageText = `2단계: ${modelUpper} 엔진으로 생성된 문제 검증 및 자가교정 중...`;
+    } else if (scenario === 'grading') {
+      stageText = `1단계: ${modelUpper} 엔진으로 제출 답안 채점 중...`;
+    } else if (scenario === 'tutor') {
+      stageText = `1단계: ${modelUpper} 엔진으로 AI 튜터 피드백 생성 중...`;
+    } else if (scenario === 'formula') {
+      stageText = `1단계: ${modelUpper} 엔진으로 수식 분석 및 튜터 답변 생성 중...`;
+    } else if (scenario === 'option-explanation') {
+      stageText = `1단계: ${modelUpper} 엔진으로 보기 오답 원인 분석 중...`;
+    } else {
+      stageText = `1단계: ${modelUpper} 엔진으로 처리 중...`;
+    }
+    
+    const progress = global.progressTracker.get(options.progressId);
+    let percentage = progress ? progress.percentage : 0;
+    if (step === 2) {
+      if (percentage < 50) percentage = 50;
+    } else {
+      if (percentage === 0) percentage = 15;
+    }
+    updateProgress(options.progressId, step, stageText, percentage);
+  }
+}
+
+function reportValidationProgress(progressId, total) {
+  if (!progressId) return;
+  const progress = global.progressTracker.get(progressId) || {};
+  const validatedCount = (progress.validatedCount || 0) + 1;
+  const percentage = Math.floor(50 + (validatedCount / total) * 50);
+  global.progressTracker.set(progressId, {
+    ...progress,
+    step: 2,
+    validatedCount,
+    totalCount: total,
+    message: `2단계: validationPlugin으로 생성 문제 검증 중... (${validatedCount}/${total} 완료)`,
+    percentage: Math.min(percentage, 100),
+    timestamp: Date.now()
+  });
+}
+
+function getCallLLM(req) {
+  const progressId = req.query.progressId || req.body.progressId;
+  return (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+}
+
+function startBackendProgressTimer(progressId, step, initialMessage, maxPercentage, intervalMs = 1500, stepIncrement = 5) {
+  if (!progressId) return null;
+  updateProgress(progressId, step, initialMessage, 10);
+  let currentPercent = 10;
+  const timer = setInterval(() => {
+    currentPercent = Math.min(currentPercent + stepIncrement, maxPercentage);
+    const progress = global.progressTracker.get(progressId);
+    if (progress && progress.step === step) {
+      updateProgress(progressId, step, progress.message || initialMessage, currentPercent);
+    } else {
+      clearInterval(timer);
+    }
+  }, intervalMs);
+  return timer;
+}
+
+// Clean up expired progress tracks every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, value] of global.progressTracker.entries()) {
+    if (now - value.timestamp > 300000) { // 5 minutes
+      global.progressTracker.delete(id);
+    }
+  }
+}, 60000);
+
+// Polling endpoint for AI progress
+app.get('/api/progress/:progressId', (req, res) => {
+  const { progressId } = req.params;
+  const progress = global.progressTracker.get(progressId);
+  if (!progress) {
+    return res.json({ step: 0, message: '', percentage: 0 });
+  }
+  res.json({ step: progress.step, message: progress.message, percentage: progress.percentage });
+});
+
 // Request logger middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
@@ -478,6 +582,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
             }
             messages.push({ role: 'user', content: userPrompt });
 
+            reportLlmProgress(options, scenario, modelName);
             const response = await fetch('https://api.x.ai/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -551,6 +656,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
             }
             messages.push({ role: 'user', content: userPrompt });
 
+            reportLlmProgress(options, scenario, modelName);
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -668,6 +774,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
               ];
             }
             
+            reportLlmProgress(options, scenario, modelName);
             const result = await model.generateContent(generateContentArg);
             const text = result.response.text().trim();
             if (text) {
@@ -3075,6 +3182,15 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
 
+  const progressId = req.query.progressId || req.body.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
+  }
+
   try {
     const topicSql = `SELECT * FROM topics WHERE id = ?`;
     console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
@@ -3522,7 +3638,7 @@ ${ENGINEERING_STANDARDS}
 `;
 
 try {
-        const responseText = await callLLMWithFailover(null, prompt, null, 'question');
+        const responseText = await localCallLLM(null, prompt, null, 'question');
         
         let text = responseText.trim();
         if (text.startsWith('```')) {
@@ -3547,9 +3663,23 @@ try {
           topic_id: Number(topicId),
           question: cleanQuizQuestion(q.question)
         }));
+
+        if (progressTimer) clearInterval(progressTimer);
+        if (progressId) {
+          updateProgress(progressId, 2, `2단계: validationPlugin으로 생성 문제 검증 중... (0/${healedQuestions.length} 완료)`, 50);
+        }
+
         const cleanedQuestions = await Promise.all(
-          healedQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+          healedQuestions.map(async (q) => {
+            const res = await validateAndHealQuestion(q, localCallLLM, topic.title, topic.keywords, fileText);
+            reportValidationProgress(progressId, healedQuestions.length);
+            return res;
+          })
         );
+
+        if (progressId) {
+          updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
+        }
 
         // 세션에 자동 저장
         try {
@@ -3593,51 +3723,71 @@ try {
   } catch (error) {
     console.error('Error in AI question generation route:', error);
     res.status(500).json({ error: '서버 오류로 AI 기출문제를 생성하지 못했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
 // 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정 (플러그인 방식 적용)
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader } = req.body;
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  if (progressId) {
+    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
+  }
 
   let attempt = 0;
   const maxAttempts = 3;
   let delay = 1000;
   let lastError = null;
 
-  while (attempt < maxAttempts) {
-    try {
-      const result = await gradeSubjective({
-        question,
-        correctAnswer,
-        userAnswer,
-        rowHeader,
-        colHeader,
-        callLLMWithFailover
-      });
-      return res.json(result);
-    } catch (err) {
-      lastError = err;
-      attempt++;
-      if (attempt < maxAttempts) {
-        console.warn(`[AI grading retry] Attempt ${attempt} failed. Retrying in ${delay}ms...`, err.message || err);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
+  try {
+    while (attempt < maxAttempts) {
+      try {
+        const result = await gradeSubjective({
+          question,
+          correctAnswer,
+          userAnswer,
+          rowHeader,
+          colHeader,
+          callLLMWithFailover: localCallLLM
+        });
+        if (progressId) {
+          updateProgress(progressId, 1, '1단계: 채점 완료!', 100);
+        }
+        return res.json(result);
+      } catch (err) {
+        lastError = err;
+        attempt++;
+        if (attempt < maxAttempts) {
+          console.warn(`[AI grading retry] Attempt ${attempt} failed. Retrying in ${delay}ms...`, err.message || err);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+        }
       }
     }
-  }
 
-  console.error('All AI grading attempts failed:', lastError);
-  // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
-  const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
-  const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
-  res.json({
-    isCorrect: localCorrect,
-    score: localCorrect ? 10 : 0,
-    reason: localCorrect 
-      ? '로컬 단순 비교로 정답 판정' 
-      : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)'
-  });
+    console.error('All AI grading attempts failed:', lastError);
+    // API 장애 또는 오류 시 최종 대비책으로 로컬 단순 비교 결과 적용
+    const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+    const localCorrect = normalize(userAnswer) === normalize(correctAnswer);
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 채점 완료(로컬)!', 100);
+    }
+    res.json({
+      isCorrect: localCorrect,
+      score: localCorrect ? 10 : 0,
+      reason: localCorrect 
+        ? '로컬 단순 비교로 정답 판정' 
+        : 'AI 채점 오버로드로 평가 실패 (재평가 버튼을 눌러주세요)'
+    });
+  } catch (outerErr) {
+    console.error('Outer AI grading error:', outerErr);
+    res.status(500).json({ error: '서버 오류로 채점을 수행하지 못했습니다.' });
+  }
 });
 
 // 6-2-1. GET /api/topics/:id/question-feedback → 특정 토픽의 문제 추천/비추천 피드백 목록 반환
@@ -3703,6 +3853,14 @@ app.get('/api/question-feedback/all', async (req, res) => {
 // 6-3. Single Question Regeneration API
 app.post('/api/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions } = req.body;
+  const progressId = req.query.progressId || req.body.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
+  }
 
   try {
     let duplicatePreventionPrompt = '';
@@ -3993,7 +4151,7 @@ ${ENGINEERING_STANDARDS}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4016,7 +4174,14 @@ ${formatRequirement}
         ...parsedQuestion,
         question: cleanQuizQuestion(parsedQuestion.question)
       });
-      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+      if (progressTimer) clearInterval(progressTimer);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+      }
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
+      }
 
       return res.json({
         question: validatedQ,
@@ -4321,7 +4486,7 @@ ${ENGINEERING_STANDARDS}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4341,12 +4506,42 @@ ${formatRequirement}
       }
 
       const finalTopicId = topicId || currentQuestion?.topic_id;
+      const activeTopic = topics.find(t => t.id === Number(finalTopicId));
+      const activeTopicTitle = activeTopic ? activeTopic.title : '';
+      const activeTopicKeywords = activeTopic ? activeTopic.keywords : '';
+      let activeTopicFileText = '';
+      if (activeTopic) {
+        const tTopic = targetTopics.find(t => t.id === activeTopic.id);
+        if (tTopic && tTopic.pdf_data) {
+          const isHtml = tTopic.pdf_name && (
+            tTopic.pdf_name.toLowerCase().endsWith('.html') ||
+            tTopic.pdf_name.toLowerCase().endsWith('.htm') ||
+            isBufferHtml(tTopic.pdf_data)
+          );
+          try {
+            if (isHtml) activeTopicFileText = htmlToPlainText(decodeHtmlBuffer(tTopic.pdf_data));
+            else {
+              const parsed = await pdfParse(tTopic.pdf_data);
+              activeTopicFileText = parsed.text || '';
+            }
+          } catch (e) {}
+          activeTopicFileText = mergeVerticalText(activeTopicFileText);
+        }
+      }
+
       const healedQ = healQuizQuestionObject({
         ...parsedQuestion,
         topic_id: finalTopicId ? Number(finalTopicId) : null,
         question: cleanQuizQuestion(parsedQuestion.question)
       });
-      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+      if (progressTimer) clearInterval(progressTimer);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+      }
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
+      }
 
       return res.json({
         question: validatedQ,
@@ -4357,15 +4552,29 @@ ${formatRequirement}
     }
   } catch (error) {
     console.error('Error in question regeneration route:', error);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 재생성 실패', 100);
+    }
     res.status(500).json({ error: error.message || '서버 오류로 단일 문제를 재생성하지 못했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
 // 6-6. Interactive Question Adjustment API based on user feedback
 app.post('/api/question/adjust', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, userFeedback } = req.body;
+  const progressId = req.query.progressId || req.body.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 의견 반영 조절 시작...', 50, 1500, 5);
+  }
 
   if (!userFeedback || !userFeedback.trim()) {
+    if (progressTimer) clearInterval(progressTimer);
     return res.status(400).json({ error: '의견이 입력되지 않았습니다.' });
   }
 
@@ -4538,7 +4747,7 @@ ${ENGINEERING_STANDARDS}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4576,7 +4785,14 @@ ${formatRequirement}
         topic_id: finalTopicId,
         question: cleanQuizQuestion(parsedQuestion.question)
       });
-      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+      if (progressTimer) clearInterval(progressTimer);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+      }
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
+      }
 
       return res.json({
         question: validatedQ
@@ -4743,7 +4959,7 @@ ${ENGINEERING_STANDARDS}
 ${formatRequirement}
 `;
 
-      const responseText = await callLLMWithFailover(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question');
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4763,6 +4979,29 @@ ${formatRequirement}
       }
 
       const finalTopicId = Number(topicId || currentQuestion?.topic_id || (topics && topics[0] ? topics[0].id : null));
+      const activeTopic = topics.find(t => t.id === Number(finalTopicId));
+      const activeTopicTitle = activeTopic ? activeTopic.title : '';
+      const activeTopicKeywords = activeTopic ? activeTopic.keywords : '';
+      let activeTopicFileText = '';
+      if (activeTopic) {
+        const tTopic = targetTopics.find(t => t.id === activeTopic.id);
+        if (tTopic && tTopic.pdf_data) {
+          const isHtml = tTopic.pdf_name && (
+            tTopic.pdf_name.toLowerCase().endsWith('.html') ||
+            tTopic.pdf_name.toLowerCase().endsWith('.htm') ||
+            isBufferHtml(tTopic.pdf_data)
+          );
+          try {
+            if (isHtml) activeTopicFileText = htmlToPlainText(decodeHtmlBuffer(tTopic.pdf_data));
+            else {
+              const parsed = await pdfParse(tTopic.pdf_data);
+              activeTopicFileText = parsed.text || '';
+            }
+          } catch (e) {}
+          activeTopicFileText = mergeVerticalText(activeTopicFileText);
+        }
+      }
+
       if (finalTopicId) {
         try {
           await dbQuery.run(
@@ -4781,7 +5020,14 @@ ${formatRequirement}
         topic_id: finalTopicId,
         question: cleanQuizQuestion(parsedQuestion.question)
       });
-      const validatedQ = await validateAndHealQuestion(healedQ, callLLMWithFailover);
+      if (progressTimer) clearInterval(progressTimer);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
+      }
+      const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      if (progressId) {
+        updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
+      }
 
       return res.json({
         question: validatedQ
@@ -4791,7 +5037,12 @@ ${formatRequirement}
     }
   } catch (error) {
     console.error('Error in question adjust route:', error);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 문제 조절 실패', 100);
+    }
     res.status(500).json({ error: error.message || '서버 오류로 문제를 조정하지 못했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
@@ -4815,6 +5066,7 @@ app.post('/api/exam/all', async (req, res) => {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
 
+    const topicTextMap = {};
     // Extract text from each topic in parallel to avoid timeouts
     const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
@@ -4837,6 +5089,7 @@ app.post('/api/exam/all', async (req, res) => {
         fileText = mergeVerticalText(fileText);
         fileText = smartTruncate(fileText, 10000);
       }
+      topicTextMap[topic.id] = fileText;
       return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
     }));
 
@@ -5240,7 +5493,13 @@ ${ENGINEERING_STANDARDS}
 
     const healedFinalQuestions = finalQuestions.map(q => healQuizQuestionObject(q));
     const validatedFinalQuestions = await Promise.all(
-      healedFinalQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+      healedFinalQuestions.map(async (q) => {
+        const matchedTopic = topics.find(t => t.id === Number(q.topic_id));
+        const title = matchedTopic ? matchedTopic.title : '';
+        const keywords = matchedTopic ? matchedTopic.keywords : '';
+        const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
+        return validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+      })
     );
     res.json({ questions: validatedFinalQuestions, total: validatedFinalQuestions.length, topicCount: topics.length });
 
@@ -5271,6 +5530,7 @@ app.post('/api/exam/additional', async (req, res) => {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
 
+    const topicTextMap = {};
     // Extract text from each topic in parallel to avoid timeouts
     const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
@@ -5293,6 +5553,7 @@ app.post('/api/exam/additional', async (req, res) => {
         fileText = mergeVerticalText(fileText);
         fileText = smartTruncate(fileText, 10000);
       }
+      topicTextMap[topic.id] = fileText;
       return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
     }));
 
@@ -5488,7 +5749,13 @@ ${ENGINEERING_STANDARDS}
     }
 
     const validatedFinalQuestions = await Promise.all(
-      finalQuestions.map(q => validateAndHealQuestion(q, callLLMWithFailover))
+      finalQuestions.map(async (q) => {
+        const matchedTopic = topics.find(t => t.id === Number(q.topic_id));
+        const title = matchedTopic ? matchedTopic.title : '';
+        const keywords = matchedTopic ? matchedTopic.keywords : '';
+        const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
+        return validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+      })
     );
 
     res.json({ questions: validatedFinalQuestions });
@@ -5503,6 +5770,15 @@ ${ENGINEERING_STANDARDS}
 
 // 6-2. Comprehensive Exam: Generate Detailed Answer for a specific question
 app.post('/api/exam/detailed-answer', async (req, res) => {
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 심층 해설 생성 중...', 90, 800, 5);
+  }
+
   try {
     const { question, answer } = req.body;
     const hasAnyAiKey = !!(
@@ -5514,7 +5790,10 @@ app.post('/api/exam/detailed-answer', async (req, res) => {
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
-    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    if (!hasAnyAiKey) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
 
     const prompt = `
 당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
@@ -5533,24 +5812,45 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}
 `;
 
     try {
-      const responseText = await callLLMWithFailover(null, prompt);
+      const responseText = await localCallLLM(null, prompt);
       const healedText = healLatexFormulas(responseText.trim()); // 대화 수식 정정 결합
+      if (progressId) {
+        updateProgress(progressId, 1, '1단계: 해설 생성 완료!', 100);
+      }
       res.json({ text: healedText });
     } catch (err) {
       console.error('Detailed answer route error:', err);
+      if (progressId) {
+        updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+      }
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
   } catch (err) {
     console.error('Detailed answer route error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+    }
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
 // 6-2.5. Generate Hint for a Question
 app.post('/api/hint', async (req, res) => {
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 힌트 생성 중...', 90, 800, 10);
+  }
+
   try {
     const { questionText } = req.body;
     if (!questionText) {
+      if (progressTimer) clearInterval(progressTimer);
       return res.status(400).json({ error: '질문(문제) 텍스트가 제공되지 않았습니다.' });
     }
 
@@ -5561,7 +5861,10 @@ app.post('/api/hint', async (req, res) => {
       process.env.XAI_API_KEY ||
       process.env.GROK_API_KEY
     );
-    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    if (!hasAnyAiKey) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
 
     const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
 수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
@@ -5573,17 +5876,34 @@ app.post('/api/hint', async (req, res) => {
 ${ENGINEERING_STANDARDS}`;
     const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
     
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'question');
+    const responseText = await localCallLLM(systemInstruction, userPrompt, null, 'question');
     const healedText = healLatexFormulas(responseText);
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 힌트 생성 완료!', 100);
+    }
     res.json({ hint: healedText });
   } catch (err) {
     console.error('Hint generation error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 힌트 생성 실패', 100);
+    }
     res.status(500).json({ error: err.message || '힌트를 생성하는 데 실패했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
 // 6-3. Freeform Chat Search
 app.post('/api/chat', async (req, res) => {
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 튜터 답변 생성 중...', 90, 800, 5);
+  }
+
   try {
     const { history, message, image } = req.body;
     const hasAnyAiKey = !!(
@@ -5595,7 +5915,10 @@ app.post('/api/chat', async (req, res) => {
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY
     );
-    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    if (!hasAnyAiKey) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
 
     // Format conversation history as a structured string prompt
     let structuredPrompt = '';
@@ -5675,16 +5998,27 @@ app.post('/api/chat', async (req, res) => {
      | 분류 | 이론적 해석법 | 경험적/역해석법 | 경험적/역해석법 |
 ${ENGINEERING_STANDARDS}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
-      const responseText = await callLLMWithFailover(systemInstruction, structuredPrompt, image, 'tutor');
+      const responseText = await localCallLLM(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
+      if (progressId) {
+        updateProgress(progressId, 1, '1단계: 답변 생성 완료!', 100);
+      }
       res.json({ text: healedText });
     } catch (err) {
       console.error('Chat route error:', err);
+      if (progressId) {
+        updateProgress(progressId, 1, '오류 발생으로 대화 실패', 100);
+      }
       res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
     }
   } catch (err) {
     console.error('Chat route error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 대화 실패', 100);
+    }
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
@@ -5785,6 +6119,37 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
       return res.status(400).json({ error: '공식 정보가 부족합니다.' });
     }
 
+    let topicTitle = formulaTitle;
+    let topicKeywords = '';
+    let fileText = '';
+    try {
+      const matchedTopic = await dbQuery.get(
+        `SELECT id, title, keywords, pdf_name, pdf_data FROM topics WHERE ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%' LIMIT 1`,
+        [formulaTitle, formulaTitle]
+      );
+      if (matchedTopic) {
+        topicTitle = matchedTopic.title;
+        topicKeywords = matchedTopic.keywords || '';
+        if (matchedTopic.pdf_data) {
+          const isHtml = matchedTopic.pdf_name && (
+            matchedTopic.pdf_name.toLowerCase().endsWith('.html') ||
+            matchedTopic.pdf_name.toLowerCase().endsWith('.htm') ||
+            isBufferHtml(matchedTopic.pdf_data)
+          );
+          try {
+            if (isHtml) fileText = htmlToPlainText(decodeHtmlBuffer(matchedTopic.pdf_data));
+            else {
+              const parsed = await pdfParse(matchedTopic.pdf_data);
+              fileText = parsed.text || '';
+            }
+          } catch (e) {}
+          fileText = mergeVerticalText(fileText);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Failed to find matching topic for formula validation:', dbErr);
+    }
+
     const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
 제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
 반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.
@@ -5839,7 +6204,7 @@ ${ENGINEERING_STANDARDS}
     }
 
     const healed = healQuizQuestionObject(parsed);
-    const validated = await validateAndHealQuestion(healed, callLLMWithFailover);
+    const validated = await validateAndHealQuestion(healed, callLLMWithFailover, topicTitle, topicKeywords, fileText);
     res.json(validated);
   } catch (err) {
     console.error('generate-quiz-question error:', err);
@@ -6464,9 +6829,17 @@ app.get('/api/session/last-active-review', async (req, res) => {
 // 6-5. AI Option Explanation API for Multiple Choice
 app.post('/api/question/option-explanation', async (req, res) => {
   const { question, options, answer } = req.body;
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
 
   if (!question || !options || !Array.isArray(options) || options.length !== 4) {
     return res.status(400).json({ error: '유효하지 않은 객관식 문제 정보입니다.' });
+  }
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 보기 오답 원인 분석 중...', 90, 800, 10);
   }
 
   try {
@@ -6494,11 +6867,19 @@ ${ENGINEERING_STANDARDS}
 - **④ ${options[3]}** : [정답/오답 핵심 분석] ...
 `;
 
-    const responseText = await callLLMWithFailover(null, prompt, null, 'option-explanation');
+    const responseText = await localCallLLM(null, prompt, null, 'option-explanation');
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 분석 완료!', 100);
+    }
     res.json({ text: responseText.trim() });
   } catch (err) {
     console.error('Error generating option explanation:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 분석 실패', 100);
+    }
     res.status(500).json({ error: 'AI 보기별 분석 해설을 생성하지 못했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 

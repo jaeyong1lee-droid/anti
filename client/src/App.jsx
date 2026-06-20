@@ -4862,6 +4862,50 @@ export default function App() {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiQuestions, setAiQuestions] = useState([]);
+  const [aiProgressMessage, setAiProgressMessage] = useState('');
+  const [aiProgressPercent, setAiProgressPercent] = useState(0);
+  const [showAiProgress, setShowAiProgress] = useState(false);
+  const progressIntervalRef = useRef(null);
+
+  const startProgressPolling = (progressId) => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+    setAiProgressMessage('준비 중...');
+    setAiProgressPercent(0);
+    setShowAiProgress(true);
+
+    progressIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/progress/${progressId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.message) {
+            setAiProgressMessage(data.message);
+            setAiProgressPercent(data.percentage || 0);
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling progress:', err);
+      }
+    }, 600);
+  };
+
+  const stopProgressPolling = (finalMessage = null, finalPercent = 100) => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (finalMessage) {
+      setAiProgressMessage(finalMessage);
+      setAiProgressPercent(finalPercent);
+      setTimeout(() => {
+        setShowAiProgress(false);
+      }, 1500);
+    } else {
+      setShowAiProgress(false);
+    }
+  };
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
   const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
@@ -4878,6 +4922,9 @@ export default function App() {
     const activeAnswers = showExam ? examTableAnswers : tableAnswers;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
+    const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     const promises = inputs.map(async (inputId) => {
       const userAnswer = activeAnswers[`${qIdx}_${inputId}`] || '';
       const correctAnswer = q.answers[inputId] || '';
@@ -4904,7 +4951,8 @@ export default function App() {
             correctAnswer,
             userAnswer,
             rowHeader,
-            colHeader
+            colHeader,
+            progressId
           })
         });
         const data = await res.json();
@@ -4932,8 +4980,14 @@ export default function App() {
       }
     });
 
-    await Promise.all(promises);
-    setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    try {
+      await Promise.all(promises);
+      stopProgressPolling('채점 완료!', 100);
+    } catch (e) {
+      stopProgressPolling('채점 실패', 100);
+    } finally {
+      setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    }
   };
 
   const getReviewTotalScore = () => {
@@ -5035,6 +5089,9 @@ export default function App() {
     const userAnswer = activeAnswers[`${qIdx}_INPUT`] || '';
     const correctAnswer = q.answer || q.concept || '';
     
+    const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     let newResult = null;
     try {
       const res = await fetch(`${API_BASE}/api/grade-subjective`, {
@@ -5043,7 +5100,8 @@ export default function App() {
         body: JSON.stringify({
           question: q.question,
           correctAnswer,
-          userAnswer
+          userAnswer,
+          progressId
         })
       });
       const data = await res.json();
@@ -5053,6 +5111,7 @@ export default function App() {
         reason: data.reason,
         suggestedModelAnswer: data.suggestedModelAnswer
       };
+      stopProgressPolling('채점 완료!', 100);
     } catch (err) {
       console.error('Grading error:', err);
       const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
@@ -5062,6 +5121,7 @@ export default function App() {
         score: isCorrect ? 10 : 0,
         reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
       };
+      stopProgressPolling('채점 실패', 100);
     }
 
     if (newResult) {
@@ -7284,14 +7344,16 @@ export default function App() {
     setReportText('');
     setChatHistory([]);
 
+    const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       let url = `${API_BASE}/api/topics/${topicId}/ai-questions`;
-      const queryParams = [];
+      const queryParams = [`progressId=${progressId}`];
       if (mode === 'local') queryParams.push('local=true');
       if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
-      if (queryParams.length > 0) {
-        url += '?' + queryParams.join('&');
-      }
+      url += '?' + queryParams.join('&');
+      
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
       const res = await fetch(url, { method: 'POST' });
       console.log(`[handleOpenAIQuestions] Response status: ${res.status} (${res.statusText})`);
@@ -7300,10 +7362,12 @@ export default function App() {
 
       if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
         console.log(`[handleOpenAIQuestions] Topic changed. Ignoring loaded data for topicId=${topicId}`);
+        stopProgressPolling();
         return;
       }
 
       if (res.ok) {
+        stopProgressPolling('성공적으로 예상 문제를 생성했습니다!', 100);
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
@@ -7495,9 +7559,11 @@ export default function App() {
           }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
         }
       } else {
+        stopProgressPolling('문제 생성에 실패했습니다.', 100);
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
+      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100);
       if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
         return;
       }
@@ -7721,19 +7787,27 @@ export default function App() {
       localStorage.removeItem(progressKey); // 전체 재생성 시 로컬 복습 기록도 제거
 
       // 2. 실시간 AI 생성 요청
+      const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
+      startProgressPolling(progressId);
+
       let url = `${API_BASE}/api/topics/${currentRefreshTopicId}/ai-questions`;
+      const queryParams = [`progressId=${progressId}`];
       if (currentRefreshScheduleId) {
-        url += `?scheduleId=${currentRefreshScheduleId}`;
+        queryParams.push(`scheduleId=${currentRefreshScheduleId}`);
       }
+      url += '?' + queryParams.join('&');
+      
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       
       if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
         console.log(`[handleRefreshReviewQuestions] Topic changed. Ignoring refreshed data.`);
+        stopProgressPolling();
         return;
       }
 
       if (res.ok) {
+        stopProgressPolling('성공적으로 예상 문제를 재생성했습니다!', 100);
         const newQuestions = data.questions || [];
         setAiQuestions(newQuestions);
         setIsFallback(!!data.isFallback);
@@ -7775,9 +7849,11 @@ export default function App() {
         }
         showNotification('복습 문제가 성공적으로 다시 구성되었습니다.', 'success');
       } else {
+        stopProgressPolling('문제 생성에 실패했습니다.', 100);
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
+      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100);
       if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
         return;
       }
@@ -8180,7 +8256,8 @@ export default function App() {
     const setRegenerating = isReview ? setRegeneratingReview : setRegeneratingExam;
     
     setRegenerating(prev => ({ ...prev, [idx]: true }));
-    showNotification('문제 변환을 요청 중입니다... AI 응답을 기다리는 중', 'info');
+    const progressId = 'regen_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
 
     try {
       const body = {
@@ -8188,7 +8265,8 @@ export default function App() {
         topicId: isReview ? selectedTopic?.id : null,
         currentQuestion: currentQ,
         questionIdx: idx,
-        allQuestions: isReview ? aiQuestions : examQuestions
+        allQuestions: isReview ? aiQuestions : examQuestions,
+        progressId
       };
 
       console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type });
@@ -8206,17 +8284,20 @@ export default function App() {
         data = await res.json();
       } catch (jsonErr) {
         console.error('[변환] 응답 JSON 파싱 실패:', jsonErr);
+        stopProgressPolling('JSON 파싱 오류', 100);
         showNotification(`서버 응답을 처리할 수 없습니다 (HTTP ${res.status}). Vercel 서버리스 함수 타임아웃일 수 있습니다.`, 'error');
         return;
       }
 
       if (!res.ok) {
         console.error('[변환] 서버 에러:', data);
+        stopProgressPolling('서버 오류 발생', 100);
         showNotification(data.error || `서버 오류 (HTTP ${res.status})`, 'error');
         return;
       }
 
       if (res.ok && data.question) {
+        stopProgressPolling('성공적으로 변환했습니다!', 100);
         if (isReview) {
           const updated = aiQuestions.map((q, i) => i === idx ? data.question : q);
           const nextSelectedAnswers = { ...selectedAnswers };
@@ -8338,10 +8419,12 @@ export default function App() {
         }
         showNotification('해당 문제를 성공적으로 변환했습니다.', 'success');
       } else {
+        stopProgressPolling('변환 실패', 100);
         showNotification(data.error || '문제를 변환하지 못했습니다.', 'error');
       }
     } catch (err) {
       console.error('Regenerate question error:', err);
+      stopProgressPolling('네트워크 오류', 100);
       showNotification(`서버 통신 오류로 문제를 변환하지 못했습니다. (${err.message || '알 수 없는 오류'})`, 'error');
     } finally {
       setRegenerating(prev => ({ ...prev, [idx]: false }));
@@ -8362,6 +8445,8 @@ export default function App() {
     }
 
     setAdjustingLoading(prev => ({ ...prev, [key]: true }));
+    const progressId = 'adjust_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
 
     try {
       const body = {
@@ -8369,7 +8454,8 @@ export default function App() {
         topicId: isReview ? selectedTopic?.id : null,
         currentQuestion: currentQ,
         questionIdx: idx,
-        userFeedback: feedbackText
+        userFeedback: feedbackText,
+        progressId
       };
 
       const res = await fetch(`${API_BASE}/api/question/adjust`, {
@@ -8381,6 +8467,7 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok && data.question) {
+        stopProgressPolling('성공적으로 조정했습니다!', 100);
         if (isReview) {
           // 1. 해당 인덱스 문항 교체 및 서버 세션 동기화 저장
           setAiQuestions(prev => {
@@ -8521,10 +8608,12 @@ export default function App() {
         setAdjustingInputKey(null);
         showNotification('의견을 반영하여 문제를 성공적으로 조정했습니다.', 'success');
       } else {
+        stopProgressPolling('조정 실패', 100);
         showNotification(data.error || '문제를 조정하지 못했습니다.', 'error');
       }
     } catch (err) {
       console.error('Adjust question error:', err);
+      stopProgressPolling('네트워크 오류', 100);
       showNotification('서버 통신 오류로 문제를 조정하지 못했습니다.', 'error');
     } finally {
       setAdjustingLoading(prev => ({ ...prev, [key]: false }));
@@ -8545,16 +8634,21 @@ export default function App() {
     if (explanations[idx]) return;
     
     setExplanations(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
+    const progressId = 'opt_exp_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/question/option-explanation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, options, answer })
+        body: JSON.stringify({ question, options, answer, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '보기별 해설을 생성하지 못했습니다.');
+      stopProgressPolling('분석이 완료되었습니다!', 100);
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
+      stopProgressPolling('분석 실패', 100);
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
     }
   };
@@ -8568,6 +8662,9 @@ export default function App() {
       ...prev,
       [key]: { loading: true, text: '', error: '' }
     }));
+
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
 
     try {
       let contextPrompt = `[학습 문맥 정보]\n`;
@@ -8640,7 +8737,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           history: [],
-          message: contextPrompt
+          message: contextPrompt,
+          progressId
         })
       });
       
@@ -8654,11 +8752,13 @@ export default function App() {
       }
       if (!res.ok) throw new Error(data.error || '답변을 생성하지 못했습니다.');
       
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       setTutorAnswers(prev => ({
         ...prev,
         [key]: { loading: false, text: data.text, error: '' }
       }));
     } catch (err) {
+      stopProgressPolling('답변 생성 실패', 100);
       setTutorAnswers(prev => ({
         ...prev,
         [key]: { loading: false, text: '', error: err.message }
@@ -8790,16 +8890,21 @@ export default function App() {
   // ── Request Detailed Answer for Exam Questions ────────────────────────
   const handleRequestDetailedAnswer = async (idx, question, answer) => {
     setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: true, text: '', error: '' } }));
+    const progressId = 'detailed_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/exam/detailed-answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, answer })
+        body: JSON.stringify({ question, answer, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답안 전문을 가져오는 중 오류가 발생했습니다.');
+      stopProgressPolling('심층 해설 생성이 완료되었습니다!', 100);
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
+      stopProgressPolling('심층 해설 생성 실패', 100);
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
     }
   };
@@ -8968,16 +9073,21 @@ export default function App() {
     setHintText('');
     setIsHintLoading(true);
     setShowHintModal(true);
+    const progressId = 'hint_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/hint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionText })
+        body: JSON.stringify({ questionText, progressId })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '힌트 생성 실패');
+      stopProgressPolling('힌트 생성이 완료되었습니다!', 100);
       setHintText(data.hint);
     } catch (err) {
+      stopProgressPolling('힌트 생성 실패', 100);
       setHintText(`힌트를 가져오지 못했습니다: ${err.message}`);
     } finally {
       setIsHintLoading(false);
@@ -9011,6 +9121,9 @@ export default function App() {
       if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     });
 
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -9018,13 +9131,16 @@ export default function App() {
         body: JSON.stringify({ 
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
-          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null
+          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          progressId
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
+      stopProgressPolling('답변 생성 실패', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
@@ -9049,6 +9165,9 @@ export default function App() {
     setChatHistory(prev => [...prev, { role: 'model', text: '📝 문제를 생성 중입니다... 잠시만 기다려주세요.' }]);
     setIsChatLoading(true);
 
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     const promptText = `[수험생이 선택하여 문제를 출제받고자 하는 토픽 정보: 토픽명 - ${topic.title || ''}]
 
 위 토픽의 핵심 이론과 공식을 활용하여 풀 수 있는 정량적(수치 계산이 포함된) 주관식 문제를 하나 출제해주세요.
@@ -9065,17 +9184,20 @@ export default function App() {
         body: JSON.stringify({
           history: [],
           message: promptText,
-          image: null
+          image: null,
+          progressId
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '문제 출제 실패');
       
+      stopProgressPolling('문제가 성공적으로 출제되었습니다!', 100);
       setChatHistory(prev => {
         const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
         return [...filtered, { role: 'model', text: data.text }];
       });
     } catch (err) {
+      stopProgressPolling('문제 출제 실패', 100);
       setChatHistory(prev => {
         const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
         return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
@@ -10711,6 +10833,9 @@ export default function App() {
       if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     });
 
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -10718,13 +10843,16 @@ export default function App() {
         body: JSON.stringify({ 
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: promptText,
-          image: null
+          image: null,
+          progressId
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      stopProgressPolling('유도 및 설명 생성이 완료되었습니다!', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
+      stopProgressPolling('이론 유도 생성 실패', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
@@ -10768,6 +10896,9 @@ export default function App() {
       return;
     }
 
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     const promptText = `[수험생이 선택하여 문제를 출제받고자 하는 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]
 
 위 공식을 활용하여 풀 수 있는 정량적(수치 계산이 포함된) 주관식 문제를 하나 출제해주세요.
@@ -10784,16 +10915,19 @@ export default function App() {
         body: JSON.stringify({
           history: [],
           message: promptText,
-          image: null
+          image: null,
+          progressId
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '문제 출제 실패');
       
+      stopProgressPolling('공식 문제 생성이 완료되었습니다!', 100);
       const newHistory = [{ role: 'model', text: data.text }];
       localStorage.setItem(chatKey, JSON.stringify(newHistory));
       setFormulaChatHistory(newHistory);
     } catch (err) {
+      stopProgressPolling('공식 문제 생성 실패', 100);
       const newHistory = [{ role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
       localStorage.setItem(chatKey, JSON.stringify(newHistory));
       setFormulaChatHistory(newHistory);
@@ -10827,6 +10961,9 @@ export default function App() {
     const selected = formulaQuestions[selectedFormulaIdx];
     const promptText = `[수험생이 선택하여 논의 중인 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]\n\n질문: ${userMessage}`;
     
+    const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -10834,13 +10971,16 @@ export default function App() {
         body: JSON.stringify({
           history: formulaChatHistory.map(h => ({ role: h.role, text: h.text })),
           message: promptText,
-          image: null
+          image: null,
+          progressId
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
+      stopProgressPolling('답변 생성 실패', 100);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsFormulaChatLoading(false);
@@ -10988,6 +11128,43 @@ export default function App() {
         }`}>
           {notification.type === 'error' ? <Info size={20} /> : <CheckCircle size={20} />}
           <span className="text-sm font-semibold">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Floating AI Progress Popup */}
+      {showAiProgress && (
+        <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
+              <svg className="animate-spin h-5 w-5 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest">AI TASK PROGRESS</p>
+              <h5 className="text-xs font-extrabold text-white truncate mt-0.5" title={aiProgressMessage}>
+                {aiProgressMessage}
+              </h5>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-black text-violet-400">{aiProgressPercent}%</span>
+            </div>
+          </div>
+          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
+              style={{ width: `${aiProgressPercent}%` }}
+            />
+          </div>
+          <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+            <span>진행 상황</span>
+            <span>
+              {aiProgressMessage.includes('채점') 
+                ? `${aiProgressPercent}% 채점 중...` 
+                : `${aiProgressPercent}% 생성 중...`}
+            </span>
+          </div>
         </div>
       )}
 
@@ -12336,8 +12513,19 @@ export default function App() {
                     </div>
                     <div className="absolute inset-0 bg-violet-500 rounded-full animate-ping opacity-20"></div>
                   </div>
-                  <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 13문항을 출제하는 중...</h4>
-                  <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                  <h4 className="text-xl font-bold text-white mt-2">
+                    {aiProgressMessage || 'Gemini AI가 13문항을 출제하는 중...'}
+                  </h4>
+                  <div className="w-64 bg-slate-800 rounded-full h-2 overflow-hidden mx-auto mt-2">
+                    <div 
+                      className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${aiProgressPercent || 0}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-violet-400 font-bold">
+                    {aiProgressPercent || 0}% 생성 중...
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-sm leading-relaxed mx-auto">
                     소스 자료를 분석하여 주관식(개요·공식)과 객관식을 혼용한 복습 문제를 생성하고 있습니다. 약 10~20초 소요됩니다.
                   </p>
                 </div>
