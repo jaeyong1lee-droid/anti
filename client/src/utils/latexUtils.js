@@ -762,8 +762,7 @@ export function healQuizQuestionObject(q) {
     // For table subjective fill-in questions, empty out all cell contents 
     // (except headers and row-label column) and turn them into inputs!
     if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q.tableData && q.tableData.rows) {
-      const { rows } = q.tableData;
-      const oldAnswers = q.answers || {};
+      const oldAnswers = q.answers || q.answer || {};
       const newAnswers = {};
       let inputCount = 1;
 
@@ -784,29 +783,42 @@ export function healQuizQuestionObject(q) {
           const inputMatch = trimmedCell.match(/INPUT_(\d+)/i);
           const letterMatch = trimmedCell.match(/^\[?\s*([A-Za-z])\s*\]?$/);
           
+          let matchedNum = null;
           if (inputMatch) {
             placeholderId = `INPUT_${inputMatch[1]}`;
+            matchedNum = parseInt(inputMatch[1], 10);
           } else if (letterMatch) {
             placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
+            matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
           }
 
-          // Search in oldAnswers:
-          if (placeholderId && oldAnswers[placeholderId] !== undefined) {
-            correctAnswer = oldAnswers[placeholderId];
-          } else if (placeholderId && oldAnswers[placeholderId.toLowerCase()] !== undefined) {
-            correctAnswer = oldAnswers[placeholderId.toLowerCase()];
+          // Robust check helper
+          const lookup = (key) => {
+            if (key === undefined || key === null) return undefined;
+            return oldAnswers[key];
+          };
+
+          // 1. Try directly with placeholderId (case insensitive)
+          let foundVal = lookup(placeholderId) ?? lookup(placeholderId?.toLowerCase()) ?? lookup(placeholderId?.toUpperCase());
+
+          // 2. If matchedNum is available, try corresponding index / letter
+          if (foundVal === undefined && matchedNum !== null) {
+            const letterKey = String.fromCharCode(64 + matchedNum); // A, B, C...
+            foundVal = lookup(letterKey) ?? lookup(letterKey.toLowerCase()) ?? lookup(`INPUT_${matchedNum}`) ?? lookup(`input_${matchedNum}`) ?? lookup(matchedNum) ?? lookup(String(matchedNum));
+          }
+
+          // 3. Sequential fallback based on currentCount
+          if (foundVal === undefined) {
+            const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
+            foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
+          }
+
+          if (foundVal !== undefined) {
+            correctAnswer = foundVal;
           } else {
-            // Sequential fallback: check if oldAnswers has sequential keys like INPUT_1, INPUT_2...
-            const seqKey = `INPUT_${currentCount}`;
-            if (oldAnswers[seqKey] !== undefined) {
-              correctAnswer = oldAnswers[seqKey];
-            } else if (oldAnswers[currentCount] !== undefined) {
-              correctAnswer = oldAnswers[currentCount];
-            } else {
-              // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-              const isPlaceholder = /^(?:\[?\s*[A-Za-z]\s*\]?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedCell);
-              correctAnswer = isPlaceholder ? '' : cell;
-            }
+            // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
+            const isPlaceholder = /^(?:\[?\s*[A-Za-z]\s*\]?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedCell);
+            correctAnswer = isPlaceholder ? '' : cell;
           }
 
           newAnswers[inputId] = correctAnswer;
@@ -823,7 +835,7 @@ export function healQuizQuestionObject(q) {
 
 export function healTheoryQuestionObject(t) { return healDeep(t); }
 export function healFormulaQuestionObject(f) { return healDeep(f); }
-export function healAnswersheetQuestionObject(a) { return healDeep(a); }
+export function healAnswersheetQuestionObject(a) { return healQuizQuestionObject(a); }
 
 export const LATEX_PROMPT_INSTRUCTIONS = `
 [🚨 극도로 중요한 LaTeX 수식 및 마크다운 렌더링 절대 준수 수칙]:
