@@ -370,14 +370,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
                        .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
                        .replace(/\n{3,}/g, '\n\n');
 
-  // [Self-Healing] 여는 $ 없이 닫는 $만 있는 LaTeX 수식 패턴 자동 복구
-  // AI가 숫자로 시작하는 보기에서 여는 $ 기호를 누락하는 경우 복구
-  // 예: 2\Delta\sigma_3$ → $2\Delta\sigma_3$, 0.5\Delta\sigma_3$ → $0.5\Delta\sigma_3$
-  processed = processed.replace(
-    /(?<!\$)([\d.]*\\[a-zA-Z]+(?:[_^{}\d\\a-zA-Z.']*)*)\$(?!\$)/g,
-    '$$$1$$'
-  );
-
   const tokens = tokenizeForHealing(processed);
   processed = tokens.map(token => {
     if (token.type === 'table') {
@@ -587,35 +579,28 @@ export function healQuizQuestionObject(q) {
       const newAnswers = {};
       let inputCount = 1;
 
-      // Check if the table already contains at least one '[INPUT_' placeholder
-      const hasExistingInput = rows.some(row => 
-        row.some(cell => typeof cell === 'string' && cell.includes('[INPUT_'))
-      );
-
       const newRows = rows.map((row) => {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
-
-          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
-          const isOriginalInput = trimmedCell.includes('[INPUT_');
-
-          if (hasExistingInput && !isOriginalInput) {
-            // Keep non-input cells as plain text
-            return cell;
-          }
 
           const inputId = `INPUT_${inputCount}`;
           inputCount++;
 
           // Extract correct answer:
           let correctAnswer = '';
-          if (isOriginalInput) {
+          const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
+          
+          if (trimmedCell.includes('[INPUT_')) {
+            // It was already an input field. Find its original input number (e.g. [INPUT_1] -> 1)
             const match = trimmedCell.match(/INPUT_(\d+)/i);
             if (match) {
               const origId = `INPUT_${match[1]}`;
               correctAnswer = oldAnswers[origId] || '';
+            } else {
+              correctAnswer = '';
             }
           } else {
+            // It was plain text, so the text itself is the correct answer
             correctAnswer = cell;
           }
 
@@ -686,7 +671,7 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 13. 문단 구분이나 설명 단락 간에는 가독성을 위해 적절히 줄바꿈(두 번 엔터 \\n\\n)을 사용하여 단락을 분리하되, 과도하게 세 번 이상의 연속 빈 줄을 남발하지 마십시오.
 14. 🚨 [목록 시작 시 줄 띄우기 금지]: 대주제/소주제 구분선이나 콜론으로 끝나는 행(예: "• 주요 가정:", "• 메커니즘:") 바로 다음에 목록 항목(1., 2. 또는 *, - 등)이 올 경우에는 절대로 그 사이에 빈 줄(두 번 엔터 \\n\\n)을 넣지 말고, 단일 줄바꿈(\\n)으로만 연결하여 불필요한 빈 간격이 생기지 않도록 하십시오.
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
-19. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩그러니 남겨두는 행위는 엄격히 금지합니다.
+19. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩거리니 남겨두는 행위는 엄격히 금지합니다.
 16. 🚨 [표(Table) 작성 철칙]: 답변 중 지표, 수치 비교, 매개변수 정리 등 표(Table) 형태의 데이터 표현이 필요한 경우, HTML이나 LaTeX tabular/matrix/array 환경을 사용하지 말고 반드시 표준 **마크다운 표(Markdown Table)** 형식(| 열1 | 열2 |과 구분선 | --- | --- |)으로만 작성하십시오.
 17. 🚨 [컨테이너 중첩 절대 금지]: 여러 개의 수식 전개 과정이나 한글 설명 리스트 전체를 하나의 거대한 디스플레이 수식 블록($$...$$)으로 통째로 감싸지 마십시오. 반드시 개별 공식마다 독립된 $ 기호만 사용하십시오.
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
