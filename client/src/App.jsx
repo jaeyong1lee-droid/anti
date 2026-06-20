@@ -6146,6 +6146,35 @@ export default function App() {
               return { ...copy, ...data.tutorInputText };
             });
           }
+          
+          // 로컬 진행상황 병합/보완 (새로고침 시 입력했던 주관식 답안 유실 방지)
+          try {
+            const localProgress = localStorage.getItem('anti_exam_progress');
+            if (localProgress) {
+              const parsed = JSON.parse(localProgress);
+              if (parsed.examTableAnswers) {
+                setExamTableAnswers(prev => ({ ...prev, ...parsed.examTableAnswers }));
+              }
+              if (parsed.examAnswers) {
+                setExamAnswers(prev => ({ ...prev, ...parsed.examAnswers }));
+              }
+              if (parsed.examRevealed) {
+                setExamRevealed(prev => ({ ...prev, ...parsed.examRevealed }));
+              }
+              if (parsed.examTableGradingResults) {
+                setExamTableGradingResults(prev => ({ ...prev, ...parsed.examTableGradingResults }));
+              }
+              if (parsed.tutorAnswers) {
+                setTutorAnswers(prev => ({ ...prev, ...parsed.tutorAnswers }));
+              }
+              if (parsed.tutorInputText) {
+                setTutorInputText(prev => ({ ...prev, ...parsed.tutorInputText }));
+              }
+              if (parsed.chatHistory && parsed.chatHistory.length > 0) {
+                setChatHistory(parsed.chatHistory);
+              }
+            }
+          } catch (e) {}
           const localProgress = localStorage.getItem('anti_exam_progress');
           let localScroll = undefined;
           if (localProgress) {
@@ -6315,12 +6344,31 @@ export default function App() {
   }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
   const forceSaveActiveSessions = () => {
-    // 1) Save active review session immediately
+    // 1) Save active review session immediately to localStorage (synchronously)
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session');
+      const key = selectedTopic.schedule_id 
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+        : `anti_review_progress_${selectedTopic.id}`;
+      try {
+        localStorage.setItem(key, JSON.stringify({
+          revealedQuestions,
+          selectedAnswers,
+          tableAnswers,
+          tableGradingResults,
+          tutorAnswers,
+          tutorInputText,
+          chatHistory,
+          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+        }));
+      } catch (e) {
+        console.warn('Unload localStorage save failed:', e);
+      }
+
       fetch(`${API_BASE}/api/session/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
         body: JSON.stringify({
           topicId: selectedTopic.id,
           scheduleId: selectedTopic.schedule_id,
@@ -6337,12 +6385,30 @@ export default function App() {
       }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
     }
 
-    // 2) Save active exam session immediately
+    // 2) Save active exam session immediately to localStorage (synchronously)
     if (examQuestions.length > 0 && !loadingExam) {
       console.log('[forceSaveActiveSessions] Immediately saving active exam session');
+      try {
+        localStorage.setItem('anti_exam_progress', JSON.stringify({
+          examQuestions,
+          examRevealed,
+          examAnswers,
+          examTopic,
+          examTableAnswers,
+          examTableGradingResults,
+          tutorAnswers,
+          tutorInputText,
+          chatHistory,
+          savedExamScroll: examBodyRef.current?.scrollTop || 0
+        }));
+      } catch (e) {
+        console.warn('Unload exam localStorage save failed:', e);
+      }
+
       fetch(`${API_BASE}/api/session/exam`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
         body: JSON.stringify({
           examQuestions,
           examRevealed,
@@ -7172,6 +7238,38 @@ export default function App() {
             return { ...copy, ...(data.tutorAnswers || {}) };
           });
           setChatHistory(data.chatHistory || []);
+
+          // 로컬 진행상황 병합/보완 (새로고침 시 입력했던 주관식 답안 유실 방지)
+          try {
+            const key = finalScheduleId 
+              ? `anti_review_progress_sched_${finalScheduleId}`
+              : `anti_review_progress_${topicId}`;
+            const localProgress = localStorage.getItem(key);
+            if (localProgress) {
+              const parsed = JSON.parse(localProgress);
+              if (parsed.tableAnswers) {
+                setTableAnswers(prev => ({ ...prev, ...parsed.tableAnswers }));
+              }
+              if (parsed.selectedAnswers) {
+                setSelectedAnswers(prev => ({ ...prev, ...parsed.selectedAnswers }));
+              }
+              if (parsed.revealedQuestions) {
+                setRevealedQuestions(prev => ({ ...prev, ...parsed.revealedQuestions }));
+              }
+              if (parsed.tableGradingResults) {
+                setTableGradingResults(prev => ({ ...prev, ...parsed.tableGradingResults }));
+              }
+              if (parsed.tutorAnswers) {
+                setTutorAnswers(prev => ({ ...prev, ...parsed.tutorAnswers }));
+              }
+              if (parsed.tutorInputText) {
+                setTutorInputText(prev => ({ ...prev, ...parsed.tutorInputText }));
+              }
+              if (parsed.chatHistory && parsed.chatHistory.length > 0) {
+                setChatHistory(parsed.chatHistory);
+              }
+            }
+          } catch (e) {}
           const key = finalScheduleId 
             ? `anti_review_progress_sched_${finalScheduleId}`
             : `anti_review_progress_${topicId}`;
