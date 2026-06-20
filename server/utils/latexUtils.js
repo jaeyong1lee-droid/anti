@@ -217,9 +217,21 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
-
-  // 1. Convert HTML tables to Markdown tables (only on outer call)
   let processed = text;
+
+  // [🚨 극단적 비상 복구 필터 🚨]
+  // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
+  processed = processed.replace(
+    /<\s*divclass\b[\s\S]*?<\/\s*div\s*>/gi,
+    (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotationencoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    }
+  );
   if (!isNested) {
     processed = htmlTableToMarkdown(processed, passedPoissonSymbol);
     processed = wrapMarkdownTables(processed);
