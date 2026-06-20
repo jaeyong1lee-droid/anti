@@ -2107,7 +2107,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
             </div>
           </div>
         )}
-        {tableData && q.type !== '주관식 (표채우기)' && (
+        {tableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
           <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
         )}
       </div>
@@ -2119,7 +2119,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
       <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
         <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
       </div>
-      {tableData && q.type !== '주관식 (표채우기)' && (
+      {tableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
         <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
       )}
     </>
@@ -6094,7 +6094,7 @@ export default function App() {
           setViewMode(s.viewMode);
         }
         if (s.selectedTopic) setSelectedTopic(s.selectedTopic);
-        if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions);
+        if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject(q)));
         if (s.revealedQuestions) setRevealedQuestions(s.revealedQuestions);
         if (s.selectedAnswers) setSelectedAnswers(s.selectedAnswers);
         if (s.openSections) setOpenSections(s.openSections);
@@ -6108,7 +6108,7 @@ export default function App() {
         if (s.tutorInputText) setTutorInputText(s.tutorInputText);
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
-        if (s.examQuestions?.length) setExamQuestions(s.examQuestions);
+        if (s.examQuestions?.length) setExamQuestions(s.examQuestions.map(q => healQuizQuestionObject(q)));
         if (s.examRevealed) setExamRevealed(s.examRevealed);
         if (s.examAnswers) setExamAnswers(s.examAnswers);
       }
@@ -6121,7 +6121,7 @@ export default function App() {
       .then(r => r.json())
       .then(({ data }) => {
         if (data?.examQuestions?.length) {
-          setExamQuestions(data.examQuestions);
+          setExamQuestions(data.examQuestions.map(q => healQuizQuestionObject(q)));
           if (data.examRevealed) setExamRevealed(data.examRevealed);
           if (data.examAnswers) setExamAnswers(data.examAnswers);
           if (data.examTopic) setExamTopic(data.examTopic);
@@ -12381,7 +12381,7 @@ export default function App() {
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (q.type === '주관식 (표채우기)') {
+                                  if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
                                     await gradeTableQuestion(idx, q);
                                   } else {
                                     await gradeSubjectiveQuestion(idx, q);
@@ -12765,7 +12765,7 @@ export default function App() {
 
                         {/* Subjective Reveal */}
                         {isSubj && (
-                          q.type === '주관식 (표채우기)' ? (
+                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -12820,7 +12820,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -14018,7 +14018,7 @@ export default function App() {
                               onClick={async (e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                if (q.type === '주관식 (표채우기)') {
+                                if (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') {
                                   await gradeTableQuestion(idx, q);
                                 } else {
                                   await gradeSubjectiveQuestion(idx, q);
@@ -14420,7 +14420,7 @@ export default function App() {
 
                       {/* Subjective Reveal */}
                       {isSubj && (
-                          q.type === '주관식 (표채우기)' ? (
+                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
@@ -14475,7 +14475,7 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">

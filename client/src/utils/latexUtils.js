@@ -103,45 +103,40 @@ export function htmlTableToMarkdown(html, poissonSymbol = null) {
 function parseMarkdownTable(questionText) {
   if (!questionText) return null;
   const lines = questionText.split('\n');
-  let startIdx = -1;
-  let endIdx = -1;
-
-  for (let i = 0; i < lines.length; i++) {
+  
+  for (let i = 0; i < lines.length - 1; i++) {
     const line = lines[i].trim();
-    if (line.startsWith('|') && line.endsWith('|')) {
-      if (startIdx === -1) {
-        startIdx = i;
-      }
-      endIdx = i;
-    } else {
-      if (startIdx !== -1) {
-        break;
-      }
-    }
-  }
+    if (line.includes('|')) {
+      const nextLine = lines[i + 1].trim();
+      const isSeparator = nextLine.includes('-') && nextLine.includes('|') && /^[\s|:\-]+$/.test(nextLine);
+      if (isSeparator) {
+        // We found a table starting at index i
+        const startIdx = i;
+        let endIdx = i + 1;
+        while (endIdx + 1 < lines.length && lines[endIdx + 1].trim().includes('|')) {
+          endIdx++;
+        }
+        
+        const parseRow = (l) => {
+          const trimmed = l.trim();
+          const parts = trimmed.split('|');
+          if (trimmed.startsWith('|')) parts.shift();
+          if (trimmed.endsWith('|')) parts.pop();
+          return parts.map(cell => cell.trim());
+        };
 
-  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
-    const headers = lines[startIdx]
-      .split('|')
-      .slice(1, -1)
-      .map(cell => cell.trim());
-    
-    const separatorLine = lines[startIdx + 1];
-    if (separatorLine.includes('-') && /^[|:\s\-]+$/.test(separatorLine)) {
-      const rows = [];
-      for (let i = startIdx + 2; i <= endIdx; i++) {
-        const rowCells = lines[i]
-          .split('|')
-          .slice(1, -1)
-          .map(cell => cell.trim());
-        rows.push(rowCells);
+        const headers = parseRow(lines[startIdx]);
+        const rows = [];
+        for (let r = startIdx + 2; r <= endIdx; r++) {
+          rows.push(parseRow(lines[r]));
+        }
+        
+        const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
+        return {
+          tableData: { headers, rows },
+          originalTableText
+        };
       }
-      
-      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
-      return {
-        tableData: { headers, rows },
-        originalTableText
-      };
     }
   }
   return null;
@@ -531,6 +526,9 @@ export function healDeep(obj, parentKey = null, context = null) {
   }
 
   if (typeof obj === 'string') {
+    if (/\[INPUT_\d+\]/i.test(obj)) {
+      return obj;
+    }
     const skipKeys = [
       'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
       'answersheet_report_id', 'type', 'subtype', 'keywords'
@@ -651,7 +649,7 @@ export function healQuizQuestionObject(q) {
 
     // For table subjective fill-in questions, empty out all cell contents 
     // (except headers and row-label column) and turn them into inputs!
-    if (q.type === '주관식 (표채우기)' && q.tableData && q.tableData.rows) {
+    if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q.tableData && q.tableData.rows) {
       const { rows } = q.tableData;
       const oldAnswers = q.answers || {};
       const newAnswers = {};
