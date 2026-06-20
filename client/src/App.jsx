@@ -1711,9 +1711,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         })() : (
                           <textarea
                             ref={(el) => {
-                              if (el) {
+                              if (el && el.dataset.lastVal !== value) {
                                 el.style.height = 'auto';
                                 el.style.height = `${el.scrollHeight}px`;
+                                el.dataset.lastVal = value;
                               }
                             }}
                             value={value}
@@ -1721,6 +1722,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               handleInputChange(inputId, e.target.value);
                               e.target.style.height = 'auto';
                               e.target.style.height = `${e.target.scrollHeight}px`;
+                              e.target.dataset.lastVal = e.target.value;
                             }}
                             placeholder={`${inputLetter} 입력`}
                             className="w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
