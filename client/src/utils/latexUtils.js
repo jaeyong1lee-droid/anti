@@ -728,24 +728,41 @@ export function healQuizQuestionObject(q) {
           if (cIdx === 0) return cell; // Keep the row label intact
 
           const inputId = `INPUT_${inputCount}`;
+          const currentCount = inputCount;
           inputCount++;
 
           // Extract correct answer:
           let correctAnswer = '';
           const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
           
-          if (trimmedCell.includes('[INPUT_')) {
-            // It was already an input field. Find its original input number (e.g. [INPUT_1] -> 1)
-            const match = trimmedCell.match(/INPUT_(\d+)/i);
-            if (match) {
-              const origId = `INPUT_${match[1]}`;
-              correctAnswer = oldAnswers[origId] || '';
-            } else {
-              correctAnswer = '';
-            }
+          // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, etc.)
+          let placeholderId = '';
+          const inputMatch = trimmedCell.match(/INPUT_(\d+)/i);
+          const letterMatch = trimmedCell.match(/^\[?\s*([A-Za-z])\s*\]?$/);
+          
+          if (inputMatch) {
+            placeholderId = `INPUT_${inputMatch[1]}`;
+          } else if (letterMatch) {
+            placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
+          }
+
+          // Search in oldAnswers:
+          if (placeholderId && oldAnswers[placeholderId] !== undefined) {
+            correctAnswer = oldAnswers[placeholderId];
+          } else if (placeholderId && oldAnswers[placeholderId.toLowerCase()] !== undefined) {
+            correctAnswer = oldAnswers[placeholderId.toLowerCase()];
           } else {
-            // It was plain text, so the text itself is the correct answer
-            correctAnswer = cell;
+            // Sequential fallback: check if oldAnswers has sequential keys like INPUT_1, INPUT_2...
+            const seqKey = `INPUT_${currentCount}`;
+            if (oldAnswers[seqKey] !== undefined) {
+              correctAnswer = oldAnswers[seqKey];
+            } else if (oldAnswers[currentCount] !== undefined) {
+              correctAnswer = oldAnswers[currentCount];
+            } else {
+              // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
+              const isPlaceholder = /^(?:\[?\s*[A-Za-z]\s*\]?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedCell);
+              correctAnswer = isPlaceholder ? '' : cell;
+            }
           }
 
           newAnswers[inputId] = correctAnswer;
