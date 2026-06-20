@@ -5829,7 +5829,8 @@ ${ENGINEERING_STANDARDS}
     }
 
     const healed = healQuizQuestionObject(parsed);
-    res.json(healed);
+    const validated = await validateAndHealQuestion(healed, callLLMWithFailover);
+    res.json(validated);
   } catch (err) {
     console.error('generate-quiz-question error:', err);
     res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
