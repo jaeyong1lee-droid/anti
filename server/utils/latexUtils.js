@@ -214,6 +214,25 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
   return healedLines.join('\n');
 }
 
+// Whitelisted LaTeX math commands for safe auto-wrapping
+const MATH_COMMANDS = [
+  'frac', 'dfrac', 'tfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
+  'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx',
+  'sigma', 'tau', 'alpha', 'beta', 'gamma', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
+  'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
+  'rightarrow', 'leftarrow', 'circ', 'deg', 'dot', 'ddot', 'bar', 'hat', 'tilde',
+  'quad', 'qquad', 'text', 'left', 'right'
+];
+
+// Regex matching math formulas containing at least one whitelisted command
+const formulaRegex = new RegExp(
+  `(?:\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,]+)?` +
+  `\\\\(?:${MATH_COMMANDS.join('|')})` +
+  `(?![a-zA-Z])` +
+  `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\]*`,
+  'g'
+);
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
@@ -398,7 +417,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
     if (token.type === 'text') {
       let t = token.content;
-      // Remove greedy formulaPattern wrapper and only escape angle brackets for safety
+      // Auto-wrap unwrapped LaTeX math formulas
+      t = t.replace(formulaRegex, (match) => {
+        const trailingSpaces = match.match(/\s*$/)[0];
+        const trimmed = match.trim();
+        const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
+        const punc = trailingPunctuation ? trailingPunctuation[0] : '';
+        const formula = trimmed.slice(0, trimmed.length - punc.length).trim();
+        return `$${formula}$${punc}${trailingSpaces}`;
+      });
+      // Escape angle brackets for safety
       return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
     } else {
       let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
