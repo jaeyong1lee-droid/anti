@@ -95,7 +95,7 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
 `;
       const userPrompt = `다음 문제 객체를 철저히 검수하고, 올바르게 수정한 최종 문제 JSON만 출력하십시오:\n${JSON.stringify(question)}`;
       
-      const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'question', { temperature: 0.0 });
+      const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'validation', { temperature: 0.0 });
       const corrected = parseLlmJson(responseText);
       if (corrected && typeof corrected === 'object' && corrected.question) {
         console.log(`[ValidationPlugin] Self-correction succeeded!`);
