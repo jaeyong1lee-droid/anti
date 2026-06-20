@@ -4700,7 +4700,7 @@ export default function App() {
                 <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <span className="text-slate-100 font-semibold inline">
-                    <LatexRenderer text={gradingResult?.suggestedModelAnswer || correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
+                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
                   </span>
                 </div>
               </div>
@@ -12903,13 +12903,7 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        {tableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
-                                          <LatexRenderer text={tableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
-                                        ) : idx === 0 ? (
-                                          <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
-                                        ) : (
-                                          renderCompareKeywords(q.answer || q.concept || '', tableAnswers[`${idx}_INPUT`] || '')
-                                        )}
+                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
@@ -14558,13 +14552,7 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        {examTableGradingResults[`${idx}_INPUT`]?.suggestedModelAnswer ? (
-                                          <LatexRenderer text={examTableGradingResults[`${idx}_INPUT`].suggestedModelAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
-                                        ) : idx === 0 ? (
-                                          <LatexRenderer text={q.concept || q.answer || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
-                                        ) : (
-                                          renderCompareKeywords(q.answer || q.concept || '', examTableAnswers[`${idx}_INPUT`] || '')
-                                        )}
+                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
