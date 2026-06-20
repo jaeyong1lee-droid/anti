@@ -96,13 +96,10 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
       const userPrompt = `다음 문제 객체를 철저히 검수하고, 올바르게 수정한 최종 문제 JSON만 출력하십시오:\n${JSON.stringify(question)}`;
       
       const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'question', { temperature: 0.0 });
-      let text = responseText.trim();
-      text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-      
-      const corrected = JSON.parse(text);
+      const corrected = parseLlmJson(responseText);
       if (corrected && typeof corrected === 'object' && corrected.question) {
         console.log(`[ValidationPlugin] Self-correction succeeded!`);
-        return corrected;
+        return { ...question, ...corrected };
       }
     } catch (err) {
       console.warn(`[ValidationPlugin] Self-correction loop failed or skipped:`, err.message);
@@ -110,4 +107,82 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
   }
 
   return question;
+}
+
+function escapeJsonBackslashes(str) {
+  if (!str) return str;
+  let result = '';
+  let inString = false;
+  let i = 0;
+  
+  const latexCommands = [
+    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
+    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
+    'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
+    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
+    'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
+    'phi', 'varphi', 'mathrm'
+  ];
+
+  while (i < str.length) {
+    const char = str[i];
+    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+      inString = !inString;
+      result += char;
+      i++;
+    } else if (inString && char === '\\') {
+      const next = str[i + 1];
+      
+      if (next === '"' || next === '/' || next === '\\') {
+        result += char + next;
+        i += 2;
+      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
+        let tempIndex = i + 1;
+        let commandWord = '';
+        while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
+          commandWord += str[tempIndex];
+          tempIndex++;
+        }
+        
+        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
+        if (isLatex) {
+          result += '\\\\';
+          i++;
+        } else {
+          result += char + next;
+          i += 2;
+        }
+      } else if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6))) {
+        result += char + next + str.substring(i + 2, i + 6);
+        i += 6;
+      } else {
+        result += '\\\\';
+        i++;
+      }
+    } else {
+      result += char;
+      i++;
+    }
+  }
+  return result;
+}
+
+function parseLlmJson(text) {
+  if (!text) return null;
+  let cleaned = text.trim();
+  
+  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+  const match = cleaned.match(jsonBlockRegex);
+  if (match) {
+    cleaned = match[1].trim();
+  } else {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1).trim();
+    }
+  }
+
+  const escaped = escapeJsonBackslashes(cleaned);
+  return JSON.parse(escaped);
 }
