@@ -110,6 +110,9 @@ ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
 - 모범 답안: ${correctAnswer}
 - 사용자의 답안: ${userAnswer}
+
+🚨 **[경고 - sycophancy 방지 및 기호 모방 절대 금지]**: suggestedModelAnswer 작성 시 절대 사용자의 답안(userAnswer)에 작성된 임의 수식 기호나 표기법(예: kh', KH, b 등)을 그대로 복사하거나 동조하여 출력하지 마십시오!
+반드시 지반공학/토목공학 전공 서적에 나오는 공인된 표준 학술 기호(예: $k_h$, $k_{h0}$, $k_{v0}$, $B$ 등)를 포함한 완전하고 정교한 표준 공식을 작성해야 합니다.
 `;
 
   const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'grading');

@@ -4700,7 +4700,22 @@ export default function App() {
                 <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
                   <span className="text-slate-100 font-semibold inline">
-                    <LatexRenderer text={correctAnswer} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
+                    <LatexRenderer 
+                      text={
+                        (() => {
+                          const trimmed = (correctAnswer || '').trim();
+                          const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
+                          if (isPl && gradingResult?.suggestedModelAnswer) {
+                            return gradingResult.suggestedModelAnswer;
+                          }
+                          return correctAnswer;
+                        })()
+                      } 
+                      katexLoaded={katexLoaded} 
+                      isMarkdown={true} 
+                      highlightBold={true} 
+                      className="inline" 
+                    />
                   </span>
                 </div>
               </div>
@@ -12903,7 +12918,24 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        <LatexRenderer 
+                                          text={
+                                            (() => {
+                                              const ans = q.answer || q.concept || '';
+                                              const trimmed = ans.trim();
+                                              const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
+                                              const grading = tableGradingResults[`${idx}_INPUT`];
+                                              if (isPl && grading?.suggestedModelAnswer) {
+                                                return grading.suggestedModelAnswer;
+                                              }
+                                              return ans;
+                                            })()
+                                          } 
+                                          katexLoaded={katexLoaded} 
+                                          isMarkdown={true} 
+                                          highlightBold={true} 
+                                          enableAddFormula={true} 
+                                        />
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
@@ -14552,7 +14584,24 @@ export default function App() {
                                     <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.answer || q.concept || ''} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} enableAddFormula={true} />
+                                        <LatexRenderer 
+                                          text={
+                                            (() => {
+                                              const ans = q.answer || q.concept || '';
+                                              const trimmed = ans.trim();
+                                              const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
+                                              const grading = examTableGradingResults[`${idx}_INPUT`];
+                                              if (isPl && grading?.suggestedModelAnswer) {
+                                                return grading.suggestedModelAnswer;
+                                              }
+                                              return ans;
+                                            })()
+                                          } 
+                                          katexLoaded={katexLoaded} 
+                                          isMarkdown={true} 
+                                          highlightBold={true} 
+                                          enableAddFormula={true} 
+                                        />
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
