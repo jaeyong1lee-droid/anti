@@ -3673,7 +3673,7 @@ try {
           healedQuestions.map(async (q) => {
             const res = await validateAndHealQuestion(q, localCallLLM, topic.title, topic.keywords, fileText);
             reportValidationProgress(progressId, healedQuestions.length);
-            return res;
+            return healQuizQuestionObject(res);
           })
         );
 
@@ -4179,12 +4179,13 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
 
       return res.json({
-        question: validatedQ,
+        question: finalValidatedQ,
         isFallback: false
       });
 
@@ -4539,12 +4540,13 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
 
       return res.json({
-        question: validatedQ,
+        question: finalValidatedQ,
         isFallback: false
       });
     } else {
@@ -4790,12 +4792,13 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
+      const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
 
       return res.json({
-        question: validatedQ
+        question: finalValidatedQ
       });
 
     } else if (mode === 'exam') {
@@ -5025,12 +5028,13 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, activeTopicTitle, activeTopicKeywords, activeTopicFileText);
+      const finalValidatedQ = healQuizQuestionObject(validatedQ);
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
 
       return res.json({
-        question: validatedQ
+        question: finalValidatedQ
       });
     } else {
       return res.status(400).json({ error: '올바르지 않은 모드(mode)입니다.' });
@@ -5498,7 +5502,8 @@ ${ENGINEERING_STANDARDS}
         const title = matchedTopic ? matchedTopic.title : '';
         const keywords = matchedTopic ? matchedTopic.keywords : '';
         const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
-        return validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        const res = await validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        return healQuizQuestionObject(res);
       })
     );
     res.json({ questions: validatedFinalQuestions, total: validatedFinalQuestions.length, topicCount: topics.length });
@@ -5754,7 +5759,8 @@ ${ENGINEERING_STANDARDS}
         const title = matchedTopic ? matchedTopic.title : '';
         const keywords = matchedTopic ? matchedTopic.keywords : '';
         const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
-        return validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        const res = await validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        return healQuizQuestionObject(res);
       })
     );
 
@@ -6205,7 +6211,8 @@ ${ENGINEERING_STANDARDS}
 
     const healed = healQuizQuestionObject(parsed);
     const validated = await validateAndHealQuestion(healed, callLLMWithFailover, topicTitle, topicKeywords, fileText);
-    res.json(validated);
+    const finalValidated = healQuizQuestionObject(validated);
+    res.json(finalValidated);
   } catch (err) {
     console.error('generate-quiz-question error:', err);
     res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
