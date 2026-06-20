@@ -4,7 +4,7 @@ export function tokenizeForHealing(text) {
   const tokens = [];
   let lastIndex = 0;
   // Match table blocks or inline/display math blocks
-  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\ $\$)|(\$[^\$\n]{1,200}\$)/gs;
+  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
