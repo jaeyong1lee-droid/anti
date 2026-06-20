@@ -6423,6 +6423,33 @@ export default function App() {
         })
       }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
     }
+
+    // 3) Save general app state immediately to localStorage (synchronously)
+    try {
+      localStorage.setItem('anti_app_state', JSON.stringify({
+        viewMode,
+        selectedTopic,
+        aiQuestions,
+        revealedQuestions,
+        selectedAnswers,
+        openSections,
+        isFallback,
+        showExam,
+        examTopic,
+        examQuestions,
+        examRevealed,
+        examAnswers,
+        tableAnswers,
+        tableGradingResults,
+        examTableAnswers,
+        examTableGradingResults,
+        chatHistory,
+        tutorAnswers,
+        tutorInputText,
+      }));
+    } catch (e) {
+      console.warn('Unload anti_app_state localStorage save failed:', e);
+    }
   };
 
   // ── Auto-save active sessions when leaving/reloading the page (using ref to avoid re-registering listeners)

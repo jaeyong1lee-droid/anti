@@ -242,6 +242,15 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Restore collapsed newlines for variable list items
   processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
 
+  // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
+  // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
+  if (typeof processed === 'string') {
+    processed = processed.split('\n').map(line => {
+      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
+      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+    }).join('\n');
+  }
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
