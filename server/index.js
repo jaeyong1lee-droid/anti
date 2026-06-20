@@ -2152,6 +2152,16 @@ async function generateWeakPointRecommendation(queryDate) {
     return null;
   }
 
+  // 오늘의 복습 토픽 수(중복 제거)가 10개를 초과하는지 체크하여 보류 처리
+  const totalPendingTopics = await dbQuery.get(
+    `SELECT COUNT(DISTINCT topic_id) as count FROM schedules 
+     WHERE planned_date <= ? AND status = 'pending'`,
+    [queryDate]
+  );
+  if (totalPendingTopics.count > 10) {
+    return null;
+  }
+
   // 오늘의 복습 목록에 떠있는 약점복습토픽이 3개 이상이면 신규 추천하지 않음
   const activeWeaknessCount = await dbQuery.get(
     `SELECT COUNT(*) as count FROM schedules 
@@ -2238,6 +2248,15 @@ app.get('/api/dashboard/weak-points', async (req, res) => {
   const queryDate = req.query.date || getLocalDateString();
 
   try {
+    const totalPendingTopics = await dbQuery.get(
+      `SELECT COUNT(DISTINCT topic_id) as count FROM schedules 
+       WHERE planned_date <= ? AND status = 'pending'`,
+      [queryDate]
+    );
+    if (totalPendingTopics.count > 10) {
+      return res.json({ weakPoints: [], message: '오늘의 복습 토픽이 10개를 초과하여 약점 추천이 보류되었습니다.' });
+    }
+
     const activeWeaknessCount = await dbQuery.get(
       `SELECT COUNT(*) as count FROM schedules 
        WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
