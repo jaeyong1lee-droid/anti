@@ -3771,17 +3771,18 @@ ${otherQs.map((q, i) => {
       // targetType 결정
       let targetType = '객관식 (4지선다)';
       const currentType = currentQuestion?.type || '';
-      const isMC = currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0);
-      
-      if (isMC) {
-        // 객관식 -> 주관식(주관식 OR 칸채우기)으로 변경
-        const subjs = ['주관식 (개요)', '주관식 (공식)', '주관식 (표채우기)'];
-        targetType = subjs[Math.floor(Math.random() * subjs.length)];
-      } else if (currentType.includes('주관식')) {
-        // 주관식 -> 객관식으로 변경
+      if (currentType.includes('개요')) {
+        targetType = '주관식 (개요)';
+      } else if (currentType.includes('공식')) {
+        targetType = '주관식 (공식)';
+      } else if (currentType.includes('표채우기') || currentQuestion?.tableData) {
+        targetType = '주관식 (표채우기)';
+      } else if (currentType.includes('단답형') || currentType.includes('단답')) {
+        targetType = '주관식 (단답형)';
+      } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
         targetType = '객관식 (4지선다)';
       } else {
-        // fallback
+        // fallback based on index if we can't determine it
         if (questionIdx === 0) targetType = '주관식 (개요)';
         else if (questionIdx === 1) targetType = '주관식 (공식)';
         else targetType = '객관식 (4지선다)';
@@ -4044,17 +4045,38 @@ ${formatRequirement}
       let qType = '객관식';
       let qSubtype = '';
       
-      const isMC = currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0);
-      
-      if (isMC) {
+      if (currentType.includes('주관식')) {
         qType = '주관식';
-        const subtypes = ['개요', '공식', '서술', '표채우기', '단답형'];
-        qSubtype = subtypes[Math.floor(Math.random() * subtypes.length)];
-      } else {
+        if (currentSubtype.includes('개요')) {
+          qSubtype = '개요';
+        } else if (currentSubtype.includes('공식')) {
+          qSubtype = '공식';
+        } else if (currentSubtype.includes('서술')) {
+          qSubtype = '서술';
+        } else if (currentSubtype.includes('표채우기') || currentQuestion?.tableData) {
+          qSubtype = '표채우기';
+        } else if (currentSubtype.includes('단답') || currentSubtype.includes('단답형')) {
+          qSubtype = '단답형';
+        } else {
+          // fallback if subtype is unknown
+          qSubtype = '개요';
+        }
+      } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
         qType = '객관식';
         qSubtype = '';
+      } else {
+        // fallback based on features
+        if (currentQuestion?.tableData) {
+          qType = '주관식';
+          qSubtype = '표채우기';
+        } else if (currentQuestion?.options && currentQuestion.options.length > 0) {
+          qType = '객관식';
+          qSubtype = '';
+        } else {
+          qType = '주관식';
+          qSubtype = '개요';
+        }
       }
-
       if (!hasAnyAiKey) {
         // AI 키가 없는 경우 종합평가 예비 문항 fallback 선택
         const selectedTopic = topics[Math.floor(Math.random() * topics.length)];
@@ -4364,8 +4386,23 @@ app.post('/api/question/adjust', async (req, res) => {
 
       // targetType 결정
       let targetType = '객관식 (4지선다)';
-      if (questionIdx === 0) targetType = '주관식 (개요)';
-      else if (questionIdx === 1) targetType = '주관식 (공식)';
+      const currentType = currentQuestion?.type || '';
+      if (currentType.includes('개요')) {
+        targetType = '주관식 (개요)';
+      } else if (currentType.includes('공식')) {
+        targetType = '주관식 (공식)';
+      } else if (currentType.includes('표채우기') || currentQuestion?.tableData) {
+        targetType = '주관식 (표채우기)';
+      } else if (currentType.includes('단답형') || currentType.includes('단답')) {
+        targetType = '주관식 (단답형)';
+      } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
+        targetType = '객관식 (4지선다)';
+      } else {
+        // fallback based on index if we can't determine it
+        if (questionIdx === 0) targetType = '주관식 (개요)';
+        else if (questionIdx === 1) targetType = '주관식 (공식)';
+        else targetType = '객관식 (4지선다)';
+      }
 
       let typeRequirement = '';
       let formatRequirement = '';
