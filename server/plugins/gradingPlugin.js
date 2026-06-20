@@ -120,11 +120,41 @@ ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
   
   try {
     const result = robustJSONParse(text);
+
+    // Helper to search keys case-insensitively and ignore underscores
+    const findKey = (obj, targetStr) => {
+      const normalizedTarget = targetStr.toLowerCase().replace(/_/g, '');
+      const keys = Object.keys(obj);
+      for (const k of keys) {
+        const normalizedK = k.toLowerCase().replace(/_/g, '');
+        if (normalizedK === normalizedTarget || normalizedK.includes(normalizedTarget)) {
+          return obj[k];
+        }
+      }
+      return null;
+    };
+
+    const isCorrectVal = findKey(result, 'iscorrect');
+    const isCorrect = isCorrectVal !== null ? !!isCorrectVal : !!result.isCorrect;
+
+    const scoreVal = findKey(result, 'score');
+    const score = typeof scoreVal === 'number' 
+      ? scoreVal 
+      : (typeof result.score === 'number' ? result.score : (isCorrect ? 10 : 0));
+
+    const reason = findKey(result, 'reason') || result.reason || 'AI 채점 완료';
+
+    const suggestedModelAnswer = findKey(result, 'suggestedmodelanswer') || 
+                                 findKey(result, 'suggestedanswer') || 
+                                 findKey(result, 'modelanswer') || 
+                                 result.suggestedModelAnswer || 
+                                 null;
+
     return {
-      isCorrect: !!result.isCorrect,
-      score: typeof result.score === 'number' ? result.score : (result.isCorrect ? 10 : 0),
-      reason: result.reason || 'AI 채점 완료',
-      suggestedModelAnswer: result.suggestedModelAnswer || null
+      isCorrect,
+      score,
+      reason,
+      suggestedModelAnswer
     };
   } catch (parseErr) {
     console.error('All JSON parsing attempts failed in AI grading. Raw text:', text, parseErr);
