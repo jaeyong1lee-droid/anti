@@ -425,7 +425,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 5월 30일 업그레이드 완료된 다중 API 키 순환, 지수 백오프(Exponential Backoff), 3단계 모델 폴백 시스템
  * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
-async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default') {
+async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   const keys = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_SECONDARY,
@@ -487,7 +487,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
               body: JSON.stringify({
                 model: modelName,
                 messages: messages,
-                temperature: 0.2,
+                temperature: options.temperature !== undefined ? options.temperature : 0.2,
                 ...(scenario === 'grading' ? { response_format: { type: "json_object" } } : {})
               })
             });
@@ -560,7 +560,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
               body: JSON.stringify({
                 model: modelName,
                 messages: messages,
-                temperature: 0.2
+                temperature: options.temperature !== undefined ? options.temperature : 0.2
               })
             });
 
@@ -640,7 +640,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
               model: modelName,
               systemInstruction: systemInstruction || undefined,
               generationConfig: {
-                temperature: 0.2,
+                temperature: options.temperature !== undefined ? options.temperature : 0.2,
                 ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
               }
             });

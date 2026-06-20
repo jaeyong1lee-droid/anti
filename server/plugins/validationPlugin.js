@@ -55,7 +55,9 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
   }
 
   // ── [2단계] 수리/계산형 문항, 수식이 포함된 문항, 표가 포함된 문항에 대해 2차 AI 검증 및 자가 교정 수행 (LLM Self-Correction Loop)
-  const hasTable = question.tableData && question.tableData.headers && question.tableData.rows;
+  const hasTable = question.tableData && 
+                   Array.isArray(question.tableData.headers) && 
+                   Array.isArray(question.tableData.rows);
   const hasMath = (question.question && question.question.includes('$')) || 
                   (question.formula && question.formula.includes('$')) ||
                   (question.concept && question.concept.includes('$')) ||
@@ -93,11 +95,9 @@ export async function validateAndHealQuestion(question, callLLMWithFailover) {
 `;
       const userPrompt = `다음 문제 객체를 철저히 검수하고, 올바르게 수정한 최종 문제 JSON만 출력하십시오:\n${JSON.stringify(question)}`;
       
-      const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'question');
+      const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'question', { temperature: 0.0 });
       let text = responseText.trim();
-      if (text.startsWith('```')) {
-        text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-      }
+      text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
       
       const corrected = JSON.parse(text);
       if (corrected && typeof corrected === 'object' && corrected.question) {
