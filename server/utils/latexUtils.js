@@ -377,6 +377,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
     if (token.type === 'text') {
       let t = token.content;
+      t = t.replace(
+        /(?<!\$)([\d.]*\\[a-zA-Z]+[ _^{}\d\\a-zA-Z.=+<>/\-*()]*)\$(?!\$)/g,
+        '$$$1$$'
+      );
       // Remove greedy formulaPattern wrapper and only escape angle brackets for safety
       return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
     } else {
