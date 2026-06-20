@@ -13,6 +13,7 @@ import {
   CheckCircle, 
   Calendar, 
   List, 
+  Activity,
   FileText, 
   FileCode,
   Sparkles, 
@@ -4867,6 +4868,18 @@ export default function App() {
   const [showAiProgress, setShowAiProgress] = useState(false);
   const progressIntervalRef = useRef(null);
 
+  // AI History Tracking States
+  const [aiHistory, setAiHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_ai_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
+  const activeProgressIdRef = useRef(null);
+
   const startProgressPolling = (progressId) => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -4874,6 +4887,42 @@ export default function App() {
     setAiProgressMessage('준비 중...');
     setAiProgressPercent(0);
     setShowAiProgress(true);
+
+    activeProgressIdRef.current = progressId;
+
+    // Determine the task name from the ID prefix
+    const taskName = (() => {
+      if (progressId.startsWith('grade_')) return '주관식 표 채우기 채점';
+      if (progressId.startsWith('gen_')) return 'AI 복습 문제 생성';
+      if (progressId.startsWith('ref_')) return 'AI 복습 문제 리프레쉬';
+      if (progressId.startsWith('exp_')) return 'AI 보기 상세해설 생성';
+      if (progressId.startsWith('hint_')) return 'AI 풀이 힌트 생성';
+      if (progressId.startsWith('tutor_')) return 'AI 튜터 질의응답';
+      if (progressId.startsWith('guide_')) return 'AI 맞춤형 학습 가이드 생성';
+      if (progressId.startsWith('exam_gen_')) return 'AI 종합평가 문제 생성';
+      if (progressId.startsWith('exam_ref_')) return 'AI 종합평가 문제 리프레쉬';
+      if (progressId.startsWith('recreate_')) return 'AI 개별 문항 재출제';
+      return 'AI 분석 작업';
+    })();
+
+    const newRecord = {
+      id: progressId,
+      taskName,
+      topicTitle: selectedTopic ? selectedTopic.title : '지반공학 종합평가',
+      startTime: new Date().toISOString(),
+      endTime: null,
+      status: 'running',
+      modelName: 'gemini-3.5-flash', // Default model
+      percent: 0,
+      timeline: ['준비 중...'],
+      validationLogs: []
+    };
+
+    setAiHistory(prev => {
+      const updated = [newRecord, ...prev].slice(0, 50);
+      localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+      return updated;
+    });
 
     progressIntervalRef.current = setInterval(async () => {
       try {
@@ -4883,6 +4932,41 @@ export default function App() {
           if (data && data.message) {
             setAiProgressMessage(data.message);
             setAiProgressPercent(data.percentage || 0);
+
+            // Update history progress & timeline
+            setAiHistory(prev => {
+              const updated = prev.map(item => {
+                if (item.id === progressId) {
+                  const timeline = [...item.timeline];
+                  if (timeline[timeline.length - 1] !== data.message) {
+                    timeline.push(data.message);
+                  }
+
+                  // Infer engine model name from message text
+                  let modelName = item.modelName;
+                  const match = data.message.match(/([a-zA-Z0-9.-]+\s*엔진|[a-zA-Z0-9.-]+\s*Model|GEMINI-[a-zA-Z0-9.-]+|GROK-[a-zA-Z0-9.-]+|GPT-[a-zA-Z0-9.-]+)/i);
+                  if (match) {
+                    modelName = match[1].replace(/\s*엔진/i, '').trim().toLowerCase();
+                  } else if (data.message.toLowerCase().includes('gemini-3.5-flash')) {
+                    modelName = 'gemini-3.5-flash';
+                  } else if (data.message.toLowerCase().includes('gemini-3.1-flash-lite')) {
+                    modelName = 'gemini-3.1-flash-lite';
+                  } else if (data.message.toLowerCase().includes('gemini-2.5-flash')) {
+                    modelName = 'gemini-2.5-flash';
+                  }
+
+                  return {
+                    ...item,
+                    percent: data.percentage || 0,
+                    timeline,
+                    modelName
+                  };
+                }
+                return item;
+              });
+              localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+              return updated;
+            });
           }
         }
       } catch (err) {
@@ -4891,7 +4975,7 @@ export default function App() {
     }, 600);
   };
 
-  const stopProgressPolling = (finalMessage = null, finalPercent = 100) => {
+  const stopProgressPolling = (finalMessage = null, finalPercent = 100, isSuccess = true, data = null) => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -4904,6 +4988,65 @@ export default function App() {
       }, 1500);
     } else {
       setShowAiProgress(false);
+    }
+
+    const finishedId = activeProgressIdRef.current;
+    if (finishedId) {
+      setAiHistory(prev => {
+        const updated = prev.map(item => {
+          if (item.id === finishedId) {
+            const timeline = [...item.timeline];
+            const displayMsg = finalMessage || (isSuccess ? '작업이 성공적으로 종료되었습니다.' : '작업 수행 실패');
+            if (timeline[timeline.length - 1] !== displayMsg) {
+              timeline.push(displayMsg);
+            }
+
+            // Extract model name from questions data if possible
+            let modelName = item.modelName;
+            if (data) {
+              if (data.modelName) {
+                modelName = data.modelName;
+              } else if (data.questions && data.questions.some(q => q.modelName)) {
+                modelName = data.questions.find(q => q.modelName).modelName;
+              } else if (data.question && data.question.modelName) {
+                modelName = data.question.modelName;
+              }
+            }
+
+            // Extract validation/healing logs from questions data
+            let validationLogs = [];
+            if (data) {
+              if (Array.isArray(data.questions)) {
+                data.questions.forEach((q, idx) => {
+                  if (Array.isArray(q.validationLogs)) {
+                    q.validationLogs.forEach(log => {
+                      validationLogs.push(`[${idx + 1}번 문제] ${log}`);
+                    });
+                  }
+                });
+              } else if (data.question && Array.isArray(data.question.validationLogs)) {
+                data.question.validationLogs.forEach(log => {
+                  validationLogs.push(`[문제] ${log}`);
+                });
+              }
+            }
+
+            return {
+              ...item,
+              endTime: new Date().toISOString(),
+              status: isSuccess ? 'success' : 'failed',
+              percent: finalPercent,
+              timeline,
+              modelName,
+              validationLogs: validationLogs.length > 0 ? validationLogs : item.validationLogs
+            };
+          }
+          return item;
+        });
+        localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+        return updated;
+      });
+      activeProgressIdRef.current = null;
     }
   };
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
@@ -7367,7 +7510,7 @@ export default function App() {
       }
 
       if (res.ok) {
-        stopProgressPolling('성공적으로 예상 문제를 생성했습니다!', 100);
+        stopProgressPolling('성공적으로 예상 문제를 생성했습니다!', 100, true, data);
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
@@ -7807,7 +7950,7 @@ export default function App() {
       }
 
       if (res.ok) {
-        stopProgressPolling('성공적으로 예상 문제를 재생성했습니다!', 100);
+        stopProgressPolling('성공적으로 예상 문제를 재생성했습니다!', 100, true, data);
         const newQuestions = data.questions || [];
         setAiQuestions(newQuestions);
         setIsFallback(!!data.isFallback);
@@ -12290,12 +12433,12 @@ export default function App() {
 
               {selectedTopic && (
                 <button
-                  onClick={handleRetakeReviewQuiz}
-                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border-amber-500/40 transition-all cursor-pointer active:scale-95"
-                  title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                  onClick={() => setShowAiHistoryModal(true)}
+                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slate-900/85 hover:bg-slate-850 text-slate-300 hover:text-white border-slate-700/40 transition-all cursor-pointer active:scale-95"
+                  title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                 >
-                  <RefreshCw size={12} className="text-amber-400" />
-                  <span>다시풀기</span>
+                  <Clock size={12} className="text-violet-400" />
+                  <span>AI이력</span>
                 </button>
               )}
 
@@ -12387,12 +12530,12 @@ export default function App() {
               )}
               {selectedTopic && (
                 <button
-                  onClick={handleRetakeReviewQuiz}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
-                  title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                  onClick={() => setShowAiHistoryModal(true)}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
+                  title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                 >
-                  <RefreshCw size={12} className="text-amber-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap">다시풀기</span>
+                  <Clock size={12} className="text-violet-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">AI이력</span>
                 </button>
               )}
               {selectedTopic && (
@@ -13355,12 +13498,12 @@ export default function App() {
                           </button>
                         )}
                         <button
-                          onClick={handleRetakeReviewQuiz}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                          onClick={() => setShowAiHistoryModal(true)}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slate-900/80 hover:bg-slate-850 text-slate-350 hover:text-white border border-slate-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                         >
-                          <RefreshCw size={10} className="text-amber-400 flex-shrink-0" />
-                          <span>다시풀기</span>
+                          <Clock size={10} className="text-violet-400 flex-shrink-0" />
+                          <span>AI이력</span>
                         </button>
                         <button
                           onClick={handleRefreshReviewQuestions}
@@ -13841,6 +13984,167 @@ export default function App() {
               </button>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* AI 작업이력 팝업 모달 */}
+      {showAiHistoryModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300 animate-fadeIn" onClick={() => setShowAiHistoryModal(false)}>
+          <div className="relative w-full max-w-4xl max-h-[85vh] flex flex-col bg-slate-900/90 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+            
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/45">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-violet-500/10 border border-violet-500/30 rounded-xl text-violet-400">
+                  <Activity size={20} className="animate-pulse" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black tracking-tight text-white">AI 작업 이력 및 검수 로그</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">시스템이 실행한 실시간 AI 호출 상태와 자가검증(Self-Healing) 교정 이력을 모니터링합니다.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAiHistoryModal(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* 본문 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[300px] text-left">
+              {aiHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-500 space-y-3">
+                  <span className="text-4xl">📭</span>
+                  <p className="text-sm font-medium">기록된 AI 작업 이력이 없습니다.</p>
+                </div>
+              ) : (
+                aiHistory.map((item) => {
+                  const isRunning = item.status === 'running';
+                  const isSuccess = item.status === 'success';
+                  
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={`group border rounded-xl overflow-hidden transition-all duration-200 ${
+                        isRunning ? 'bg-amber-950/10 border-amber-500/30 shadow-lg shadow-amber-500/5' :
+                        isSuccess ? 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700/80' :
+                        'bg-rose-950/10 border-rose-500/20'
+                      }`}
+                    >
+                      {/* 카드 상단 헤더 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-2 bg-slate-950/20 border-b border-slate-800/40">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          {/* 작업 구분 배지 */}
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35 animate-pulse' :
+                            isSuccess ? 'bg-violet-500/20 text-violet-300 border border-violet-500/20' :
+                            'bg-rose-500/20 text-rose-300 border border-rose-500/20'
+                          }`}>
+                            {item.taskName}
+                          </span>
+                          
+                          <h4 className="text-sm font-bold text-white tracking-tight">{item.topicTitle}</h4>
+                          
+                          {/* 모델명 */}
+                          <span className="text-[10px] font-medium font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                            {item.modelName || 'gemini-3.5-flash'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                          {/* 실행 시간 */}
+                          <span>
+                            {new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                          
+                          {/* 상태 표시 */}
+                          <span className={`flex items-center gap-1 font-bold ${
+                            isRunning ? 'text-amber-400' :
+                            isSuccess ? 'text-emerald-400' :
+                            'text-rose-400'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              isRunning ? 'bg-amber-400 animate-ping' :
+                              isSuccess ? 'bg-emerald-400' :
+                              'bg-rose-400'
+                            }`} />
+                            {isRunning ? `실행 중 (${item.percent}%)` : isSuccess ? '완료' : '오류'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* 카드 바디 (로그 전개 영역) */}
+                      <div className="p-4 space-y-4 text-xs">
+                        
+                        {/* 실시간 진행 로그 */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5 text-slate-400 font-bold">
+                            <span>진행 타임라인 로그 ({item.timeline.length})</span>
+                          </div>
+                          <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 font-mono text-[11px] leading-relaxed text-slate-350 space-y-1 max-h-[160px] overflow-y-auto">
+                            {item.timeline.map((line, idx) => (
+                              <div key={idx} className="flex gap-2">
+                                <span className="text-slate-500 select-none">[{idx + 1}]</span>
+                                <span className={idx === item.timeline.length - 1 && isRunning ? 'text-amber-300' : ''}>
+                                  {line}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 자가 검증 및 교정 로그 (Self-Healing) */}
+                        {item.validationLogs && item.validationLogs.length > 0 && (
+                          <div className="mt-3">
+                            <div className="flex items-center gap-1 mb-1.5 text-emerald-400 font-bold">
+                              <span>🛠️ AI 실시간 자가 검증 및 교정(Self-Healing) 보고서</span>
+                            </div>
+                            <div className="bg-emerald-950/10 border border-emerald-500/25 rounded-lg p-3 space-y-1.5 max-h-[160px] overflow-y-auto">
+                              {item.validationLogs.map((log, idx) => {
+                                const isRepair = log.includes('보정') || log.includes('재작성') || log.includes('교정');
+                                return (
+                                  <div key={idx} className="flex gap-2 text-[11px] items-start">
+                                    <span className="text-emerald-500 select-none mt-0.5">✔</span>
+                                    <span className={isRepair ? 'text-amber-300 font-medium' : 'text-slate-300'}>
+                                      {log}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 푸터 */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-950/45">
+              <button
+                onClick={() => {
+                  if (window.confirm('모든 AI 작업 이력을 삭제하시겠습니까?')) {
+                    setAiHistory([]);
+                    localStorage.removeItem('anti_ai_history');
+                  }
+                }}
+                className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+              >
+                이력 전체 삭제
+              </button>
+              <button
+                onClick={() => setShowAiHistoryModal(false)}
+                className="px-5 py-1.5 text-xs font-black bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all cursor-pointer active:scale-95"
+              >
+                닫기
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -15393,12 +15697,12 @@ export default function App() {
                           </button>
                         )}
                         <button
-                          onClick={handleRetakeReviewQuiz}
-                          className="px-3 py-2 text-xs font-black rounded-xl bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
-                          title="현재 복습 화면의 모든 문제 풀이 상태를 풀기 전 상태로 초기화합니다."
+                          onClick={() => setShowAiHistoryModal(true)}
+                          className="px-3 py-2 text-xs font-black rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                          title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                         >
-                          <RefreshCw size={12} className="text-amber-400 flex-shrink-0" />
-                          <span>다시풀기</span>
+                          <Clock size={12} className="text-violet-400 flex-shrink-0" />
+                          <span>AI이력</span>
                         </button>
                         <button
                           onClick={handleRefreshReviewQuestions}

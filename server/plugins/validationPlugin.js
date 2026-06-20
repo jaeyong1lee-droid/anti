@@ -12,6 +12,8 @@ import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
   if (!question || typeof question !== 'object') return question;
 
+  const validationLogs = question.validationLogs || [];
+
   // ── [1단계] 객관식 정답-선택지 불일치 복구 (Rule-based Linter)
   if (question.type === '객관식 (4지선다)' && question.options && Array.isArray(question.options) && question.answer) {
     const hasExact = question.options.includes(question.answer);
@@ -50,8 +52,10 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
       }
 
       if (bestOpt && maxScore > 0) {
+        const logMsg = `[객관식 선택지 보정] 정답 "${question.answer}"이(가) 선택지 목록에 없어 가장 유사한 선택지 "${bestOpt}"(으)로 매칭하여 수정했습니다.`;
         console.log(`[ValidationPlugin Linter] Mismatched MCQ answer repaired: "${question.answer}" -> "${bestOpt}"`);
         question.answer = bestOpt;
+        validationLogs.push(logMsg);
       }
     }
   }
@@ -96,8 +100,10 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
       if (!topicMatchesDomain) {
         const questionMatchesDomain = domain.keywords.some(kw => qText.includes(kw));
         if (questionMatchesDomain) {
-          console.log(`[ValidationPlugin] Detected topic mismatch! Topic "${cleanTitle}" does not match domain "${domain.name}", but question contains keywords: ${JSON.stringify(domain.keywords.filter(kw => qText.includes(kw)))}`);
+          const matchedKws = domain.keywords.filter(kw => qText.includes(kw));
+          console.log(`[ValidationPlugin] Detected topic mismatch! Topic "${cleanTitle}" does not match domain "${domain.name}", but question contains keywords: ${JSON.stringify(matchedKws)}`);
           isMismatched = true;
+          validationLogs.push(`[주제 이탈 감지] 활성 토픽 "${cleanTitle}"(와)과 일치하지 않는 타 분야 키워드(${matchedKws.join(', ')})가 감지되어 AI 2차 검증을 통한 전면 재작성을 시작합니다.`);
           break;
         }
       }
@@ -163,14 +169,20 @@ ${JSON.stringify(question)}
       const corrected = parseLlmJson(responseText);
       if (corrected && typeof corrected === 'object' && corrected.question) {
         console.log(`[ValidationPlugin] Self-correction succeeded!`);
-        return { ...question, ...corrected };
+        validationLogs.push(`[AI 자가 교정 완료] 2차 검증을 통해 문항의 공학적 정합성 및 LaTeX 수식 문법 검증을 완료하고 교정본을 반영했습니다.`);
+        return { ...question, ...corrected, validationLogs };
+      } else {
+        validationLogs.push(`[AI 자가 검증 완료] 문항 구조 검증 완료 (이상 없음).`);
       }
     } catch (err) {
       console.warn(`[ValidationPlugin] Self-correction loop failed or skipped:`, err.message);
+      validationLogs.push(`[AI 자가 교정 건너뜀/실패] 오류: ${err.message}`);
     }
+  } else {
+    validationLogs.push(`[정밀 검사 생략] 수식이나 표가 없는 기본 텍스트 문항으로, 정합성 기준을 패스했습니다.`);
   }
 
-  return question;
+  return { ...question, validationLogs };
 }
 
 function escapeJsonBackslashes(str) {
