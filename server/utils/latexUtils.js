@@ -372,7 +372,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // [Self-Healing] 정상 수식을 우회하여 누락된 여는 달러($) 기호 복구 (달러 오프셋 붕괴 방지)
   processed = processed.replace(
-    /(\$\$.*?\$\$|\$[^\$\n]{1,200}\$)|(?<!\$)([\d.]*\\[a-zA-Z]+[ _^{}\d\\a-zA-Z.=+<>/\-*()]*)\$(?!\$)/gs,
+    /(\$\$.*?\$\$|\$[^\$\n]{1,200}\$)|(?<!\$)([\(\[+-\d.]*\\[a-zA-Z]+[ _^{}\d\\a-zA-Z.=+<>/\-*()]*)\$(?!\$)/gs,
     (match, validMath, brokenMath) => {
       if (validMath) return validMath;
       return `$${brokenMath}$`;
