@@ -6711,6 +6711,49 @@ export default function App() {
   // AI 복습 완료 버튼 클릭 시 처리
   const handleQuizCompleteClick = async () => {
     if (!selectedTopic) return;
+
+    // Check for unsolved questions
+    let unsolvedCount = 0;
+    aiQuestions.forEach((q, idx) => {
+      const isMC = q.options && q.options.length > 0;
+      if (isMC) {
+        if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
+          unsolvedCount++;
+        }
+      } else if (q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        let hasEmpty = false;
+        inputIds.forEach(inputId => {
+          const val = tableAnswers[`${idx}_${inputId}`];
+          if (val === undefined || val === null || String(val).trim() === '') {
+            hasEmpty = true;
+          }
+        });
+        if (hasEmpty) {
+          unsolvedCount++;
+        }
+      } else {
+        const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
+        if (isEssay) {
+          if (!revealedQuestions[idx]) {
+            unsolvedCount++;
+          }
+        } else {
+          // Regular subjective
+          const val = tableAnswers[`${idx}_INPUT`];
+          if (val === undefined || val === null || String(val).trim() === '') {
+            unsolvedCount++;
+          }
+        }
+      }
+    });
+
+    if (unsolvedCount > 0) {
+      const confirmComplete = window.confirm("풀지 않은 문제가 있습니다. 완료할까요?");
+      if (!confirmComplete) {
+        return;
+      }
+    }
     
     let sId = selectedTopic.schedule_id;
     let sRound = selectedTopic.review_round;
