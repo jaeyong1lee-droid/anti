@@ -4665,7 +4665,7 @@ export default function App() {
               <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
                 {(rowHeader || colHeader) && (
                   <div className="text-[14px] sm:text-[16px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
-                    <span className="text-slate-500 font-bold text-[14px] sm:text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
+                    <span className="text-slate-100 font-bold text-[14px] sm:text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
                     {rowHeader && (
                       <span className="text-slate-300 font-semibold">
                         <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
@@ -4681,7 +4681,7 @@ export default function App() {
                 )}
                 <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
                   <div className="flex items-center gap-1.5">
-                    <span className={theme.text}>({inputLetter})</span>
+                    {!(rowHeader || colHeader) && <span className={theme.text}>({inputLetter})</span>}
                     <span className={`font-bold ${theme.text}`}>내 답변:</span>
                     <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
                   </div>
