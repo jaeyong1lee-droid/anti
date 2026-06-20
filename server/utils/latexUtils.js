@@ -221,10 +221,10 @@ const MATH_COMMANDS = [
 
 // Regex matching math formulas containing at least one whitelisted command
 const formulaRegex = new RegExp(
-  `(?:\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,]+)?` +
+  `(?:\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,·]+)?` +
   `\\\\(?:${MATH_COMMANDS.join('|')})` +
   `(?![a-zA-Z])` +
-  `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\]*`,
+  `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\·]*`,
   'g'
 );
 
@@ -242,10 +242,78 @@ const simpleVariableRegex = new RegExp(
   'g'
 );
 
+function replaceRoots(str) {
+  let processed = str;
+  processed = processed.replace(/√(?!\()/g, '\\sqrt ');
+
+  let regex = /(?:([0-9]+)(?:_|계)?)?(?:루트|√)\(/;
+  let match;
+  
+  while ((match = processed.match(regex)) !== null) {
+    const index = match.index;
+    const matchLength = match[0].length;
+    const rootNum = match[1] || '';
+    
+    let depth = 1;
+    let scanIdx = index + matchLength;
+    while (scanIdx < processed.length && depth > 0) {
+      if (processed[scanIdx] === '(') depth++;
+      else if (processed[scanIdx] === ')') depth--;
+      scanIdx++;
+    }
+    
+    if (depth === 0) {
+      const content = processed.substring(index + matchLength, scanIdx - 1);
+      const replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
+      processed = processed.substring(0, index) + replacement + processed.substring(scanIdx);
+    } else {
+      break;
+    }
+  }
+  return processed;
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
   let processed = text;
+
+  // Replace Greek unicode letters and standalone words with LaTeX commands
+  processed = processed.replace(/β/g, '\\beta')
+                       .replace(/α/g, '\\alpha')
+                       .replace(/γ/g, '\\gamma')
+                       .replace(/σ/g, '\\sigma')
+                       .replace(/τ/g, '\\tau')
+                       .replace(/φ/g, '\\phi')
+                       .replace(/θ/g, '\\theta')
+                       .replace(/μ/g, '\\mu')
+                       .replace(/λ/g, '\\lambda')
+                       .replace(/η/g, '\\eta')
+                       .replace(/ν/g, '\\nu')
+                       .replace(/π/g, '\\pi')
+                       .replace(/δ/g, '\\delta')
+                       .replace(/ω/g, '\\omega')
+                       .replace(/ε/g, '\\epsilon')
+                       .replace(/ψ/g, '\\psi')
+                       .replace(/ρ/g, '\\rho')
+                       .replace(/ξ/g, '\\xi')
+                       .replace(/ζ/g, '\\zeta')
+                       .replace(/χ/g, '\\chi')
+                       .replace(/υ/g, '\\upsilon')
+                       .replace(/κ/g, '\\kappa')
+                       .replace(/Δ/g, '\\Delta')
+                       .replace(/Σ/g, '\\Sigma')
+                       .replace(/Gamma/g, '\\Gamma')
+                       .replace(/Phi/g, '\\Phi')
+                       .replace(/Theta/g, '\\Theta')
+                       .replace(/Omega/g, '\\Omega');
+
+  // Convert English names of Greek letters if written as standalone words (case-insensitive)
+  processed = processed.replace(/(?<!\\)\b(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa)\b/g, '\\$1');
+  processed = processed.replace(/(?<!\\)\b(Delta|Sigma|Gamma|Phi|Theta|Omega)\b/g, '\\$1');
+
+  // Parse root patterns
+  processed = replaceRoots(processed);
 
   // [🚨 극단적 비상 복구 필터 🚨]
   // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
