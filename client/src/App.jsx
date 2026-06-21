@@ -7411,7 +7411,9 @@ export default function App() {
       const data = await res.json();
 
       if (res.ok) {
-        if (selectedTopic.isBonus) {
+        if (selectedTopic.isPractice) {
+          showNotification(`[${selectedTopic.title}] 연습 복습이 완료되어 성적이 ${scoreMC}점으로 업데이트되었습니다!`, 'success');
+        } else if (selectedTopic.isBonus) {
           // 약점 보완 추천은 즉시 클라이언트 숨김 처리
           setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
           showNotification(`[${selectedTopic.title}] 약점극복 복습이 완료되어 성적이 ${scoreMC}점으로 업데이트되었습니다!`, 'success');
@@ -7424,7 +7426,9 @@ export default function App() {
         fetchAllTopics();
       } else {
         // 백엔드 점수 업데이트 실패 시에도 약점보완 강제완료 처리 지원 (UX 복원용)
-        if (selectedTopic.isBonus) {
+        if (selectedTopic.isPractice) {
+          showNotification(`[${selectedTopic.title}] 연습 복습 완료 처리가 완료되었습니다!`);
+        } else if (selectedTopic.isBonus) {
           setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
           showNotification(`[${selectedTopic.title}] 약점극복 복습 완료 처리가 완료되었습니다!`);
         } else {
@@ -7433,7 +7437,9 @@ export default function App() {
       }
     } catch (err) {
       console.error('Quiz submit error:', err);
-      if (selectedTopic.isBonus) {
+      if (selectedTopic.isPractice) {
+        showNotification(`[${selectedTopic.title}] 연습 복습 완료 처리가 완료되었습니다!`);
+      } else if (selectedTopic.isBonus) {
         setHiddenBonusTopicIds(prev => [...prev, selectedTopic.id]);
         showNotification(`[${selectedTopic.title}] 약점극복 복습 완료 처리가 완료되었습니다!`);
       } else {
@@ -7751,11 +7757,25 @@ export default function App() {
     }
   };
 
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false) => {
+  const handleStartPracticeReview = (topic) => {
+    handleOpenAIQuestions(
+      topic.id,
+      topic.title,
+      topic.keywords || '',
+      topic.pdf_name || '',
+      'ai',
+      null,
+      99,
+      true, // isBonus = true (registers under round 99 without advancing normal rounds)
+      true  // isPractice = true (practice mode, does not hide)
+    );
+  };
+
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false) => {
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
-    if (!finalScheduleId) {
+    if (!isPractice && !finalScheduleId) {
       const topicObj = allTopics.find(t => t.id === topicId);
       if (topicObj && topicObj.schedules) {
         const pendingSched = topicObj.schedules.find(s => s.status === 'pending');
@@ -7791,7 +7811,7 @@ export default function App() {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && selectedTopic?.schedule_id === finalScheduleId) {
       console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
-      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, category: topicCategory };
+      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
       setSelectedTopic(targetTopic);
       selectedTopicRef.current = targetTopic;
       // 이전 스크롤 위치 복원
@@ -7800,7 +7820,7 @@ export default function App() {
       });
       return;
     }
-    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, category: topicCategory };
+    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
     setLoadingAI(true);
@@ -12720,6 +12740,17 @@ export default function App() {
                             {/* Column 8: 작업/도구 */}
                             <td className="py-2.5 px-2 text-center">
                               <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartPracticeReview(topic);
+                                  }}
+                                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 text-[10px] font-black"
+                                  title="복습하기 (이 토픽을 연습 복습합니다. 복습 계획이나 회차에는 영향을 주지 않습니다)"
+                                >
+                                  <BookOpen size={13} className="text-violet-400" />
+                                  <span>복습하기</span>
+                                </button>
                                 {topic.pdf_name && (
                                   <button
                                     onClick={(e) => {
