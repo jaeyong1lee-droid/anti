@@ -2146,11 +2146,35 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
           <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
             <span>🖼️ 첨부된 문제 그래프/그림</span>
           </div>
-          <img 
-            src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
-            alt="Topic Screenshot" 
-            className="max-w-full h-auto rounded-xl border border-slate-800 shadow-lg"
-          />
+          <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-white shadow-inner min-h-[180px]">
+            <iframe 
+              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+              className="w-full border-0 block"
+              style={{ minHeight: '350px', height: '350px', backgroundColor: '#ffffff' }}
+              sandbox="allow-scripts allow-same-origin"
+              onLoad={(e) => {
+                const iframe = e.target;
+                try {
+                  const doc = iframe.contentWindow?.document;
+                  if (doc && doc.body) {
+                    setTimeout(() => {
+                      const height = Math.max(
+                        doc.body.scrollHeight,
+                        doc.documentElement.scrollHeight,
+                        doc.body.offsetHeight,
+                        doc.documentElement.offsetHeight
+                      );
+                      if (height > 50) {
+                        iframe.style.height = (height + 25) + 'px';
+                      }
+                    }, 400);
+                  }
+                } catch (err) {
+                  console.warn("Iframe load dynamic resize failed:", err);
+                }
+              }}
+            />
+          </div>
         </div>
       );
     }
