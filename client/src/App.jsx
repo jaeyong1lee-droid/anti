@@ -7102,11 +7102,22 @@ export default function App() {
   useEffect(() => {
     const isCalculation = selectedTopic?.category === '계산' || (showExam && examTopic?.category === '계산');
     if ((isCalculation || (showFullReport && reportViewType === 'image')) && !pdfjsLoaded) {
+      if (window.pdfjsLib) {
+        setPdfjsLoaded(true);
+        return;
+      }
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
       script.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        setPdfjsLoaded(true);
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+          setPdfjsLoaded(true);
+        } else {
+          console.warn('PDF.js script loaded but window.pdfjsLib is not defined.');
+        }
+      };
+      script.onerror = (err) => {
+        console.error('Failed to load PDF.js script:', err);
       };
       document.head.appendChild(script);
     }
