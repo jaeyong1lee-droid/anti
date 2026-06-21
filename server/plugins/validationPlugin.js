@@ -144,6 +144,7 @@ ${typeSpecificInstruction}
      * 예시 오류: 지문은 구체적인 수치 계산(심도 z=500m, Pb=14MPa 등)을 묻고 있으나, 표의 행 제목은 "공학적 의미", "안정성 평가 활용"과 같은 개념 서술형 내용을 요구하며, 정답/해설은 수치 계산이 아닌 일반 문장 답안을 갖는 경우. 이는 지문(계산형)과 표(개념형)가 완전히 따로 노는 치명적인 출제 오류입니다.
      * 이 경우, 지문(Question text)에 기재된 쓸데없는 가설 계산 상황(수치 정보)을 모두 제거하고, 오직 표의 행/열 제목이 묻는 개념적 내용에 부합하도록 지문 자체를 표 채우기에 걸맞은 개념 설명/비교 지시형 문장(예: "다음 수압파쇄시험의 최대/최소 수평응력 기준 측압계수 비교표를 보고 빈칸에 알맞은 내용을 기술하십시오.")으로 완전하게 **교정(Heal)**하십시오.
      * 즉, 지문과 표 내용의 성격이 하나로 통일되도록(수치 계산 상황이 있으면 표도 수치 계산을 요구하도록, 개념 비교 상황이면 지문도 개념을 묻도록) 정합성을 강력하게 수정하십시오.
+     * **표채우기 지문-빈칸 일치화 지침**: 만약 지문에서 어떤 부가적인 서술이나 설명, 의미 등을 기술하라고 지시하고 있으나, 실제 표의 빈칸([INPUT_1], [INPUT_2] 등)이 가리키는 곳이 수치 계산 입력칸이거나 짧은 단답만 받는 칸이라면, 지문에서 '의미를 기술하라', '특성을 논하라' 등의 불가능한 지시문구를 반드시 삭제하여 지문을 깔끔하게 정돈해야 합니다.
 5. **객관식 선택지 일치화**:
    - 객관식 문제의 경우, 'options' 배열 내에 정답('answer') 문자열과 토씨 하나 틀리지 않고 완벽하게 일치하는 항목이 반드시 포함되도록 정답 필드를 보정하십시오.
 6. **질문의 명확성 및 조건 완결성 검증**:
@@ -279,6 +280,16 @@ export function getSimilarity(str1, str2) {
   const s2 = clean(str2);
   if (s1 === s2) return 1.0;
   
+  // Containment check
+  if (s1.includes(s2) && s2.length > 0) {
+    const ratio = s2.length / s1.length;
+    if (ratio >= 0.7) return 0.9;
+  }
+  if (s2.includes(s1) && s1.length > 0) {
+    const ratio = s1.length / s2.length;
+    if (ratio >= 0.7) return 0.9;
+  }
+  
   const words1 = new Set(str1.toLowerCase().split(/[^a-zA-Z0-9가-힣]+/));
   const words2 = new Set(str2.toLowerCase().split(/[^a-zA-Z0-9가-힣]+/));
   words1.delete('');
@@ -292,15 +303,35 @@ export function getSimilarity(str1, str2) {
 export function areTablesDuplicate(t1, t2) {
   if (!t1 || !t2) return false;
   if (!t1.headers || !t2.headers || !t1.rows || !t2.rows) return false;
-  if (t1.headers.length !== t2.headers.length || t1.rows.length !== t2.rows.length) return false;
+
+  const cleanHeader = (h) => (h || '').trim().toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+  const headers1 = t1.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목');
+  const headers2 = t2.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목');
   
-  const h1 = t1.headers.join('|');
-  const h2 = t2.headers.join('|');
-  if (h1 !== h2) return false;
+  const commonHeaders = headers1.filter(h => headers2.includes(h));
+  if (commonHeaders.length >= 3) {
+    return true;
+  }
+
+  const rows1 = t1.rows.map(r => cleanHeader(r[0])).filter(Boolean);
+  const rows2 = t2.rows.map(r => cleanHeader(r[0])).filter(Boolean);
   
-  const r1 = t1.rows.map(r => r.join('|')).join('\n');
-  const r2 = t2.rows.map(r => r.join('|')).join('\n');
-  return r1 === r2;
+  const commonRows = rows1.filter(r => rows2.includes(r));
+  if (commonRows.length >= 2) {
+    return true;
+  }
+
+  if (t1.headers.length === t2.headers.length && t1.rows.length === t2.rows.length) {
+    const h1 = t1.headers.join('|');
+    const h2 = t2.headers.join('|');
+    if (h1 === h2) {
+      const r1 = t1.rows.map(r => r.join('|')).join('\n');
+      const r2 = t2.rows.map(r => r.join('|')).join('\n');
+      if (r1 === r2) return true;
+    }
+  }
+
+  return false;
 }
 
 export function deduplicateQuestions(questions, topic, fileText, getFallbackQuestions) {
@@ -339,6 +370,13 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
             isDuplicate = true;
             break;
           }
+        if (q.answer && accepted.answer && typeof q.answer === 'string' && typeof accepted.answer === 'string') {
+          const ansSim = getSimilarity(q.answer, accepted.answer);
+          if (ansSim > 0.7) {
+            isDuplicate = true;
+            break;
+          }
+        }
         }
       }
     }
@@ -363,6 +401,13 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
             candidateIsDup = true;
             break;
           }
+              if (candidate.answer && accepted.answer && typeof candidate.answer === 'string' && typeof accepted.answer === 'string') {
+                const ansSim = getSimilarity(candidate.answer, accepted.answer);
+                if (ansSim > 0.7) {
+                  candidateIsDup = true;
+                  break;
+                }
+              }
         }
         if (!candidateIsDup) {
           replacement = candidate;
