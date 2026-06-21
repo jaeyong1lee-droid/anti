@@ -6749,6 +6749,33 @@ export default function App() {
     }
   }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
+  // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
+  useEffect(() => {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      const delayDebounceFn = setTimeout(() => {
+        fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            questions: aiQuestions,
+            selectedAnswers,
+            revealedQuestions,
+            tableAnswers,
+            tableGradingResults,
+            tutorAnswers,
+            tutorInputText,
+            chatHistory,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
+      }, 1000); // 1.0-second debounce to prevent spamming server on rapid inputs
+
+      return () => clearTimeout(delayDebounceFn);
+    }
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
     if (examQuestions.length > 0 && !loadingExam) {
