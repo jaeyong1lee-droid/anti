@@ -2148,7 +2148,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
           </div>
           <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-white shadow-inner min-h-[180px]">
             <iframe 
-              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf?part=screenshot`} 
               className="w-full border-0 block"
               style={{ minHeight: '350px', height: '350px', backgroundColor: '#ffffff' }}
               sandbox="allow-scripts allow-same-origin"
@@ -7197,7 +7197,7 @@ export default function App() {
           const base64DataUrl = await readAsDataURL(file);
           embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
         }
-        const combinedHtml = `${embeddedImagesHtml}${htmlVal}`;
+        const combinedHtml = `${embeddedImagesHtml}<!-- ANTIGRAVITY_SCREENSHOT_END -->\n${htmlVal}`;
         const blob = new Blob([combinedHtml], { type: 'text/html' });
         fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
       } catch (err) {
@@ -7209,19 +7209,19 @@ export default function App() {
       const blob = new Blob([htmlVal], { type: 'text/html' });
       fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
     } else if (calculationImageFiles.length > 0) {
-      if (calculationImageFiles.length === 1) {
-        fileToUpload = calculationImageFiles[0];
-      } else {
-        try {
-          let embeddedImagesHtml = '';
-          for (const file of calculationImageFiles) {
-            const base64DataUrl = await readAsDataURL(file);
-            embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
-          }
-          const blob = new Blob([embeddedImagesHtml], { type: 'text/html' });
-          fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
-        } catch (err) {
-          console.error('Failed to read calculation images for combining:', err);
+      try {
+        let embeddedImagesHtml = '';
+        for (const file of calculationImageFiles) {
+          const base64DataUrl = await readAsDataURL(file);
+          embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
+        }
+        const combinedHtml = `${embeddedImagesHtml}<!-- ANTIGRAVITY_SCREENSHOT_END -->`;
+        const blob = new Blob([combinedHtml], { type: 'text/html' });
+        fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
+      } catch (err) {
+        console.error('Failed to read calculation images for combining:', err);
+        if (calculationImageFiles.length === 1) {
+          fileToUpload = calculationImageFiles[0];
         }
       }
     }

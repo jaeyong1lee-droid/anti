@@ -6761,6 +6761,21 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       // Remove any script tag containing polyfill.io to prevent malicious loads and credential prompts
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
       
+      // If client requests only the screenshot part, parse and return it
+      if (req.query.part === 'screenshot') {
+        const separator = '<!-- ANTIGRAVITY_SCREENSHOT_END -->';
+        if (htmlContent.includes(separator)) {
+          htmlContent = htmlContent.split(separator)[0].trim();
+        } else {
+          // Fallback: search for top image wrappers or base64 images inside html
+          const imgRegex = /<div[^>]*?>\s*<img[^>]*?src=["']data:image\/[^"'>]+["'][^>]*?>\s*<\/div>/gi;
+          const matches = htmlContent.match(imgRegex);
+          if (matches && matches.length > 0) {
+            htmlContent = matches.join('\n');
+          }
+        }
+      }
+
       const responsiveStyle = `
 <style>
 /* Global Premium Light Theme for Report Viewers */
