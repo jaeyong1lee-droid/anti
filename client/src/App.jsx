@@ -2146,8 +2146,10 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       return null;
     }
 
-    // 마크다운 표가 렌더링된다면 굳이 1번에도 스샷을 보여줄 필요가 없다.
-    if (tableData || referenceTableData) {
+    // 마크다운 표가 렌더링되더라도, '주관식 (표채우기)' 유형인 계산문제인 경우에는 스샷을 가리지 않는다.
+    // (표채우기 문제는 지반 모식도 등 개념도 그림이 스샷에 들어있을 가능성이 높기 때문)
+    const isTableFillType = q.type === '주관식 (표채우기)' || q.subtype === '표채우기';
+    if (!isTableFillType && (tableData || referenceTableData)) {
       return null;
     }
 
@@ -2242,7 +2244,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
             </div>
           </div>
         )}
-        {referenceTableData && (
+        {referenceTableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
           <div className="my-3 overflow-x-auto w-full">
             <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
             <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
@@ -2261,7 +2263,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
         <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
       </div>
       {renderImageElement()}
-      {referenceTableData && (
+      {referenceTableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
         <div className="my-3 overflow-x-auto w-full">
           <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
           <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
