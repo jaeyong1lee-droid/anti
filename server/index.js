@@ -6697,10 +6697,10 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       
       const responsiveStyle = `
 <style>
-/* Global Premium Dark Theme for Report Viewers */
+/* Global Premium Light Theme for Report Viewers */
 html, body {
-  background-color: #0b0f19 !important;
-  color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
   line-height: 1.6 !important;
   margin: 0 !important;
@@ -6710,13 +6710,13 @@ html, body {
 
 /* Ensure all nested text is readable and correctly colored */
 h1, h2, h3, h4, h5, h6, th, strong, b {
-  color: #ffffff !important;
+  color: #0f172a !important;
 }
 p, span, td, li, div, section, article {
-  color: #cbd5e1 !important;
+  color: #334155 !important;
 }
 a {
-  color: #38bdf8 !important;
+  color: #0284c7 !important;
   text-decoration: underline !important;
 }
 
@@ -6725,27 +6725,27 @@ table {
   border-collapse: collapse !important;
   width: 100% !important;
   margin: 20px 0 !important;
-  background-color: #0f172a !important;
-  border: 1px solid #1e293b !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 8px !important;
   overflow: hidden !important;
 }
 th {
-  background-color: #1e293b !important;
-  color: #ffffff !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
   font-weight: 700 !important;
-  border: 1px solid #334155 !important;
+  border: 1px solid #cbd5e1 !important;
   padding: 12px 16px !important;
 }
 td {
-  border: 1px solid #334155 !important;
+  border: 1px solid #e2e8f0 !important;
   padding: 12px 16px !important;
 }
 
-/* Layout overrides to prevent broken layouts on dark theme */
+/* Layout overrides to prevent broken layouts on light theme */
 div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content {
   background-color: transparent !important;
-  border-color: #1e293b !important;
+  border-color: #e2e8f0 !important;
   box-shadow: none !important;
 }
 
@@ -6755,14 +6755,14 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
   height: 8px !important;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19 !important;
+  background: #f8fafc !important;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b !important;
+  background: #cbd5e1 !important;
   border-radius: 9999px !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155 !important;
+  background: #94a3b8 !important;
 }
 
 @media (max-width: 768px) {
@@ -7338,10 +7338,10 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
       
       const responsiveStyle = `
 <style>
-/* Global Premium Dark Theme for Report Viewers */
+/* Global Premium Light Theme for Report Viewers */
 html, body {
-  background-color: #0b0f19 !important;
-  color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
   line-height: 1.6 !important;
   margin: 0 !important;
@@ -7351,13 +7351,13 @@ html, body {
 
 /* Ensure all nested text is readable and correctly colored */
 h1, h2, h3, h4, h5, h6, th, strong, b {
-  color: #ffffff !important;
+  color: #0f172a !important;
 }
 p, span, td, li, div, section, article {
-  color: #cbd5e1 !important;
+  color: #334155 !important;
 }
 a {
-  color: #38bdf8 !important;
+  color: #0284c7 !important;
   text-decoration: underline !important;
 }
 
@@ -7366,27 +7366,27 @@ table {
   border-collapse: collapse !important;
   width: 100% !important;
   margin: 20px 0 !important;
-  background-color: #0f172a !important;
-  border: 1px solid #1e293b !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 8px !important;
   overflow: hidden !important;
 }
 th {
-  background-color: #1e293b !important;
-  color: #ffffff !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
   font-weight: 700 !important;
-  border: 1px solid #334155 !important;
+  border: 1px solid #cbd5e1 !important;
   padding: 12px 16px !important;
 }
 td {
-  border: 1px solid #334155 !important;
+  border: 1px solid #e2e8f0 !important;
   padding: 12px 16px !important;
 }
 
-/* Layout overrides to prevent broken layouts on dark theme */
+/* Layout overrides to prevent broken layouts on light theme */
 div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content {
   background-color: transparent !important;
-  border-color: #1e293b !important;
+  border-color: #e2e8f0 !important;
   box-shadow: none !important;
 }
 
@@ -7396,14 +7396,14 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
   height: 8px !important;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19 !important;
+  background: #f8fafc !important;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b !important;
+  background: #cbd5e1 !important;
   border-radius: 9999px !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155 !important;
+  background: #94a3b8 !important;
 }
 
 @media (max-width: 768px) {
