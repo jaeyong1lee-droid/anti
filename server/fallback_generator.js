@@ -264,11 +264,20 @@ function getPrandtlExpertQuestions(title, keywords) {
   };
 
   const q2 = {
-    type: '주관식 (공식)',
-    question: `테르자기(Terzaghi)의 극한 지지력 공식`,
-    concept: `지반 점착력과 깊이 방향 상재하중, 그리고 지반 자체의 무게에 의한 영향을 모두 고려하여 연속기초의 극한 지지력을 평가하는 공학 수식입니다.`,
-    formula: `$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$\n- $q_{ult}$: 극한 지지력\n- $c$: 지반 점착력\n- $q$: 기초 바닥면의 유효상재압\n- $\\gamma$: 흙의 단위중량\n- $B$: 기초의 폭 (너비)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
-    structure: ''
+    type: '주관식 (표채우기)',
+    question: `2. Terzaghi 지지력 공식과 다른 주요 극한 지지력 공식들의 역학적 특징 및 공학적 가정사항을 비교한 표입니다. 빈칸 (A), (B)에 알맞은 핵심 내용을 기술하십시오.`,
+    tableData: {
+      headers: ["비교 항목", "Terzaghi 공식", "Prandtl 공식", "Meyerhof 공식"],
+      rows: [
+        ["지반 자중($\\gamma$)의 고려 여부", "자중 효과($0.5\\gamma B N_{\\gamma}$) 반영", "[INPUT_1]", "자중 효과 및 근입 깊이 영향 반영"],
+        ["기초 저면의 마찰 조건 가정", "[INPUT_2]", "기초 저면 완전 매끄러움 가정", "기초 저면 마찰 및 전단 파괴면의 지표 확장 반영"]
+      ]
+    },
+    answers: {
+      INPUT_1: "지반 자중 무시 (0으로 가정)",
+      INPUT_2: "기초 저면 완전 거침 가정"
+    },
+    explanation: "Terzaghi 공식은 Prandtl 이론의 한계를 극복하기 위해 지반 자중 항을 추가하고 기초 저면이 거칠다는 가정을 도입하여 전반전단파괴를 공식화한 반면, Meyerhof는 근입 깊이에 따른 전단 저항까지 고려하여 이론을 확장했습니다."
   };
 
   const mcQuestions = [
