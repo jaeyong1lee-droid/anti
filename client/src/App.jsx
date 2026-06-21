@@ -2123,13 +2123,21 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalQuestionsCount = 0) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
 
-  const resolvedCategory = q.category || topicCategory;
+  const isCalc = q.category === '계산' || 
+                 topicCategory === '계산' || 
+                 totalQuestionsCount === 4 ||
+                 q.subtype === '계산' ||
+                 q.type === '주관식 (표채우기)' ||
+                 cleanQuestionText.includes('INPUT_1') ||
+                 cleanQuestionText.includes('input_1');
+
+  const resolvedCategory = isCalc ? '계산' : (q.category || topicCategory);
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
 
@@ -13456,7 +13464,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -15304,7 +15312,8 @@ export default function App() {
                         q.pdf_name, 
                         q.category, 
                         pdfjsLoaded,
-                        examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx
+                        examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx,
+                        examQuestions.filter(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)).length
                       )}
 
                       {/* MC Options */}
