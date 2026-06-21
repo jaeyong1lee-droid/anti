@@ -1969,7 +1969,7 @@ function normalizeSingleLineTable(text) {
   if (!text) return text;
   
   // A separator cell is optionally starting/ending with colon, containing at least 2 dashes
-  const separatorRowRegex = /\|\s*:?-{2,}:?\s*\|\s*:?-{2,}:?\s*\|/g;
+  const separatorRowRegex = /\|\s*:?-{2,}:?\s*\|(\s*:?-{2,}:?\s*\|)+/g;
   
   const match = separatorRowRegex.exec(text);
   if (!match) return text; // No table separator row found
