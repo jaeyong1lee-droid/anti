@@ -2133,13 +2133,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
 
-  const isImageTopic = resolvedCategory === '계산' && (
-    resolvedPdfName.toLowerCase().endsWith('.png') || 
-    resolvedPdfName.toLowerCase().endsWith('.jpg') || 
-    resolvedPdfName.toLowerCase().endsWith('.jpeg') || 
-    resolvedPdfName.toLowerCase().endsWith('.gif') || 
-    resolvedPdfName.toLowerCase().endsWith('.webp')
-  );
+  const isImageTopic = resolvedCategory === '계산';
 
   const renderImageElement = () => {
     if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {

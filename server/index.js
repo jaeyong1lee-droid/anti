@@ -6716,6 +6716,27 @@ app.get('/api/topics/:id/text', async (req, res) => {
 });
 
 // 8. Stream Raw PDF/HTML File directly for native browser viewing
+function isBufferPng(buf) {
+  if (!buf || buf.length < 8) return false;
+  return buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+         buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a;
+}
+
+function isBufferJpeg(buf) {
+  if (!buf || buf.length < 3) return false;
+  return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+}
+
+function isBufferGif(buf) {
+  if (!buf || buf.length < 4) return false;
+  return buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38;
+}
+
+function isBufferWebp(buf) {
+  if (!buf || buf.length < 12) return false;
+  return buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+}
+
 app.get('/api/topics/:id/pdf', async (req, res) => {
   const topicId = req.params.id;
 
@@ -6727,7 +6748,9 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
     }
 
-    const isHtml = topic.pdf_name && (
+    const isImage = isBufferPng(topic.pdf_data) || isBufferJpeg(topic.pdf_data) || isBufferGif(topic.pdf_data) || isBufferWebp(topic.pdf_data);
+
+    const isHtml = !isImage && topic.pdf_name && (
       topic.pdf_name.toLowerCase().endsWith('.html') || 
       topic.pdf_name.toLowerCase().endsWith('.htm') || 
       isBufferHtml(topic.pdf_data)
@@ -6846,13 +6869,13 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     } else {
       const fileNameLower = (topic.pdf_name || '').toLowerCase();
       let contentType = 'application/pdf';
-      if (fileNameLower.endsWith('.png')) {
+      if (fileNameLower.endsWith('.png') || isBufferPng(topic.pdf_data)) {
         contentType = 'image/png';
-      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) {
+      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg') || isBufferJpeg(topic.pdf_data)) {
         contentType = 'image/jpeg';
-      } else if (fileNameLower.endsWith('.gif')) {
+      } else if (fileNameLower.endsWith('.gif') || isBufferGif(topic.pdf_data)) {
         contentType = 'image/gif';
-      } else if (fileNameLower.endsWith('.webp')) {
+      } else if (fileNameLower.endsWith('.webp') || isBufferWebp(topic.pdf_data)) {
         contentType = 'image/webp';
       } else if (fileNameLower.endsWith('.svg')) {
         contentType = 'image/svg+xml';
