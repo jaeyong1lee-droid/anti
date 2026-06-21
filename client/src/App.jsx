@@ -2161,25 +2161,6 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       );
     }
 
-    const isHtml = resolvedPdfName.toLowerCase().endsWith('.html') || resolvedPdfName.toLowerCase().endsWith('.htm');
-
-    if (isHtml) {
-      return (
-        <div className="mt-3 flex flex-col items-center w-full">
-          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
-            <span>📊 첨부된 원보고서 HTML 그래프/그림</span>
-          </div>
-          <div className="w-full rounded-xl border border-slate-800 shadow-lg overflow-hidden bg-white" style={{ height: '350px' }}>
-            <iframe 
-              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
-              className="w-full h-full border-0"
-              title="HTML Topic Viewer"
-            />
-          </div>
-        </div>
-      );
-    }
-
     return null;
   };
   
