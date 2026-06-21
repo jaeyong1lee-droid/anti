@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import { gradeSubjective } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
-import { validateAndHealQuestion } from './plugins/validationPlugin.js';
+import { validateAndHealQuestion, deduplicateQuestions } from './plugins/validationPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3071,25 +3071,61 @@ function createLocalFallbackTableQuestion(idx, title, keywords) {
   }
 }
 
-function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
-  const subjsIntroFormula = questions.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
-  const subjsShort = questions.filter(q => q.type === '주관식 (단답형)');
-  const subjsTable = questions.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
-  const mcs = questions.filter(q => q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0));
 
-  // 1. Q1, Q2 (Intro/Formula) - exactly 2
-  let finalSubjsIntroFormula = [...subjsIntroFormula].slice(0, 2);
-  if (finalSubjsIntroFormula.length < 2) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackSubjs = fallbackQs.filter(q => q.type === '주관식 (개요)' || q.type === '주관식 (공식)');
-    finalSubjsIntroFormula = [...finalSubjsIntroFormula, ...fallbackSubjs].slice(0, 2);
+
+function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) {
+  let qIntro = questions.find(q => q.type === '주관식 (개요)');
+  let qFormula = questions.find(q => q.type === '주관식 (공식)');
+  
+  const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+  
+  if (!qIntro) {
+    qIntro = fallbackQs.find(q => q.type === '주관식 (개요)');
+  }
+  if (!qFormula) {
+    qFormula = fallbackQs.find(q => q.type === '주관식 (공식)');
   }
 
-  // 2. Q3, Q4 (Short Answer) - exactly 2
+  if (qIntro) {
+    qIntro = { ...qIntro };
+    qIntro.type = '주관식 (개요)';
+    delete qIntro.tableData;
+    delete qIntro.answers;
+    delete qIntro.subtype;
+  } else {
+    qIntro = {
+      type: "주관식 (개요)",
+      question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
+      concept: `${topic.title}의 개요와 기본 원리입니다.`,
+      formula: "",
+      structure: ""
+    };
+  }
+
+  if (qFormula) {
+    qFormula = { ...qFormula };
+    qFormula.type = '주관식 (공식)';
+    delete qFormula.tableData;
+    delete qFormula.answers;
+    delete qFormula.subtype;
+  } else {
+    qFormula = {
+      type: "주관식 (공식)",
+      question: `${topic.title}의 대표적인 설계 공식 명칭을 기술하시오.`,
+      concept: `${topic.title}의 대표 공식입니다.`,
+      formula: "",
+      structure: ""
+    };
+  }
+
+  const subjsShort = questions.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula);
+  const subjsTable = questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
+  const mcs = questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
+
+  // 2. Q12, Q13 (Short Answer) - exactly 2
   let finalSubjsShort = [...subjsShort];
   if (finalSubjsShort.length < 2) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)');
+    const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula);
     finalSubjsShort = [...finalSubjsShort, ...fallbackShorts];
   }
 
@@ -3105,13 +3141,12 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   });
   finalSubjsShort = uniqueShort.slice(0, 2);
 
-  // If we still need more to make exactly 2, we dynamically derive from Q1 (finalSubjsIntroFormula[0])
-  if (finalSubjsShort.length < 2 && finalSubjsIntroFormula.length > 0) {
-    const q1 = finalSubjsIntroFormula[0];
+  // If we still need more to make exactly 2, we dynamically derive from Q1 (qIntro)
+  if (finalSubjsShort.length < 2 && qIntro) {
     finalSubjsShort.push({
       type: "주관식 (단답형)",
       question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
-      answer: q1.concept || `${topic.title}의 핵심 개념`,
+      answer: qIntro.concept || `${topic.title}의 핵심 개념`,
       explanation: `${topic.title}에 관한 핵심 정의 및 개요 서술형 평가입니다.`
     });
   }
@@ -3129,8 +3164,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   // 3. Q5, Q6, Q7 (Table Quiz) - exactly 3
   let finalSubjsTable = [...subjsTable].slice(0, 3);
   if (finalSubjsTable.length < 3) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackTables = fallbackQs.filter(q => q.type === '주관식 (표채우기)' || q.subtype === '표채우기');
+    const fallbackTables = fallbackQs.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
     finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 3);
   }
   while (finalSubjsTable.length < 3) {
@@ -3163,8 +3197,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   }
 
   if (finalMcs.length < 6) {
-    const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
-    const fallbackMcs = fallbackQs.filter(q => q.options && q.options.length > 0).map(q => shuffleMultipleChoice(q));
+    const fallbackMcs = fallbackQs.filter(q => (q.options && q.options.length > 0) && q !== qIntro && q !== qFormula).map(q => shuffleMultipleChoice(q));
     for (const fQ of fallbackMcs) {
       if (finalMcs.length >= 6) break;
       const cleanQ = (fQ.question || '').trim();
@@ -3184,7 +3217,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   }
 
   const shuffledRest = shuffleArray([...finalSubjsTable, ...finalMcs]);
-  return [...finalSubjsIntroFormula, ...shuffledRest, ...finalSubjsShort];
+  return [qIntro, qFormula, ...shuffledRest, ...finalSubjsShort];
 }
 
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
@@ -3359,19 +3392,21 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         question: cleanQuizQuestion(q.question)
       }));
 
+      const deduplicatedCore = deduplicateQuestions(cleanedCore, topic, fileText, generateFallbackQuestions);
+
       // 세션에 자동 저장
       try {
         await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
         await dbQuery.run(
           'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(cleanedCore)]
+          [key, JSON.stringify(deduplicatedCore)]
         );
       } catch (e) {
         console.warn('Failed to auto-save core review questions to app_session:', e);
       }
 
       return res.json({
-        questions: cleanedCore,
+        questions: deduplicatedCore,
         isFallback: true, // Treat as fallback as AI was bypassed
         mode: 'ai-optimized',
         info: 'Handcrafted premium routing bypass'
@@ -3390,19 +3425,21 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         question: cleanQuizQuestion(q.question)
       }));
 
+      const deduplicatedFallback = deduplicateQuestions(cleanedFallback, topic, fileText, generateFallbackQuestions);
+
       // 세션에 자동 저장
       try {
         await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
         await dbQuery.run(
           'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(cleanedFallback)]
+          [key, JSON.stringify(deduplicatedFallback)]
         );
       } catch (e) {
         console.warn('Failed to auto-save local fallback review questions to app_session:', e);
       }
 
       return res.json({ 
-        questions: cleanedFallback, 
+        questions: deduplicatedFallback, 
         isFallback: true,
         mode: 'local',
         error: forceLocal ? null : '백엔드 환경변수에 AI API 키가 존재하지 않습니다.'
@@ -3686,6 +3723,8 @@ try {
           })
         );
 
+        const deduplicatedQuestions = deduplicateQuestions(cleanedQuestions, topic, fileText, generateFallbackQuestions);
+
         if (progressId) {
           updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
         }
@@ -3695,13 +3734,13 @@ try {
           await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
           await dbQuery.run(
             'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-            [key, JSON.stringify(cleanedQuestions)]
+            [key, JSON.stringify(deduplicatedQuestions)]
           );
         } catch (e) {
           console.warn('Failed to auto-save generated review questions to app_session:', e);
         }
 
-        res.json({ questions: cleanedQuestions, isFallback: false });
+        res.json({ questions: deduplicatedQuestions, isFallback: false });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
@@ -3716,18 +3755,20 @@ try {
         question: cleanQuizQuestion(q.question)
       }));
 
+      const deduplicatedFallback = deduplicateQuestions(cleanedFallback, topic, fileText, generateFallbackQuestions);
+
       // 세션에 자동 저장
       try {
         await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
         await dbQuery.run(
           'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(cleanedFallback)]
+          [key, JSON.stringify(deduplicatedFallback)]
         );
       } catch (e) {
         console.warn('Failed to auto-save fallback review questions to app_session:', e);
       }
 
-      res.json({ questions: cleanedFallback, isFallback: true, error: errorMsg });
+      res.json({ questions: deduplicatedFallback, isFallback: true, error: errorMsg });
     }
   } catch (error) {
     console.error('Error in AI question generation route:', error);

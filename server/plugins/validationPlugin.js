@@ -121,9 +121,34 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
     try {
       console.log(`[ValidationPlugin] Question correction triggered. isMismatched=${isMismatched}. Running 2nd pass LLM self-correction...`);
       
+      let typeSpecificInstruction = '';
+      if (question.type === '주관식 (공식)') {
+        typeSpecificInstruction = `
+[🚨 주관식 (공식) 유형 검수 특이사항]:
+- 이 문제는 주관식 공식 문제입니다. 절대 표(tableData)나 서술형 답안을 작성하지 마십시오.
+- 오직 공식 자체를 묻는 질문이어야 하며, "formula" 필드에 하나의 LaTeX 수식만 포함되어야 합니다.
+- "type" 필드는 반드시 "주관식 (공식)"이어야 합니다.
+`;
+      } else if (question.type === '주관식 (개요)') {
+        typeSpecificInstruction = `
+[🚨 주관식 (개요) 유형 검수 특이사항]:
+- 이 문제는 주관식 개요 문제입니다. 절대 표(tableData)나 수식(formula) 위주의 평가가 되어서는 안 됩니다.
+- "type" 필드는 반드시 "주관식 (개요)"이어야 합니다.
+`;
+      } else if (question.type === '주관식 (표채우기)') {
+        typeSpecificInstruction = `
+[🚨 주관식 (표채우기) 유형 검수 특이사항]:
+- 이 문제는 표채우기 문제입니다. 반드시 "tableData" 객체(headers, rows)가 정의되어야 하고, "answers" 객체(INPUT_1, INPUT_2 등)가 정확히 매핑되어야 합니다.
+- "type" 필드는 반드시 "주관식 (표채우기)"이어야 합니다.
+`;
+      }
+
       const validatorSystemInstruction = `
 당신은 대한민국 국가기술자격 토목공학/지반공학 기술사 시험 전문 검수위원입니다.
 제공된 문제 객체(JSON)의 공학적 정합성, 수학적 타당성, 그리고 LaTeX 수식 및 표 레이아웃 문법을 엄격히 검증하십시오.
+
+[현재 문제 유형]: "${question.type || '미정'}"
+${typeSpecificInstruction}
 
 [🚨 중요 검수 요건]:
 1. **토픽 일치성 및 타 주제 잔재 제거 (핵심 필터링)**:
@@ -174,6 +199,15 @@ ${JSON.stringify(question)}
       if (corrected && typeof corrected === 'object' && corrected.question) {
         console.log(`[ValidationPlugin] Self-correction succeeded!`);
         validationLogs.push(`[AI 자가 교정 완료] 2차 검증을 통해 문항의 공학적 정합성 및 LaTeX 수식 문법 검증을 완료하고 교정본을 반영했습니다.`);
+        
+        // Force the original question type and clean properties
+        corrected.type = question.type;
+        if (question.type === '주관식 (공식)' || question.type === '주관식 (개요)') {
+          delete corrected.tableData;
+          delete corrected.answers;
+          delete corrected.subtype;
+        }
+        
         return { ...question, ...corrected, validationLogs };
       } else {
         validationLogs.push(`[AI 자가 검증 완료] 문항 구조 검증 완료 (이상 없음).`);
@@ -265,4 +299,124 @@ function parseLlmJson(text) {
 
   const escaped = escapeJsonBackslashes(cleaned);
   return JSON.parse(escaped);
+}
+
+export function getSimilarity(str1, str2) {
+  if (!str1 || !str2) return 0;
+  const clean = (s) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+  const s1 = clean(str1);
+  const s2 = clean(str2);
+  if (s1 === s2) return 1.0;
+  
+  const words1 = new Set(str1.toLowerCase().split(/[^a-zA-Z0-9가-힣]+/));
+  const words2 = new Set(str2.toLowerCase().split(/[^a-zA-Z0-9가-힣]+/));
+  words1.delete('');
+  words2.delete('');
+  if (words1.size === 0 || words2.size === 0) return 0;
+  const intersection = new Set([...words1].filter(x => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  return intersection.size / union.size;
+}
+
+export function areTablesDuplicate(t1, t2) {
+  if (!t1 || !t2) return false;
+  if (!t1.headers || !t2.headers || !t1.rows || !t2.rows) return false;
+  if (t1.headers.length !== t2.headers.length || t1.rows.length !== t2.rows.length) return false;
+  
+  const h1 = t1.headers.join('|');
+  const h2 = t2.headers.join('|');
+  if (h1 !== h2) return false;
+  
+  const r1 = t1.rows.map(r => r.join('|')).join('\n');
+  const r2 = t2.rows.map(r => r.join('|')).join('\n');
+  return r1 === r2;
+}
+
+export function deduplicateQuestions(questions, topic, fileText, getFallbackQuestions) {
+  const result = [];
+  const seenQuestions = [];
+  
+  let fallbackQs = null;
+  const getFallbackList = () => {
+    if (!fallbackQs) {
+      fallbackQs = getFallbackQuestions(topic.title, topic.keywords, fileText || '');
+    }
+    return fallbackQs;
+  };
+
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    let isDuplicate = false;
+    
+    // Do not check duplication for intro and formula questions (always Q1 and Q2)
+    if (i >= 2) {
+      for (const accepted of seenQuestions) {
+        if (q.tableData && accepted.tableData) {
+          if (areTablesDuplicate(q.tableData, accepted.tableData)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        const sim = getSimilarity(q.question, accepted.question);
+        if (sim > 0.6) {
+          isDuplicate = true;
+          break;
+        }
+        if (q.options && accepted.options && q.options.length === accepted.options.length) {
+          const simOptions = q.options.every((opt, idx) => getSimilarity(opt, accepted.options[idx]) > 0.85);
+          if (simOptions) {
+            isDuplicate = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (isDuplicate) {
+      console.log(`[Deduplication] Detected duplicate question at index ${i}: "${q.question.substring(0, 50)}..."`);
+      const fallbacks = getFallbackList();
+      const sameTypeFallbacks = fallbacks.filter(f => f.type === q.type);
+      
+      let replacement = null;
+      for (const candidate of sameTypeFallbacks) {
+        let candidateIsDup = false;
+        for (const accepted of seenQuestions) {
+          if (candidate.tableData && accepted.tableData) {
+            if (areTablesDuplicate(candidate.tableData, accepted.tableData)) {
+              candidateIsDup = true;
+              break;
+            }
+          }
+          const sim = getSimilarity(candidate.question, accepted.question);
+          if (sim > 0.6) {
+            candidateIsDup = true;
+            break;
+          }
+        }
+        if (!candidateIsDup) {
+          replacement = candidate;
+          break;
+        }
+      }
+      
+      if (replacement) {
+        console.log(`[Deduplication] Replaced duplicate question at index ${i} with fallback: "${replacement.question.substring(0, 50)}..."`);
+        const replacedQ = {
+          ...replacement,
+          topic_id: q.topic_id,
+          validationLogs: [...(q.validationLogs || []), '[중복 제거] 이전 문항과 내용이 유사하여 대체 문항으로 치환되었습니다.']
+        };
+        result.push(replacedQ);
+        seenQuestions.push(replacedQ);
+      } else {
+        console.warn(`[Deduplication] Could not find a non-duplicate fallback for index ${i}. Keeping original.`);
+        result.push(q);
+        seenQuestions.push(q);
+      }
+    } else {
+      result.push(q);
+      seenQuestions.push(q);
+    }
+  }
+  return result;
 }
