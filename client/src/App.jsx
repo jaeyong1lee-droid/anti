@@ -2129,7 +2129,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
 
-  const resolvedCategory = q.category || topicCategory;
+  const resolvedCategory = q.category === '계산' || topicCategory === '계산' ? '계산' : (q.category || topicCategory);
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
 
@@ -2169,10 +2169,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
           <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
             <span>📊 첨부된 원보고서 PDF 그래프/그림</span>
           </div>
-          <div className="w-full rounded-xl border border-slate-800 shadow-lg p-1 bg-slate-950">
-            <PdfImageRenderer 
-              pdfUrl={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
-              pdfjsLoaded={pdfjsLoaded} 
+          <div className="w-full rounded-xl border border-slate-800 shadow-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+            <iframe 
+              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+              className="w-full h-full border-0"
+              title="PDF Topic Viewer"
             />
           </div>
         </div>
