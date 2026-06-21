@@ -11977,7 +11977,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* LEFT: Today's review items list */}
-            <section className="lg:col-span-9 space-y-5">
+            <section className="lg:col-span-7 space-y-5">
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -12154,7 +12154,7 @@ export default function App() {
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="hidden lg:block w-full lg:col-span-3 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
+            <section className="hidden lg:block w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
