@@ -4618,8 +4618,9 @@ function FloatingCalculator({ isVisible, onClose }) {
   );
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function App() {
-  const API_BASE = import.meta.env.VITE_API_URL || '';
 
   const getSubjectiveColorClasses = (idx, isRevd) => {
     if (!isRevd) return 'border-slate-750 text-white';
