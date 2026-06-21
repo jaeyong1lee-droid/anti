@@ -4970,6 +4970,7 @@ export default function App() {
   const [todayReviews, setTodayReviews] = useState([]);
   const [completedTopicIds, setCompletedTopicIds] = useState([]);
   const [allTopics, setAllTopics] = useState([]);
+  const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   
@@ -12339,9 +12340,29 @@ export default function App() {
           /* TOTAL SPaced Grid TRACKER VIEW */
           <section className={`min-h-0 flex flex-col ${(isDesktop && !isMobileLandscape) ? 'glass-panel rounded-3xl p-6 md:p-8 border border-slate-800/80 shadow-2xl bg-slateCustom-900/40 h-[calc(100vh-270px)] overflow-hidden' : 'h-full bg-transparent rounded-none p-0 border-0 shadow-none'}`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <List size={20} className="text-brand-400" />
-                <h2 className="text-lg font-bold text-white">복습 토픽</h2>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <List size={20} className="text-brand-400" />
+                  <h2 className="text-lg font-bold text-white">복습 토픽</h2>
+                </div>
+                
+                {/* Filter buttons */}
+                <div className="flex items-center bg-slateCustom-900/60 p-1 rounded-xl border border-slate-800/80">
+                  {['전체', '일반', '계산'].map((filterVal) => (
+                    <button
+                      key={filterVal}
+                      type="button"
+                      onClick={() => setTopicFilter(filterVal)}
+                      className={`px-3 py-1.5 text-[11px] font-extrabold rounded-lg transition-all duration-200 select-none cursor-pointer ${
+                        topicFilter === filterVal
+                          ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
+                      }`}
+                    >
+                      {filterVal}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -12398,8 +12419,22 @@ export default function App() {
                 <p className="text-sm text-slate-400">아직 등록된 학습 토픽이 없습니다. 첫 번째 토픽을 등록해 복습 스케줄을 확인해 보세요!</p>
               </div>
             ) : (() => {
+              const filteredTopics = allTopics.filter(topic => {
+                const cat = topic.category || '일반';
+                if (topicFilter === '전체') return true;
+                return cat === topicFilter;
+              });
+
+              if (filteredTopics.length === 0) {
+                return (
+                  <div className="py-12 text-center bg-slateCustom-900/10 rounded-2xl border border-slate-800/40 w-full">
+                    <p className="text-sm text-slate-400">선택한 카테고리('{topicFilter}')에 해당하는 복습 토픽이 아직 없습니다.</p>
+                  </div>
+                );
+              }
+
               const matchedIndex = searchQuery 
-                ? allTopics.findIndex(topic => 
+                ? filteredTopics.findIndex(topic => 
                     topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     (topic.keywords && topic.keywords.toLowerCase().includes(searchQuery.toLowerCase()))
                   )
@@ -12440,7 +12475,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-sm">
-                      {allTopics.map((topic, idx) => {
+                      {filteredTopics.map((topic, idx) => {
                         const isFirstMatch = searchQuery && idx === matchedIndex;
                         
                         const completedNormal = topic.schedules?.filter(s => s.status === 'completed' && s.review_round < 99 && s.score !== null && s.score !== undefined) || [];
