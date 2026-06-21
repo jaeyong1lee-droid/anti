@@ -777,7 +777,7 @@ export function healQuizQuestionObject(q) {
       const newAnswers = {};
       let inputCount = 1;
 
-      const newRows = rows.map((row) => {
+      const newRows = q.tableData.rows.map((row) => {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 

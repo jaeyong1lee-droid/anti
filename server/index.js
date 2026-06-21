@@ -759,7 +759,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
                 temperature: options.temperature !== undefined ? options.temperature : 0.2,
                 ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
               }
-            });
+            }, { apiVersion: 'v1beta' });
             
             let generateContentArg = userPrompt;
             if (image && image.data && image.mimeType) {
@@ -2889,7 +2889,7 @@ app.get('/api/test-llm', async (req, res) => {
       try {
         const { GoogleGenerativeAI } = await import('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(trimmed);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' }, { apiVersion: 'v1beta' });
         const result = await model.generateContent('Say hello in 3 words');
         const text = result.response.text();
         logs.push({ name: k.name, model: 'gemini-2.0-flash', status: 'SUCCESS', response: text });

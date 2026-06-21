@@ -5210,7 +5210,7 @@ export default function App() {
       await Promise.all(promises);
       stopProgressPolling('채점 완료!', 100);
     } catch (e) {
-      stopProgressPolling('채점 실패', 100);
+      stopProgressPolling('채점 실패', 100, false);
     } finally {
       setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     }
@@ -5347,7 +5347,7 @@ export default function App() {
         score: isCorrect ? 10 : 0,
         reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
       };
-      stopProgressPolling('채점 실패', 100);
+      stopProgressPolling('채점 실패', 100, false);
     }
 
     if (newResult) {
@@ -7785,11 +7785,11 @@ export default function App() {
           }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
         }
       } else {
-        stopProgressPolling('문제 생성에 실패했습니다.', 100);
+        stopProgressPolling('문제 생성에 실패했습니다.', 100, false);
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
-      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100);
+      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
       if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
         return;
       }
@@ -8075,11 +8075,11 @@ export default function App() {
         }
         showNotification('복습 문제가 성공적으로 다시 구성되었습니다.', 'success');
       } else {
-        stopProgressPolling('문제 생성에 실패했습니다.', 100);
+        stopProgressPolling('문제 생성에 실패했습니다.', 100, false);
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
       }
     } catch (err) {
-      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100);
+      stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
       if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
         return;
       }
@@ -8510,14 +8510,14 @@ export default function App() {
         data = await res.json();
       } catch (jsonErr) {
         console.error('[변환] 응답 JSON 파싱 실패:', jsonErr);
-        stopProgressPolling('JSON 파싱 오류', 100);
+        stopProgressPolling('JSON 파싱 오류', 100, false);
         showNotification(`서버 응답을 처리할 수 없습니다 (HTTP ${res.status}). Vercel 서버리스 함수 타임아웃일 수 있습니다.`, 'error');
         return;
       }
 
       if (!res.ok) {
         console.error('[변환] 서버 에러:', data);
-        stopProgressPolling('서버 오류 발생', 100);
+        stopProgressPolling('서버 오류 발생', 100, false);
         showNotification(data.error || `서버 오류 (HTTP ${res.status})`, 'error');
         return;
       }
@@ -8645,12 +8645,12 @@ export default function App() {
         }
         showNotification('해당 문제를 성공적으로 변환했습니다.', 'success');
       } else {
-        stopProgressPolling('변환 실패', 100);
+        stopProgressPolling('변환 실패', 100, false);
         showNotification(data.error || '문제를 변환하지 못했습니다.', 'error');
       }
     } catch (err) {
       console.error('Regenerate question error:', err);
-      stopProgressPolling('네트워크 오류', 100);
+      stopProgressPolling('네트워크 오류', 100, false);
       showNotification(`서버 통신 오류로 문제를 변환하지 못했습니다. (${err.message || '알 수 없는 오류'})`, 'error');
     } finally {
       setRegenerating(prev => ({ ...prev, [idx]: false }));
@@ -8834,12 +8834,12 @@ export default function App() {
         setAdjustingInputKey(null);
         showNotification('의견을 반영하여 문제를 성공적으로 조정했습니다.', 'success');
       } else {
-        stopProgressPolling('조정 실패', 100);
+        stopProgressPolling('조정 실패', 100, false);
         showNotification(data.error || '문제를 조정하지 못했습니다.', 'error');
       }
     } catch (err) {
       console.error('Adjust question error:', err);
-      stopProgressPolling('네트워크 오류', 100);
+      stopProgressPolling('네트워크 오류', 100, false);
       showNotification('서버 통신 오류로 문제를 조정하지 못했습니다.', 'error');
     } finally {
       setAdjustingLoading(prev => ({ ...prev, [key]: false }));
@@ -8874,7 +8874,7 @@ export default function App() {
       stopProgressPolling('분석이 완료되었습니다!', 100);
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
-      stopProgressPolling('분석 실패', 100);
+      stopProgressPolling('분석 실패', 100, false);
       setExplanations(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
     }
   };
@@ -8984,7 +8984,7 @@ export default function App() {
         [key]: { loading: false, text: data.text, error: '' }
       }));
     } catch (err) {
-      stopProgressPolling('답변 생성 실패', 100);
+      stopProgressPolling('답변 생성 실패', 100, false);
       setTutorAnswers(prev => ({
         ...prev,
         [key]: { loading: false, text: '', error: err.message }
@@ -9130,7 +9130,7 @@ export default function App() {
       stopProgressPolling('심층 해설 생성이 완료되었습니다!', 100);
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: data.text, error: '' } }));
     } catch (err) {
-      stopProgressPolling('심층 해설 생성 실패', 100);
+      stopProgressPolling('심층 해설 생성 실패', 100, false);
       setDetailedAnswers(prev => ({ ...prev, [idx]: { loading: false, text: '', error: err.message } }));
     }
   };
@@ -9313,7 +9313,7 @@ export default function App() {
       stopProgressPolling('힌트 생성이 완료되었습니다!', 100);
       setHintText(data.hint);
     } catch (err) {
-      stopProgressPolling('힌트 생성 실패', 100);
+      stopProgressPolling('힌트 생성 실패', 100, false);
       setHintText(`힌트를 가져오지 못했습니다: ${err.message}`);
     } finally {
       setIsHintLoading(false);
@@ -9366,7 +9366,7 @@ export default function App() {
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
-      stopProgressPolling('답변 생성 실패', 100);
+      stopProgressPolling('답변 생성 실패', 100, false);
       setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
@@ -9423,7 +9423,7 @@ export default function App() {
         return [...filtered, { role: 'model', text: data.text }];
       });
     } catch (err) {
-      stopProgressPolling('문제 출제 실패', 100);
+      stopProgressPolling('문제 출제 실패', 100, false);
       setChatHistory(prev => {
         const filtered = prev.filter(msg => msg.text !== '📝 문제를 생성 중입니다... 잠시만 기다려주세요.');
         return [...filtered, { role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
@@ -11078,7 +11078,7 @@ export default function App() {
       stopProgressPolling('유도 및 설명 생성이 완료되었습니다!', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
-      stopProgressPolling('이론 유도 생성 실패', 100);
+      stopProgressPolling('이론 유도 생성 실패', 100, false);
       setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
@@ -11153,7 +11153,7 @@ export default function App() {
       localStorage.setItem(chatKey, JSON.stringify(newHistory));
       setFormulaChatHistory(newHistory);
     } catch (err) {
-      stopProgressPolling('공식 문제 생성 실패', 100);
+      stopProgressPolling('공식 문제 생성 실패', 100, false);
       const newHistory = [{ role: 'model', text: `문제를 출제하는 중 오류가 발생했습니다: ${err.message}` }];
       localStorage.setItem(chatKey, JSON.stringify(newHistory));
       setFormulaChatHistory(newHistory);
@@ -11206,7 +11206,7 @@ export default function App() {
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
-      stopProgressPolling('답변 생성 실패', 100);
+      stopProgressPolling('답변 생성 실패', 100, false);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsFormulaChatLoading(false);
