@@ -12285,22 +12285,6 @@ export default function App() {
                                 </div>
                               ))}
                             </div>
-                            <div className="flex flex-col items-center select-none pointer-events-none">
-                              <p className="text-[10px] font-black text-violet-400">클릭 후 추가 이미지 붙여넣기 가능 (Ctrl+V)</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">총 {calculationImagePreviews.length}개 이미지 업로드됨</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCalculationImageFiles([]);
-                                setCalculationImagePreviews([]);
-                                if (imageInputRef.current) imageInputRef.current.value = '';
-                              }}
-                              className="text-[10px] font-extrabold text-rose-400 hover:text-rose-300 transition-colors border border-rose-500/20 px-2.5 py-1 rounded-md bg-rose-950/20 hover:bg-rose-900/30 cursor-pointer"
-                            >
-                              모두 지우기
-                            </button>
                           </div>
                         )}
                       </div>
