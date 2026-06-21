@@ -2123,7 +2123,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
@@ -2142,7 +2142,12 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   );
 
   const renderImageElement = () => {
-    if (resolvedCategory !== '계산' || !resolvedTopicId) {
+    if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {
+      return null;
+    }
+
+    // 마크다운 표가 렌더링된다면 굳이 1번에도 스샷을 보여줄 필요가 없다.
+    if (tableData || referenceTableData) {
       return null;
     }
 
@@ -2156,7 +2161,6 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
             src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
             alt="Topic Screenshot" 
             className="max-w-full h-auto rounded-xl border border-slate-800 shadow-lg"
-            style={{ maxHeight: '350px' }}
           />
         </div>
       );
@@ -13482,7 +13486,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -15322,7 +15326,16 @@ export default function App() {
                         </div>
                       </div>
 
-                      {renderQuestionContent(q, examTopic?.title, katexLoaded, q.topic_id, q.pdf_name, q.category, pdfjsLoaded)}
+                      {renderQuestionContent(
+                        q, 
+                        examTopic?.title, 
+                        katexLoaded, 
+                        q.topic_id, 
+                        q.pdf_name, 
+                        q.category, 
+                        pdfjsLoaded,
+                        examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx
+                      )}
 
                       {/* MC Options */}
                       {isMC && (
