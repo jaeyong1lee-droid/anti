@@ -759,14 +759,26 @@ export function healQuizQuestionObject(q) {
       }
     }
 
+    const hasInputPlaceholder = q.tableData && q.tableData.rows && q.tableData.rows.some(row => 
+      Array.isArray(row) && row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
+        cell.includes('[INPUT_') || 
+        /빈칸\s*\(?\d+\)?/i.test(cell) || 
+        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell)
+      ))
+    );
+
     // For table subjective fill-in questions, empty out all cell contents 
     // (except headers and row-label column) and turn them into inputs!
-    if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q.tableData && q.tableData.rows) {
+    if ((q.type === '주관식 (표채우기)' || q.subtype === '표채우기' || hasInputPlaceholder) && q.tableData && q.tableData.rows) {
+      if (!q.subtype || q.subtype !== '표채우기') {
+        q.subtype = '표채우기';
+      }
       const oldAnswers = q.answers || q.answer || {};
       const newAnswers = {};
       let inputCount = 1;
 
-      const newRows = rows.map((row) => {
+      const newRows = q.tableData.rows.map((row) => {
+        if (!Array.isArray(row)) return [];
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
@@ -778,10 +790,11 @@ export function healQuizQuestionObject(q) {
           let correctAnswer = '';
           const trimmedCell = typeof cell === 'string' ? cell.trim() : '';
           
-          // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, etc.)
+          // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
           const inputMatch = trimmedCell.match(/INPUT_(\d+)/i);
-          const letterMatch = trimmedCell.match(/^\[?\s*([A-Za-z])\s*\]?$/);
+          const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
+          const binkanMatch = trimmedCell.match(/빈칸\s*\(?(\d+)\)?/i);
           
           let matchedNum = null;
           if (inputMatch) {
@@ -790,6 +803,9 @@ export function healQuizQuestionObject(q) {
           } else if (letterMatch) {
             placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
             matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
+          } else if (binkanMatch) {
+            placeholderId = `INPUT_${binkanMatch[1]}`;
+            matchedNum = parseInt(binkanMatch[1], 10);
           }
 
           // Robust check helper
@@ -817,7 +833,7 @@ export function healQuizQuestionObject(q) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-            const isPlaceholder = /^(?:\[?\s*[A-Za-z]\s*\]?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmedCell);
+            const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 

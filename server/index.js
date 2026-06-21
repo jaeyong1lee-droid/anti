@@ -6609,8 +6609,13 @@ app.get('/api/session/exam', async (req, res) => {
     );
     if (rows.length > 0 && rows[0].value) {
       const data = JSON.parse(rows[0].value);
-      if (data && Array.isArray(data.questions)) {
-        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+      if (data) {
+        if (Array.isArray(data.questions)) {
+          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+        }
+        if (Array.isArray(data.examQuestions)) {
+          data.examQuestions = data.examQuestions.map(q => healQuizQuestionObject(q));
+        }
       }
       res.json({ data });
     } else {
