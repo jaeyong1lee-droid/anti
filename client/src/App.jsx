@@ -5556,7 +5556,7 @@ export default function App() {
         return parsed;
       }
     }
-    return Math.max(300, Math.min(800, Math.round(window.innerWidth * 0.3)));
+    return Math.max(300, Math.min(800, Math.round(window.innerWidth * 0.24)));
   });
   const [isResizing, setIsResizing] = useState(false);
 
@@ -11955,7 +11955,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* LEFT: Today's review items list */}
-            <section className="lg:col-span-7 space-y-5">
+            <section className="lg:col-span-9 space-y-5">
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -12077,19 +12077,19 @@ export default function App() {
                               setEditingTopicId(item.topic_id);
                               setEditingTitleText(item.title);
                             }}
-                            className="text-base md:text-lg font-bold text-white tracking-tight cursor-pointer hover:text-violet-400 decoration-dotted hover:underline flex items-center gap-2 flex-wrap"
+                            className="text-base md:text-lg font-bold text-white tracking-tight cursor-pointer hover:text-violet-400 decoration-dotted hover:underline"
                             title="클릭 시 제목을 수정합니다."
                           >
                             {item.category === '계산' ? (
-                              <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                              <span className="inline-flex items-center bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none mr-2 align-middle">
                                 계산
                               </span>
                             ) : (
-                              <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                              <span className="inline-flex items-center bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none mr-2 align-middle">
                                 일반
                               </span>
                             )}
-                            <span>{item.title}</span>
+                            <span className="align-middle break-all">{item.title}</span>
                           </h3>
                         )}
 
@@ -12132,7 +12132,7 @@ export default function App() {
             </section>
 
             {/* RIGHT: Today's study registration form */}
-            <section className="hidden lg:block w-full lg:col-span-5 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
+            <section className="hidden lg:block w-full lg:col-span-3 glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-xl mt-6 lg:mt-0">
               <div className="flex items-center gap-2 mb-6">
                 <PlusCircle size={20} className="text-brand-400" />
                 <h2 className="text-lg font-bold text-white">오늘 공부한 토픽 등록</h2>
@@ -13855,7 +13855,7 @@ export default function App() {
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
             style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-            className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+            className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
@@ -15674,7 +15674,7 @@ export default function App() {
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
               style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
-              className={`w-full md:w-[30vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+              className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
