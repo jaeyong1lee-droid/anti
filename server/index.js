@@ -3077,7 +3077,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   let qIntro = questions.find(q => q.type === '주관식 (개요)');
   let qFormula = questions.find(q => q.type === '주관식 (공식)');
   
-  const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '');
+  const fallbackQs = generateFallbackQuestions(topic.title, topic.keywords, fileText || '')
+    .filter(q => !(q.question || '').includes('general_geotech'));
   
   if (!qIntro) {
     qIntro = fallbackQs.find(q => q.type === '주관식 (개요)');
@@ -3373,7 +3374,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       searchTarget.includes('투수') || searchTarget.includes('침투') || searchTarget.includes('보일링') || searchTarget.includes('boiling') || searchTarget.includes('분사현상') || searchTarget.includes('분사 현상') || searchTarget.includes('piping') || searchTarget.includes('파이핑') || searchTarget.includes('seepage') || searchTarget.includes('permeability') || searchTarget.includes('darcy') || searchTarget.includes('다르시') || searchTarget.includes('임계동수경사') || searchTarget.includes('동수경사') || searchTarget.includes('유선망') || searchTarget.includes('flow net') ||
       searchTarget.includes('흙막이') || searchTarget.includes('가설 흙막이') || searchTarget.includes('가설흙막이') || searchTarget.includes('탄소성') || searchTarget.includes('탄소성보') || searchTarget.includes('탄소성보법') || searchTarget.includes('braced wall') || searchTarget.includes('braced_wall') || searchTarget.includes('지반스프링') || searchTarget.includes('지반 스프링') ||
       searchTarget.includes('액상화') || searchTarget.includes('liquefaction') || searchTarget.includes('간극수압') || searchTarget.includes('과잉간극수압') ||
-      searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상');
+      searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상') ||
+      searchTarget.includes('수압파쇄') || searchTarget.includes('hydraulic fracturing') || searchTarget.includes('수압 파쇄') || searchTarget.includes('파쇄시험') || searchTarget.includes('파쇄 시험');
 
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
@@ -3548,6 +3550,12 @@ ${adjustmentsPrompt}
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+
+[🚨 토픽 범위 엄격 제한 — 최우선 준수사항]:
+- 위에 제시된 [토픽 제목]과 [첨부파일 본문 텍스트]의 내용에서만 문제를 출제하십시오.
+- 첨부파일 본문에 없는 다른 토픽(예: 흙막이, Chang, 응력경로, stress path, 사면안정, 압밀, 옹벽, 전단강도, 투수, 액상화, Q분류 등)의 개념이나 공식을 절대로 포함하지 마십시오.
+- 만약 첨부파일 본문의 내용이 부족하여 ${totalAiQuestionsCount}문제를 출제하기 어렵다면, [토픽 제목] 주제 범위 안에서 AI가 학술적으로 정확한 문제를 자체 생성하십시오. 다른 토픽의 문제를 대신 내는 것은 절대 금지입니다.
+- 각 문제의 질문문, 보기, 정답, 해설 전부가 오직 [토픽 제목] 주제에만 해당되어야 합니다.
 
 [출제 요구사항]:
 1. 반드시 총 ${totalAiQuestionsCount}개의 문제를 다음과 같이 구성하여 출제하십시오:
@@ -4017,7 +4025,8 @@ ${otherQs.map((q, i) => {
         searchTarget.includes('투수') || searchTarget.includes('침투') || searchTarget.includes('보일링') || searchTarget.includes('boiling') || searchTarget.includes('분사현상') || searchTarget.includes('분사 현상') || searchTarget.includes('piping') || searchTarget.includes('파이핑') || searchTarget.includes('seepage') || searchTarget.includes('permeability') || searchTarget.includes('darcy') || searchTarget.includes('다르시') || searchTarget.includes('임계동수경사') || searchTarget.includes('동수경사') || searchTarget.includes('유선망') || searchTarget.includes('flow net') ||
         searchTarget.includes('흙막이') || searchTarget.includes('가설 흙막이') || searchTarget.includes('가설흙막이') || searchTarget.includes('탄소성') || searchTarget.includes('탄소성보') || searchTarget.includes('탄소성보법') || searchTarget.includes('braced wall') || searchTarget.includes('braced_wall') || searchTarget.includes('지반스프링') || searchTarget.includes('지반 스프링') ||
         searchTarget.includes('액상화') || searchTarget.includes('liquefaction') || searchTarget.includes('간극수압') || searchTarget.includes('과잉간극수압') ||
-        searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상');
+        searchTarget.includes('보상기초') || searchTarget.includes('compensated foundation') || searchTarget.includes('compensated_foundation') || searchTarget.includes('하중 보상') || searchTarget.includes('하중보상') ||
+        searchTarget.includes('수압파쇄') || searchTarget.includes('hydraulic fracturing') || searchTarget.includes('수압 파쇄') || searchTarget.includes('파쇄시험') || searchTarget.includes('파쇄 시험');
 
       // targetType 결정
       let targetType = '객관식 (4지선다)';

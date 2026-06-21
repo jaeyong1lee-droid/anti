@@ -465,17 +465,15 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
     { name: '락볼트 인발', keywords: ['인발', '락볼트', 'pullout', '인발시험', '인발 시험'] },
     { name: 'Q 분류', keywords: ['q 분류', 'q분류', 'barton', '바톤', 'jr', 'ja', 'jw', 'srf'] },
     { name: '싱글쉘 터널', keywords: ['싱글쉘', 'single shell', '싱글 쉘', 'sst', '더블쉘', '더블 쉘'] },
-    { name: '수압파쇄', keywords: ['수압파쇄', 'hydraulic fracturing', '폐쇄압력', '재개열압력'] }
+    { name: '수압파쇄', keywords: ['수압파쇄', 'hydraulic fracturing', '수압 파쇄', '폐쇄압력', '재개열압력', '균열발생압력', '파쇄압력', 'shut-in', 'shut in', '시추공', 'borehole', '최대수평응력', '최소수평응력', '수평응력', '측압계수', '인장강도', 'breakdown pressure', '파쇄시험', '수압파쇄시험'] }
   ];
 
-  // 1. Check if the question is genuinely relevant to the active topic.
-  // If the question explicitly contains core words of the active topic, we treat it as relevant and NOT mismatched.
-  const hasActiveWord = allActiveWords.some(w => qText.includes(w));
-  if (hasActiveWord) {
-    return null; // Safe: it mentions the active topic's words.
+  // [Hallucination Guard] Detect general_geotech placeholder content leaked from fallback pool
+  if (qText.includes('general_geotech')) {
+    return { matchedDomain: 'general_geotech (할루시네이션)', matchedKws: ['general_geotech'] };
   }
 
-  // 2. Check if the active topic matches one of our defined domains
+  // 1. Find which predefined domain the active topic belongs to
   let activeDomain = null;
   for (const domain of domains) {
     const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
@@ -483,6 +481,23 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
       activeDomain = domain;
       break;
     }
+  }
+
+  // 2. Check if the question mentions the active topic's words
+  const hasActiveWord = allActiveWords.some(w => qText.includes(w));
+  if (hasActiveWord) {
+    // Even with active topic words present, check for strong cross-domain leakage
+    // If 2+ keywords from another domain appear, it's likely a leaked question
+    for (const domain of domains) {
+      if (domain === activeDomain) continue;
+      const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
+      if (topicMatchesDomain) continue; // Skip domains that overlap with active topic
+      const leakedKws = domain.keywords.filter(kw => qText.includes(kw));
+      if (leakedKws.length >= 2) {
+        return { matchedDomain: domain.name, matchedKws: leakedKws };
+      }
+    }
+    return null; // Safe: mentions active topic words and no strong cross-domain leakage.
   }
 
   // 3. If the active topic matches a domain, check if the question matches that domain's keywords
@@ -493,7 +508,7 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
     }
   }
 
-  // 4. Otherwise, perform leakage checking against other domains
+  // 4. Leakage scan — check against all other domains
   for (const domain of domains) {
     const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
     if (!topicMatchesDomain) {
