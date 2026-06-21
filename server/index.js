@@ -4830,7 +4830,7 @@ app.post('/api/question/adjust', async (req, res) => {
   "answer": "정확히 일치하는 정답 보기 텍스트",
   "explanation": "상세한 해설"
 } (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)`;
-      }`;
+      }
       const sourceQuestionText = currentQuestion?.question || '';
       const sourceQuestionAnswer = currentQuestion?.answer || '';
       const sourceQuestionConcept = currentQuestion?.concept || '';
