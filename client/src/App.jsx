@@ -6666,7 +6666,9 @@ export default function App() {
     }
   }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
-  const forceSaveActiveSessions = () => {
+  const forceSaveActiveSessions = async (isUnloading = false) => {
+    const promises = [];
+
     // 1) Save active review session immediately to localStorage (synchronously)
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session');
@@ -6688,10 +6690,9 @@ export default function App() {
         console.warn('Unload localStorage save failed:', e);
       }
 
-      fetch(`${API_BASE}/api/session/review`, {
+      const fetchOpts = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        keepalive: true,
         body: JSON.stringify({
           topicId: selectedTopic.id,
           scheduleId: selectedTopic.schedule_id,
@@ -6705,7 +6706,14 @@ export default function App() {
           chatHistory,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
-      }).catch(e => console.warn('복습 세션 긴급 동기화 실패:', e));
+      };
+      if (isUnloading) {
+        fetchOpts.keepalive = true;
+      }
+      promises.push(
+        fetch(`${API_BASE}/api/session/review`, fetchOpts)
+          .catch(e => console.warn('복습 세션 긴급 동기화 실패:', e))
+      );
     }
 
     // 2) Save active exam session immediately to localStorage (synchronously)
@@ -6728,10 +6736,9 @@ export default function App() {
         console.warn('Unload exam localStorage save failed:', e);
       }
 
-      fetch(`${API_BASE}/api/session/exam`, {
+      const fetchOpts = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        keepalive: true,
         body: JSON.stringify({
           examQuestions,
           examRevealed,
@@ -6744,7 +6751,18 @@ export default function App() {
           chatHistory,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
-      }).catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e));
+      };
+      if (isUnloading) {
+        fetchOpts.keepalive = true;
+      }
+      promises.push(
+        fetch(`${API_BASE}/api/session/exam`, fetchOpts)
+          .catch(e => console.warn('종합평가 세션 긴급 동기화 실패:', e))
+      );
+    }
+
+    if (promises.length > 0) {
+      await Promise.all(promises);
     }
 
     // 3) Save general app state immediately to localStorage (synchronously)
@@ -6780,7 +6798,7 @@ export default function App() {
   forceSaveRef.current = forceSaveActiveSessions;
   useEffect(() => {
     const handleBeforeUnload = () => {
-      forceSaveRef.current();
+      forceSaveRef.current(true);
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handleBeforeUnload);
@@ -11579,8 +11597,8 @@ export default function App() {
               <div className="flex flex-col gap-2.5 w-full">
                 {/* 오늘의 복습 */}
                 <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
                     setViewMode('dashboard');
                     setSelectedTopic(null);
                     setShowExam(false);
@@ -11600,8 +11618,8 @@ export default function App() {
 
                 {/* 복습토픽 */}
                 <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
                     setViewMode('all_topics');
                     setSelectedTopic(null);
                     setShowExam(false);
@@ -11622,8 +11640,8 @@ export default function App() {
 
                 {/* 종합평가 */}
                 <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowFormulaExam(false);
                     setShowTheoryExam(false);
@@ -11642,8 +11660,8 @@ export default function App() {
 
                 {/* 필수공식 */}
                 <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowExam(false);
                     setShowTheoryExam(false);
@@ -11663,8 +11681,8 @@ export default function App() {
 
                 {/* 답안지 */}
                 <button
-                  onClick={() => {
-                    forceSaveActiveSessions();
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
                     setSelectedTopic(null);
                     setShowExam(false);
                     setShowFormulaExam(false);
@@ -12461,8 +12479,8 @@ export default function App() {
               )}
 
               <button
-                onClick={() => {
-                  forceSaveActiveSessions();
+                onClick={async () => {
+                  await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   setViewMode('dashboard');
                 }}
@@ -12473,8 +12491,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
-                  forceSaveActiveSessions();
+                onClick={async () => {
+                  await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   setViewMode('all_topics');
                 }}
@@ -12485,8 +12503,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
-                  forceSaveActiveSessions();
+                onClick={async () => {
+                  await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenExam();
                 }}
@@ -12497,8 +12515,8 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
-                  forceSaveActiveSessions();
+                onClick={async () => {
+                  await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenFormulaExam();
                 }}
@@ -12510,8 +12528,8 @@ export default function App() {
 
 
               <button
-                onClick={() => {
-                  forceSaveActiveSessions();
+                onClick={async () => {
+                  await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenAnswerSheet();
                 }}
@@ -12534,7 +12552,7 @@ export default function App() {
                 </button>
               )}
 
-              {selectedTopic && (
+              {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
                   className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slate-900/85 hover:bg-slate-850 text-slate-300 hover:text-white border-slate-700/40 transition-all cursor-pointer active:scale-95"
@@ -12565,12 +12583,12 @@ export default function App() {
               )}
 
               <button
-                onClick={() => { 
+                onClick={async () => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                   if (selectedTopic?.isReadOnly) {
                     setSelectedTopic(null); 
                   } else {
-                    forceSaveActiveSessions();
+                    await forceSaveActiveSessions();
                     setSelectedTopic(null); 
                   }
                 }}
@@ -12631,7 +12649,7 @@ export default function App() {
                   <span className="whitespace-nowrap">원보고서</span>
                 </button>
               )}
-              {selectedTopic && (
+              {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
@@ -12660,12 +12678,12 @@ export default function App() {
                 </button>
               )}
               <button
-                onClick={() => { 
+                onClick={async () => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                   if (selectedTopic?.isReadOnly) {
                     setSelectedTopic(null); 
                   } else {
-                    forceSaveActiveSessions();
+                    await forceSaveActiveSessions();
                     setSelectedTopic(null); 
                   }
                 }}
@@ -17509,8 +17527,8 @@ export default function App() {
             } : {}}
           >
             <button
-              onClick={() => {
-                forceSaveActiveSessions();
+              onClick={async () => {
+                await forceSaveActiveSessions();
                 setViewMode('dashboard');
                 setSelectedTopic(null);
                 setShowExam(false);
@@ -17531,8 +17549,8 @@ export default function App() {
               <span className="text-[10px] font-bold tracking-tight">오늘의 복습</span>
             </button>
             <button
-              onClick={() => {
-                forceSaveActiveSessions();
+              onClick={async () => {
+                await forceSaveActiveSessions();
                 setViewMode('all_topics');
                 setSelectedTopic(null);
                 setShowExam(false);
@@ -17554,8 +17572,8 @@ export default function App() {
             </button>
             {/* 종합평가 버튼 */}
             <button
-              onClick={() => {
-                forceSaveActiveSessions();
+              onClick={async () => {
+                await forceSaveActiveSessions();
                 setSelectedTopic(null);
                 setShowFormulaExam(false);
                 setShowTheoryExam(false);
@@ -17575,8 +17593,8 @@ export default function App() {
             </button>
             {/* 필수공식 버튼 */}
             <button
-              onClick={() => {
-                forceSaveActiveSessions();
+              onClick={async () => {
+                await forceSaveActiveSessions();
                 setSelectedTopic(null);
                 setShowExam(false);
                 setShowTheoryExam(false);
@@ -17597,8 +17615,8 @@ export default function App() {
 
             {/* 답안지 버튼 */}
             <button
-              onClick={() => {
-                forceSaveActiveSessions();
+              onClick={async () => {
+                await forceSaveActiveSessions();
                 setSelectedTopic(null);
                 setShowExam(false);
                 setShowFormulaExam(false);
