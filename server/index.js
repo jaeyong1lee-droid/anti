@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import { gradeSubjective } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
-import { validateAndHealQuestion, deduplicateQuestions } from './plugins/validationPlugin.js';
+import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched } from './plugins/validationPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3298,7 +3298,11 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                 const selected = parsed.selectedAnswers?.[qIdx];
                 const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
                 if (normalizeAns(selected) !== normalizeAns(q.answer)) {
-                  incorrectQuestions.push(q);
+                  if (!isQuestionMismatched(q, topic.title, topic.keywords)) {
+                    incorrectQuestions.push(q);
+                  } else {
+                    console.log(`[CarryOver Filter] Filtered out leaked question from carryover: "${q.question.substring(0, 50)}..."`);
+                  }
                 }
               }
             });

@@ -74,40 +74,11 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
   
   // 토픽 불일치(Leakage) 여부 판정
   let isMismatched = false;
-  if (cleanTitle) {
-    const qText = `${question.question || ''} ${question.explanation || ''} ${Array.isArray(question.options) ? question.options.join(' ') : ''}`.toLowerCase();
-    const tTitle = cleanTitle.toLowerCase();
-    const tKeywords = cleanKeywords.toLowerCase();
-    const searchTarget = `${tTitle} ${tKeywords}`;
-
-    // Define distinct domains and their signature keywords
-    const domains = [
-      { name: '흙막이/Chang', keywords: ['흙막이', 'chang', '지반 스프링', '상호작용', '변형 특성 길이', '수평지반반력계수', '수평 환산폭', '휨강성'] },
-      { name: '응력 경로/Stress Path', keywords: ['응력 경로', 'stress path', 'p-q', '축차응력', '편차응력', '평균 응력'] },
-      { name: '전기이중층', keywords: ['이중층', 'ddl', 'double layer', 'double diffuse layer'] },
-      { name: '압밀', keywords: ['압밀', 'terzaghi', '압밀도', '압밀계수', '침하량', '과잉간극수압'] },
-      { name: '옹벽', keywords: ['옹벽', '주동토압', '수동토압'] },
-      { name: '사면', keywords: ['사면안정', '무한사면', '한계성토고'] },
-      { name: '락볼트 인발', keywords: ['인발', '락볼트', 'pullout', '인발시험', '인발 시험'] },
-      { name: 'Q 분류', keywords: ['q 분류', 'q분류', 'barton', '바톤', 'jr', 'ja', 'jw', 'srf'] },
-      { name: '싱글쉘 터널', keywords: ['싱글쉘', 'single shell', '싱글 쉘', 'sst', '더블쉘', '더블 쉘'] },
-      { name: '수압파쇄', keywords: ['수압파쇄', 'hydraulic fracturing', '폐쇄압력', '재개열압력'] }
-    ];
-
-    // For each domain, if the question contains its signature keywords, but the active topic is NOT that domain, then it is a mismatch.
-    for (const domain of domains) {
-      const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
-      if (!topicMatchesDomain) {
-        const questionMatchesDomain = domain.keywords.some(kw => qText.includes(kw));
-        if (questionMatchesDomain) {
-          const matchedKws = domain.keywords.filter(kw => qText.includes(kw));
-          console.log(`[ValidationPlugin] Detected topic mismatch! Topic "${cleanTitle}" does not match domain "${domain.name}", but question contains keywords: ${JSON.stringify(matchedKws)}`);
-          isMismatched = true;
-          validationLogs.push(`[주제 이탈 감지] 활성 토픽 "${cleanTitle}"(와)과 일치하지 않는 타 분야 키워드(${matchedKws.join(', ')})가 감지되어 AI 2차 검증을 통한 전면 재작성을 시작합니다.`);
-          break;
-        }
-      }
-    }
+  const mismatchResult = isQuestionMismatched(question, topicTitle, topicKeywords);
+  if (mismatchResult) {
+    console.log(`[ValidationPlugin] Detected topic mismatch! Topic "${cleanTitle}" does not match domain "${mismatchResult.matchedDomain}", but question contains keywords: ${JSON.stringify(mismatchResult.matchedKws)}`);
+    isMismatched = true;
+    validationLogs.push(`[주제 이탈 감지] 활성 토픽 "${cleanTitle}"(와)과 일치하지 않는 타 분야 키워드(${mismatchResult.matchedKws.join(', ')})가 감지되어 AI 2차 검증을 통한 전면 재작성을 시작합니다.`);
   }
 
   const needsCorrection = 
@@ -419,4 +390,40 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
     }
   }
   return result;
+}
+
+export function isQuestionMismatched(question, topicTitle, topicKeywords) {
+  if (!question || typeof question !== 'object') return null;
+  const cleanTitle = (topicTitle || '').trim();
+  const cleanKeywords = (topicKeywords || '').trim();
+  if (!cleanTitle) return null;
+
+  const qText = `${question.question || ''} ${question.explanation || ''} ${Array.isArray(question.options) ? question.options.join(' ') : ''}`.toLowerCase();
+  const tTitle = cleanTitle.toLowerCase();
+  const tKeywords = cleanKeywords.toLowerCase();
+  const searchTarget = `${tTitle} ${tKeywords}`;
+
+  const domains = [
+    { name: '흙막이/Chang', keywords: ['흙막이', 'chang', '지반 스프링', '상호작용', '변형 특성 길이', '수평지반반력계수', '수평 환산폭', '휨강성'] },
+    { name: '응력 경로/Stress Path', keywords: ['응력 경로', 'stress path', 'p-q', '축차응력', '편차응력', '평균 응력'] },
+    { name: '전기이중층', keywords: ['이중층', 'ddl', 'double layer', 'double diffuse layer'] },
+    { name: '압밀', keywords: ['압밀', 'terzaghi', '압밀도', '압밀계수', '침하량', '과잉간극수압'] },
+    { name: '옹벽', keywords: ['옹벽', '주동토압', '수동토압'] },
+    { name: '사면', keywords: ['사면안정', '무한사면', '한계성토고'] },
+    { name: '락볼트 인발', keywords: ['인발', '락볼트', 'pullout', '인발시험', '인발 시험'] },
+    { name: 'Q 분류', keywords: ['q 분류', 'q분류', 'barton', '바톤', 'jr', 'ja', 'jw', 'srf'] },
+    { name: '싱글쉘 터널', keywords: ['싱글쉘', 'single shell', '싱글 쉘', 'sst', '더블쉘', '더블 쉘'] },
+    { name: '수압파쇄', keywords: ['수압파쇄', 'hydraulic fracturing', '폐쇄압력', '재개열압력'] }
+  ];
+
+  for (const domain of domains) {
+    const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
+    if (!topicMatchesDomain) {
+      const questionMatchesDomain = domain.keywords.some(kw => qText.includes(kw));
+      if (questionMatchesDomain) {
+        return { matchedDomain: domain.name, matchedKws: domain.keywords.filter(kw => qText.includes(kw)) };
+      }
+    }
+  }
+  return null;
 }
