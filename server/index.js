@@ -475,6 +475,22 @@ async function getTopicText(topic) {
       try {
         const rawHtml = decodeHtmlBuffer(topic.pdf_data);
         fileText = htmlToPlainText(rawHtml);
+
+        // Check if there is an embedded base64 image (uploaded along with HTML)
+        const base64ImgMatch = rawHtml.match(/<img[^>]+src=["']data:(image\/[^;]+);base64,([^"']+)["']/i);
+        if (base64ImgMatch) {
+          const mimeType = base64ImgMatch[1];
+          const base64Data = base64ImgMatch[2];
+          console.log(`[OCR Embedded Image] Found embedded base64 image in HTML. Running OCR...`);
+          try {
+            const ocrText = await extractTextFromCalculationImage(base64Data, mimeType, callLLMWithFailover);
+            if (ocrText) {
+              fileText = `[이미지 OCR 추출 텍스트]:\n${ocrText}\n\n[HTML 본문 텍스트]:\n${fileText}`;
+            }
+          } catch (ocrErr) {
+            console.error('[OCR Embedded Image] Failed to run OCR on embedded image:', ocrErr);
+          }
+        }
       } catch (htmlErr) {
         console.warn('Failed to parse HTML string:', htmlErr);
       }

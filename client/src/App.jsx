@@ -2122,11 +2122,42 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
+
+  const resolvedCategory = q.category || topicCategory;
+  const resolvedPdfName = q.pdf_name || pdfName || '';
+  const resolvedTopicId = q.topic_id || topicId;
+
+  const isImageTopic = resolvedCategory === '계산' && (
+    resolvedPdfName.toLowerCase().endsWith('.png') || 
+    resolvedPdfName.toLowerCase().endsWith('.jpg') || 
+    resolvedPdfName.toLowerCase().endsWith('.jpeg') || 
+    resolvedPdfName.toLowerCase().endsWith('.gif') || 
+    resolvedPdfName.toLowerCase().endsWith('.webp')
+  );
+
+  const renderImageElement = () => {
+    if (isImageTopic && resolvedTopicId) {
+      return (
+        <div className="mt-3 flex flex-col items-center w-full">
+          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
+            <span>🖼️ 첨부된 문제 그래프/그림</span>
+          </div>
+          <img 
+            src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+            alt="Topic Screenshot" 
+            className="max-w-full h-auto rounded-xl border border-slate-800 shadow-lg"
+            style={{ maxHeight: '350px' }}
+          />
+        </div>
+      );
+    }
+    return null;
+  };
   
   if (conditionMatch) {
     const splitIdx = conditionMatch.index;
@@ -2159,6 +2190,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
           <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
         </div>
+        {renderImageElement()}
         {conditions.length > 0 && (
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-2.5 sm:p-4 my-2.5 text-left w-full">
             <div className="text-indigo-400 font-extrabold text-[12px] sm:text-xs mb-2.5 flex items-center gap-1.5 select-none">
@@ -2199,6 +2231,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
       <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
         <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
       </div>
+      {renderImageElement()}
       {referenceTableData && (
         <div className="my-3 overflow-x-auto w-full">
           <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
@@ -7080,7 +7113,28 @@ export default function App() {
     
     let fileToUpload = pdfFile;
     const htmlVal = htmlTextareaRef.current ? htmlTextareaRef.current.value : '';
-    if (htmlVal.trim()) {
+
+    const readAsDataURL = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+    };
+
+    if (category === '계산' && calculationImageFile && htmlVal.trim()) {
+      try {
+        const base64DataUrl = await readAsDataURL(calculationImageFile);
+        const combinedHtml = `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n${htmlVal}`;
+        const blob = new Blob([combinedHtml], { type: 'text/html' });
+        fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
+      } catch (err) {
+        console.error('Failed to read calculation image for HTML combining:', err);
+        const blob = new Blob([htmlVal], { type: 'text/html' });
+        fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
+      }
+    } else if (htmlVal.trim()) {
       const blob = new Blob([htmlVal], { type: 'text/html' });
       fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
     } else if (calculationImageFile) {
@@ -7689,6 +7743,9 @@ export default function App() {
       }
     }
 
+    const topicObj = allTopics.find(t => t.id === topicId);
+    const topicCategory = topicObj ? topicObj.category : '일반';
+
     const activeInfo = {
       topicId,
       title,
@@ -7697,12 +7754,13 @@ export default function App() {
       mode,
       scheduleId: finalScheduleId,
       reviewRound: finalReviewRound,
-      isBonus
+      isBonus,
+      category: topicCategory
     };
     localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
     setLastActiveReview(activeInfo);
 
-    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}`);
+    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}, category=${topicCategory}`);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
@@ -7710,7 +7768,7 @@ export default function App() {
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
     if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && selectedTopic?.schedule_id === finalScheduleId) {
       console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
-      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus };
+      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, category: topicCategory };
       setSelectedTopic(targetTopic);
       selectedTopicRef.current = targetTopic;
       // 이전 스크롤 위치 복원
@@ -7719,7 +7777,7 @@ export default function App() {
       });
       return;
     }
-    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus };
+    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, category: topicCategory };
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
     setLoadingAI(true);
@@ -11525,8 +11583,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating AI Progress Popup */}
-      {showAiProgress && (
+      {/* Floating AI Progress Popup (Hidden on Mobile Portrait) */}
+      {showAiProgress && (isDesktop || isMobileLandscape) && (
         <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
@@ -12133,110 +12191,79 @@ export default function App() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
-                    계산문제 업로드
-                  </label>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Clipboard Paste Zone */}
-                    <div 
-                      tabIndex={0}
-                      onPaste={(e) => {
-                        const items = e.clipboardData?.items;
-                        if (!items) return;
-                        for (let i = 0; i < items.length; i++) {
-                          if (items[i].type.indexOf('image') !== -1) {
-                            const blob = items[i].getAsFile();
-                            if (blob) {
-                              const file = new window.File([blob], `screenshot_${Date.now()}.png`, { type: blob.type });
-                              setCalculationImageFile(file);
-                              setCategory('계산');
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
-                                setCalculationImagePreview(event.target.result);
-                                handleSuggestTitleFromImage(event.target.result, blob.type);
-                              };
-                              reader.readAsDataURL(file);
-                              showNotification('클립보드에서 스크린샷 이미지를 성공적으로 가져왔습니다!');
-                              e.preventDefault();
-                              break;
+                {category === '계산' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                      계산문제 업로드
+                    </label>
+                    
+                    <div className="w-full">
+                      {/* Clipboard Paste Zone */}
+                      <div 
+                        tabIndex={0}
+                        onPaste={(e) => {
+                          const items = e.clipboardData?.items;
+                          if (!items) return;
+                          for (let i = 0; i < items.length; i++) {
+                            if (items[i].type.indexOf('image') !== -1) {
+                              const blob = items[i].getAsFile();
+                              if (blob) {
+                                const file = new window.File([blob], `screenshot_${Date.now()}.png`, { type: blob.type });
+                                setCalculationImageFile(file);
+                                setCategory('계산');
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  setCalculationImagePreview(event.target.result);
+                                  handleSuggestTitleFromImage(event.target.result, blob.type);
+                                };
+                                reader.readAsDataURL(file);
+                                showNotification('클립보드에서 스크린샷 이미지를 성공적으로 가져왔습니다!');
+                                e.preventDefault();
+                                break;
+                              }
                             }
                           }
-                        }
-                      }}
-                      className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-                    >
-                      <Copy size={20} className="text-slate-500 mb-1.5" />
-                      <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
-                      <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
-                    </div>
-
-                    {/* File Upload Button */}
-                    <div 
-                      onClick={() => imageInputRef.current?.click()}
-                      className="border border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50"
-                    >
-                      <input 
-                        ref={imageInputRef}
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (!file.type.startsWith('image/')) {
-                              showNotification('이미지 파일만 업로드할 수 있습니다.', 'error');
-                              return;
-                            }
-                            setCalculationImageFile(file);
-                            setCategory('계산');
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              setCalculationImagePreview(event.target.result);
-                              handleSuggestTitleFromImage(event.target.result, file.type);
-                            };
-                            reader.readAsDataURL(file);
-                          }
                         }}
-                        className="hidden"
-                      />
-                      <UploadCloud size={20} className="text-slate-500 mb-1.5" />
-                      <p className="text-xs font-bold text-slate-300">이미지 파일 업로드</p>
-                      <p className="text-[10px] text-slate-500 mt-1">파일 선택 또는 드래그</p>
-                    </div>
-                  </div>
-
-                  {/* Calculation Image Preview */}
-                  {calculationImagePreview && (
-                    <div className="mt-3 p-3 bg-slateCustom-900/60 rounded-xl border border-slate-800 flex flex-col items-center">
-                      <div className="text-xs font-bold text-slate-400 mb-2 w-full text-left flex items-center gap-1.5">
-                        <Check size={12} className="text-emerald-400" />
-                        업로드된 이미지 미리보기
-                      </div>
-                      <img 
-                        src={calculationImagePreview} 
-                        alt="Calculation Problem Preview" 
-                        className="max-h-40 object-contain rounded border border-slate-800 shadow"
-                      />
-                      <p className="text-[10px] text-slate-500 mt-1 truncate max-w-full">
-                        {calculationImageFile?.name}
-                      </p>
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCalculationImageFile(null);
-                          setCalculationImagePreview(null);
-                          if (imageInputRef.current) imageInputRef.current.value = '';
-                        }}
-                        className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-[10px] font-bold transition-all duration-200"
+                        className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                       >
-                        <Trash2 size={10} />
-                        이미지 제거
-                      </button>
+                        <Copy size={20} className="text-slate-500 mb-1.5" />
+                        <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
+                        <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Calculation Image Preview */}
+                    {calculationImagePreview && (
+                      <div className="mt-3 p-3 bg-slateCustom-900/60 rounded-xl border border-slate-800 flex flex-col items-center">
+                        <div className="text-xs font-bold text-slate-400 mb-2 w-full text-left flex items-center gap-1.5">
+                          <Check size={12} className="text-emerald-400" />
+                          업로드된 이미지 미리보기
+                        </div>
+                        <img 
+                          src={calculationImagePreview} 
+                          alt="Calculation Problem Preview" 
+                          className="max-h-40 object-contain rounded border border-slate-800 shadow"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1 truncate max-w-full">
+                          {calculationImageFile?.name}
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCalculationImageFile(null);
+                            setCalculationImagePreview(null);
+                            if (imageInputRef.current) imageInputRef.current.value = '';
+                          }}
+                          className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-[10px] font-bold transition-all duration-200"
+                        >
+                          <Trash2 size={10} />
+                          이미지 제거
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -13276,7 +13303,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -15116,7 +15143,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {renderQuestionContent(q, examTopic?.title, katexLoaded)}
+                      {renderQuestionContent(q, examTopic?.title, katexLoaded, q.topic_id, q.pdf_name, q.category)}
 
                       {/* MC Options */}
                       {isMC && (
