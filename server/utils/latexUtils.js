@@ -760,7 +760,7 @@ export function healQuizQuestionObject(q) {
     }
 
     const hasInputPlaceholder = q.tableData && q.tableData.rows && q.tableData.rows.some(row => 
-      row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
+      Array.isArray(row) && row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
         cell.includes('[INPUT_') || 
         /빈칸\s*\(?\d+\)?/i.test(cell) || 
         /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell)
@@ -778,6 +778,7 @@ export function healQuizQuestionObject(q) {
       let inputCount = 1;
 
       const newRows = q.tableData.rows.map((row) => {
+        if (!Array.isArray(row)) return [];
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
