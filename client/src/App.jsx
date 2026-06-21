@@ -12745,11 +12745,10 @@ export default function App() {
                                     e.stopPropagation();
                                     handleStartPracticeReview(topic);
                                   }}
-                                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 text-[10px] font-black"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
                                   title="복습하기 (이 토픽을 연습 복습합니다. 복습 계획이나 회차에는 영향을 주지 않습니다)"
                                 >
-                                  <BookOpen size={13} className="text-violet-400" />
-                                  <span>복습하기</span>
+                                  <BookOpen size={14} />
                                 </button>
                                 {topic.pdf_name && (
                                   <button
