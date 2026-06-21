@@ -3340,6 +3340,32 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   return [qIntro, qFormula, ...shuffledRest, ...finalSubjsShort];
 }
 
+function generateCalculationFallbackQuestions(title, keywords) {
+  return [
+    {
+      type: "주관식 (단답형)",
+      question: `[${title} 계산 문제 1] ${title}의 기본 가정을 바탕으로 극한 지지력 및 구조물의 허용하중 수치를 구하시오. (첨부된 원보고서의 이미지 및 도표를 참고하여 설계 인자들을 대입하여 계산하십시오.)`,
+      answer: "원보고서 조건에 따른 수치",
+      explanation: "원보고서 및 제공된 스크샷 이미지의 공학적 설계 조건(지반 종류, 지하수위, 기초폭 등)을 대입하여 극한 지지력을 계산하는 전개 과정입니다."
+    },
+    {
+      type: "주관식 (단답형)",
+      question: `[${title} 계산 문제 2] ${title}의 설계 매개변수 변화에 따른 최종 지반 반력 및 작용 응력 분포를 연산하시오. (첨부된 그림의 수치를 적용하여 연산하십시오.)`,
+      answer: "설계 조건 변화에 따른 변동 수치",
+      explanation: "공식에 변경된 지반 매개변수 및 구조적 수치를 대입하여 최종 연직/수평 하중 및 안정성을 구하는 계산 해설입니다."
+    }
+  ];
+}
+
+function assembleFinalCalculationQuestions(questions, topic) {
+  let finalQuestions = (questions || []).filter(q => q.type === '주관식 (단답형)');
+  const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords);
+  while (finalQuestions.length < 2) {
+    finalQuestions.push(fb[finalQuestions.length]);
+  }
+  return finalQuestions.slice(0, 2);
+}
+
 app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
@@ -3488,7 +3514,9 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     if (isCoreTopic && (forceLocal || !hasAnyAiKey)) {
       console.log(`[AI Route Interceptor - Local Fallback] Precision routed core topic "${topic.title}" to handcrafted expert-grade questions.`);
       const coreQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
+      const finalQuestions = topic.category === '계산'
+        ? assembleFinalCalculationQuestions(coreQuestions, topic)
+        : assembleFinalQuestions(coreQuestions, topic, carryOverQuestions, fileText);
       const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
@@ -3521,7 +3549,9 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const reason = forceLocal ? '소스 기반 모드로 요청됨' : '등록된 AI API 키 없음';
       console.log(`Generating local fallback questions. Reason: ${reason}`);
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+      const finalQuestions = topic.category === '계산'
+        ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
+        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
@@ -3587,7 +3617,7 @@ ${carryOverQuestions.map((q, idx) => `
 `;
     }
 
-    const totalAiQuestionsCount = 13;
+    const totalAiQuestionsCount = topic.category === '계산' ? 2 : 13;
 
     let feedbackPrompt = '';
     try {
@@ -3636,7 +3666,62 @@ ${adjustments.map((a, idx) => `
 
     const coreSubject = getCoreSubjectFromTitle(topic.title);
 
-    const prompt = `
+    const prompt = (topic.category === '계산') ? `
+당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
+아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 제시된 공식과 조건을 적용하여 풀 수 있는 실무 정량 계산문제 주관식으로 딱 **정확히 2개**의 예상문제를 생성해 주십시오.
+
+[토픽 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+
+[🚨 계산문제 출제 및 그림/표 제시 철칙 — 매우 중요]:
+1. **문제 형태**: 수험생이 직접 수식을 활용하여 수치를 연산하고 최종 답을 구해야 하는 **주관식 계산문제**여야 합니다.
+2. **문제 종류 및 "type" 값**:
+   - 질문이 1개의 단일 값 계산 결과를 요구한다면 "type" 값을 반드시 "주관식 (단답형)"으로 설정하십시오.
+   - 질문이 여러 개의 계산 값들을 요구한다면 "type" 값을 반드시 "주관식 (표채우기)"로 설정하십시오. 표채우기를 쓸 때는 tableData (headers, rows) 및 answers 객체 (INPUT_1, INPUT_2 등)를 명확히 구조화하여 출력하십시오.
+3. **그림/그래프/도면의 처리 (매우 중요)**:
+   - 만약 문제를 푸는 데 복잡한 그래프, 그림, 구조도 등이 필수적이며, 이를 텍스트로 정밀 묘사하기 어려운 경우:
+     - 억지로 텍스트로 그리려 하지 마십시오.
+     - 대신, 문제 질문(question) 본문에 **"첨부된 [그래프/그림](또는 왼쪽 원보고서 화면의 이미지)을 참고하여..."** 또는 **"첨부된 그림의 설계 조건을 참고하여..."** 라는 지시 문구를 구체적으로 삽입하십시오. 시스템에서 이미지를 카드와 함께 보여주게 됩니다.
+   - 만약 표처럼 텍스트나 마크다운 표로 묘사하는 것이 충분히 가능한 경우:
+     - 질문(question) 본문 안에 **마크다운 표(Markdown Table)** 형식(예: \`| 심도(m) | 수치 | ... |\`)으로 직접 표를 그려주십시오. 각 행은 반드시 실제 줄바꿈 문자(\\n)를 사용하여 다른 줄에 작성되어야 합니다.
+4. **정답 및 해설 규격**:
+   - 단답형일 때 "answer": 최종 계산 결과값(단위를 포함한 최종 수치/답안, 예: "125.4 kN/m²" 또는 "3.5 MPa")을 적어주십시오.
+   - 표채우기일 때 "answers": 각 INPUT_1, INPUT_2 빈칸 토큰에 일치하는 계산 정답 문자열 매핑 객체.
+   - "explanation": 수험생이 풀이 과정을 학습할 수 있도록, 상세한 공식 대입 과정과 변수 값 대입 연산 과정을 상세히 기술하십시오.
+5. **LaTeX 수식 적용**: 질문(question), 정답(answer/answers), 해설(explanation)에 포함되는 수식 기호나 숫자는 반드시 LaTeX 기호($)로 감싸서 가독성을 확보하십시오.
+
+[🚨 절대 준수 사항]:
+- **정확히 2개의 문제**만 배열에 담아 JSON 형식으로 반환하십시오.
+- 다른 부가 설명이나 코드 블록(\`\`\`json) 기호 없이 순수한 JSON 배열 데이터만 반환하십시오.
+
+${ENGINEERING_STANDARDS}
+
+[응답 JSON 포맷]:
+[
+  {
+    "type": "주관식 (단답형)",
+    "question": "문제 질문 내용 (구체적인 설계 조건 수치 포함, 필요한 경우 '첨부된 [그래프/그림]을 참고하여...' 문구 삽입 또는 마크다운 표 삽입)",
+    "answer": "최종 계산 결과값 (예: $125.4\\\\ \\\\mathrm{kN/m^2}$)",
+    "explanation": "공식 유도 및 각 변수 대입을 통한 구체적인 계산 전개 과정 및 해설"
+  },
+  {
+    "type": "주관식 (표채우기)",
+    "question": "여러 개를 입력하는 표채우기 형식의 계산문제 질문 내용",
+    "tableData": {
+      "headers": ["구분 항목", "설계 조건 A", "설계 조건 B"],
+      "rows": [
+        ["극한지지력 ($kN/m^2$)", "[INPUT_1]", "[INPUT_2]"]
+      ]
+    },
+    "answers": {
+      "INPUT_1": "$150.5\\\\ \\\\mathrm{kN/m^2}$",
+      "INPUT_2": "$220.3\\\\ \\\\mathrm{kN/m^2}$"
+    },
+    "explanation": "구체적인 계산 전개 과정 및 해설"
+  }
+]
+` : `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
 ${specialInstructions}
@@ -3823,7 +3908,9 @@ try {
           throw new Error('AI 응답을 유효한 문제 JSON 배열로 파싱하지 못했습니다.');
         }
 
-        const finalQuestions = assembleFinalQuestions(questions, topic, carryOverQuestions, fileText);
+        const finalQuestions = topic.category === '계산'
+          ? assembleFinalCalculationQuestions(questions, topic)
+          : assembleFinalQuestions(questions, topic, carryOverQuestions, fileText);
         const healedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           topic_id: Number(topicId),
@@ -3867,7 +3954,9 @@ try {
       const errorMsg = isQuota ? 'AI API 일일 사용 한도를 초과했습니다. 임시 문제로 대체됩니다.' : aiError.message;
       
       const fallbackQuestions = generateFallbackQuestions(topic.title, topic.keywords, fileText);
-      const finalQuestions = assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
+      const finalQuestions = topic.category === '계산'
+        ? assembleFinalCalculationQuestions(fallbackQuestions, topic)
+        : assembleFinalQuestions(fallbackQuestions, topic, carryOverQuestions, fileText);
       
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
