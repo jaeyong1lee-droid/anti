@@ -2129,7 +2129,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
 
-  const resolvedCategory = q.category === '계산' || topicCategory === '계산' ? '계산' : (q.category || topicCategory);
+  const resolvedCategory = q.category || topicCategory;
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
 
@@ -2146,8 +2146,6 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       return null;
     }
 
-    const isPdf = resolvedPdfName.toLowerCase().endsWith('.pdf');
-
     if (isImageTopic) {
       return (
         <div className="mt-3 flex flex-col items-center w-full">
@@ -2159,23 +2157,6 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
             alt="Topic Screenshot" 
             className="max-w-full h-auto rounded-xl border border-slate-800 shadow-lg"
           />
-        </div>
-      );
-    }
-
-    if (isPdf) {
-      return (
-        <div className="mt-3 flex flex-col items-center w-full">
-          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
-            <span>📊 첨부된 원보고서 PDF 그래프/그림</span>
-          </div>
-          <div className="w-full rounded-xl border border-slate-800 shadow-lg overflow-hidden bg-white" style={{ height: '600px' }}>
-            <iframe 
-              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
-              className="w-full h-full border-0"
-              title="PDF Topic Viewer"
-            />
-          </div>
         </div>
       );
     }
@@ -7101,11 +7082,9 @@ export default function App() {
   }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape, lastActiveReview]);
 
 
-  // Load PDF.js dynamically when switching to image view or when calculation PDF topic is active
+  // Load PDF.js dynamically when switching to image view for reports
   useEffect(() => {
-    const isCalculationPdf = (selectedTopic?.category === '계산' && selectedTopic?.pdf_name?.toLowerCase().endsWith('.pdf')) || 
-                             (showExam && examQuestions.some(q => (q.category === '계산' || q.subtype === '계산') && q.pdf_name?.toLowerCase().endsWith('.pdf')));
-    if ((isCalculationPdf || (showFullReport && reportViewType === 'image')) && !pdfjsLoaded) {
+    if (showFullReport && reportViewType === 'image' && !pdfjsLoaded) {
       if (window.pdfjsLib) {
         setPdfjsLoaded(true);
         return;
@@ -7125,7 +7104,7 @@ export default function App() {
       };
       document.head.appendChild(script);
     }
-  }, [showFullReport, reportViewType, pdfjsLoaded, selectedTopic, showExam, examQuestions]);
+  }, [showFullReport, reportViewType, pdfjsLoaded]);
 
   // Auto-scroll and focus on the first search match in grid tracker
   useEffect(() => {
