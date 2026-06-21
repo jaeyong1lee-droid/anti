@@ -3440,13 +3440,20 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
             console.log(`[Cache Invalidated] Calculation topic has ${cachedQuestions.length} cached questions (expected 4). Discarding stale cache.`);
             await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
           } else {
-            const healed = cachedQuestions.map(q => healQuizQuestionObject(q));
-            return res.json({
-              questions: healed,
-              ...cachedMeta,
-              isFallback: false,
-              isCached: true
-            });
+            // 캐시된 문제가 현재 토픽과 불일치하는지 검증
+            const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords)).length;
+            if (mismatchedCount > 0) {
+              console.log(`[Cache Invalidated] ${mismatchedCount}/${cachedQuestions.length} cached questions are mismatched with topic "${topic.title}". Discarding stale cache.`);
+              await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+            } else {
+              const healed = cachedQuestions.map(q => healQuizQuestionObject(q));
+              return res.json({
+                questions: healed,
+                ...cachedMeta,
+                isFallback: false,
+                isCached: true
+              });
+            }
           }
         }
       } catch (e) {
@@ -3736,51 +3743,55 @@ ${adjustments.map((a, idx) => `
 ${ENGINEERING_STANDARDS}
 
 [응답 JSON 포맷]:
+⚠️ 아래는 JSON 구조 형식 안내를 위한 **순수한 형식 예시**일 뿐입니다. 
+절대로 아래 예시의 질문 내용, 표 데이터, 정답, 해설을 그대로 복사하지 마십시오.
+반드시 위에 제공된 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]에 기반하여 해당 토픽에 100% 부합하는 고유한 문제를 새로 창작하십시오.
 [
   {
     "type": "주관식 (표채우기)",
-    "question": "1. 석회암 코어시료에 대한 실내실험을 수행한 결과가 다음과 같다. 그 결과를 Mohr 파괴기준으로 도시하고, 삼축시험결과를 이용하여 $S_i$(점착력)값과 $\\varnothing$(내부마찰각)값을 나타내시오.\\n\\n| 시험종류 | 인장강도($kN/m^2$) | 압축강도($kN/m^2$) |\\n| :--- | :--- | :--- |\\n| 일축인장시험 (True Tension) | 6,000 | |\\n| 스프리팅(쪼갬)인장시험 (Splitting Tension) | 4,000 | |\\n| 일축압축시험 (Uniaxial Comp.) | | 40,000 |\\n| 삼축압축시험 1 | | $\\sigma_3 = 6,800, \\Delta\\sigma = 80,000$ |\\n| 삼축압축시험 2 | | $\\sigma_3 = 35,000, \\Delta\\sigma = 130,000$ |",
+    "question": "1. (원보고서 기출문제를 100% 원형 복원한 지문을 여기에 작성)\\n\\n| 열1 | 열2 | 열3 |\\n| :--- | :--- | :--- |\\n| 데이터행1 | 값1 | 값2 |",
     "tableData": {
-      "headers": ["구분 항목", "점착력 $S_i$ ($kN/m^2$)", "내부마찰각 $\\varnothing$ ($^\\circ$)"],
+      "headers": ["구분 항목", "결과값1 헤더", "결과값2 헤더"],
       "rows": [
         ["산정 결과", "[INPUT_1]", "[INPUT_2]"]
       ]
     },
     "answers": {
-      "INPUT_1": "11,547",
-      "INPUT_2": "30"
+      "INPUT_1": "(토픽에 맞는 정확한 계산 결과값)",
+      "INPUT_2": "(토픽에 맞는 정확한 계산 결과값)"
     },
-    "explanation": "Mohr-Coulomb 파괴포락선 식을 유도하고 연립하여 상수 점착력과 마찰각을 구하는 전개 과정"
+    "explanation": "(해당 토픽의 풀이 과정 상세 해설)"
   },
   {
     "type": "주관식 (표채우기)",
-    "question": "2. Terzaghi 지지력 공식과 다른 주요 극한 지지력 공식들의 역학적 특징 및 공학적 가정사항을 비교한 표입니다. 빈칸 (A), (B)에 알맞은 핵심 내용을 기술하십시오.",
+    "question": "2. (현재 토픽의 핵심 공식/이론과 유사·비교되는 다른 공식/이론들의 개념 비교표) 빈칸에 알맞은 핵심 내용을 기술하십시오.",
     "tableData": {
-      "headers": ["비교 항목", "Terzaghi 공식", "Prandtl 공식", "Meyerhof 공식"],
+      "headers": ["비교 항목", "(현재 토픽 이론)", "(비교 대상 이론 A)", "(비교 대상 이론 B)"],
       "rows": [
-        ["지반 자중($\\gamma$)의 고려 여부", "자중 효과($0.5\\gamma B N_{\\gamma}$) 반영", "[INPUT_1]", "자중 효과 및 근입 깊이 영향 반영"],
-        ["기초 저면의 마찰 조건 가정", "[INPUT_2]", "기초 저면 완전 매끄러움 가정", "기초 저면 마찰 및 전단 파괴면의 지표 확장 반영"]
+        ["핵심 가정/특성 1", "(기입된 정보)", "[INPUT_1]", "(기입된 정보)"],
+        ["핵심 가정/특성 2", "[INPUT_2]", "(기입된 정보)", "(기입된 정보)"]
       ]
     },
     "answers": {
-      "INPUT_1": "지반 자중 무시 (0으로 가정)",
-      "INPUT_2": "기초 저면 완전 거침 가정"
+      "INPUT_1": "(토픽에 맞는 정확한 개념 서술)",
+      "INPUT_2": "(토픽에 맞는 정확한 개념 서술)"
     },
-    "explanation": "Terzaghi 공식은 Prandtl 이론의 한계를 극복하기 위해 지반 자중 항을 추가하고 기초 저면이 거칠다는 가정을 도입하여 전반전단파괴를 공식화한 반면, Meyerhof는 근입 깊이에 따른 전단 저항까지 고려하여 이론을 확장했습니다."
+    "explanation": "(해당 비교 항목들의 공학적 차이와 의미에 대한 상세 해설)"
   },
   {
     "type": "주관식 (단답형)",
-    "question": "이 계산 문제 과정 또는 결과가 실무 설계/시공에 미치는 교훈이나 공학적 의미에 대해 서술하시오.",
-    "answer": "**안전율 확보**와 **지반 매개변수 불확실성**을 고려한 한계상태 거동 파악",
-    "explanation": "계산 결과의 수치가 갖는 실제 지반 공학적 안정성 범위와 설계 가정이 실무 시공 시 미치는 영향을 분석하는 상세 해설"
+    "question": "3. 이 계산 문제 과정 또는 결과가 실무 설계/시공에 미치는 교훈이나 공학적 의미에 대해 서술하시오.",
+    "answer": "(토픽 고유의 공학적 교훈 핵심 키워드 포함 서술)",
+    "explanation": "(상세 공학적 의미 해설)"
   },
   {
     "type": "주관식 (단답형)",
-    "question": "본 계산 문제의 조건(예: 지지력 부족, 지하수위 급상승 등)과 관련하여 현장에서 공학적 문제가 발생했을 때의 구체적인 방지 대책 또는 해결방안을 기술하시오.",
-    "answer": "**그라우팅 공법**을 통한 지반 보강 및 **배수공법**을 통한 간극수압 저하 대책 수립",
-    "explanation": "현장 붕괴/변형 문제를 억제하기 위해 공학적으로 적용 가능한 지반 개량, 보강, 배수, 계측 관리 등의 상세 공법 원리 서술"
+    "question": "4. 본 계산 문제의 조건과 관련하여 현장에서 공학적 문제가 발생했을 때의 구체적인 방지 대책 또는 해결방안을 기술하시오.",
+    "answer": "(토픽 고유의 구체적 대책 공법 키워드 포함 서술)",
+    "explanation": "(현장 대책 공법의 상세 메커니즘 및 공학적 유의사항 해설)"
   }
 ]
+
 ` : `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
