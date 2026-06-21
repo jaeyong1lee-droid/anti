@@ -305,30 +305,32 @@ export function areTablesDuplicate(t1, t2) {
   if (!t1.headers || !t2.headers || !t1.rows || !t2.rows) return false;
 
   const cleanHeader = (h) => (h || '').trim().toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
-  const headers1 = t1.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목');
-  const headers2 = t2.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목');
+  const headers1 = t1.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목' && h !== '구분기준');
+  const headers2 = t2.headers.map(cleanHeader).filter(h => h && h !== '구분' && h !== '구분항목' && h !== '구분기준');
   
+  // Column (header) similarity checking
   const commonHeaders = headers1.filter(h => headers2.includes(h));
-  if (commonHeaders.length >= 3) {
-    return true;
-  }
-
+  const unionHeaders = new Set([...headers1, ...headers2]);
+  const headerSim = unionHeaders.size > 0 ? commonHeaders.length / unionHeaders.size : 0;
+  
+  // Row header similarity checking
   const rows1 = t1.rows.map(r => cleanHeader(r[0])).filter(Boolean);
   const rows2 = t2.rows.map(r => cleanHeader(r[0])).filter(Boolean);
   
   const commonRows = rows1.filter(r => rows2.includes(r));
-  if (commonRows.length >= 2) {
+  const unionRows = new Set([...rows1, ...rows2]);
+  const rowSim = unionRows.size > 0 ? commonRows.length / unionRows.size : 0;
+  
+  // Tables are considered duplicates if BOTH columns and rows are highly similar
+  if (headerSim > 0.75 && rowSim > 0.75) {
     return true;
   }
-
-  if (t1.headers.length === t2.headers.length && t1.rows.length === t2.rows.length) {
-    const h1 = t1.headers.join('|');
-    const h2 = t2.headers.join('|');
-    if (h1 === h2) {
-      const r1 = t1.rows.map(r => r.join('|')).join('\n');
-      const r2 = t2.rows.map(r => r.join('|')).join('\n');
-      if (r1 === r2) return true;
-    }
+  
+  // Or if their raw text contents are extremely similar
+  const r1 = t1.rows.map(r => r.join('|')).join('\n');
+  const r2 = t2.rows.map(r => r.join('|')).join('\n');
+  if (getSimilarity(r1, r2) > 0.85) {
+    return true;
   }
 
   return false;
@@ -360,7 +362,7 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
           }
         }
         const sim = getSimilarity(q.question, accepted.question);
-        if (sim > 0.6) {
+        if (sim > 0.85) {
           isDuplicate = true;
           break;
         }
@@ -370,13 +372,13 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
             isDuplicate = true;
             break;
           }
+        }
         if (q.answer && accepted.answer && typeof q.answer === 'string' && typeof accepted.answer === 'string') {
           const ansSim = getSimilarity(q.answer, accepted.answer);
-          if (ansSim > 0.7) {
+          if (ansSim > 0.85) {
             isDuplicate = true;
             break;
           }
-        }
         }
       }
     }
@@ -397,17 +399,17 @@ export function deduplicateQuestions(questions, topic, fileText, getFallbackQues
             }
           }
           const sim = getSimilarity(candidate.question, accepted.question);
-          if (sim > 0.6) {
+          if (sim > 0.85) {
             candidateIsDup = true;
             break;
           }
-              if (candidate.answer && accepted.answer && typeof candidate.answer === 'string' && typeof accepted.answer === 'string') {
-                const ansSim = getSimilarity(candidate.answer, accepted.answer);
-                if (ansSim > 0.7) {
-                  candidateIsDup = true;
-                  break;
-                }
-              }
+          if (candidate.answer && accepted.answer && typeof candidate.answer === 'string' && typeof accepted.answer === 'string') {
+            const ansSim = getSimilarity(candidate.answer, accepted.answer);
+            if (ansSim > 0.85) {
+              candidateIsDup = true;
+              break;
+            }
+          }
         }
         if (!candidateIsDup) {
           replacement = candidate;
@@ -448,6 +450,11 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
   const tKeywords = cleanKeywords.toLowerCase();
   const searchTarget = `${tTitle} ${tKeywords}`;
 
+  // Extract core words of the active topic
+  const activeTitleWords = tTitle.split(/[^a-zA-Z0-9가-힣]+/).filter(w => w.length >= 2);
+  const activeKeywordWords = tKeywords.split(/[^a-zA-Z0-9가-힣]+/).filter(w => w.length >= 2);
+  const allActiveWords = [...activeTitleWords, ...activeKeywordWords];
+
   const domains = [
     { name: '흙막이/Chang', keywords: ['흙막이', 'chang', '지반 스프링', '상호작용', '변형 특성 길이', '수평지반반력계수', '수평 환산폭', '휨강성'] },
     { name: '응력 경로/Stress Path', keywords: ['응력 경로', 'stress path', 'p-q', '축차응력', '편차응력', '평균 응력'] },
@@ -461,6 +468,32 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
     { name: '수압파쇄', keywords: ['수압파쇄', 'hydraulic fracturing', '폐쇄압력', '재개열압력'] }
   ];
 
+  // 1. Check if the question is genuinely relevant to the active topic.
+  // If the question explicitly contains core words of the active topic, we treat it as relevant and NOT mismatched.
+  const hasActiveWord = allActiveWords.some(w => qText.includes(w));
+  if (hasActiveWord) {
+    return null; // Safe: it mentions the active topic's words.
+  }
+
+  // 2. Check if the active topic matches one of our defined domains
+  let activeDomain = null;
+  for (const domain of domains) {
+    const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
+    if (topicMatchesDomain) {
+      activeDomain = domain;
+      break;
+    }
+  }
+
+  // 3. If the active topic matches a domain, check if the question matches that domain's keywords
+  if (activeDomain) {
+    const questionMatchesActiveDomain = activeDomain.keywords.some(kw => qText.includes(kw));
+    if (questionMatchesActiveDomain) {
+      return null; // Safe: it belongs to the active domain.
+    }
+  }
+
+  // 4. Otherwise, perform leakage checking against other domains
   for (const domain of domains) {
     const topicMatchesDomain = domain.keywords.some(kw => searchTarget.includes(kw));
     if (!topicMatchesDomain) {
