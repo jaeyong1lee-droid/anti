@@ -763,7 +763,7 @@ export function healQuizQuestionObject(q) {
       row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
         cell.includes('[INPUT_') || 
         /빈칸\s*\(?\d+\)?/i.test(cell) || 
-        /^\s*\[?\s*[A-Za-z]\s*\]?\s*$/i.test(cell)
+        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell)
       ))
     );
 
@@ -792,7 +792,7 @@ export function healQuizQuestionObject(q) {
           // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
           const inputMatch = trimmedCell.match(/INPUT_(\d+)/i);
-          const letterMatch = trimmedCell.match(/^\[?\s*([A-Za-z])\s*\]?$/);
+          const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
           const binkanMatch = trimmedCell.match(/빈칸\s*\(?(\d+)\)?/i);
           
           let matchedNum = null;
@@ -832,7 +832,7 @@ export function healQuizQuestionObject(q) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-            const isPlaceholder = /^(?:\[?\s*[A-Za-z]\s*\]?|\[?\s*INPUT_\d+\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
+            const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 
