@@ -1964,9 +1964,73 @@ function getCoreSubjectFromTitle(title) {
   return subject.trim();
 }
 
+// Single-line markdown table normalizer
+function normalizeSingleLineTable(text) {
+  if (!text) return text;
+  
+  // A separator cell is optionally starting/ending with colon, containing at least 2 dashes
+  const separatorRowRegex = /\|\s*:?-{2,}:?\s*\|\s*:?-{2,}:?\s*\|/g;
+  
+  const match = separatorRowRegex.exec(text);
+  if (!match) return text; // No table separator row found
+
+  const separatorIndex = match.index;
+  const separatorText = match[0];
+  
+  const colCount = (separatorText.match(/\|/g) || []).length - 1;
+  if (colCount < 1) return text;
+
+  const pipeIndices = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '|') {
+      pipeIndices.push(i);
+    }
+  }
+
+  let separatorStartPipeIdx = -1;
+  for (let i = 0; i < pipeIndices.length; i++) {
+    if (pipeIndices[i] === separatorIndex) {
+      separatorStartPipeIdx = i;
+      break;
+    }
+  }
+  if (separatorStartPipeIdx === -1) return text;
+
+  const headerStartPipeIdx = separatorStartPipeIdx - (colCount + 1);
+  if (headerStartPipeIdx < 0) return text;
+
+  const startCharIdx = pipeIndices[headerStartPipeIdx];
+  const pipesPerRow = colCount + 1;
+  let currentPipeIdx = headerStartPipeIdx;
+  
+  let newTableLines = [];
+  while (currentPipeIdx < pipeIndices.length) {
+    const rowStartCharIdx = pipeIndices[currentPipeIdx];
+    const rowEndPipeIdx = currentPipeIdx + colCount;
+    if (rowEndPipeIdx >= pipeIndices.length) break;
+    const rowEndCharIdx = pipeIndices[rowEndPipeIdx];
+    
+    const rowText = text.substring(rowStartCharIdx, rowEndCharIdx + 1).trim();
+    newTableLines.push(rowText);
+    
+    currentPipeIdx += pipesPerRow;
+  }
+
+  if (newTableLines.length >= 2) {
+    const endCharIdx = pipeIndices[currentPipeIdx - pipesPerRow + colCount] + 1;
+    const originalTableText = text.substring(startCharIdx, endCharIdx);
+    const reconstructedTableText = '\n' + newTableLines.join('\n') + '\n';
+    
+    return text.substring(0, startCharIdx) + reconstructedTableText + text.substring(endCharIdx);
+  }
+
+  return text;
+}
+
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
 function parseQuestionTable(q, topicTitle) {
   let questionText = q.question || '';
+  questionText = normalizeSingleLineTable(questionText);
   let tableData = q.tableData || null;
   let referenceTableData = null;
 
