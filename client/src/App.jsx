@@ -4987,8 +4987,12 @@ export default function App() {
   const fileInputRef = useRef(null);
 
   // Calculation Problem Image Upload States
-  const [calculationImageFile, setCalculationImageFile] = useState(null);
-  const [calculationImagePreview, setCalculationImagePreview] = useState(null);
+  const [calculationImageFiles, setCalculationImageFiles] = useState([]);
+  const [calculationImagePreviews, setCalculationImagePreviews] = useState([]);
+  const handleRemoveImage = (index) => {
+    setCalculationImageFiles(prev => prev.filter((_, idx) => idx !== index));
+    setCalculationImagePreviews(prev => prev.filter((_, idx) => idx !== index));
+  };
   const imageInputRef = useRef(null);
   const [category, setCategory] = useState('일반');
   const [suggestTitleLoading, setSuggestTitleLoading] = useState(false);
@@ -7123,22 +7127,40 @@ export default function App() {
       });
     };
 
-    if (category === '계산' && calculationImageFile && htmlVal.trim()) {
+    if (category === '계산' && calculationImageFiles.length > 0 && htmlVal.trim()) {
       try {
-        const base64DataUrl = await readAsDataURL(calculationImageFile);
-        const combinedHtml = `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n${htmlVal}`;
+        let embeddedImagesHtml = '';
+        for (const file of calculationImageFiles) {
+          const base64DataUrl = await readAsDataURL(file);
+          embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
+        }
+        const combinedHtml = `${embeddedImagesHtml}${htmlVal}`;
         const blob = new Blob([combinedHtml], { type: 'text/html' });
         fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
       } catch (err) {
-        console.error('Failed to read calculation image for HTML combining:', err);
+        console.error('Failed to read calculation images for HTML combining:', err);
         const blob = new Blob([htmlVal], { type: 'text/html' });
         fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
       }
     } else if (htmlVal.trim()) {
       const blob = new Blob([htmlVal], { type: 'text/html' });
       fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
-    } else if (calculationImageFile) {
-      fileToUpload = calculationImageFile;
+    } else if (calculationImageFiles.length > 0) {
+      if (calculationImageFiles.length === 1) {
+        fileToUpload = calculationImageFiles[0];
+      } else {
+        try {
+          let embeddedImagesHtml = '';
+          for (const file of calculationImageFiles) {
+            const base64DataUrl = await readAsDataURL(file);
+            embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${base64DataUrl}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
+          }
+          const blob = new Blob([embeddedImagesHtml], { type: 'text/html' });
+          fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
+        } catch (err) {
+          console.error('Failed to read calculation images for combining:', err);
+        }
+      }
     }
 
     if (fileToUpload) {
@@ -7164,8 +7186,8 @@ export default function App() {
         setTitle('');
         setKeywords('');
         setPdfFile(null);
-        setCalculationImageFile(null);
-        setCalculationImagePreview(null);
+        setCalculationImageFiles([]);
+        setCalculationImagePreviews([]);
         setCategory('일반');
         autoExtractedTitleRef.current = '';
         if (htmlTextareaRef.current) htmlTextareaRef.current.value = '';
@@ -12204,64 +12226,85 @@ export default function App() {
                         onPaste={(e) => {
                           const items = e.clipboardData?.items;
                           if (!items) return;
+                          
+                          const wasEmpty = calculationImageFiles.length === 0;
+                          let imageCount = 0;
+
                           for (let i = 0; i < items.length; i++) {
                             if (items[i].type.indexOf('image') !== -1) {
                               const blob = items[i].getAsFile();
                               if (blob) {
-                                const file = new window.File([blob], `screenshot_${Date.now()}.png`, { type: blob.type });
-                                setCalculationImageFile(file);
+                                imageCount++;
+                                const file = new window.File([blob], `screenshot_${Date.now()}_${imageCount}.png`, { type: blob.type });
+                                setCalculationImageFiles(prev => [...prev, file]);
                                 setCategory('계산');
                                 const reader = new FileReader();
                                 reader.onload = (event) => {
-                                  setCalculationImagePreview(event.target.result);
-                                  handleSuggestTitleFromImage(event.target.result, blob.type);
+                                  const result = event.target.result;
+                                  setCalculationImagePreviews(prev => [...prev, result]);
+                                  if (wasEmpty && imageCount === 1) {
+                                    handleSuggestTitleFromImage(result, blob.type);
+                                  }
                                 };
                                 reader.readAsDataURL(file);
                                 showNotification('클립보드에서 스크린샷 이미지를 성공적으로 가져왔습니다!');
                                 e.preventDefault();
-                                break;
                               }
                             }
                           }
                         }}
-                        className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                        className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 min-h-[120px]"
                       >
-                        <Copy size={20} className="text-slate-500 mb-1.5" />
-                        <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
-                        <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
+                        {calculationImagePreviews.length === 0 ? (
+                          <>
+                            <Copy size={20} className="text-slate-500 mb-1.5" />
+                            <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
+                            <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center gap-3.5 w-full">
+                            <div className="flex flex-wrap items-center justify-center gap-3">
+                              {calculationImagePreviews.map((preview, idx) => (
+                                <div key={idx} className="relative group shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <img 
+                                    src={preview} 
+                                    alt={`Pasted ${idx}`} 
+                                    className="h-16 w-auto object-contain rounded-lg border border-slate-700 bg-slate-950/80 shadow-md" 
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveImage(idx);
+                                    }}
+                                    className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg transition-all duration-200 border border-slate-900 active:scale-90 cursor-pointer"
+                                    title="이미지 제거"
+                                  >
+                                    <Trash2 size={9} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex flex-col items-center select-none pointer-events-none">
+                              <p className="text-[10px] font-black text-violet-400">클릭 후 추가 이미지 붙여넣기 가능 (Ctrl+V)</p>
+                              <p className="text-[9px] text-slate-500 mt-0.5">총 {calculationImagePreviews.length}개 이미지 업로드됨</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCalculationImageFiles([]);
+                                setCalculationImagePreviews([]);
+                                if (imageInputRef.current) imageInputRef.current.value = '';
+                              }}
+                              className="text-[10px] font-extrabold text-rose-400 hover:text-rose-300 transition-colors border border-rose-500/20 px-2.5 py-1 rounded-md bg-rose-950/20 hover:bg-rose-900/30 cursor-pointer"
+                            >
+                              모두 지우기
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {/* Calculation Image Preview */}
-                    {calculationImagePreview && (
-                      <div className="mt-3 p-3 bg-slateCustom-900/60 rounded-xl border border-slate-800 flex flex-col items-center">
-                        <div className="text-xs font-bold text-slate-400 mb-2 w-full text-left flex items-center gap-1.5">
-                          <Check size={12} className="text-emerald-400" />
-                          업로드된 이미지 미리보기
-                        </div>
-                        <img 
-                          src={calculationImagePreview} 
-                          alt="Calculation Problem Preview" 
-                          className="max-h-40 object-contain rounded border border-slate-800 shadow"
-                        />
-                        <p className="text-[10px] text-slate-500 mt-1 truncate max-w-full">
-                          {calculationImageFile?.name}
-                        </p>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCalculationImageFile(null);
-                            setCalculationImagePreview(null);
-                            if (imageInputRef.current) imageInputRef.current.value = '';
-                          }}
-                          className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-[10px] font-bold transition-all duration-200"
-                        >
-                          <Trash2 size={10} />
-                          이미지 제거
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -12277,7 +12320,7 @@ export default function App() {
                         setTitle(extracted);
                         autoExtractedTitleRef.current = extracted;
                       }
-                      if (e.target.value.trim() && category === '계산' && !calculationImageFile) {
+                      if (e.target.value.trim() && category === '계산' && calculationImageFiles.length === 0) {
                         setCategory('일반');
                       }
                     }}
