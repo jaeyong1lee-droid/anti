@@ -7581,7 +7581,7 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
   const { topicId } = req.body;
   try {
     // 1. Fetch topic from DB
-    const topic = await dbQuery.get('SELECT title, pdf_name, pdf_data FROM topics WHERE id = ?', [topicId]);
+    const topic = await dbQuery.get('SELECT title, category, pdf_name, pdf_data FROM topics WHERE id = ?', [topicId]);
     if (!topic) {
       return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
     }
@@ -7611,7 +7611,8 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
         formula: '',
         answer: '',
         answersheet_report_id: reportId,
-        pdf_name: pdfName
+        pdf_name: pdfName,
+        category: topic.category || '일반'
       }]
     });
   } catch (err) {
