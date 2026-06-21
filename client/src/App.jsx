@@ -2122,7 +2122,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
@@ -2141,7 +2141,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   );
 
   const renderImageElement = () => {
-    if (isImageTopic && resolvedTopicId) {
+    if (resolvedCategory !== '계산' || !resolvedTopicId) {
+      return null;
+    }
+
+    if (isImageTopic) {
       return (
         <div className="mt-3 flex flex-col items-center w-full">
           <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
@@ -2156,6 +2160,43 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
         </div>
       );
     }
+
+    const isPdf = resolvedPdfName.toLowerCase().endsWith('.pdf');
+    const isHtml = resolvedPdfName.toLowerCase().endsWith('.html') || resolvedPdfName.toLowerCase().endsWith('.htm');
+
+    if (isPdf) {
+      return (
+        <div className="mt-3 flex flex-col items-center w-full">
+          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
+            <span>📊 첨부된 원보고서 PDF 그래프/그림</span>
+          </div>
+          <div className="w-full max-h-[350px] overflow-y-auto rounded-xl border border-slate-800 shadow-lg p-1 bg-slate-950">
+            <PdfImageRenderer 
+              pdfUrl={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+              pdfjsLoaded={pdfjsLoaded} 
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (isHtml) {
+      return (
+        <div className="mt-3 flex flex-col items-center w-full">
+          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
+            <span>📊 첨부된 원보고서 HTML 그래프/그림</span>
+          </div>
+          <div className="w-full rounded-xl border border-slate-800 shadow-lg overflow-hidden bg-white" style={{ height: '350px' }}>
+            <iframe 
+              src={`${API_BASE}/api/topics/${resolvedTopicId}/pdf`} 
+              className="w-full h-full border-0"
+              title="HTML Topic Viewer"
+            />
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
   
@@ -7057,9 +7098,10 @@ export default function App() {
   }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape, lastActiveReview]);
 
 
-  // Load PDF.js dynamically when switching to image view
+  // Load PDF.js dynamically when switching to image view or when calculation topic is active
   useEffect(() => {
-    if (showFullReport && reportViewType === 'image' && !pdfjsLoaded) {
+    const isCalculation = selectedTopic?.category === '계산' || (showExam && examTopic?.category === '계산');
+    if ((isCalculation || (showFullReport && reportViewType === 'image')) && !pdfjsLoaded) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
       script.onload = () => {
@@ -7068,7 +7110,7 @@ export default function App() {
       };
       document.head.appendChild(script);
     }
-  }, [showFullReport, reportViewType, pdfjsLoaded]);
+  }, [showFullReport, reportViewType, pdfjsLoaded, selectedTopic, showExam, examTopic]);
 
   // Auto-scroll and focus on the first search match in grid tracker
   useEffect(() => {
@@ -13422,7 +13464,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -15262,7 +15304,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {renderQuestionContent(q, examTopic?.title, katexLoaded, q.topic_id, q.pdf_name, q.category)}
+                      {renderQuestionContent(q, examTopic?.title, katexLoaded, q.topic_id, q.pdf_name, q.category, pdfjsLoaded)}
 
                       {/* MC Options */}
                       {isMC && (
