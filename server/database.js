@@ -215,7 +215,8 @@ export async function initDatabase() {
             keywords TEXT,
             pdf_name TEXT,
             pdf_data BYTEA,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            category TEXT DEFAULT '일반'
           )
         `);
 
@@ -303,7 +304,8 @@ async function initSQLiteTables() {
       keywords TEXT,
       pdf_name TEXT,
       pdf_data BLOB,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      category TEXT DEFAULT '일반'
     )
   `);
 
@@ -369,7 +371,8 @@ async function migrateSchedulesTable() {
         await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS score REAL`);
         await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS correct_count INTEGER`);
         await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS total_count INTEGER`);
-        console.log('Cloud PostgreSQL schedules table migration checked.');
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS category TEXT DEFAULT '일반'`);
+        console.log('Cloud PostgreSQL schedules and topics tables migration checked.');
       }
     } else {
       try {
@@ -381,7 +384,10 @@ async function migrateSchedulesTable() {
       try {
         await dbQuery.run(`ALTER TABLE schedules ADD COLUMN total_count INTEGER`);
       } catch (e) {}
-      console.log('Local SQLite schedules table migration checked.');
+      try {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN category TEXT DEFAULT '일반'`);
+      } catch (e) {}
+      console.log('Local SQLite schedules and topics tables migration checked.');
     }
   } catch (err) {
     console.error('Migration schedules table error:', err);

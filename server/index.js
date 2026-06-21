@@ -15,6 +15,7 @@ import PDFDocument from 'pdfkit';
 import { gradeSubjective } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS } from './plugins/engineeringStandards.js';
 import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched } from './plugins/validationPlugin.js';
+import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -459,14 +460,7 @@ async function getTopicText(topic) {
                        (pdfName.endsWith('.gif') ? 'image/gif' :
                         (pdfName.endsWith('.webp') ? 'image/webp' : 'image/jpeg'));
       const base64Data = topic.pdf_data.toString('base64');
-      
-      const systemInstruction = "You are a professional Optical Character Recognition (OCR) agent. Your job is to extract all readable text, formulas, equations, diagrams, description, parameters, and symbols of the engineering calculation problem from this image exactly as it is, without missing anything. Do not summarize, do not solve, just extract the text and formulas. Output the extracted text directly.";
-      const userPrompt = "Please extract the text and formulas from the provided image.";
-      
-      console.log(`[OCR Image Extraction] Running Gemini OCR for topicId=${topicId}, pdf_name=${topic.pdf_name}`);
-      const ocrText = await callLLMWithFailover(systemInstruction, userPrompt, { data: base64Data, mimeType }, 'ocr');
-      console.log(`[OCR Image Extraction] Gemini OCR Success! Length = ${ocrText ? ocrText.length : 0}`);
-      fileText = ocrText || '이미지에서 추출된 텍스트가 없습니다.';
+      fileText = await extractTextFromCalculationImage(base64Data, mimeType, callLLMWithFailover);
     } catch (err) {
       console.error(`[OCR Image Extraction] Failed for topicId=${topicId}:`, err);
       fileText = `[이미지 OCR 추출 실패: ${err.message}]`;
@@ -2090,13 +2084,25 @@ async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Dat
 }
 
 
-// -------------------------------------------------------------
-// ENDPOINTS
-// -------------------------------------------------------------
+// Suggest Topic Title from Screenshot Image or HTML Code using Gemini (delegated to calculationPlugin)
+app.post('/api/topics/suggest-title', async (req, res) => {
+  try {
+    const { image, mimeType, htmlText } = req.body;
+    if (!image && !htmlText) {
+      return res.status(400).json({ error: '이미지 데이터 또는 HTML 텍스트가 필요합니다.' });
+    }
+    const cleanTitle = await suggestTitleFromCalculation(image, mimeType, htmlText, callLLMWithFailover);
+    return res.json({ title: cleanTitle });
+  } catch (err) {
+    console.error('Suggest title error:', err);
+    res.status(500).json({ error: '토픽 제목 자동 추천에 실패했습니다.' });
+  }
+});
+
 
 // 1. Topic Registration + Auto Spaced Scheduling (With customized baseDate support)
 app.post('/api/topics', upload.single('pdf'), async (req, res) => {
-  const { title, keywords, baseDate } = req.body;
+  const { title, keywords, baseDate, category } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: '토픽 제목은 필수 입력 항목입니다.' });
@@ -2157,15 +2163,16 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
 
     // Save topic to DB
     const insertTopicSql = `
-      INSERT INTO topics (title, keywords, pdf_name, pdf_data, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO topics (title, keywords, pdf_name, pdf_data, created_at, category)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     const topicResult = await dbQuery.run(insertTopicSql, [
       title,
       keywords || '',
       pdfName,
       pdfData,
-      dbDateStr
+      dbDateStr,
+      category || '일반'
     ]);
 
     const topicId = topicResult.id;
@@ -2289,7 +2296,8 @@ app.get('/api/dashboard', async (req, res) => {
         t.title,
         t.keywords,
         t.pdf_name,
-        t.created_at
+        t.created_at,
+        t.category
       FROM schedules s
       JOIN topics t ON s.topic_id = t.id
       WHERE s.planned_date <= ? AND s.status = 'pending'
@@ -2452,7 +2460,8 @@ async function generateWeakPointRecommendation(queryDate) {
       status: 'pending',
       completed_at: null,
       score: scoreVal,
-      isBonus: true
+      isBonus: true,
+      category: topic.category || '일반'
     };
   }
   return null;
@@ -2834,7 +2843,7 @@ app.put('/api/schedules/:id/score', async (req, res) => {
 app.get('/api/topics', async (req, res) => {
   try {
     const sql = `
-      SELECT t.id, t.title, t.keywords, t.pdf_name, t.created_at,
+      SELECT t.id, t.title, t.keywords, t.pdf_name, t.created_at, t.category,
              COALESCE((SELECT MAX(completed_at) FROM schedules WHERE topic_id = t.id AND completed_at IS NOT NULL), t.created_at) AS last_active
       FROM topics t
       ORDER BY t.id ASC
@@ -6322,62 +6331,16 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
       console.warn('Failed to find matching topic for formula validation:', dbErr);
     }
 
-    const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
-제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
-반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.
-[지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.`;
-
-    const userPrompt = `
-[대상 공식]:
-- 공식명: ${formulaTitle}
-- 수식: ${formula}
-- 개념 및 설명: ${concept || ''}
-- 기본 가정: ${assumptions || ''}
-
-[출제 요구사항]:
-1. **실제 공학적 수치 대입 계산 문제**: 공식에 포함된 변수들에 합리적이고 타당성 있는 토목/지반공학적 설계 조건 수치(예: 수평 저항력, 부착 강도, 압밀계수, 또는 토압 조건 등)를 제시하고, 최종 계산 결과를 묻는 정량 계산 문제를 출제하십시오.
-2. **보기(options) 구성**: 4개의 보기를 제공하며, 그 중 정확히 1개만 정답이어야 합니다. 나머지 3개의 오답 보기는 단순 임의 날조 숫자가 아닌, 계산 과정에서 흔히 범할 수 있는 전형적인 오차/착오(예: 단위 변환 누락, 특정 분모/분자 위치 오류 등)를 반영한 그럴듯한 오답 수치(distractors)로 설계하십시오.
-- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
-    3. **🚨 [공식 자체 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나 공식에 포함되는 기호들의 대수적 식 자체를 텍스트로 노출하지 마십시오. 학생이 변수값들만 보고 머릿속에서 공식 자체를 떠올려서 직접 수치 계산을 하도록 설계하십시오. (단, 해설(explanation)에서는 공식을 명시하고 자세한 계산 전개 과정을 기술하십시오.)
-3. **가독성 높은 LaTeX 적용**: 문제 질문(question), 보기(options), 해설(explanation)에 포함되는 모든 물리량 기호와 수식은 반드시 LaTeX 기호($)로 감싸십시오.
-4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
-
-${LATEX_PROMPT_INSTRUCTIONS}
-${ENGINEERING_STANDARDS}
-
-[JSON 반환 규격]:
-{
-  "formulaTitle": "${formulaTitle}",
-  "question": "문제 질문 내용 (구체적인 설계 조건 수치 포함)",
-  "options": ["보기 1", "보기 2", "보기 3", "보기 4"],
-  "answer": "정답 보기의 텍스트와 토씨 하나 틀리지 않는 정답 텍스트",
-  "explanation": "해설 내용 (공식 유도 및 각 조건 대입을 통한 구체적인 계산 전개 과정 포함)"
-}
-`;
-
-    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
-    let text = responseText.trim();
-    if (text.startsWith('```')) {
-      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    }
-    
-    let parsed = null;
-    try {
-      parsed = parseLlmJson(text);
-    } catch (parseErr) {
-      parsed = extractJsonArray(responseText);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        parsed = parsed[0];
-      }
-    }
-
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Failed to parse LLM response to JSON object');
-    }
-
-    const healed = healQuizQuestionObject(parsed);
-    const validated = await validateAndHealQuestion(healed, callLLMWithFailover, topicTitle, topicKeywords, fileText);
-    const finalValidated = healQuizQuestionObject(validated);
+    const finalValidated = await generateCalculationQuizQuestion(
+      formulaTitle,
+      formula,
+      concept,
+      assumptions,
+      callLLMWithFailover,
+      topicTitle,
+      topicKeywords,
+      fileText
+    );
     res.json(finalValidated);
   } catch (err) {
     console.error('generate-quiz-question error:', err);
@@ -6895,7 +6858,7 @@ app.get('/api/session/last-active-review', async (req, res) => {
     if (key.startsWith('completed_review_schedule_')) {
       const scheduleId = parseInt(key.replace('completed_review_schedule_', ''), 10);
       const sched = await dbQuery.get(
-        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name 
+        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
          FROM schedules s 
          JOIN topics t ON s.topic_id = t.id 
          WHERE s.id = ?`,
@@ -6913,14 +6876,15 @@ app.get('/api/session/last-active-review', async (req, res) => {
             scheduleId: sched.id,
             reviewRound: sched.review_round,
             isReadOnly: true,
-            isBonus: sched.review_round === 99
+            isBonus: sched.review_round === 99,
+            category: sched.category || '일반'
           }
         });
       }
     } else if (key.startsWith('review_questions_schedule_')) {
       const scheduleId = parseInt(key.replace('review_questions_schedule_', ''), 10);
       const sched = await dbQuery.get(
-        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name 
+        `SELECT s.id, s.topic_id, s.review_round, t.title, t.keywords, t.pdf_name, t.category 
          FROM schedules s 
          JOIN topics t ON s.topic_id = t.id 
          WHERE s.id = ?`,
@@ -6938,13 +6902,14 @@ app.get('/api/session/last-active-review', async (req, res) => {
             scheduleId: sched.id,
             reviewRound: sched.review_round,
             isReadOnly: false,
-            isBonus: sched.review_round === 99
+            isBonus: sched.review_round === 99,
+            category: sched.category || '일반'
           }
         });
       }
     } else if (key.startsWith('review_questions_topic_')) {
       const topicId = parseInt(key.replace('review_questions_topic_', ''), 10);
-      const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name FROM topics WHERE id = ?`, [topicId]);
+      const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
       if (topicObj) {
         // Find any pending schedule
         const sched = await dbQuery.get(`SELECT id, review_round FROM schedules WHERE topic_id = ? AND status = 'pending' LIMIT 1`, [topicId]);
@@ -6959,7 +6924,8 @@ app.get('/api/session/last-active-review', async (req, res) => {
             scheduleId: sched ? sched.id : null,
             reviewRound: sched ? sched.review_round : null,
             isReadOnly: false,
-            isBonus: sched ? sched.review_round === 99 : false
+            isBonus: sched ? sched.review_round === 99 : false,
+            category: topicObj.category || '일반'
           }
         });
       }

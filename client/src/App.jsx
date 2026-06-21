@@ -4957,6 +4957,8 @@ export default function App() {
   const [calculationImageFile, setCalculationImageFile] = useState(null);
   const [calculationImagePreview, setCalculationImagePreview] = useState(null);
   const imageInputRef = useRef(null);
+  const [category, setCategory] = useState('일반');
+  const [suggestTitleLoading, setSuggestTitleLoading] = useState(false);
   
   // Custom Answersheet Title & Auto-Extraction tracking refs
   const [answersheetUploadTitle, setAnswersheetUploadTitle] = useState('');
@@ -7011,6 +7013,56 @@ export default function App() {
     }
   }, [searchQuery]);
 
+  const handleSuggestTitleFromImage = async (base64Data, type) => {
+    if (!base64Data) return;
+    if (!title.trim() || title === autoExtractedTitleRef.current) {
+      setSuggestTitleLoading(true);
+      try {
+        const mimeType = type || 'image/png';
+        const rawBase64 = base64Data.split(',')[1] || base64Data;
+        const res = await fetch(`${API_BASE}/api/topics/suggest-title`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: rawBase64, mimeType })
+        });
+        const data = await res.json();
+        if (data.title) {
+          setTitle(data.title);
+          autoExtractedTitleRef.current = data.title;
+          showNotification(`[추천 제목] "${data.title}"이 자동으로 입력되었습니다.`, 'success');
+        }
+      } catch (err) {
+        console.warn('Failed to suggest title from image:', err);
+      } finally {
+        setSuggestTitleLoading(false);
+      }
+    }
+  };
+
+  const handleSuggestTitleFromHtml = async (htmlText) => {
+    if (!htmlText || !htmlText.trim()) return;
+    if (!title.trim() || title === autoExtractedTitleRef.current) {
+      setSuggestTitleLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/topics/suggest-title`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ htmlText })
+        });
+        const data = await res.json();
+        if (data.title) {
+          setTitle(data.title);
+          autoExtractedTitleRef.current = data.title;
+          showNotification(`[추천 제목] "${data.title}"이 자동으로 입력되었습니다.`, 'success');
+        }
+      } catch (err) {
+        console.warn('Failed to suggest title from html:', err);
+      } finally {
+        setSuggestTitleLoading(false);
+      }
+    }
+  };
+
   // Form Submit (Uses the UI referenceDate as baseDate to maintain perfect study session alignment)
   const handleRegisterTopic = async (e) => {
     e.preventDefault();
@@ -7024,6 +7076,7 @@ export default function App() {
     formData.append('title', title);
     formData.append('keywords', keywords);
     formData.append('baseDate', referenceDate); // Fixes midnight timezone shifts
+    formData.append('category', category);
     
     let fileToUpload = pdfFile;
     const htmlVal = htmlTextareaRef.current ? htmlTextareaRef.current.value : '';
@@ -7059,6 +7112,7 @@ export default function App() {
         setPdfFile(null);
         setCalculationImageFile(null);
         setCalculationImagePreview(null);
+        setCategory('일반');
         autoExtractedTitleRef.current = '';
         if (htmlTextareaRef.current) htmlTextareaRef.current.value = '';
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -7605,7 +7659,8 @@ export default function App() {
         assumptions: t.assumptions || '',
         formula: t.formula || t.answer || '',
         answersheet_report_id: t.answersheet_report_id,
-        pdf_name: t.pdf_name
+        pdf_name: t.pdf_name,
+        category: t.category || '일반'
       }));
       const updated = [...newItems, ...currentQs];
       latestAnswersheetQuestionsRef.current = updated;
@@ -10452,7 +10507,8 @@ export default function App() {
         assumptions: t.assumptions || '',
         formula: t.formula || t.answer || '',
         answersheet_report_id: t.answersheet_report_id,
-        pdf_name: t.pdf_name
+        pdf_name: t.pdf_name,
+        category: t.category || (file.name.toLowerCase().match(/\.(png|jpg|jpeg|gif|webp)$/) ? '계산' : '일반')
       }));
       const updated = [...newItems, ...currentQs];
       latestAnswersheetQuestionsRef.current = updated;
@@ -11963,10 +12019,19 @@ export default function App() {
                               setEditingTopicId(item.topic_id);
                               setEditingTitleText(item.title);
                             }}
-                            className="text-base md:text-lg font-bold text-white tracking-tight cursor-pointer hover:text-violet-400 decoration-dotted hover:underline"
+                            className="text-base md:text-lg font-bold text-white tracking-tight cursor-pointer hover:text-violet-400 decoration-dotted hover:underline flex items-center gap-2 flex-wrap"
                             title="클릭 시 제목을 수정합니다."
                           >
-                            {item.title}
+                            {item.category === '계산' ? (
+                              <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                                계산
+                              </span>
+                            ) : (
+                              <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                                일반
+                              </span>
+                            )}
+                            <span>{item.title}</span>
                           </h3>
                         )}
 
@@ -12020,14 +12085,52 @@ export default function App() {
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
                     토픽 제목 <span className="text-rose-500">*</span>
                   </label>
-                  <input 
-                    type="text" 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="예: B-Tree와 B+Tree 구조 및 비교"
-                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200"
-                    required
-                  />
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="예: B-Tree와 B+Tree 구조 및 비교"
+                      className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200"
+                      required
+                    />
+                    {suggestTitleLoading && (
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-brand-400 font-bold select-none bg-slateCustom-900 pl-2">
+                        <RefreshCw className="animate-spin text-brand-400" size={13} />
+                        <span>제목 추천 중...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                    토픽 구분
+                  </label>
+                  <div className="flex bg-slateCustom-900/60 p-1.5 rounded-xl border border-slate-800 gap-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setCategory('일반')}
+                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                        category === '일반'
+                          ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
+                      }`}
+                    >
+                      일반토픽
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategory('계산')}
+                      className={`flex-1 py-2 text-center text-xs font-extrabold rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                        category === '계산'
+                          ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slateCustom-900/40'
+                      }`}
+                    >
+                      계산문제
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -12048,9 +12151,11 @@ export default function App() {
                             if (blob) {
                               const file = new window.File([blob], `screenshot_${Date.now()}.png`, { type: blob.type });
                               setCalculationImageFile(file);
+                              setCategory('계산');
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 setCalculationImagePreview(event.target.result);
+                                handleSuggestTitleFromImage(event.target.result, blob.type);
                               };
                               reader.readAsDataURL(file);
                               showNotification('클립보드에서 스크린샷 이미지를 성공적으로 가져왔습니다!');
@@ -12084,9 +12189,11 @@ export default function App() {
                               return;
                             }
                             setCalculationImageFile(file);
+                            setCategory('계산');
                             const reader = new FileReader();
                             reader.onload = (event) => {
                               setCalculationImagePreview(event.target.result);
+                              handleSuggestTitleFromImage(event.target.result, file.type);
                             };
                             reader.readAsDataURL(file);
                           }
@@ -12131,74 +12238,9 @@ export default function App() {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
-                    기술사 서적/노트 PDF 또는 HTML 업로드
-                  </label>
-                  
-                  <div 
-                    onDragEnter={handleDrag}
-                    onDragOver={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 ${
-                      dragActive 
-                        ? 'border-brand-500 bg-brand-950/20' 
-                        : pdfFile 
-                          ? 'border-emerald-500/50 bg-emerald-950/5' 
-                          : 'border-slate-800 hover:border-slate-700 hover:bg-slateCustom-900/30'
-                    }`}
-                  >
-                    <input 
-                      ref={fileInputRef}
-                      type="file" 
-                      accept=".pdf,.html,.htm"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-
-                    {pdfFile ? (
-                      <div className="w-full flex flex-col items-center">
-                        <div className="p-3 bg-emerald-950/50 text-emerald-400 rounded-full mb-3">
-                          {pdfFile.name.toLowerCase().endsWith('.html') || pdfFile.name.toLowerCase().endsWith('.htm') ? (
-                            <FileCode size={28} />
-                          ) : (
-                            <FileText size={28} />
-                          )}
-                        </div>
-                        <p className="text-sm font-semibold text-emerald-300 truncate max-w-full px-4">
-                          {pdfFile.name}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          ({(pdfFile.size / 1024 / 1024).toFixed(2)} MB)
-                        </p>
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPdfFile(null);
-                            if (fileInputRef.current) fileInputRef.current.value = '';
-                          }}
-                          className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-xs font-bold transition-all duration-200"
-                        >
-                          <Trash2 size={12} />
-                          제거
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <UploadCloud size={32} className="text-slate-500 mb-2" />
-                        <p className="text-sm font-bold text-slate-300">Drag & Drop 또는 파일 선택</p>
-                        <p className="text-xs text-slate-500 mt-1">PDF 또는 HTML 파일 가능 (최대 10MB)</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    또는 HTML 코딩 직접 입력
+                    HTML 코딩 직접 입력
                   </label>
                   <textarea
                     ref={htmlTextareaRef}
@@ -12208,9 +12250,13 @@ export default function App() {
                         setTitle(extracted);
                         autoExtractedTitleRef.current = extracted;
                       }
+                      if (e.target.value.trim() && category === '계산' && !calculationImageFile) {
+                        setCategory('일반');
+                      }
                     }}
-                    rows={4}
-                    placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요. (작성 시 위 파일 업로드보다 우선 처리됩니다.)"
+                    onBlur={(e) => handleSuggestTitleFromHtml(e.target.value)}
+                    rows={6}
+                    placeholder="HTML 코드 내용을 여기에 직접 붙여넣거나 코딩하여 토픽 자료로 등록하세요."
                     className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none transition-all duration-200 resize-none"
                   />
                 </div>
@@ -12403,6 +12449,15 @@ export default function App() {
                                   (isDesktop && !isMobileLandscape) ? (
                                     /* PC: Single Line (title + review button inline) */
                                     <div className="flex items-center gap-3 w-full min-w-0">
+                                      {topic.category === '계산' ? (
+                                        <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-lg text-[11px] font-black select-none shrink-0">
+                                          계산
+                                        </span>
+                                      ) : (
+                                        <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-2 py-0.5 rounded-lg text-[11px] font-black select-none shrink-0">
+                                          일반
+                                        </span>
+                                      )}
                                       <h4 
                                         onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
@@ -12434,6 +12489,15 @@ export default function App() {
                                   ) : (
                                     /* Mobile: Double line title with ellipsis + inline review button */
                                     <div className="flex items-center gap-2 w-full min-w-0">
+                                      {topic.category === '계산' ? (
+                                        <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[9px] font-black select-none shrink-0">
+                                          계산
+                                        </span>
+                                      ) : (
+                                        <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[9px] font-black select-none shrink-0">
+                                          일반
+                                        </span>
+                                      )}
                                       <h4 
                                         onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
@@ -17310,7 +17374,16 @@ export default function App() {
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex items-start gap-1.5 w-full min-w-0">
+                                <div className="flex items-center gap-2 w-full min-w-0">
+                                  {q.category === '계산' ? (
+                                    <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                                      계산
+                                    </span>
+                                  ) : (
+                                    <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
+                                      일반
+                                    </span>
+                                  )}
                                   <span 
                                     onDoubleClick={() => {
                                       setEditingAnswersheetIdx(idx);
