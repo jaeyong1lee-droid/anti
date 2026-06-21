@@ -98,20 +98,30 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, callLLMWithFailover }) {
-  if (!correctAnswer || !userAnswer) {
+export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, callLLMWithFailover }) {
+  if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
   }
 
-  if (normalize(userAnswer) === normalize(correctAnswer)) {
+  if (!correctAnswer && !explanation) {
+    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
+  }
+
+  if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
+  }
+
+  let targetCorrectAnswer = correctAnswer || '';
+  if (!correctAnswer && explanation) {
+    targetCorrectAnswer = `[자가 진단 모드: 모범 답안이 유실되었습니다. 제공된 전체 해설(explanation)을 기반으로 해당 표 칸(행 제목: ${rowHeader || '없음'}, 열 제목: ${colHeader || '없음'})에 들어갈 진짜 정답을 스스로 도출 및 추정한 뒤 채점하십시오.]`;
   }
 
   const userPrompt = `
 - 문제/맥락: ${question || '주관식 빈칸 채우기'}
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
-- 모범 답안: ${correctAnswer}
+${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
+- 모범 답안: ${targetCorrectAnswer}
 - 사용자의 답안: ${userAnswer}
 
 🚨 **[경고 - sycophancy 방지 및 기호 모방 절대 금지]**: suggestedModelAnswer 작성 시 절대 사용자의 답안(userAnswer)에 작성된 임의 수식 기호나 표기법(예: kh', KH, b 등)을 그대로 복사하거나 동조하여 출력하지 마십시오!

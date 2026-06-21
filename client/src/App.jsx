@@ -5178,6 +5178,7 @@ export default function App() {
             userAnswer,
             rowHeader,
             colHeader,
+            explanation: q.explanation || q.answer || '',
             progressId
           })
         });
