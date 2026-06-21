@@ -427,6 +427,92 @@ function decodeHtmlBuffer(buffer) {
 }
 
 
+// Helper: Extract text from topic (supports PDF, HTML, and Images via Gemini OCR with caching)
+async function getTopicText(topic) {
+  if (!topic || !topic.pdf_data) {
+    return '수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.';
+  }
+
+  const topicId = topic.id || topic.topic_id;
+  const cacheKey = `topic_extracted_text_${topicId}`;
+
+  // Check if we already have the extracted text in cache (app_session)
+  if (topicId) {
+    try {
+      const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [cacheKey]);
+      if (cached && cached.value) {
+        console.log(`[Cache Hit] Serving cached extracted text for topicId=${topicId}`);
+        return cached.value;
+      }
+    } catch (cacheErr) {
+      console.warn(`[Cache Read Error] Failed to read text cache for topicId=${topicId}:`, cacheErr);
+    }
+  }
+
+  const pdfName = (topic.pdf_name || '').toLowerCase();
+  const isImage = pdfName.endsWith('.png') || pdfName.endsWith('.jpg') || pdfName.endsWith('.jpeg') || pdfName.endsWith('.gif') || pdfName.endsWith('.webp');
+
+  let fileText = '';
+  if (isImage) {
+    try {
+      const mimeType = pdfName.endsWith('.png') ? 'image/png' :
+                       (pdfName.endsWith('.gif') ? 'image/gif' :
+                        (pdfName.endsWith('.webp') ? 'image/webp' : 'image/jpeg'));
+      const base64Data = topic.pdf_data.toString('base64');
+      
+      const systemInstruction = "You are a professional Optical Character Recognition (OCR) agent. Your job is to extract all readable text, formulas, equations, diagrams, description, parameters, and symbols of the engineering calculation problem from this image exactly as it is, without missing anything. Do not summarize, do not solve, just extract the text and formulas. Output the extracted text directly.";
+      const userPrompt = "Please extract the text and formulas from the provided image.";
+      
+      console.log(`[OCR Image Extraction] Running Gemini OCR for topicId=${topicId}, pdf_name=${topic.pdf_name}`);
+      const ocrText = await callLLMWithFailover(systemInstruction, userPrompt, { data: base64Data, mimeType }, 'ocr');
+      console.log(`[OCR Image Extraction] Gemini OCR Success! Length = ${ocrText ? ocrText.length : 0}`);
+      fileText = ocrText || '이미지에서 추출된 텍스트가 없습니다.';
+    } catch (err) {
+      console.error(`[OCR Image Extraction] Failed for topicId=${topicId}:`, err);
+      fileText = `[이미지 OCR 추출 실패: ${err.message}]`;
+    }
+  } else {
+    const isHtml = topic.pdf_name && (
+      topic.pdf_name.toLowerCase().endsWith('.html') || 
+      topic.pdf_name.toLowerCase().endsWith('.htm') || 
+      isBufferHtml(topic.pdf_data)
+    );
+    if (isHtml) {
+      try {
+        const rawHtml = decodeHtmlBuffer(topic.pdf_data);
+        fileText = htmlToPlainText(rawHtml);
+      } catch (htmlErr) {
+        console.warn('Failed to parse HTML string:', htmlErr);
+      }
+    } else {
+      try {
+        const parsedPdf = await pdfParse(topic.pdf_data);
+        fileText = parsedPdf.text || '';
+      } catch (pdfErr) {
+        console.warn('Failed to parse PDF binary:', pdfErr);
+      }
+    }
+    fileText = mergeVerticalText(fileText);
+  }
+
+  // Cache the extracted text so we don't have to perform OCR or parsing again
+  if (fileText && topicId) {
+    try {
+      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [cacheKey]);
+      await dbQuery.run(
+        'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [cacheKey, fileText]
+      );
+      console.log(`[Cache Save] Successfully cached extracted text for topicId=${topicId}`);
+    } catch (saveErr) {
+      console.warn(`[Cache Save Error] Failed to save text cache for topicId=${topicId}:`, saveErr);
+    }
+  }
+
+  return fileText;
+}
+
+
 // Safe LaTeX-preserving backslash escaper for LLM JSON responses
 function escapeJsonBackslashes(str) {
   if (!str) return str;
@@ -2150,6 +2236,9 @@ app.post('/api/topics/:id/replace-source', upload.single('pdf'), async (req, res
     `;
     await dbQuery.run(updateSql, [pdfName, pdfData, topicId]);
 
+    // Clear extracted text cache
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [`topic_extracted_text_${topicId}`]);
+
     res.json({ success: true, message: '소스 자료가 성공적으로 교체되었습니다.' });
   } catch (error) {
     console.error('Error replacing topic source:', error);
@@ -3321,29 +3410,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     let fileText = '';
     if (topic.pdf_data) {
-      const isHtml = topic.pdf_name && (
-        topic.pdf_name.toLowerCase().endsWith('.html') || 
-        topic.pdf_name.toLowerCase().endsWith('.htm') || 
-        isBufferHtml(topic.pdf_data)
-      );
-      if (isHtml) {
-        try {
-          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
-          fileText = htmlToPlainText(rawHtml);
-        } catch (htmlErr) {
-          console.warn('Failed to parse HTML string:', htmlErr);
-        }
-      } else {
-        try {
-          const parsedPdf = await pdfParse(topic.pdf_data);
-          fileText = parsedPdf.text || '';
-        } catch (pdfErr) {
-          console.warn('Failed to parse PDF binary:', pdfErr);
-        }
-      }
-      
-      fileText = mergeVerticalText(fileText);
-
+      fileText = await getTopicText(topic);
       fileText = smartTruncate(fileText, 30000);
     }
 
@@ -3984,28 +4051,7 @@ ${otherQs.map((q, i) => {
 
       let fileText = '';
       if (topic.pdf_data) {
-        const isHtml = topic.pdf_name && (
-          topic.pdf_name.toLowerCase().endsWith('.html') || 
-          topic.pdf_name.toLowerCase().endsWith('.htm') || 
-          isBufferHtml(topic.pdf_data)
-        );
-        if (isHtml) {
-          try {
-            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
-            fileText = htmlToPlainText(rawHtml);
-          } catch (htmlErr) {
-            console.warn('Failed to parse HTML string:', htmlErr);
-          }
-        } else {
-          try {
-            const parsedPdf = await pdfParse(topic.pdf_data);
-            fileText = parsedPdf.text || '';
-          } catch (pdfErr) {
-            console.warn('Failed to parse PDF binary:', pdfErr);
-          }
-        }
-        
-        fileText = mergeVerticalText(fileText);
+        fileText = await getTopicText(topic);
         fileText = smartTruncate(fileText, 25000);
       }
 
@@ -4694,28 +4740,7 @@ app.post('/api/question/adjust', async (req, res) => {
 
       let fileText = '';
       if (topic.pdf_data) {
-        const isHtml = topic.pdf_name && (
-          topic.pdf_name.toLowerCase().endsWith('.html') || 
-          topic.pdf_name.toLowerCase().endsWith('.htm') || 
-          isBufferHtml(topic.pdf_data)
-        );
-        if (isHtml) {
-          try {
-            const rawHtml = decodeHtmlBuffer(topic.pdf_data);
-            fileText = htmlToPlainText(rawHtml);
-          } catch (htmlErr) {
-            console.warn('Failed to parse HTML string:', htmlErr);
-          }
-        } else {
-          try {
-            const parsedPdf = await pdfParse(topic.pdf_data);
-            fileText = parsedPdf.text || '';
-          } catch (pdfErr) {
-            console.warn('Failed to parse PDF binary:', pdfErr);
-          }
-        }
-        
-        fileText = mergeVerticalText(fileText);
+        fileText = await getTopicText(topic);
         fileText = smartTruncate(fileText, 25000);
       }
 
@@ -6543,33 +6568,7 @@ app.get('/api/topics/:id/text', async (req, res) => {
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
     }
 
-    let fileText = '';
-    if (topic.pdf_data) {
-      const isHtml = topic.pdf_name && (
-        topic.pdf_name.toLowerCase().endsWith('.html') || 
-        topic.pdf_name.toLowerCase().endsWith('.htm') || 
-        isBufferHtml(topic.pdf_data)
-      );
-      if (isHtml) {
-        try {
-          const rawHtml = decodeHtmlBuffer(topic.pdf_data);
-          fileText = htmlToPlainText(rawHtml);
-        } catch (htmlErr) {
-          console.warn('Failed to parse HTML string:', htmlErr);
-        }
-      } else {
-        try {
-          const parsedPdf = await pdfParse(topic.pdf_data);
-          fileText = parsedPdf.text || '';
-        } catch (pdfErr) {
-          console.warn('Failed to parse PDF binary:', pdfErr);
-        }
-      }
-      
-      fileText = mergeVerticalText(fileText);
-    } else {
-      fileText = '수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.';
-    }
+    const fileText = await getTopicText(topic);
 
     res.json({
       id: topic.id,

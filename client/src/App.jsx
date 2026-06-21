@@ -4952,6 +4952,11 @@ export default function App() {
   const htmlTextareaRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Calculation Problem Image Upload States
+  const [calculationImageFile, setCalculationImageFile] = useState(null);
+  const [calculationImagePreview, setCalculationImagePreview] = useState(null);
+  const imageInputRef = useRef(null);
   
   // Custom Answersheet Title & Auto-Extraction tracking refs
   const [answersheetUploadTitle, setAnswersheetUploadTitle] = useState('');
@@ -7025,6 +7030,8 @@ export default function App() {
     if (htmlVal.trim()) {
       const blob = new Blob([htmlVal], { type: 'text/html' });
       fileToUpload = new window.File([blob], `${title.trim()}.html`, { type: 'text/html' });
+    } else if (calculationImageFile) {
+      fileToUpload = calculationImageFile;
     }
 
     if (fileToUpload) {
@@ -7050,9 +7057,12 @@ export default function App() {
         setTitle('');
         setKeywords('');
         setPdfFile(null);
+        setCalculationImageFile(null);
+        setCalculationImagePreview(null);
         autoExtractedTitleRef.current = '';
         if (htmlTextareaRef.current) htmlTextareaRef.current.value = '';
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (imageInputRef.current) imageInputRef.current.value = '';
         
         // Refresh
         fetchTodayReviews(referenceDate);
@@ -12022,18 +12032,103 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
-                    핵심 키워드 <span className="text-slate-500">(쉼표로 구분)</span>
+                    계산문제 업로드
                   </label>
-                  <input 
-                    type="text" 
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
-                    placeholder="예: 인덱스, 리프노드, 순차주사, 데이터 저장구조"
-                    className="w-full bg-slateCustom-900/90 border border-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    * AI가 해당 키워드를 활용해 10점형/25점형 기출문제를 더 정교하게 만듭니다.
-                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Clipboard Paste Zone */}
+                    <div 
+                      tabIndex={0}
+                      onPaste={(e) => {
+                        const items = e.clipboardData?.items;
+                        if (!items) return;
+                        for (let i = 0; i < items.length; i++) {
+                          if (items[i].type.indexOf('image') !== -1) {
+                            const blob = items[i].getAsFile();
+                            if (blob) {
+                              const file = new window.File([blob], `screenshot_${Date.now()}.png`, { type: blob.type });
+                              setCalculationImageFile(file);
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setCalculationImagePreview(event.target.result);
+                              };
+                              reader.readAsDataURL(file);
+                              showNotification('클립보드에서 스크린샷 이미지를 성공적으로 가져왔습니다!');
+                              e.preventDefault();
+                              break;
+                            }
+                          }
+                        }
+                      }}
+                      className="border border-dashed border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    >
+                      <Copy size={20} className="text-slate-500 mb-1.5" />
+                      <p className="text-xs font-bold text-slate-300">클립보드 스크린샷</p>
+                      <p className="text-[10px] text-slate-500 mt-1">클릭 후 Ctrl+V로 붙여넣기</p>
+                    </div>
+
+                    {/* File Upload Button */}
+                    <div 
+                      onClick={() => imageInputRef.current?.click()}
+                      className="border border-slate-800 rounded-xl p-4 text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-200 bg-slateCustom-900/30 hover:bg-slateCustom-900/50 hover:border-violet-500/50"
+                    >
+                      <input 
+                        ref={imageInputRef}
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (!file.type.startsWith('image/')) {
+                              showNotification('이미지 파일만 업로드할 수 있습니다.', 'error');
+                              return;
+                            }
+                            setCalculationImageFile(file);
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setCalculationImagePreview(event.target.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <UploadCloud size={20} className="text-slate-500 mb-1.5" />
+                      <p className="text-xs font-bold text-slate-300">이미지 파일 업로드</p>
+                      <p className="text-[10px] text-slate-500 mt-1">파일 선택 또는 드래그</p>
+                    </div>
+                  </div>
+
+                  {/* Calculation Image Preview */}
+                  {calculationImagePreview && (
+                    <div className="mt-3 p-3 bg-slateCustom-900/60 rounded-xl border border-slate-800 flex flex-col items-center">
+                      <div className="text-xs font-bold text-slate-400 mb-2 w-full text-left flex items-center gap-1.5">
+                        <Check size={12} className="text-emerald-400" />
+                        업로드된 이미지 미리보기
+                      </div>
+                      <img 
+                        src={calculationImagePreview} 
+                        alt="Calculation Problem Preview" 
+                        className="max-h-40 object-contain rounded border border-slate-800 shadow"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1 truncate max-w-full">
+                        {calculationImageFile?.name}
+                      </p>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCalculationImageFile(null);
+                          setCalculationImagePreview(null);
+                          if (imageInputRef.current) imageInputRef.current.value = '';
+                        }}
+                        className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-500/20 text-[10px] font-bold transition-all duration-200"
+                      >
+                        <Trash2 size={10} />
+                        이미지 제거
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -13462,10 +13557,17 @@ export default function App() {
                                               const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
+                                              let baseAns = ans;
                                               if (isPl && grading?.suggestedModelAnswer) {
-                                                return grading.suggestedModelAnswer;
+                                                baseAns = grading.suggestedModelAnswer;
                                               }
-                                              return ans;
+                                              if (q.formula) {
+                                                baseAns += `\n\n**[공식]**\n${q.formula}`;
+                                                if (q.structure) {
+                                                  baseAns += `\n\n**[기호 정의]**\n${q.structure}`;
+                                                }
+                                              }
+                                              return baseAns;
                                             })()
                                           } 
                                           katexLoaded={katexLoaded} 
@@ -15295,10 +15397,17 @@ export default function App() {
                                               const trimmed = ans.trim().replace(/\$/g, '').trim();
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
+                                              let baseAns = ans;
                                               if (isPl && grading?.suggestedModelAnswer) {
-                                                return grading.suggestedModelAnswer;
+                                                baseAns = grading.suggestedModelAnswer;
                                               }
-                                              return ans;
+                                              if (q.formula) {
+                                                baseAns += `\n\n**[공식]**\n${q.formula}`;
+                                                if (q.structure) {
+                                                  baseAns += `\n\n**[기호 정의]**\n${q.structure}`;
+                                                }
+                                              }
+                                              return baseAns;
                                             })()
                                           } 
                                           katexLoaded={katexLoaded} 
