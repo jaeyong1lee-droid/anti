@@ -6832,7 +6832,21 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {
-      res.setHeader('Content-Type', 'application/pdf');
+      const fileNameLower = (topic.pdf_name || '').toLowerCase();
+      let contentType = 'application/pdf';
+      if (fileNameLower.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (fileNameLower.endsWith('.gif')) {
+        contentType = 'image/gif';
+      } else if (fileNameLower.endsWith('.webp')) {
+        contentType = 'image/webp';
+      } else if (fileNameLower.endsWith('.svg')) {
+        contentType = 'image/svg+xml';
+      }
+
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.pdf_name)}"`);
       res.send(topic.pdf_data);
     }
@@ -7473,7 +7487,21 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlContent);
     } else {
-      res.setHeader('Content-Type', 'application/pdf');
+      const fileNameLower = (report.pdf_name || '').toLowerCase();
+      let contentType = 'application/pdf';
+      if (fileNameLower.endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (fileNameLower.endsWith('.gif')) {
+        contentType = 'image/gif';
+      } else if (fileNameLower.endsWith('.webp')) {
+        contentType = 'image/webp';
+      } else if (fileNameLower.endsWith('.svg')) {
+        contentType = 'image/svg+xml';
+      }
+
+      res.setHeader('Content-Type', contentType);
       if (forceDownload) {
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(report.pdf_name)}"`);
       } else {

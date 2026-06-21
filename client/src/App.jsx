@@ -47,7 +47,8 @@ import {
   BatteryCharging,
   Wifi,
   Signal,
-  HelpCircle
+  HelpCircle,
+  Image
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -7098,10 +7099,11 @@ export default function App() {
   }, [viewMode, showFormulaExam, showTheoryExam, showAnswerSheet, selectedTopic, showExam, isDesktop, isMobileLandscape, lastActiveReview]);
 
 
-  // Load PDF.js dynamically when switching to image view or when calculation topic is active
+  // Load PDF.js dynamically when switching to image view or when calculation PDF topic is active
   useEffect(() => {
-    const isCalculation = selectedTopic?.category === '계산' || (showExam && examTopic?.category === '계산');
-    if ((isCalculation || (showFullReport && reportViewType === 'image')) && !pdfjsLoaded) {
+    const isCalculationPdf = (selectedTopic?.category === '계산' && selectedTopic?.pdf_name?.toLowerCase().endsWith('.pdf')) || 
+                             (showExam && examTopic?.category === '계산' && examTopic?.pdf_name?.toLowerCase().endsWith('.pdf'));
+    if ((isCalculationPdf || (showFullReport && reportViewType === 'image')) && !pdfjsLoaded) {
       if (window.pdfjsLib) {
         setPdfjsLoaded(true);
         return;
@@ -12162,8 +12164,31 @@ export default function App() {
                           })()}
                           {item.pdf_name && (
                             <span className="text-[10px] bg-slate-900 text-slate-400 border border-slate-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                              {item.pdf_name.toLowerCase().endsWith('.html') || item.pdf_name.toLowerCase().endsWith('.htm') ? <FileCode size={10} /> : <FileText size={10} />}
-                              {item.pdf_name.toLowerCase().endsWith('.html') || item.pdf_name.toLowerCase().endsWith('.htm') ? 'HTML 첨부' : 'PDF 첨부'}
+                              {(() => {
+                                const name = item.pdf_name.toLowerCase();
+                                if (name.endsWith('.html') || name.endsWith('.htm')) {
+                                  return (
+                                    <>
+                                      <FileCode size={10} />
+                                      <span>HTML 첨부</span>
+                                    </>
+                                  );
+                                }
+                                if (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.gif') || name.endsWith('.webp')) {
+                                  return (
+                                    <>
+                                      <Image size={10} />
+                                      <span>그림 첨부</span>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <FileText size={10} />
+                                    <span>PDF 첨부</span>
+                                  </>
+                                );
+                              })()}
                             </span>
                           )}
                         </div>
