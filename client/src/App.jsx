@@ -11583,8 +11583,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating AI Progress Popup (Hidden on Mobile Portrait) */}
-      {showAiProgress && (isDesktop || isMobileLandscape) && (
+      {/* Floating AI Progress Popup (Hidden on Mobile View) */}
+      {showAiProgress && isDesktop && !isMobileLandscape && (
         <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90vw] sm:w-96 rounded-2xl bg-slate-950/90 border border-violet-500/40 p-4 shadow-2xl shadow-violet-950/50 flex flex-col gap-3 backdrop-blur-xl animate-fade-in-up">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-violet-950 border border-violet-500/20 text-violet-400 rounded-xl flex items-center justify-center">
