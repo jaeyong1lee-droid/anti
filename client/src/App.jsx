@@ -1967,14 +1967,13 @@ function getCoreSubjectFromTitle(title) {
 // ── 질문 내 표 파싱 유틸리티 ──────────────────
 function parseQuestionTable(q, topicTitle) {
   let questionText = q.question || '';
-  
-  // Clean question title for Q1 / Overview questions macroscopically
-  // 백엔드 AI 프롬프트가 대주제 및 자연스러운 지문을 동적으로 생성하도록 개선되었으므로,
-  // 클라이언트 단에서 획일화된 질문 템플릿으로 덮어씌우는 로직은 비활성화합니다.
   let tableData = q.tableData || null;
+  let referenceTableData = null;
+
+  let parsedTableData = null;
+  let hasParsedTable = false;
 
   if (questionText.toLowerCase().includes('<table') || questionText.toLowerCase().replace(/\s+/g, '').includes('<table')) {
-    // HTML 태그 내의 불필요한 공백을 표준 공백으로 정규화
     let cleaned = questionText
       .replace(/<\s*table[^>]*>/gi, '<table>')
       .replace(/<\s*\/+\s*table[^>]*>/gi, '</table>')
@@ -2019,12 +2018,12 @@ function parseQuestionTable(q, topicTitle) {
       }
 
       if (rows.length > 0) {
-        tableData = {
+        parsedTableData = {
           headers: headers.length > 0 ? headers : rows[0],
           rows: headers.length > 0 ? rows : rows.slice(1)
         };
+        hasParsedTable = true;
         
-        // 원본 질문 텍스트에서 표 태그 부분 제거
         const tableStartIdx = questionText.toLowerCase().search(/<\s*table/i);
         const tableEndIdx = questionText.toLowerCase().search(/<\s*\/+\s*table/i);
         if (tableStartIdx !== -1 && tableEndIdx !== -1) {
@@ -2038,21 +2037,29 @@ function parseQuestionTable(q, topicTitle) {
     }
   }
 
-  // Markdown table fallback
-  if (!tableData) {
+  if (!hasParsedTable) {
     const mdParsed = parseMarkdownTable(questionText);
     if (mdParsed) {
-      tableData = mdParsed.tableData;
+      parsedTableData = mdParsed.tableData;
+      hasParsedTable = true;
       questionText = questionText.replace(mdParsed.originalTableText, '').trim();
     }
   }
 
-  return { questionText, tableData };
+  if (hasParsedTable) {
+    if (tableData) {
+      referenceTableData = parsedTableData;
+    } else {
+      tableData = parsedTableData;
+    }
+  }
+
+  return { questionText, tableData, referenceTableData };
 }
 
 
 const renderQuestionContent = (q, topicTitle, katexLoaded) => {
-  const { questionText, tableData } = parseQuestionTable(q, topicTitle);
+  const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
@@ -2110,6 +2117,12 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
             </div>
           </div>
         )}
+        {referenceTableData && (
+          <div className="my-3 overflow-x-auto w-full">
+            <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
+            <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
+          </div>
+        )}
         {tableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
           <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
         )}
@@ -2122,6 +2135,12 @@ const renderQuestionContent = (q, topicTitle, katexLoaded) => {
       <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
         <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
       </div>
+      {referenceTableData && (
+        <div className="my-3 overflow-x-auto w-full">
+          <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
+          <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
+        </div>
+      )}
       {tableData && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
         <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
       )}
