@@ -3358,7 +3358,10 @@ function generateCalculationFallbackQuestions(title, keywords) {
 }
 
 function assembleFinalCalculationQuestions(questions, topic) {
-  let finalQuestions = (questions || []).filter(q => q.type === '주관식 (단답형)');
+  // 주관식 (단답형) 및 주관식 (표채우기) 모두 허용
+  let finalQuestions = (questions || []).filter(q =>
+    q.type === '주관식 (단답형)' || q.type === '주관식 (표채우기)'
+  );
   const fb = generateCalculationFallbackQuestions(topic.title, topic.keywords);
   while (finalQuestions.length < 2) {
     finalQuestions.push(fb[finalQuestions.length]);
@@ -3401,13 +3404,13 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       console.log(`[Cache Hit] Serving saved review questions for key ${key}`);
       try {
         const parsed = JSON.parse(cached.value);
+        let cachedQuestions = null;
+        let cachedMeta = {};
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const healed = parsed.map(q => healQuizQuestionObject(q));
-          return res.json({ questions: healed, isFallback: false, isCached: true });
+          cachedQuestions = parsed;
         } else if (parsed && Array.isArray(parsed.questions)) {
-          const healed = parsed.questions.map(q => healQuizQuestionObject(q));
-          return res.json({
-            questions: healed,
+          cachedQuestions = parsed.questions;
+          cachedMeta = {
             selectedAnswers: parsed.selectedAnswers || {},
             revealedQuestions: parsed.revealedQuestions || {},
             tableAnswers: parsed.tableAnswers || {},
@@ -3415,10 +3418,24 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
             tutorAnswers: parsed.tutorAnswers || {},
             tutorInputText: parsed.tutorInputText || {},
             chatHistory: parsed.chatHistory || [],
-            savedQuizScroll: parsed.savedQuizScroll || 0,
-            isFallback: false,
-            isCached: true
-          });
+            savedQuizScroll: parsed.savedQuizScroll || 0
+          };
+        }
+
+        if (cachedQuestions && cachedQuestions.length > 0) {
+          // 계산 토픽인데 캐시에 일반 모드(13문제) 문제가 남아있으면 캐시 무효화
+          if (topic.category === '계산' && cachedQuestions.length > 2) {
+            console.log(`[Cache Invalidated] Calculation topic has ${cachedQuestions.length} cached questions (expected 2). Discarding stale general-mode cache.`);
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+          } else {
+            const healed = cachedQuestions.map(q => healQuizQuestionObject(q));
+            return res.json({
+              questions: healed,
+              ...cachedMeta,
+              isFallback: false,
+              isCached: true
+            });
+          }
         }
       } catch (e) {
         console.warn('Failed to parse cached review questions:', e);
