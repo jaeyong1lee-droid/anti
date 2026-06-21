@@ -2123,21 +2123,13 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalQuestionsCount = 0) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
   const conditionMatch = cleanQuestionText.match(/\[\s*조건\s*\]/);
 
-  const isCalc = q.category === '계산' || 
-                 topicCategory === '계산' || 
-                 totalQuestionsCount === 4 ||
-                 q.subtype === '계산' ||
-                 q.type === '주관식 (표채우기)' ||
-                 cleanQuestionText.includes('INPUT_1') ||
-                 cleanQuestionText.includes('input_1');
-
-  const resolvedCategory = isCalc ? '계산' : (q.category || topicCategory);
+  const resolvedCategory = q.category || topicCategory;
   const resolvedPdfName = q.pdf_name || pdfName || '';
   const resolvedTopicId = q.topic_id || topicId;
 
@@ -7817,7 +7809,7 @@ export default function App() {
     );
   };
 
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false) => {
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null) => {
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
@@ -7833,7 +7825,7 @@ export default function App() {
     }
 
     const topicObj = allTopics.find(t => t.id === topicId);
-    const topicCategory = topicObj ? topicObj.category : '일반';
+    const topicCategory = topicObj ? topicObj.category : (passedCategory || '일반');
 
     const activeInfo = {
       topicId,
@@ -11644,7 +11636,9 @@ export default function App() {
             s.selectedTopic.mode || 'ai', 
             s.selectedTopic.schedule_id, 
             s.selectedTopic.review_round, 
-            s.selectedTopic.isBonus
+            s.selectedTopic.isBonus,
+            false,
+            s.selectedTopic.category
           ).catch(e => console.warn('[Mount Restore] Failed to load AI questions:', e));
         }
       }
@@ -12221,7 +12215,7 @@ export default function App() {
                       <div className="flex flex-row flex-nowrap items-center gap-2 w-full md:w-auto pt-3 md:pt-0 border-t border-slate-800/60 md:border-t-0 justify-end shrink-0">
                         {/* 소스 + Gemini 복습 */}
                         <button
-                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round, item.isBonus)}
+                          onClick={() => handleOpenAIQuestions(item.topic_id, item.title, item.keywords, item.pdf_name, 'ai', item.schedule_id, item.review_round, item.isBonus, false, item.category)}
                           className="flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/20 text-xs font-bold transition-all duration-200 animate-pulse-slow"
                           title="소스 + Gemini AI로 고난도 문제 생성"
                         >
@@ -12393,9 +12387,6 @@ export default function App() {
                       if (extracted && (title === '' || title === autoExtractedTitleRef.current)) {
                         setTitle(extracted);
                         autoExtractedTitleRef.current = extracted;
-                      }
-                      if (e.target.value.trim() && category === '계산' && calculationImageFiles.length === 0) {
-                        setCategory('일반');
                       }
                     }}
                     onBlur={(e) => handleSuggestTitleFromHtml(e.target.value)}
