@@ -6843,8 +6843,17 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
         const separator = '<!-- ANTIGRAVITY_SCREENSHOT_END -->';
         if (htmlContent.includes(separator)) {
           htmlContent = htmlContent.split(separator)[0].trim();
+        } else {
+          // Fallback: If no separator is present, extract only img and svg elements to show only the diagram/screenshot
+          const imgRegex = /<img\b[^>]*>/gi;
+          const svgRegex = /<svg\b[\s\S]*?<\/svg>/gi;
+          const imgs = htmlContent.match(imgRegex) || [];
+          const svgs = htmlContent.match(svgRegex) || [];
+          const extracted = [...imgs, ...svgs];
+          if (extracted.length > 0) {
+            htmlContent = extracted.map(item => `<div style="text-align: center; margin-bottom: 20px;">${item}</div>`).join('\n');
+          }
         }
-        // Fallback: If no separator is present, we keep the entire htmlContent because the entire HTML file is the diagram/screenshot itself.
       }
 
       const responsiveStyle = `
