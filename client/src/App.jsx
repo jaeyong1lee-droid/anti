@@ -2210,9 +2210,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
     
     return (
       <div className="space-y-3 w-full">
-        <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-          <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
-        </div>
+        {!(resolvedCategory === '계산' && showImage) && (
+          <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
+            <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
+          </div>
+        )}
         {renderImageElement()}
         {conditions.length > 0 && (
           <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-2.5 sm:p-4 my-2.5 text-left w-full">
@@ -2251,9 +2253,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   
   return (
     <>
-      <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
-        <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
-      </div>
+      {!(resolvedCategory === '계산' && showImage) && (
+        <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
+          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+        </div>
+      )}
       {renderImageElement()}
       {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
         <div className="my-3 overflow-x-auto w-full">
@@ -13456,26 +13460,28 @@ export default function App() {
                               </button>
                             )}
                             
-                            <button
-                              disabled={regeneratingReview[idx]}
-                              onClick={() => handleRegenerateQuestion('review', idx, q)}
-                              className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 whitespace-nowrap ${
-                                regeneratingReview[idx]
-                                  ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
-                              }`}
-                            >
-                              <svg
-                                className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'} hidden sm:inline-block`}
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
+                            {!(selectedTopic?.category === '계산' && idx === 0) && (
+                              <button
+                                disabled={regeneratingReview[idx]}
+                                onClick={() => handleRegenerateQuestion('review', idx, q)}
+                                className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 whitespace-nowrap ${
+                                  regeneratingReview[idx]
+                                    ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
+                                }`}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                              </svg>
-                              {regeneratingReview[idx] ? '변환 중...' : '변환'}
-                            </button>
+                                <svg
+                                  className={`w-3 h-3 ${regeneratingReview[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'} hidden sm:inline-block`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                {regeneratingReview[idx] ? '변환 중...' : '변환'}
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -15289,26 +15295,28 @@ export default function App() {
                             </button>
                           )}
                           
-                          <button
-                            disabled={regeneratingExam[idx]}
-                            onClick={() => handleRegenerateQuestion('exam', idx, q)}
-                            className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 whitespace-nowrap ${
-                              regeneratingExam[idx]
-                                ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
-                            }`}
-                          >
-                            <svg
-                              className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'} hidden sm:inline-block`}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
+                          {!(q.category === '계산' && examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx) && (
+                            <button
+                              disabled={regeneratingExam[idx]}
+                              onClick={() => handleRegenerateQuestion('exam', idx, q)}
+                              className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 whitespace-nowrap ${
+                                  regeneratingExam[idx]
+                                    ? 'bg-indigo-950/20 border-indigo-500/30 text-indigo-400 cursor-not-allowed animate-pulse'
+                                    : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 cursor-pointer'
+                              }`}
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                            {regeneratingExam[idx] ? '변환 중...' : '변환'}
-                          </button>
+                              <svg
+                                className={`w-3 h-3 ${regeneratingExam[idx] ? 'animate-spin text-indigo-400' : 'text-slate-400 group-hover:text-indigo-400'} hidden sm:inline-block`}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                              </svg>
+                              {regeneratingExam[idx] ? '변환 중...' : '변환'}
+                            </button>
+                          )}
 
                           <button
                             onClick={() => handleDeleteExamQuestion(idx)}

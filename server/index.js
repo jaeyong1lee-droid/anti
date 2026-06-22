@@ -428,6 +428,41 @@ function decodeHtmlBuffer(buffer) {
 }
 
 
+// Helper: Extract first image data and mimeType from topic (raw image or base64 embedded in HTML)
+function extractFirstImageFromTopic(topic) {
+  if (!topic || !topic.pdf_data) return null;
+  const pdfName = (topic.pdf_name || '').toLowerCase();
+  const isImage = pdfName.endsWith('.png') || pdfName.endsWith('.jpg') || pdfName.endsWith('.jpeg') || pdfName.endsWith('.gif') || pdfName.endsWith('.webp');
+
+  if (isImage) {
+    const mimeType = pdfName.endsWith('.png') ? 'image/png' :
+                     (pdfName.endsWith('.gif') ? 'image/gif' :
+                      (pdfName.endsWith('.webp') ? 'image/webp' : 'image/jpeg'));
+    return {
+      data: topic.pdf_data.toString('base64'),
+      mimeType: mimeType
+    };
+  }
+
+  const isHtml = pdfName.endsWith('.html') || pdfName.endsWith('.htm') || isBufferHtml(topic.pdf_data);
+  if (isHtml) {
+    try {
+      const rawHtml = decodeHtmlBuffer(topic.pdf_data);
+      const imgRegex = /<img[^>]+src=["']data:(image\/[^;]+);base64,([^"']+)["']/i;
+      const match = imgRegex.exec(rawHtml);
+      if (match) {
+        return {
+          data: match[2],
+          mimeType: match[1]
+        };
+      }
+    } catch (e) {
+      console.warn('[extractFirstImageFromTopic] Failed to parse HTML for image extraction:', e);
+    }
+  }
+  return null;
+}
+
 // Helper: Extract text from topic (supports PDF, HTML, and Images via Gemini OCR with caching)
 async function getTopicText(topic) {
   if (!topic || !topic.pdf_data) {
@@ -3704,23 +3739,31 @@ ${adjustments.map((a, idx) => `
 
     const prompt = (topic.category === '계산') ? `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
-아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 4개**의 예상문제를 생성해 주십시오.
+제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트](HTML 공부노트), 그리고 함께 전달되는 [첨부 이미지]를 심층 분석하여, 총 **정확히 4개**의 예상문제를 생성해 주십시오.
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
+[첨부파일 본문 텍스트](HTML 공부노트): ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
-1. **1번 문항 (원보고서 기출문제 100% 완벽 원형 복원 - 극도로 중요!)**:
-   - 제공된 [첨부파일 본문 텍스트]를 샅샅이 분석하여, **본문 텍스트에 포함되어 있는 실제 원보고서의 원본 문제와 실험 수치 데이터 표를 그대로 원형 그대로 복사/복원**하여 1번 문제로 출제하십시오.
-   - 질문 지문 내용뿐 아니라 실험 수치 테이블도 임의로 누락하거나 변형하지 말고 그대로 마크다운 표 형식으로 question 지문 안에 제공하십시오. (각 행 뒤에 실제 줄바꿈 문자 \\n을 사용하는 표 개행 규칙을 철저히 준수하십시오)
-   - 만약 원문제에서 구하라고 요구하는 결과 항목이 2개 이상(예: 점착력 $S_i$값과 내부마찰각 $\varnothing$값)일 경우, **절대로 하나의 값만 묻는 단답형으로 획일화하지 말고**, 문제 종류("type")를 반드시 **"주관식 (표채우기)"**로 지정하여 수험생이 표의 각 빈칸(\`[INPUT_1]\`, \`[INPUT_2]\` 등)에 정답을 각각 입력할 수 있도록 구성하십시오. 단 하나의 최종값만 구하라고 요구하는 경우에만 "주관식 (단답형)"으로 지정하십시오.
-   - 예시: 내부마찰각과 점착력을 함께 구하는 원보고서 기출문제인 경우, "type"을 "주관식 (표채우기)"로 하고 tableData의 rows에 \`[["산정 결과", "[INPUT_1]", "[INPUT_2]"]]\`와 같이 빈칸을 매핑하십시오.
+1. **1번 문항 (첨부 이미지의 물음과 본문 HTML의 답변을 분석한 마크다운 질문표 - 극도로 중요!)**:
+   - **문제 유형("type")**: 반드시 "주관식 (표채우기)"로 출제하십시오.
+   - **분석 지침**: 
+     - 제공된 [첨부 이미지]에서 구하라고 묻고 있는 모든 세부 질문 항목(예: 침투수량 $q$, 특정 지점 A, B, C의 간극수압 $u$, 특정 지점에서의 동수경사 $i$ 등)을 찾아내고, [첨부파일 본문 텍스트](HTML 공부노트)를 분석하여 이에 부합하는 각각의 계산 공식, 상세 풀이 과정 및 최종 정답 수치들을 매칭하십시오.
+   - **질문 지문("question")**:
+     - 첨부 이미지에 담긴 기출문제의 원래 핵심 질문 내용(예: "그림에 나타낸 댐에 대하여 (1) 침투수량, (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오.")을 기술하고, 계산을 위해 필요한 추가 상수나 설계 정수 조건(예: 투수계수 $k = 2.0 \times 10^{-3} \text{m/s}$ 등)이 이미지나 본문 텍스트에 있다면 본문 질문에 누락 없이 명시하십시오.
+   - **표 구성("tableData")**:
+     - \`headers\`는 \`["평가 항목", "산정 결과"]\`로 구성하십시오.
+     - \`rows\`에는 이미지의 세부 질문 항목들(기호 및 단위가 있다면 포함, 예: \`"(1) 침투수량 ($q$, $m^3/s \\cdot m$)"\`, \`"(2) A점 간극수압 ($u_A$, $kPa$)"\`, \`"(3) C점에서 출구까지 동수경사 ($i$)"\` 등)을 첫 번째 열에 넣고, 두 번째 열에는 수험생이 입력창에 정답을 적도록 \`"[INPUT_1]"\`, \`"[INPUT_2]"\], \`"[INPUT_3]"\` 등을 순차적으로 매핑하십시오. (예: \`[["(1) 침투수량 ($q$, $m^3/s \\cdot m$)", "[INPUT_1]"], ["(2) A점 간극수압 ($u_A$, $kPa$)", "[INPUT_2]"], ...]\`)
+   - **정답 객체("answers")**:
+     - 각 \`INPUT_N\`에 대응하는 최종 모범 답안 수치 및 짧은 형식의 기호/단위를 본문 HTML의 풀이 내용에서 분석하여 정확히 기입하십시오. (예: \`{"INPUT_1": "0.02 m³/s·m (또는 2.0 × 10⁻² m³/s)", "INPUT_2": "318.8 kPa (또는 300 kPa 내외)"}\`)
+   - **상세 해설("explanation")**:
+     - 각 빈칸에 대한 수치 계산 및 대입 공식 전개 과정을 논리적이고 친절하게 서술하십시오. LaTeX 문법을 활용하십시오.
 
 2. **2번 문항 (개념 비교 표 칸채우기 문제 - 극도로 중요!)**:
    - 이 계산 토픽의 핵심 공식/이론과 유사하거나 비교되는 다른 대표적인 공식/이론들(예: 테르자기 공식의 경우, 프란틀(Prandtl), 마이어호프(Meyerhof), 한센(Hansen), 베시크(Vesic) 등 다른 지지력 공식들)의 기본 가정, 특징, 적용 한계 및 지반 거동 대조 항목 등을 서로 대조하는 **학술적 개념 비교표**를 구성하여 출제하십시오.
    - 문제 종류("type")는 반드시 **"주관식 (표채우기)"**로 지정하십시오.
-   - 비교표(tableData)를 작성하고, 비교의 핵심이 되는 셀들(최소 2개에서 최대 4개)에 빈칸(\`[INPUT_1]\`, \`[INPUT_2]\` 등)을 만들어 채우도록 구성하십시오.
+   - 비교표(tableData)를 작성하고, 비교의 핵심이 되는 셀들(최소 2개에서 최대 4개)에 빈칸(\`[INPUT_1]\$, \`[INPUT_2]\` 등)을 만들어 채우도록 구성하십시오.
    - 질문 지문(question)은 사용자가 어떤 조건들을 비교해야 하는지 자연스럽게 안내하는 서술형 지문(예: "Terzaghi 지지력 공식과 다른 대표적인 극한 지지력 공식들의 공학적 가정 및 특성을 비교한 표입니다. 빈칸 (A), (B)에 알맞은 핵심 개념을 기술하십시오.")으로 작성하십시오.
    - 빈칸에 들어갈 정답("answers")은 수치 계산 값이 아니라, 핵심 개념을 설명하는 서술형 문구(15자 내외)로 구성하십시오.
 
@@ -3749,18 +3792,25 @@ ${ENGINEERING_STANDARDS}
 [
   {
     "type": "주관식 (표채우기)",
-    "question": "1. (원보고서 기출문제를 100% 원형 복원한 지문을 여기에 작성)\\n\\n| 열1 | 열2 | 열3 |\\n| :--- | :--- | :--- |\\n| 데이터행1 | 값1 | 값2 |",
+    "question": "1. 그림에 나타낸 댐에 대하여 (1) 침투수량, (2) A, B 및 C점에서의 간극수압, (3) C점에서 출구까지 동수경사를 구하시오. 단, 흙의 투수계수는 2.0x10^-3m/s 이다.",
     "tableData": {
-      "headers": ["구분 항목", "결과값1 헤더", "결과값2 헤더"],
+      "headers": ["평가 항목", "산정 결과"],
       "rows": [
-        ["산정 결과", "[INPUT_1]", "[INPUT_2]"]
+        ["(1) 침투수량 ($q$, $m^3/s \\cdot m$)", "[INPUT_1]"],
+        ["(2) A점 간극수압 ($u_A$, $kPa$)", "[INPUT_2]"],
+        ["(2) B점 간극수압 ($u_B$, $kPa$)", "[INPUT_3]"],
+        ["(2) C점 간극수압 ($u_C$, $kPa$)", "[INPUT_4]"],
+        ["(3) C점에서 출구까지 동수경사 ($i$)", "[INPUT_5]"]
       ]
     },
     "answers": {
-      "INPUT_1": "(토픽에 맞는 정확한 계산 결과값)",
-      "INPUT_2": "(토픽에 맞는 정확한 계산 결과값)"
+      "INPUT_1": "0.02 m³/s·m (또는 2.0 × 10⁻² m³/s)",
+      "INPUT_2": "318.8 kPa (또는 300 kPa 내외)",
+      "INPUT_3": "196.2 kPa (또는 200 kPa 내외)",
+      "INPUT_4": "73.6 kPa (또는 75 kPa 내외)",
+      "INPUT_5": "0.25"
     },
-    "explanation": "(해당 토픽의 풀이 과정 상세 해설)"
+    "explanation": "1. 단위폭당 침투수량 계산: 상하류 수위차 $H = 30\\text{m}$, 투수계수 $k = 2.0 \\times 10^{-3}\\text{m/s}$... (상세 해설)"
   },
   {
     "type": "주관식 (표채우기)",
@@ -3791,7 +3841,6 @@ ${ENGINEERING_STANDARDS}
     "explanation": "(현장 대책 공법의 상세 메커니즘 및 공학적 유의사항 해설)"
   }
 ]
-
 ` : `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 ${totalAiQuestionsCount}개의 예상문제를 생성해 주십시오.
@@ -3960,7 +4009,12 @@ ${ENGINEERING_STANDARDS}
 `;
 
 try {
-        const responseText = await localCallLLM(null, prompt, null, 'question');
+        let topicImage = null;
+        if (topic.category === '계산') {
+          topicImage = extractFirstImageFromTopic(topic);
+          console.log(`[POST /api/topics/:id/ai-questions] Extracted image for calculation topic. Found image: ${!!topicImage}`);
+        }
+        const responseText = await localCallLLM(null, prompt, topicImage, 'question');
         
         let text = responseText.trim();
         if (text.startsWith('```')) {
