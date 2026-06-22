@@ -15343,7 +15343,7 @@ export default function App() {
                         katexLoaded, 
                         q.topic_id, 
                         q.pdf_name, 
-                        q.category, 
+                        q.category || examTopic?.category, 
                         pdfjsLoaded,
                         examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx,
                         examQuestions.filter(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)).length

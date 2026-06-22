@@ -3481,7 +3481,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
               console.log(`[Cache Invalidated] ${mismatchedCount}/${cachedQuestions.length} cached questions are mismatched with topic "${topic.title}". Discarding stale cache.`);
               await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
             } else {
-              const healed = cachedQuestions.map(q => healQuizQuestionObject(q));
+              const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
               return res.json({
                 questions: healed,
                 ...cachedMeta,
@@ -3591,6 +3591,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const cleanedCore = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
+        category: topic.category,
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -3626,6 +3627,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
+        category: topic.category,
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -4039,6 +4041,7 @@ try {
         const healedQuestions = finalQuestions.map(q => healQuizQuestionObject({
           ...q,
           topic_id: Number(topicId),
+          category: topic.category,
           question: cleanQuizQuestion(q.question)
         }));
 
@@ -4051,7 +4054,7 @@ try {
           healedQuestions.map(async (q) => {
             const res = await validateAndHealQuestion(q, localCallLLM, topic.title, topic.keywords, fileText);
             reportValidationProgress(progressId, healedQuestions.length);
-            return healQuizQuestionObject(res);
+            return healQuizQuestionObject({ ...res, category: topic.category });
           })
         );
 
@@ -4086,6 +4089,7 @@ try {
       const cleanedFallback = finalQuestions.map(q => healQuizQuestionObject({
         ...q,
         topic_id: Number(topicId),
+        category: topic.category,
         question: cleanQuizQuestion(q.question)
       }));
 
@@ -4549,7 +4553,11 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
-      const finalValidatedQ = healQuizQuestionObject(validatedQ);
+      const finalValidatedQ = healQuizQuestionObject({
+        ...validatedQ,
+        topic_id: Number(topicId),
+        category: topic.category
+      });
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
@@ -5202,7 +5210,11 @@ ${formatRequirement}
         updateProgress(progressId, 2, '2단계: validationPlugin으로 생성 문제 검증 중...', 50);
       }
       const validatedQ = await validateAndHealQuestion(healedQ, localCallLLM, topic.title, topic.keywords, fileText);
-      const finalValidatedQ = healQuizQuestionObject(validatedQ);
+      const finalValidatedQ = healQuizQuestionObject({
+        ...validatedQ,
+        topic_id: finalTopicId,
+        category: topic.category
+      });
       if (progressId) {
         updateProgress(progressId, 2, '2단계: 문제 생성 및 검증 완료!', 100);
       }
@@ -6831,14 +6843,8 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
         const separator = '<!-- ANTIGRAVITY_SCREENSHOT_END -->';
         if (htmlContent.includes(separator)) {
           htmlContent = htmlContent.split(separator)[0].trim();
-        } else {
-          // Fallback: search for top image wrappers or base64 images inside html
-          const imgRegex = /<div[^>]*?>\s*<img[^>]*?src=["']data:image\/[^"'>]+["'][^>]*?>\s*<\/div>/gi;
-          const matches = htmlContent.match(imgRegex);
-          if (matches && matches.length > 0) {
-            htmlContent = matches.join('\n');
-          }
         }
+        // Fallback: If no separator is present, we keep the entire htmlContent because the entire HTML file is the diagram/screenshot itself.
       }
 
       const responsiveStyle = `
