@@ -844,6 +844,32 @@ export function healQuizQuestionObject(q) {
 
       q.tableData.rows = newRows;
       q.answers = newAnswers;
+
+      // Automatically sync alphabet list in question text with actual table inputs
+      const numInputs = inputCount - 1;
+      if (numInputs > 0 && typeof q.question === 'string') {
+        const letters = [];
+        for (let i = 0; i < numInputs; i++) {
+          letters.push(String.fromCharCode(65 + i));
+        }
+        let letterStr = '';
+        if (letters.length === 1) {
+          letterStr = '(A)';
+        } else if (letters.length === 2) {
+          letterStr = '(A)와 (B)';
+        } else {
+          letterStr = letters.map(l => `(${l})`).join(', ');
+          const lastCommaIdx = letterStr.lastIndexOf(', ');
+          if (lastCommaIdx !== -1) {
+            letterStr = letterStr.substring(0, lastCommaIdx) + '와 ' + letterStr.substring(lastCommaIdx + 2);
+          }
+        }
+        
+        const blankListRegex = /빈칸\s*\(?A\)?(?:\s*(?:,|와|및|~)\s*\(?[A-Z]\)?)+/g;
+        if (blankListRegex.test(q.question)) {
+          q.question = q.question.replace(blankListRegex, `빈칸 ${letterStr}`);
+        }
+      }
     }
   }
   return healDeep(q);
