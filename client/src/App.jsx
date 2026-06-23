@@ -15387,6 +15387,14 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
+                        <button
+                          onClick={handleOpenManageTopicInstructionsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="토픽 전용 문제 출제 지침을 관리합니다."
+                        >
+                          <BookOpen size={10} className="flex-shrink-0" />
+                          <span>지침</span>
+                        </button>
                         {selectedTopic.pdf_name && (
                           <button
                             onClick={handleOpenOriginalReport}
@@ -15517,27 +15525,6 @@ export default function App() {
                       className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span>문제 출제</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenManageStandardsModal}
-                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
-                    >
-                      <span>기준</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenManageGradingStandardsModal}
-                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
-                    >
-                      <span>채점</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenManageValidationStandardsModal}
-                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
-                    >
-                      <span>검증</span>
                     </button>
                   </div>
                 )}
