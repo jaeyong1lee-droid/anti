@@ -3400,6 +3400,32 @@ app.post('/api/grade-subjective', async (req, res) => {
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
   }
 
+  let dynamicGradingStandards = GRADING_STANDARDS;
+  let dynamicEngineeringStandards = ENGINEERING_STANDARDS;
+  try {
+    const gradingRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
+    if (gradingRow && gradingRow.value) {
+      const list = JSON.parse(gradingRow.value);
+      if (Array.isArray(list)) {
+        dynamicGradingStandards = list.map(s => s.content).join('\n\n');
+      }
+    }
+  } catch (dbErr) {
+    console.error('Failed to dynamically fetch grading standards from database:', dbErr);
+  }
+
+  try {
+    const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
+    if (engRow && engRow.value) {
+      const list = JSON.parse(engRow.value);
+      if (Array.isArray(list)) {
+        dynamicEngineeringStandards = list.map(s => s.content).join('\n\n');
+      }
+    }
+  } catch (dbErr) {
+    console.error('Failed to dynamically fetch engineering standards from database:', dbErr);
+  }
+
   let attempt = 0;
   const maxAttempts = 3;
   let delay = 1000;
@@ -3416,7 +3442,9 @@ app.post('/api/grade-subjective', async (req, res) => {
           colHeader,
           explanation,
           category,
-          callLLMWithFailover: localCallLLM
+          callLLMWithFailover: localCallLLM,
+          gradingStandards: dynamicGradingStandards,
+          engineeringStandards: dynamicEngineeringStandards
         });
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 채점 완료!', 100);
