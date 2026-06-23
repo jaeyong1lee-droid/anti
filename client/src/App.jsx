@@ -15734,20 +15734,18 @@ export default function App() {
               >
                 필수공식 추가하기
               </button>
-              {formulaConfirmTarget.source !== 'tutor' && (
-                <button
-                  onClick={() => {
-                    const target = formulaConfirmTarget;
-                    setFormulaConfirmTarget(null);
-                    setTutorAttachedFormula(target.math);
-                    setReviewMobileTab('tutor');
-                    setExamMobileTab('tutor');
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
-                >
-                  AI 튜터로 전송
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  const target = formulaConfirmTarget;
+                  setFormulaConfirmTarget(null);
+                  setTutorAttachedFormula(target.math);
+                  setReviewMobileTab('tutor');
+                  setExamMobileTab('tutor');
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
+              >
+                AI 튜터로 전송
+              </button>
               <button
                 onClick={async () => {
                   const target = formulaConfirmTarget;
