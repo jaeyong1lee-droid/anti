@@ -7591,6 +7591,26 @@ app.post('/api/verify-pin', (req, res) => {
   }
 });
 
+// GET /api/debug-db → Diagnostically query database state from production
+app.get('/api/debug-db', async (req, res) => {
+  try {
+    const rawUrl = process.env.DATABASE_URL || '';
+    const cleanedUrl = rawUrl.replace(/:[^:@\n]+@/, ':****@'); // Hide password
+    const keys = await dbQuery.all("SELECT key, updated_at FROM app_session");
+    const review_246 = await dbQuery.get("SELECT value FROM app_session WHERE key = 'review_questions_schedule_246'");
+    res.json({
+      dbUrl: cleanedUrl,
+      isPostgres,
+      keys,
+      hasReview246: !!review_246,
+      review246ValueLength: review_246 ? review_246.value.length : 0,
+      review246Value: review_246 ? JSON.parse(review_246.value) : null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
