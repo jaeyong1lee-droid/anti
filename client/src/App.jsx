@@ -7750,28 +7750,39 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/topics/${topic.id}/html-raw`);
       const data = await res.json();
       if (data.success) {
-        const html = data.html || '';
-        if (html.includes('<!-- ANTIGRAVITY_SCREENSHOT_END -->')) {
-          const parts = html.split('<!-- ANTIGRAVITY_SCREENSHOT_END -->');
-          const screenshotPart = parts[0];
-          const textPart = parts[1] || '';
-          setEditingHtmlCode(textPart.trim());
-          
-          // Extract base64 images from screenshotPart
-          const imgRegex = /<img\b[^>]*src=["'](data:image\/[^"']+)["']/gi;
-          let match;
-          const extractedImages = [];
-          while ((match = imgRegex.exec(screenshotPart)) !== null) {
-            extractedImages.push({
-              id: 'existing_' + Math.random().toString(36).substring(2, 9),
-              type: 'existing',
-              src: match[1]
-            });
-          }
-          setEditImages(extractedImages);
-        } else {
-          setEditingHtmlCode(html);
+        let html = data.html || '';
+        
+        let cleanedHtml = html;
+        const extractedImages = [];
+        
+        // 1. Match and extract images wrapped in a div wrapper
+        const imageDivRegex = /<div[^>]*>\s*<img[^>]*src=["'](data:image\/[^"']+)["'][^>]*>\s*<\/div>\s*/gi;
+        let match;
+        while ((match = imageDivRegex.exec(cleanedHtml)) !== null) {
+          extractedImages.push({
+            id: 'existing_' + Math.random().toString(36).substring(2, 9),
+            type: 'existing',
+            src: match[1]
+          });
         }
+        cleanedHtml = cleanedHtml.replace(imageDivRegex, '');
+        
+        // 2. Match and extract any remaining bare base64 images
+        const bareImgRegex = /<img[^>]*src=["'](data:image\/[^"']+)["'][^>]*>\s*/gi;
+        while ((match = bareImgRegex.exec(cleanedHtml)) !== null) {
+          extractedImages.push({
+            id: 'existing_' + Math.random().toString(36).substring(2, 9),
+            type: 'existing',
+            src: match[1]
+          });
+        }
+        cleanedHtml = cleanedHtml.replace(bareImgRegex, '');
+        
+        // 3. Clean up the end marker comment
+        cleanedHtml = cleanedHtml.replace(/<!--\s*ANTIGRAVITY_SCREENSHOT_END\s*-->\s*/gi, '');
+        
+        setEditingHtmlCode(cleanedHtml.trim());
+        setEditImages(extractedImages);
       } else {
         alert(data.error || 'HTML 코드를 가져오는 데 실패했습니다.');
         setShowHtmlEditModal(false);
