@@ -14915,7 +14915,7 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleOpenStandardsModal}
+                      onClick={handleOpenManageStandardsModal}
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10.5px] font-black cursor-pointer"
                     >
                       <Sliders size={10} className="text-violet-400" />

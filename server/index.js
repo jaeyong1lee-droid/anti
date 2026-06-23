@@ -30,6 +30,25 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Helper for transaction/upsert safe session save to prevent duplicate key race conditions in PostgreSQL / SQLite
+async function saveSessionValue(key, value) {
+  try {
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [key, value]
+    );
+  } catch (err) {
+    if (err.code === '23505' || String(err).includes('UNIQUE')) {
+      await dbQuery.run(
+        'UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?',
+        [value, key]
+      );
+    } else {
+      throw err;
+    }
+  }
+}
 // Global AI progress tracker map
 global.progressTracker = global.progressTracker || new Map();
 
@@ -548,11 +567,7 @@ async function getTopicText(topic) {
   // Cache the extracted text so we don't have to perform OCR or parsing again
   if (fileText && topicId) {
     try {
-      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [cacheKey]);
-      await dbQuery.run(
-        'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-        [cacheKey, fileText]
-      );
+      await saveSessionValue(cacheKey, fileText);
       console.log(`[Cache Save] Successfully cached extracted text for topicId=${topicId}`);
     } catch (saveErr) {
       console.warn(`[Cache Save Error] Failed to save text cache for topicId=${topicId}:`, saveErr);
@@ -7076,12 +7091,8 @@ app.post('/api/session/exam', async (req, res) => {
     await ensureSessionTable();
     const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedExamScroll } = req.body;
     const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, tutorAnswers: tutorAnswers || {}, tutorInputText: tutorInputText || {}, chatHistory: chatHistory || [], savedExamScroll });
-    // DELETE + INSERT (모든 DB 호환 UPSERT)
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
-    await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      ['exam_session', value]
-    );
+    // Safe UPSERT (prevents concurrent unique key violations)
+    await saveSessionValue('exam_session', value);
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/session/exam error:', err);
@@ -7154,11 +7165,8 @@ app.post('/api/session/review', async (req, res) => {
       savedQuizScroll: savedQuizScroll || 0
     });
     
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-    await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      [key, value]
-    );
+    // Safe UPSERT (prevents concurrent unique key violations)
+    await saveSessionValue(key, value);
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/session/review error:', err);
@@ -7404,11 +7412,8 @@ app.post('/api/session/formula', async (req, res) => {
       ? formulaQuestions.map(healFormulaQuestionObject)
       : formulaQuestions;
     const value = JSON.stringify({ formulaQuestions: healedQuestions });
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['formula_questions']);
-    await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      ['formula_questions', value]
-    );
+    // Safe UPSERT (prevents concurrent unique key violations)
+    await saveSessionValue('formula_questions', value);
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/session/formula error:', err);
@@ -7449,11 +7454,8 @@ app.post('/api/session/answersheet', async (req, res) => {
       ? answersheetQuestions.map(healAnswersheetQuestionObject)
       : answersheetQuestions;
     const value = JSON.stringify({ answersheetQuestions: healedQuestions });
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['answersheet_questions']);
-    await dbQuery.run(
-      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-      ['answersheet_questions', value]
-    );
+    // Safe UPSERT (prevents concurrent unique key violations)
+    await saveSessionValue('answersheet_questions', value);
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/session/answersheet error:', err);
@@ -7534,8 +7536,7 @@ app.post('/api/engineering-standards', async (req, res) => {
 
     // 2. Save to database (app_session) as the absolute source of truth
     try {
-      await dbQuery.run("DELETE FROM app_session WHERE key = 'engineering_standards'");
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('engineering_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(standards)]);
+      await saveSessionValue('engineering_standards', JSON.stringify(standards));
       console.log('Successfully saved engineering standards to database.');
     } catch (dbErr) {
       console.error('Failed to save engineering standards to database:', dbErr.message);
