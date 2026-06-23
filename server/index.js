@@ -7492,6 +7492,76 @@ app.post('/api/options/:key', async (req, res) => {
   }
 });
 
+// GET /api/engineering-standards → Retrieve user-defined engineering standards
+app.get('/api/engineering-standards', async (req, res) => {
+  try {
+    const standardsFilePath = path.join(__dirname, 'plugins', 'engineeringStandards.js');
+    const content = await fs.promises.readFile(standardsFilePath, 'utf-8');
+    
+    const startMarker = '/* USER_STANDARDS_START */';
+    const endMarker = '/* USER_STANDARDS_END */';
+    
+    const startIndex = content.indexOf(startMarker);
+    const endIndex = content.indexOf(endMarker);
+    
+    if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
+      return res.json({ standards: '' });
+    }
+    
+    const rawStandards = content.substring(startIndex + startMarker.length, endIndex).trim();
+    
+    // Unescape template literal characters
+    const unescaped = rawStandards
+      .replace(/\\`/g, '`')
+      .replace(/\\\${/g, '${')
+      .replace(/\\\\/g, '\\');
+      
+    res.json({ standards: unescaped });
+  } catch (err) {
+    console.error('GET /api/engineering-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/engineering-standards → Save/update user-defined engineering standards
+app.post('/api/engineering-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (typeof standards !== 'string') {
+      return res.status(400).json({ error: 'standards must be a string' });
+    }
+    
+    const standardsFilePath = path.join(__dirname, 'plugins', 'engineeringStandards.js');
+    const content = await fs.promises.readFile(standardsFilePath, 'utf-8');
+    
+    const startMarker = '/* USER_STANDARDS_START */';
+    const endMarker = '/* USER_STANDARDS_END */';
+    
+    const startIndex = content.indexOf(startMarker);
+    const endIndex = content.indexOf(endMarker);
+    
+    if (startIndex === -1 || endIndex === -1 || startIndex >= endIndex) {
+      return res.status(500).json({ error: 'Markers not found in engineeringStandards.js' });
+    }
+    
+    // Escape for template literal safely
+    const escaped = standards
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\${/g, '\\${');
+      
+    const newContent = content.substring(0, startIndex + startMarker.length) +
+      '\n' + escaped + '\n' +
+      content.substring(endIndex);
+      
+    await fs.promises.writeFile(standardsFilePath, newContent, 'utf-8');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/engineering-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {

@@ -89,6 +89,14 @@ const SEEPAGE_PRESSURE_CONVENTION = `
 `;
 
 // ============================================================================
+// [6] 사용자 정의 기준 (User Defined Conventions)
+// ============================================================================
+const USER_CONVENTIONS = `
+/* USER_STANDARDS_START */
+/* USER_STANDARDS_END */
+`;
+
+// ============================================================================
 // 종합 Export — 모든 기준을 하나의 문자열로 결합
 // ============================================================================
 
@@ -106,9 +114,11 @@ ${GRAPH_AND_TABLE_CONVENTION}
 ${SITUATIONAL_FEASIBILITY_CONVENTION}
 
 ${SEEPAGE_PRESSURE_CONVENTION}
+
+${USER_CONVENTIONS}
 `.trim();
 
 /**
  * 개별 기준도 별도로 export하여, 특정 프롬프트에 선택적으로 주입할 수 있습니다.
  */
-export { STRESS_CONVENTION, SUBGRADE_REACTION_CONVENTION, GRAPH_AND_TABLE_CONVENTION, SITUATIONAL_FEASIBILITY_CONVENTION, SEEPAGE_PRESSURE_CONVENTION };
+export { STRESS_CONVENTION, SUBGRADE_REACTION_CONVENTION, GRAPH_AND_TABLE_CONVENTION, SITUATIONAL_FEASIBILITY_CONVENTION, SEEPAGE_PRESSURE_CONVENTION, USER_CONVENTIONS };

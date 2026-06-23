@@ -48,6 +48,7 @@ import {
   Wifi,
   Signal,
   HelpCircle,
+  Sliders,
   Image
 } from 'lucide-react';
 
@@ -6368,6 +6369,10 @@ export default function App() {
   const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [showStandardsModal, setShowStandardsModal] = useState(false);
+  const [standardsText, setStandardsText] = useState('');
+  const [isSavingStandards, setIsSavingStandards] = useState(false);
+  const [isLoadingStandards, setIsLoadingStandards] = useState(false);
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
@@ -9905,6 +9910,43 @@ export default function App() {
       setHintText(`힌트를 가져오지 못했습니다: ${err.message}`);
     } finally {
       setIsHintLoading(false);
+    }
+  };
+
+  const handleOpenStandardsModal = async () => {
+    setShowStandardsModal(true);
+    setIsLoadingStandards(true);
+    setStandardsText('');
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`);
+      if (!res.ok) throw new Error('기준 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setStandardsText(data.standards || '');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingStandards(false);
+    }
+  };
+
+  const handleSaveStandards = async () => {
+    setIsSavingStandards(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: standardsText })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '저장에 실패했습니다.');
+      showNotification('공학 기준이 성공적으로 저장되었습니다!', 'success');
+      setShowStandardsModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingStandards(false);
     }
   };
 
@@ -14580,15 +14622,25 @@ export default function App() {
                 </div>
 
                 {selectedTopic && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateTopicProblem(selectedTopic)}
-                    disabled={isChatLoading}
-                    className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <HelpCircle size={11} className="text-amber-400" />
-                    <span>이 토픽으로 문제 출제 받기 📝</span>
-                  </button>
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateTopicProblem(selectedTopic)}
+                      disabled={isChatLoading}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10.5px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <HelpCircle size={10} className="text-amber-400" />
+                      <span>문제 출제 받기 📝</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenStandardsModal}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10.5px] font-black cursor-pointer"
+                    >
+                      <Sliders size={10} className="text-violet-400" />
+                      <span>기준정립 ⚙️</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -14791,6 +14843,80 @@ export default function App() {
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 공학 기준 수립 모달 (Engineering Standards Modal) */}
+      {showStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowStandardsModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-violet-500/10 text-violet-400 rounded-lg">
+                  <Sliders size={18} className="text-violet-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 공학 기준 수립 (Engineering Standards)</h3>
+              </div>
+              <button
+                onClick={() => setShowStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 이곳에 입력한 공학적 기준 및 기술 지식은 AI 튜터의 **문제 출제, 답안 채점, 질문 답변** 시 가중치를 갖는 지침으로 프롬프트에 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingStandards ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-violet-400 font-bold animate-pulse">서버에서 공학 기준 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <textarea
+                  value={standardsText}
+                  onChange={(e) => setStandardsText(e.target.value)}
+                  placeholder="예:
+[🌊 침투 및 파이핑 추가 기준]:
+- 상하류 수두차가 줄어들면 동수경사와 침투수력이 감소한다.
+- 하류 수위를 상승시켜 수두차를 줄이는 것(링 다이크 축조 등)은 파이핑을 가속하지 않는 타당한 대책이다."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-violet-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingStandards}
+                />
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingStandards}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveStandards}
+                disabled={isSavingStandards || isLoadingStandards}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-850 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingStandards ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>기준 저장 💾</span>
+                )}
               </button>
             </div>
           </div>
