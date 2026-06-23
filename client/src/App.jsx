@@ -53,6 +53,87 @@ import {
   Lock
 } from 'lucide-react';
 
+// ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
+try {
+  window.localStorage.setItem('__test_storage_ls__', '1');
+  window.localStorage.removeItem('__test_storage_ls__');
+} catch (e) {
+  console.warn('[Polyfill] Native window.localStorage is blocked. Redefining it with memory fallback.', e);
+  const memoryStore = {};
+  const mockStorage = {
+    getItem(key) {
+      return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
+    },
+    setItem(key, value) {
+      memoryStore[key] = String(value);
+    },
+    removeItem(key) {
+      delete memoryStore[key];
+    },
+    clear() {
+      Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
+    },
+    key(index) {
+      return Object.keys(memoryStore)[index] || null;
+    },
+    get length() {
+      return Object.keys(memoryStore).length;
+    }
+  };
+  try {
+    Object.defineProperty(window, 'localStorage', {
+      value: mockStorage,
+      writable: true,
+      configurable: true
+    });
+  } catch (err) {
+    console.error('Failed to override window.localStorage:', err);
+    try {
+      window.localStorage = mockStorage;
+    } catch (e2) {}
+  }
+}
+
+try {
+  window.sessionStorage.setItem('__test_storage_ss__', '1');
+  window.sessionStorage.removeItem('__test_storage_ss__');
+} catch (e) {
+  console.warn('[Polyfill] Native window.sessionStorage is blocked. Redefining it with memory fallback.', e);
+  const memoryStore = {};
+  const mockStorage = {
+    getItem(key) {
+      return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
+    },
+    setItem(key, value) {
+      memoryStore[key] = String(value);
+    },
+    removeItem(key) {
+      delete memoryStore[key];
+    },
+    clear() {
+      Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
+    },
+    key(index) {
+      return Object.keys(memoryStore)[index] || null;
+    },
+    get length() {
+      return Object.keys(memoryStore).length;
+    }
+  };
+  try {
+    Object.defineProperty(window, 'sessionStorage', {
+      value: mockStorage,
+      writable: true,
+      configurable: true
+    });
+  } catch (err) {
+    console.error('Failed to override window.sessionStorage:', err);
+    try {
+      window.sessionStorage = mockStorage;
+    } catch (e2) {}
+  }
+}
+
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
 function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   const containerRef = useRef(null);
@@ -5133,8 +5214,8 @@ export default function App() {
             setAiHistory(prev => {
               const updated = prev.map(item => {
                 if (item.id === progressId) {
-                  const timeline = [...item.timeline];
-                  if (timeline[timeline.length - 1] !== data.message) {
+                  const timeline = Array.isArray(item.timeline) ? [...item.timeline] : [];
+                  if (timeline.length === 0 || timeline[timeline.length - 1] !== data.message) {
                     timeline.push(data.message);
                   }
 
@@ -5191,7 +5272,7 @@ export default function App() {
       setAiHistory(prev => {
         const updated = prev.map(item => {
           if (item.id === finishedId) {
-            const timeline = [...item.timeline];
+            const timeline = Array.isArray(item.timeline) ? [...item.timeline] : [];
             
             // Extract model name from questions data or fall back
             let modelName = item.modelName;
@@ -15507,13 +15588,13 @@ export default function App() {
                         {/* 실시간 진행 로그 */}
                         <div>
                           <div className="flex items-center justify-between mb-1.5 text-slate-400 font-bold">
-                            <span>진행 타임라인 로그 ({item.timeline.length})</span>
+                            <span>진행 타임라인 로그 ({(item.timeline || []).length})</span>
                           </div>
                           <div className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3 font-mono text-[11px] leading-relaxed text-slate-350 space-y-1 max-h-[160px] overflow-y-auto">
-                            {item.timeline.map((line, idx) => (
+                            {(item.timeline || []).map((line, idx) => (
                               <div key={idx} className="flex gap-2">
                                 <span className="text-slate-500 select-none">[{idx + 1}]</span>
-                                <span className={idx === item.timeline.length - 1 && isRunning ? 'text-amber-300' : ''}>
+                                <span className={idx === (item.timeline || []).length - 1 && isRunning ? 'text-amber-300' : ''}>
                                   {line}
                                 </span>
                               </div>
