@@ -128,6 +128,14 @@ export function checkWaterWeightEquivalence(userStr, correctStr) {
   return false;
 }
 
+export function isNumericAnswer(str) {
+  if (!str) return false;
+  const cleanStr = str.trim();
+  if (/[\*\+\=\-\/\^]/.test(cleanStr)) return false;
+  const numericRegex = /^[-+]?\d*\.?\d+\s*[a-zA-Z가-힣\/³\d]*$/;
+  return numericRegex.test(cleanStr);
+}
+
 export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
@@ -141,11 +149,14 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
   }
 
-  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점
+  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점 (수식이 아닌 숫자형 결과에만 적용)
   const isCalc = category === '계산' || 
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(question || '') || 
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(explanation || '');
-  if (isCalc && checkWaterWeightEquivalence(userAnswer, correctAnswer)) {
+  
+  const canApplyWaterWeightCheck = isCalc && isNumericAnswer(userAnswer) && isNumericAnswer(correctAnswer);
+  
+  if (canApplyWaterWeightCheck && checkWaterWeightEquivalence(userAnswer, correctAnswer)) {
     return { 
       isCorrect: true, 
       score: 10, 
