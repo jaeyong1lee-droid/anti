@@ -7101,6 +7101,36 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
+// GET /api/session/review → 복습 문제 세트 및 진행 상태 반환
+app.get('/api/session/review', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const topicId = req.query.topicId;
+    const scheduleId = req.query.scheduleId;
+    if (!topicId) {
+      return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
+    }
+    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+      ? `review_questions_schedule_${scheduleId}`
+      : `review_questions_topic_${topicId}`;
+    
+    const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (row && row.value) {
+      const data = JSON.parse(row.value);
+      if (data && Array.isArray(data.questions)) {
+        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+      }
+      res.json({ success: true, data });
+    } else {
+      res.json({ success: false, error: '세션 정보가 없습니다.' });
+    }
+  } catch (err) {
+    console.error('GET /api/session/review error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/review → 복습 문제 세트 영구 저장
 app.post('/api/session/review', async (req, res) => {
   try {

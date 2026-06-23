@@ -6854,6 +6854,103 @@ export default function App() {
     }
   }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
+  // ── 30-Second Multi-Device Real-Time Sync Polling
+  useEffect(() => {
+    let intervalId = null;
+
+    const performSync = async () => {
+      // 1. Review Quiz Sync (includes calculation table questions)
+      if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+        // If the user is currently typing in a text area, skip sync to avoid cursor jumps
+        const activeEl = document.activeElement;
+        const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+        if (isUserTyping) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/session/review?topicId=${selectedTopic.id}&scheduleId=${selectedTopic.schedule_id || ''}`);
+          const resData = await res.json();
+          if (resData.success && resData.data) {
+            const server = resData.data;
+            
+            // Compare stringified states to check for updates
+            const isDiff = 
+              JSON.stringify(server.selectedAnswers || {}) !== JSON.stringify(selectedAnswers) ||
+              JSON.stringify(server.revealedQuestions || {}) !== JSON.stringify(revealedQuestions) ||
+              JSON.stringify(server.tableAnswers || {}) !== JSON.stringify(tableAnswers) ||
+              JSON.stringify(server.tableGradingResults || {}) !== JSON.stringify(tableGradingResults) ||
+              JSON.stringify(server.tutorAnswers || {}) !== JSON.stringify(tutorAnswers) ||
+              JSON.stringify(server.tutorInputText || {}) !== JSON.stringify(tutorInputText) ||
+              JSON.stringify(server.chatHistory || []) !== JSON.stringify(chatHistory) ||
+              JSON.stringify(server.questions || []) !== JSON.stringify(aiQuestions);
+
+            if (isDiff) {
+              console.log('[Realtime Sync] Syncing review state from server (30s interval)...');
+              if (server.questions && Array.isArray(server.questions)) {
+                const healed = server.questions.map(q => healQuizQuestionObject({ ...q, category: selectedTopic.category }));
+                setAiQuestions(healed);
+              }
+              setSelectedAnswers(server.selectedAnswers || {});
+              setRevealedQuestions(server.revealedQuestions || {});
+              setTableAnswers(server.tableAnswers || {});
+              setTableGradingResults(server.tableGradingResults || {});
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
+              setChatHistory(server.chatHistory || []);
+            }
+          }
+        } catch (err) {
+          console.warn('[Realtime Sync] Review sync error:', err);
+        }
+      }
+
+      // 2. Exam Sync
+      if (showExam && examQuestions.length > 0) {
+        const activeEl = document.activeElement;
+        const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+        if (isUserTyping) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/session/exam`);
+          const resData = await res.json();
+          if (resData && resData.data) {
+            const server = resData.data;
+            
+            const isDiff =
+              JSON.stringify(server.examAnswers || {}) !== JSON.stringify(examAnswers) ||
+              JSON.stringify(server.examRevealed || {}) !== JSON.stringify(examRevealed) ||
+              JSON.stringify(server.examTableAnswers || {}) !== JSON.stringify(examTableAnswers) ||
+              JSON.stringify(server.examTableGradingResults || {}) !== JSON.stringify(examTableGradingResults) ||
+              JSON.stringify(server.examQuestions || []) !== JSON.stringify(examQuestions);
+
+            if (isDiff) {
+              console.log('[Realtime Sync] Syncing exam state from server (30s interval)...');
+              if (server.examQuestions && Array.isArray(server.examQuestions)) {
+                const healed = server.examQuestions.map(q => healQuizQuestionObject(q));
+                setExamQuestions(healed);
+              }
+              setExamAnswers(server.examAnswers || {});
+              setExamRevealed(server.examRevealed || {});
+              setExamTableAnswers(server.examTableAnswers || {});
+              setExamTableGradingResults(server.examTableGradingResults || {});
+            }
+          }
+        } catch (err) {
+          console.warn('[Realtime Sync] Exam sync error:', err);
+        }
+      }
+    };
+
+    // Run every 30 seconds
+    intervalId = setInterval(performSync, 30000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [
+    selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory,
+    showExam, examQuestions, examAnswers, examRevealed, examTableAnswers, examTableGradingResults
+  ]);
+
   const forceSaveActiveSessions = async (isUnloading = false) => {
     const promises = [];
 
