@@ -72,6 +72,16 @@ async function runRestore() {
   try {
     console.log('Connecting to Neon PostgreSQL for restore...');
     
+    // Safety Backup: Run a backup of the current database before doing restore!
+    try {
+      console.log('Safety first: Running automatic database backup before restore...');
+      const { runBackup } = await import('./backupManager.js');
+      await runBackup();
+      console.log('Automatic database backup completed successfully.');
+    } catch (backupErr) {
+      console.warn('Warning: Pre-restore safety backup failed. Proceeding with caution...', backupErr);
+    }
+
     // We restore in an order that respects foreign keys
     const orderOfRestore = [
       'topics',
