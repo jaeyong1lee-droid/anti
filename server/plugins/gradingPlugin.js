@@ -2,9 +2,10 @@
  * 주관식 채점 플러그인 (Grading Plugin)
  */
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
+import { GRADING_STANDARDS } from './gradingStandards.js';
 import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 
-export const systemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
+export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.
 주어진 문제 맥락(question), 모범 답안(correctAnswer), 그리고 사용자가 입력한 답(userAnswer)을 비교하여 정답 여부(isCorrect) 및 부분점수(score, 0~10점)를 판정하십시오.
 
 [🚨 핵심 절대 채점 원칙 - 의미 중심의 공학적 부합성 판정 (Semantic Over Literal)]:
@@ -101,11 +102,19 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
 - 🚨 **[표준 학술 기호 사용 및 사용자 기호 모방 금지]**: suggestedModelAnswer 및 피드백 작성 시, 사용자가 임의로 타이핑한 비표준 기호나 약어 표기법(예: kh', b, KH 등)을 그대로 복사하거나 맞춰주며 모방하지 마십시오. 반드시 공식 전공 서적 및 설계 기준에서 공인된 표준 학술 기호(예: $k_s$, $k_{30}$, $k_{h0}$, $B$ 등)만을 엄격히 사용하여 공식을 설명하십시오.
 - 제공된 모범 답안(correctAnswer)을 기본 토대로 삼되, 설명이 부족하거나 수식이 생략된 경우에 한해 AI 본연의 지반공학 전문 지식을 활용하여 인과관계와 정확한 LaTeX 수식을 가미해 '고도화된 모범 답안'을 작성하십시오.
 - 만약 1단계 데이터 정합성 검사에서 모범 답안의 매칭 오류(출제 오류)를 발견한 경우에는, 잘못된 모범 답안을 완전히 무시하고 **헤더 맥락에 완전히 부합하는 최적의 진짜 공학적 답안(예: 'C, 파이' 등)을 이 필드에 적어 반환**하십시오.
+`;
 
+export function getGradingSystemInstruction() {
+  return `${baseSystemInstruction}
 
+[📋 채점 기준 가이드라인 (Grading Standards)]:
+${GRADING_STANDARDS}
+
+[🔬 공학 기준 (Engineering Standards)]:
 ${ENGINEERING_STANDARDS}
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
+}
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
@@ -176,7 +185,7 @@ ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
 반드시 지반공학/토목공학 전공 서적에 나오는 공인된 표준 학술 기호(예: $k_h$, $k_{h0}$, $k_{v0}$, $B$ 등)를 포함한 완전하고 정교한 표준 공식을 작성해야 합니다.
 `;
 
-  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'grading');
+  const responseText = await callLLMWithFailover(getGradingSystemInstruction(), userPrompt, null, 'grading');
   let text = responseText.trim();
   
   try {

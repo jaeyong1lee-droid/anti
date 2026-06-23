@@ -6465,6 +6465,15 @@ export default function App() {
   const [isSavingStandardsList, setIsSavingStandardsList] = useState(false);
   const [isLoadingStandardsList, setIsLoadingStandardsList] = useState(false);
   
+  const [showManageGradingStandardsModal, setShowManageGradingStandardsModal] = useState(false);
+  const [showEditGradingStandardModal, setShowEditGradingStandardModal] = useState(false);
+  const [gradingStandardsList, setGradingStandardsList] = useState([]);
+  const [editingGradingStandard, setEditingGradingStandard] = useState(null);
+  const [editingGradingTitle, setEditingGradingTitle] = useState('');
+  const [editingGradingContent, setEditingGradingContent] = useState('');
+  const [isSavingGradingStandardsList, setIsSavingGradingStandardsList] = useState(false);
+  const [isLoadingGradingStandardsList, setIsLoadingGradingStandardsList] = useState(false);
+  
   // PIN Code entry restriction states
   const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
   const [pinInput, setPinInput] = useState('');
@@ -10013,6 +10022,8 @@ export default function App() {
 
   const editTitleRef = useRef(null);
   const editContentRef = useRef(null);
+  const editGradingTitleRef = useRef(null);
+  const editGradingContentRef = useRef(null);
 
   useEffect(() => {
     if (showEditStandardModal) {
@@ -10024,6 +10035,17 @@ export default function App() {
       }, 100);
     }
   }, [showEditStandardModal]);
+
+  useEffect(() => {
+    if (showEditGradingStandardModal) {
+      setTimeout(() => {
+        if (editGradingTitleRef.current) {
+          editGradingTitleRef.current.focus();
+          editGradingTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditGradingStandardModal]);
 
   const handleOpenManageStandardsModal = async () => {
     setShowManageStandardsModal(true);
@@ -10148,6 +10170,111 @@ export default function App() {
       showNotification(err.message, 'error');
     } finally {
       setIsSavingStandardsList(false);
+    }
+  };
+
+  const handleOpenManageGradingStandardsModal = async () => {
+    setShowManageGradingStandardsModal(true);
+    setIsLoadingGradingStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/grading-standards`);
+      if (!res.ok) throw new Error('채점 기준 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setGradingStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingGradingStandardsList(false);
+    }
+  };
+
+  const handleDeleteGradingStandard = async (id) => {
+    if (!window.confirm('정말 이 채점 기준을 삭제하시겠습니까?')) return;
+    const updatedList = gradingStandardsList.filter(s => s.id !== id);
+    setIsSavingGradingStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/grading-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setGradingStandardsList(updatedList);
+      showNotification('채점 기준이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingGradingStandardsList(false);
+    }
+  };
+
+  const handleOpenAddGradingStandardModal = () => {
+    setEditingGradingStandard(null);
+    setEditingGradingTitle('');
+    setEditingGradingContent('');
+    setShowEditGradingStandardModal(true);
+  };
+
+  const handleOpenEditGradingStandardModal = (std) => {
+    setEditingGradingStandard(std);
+    setEditingGradingTitle(std.title || '');
+    setEditingGradingContent(std.content || '');
+    setShowEditGradingStandardModal(true);
+  };
+
+  const handleSaveEditGradingStandard = async () => {
+    if (!editingGradingTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingGradingContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingGradingStandard) {
+      // Edit mode
+      updatedList = gradingStandardsList.map(s => 
+        s.id === editingGradingStandard.id 
+          ? { ...s, title: editingGradingTitle, content: editingGradingContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_grading_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingGradingTitle,
+        content: editingGradingContent
+      };
+      updatedList = [...gradingStandardsList, newStd];
+    }
+
+    setIsSavingGradingStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/grading-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setGradingStandardsList(updatedList);
+      showNotification('채점 기준이 저장되었습니다.', 'success');
+      setShowEditGradingStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingGradingStandardsList(false);
     }
   };
 
@@ -13101,6 +13228,15 @@ export default function App() {
                   <Cpu size={11} className={preferredModel === 'gemini-3.5-flash' ? 'text-cyan-400' : 'text-emerald-400'} />
                   <span>{preferredModel === 'gemini-3.5-flash' ? '3.5 FLASH' : '3.1 FLASH LITE'}</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageGradingStandardsModal}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <Sliders size={11} className="text-rose-400" />
+                  <span>채점기준 ⚙️</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -14961,18 +15097,26 @@ export default function App() {
                       type="button"
                       onClick={() => handleGenerateTopicProblem(selectedTopic)}
                       disabled={isChatLoading}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10.5px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <HelpCircle size={10} className="text-amber-400" />
-                      <span>문제 출제 받기 📝</span>
+                      <span>문제 출제 📝</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleOpenManageStandardsModal}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10.5px] font-black cursor-pointer"
+                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
                     >
                       <Sliders size={10} className="text-violet-400" />
                       <span>기준정립 ⚙️</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenManageGradingStandardsModal}
+                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
+                    >
+                      <Sliders size={10} className="text-rose-400" />
+                      <span>채점기준 ⚙️</span>
                     </button>
                   </div>
                 )}
@@ -15373,6 +15517,194 @@ export default function App() {
       )}
 
       {/* 공식 추가 확인 모달 (Formula Add Confirmation Modal) */}
+      {/* ⚙️ 채점 기준 통합 관리 모달 (Grading Standards Management Modal) */}
+      {showManageGradingStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageGradingStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg">
+                  <Sliders size={18} className="text-rose-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 채점 기준 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageGradingStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 주관식 및 표 채점에 사용되는 기준 목록입니다. 이곳에 추가된 모든 항목은 AI 채점관의 **답안 채점** 시 기준 프롬프트로 병합되어 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingGradingStandardsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-rose-400 font-bold animate-pulse">서버에서 채점 기준 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">기준 제목</th>
+                        <th className="px-4 py-3 text-left">기준 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                      {gradingStandardsList.map((std, idx) => (
+                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditGradingStandardModal(std)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                              >
+                                <span>✏️ 수정</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGradingStandard(std.id)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                disabled={isSavingGradingStandardsList}
+                              >
+                                <span>❌ 삭제</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {gradingStandardsList.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 채점 기준이 없습니다. 새로운 기준을 추가해보세요.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddGradingStandardModal}
+                disabled={isLoadingGradingStandardsList || isSavingGradingStandardsList}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 기준 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageGradingStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 채점 기준 추가/수정 서브 모달 (Grading Standard Add/Edit Sub-Modal) */}
+      {showEditGradingStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditGradingStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg">
+                  <Sliders size={18} className="text-rose-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingGradingStandard ? '✏️ 채점 기준 수정' : '➕ 신규 채점 기준 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditGradingStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 제목 (Topic Title)</label>
+                <input
+                  ref={editGradingTitleRef}
+                  type="text"
+                  value={editingGradingTitle}
+                  onChange={(e) => setEditingGradingTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 의미 중심의 공학적 부합성 판정"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-rose-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-rose-500 transition-all font-semibold"
+                  disabled={isSavingGradingStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 세부 내용 (Prompt Convention Text)</label>
+                <textarea
+                  ref={editGradingContentRef}
+                  value={editingGradingContent}
+                  onChange={(e) => setEditingGradingContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예:
+[🚨 핵심 절대 채점 원칙 - 의미 중심의 공학적 부합성 판정 (Semantic Over Literal)]:
+- 사용자의 답안과 모범 답안을 비교할 때, 특정 단어의 존재 유무를 채점 기준으로 삼지 마십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-rose-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-rose-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingGradingStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditGradingStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingGradingStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditGradingStandard}
+                disabled={isSavingGradingStandardsList}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingGradingStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>기준 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {formulaConfirmTarget && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
           <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
