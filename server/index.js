@@ -6815,6 +6815,46 @@ function isBufferWebp(buf) {
   return buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
 }
 
+app.get('/api/topics/:id/html-raw', async (req, res) => {
+  const topicId = req.params.id;
+  try {
+    const topic = await dbQuery.get(`SELECT pdf_name, pdf_data FROM topics WHERE id = ?`, [topicId]);
+    if (!topic || !topic.pdf_data) {
+      return res.status(404).json({ error: '첨부된 HTML 원본 파일을 찾을 수 없습니다.' });
+    }
+    const html = decodeHtmlBuffer(topic.pdf_data);
+    res.json({ success: true, html });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/topics/:id/html-raw', async (req, res) => {
+  const topicId = req.params.id;
+  const { html } = req.body;
+  if (typeof html !== 'string') {
+    return res.status(400).json({ error: 'html 코드는 필수 문자열입니다.' });
+  }
+  try {
+    const topic = await dbQuery.get(`SELECT pdf_name FROM topics WHERE id = ?`, [topicId]);
+    if (!topic) {
+      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+    }
+    const buffer = Buffer.from(html, 'utf-8');
+    await dbQuery.run(`UPDATE topics SET pdf_data = ? WHERE id = ?`, [buffer, topicId]);
+    
+    // Clear extracted text cache so that new quiz generations read the updated html.
+    // NOTE: This preserves all existing review data, schedules, scores, and past solved sessions.
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [`topic_extracted_text_${topicId}`]);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/topics/:id/pdf', async (req, res) => {
   const topicId = req.params.id;
 

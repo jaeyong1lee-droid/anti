@@ -5002,6 +5002,17 @@ export default function App() {
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   
+  // HTML Edit Modal States
+  const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
+  const [editingHtmlTopicId, setEditingHtmlTopicId] = useState(null);
+  const [editingHtmlTopicTitle, setEditingHtmlTopicTitle] = useState('');
+  const [editingHtmlTopicCategory, setEditingHtmlTopicCategory] = useState('일반');
+  const [editingHtmlCode, setEditingHtmlCode] = useState('');
+  const [loadingHtmlCode, setLoadingHtmlCode] = useState(false);
+  const [savingHtmlCode, setSavingHtmlCode] = useState(false);
+  const [editImages, setEditImages] = useState([]);
+  const editHtmlTextareaRef = useRef(null);
+  
   // Loadings
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [loadingTopics, setLoadingTopics] = useState(false);
@@ -7725,6 +7736,127 @@ export default function App() {
       onClick: click
     };
   };
+
+  // HTML Raw Edit Modal Handlers
+  const handleOpenHtmlEditModal = async (topic) => {
+    setEditingHtmlTopicId(topic.id);
+    setEditingHtmlTopicTitle(topic.title);
+    setEditingHtmlTopicCategory(topic.category || '일반');
+    setEditImages([]);
+    setShowHtmlEditModal(true);
+    setLoadingHtmlCode(true);
+    setEditingHtmlCode('');
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${topic.id}/html-raw`);
+      const data = await res.json();
+      if (data.success) {
+        const html = data.html || '';
+        if (html.includes('<!-- ANTIGRAVITY_SCREENSHOT_END -->')) {
+          const parts = html.split('<!-- ANTIGRAVITY_SCREENSHOT_END -->');
+          const screenshotPart = parts[0];
+          const textPart = parts[1] || '';
+          setEditingHtmlCode(textPart.trim());
+          
+          // Extract base64 images from screenshotPart
+          const imgRegex = /<img\b[^>]*src=["'](data:image\/[^"']+)["']/gi;
+          let match;
+          const extractedImages = [];
+          while ((match = imgRegex.exec(screenshotPart)) !== null) {
+            extractedImages.push({
+              id: 'existing_' + Math.random().toString(36).substring(2, 9),
+              type: 'existing',
+              src: match[1]
+            });
+          }
+          setEditImages(extractedImages);
+        } else {
+          setEditingHtmlCode(html);
+        }
+      } else {
+        alert(data.error || 'HTML 코드를 가져오는 데 실패했습니다.');
+        setShowHtmlEditModal(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('오류가 발생했습니다.');
+      setShowHtmlEditModal(false);
+    } finally {
+      setLoadingHtmlCode(false);
+    }
+  };
+
+  const handleSaveHtmlEdit = async () => {
+    if (!editingHtmlTopicId) return;
+    setSavingHtmlCode(true);
+    try {
+      let finalHtml = editingHtmlCode;
+      if (editingHtmlTopicCategory === '계산') {
+        let embeddedImagesHtml = '';
+        for (const img of editImages) {
+          embeddedImagesHtml += `<div style="text-align: center; margin-bottom: 20px;"><img src="${img.src}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"/></div>\n`;
+        }
+        finalHtml = `${embeddedImagesHtml}<!-- ANTIGRAVITY_SCREENSHOT_END -->\n${editingHtmlCode}`;
+      }
+
+      const res = await fetch(`${API_BASE}/api/topics/${editingHtmlTopicId}/html-raw`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: finalHtml })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('성공적으로 저장되었습니다.');
+        setShowHtmlEditModal(false);
+        fetchTopics();
+      } else {
+        alert(data.error || '저장하는 데 실패했습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('오류가 발생했습니다.');
+    } finally {
+      setSavingHtmlCode(false);
+    }
+  };
+
+  const handleEditImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    const newImages = [];
+    const readDataUrlHelper = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+    };
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const src = await readDataUrlHelper(file);
+        newImages.push({
+          id: 'new_' + Math.random().toString(36).substring(2, 9),
+          type: 'new',
+          file,
+          src
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setEditImages(prev => [...prev, ...newImages]);
+  };
+
+  const removeEditImage = (id) => {
+    setEditImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  useEffect(() => {
+    if (showHtmlEditModal && !loadingHtmlCode && editHtmlTextareaRef.current) {
+      editHtmlTextareaRef.current.focus();
+      editHtmlTextareaRef.current.select();
+    }
+  }, [showHtmlEditModal, loadingHtmlCode]);
 
   // Delete specific Topic (includes prompt safety confirm)
   const handleDeleteTopic = async (topicId, topicTitle) => {
@@ -12870,6 +13002,18 @@ export default function App() {
                                 >
                                   <Trash2 size={14} />
                                 </button>
+                                {topic.pdf_name && (topic.pdf_name.toLowerCase().endsWith('.html') || topic.pdf_name.toLowerCase().endsWith('.htm')) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenHtmlEditModal(topic);
+                                    }}
+                                    className="inline-flex items-center justify-center p-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-500/20 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+                                    title="HTML 원문수정 (이 토픽의 원본 HTML 코드를 편집합니다)"
+                                  >
+                                    <FileCode size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -12885,6 +13029,128 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* ===== HTML 원문수정 모달 ===== */}
+      {showHtmlEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slateCustom-900 border border-slate-800/80 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/60">
+              <div className="flex items-center gap-2">
+                <FileCode className="text-amber-400" size={20} />
+                <h3 className="text-base font-bold text-white truncate max-w-lg">
+                  HTML 원문 수정 - <span className="text-slate-300">{editingHtmlTopicTitle}</span>
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowHtmlEditModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4">
+              {loadingHtmlCode ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <RefreshCw className="text-amber-400 animate-spin" size={32} />
+                  <p className="text-sm text-slate-400 font-medium">원본 HTML 코드를 불러오는 중입니다...</p>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col gap-5 min-h-[450px]">
+                  {/* 계산문제의 경우 스샷 업로드 및 관리 영역 추가 */}
+                  {editingHtmlTopicCategory === '계산' && (
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Image size={14} className="text-amber-400" />
+                          스마트 복습용 문제 그림 / 스크린샷 관리
+                        </span>
+                        <label className="px-3 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600/35 text-amber-400 border border-amber-500/30 text-[10px] font-black cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95">
+                          그림 추가
+                          <input 
+                            type="file" 
+                            multiple 
+                            accept="image/*" 
+                            onChange={handleEditImageUpload} 
+                            className="hidden" 
+                          />
+                        </label>
+                      </div>
+
+                      {/* 이미지 프리뷰 그리드 */}
+                      {editImages.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-slate-500 border border-dashed border-slate-800 rounded-lg">
+                          등록된 그림이 없습니다. [그림 추가] 버튼을 눌러 스크린샷을 등록할 수 있습니다.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                          {editImages.map((img, idx) => (
+                            <div key={img.id} className="relative aspect-video rounded-lg overflow-hidden border border-slate-800 group hover:border-amber-500/50 bg-slate-900 flex items-center justify-center">
+                              <img src={img.src} alt={`스샷 ${idx + 1}`} className="max-w-full max-h-full object-contain" />
+                              <button
+                                onClick={() => removeEditImage(img.id)}
+                                className="absolute top-1 right-1 p-1 bg-red-950/80 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-900 transition-colors shadow-lg cursor-pointer"
+                                title="이 스샷 삭제"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                              <span className="absolute bottom-1 left-1 px-1 py-0.5 bg-black/60 text-[8px] text-slate-300 rounded font-medium">
+                                {img.type === 'existing' ? '기존' : '새 스샷'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex-1 flex flex-col min-h-[300px]">
+                    <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                      HTML 소스 코드
+                    </label>
+                    <textarea
+                      ref={editHtmlTextareaRef}
+                      value={editingHtmlCode}
+                      onChange={(e) => setEditingHtmlCode(e.target.value)}
+                      className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 focus:outline-none focus:border-amber-500/50 resize-none overflow-y-auto scrollbar-none"
+                      placeholder="HTML 코드를 여기에 입력하세요..."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-800/60 flex items-center justify-end gap-3 bg-slateCustom-950/40">
+              <button
+                onClick={() => setShowHtmlEditModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all duration-200 cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveHtmlEdit}
+                disabled={loadingHtmlCode || savingHtmlCode}
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+              >
+                {savingHtmlCode ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={13} />
+                    저장 중...
+                  </>
+                ) : (
+                  <>
+                    <Save size={13} />
+                    수정 완료
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== 복습 모달 (종합평가 스타일) ===== */}
       {selectedTopic && (
