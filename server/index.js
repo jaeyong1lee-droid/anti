@@ -4118,7 +4118,7 @@ try {
 
 // 6-1-1. POST /api/grade-subjective → Gemini 3.1 Flash Lite를 사용한 주관식 답안 판정 (플러그인 방식 적용)
 app.post('/api/grade-subjective', async (req, res) => {
-  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation } = req.body;
+  const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
@@ -4142,6 +4142,7 @@ app.post('/api/grade-subjective', async (req, res) => {
           rowHeader,
           colHeader,
           explanation,
+          category,
           callLLMWithFailover: localCallLLM
         });
         if (progressId) {

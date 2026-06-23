@@ -5335,6 +5335,7 @@ export default function App() {
             rowHeader,
             colHeader,
             explanation: q.explanation || q.answer || '',
+            category: showExam ? examTopic?.category : selectedTopic?.category,
             progressId
           })
         });
@@ -5484,6 +5485,7 @@ export default function App() {
           question: q.question,
           correctAnswer,
           userAnswer,
+          category: showExam ? examTopic?.category : selectedTopic?.category,
           progressId
         })
       });

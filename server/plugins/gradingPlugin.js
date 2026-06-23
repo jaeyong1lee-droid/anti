@@ -18,6 +18,14 @@ export const systemInstruction = `당신은 지반공학 및 토목공학 전문
   * 단, 공식의 구조 및 지수가 완벽히 부합하는데 단순히 사용자가 지정한 기호 이름의 사소한 타이핑 표기법 차이(예: $k_h$ 대신 KH, $k_h'$ 대신 kh' 등)는 정답으로 인정하고 점수를 부여하십시오.
 
 
+[🚨 물의 단위중량(감마 w) 미명시 계산문제 채점 원칙 - 계산문제 대상]:
+- 문제 지문(question)이나 조건에 물의 단위중량(감마 w, 9.81, 10 등)이 구체적인 수치로 명시되어 있지 않은 계산 문제인 경우:
+  * 모범 답안(correctAnswer) 또는 해설(explanation)이 9.81 kN/m³과 10 kN/m³ 중 어느 하나를 물의 단위중량(감마 w)으로 사용하여 계산되었을 수 있습니다.
+  * 사용자가 다른 값(예: 모범 답안은 9.81을 기준으로 계산했으나 사용자는 10을 기준으로 계산, 혹은 그 반대의 경우)을 대입하여 계산한 결과가 수학적/공학적으로 타당하다면, 이를 오답 처리하거나 감점하지 말고 **반드시 정답으로 판정(isCorrect: true, 10점 만점)**하십시오.
+  * 소수점 반올림이나 중간 과정 생략을 감안하여, 사용자의 답안 수치가 9.81 적용 시의 결과와 10 적용 시의 결과 중 어느 한 쪽에 가깝거나 유사하다면 전적으로 정답(10점)으로 인정하십시오.
+  * 정답으로 인정할 경우 채점 사유(reason)에 "물의 단위중량(감마 w)으로 9.81 또는 10을 적용한 계산 결과가 모두 타당하여 정답으로 인정합니다."의 취지를 설명하십시오.
+
+
 [📊 표 채점 판정 알고리즘 단계 (Table Grading Decision Tree - 반드시 순서대로 실행)]:
 
 1단계: 표 데이터 및 매칭 오류 검사 (Data Mismatch Check)
@@ -101,7 +109,31 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
-export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, callLLMWithFailover }) {
+export function checkWaterWeightEquivalence(userStr, correctStr) {
+  const clean = (s) => {
+    const match = String(s || '').replace(/,/g, '').match(/[-+]?\d*\.?\d+/);
+    return match ? parseFloat(match[0]) : null;
+  };
+  const uVal = clean(userStr);
+  const cVal = clean(correctStr);
+  if (uVal === null || cVal === null || uVal === 0 || cVal === 0) return false;
+
+  const ratio = uVal / cVal;
+  const ratio1 = 10 / 9.81;
+  const ratio2 = 9.81 / 10;
+  
+  const diffRatio1 = Math.abs(ratio - ratio1) / ratio1;
+  const diffRatio2 = Math.abs(ratio - ratio2) / ratio2;
+  const directDiff = Math.abs(uVal - cVal) / Math.abs(cVal);
+
+  const tolerance = 0.005; // 0.5% tolerance
+  if (diffRatio1 < tolerance || diffRatio2 < tolerance || directDiff < tolerance) {
+    return true;
+  }
+  return false;
+}
+
+export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover }) {
   if (!userAnswer) {
     return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
   }
@@ -112,6 +144,19 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
 
   if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
     return { isCorrect: true, score: 10, reason: '텍스트가 모범 답안과 정확히 일치합니다.' };
+  }
+
+  // 🚨 물의 단위중량(감마 w) 미명시 계산문제용 로컬 정밀 채점
+  const isCalc = category === '계산' || 
+                 /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(question || '') || 
+                 /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(explanation || '');
+  if (isCalc && checkWaterWeightEquivalence(userAnswer, correctAnswer)) {
+    return { 
+      isCorrect: true, 
+      score: 10, 
+      reason: '물의 단위중량(감마 w)으로 9.81 또는 10을 각각 대입한 계산 결과가 모두 타당하여 정답으로 인정합니다.',
+      suggestedModelAnswer: correctAnswer 
+    };
   }
 
   let targetCorrectAnswer = correctAnswer || '';
