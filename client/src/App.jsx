@@ -15935,14 +15935,6 @@ export default function App() {
                           <span>기준</span>
                         </button>
                         <button
-                          onClick={handleOpenManageTopicInstructionsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="현재 토픽 전용 문제 출제 지침을 관리합니다."
-                        >
-                          <BookOpen size={10} className="flex-shrink-0" />
-                          <span>지침</span>
-                        </button>
-                        <button
                           onClick={handleOpenManageGradingStandardsModal}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
                           title="채점 지침을 관리합니다."
