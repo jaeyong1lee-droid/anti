@@ -13210,32 +13210,29 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageStandardsModal}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
-                  <Sliders size={11} className="text-violet-400" />
-                  <span>기준정립 ⚙️</span>
+                  <span>기준</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleTogglePreferredModel}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
+                  className={`flex items-center justify-center px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
                     preferredModel === 'gemini-3.5-flash'
                       ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
                       : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
                   }`}
                 >
-                  <Cpu size={11} className={preferredModel === 'gemini-3.5-flash' ? 'text-cyan-400' : 'text-emerald-400'} />
-                  <span>{preferredModel === 'gemini-3.5-flash' ? '3.5 FLASH' : '3.1 FLASH LITE'}</span>
+                  <span>{preferredModel === 'gemini-3.5-flash' ? '3.5' : '3.1'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleOpenManageGradingStandardsModal}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
-                  <Sliders size={11} className="text-rose-400" />
-                  <span>채점기준 ⚙️</span>
+                  <span>채점</span>
                 </button>
               </div>
               
@@ -15105,18 +15102,16 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleOpenManageStandardsModal}
-                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
+                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
                     >
-                      <Sliders size={10} className="text-violet-400" />
-                      <span>기준정립 ⚙️</span>
+                      <span>기준</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleOpenManageGradingStandardsModal}
-                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
+                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
                     >
-                      <Sliders size={10} className="text-rose-400" />
-                      <span>채점기준 ⚙️</span>
+                      <span>채점</span>
                     </button>
                   </div>
                 )}
