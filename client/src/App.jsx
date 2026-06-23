@@ -6369,10 +6369,14 @@ export default function App() {
   const [formulaInputRevealed, setFormulaInputRevealed] = useState({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [showStandardsModal, setShowStandardsModal] = useState(false);
-  const [standardsText, setStandardsText] = useState('');
-  const [isSavingStandards, setIsSavingStandards] = useState(false);
-  const [isLoadingStandards, setIsLoadingStandards] = useState(false);
+  const [showManageStandardsModal, setShowManageStandardsModal] = useState(false);
+  const [showEditStandardModal, setShowEditStandardModal] = useState(false);
+  const [standardsList, setStandardsList] = useState([]);
+  const [editingStandard, setEditingStandard] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [editingContent, setEditingContent] = useState('');
+  const [isSavingStandardsList, setIsSavingStandardsList] = useState(false);
+  const [isLoadingStandardsList, setIsLoadingStandardsList] = useState(false);
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
@@ -9913,40 +9917,122 @@ export default function App() {
     }
   };
 
-  const handleOpenStandardsModal = async () => {
-    setShowStandardsModal(true);
-    setIsLoadingStandards(true);
-    setStandardsText('');
+  const editTitleRef = useRef(null);
+  const editContentRef = useRef(null);
+
+  useEffect(() => {
+    if (showEditStandardModal) {
+      setTimeout(() => {
+        if (editTitleRef.current) {
+          editTitleRef.current.focus();
+          editTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditStandardModal]);
+
+  const handleOpenManageStandardsModal = async () => {
+    setShowManageStandardsModal(true);
+    setIsLoadingStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/engineering-standards`);
       if (!res.ok) throw new Error('기준 데이터를 불러오지 못했습니다.');
       const data = await res.json();
-      setStandardsText(data.standards || '');
+      setStandardsList(data.standards || []);
     } catch (err) {
       console.error(err);
       showNotification(err.message, 'error');
     } finally {
-      setIsLoadingStandards(false);
+      setIsLoadingStandardsList(false);
     }
   };
 
-  const handleSaveStandards = async () => {
-    setIsSavingStandards(true);
+  const handleDeleteStandard = async (id) => {
+    if (!window.confirm('정말 이 공학 기준을 삭제하시겠습니까?')) return;
+    const updatedList = standardsList.filter(s => s.id !== id);
+    setIsSavingStandardsList(true);
     try {
       const res = await fetch(`${API_BASE}/api/engineering-standards`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ standards: standardsText })
+        body: JSON.stringify({ standards: updatedList })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '저장에 실패했습니다.');
-      showNotification('공학 기준이 성공적으로 저장되었습니다!', 'success');
-      setShowStandardsModal(false);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setStandardsList(updatedList);
+      showNotification('기준이 삭제되었습니다.', 'success');
     } catch (err) {
       console.error(err);
       showNotification(err.message, 'error');
     } finally {
-      setIsSavingStandards(false);
+      setIsSavingStandardsList(false);
+    }
+  };
+
+  const handleOpenAddStandardModal = () => {
+    setEditingStandard(null);
+    setEditingTitle('');
+    setEditingContent('');
+    setShowEditStandardModal(true);
+  };
+
+  const handleOpenEditStandardModal = (std) => {
+    setEditingStandard(std);
+    setEditingTitle(std.title || '');
+    setEditingContent(std.content || '');
+    setShowEditStandardModal(true);
+  };
+
+  const handleSaveEditStandard = async () => {
+    if (!editingTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingStandard) {
+      // Edit mode
+      updatedList = standardsList.map(s => 
+        s.id === editingStandard.id 
+          ? { ...s, title: editingTitle, content: editingContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingTitle,
+        content: editingContent
+      };
+      updatedList = [...standardsList, newStd];
+    }
+
+    setIsSavingStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/engineering-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setStandardsList(updatedList);
+      showNotification('공학 기준이 저장되었습니다.', 'success');
+      setShowEditStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingStandardsList(false);
     }
   };
 
@@ -12767,6 +12853,15 @@ export default function App() {
                     </button>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageStandardsModal}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <Sliders size={11} className="text-violet-400" />
+                  <span>기준정립 ⚙️</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -14849,10 +14944,10 @@ export default function App() {
         </div>
       )}
 
-      {/* ⚙️ 공학 기준 수립 모달 (Engineering Standards Modal) */}
-      {showStandardsModal && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowStandardsModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+      {/* ⚙️ 공학 기준 통합 관리 모달 (Engineering Standards Management Modal) */}
+      {showManageStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -14860,10 +14955,10 @@ export default function App() {
                 <div className="p-1.5 bg-violet-500/10 text-violet-400 rounded-lg">
                   <Sliders size={18} className="text-violet-500 animate-pulse" />
                 </div>
-                <h3 className="text-sm font-extrabold text-white">⚙️ 공학 기준 수립 (Engineering Standards)</h3>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 공학 기준 통합 관리</h3>
               </div>
               <button
-                onClick={() => setShowStandardsModal(false)}
+                onClick={() => setShowManageStandardsModal(false)}
                 className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
               >
                 <X size={14} />
@@ -14873,43 +14968,158 @@ export default function App() {
             {/* Modal Body */}
             <div className="py-2 space-y-3">
               <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
-                💡 이곳에 입력한 공학적 기준 및 기술 지식은 AI 튜터의 **문제 출제, 답안 채점, 질문 답변** 시 가중치를 갖는 지침으로 프롬프트에 실시간 반영됩니다.
+                💡 공학적 기준 및 기술 지식 목록입니다. 이곳에 추가된 모든 항목은 AI 튜터의 **문제 출제, 답안 채점, 질문 답변** 시 기준 프롬프트로 병합되어 실시간 반영됩니다.
               </p>
               
-              {isLoadingStandards ? (
+              {isLoadingStandardsList ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
                   <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-[10px] text-violet-400 font-bold animate-pulse">서버에서 공학 기준 데이터를 로드하는 중입니다...</span>
                 </div>
               ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">기준 제목</th>
+                        <th className="px-4 py-3 text-left">기준 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                      {standardsList.map((std, idx) => (
+                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditStandardModal(std)}
+                                className="px-2 py-1 bg-violet-600/10 border border-violet-500/20 hover:bg-violet-600/20 hover:border-violet-500/40 text-violet-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                              >
+                                <span>✏️ 수정</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStandard(std.id)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                disabled={isSavingStandardsList}
+                              >
+                                <span>❌ 삭제</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {standardsList.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 공학 기준이 없습니다. 새로운 기준을 추가해보세요.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddStandardModal}
+                disabled={isLoadingStandardsList || isSavingStandardsList}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 기준 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 공학 기준 추가/수정 서브 모달 (Engineering Standard Add/Edit Sub-Modal) */}
+      {showEditStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-violet-500/10 text-violet-400 rounded-lg">
+                  <Sliders size={18} className="text-violet-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingStandard ? '✏️ 공학 기준 수정' : '➕ 신규 공학 기준 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 제목 (Topic Title)</label>
+                <input
+                  ref={editTitleRef}
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: MIT 응력 표현 기준"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-violet-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all font-semibold"
+                  disabled={isSavingStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 세부 내용 (Prompt Convention Text)</label>
                 <textarea
-                  value={standardsText}
-                  onChange={(e) => setStandardsText(e.target.value)}
+                  ref={editContentRef}
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   placeholder="예:
 [🌊 침투 및 파이핑 추가 기준]:
 - 상하류 수두차가 줄어들면 동수경사와 침투수력이 감소한다.
-- 하류 수위를 상승시켜 수두차를 줄이는 것(링 다이크 축조 등)은 파이핑을 가속하지 않는 타당한 대책이다."
+- 하류 수위를 상승시켜 수두차를 줄이는 것(링 다이크 축조 등)은 파이핑을 제어하는 타당한 대책이다."
                   className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-violet-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all font-mono leading-relaxed resize-none"
-                  disabled={isSavingStandards}
+                  disabled={isSavingStandardsList}
                 />
-              )}
+              </div>
             </div>
 
             {/* Modal Footer */}
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
               <button
-                onClick={() => setShowStandardsModal(false)}
+                onClick={() => setShowEditStandardModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                disabled={isSavingStandards}
+                disabled={isSavingStandardsList}
               >
                 취소
               </button>
               <button
-                onClick={handleSaveStandards}
-                disabled={isSavingStandards || isLoadingStandards}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-850 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSaveEditStandard}
+                disabled={isSavingStandardsList}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
-                {isSavingStandards ? (
+                {isSavingStandardsList ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>저장 중...</span>
