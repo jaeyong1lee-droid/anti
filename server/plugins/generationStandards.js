@@ -14,6 +14,16 @@ export let generationStandardsList = [
     "id": "def_gen_3",
     "title": "객관식 정밀성 및 정답 일치 조건",
     "content": "🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오."
+  },
+  {
+    "id": "user_generation_lqyjy05",
+    "title": "전반적 지침2",
+    "content": "AI는 문제를 출제할 때 제공된 토픽 문서 텍스트에 포함된 단어들을 단순히 빈칸으로 만들거나 그대로 베끼는 1차원적인 문제 출제를 엄격히 금지합니다. 해당 토픽에 대해 튜터와 대화할 때 도출되는 수준의\n① 거동 원리 및 메커니즘\n② 공식 유도 과정 및 가정 조건\n③ 공법/이론 간의 장단점 비교 대조표\n④ 설계·시공 현장에서의 실무적 문제 상황 해결책(시나리오)을\n\n종합적으로 감안하여 학술적 깊이가 있는 기술사형 응용 문제를 출제"
+  },
+  {
+    "id": "user_generation_wiapyp1",
+    "title": "전반적 지침1",
+    "content": "1. 제공된 원보고서(노트)의 요약 텍스트 내용에만 기계적으로 국한하여 출제하지 마십시오.\n2. 해당 토픽의 전반적인 학술적 개요, 물리적·역학적 거동 메커니즘, 이론 전개 시 사용되는 기본 가정 조건, 그리고 핵심 공학 수식을 지반공학 전공 서적 및 실무 설계 기준(KDS) 관점에서 심층 분석하여 문제를 구성하십시오.\n3. 특히 타 공법이나 유사 이론과의 비교표 칸채우기(표채우기 문항), 현장에서 발생할 수 있는 구체적인 한계 상태 시나리오 및 기술사로서의 실무 안정 대책(단답형 문항)을 적극적으로 연계하여 다차원적인 공학적 판단력을 평가할 수 있도록 참신하게 출제해 주십시오."
   }
 ];
 
@@ -23,17 +33,10 @@ export function assembleGenerationStandardsPrompt(list) {
   if (!Array.isArray(list) || list.length === 0) {
     return "- 등록된 문제생성 지침 기준이 없습니다.";
   }
-  return list
-    .map((std, idx) => {
-      return `${idx + 1}. **${std.title}**:\n   - ${std.content}`;
-    })
-    .join("\n");
+  return list.map((std, idx) => `${idx + 1}. **${std.title}**:\\n   - ${std.content}`).join('\\n');
 }
 
 export function updateLiveGenerationStandards(newList) {
-  if (Array.isArray(newList)) {
-    generationStandardsList = newList;
-    GENERATION_STANDARDS = assembleGenerationStandardsPrompt(newList);
-    console.log("[GenerationStandards] Live generation standards prompt updated. Count:", newList.length);
-  }
+  generationStandardsList = newList;
+  GENERATION_STANDARDS = assembleGenerationStandardsPrompt(newList);
 }
