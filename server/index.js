@@ -3394,7 +3394,7 @@ app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, temperature: 0.0, progressId });
 
   if (progressId) {
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
