@@ -1,7 +1,7 @@
 /**
  * 주관식 채점 플러그인 (Grading Plugin)
  */
-import { ENGINEERING_STANDARDS } from './calculationPlugin.js';
+import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 
 export const baseSystemInstruction = `당신은 지반공학 및 토목공학 전문 채점관입니다.

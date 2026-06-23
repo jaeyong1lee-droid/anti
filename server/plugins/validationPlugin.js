@@ -3,7 +3,7 @@
  * 
  * 이 플러그인은 생성된 문제의 정답 및 해설이 학술적/공학적으로 올바른지 검증하고 수정하는 기능만을 수행합니다.
  */
-import { ENGINEERING_STANDARDS } from './calculationPlugin.js';
+import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 
 /**
  * AI가 생성한 문제의 정답과 해설의 올바름 여부를 검증하고 오류를 교정(Self-Healing)하여 반환합니다.
