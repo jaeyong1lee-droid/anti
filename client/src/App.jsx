@@ -12788,13 +12788,21 @@ export default function App() {
                                                 {diffDays}일후
                                               </span>
                                             ) : diffDays < 0 ? (
-                                              <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-rose-400 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                              <button
+                                                onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai', sched.id, round, false, false, topic.category)}
+                                                className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-rose-400 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-rose-900/60 hover:text-rose-200 hover:border-rose-400/50 focus:outline-none"
+                                                title="클릭하면 이 회차의 AI 복습을 시작합니다"
+                                              >
                                                 {Math.abs(diffDays)}일 지연
-                                              </span>
+                                              </button>
                                             ) : (
-                                              <span className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm">
+                                              <button
+                                                onClick={() => handleOpenAIQuestions(topic.id, topic.title, topic.keywords, topic.pdf_name, 'ai', sched.id, round, false, false, topic.category)}
+                                                className="inline-flex items-center gap-0.5 text-[10px] md:text-[12px] text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-amber-900/60 hover:text-amber-200 hover:border-amber-400/50 focus:outline-none"
+                                                title="클릭하면 이 회차의 AI 복습을 시작합니다"
+                                              >
                                                 오늘 복습
-                                              </span>
+                                              </button>
                                             )}
                                           </div>
                                         );
