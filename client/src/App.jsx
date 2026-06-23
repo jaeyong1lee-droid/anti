@@ -10362,14 +10362,15 @@ export default function App() {
   };
 
   const handleOpenManageTopicInstructionsModal = async () => {
-    if (!selectedTopic?.id) {
+    const activeTopic = selectedTopic || examTopic;
+    if (!activeTopic?.id) {
       showNotification('선택된 토픽이 없습니다.', 'error');
       return;
     }
     setShowManageTopicInstructionsModal(true);
     setIsLoadingTopicInstructionsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`);
+      const res = await fetch(`${API_BASE}/api/topics/${activeTopic.id}/instructions`);
       if (!res.ok) throw new Error('토픽 전용 출제 지침을 불러오지 못했습니다.');
       const data = await res.json();
       setTopicInstructionsList(data.instructions || []);
@@ -10382,11 +10383,13 @@ export default function App() {
   };
 
   const handleDeleteTopicInstruction = async (id) => {
+    const activeTopic = selectedTopic || examTopic;
+    if (!activeTopic?.id) return;
     if (!window.confirm('정말 이 토픽 출제 지침을 삭제하시겠습니까?')) return;
     const updatedList = topicInstructionsList.filter(s => s.id !== id);
     setIsSavingTopicInstructionsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`, {
+      const res = await fetch(`${API_BASE}/api/topics/${activeTopic.id}/instructions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instructions: updatedList })
@@ -10420,6 +10423,11 @@ export default function App() {
   };
 
   const handleSaveEditTopicInstruction = async () => {
+    const activeTopic = selectedTopic || examTopic;
+    if (!activeTopic?.id) {
+      showNotification('선택된 토픽이 없습니다.', 'error');
+      return;
+    }
     if (!editingTopicInstructionTitle.trim()) {
       showNotification('제목을 입력해주세요.', 'error');
       return;
@@ -10450,7 +10458,7 @@ export default function App() {
 
     setIsSavingTopicInstructionsList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`, {
+      const res = await fetch(`${API_BASE}/api/topics/${activeTopic.id}/instructions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instructions: updatedList })
@@ -18176,6 +18184,46 @@ export default function App() {
               <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0 landscape-hide cover-hide">
                 <div className="flex items-center justify-end">
                   <div className="flex items-center gap-2">
+                    {examTopic && (
+                      <div className="hidden md:flex items-center gap-1.5 mr-1.5">
+                        <button
+                          onClick={handleOpenManageStandardsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="글로벌 문제 생성 지침(기준)을 편집합니다."
+                        >
+                          <span>기준</span>
+                        </button>
+                        <button
+                          onClick={handleOpenManageTopicInstructionsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="현재 토픽 전용 문제 출제 지침을 관리합니다."
+                        >
+                          <BookOpen size={10} className="flex-shrink-0" />
+                          <span>지침</span>
+                        </button>
+                        <button
+                          onClick={handleOpenManageGradingStandardsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="채점 지침을 관리합니다."
+                        >
+                          <span>채점</span>
+                        </button>
+                        <button
+                          onClick={handleOpenManageValidationStandardsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-cyan-950/85 hover:bg-cyan-900 text-cyan-350 hover:text-white border border-cyan-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="자가검증 지침을 관리합니다."
+                        >
+                          <span>검증</span>
+                        </button>
+                        <button
+                          onClick={handleOpenManageGenerationStandardsModal}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-350 hover:text-white border border-emerald-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          title="문제 관리 지침을 관리합니다."
+                        >
+                          <span>문제</span>
+                        </button>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
