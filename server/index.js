@@ -162,7 +162,15 @@ setInterval(() => {
 }, 60000);
 
 // Preferred model API
-app.get('/api/preferred-model', (req, res) => {
+app.get('/api/preferred-model', async (req, res) => {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
+    if (row && row.value) {
+      globalPreferredModel = row.value;
+    }
+  } catch (err) {
+    console.warn("Failed to load preferred model from DB in GET /api/preferred-model:", err.message);
+  }
   res.json({ model: globalPreferredModel });
 });
 
@@ -719,6 +727,15 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
 async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
+    if (row && row.value) {
+      globalPreferredModel = row.value;
+    }
+  } catch (err) {
+    console.warn("Failed to load preferred model from DB in callLLMWithFailover:", err.message);
+  }
+
   const keys = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_SECONDARY,
