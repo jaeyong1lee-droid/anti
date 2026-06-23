@@ -6483,6 +6483,24 @@ export default function App() {
   const [isSavingValidationStandardsList, setIsSavingValidationStandardsList] = useState(false);
   const [isLoadingValidationStandardsList, setIsLoadingValidationStandardsList] = useState(false);
   
+  const [showManageGenerationStandardsModal, setShowManageGenerationStandardsModal] = useState(false);
+  const [showEditGenerationStandardModal, setShowEditGenerationStandardModal] = useState(false);
+  const [generationStandardsList, setGenerationStandardsList] = useState([]);
+  const [editingGenerationStandard, setEditingGenerationStandard] = useState(null);
+  const [editingGenerationTitle, setEditingGenerationTitle] = useState('');
+  const [editingGenerationContent, setEditingGenerationContent] = useState('');
+  const [isSavingGenerationStandardsList, setIsSavingGenerationStandardsList] = useState(false);
+  const [isLoadingGenerationStandardsList, setIsLoadingGenerationStandardsList] = useState(false);
+  
+  const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
+  const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
+  const [topicInstructionsList, setTopicInstructionsList] = useState([]);
+  const [editingTopicInstruction, setEditingTopicInstruction] = useState(null);
+  const [editingTopicInstructionTitle, setEditingTopicInstructionTitle] = useState('');
+  const [editingTopicInstructionContent, setEditingTopicInstructionContent] = useState('');
+  const [isSavingTopicInstructionsList, setIsSavingTopicInstructionsList] = useState(false);
+  const [isLoadingTopicInstructionsList, setIsLoadingTopicInstructionsList] = useState(false);
+  
   // PIN Code entry restriction states
   const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
   const [pinInput, setPinInput] = useState('');
@@ -10289,6 +10307,21 @@ export default function App() {
 
   const editValidationTitleRef = useRef(null);
   const editValidationContentRef = useRef(null);
+  const editTopicInstructionTitleRef = useRef(null);
+  const editTopicInstructionContentRef = useRef(null);
+  const editGenerationTitleRef = useRef(null);
+  const editGenerationContentRef = useRef(null);
+
+  useEffect(() => {
+    if (showEditTopicInstructionModal) {
+      setTimeout(() => {
+        if (editTopicInstructionTitleRef.current) {
+          editTopicInstructionTitleRef.current.focus();
+          editTopicInstructionTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditTopicInstructionModal]);
 
   useEffect(() => {
     if (showEditValidationStandardModal) {
@@ -10300,6 +10333,17 @@ export default function App() {
       }, 100);
     }
   }, [showEditValidationStandardModal]);
+
+  useEffect(() => {
+    if (showEditGenerationStandardModal) {
+      setTimeout(() => {
+        if (editGenerationTitleRef.current) {
+          editGenerationTitleRef.current.focus();
+          editGenerationTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditGenerationStandardModal]);
 
   const handleOpenManageValidationStandardsModal = async () => {
     setShowManageValidationStandardsModal(true);
@@ -10314,6 +10358,115 @@ export default function App() {
       showNotification(err.message, 'error');
     } finally {
       setIsLoadingValidationStandardsList(false);
+    }
+  };
+
+  const handleOpenManageTopicInstructionsModal = async () => {
+    if (!selectedTopic?.id) {
+      showNotification('선택된 토픽이 없습니다.', 'error');
+      return;
+    }
+    setShowManageTopicInstructionsModal(true);
+    setIsLoadingTopicInstructionsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`);
+      if (!res.ok) throw new Error('토픽 전용 출제 지침을 불러오지 못했습니다.');
+      const data = await res.json();
+      setTopicInstructionsList(data.instructions || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingTopicInstructionsList(false);
+    }
+  };
+
+  const handleDeleteTopicInstruction = async (id) => {
+    if (!window.confirm('정말 이 토픽 출제 지침을 삭제하시겠습니까?')) return;
+    const updatedList = topicInstructionsList.filter(s => s.id !== id);
+    setIsSavingTopicInstructionsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setTopicInstructionsList(updatedList);
+      showNotification('토픽 출제 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingTopicInstructionsList(false);
+    }
+  };
+
+  const handleOpenAddTopicInstructionModal = () => {
+    setEditingTopicInstruction(null);
+    setEditingTopicInstructionTitle('');
+    setEditingTopicInstructionContent('');
+    setShowEditTopicInstructionModal(true);
+  };
+
+  const handleOpenEditTopicInstructionModal = (inst) => {
+    setEditingTopicInstruction(inst);
+    setEditingTopicInstructionTitle(inst.title || '');
+    setEditingTopicInstructionContent(inst.content || '');
+    setShowEditTopicInstructionModal(true);
+  };
+
+  const handleSaveEditTopicInstruction = async () => {
+    if (!editingTopicInstructionTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingTopicInstructionContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingTopicInstruction) {
+      // Edit mode
+      updatedList = topicInstructionsList.map(s => 
+        s.id === editingTopicInstruction.id 
+          ? { ...s, title: editingTopicInstructionTitle, content: editingTopicInstructionContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'topic_instruction_' + Math.random().toString(36).substring(2, 9);
+      const newInst = {
+        id: newId,
+        title: editingTopicInstructionTitle,
+        content: editingTopicInstructionContent
+      };
+      updatedList = [...topicInstructionsList, newInst];
+    }
+
+    setIsSavingTopicInstructionsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/topics/${selectedTopic.id}/instructions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setTopicInstructionsList(updatedList);
+      showNotification('토픽 출제 지침이 저장되었습니다.', 'success');
+      setShowEditTopicInstructionModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingTopicInstructionsList(false);
     }
   };
 
@@ -10403,6 +10556,111 @@ export default function App() {
       showNotification(err.message, 'error');
     } finally {
       setIsSavingValidationStandardsList(false);
+    }
+  };
+
+  const handleOpenManageGenerationStandardsModal = async () => {
+    setShowManageGenerationStandardsModal(true);
+    setIsLoadingGenerationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/generation-standards`);
+      if (!res.ok) throw new Error('문제생성 지침 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setGenerationStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingGenerationStandardsList(false);
+    }
+  };
+
+  const handleDeleteGenerationStandard = async (id) => {
+    if (!window.confirm('정말 이 문제생성 지침을 삭제하시겠습니까?')) return;
+    const updatedList = generationStandardsList.filter(s => s.id !== id);
+    setIsSavingGenerationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/generation-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setGenerationStandardsList(updatedList);
+      showNotification('문제생성 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingGenerationStandardsList(false);
+    }
+  };
+
+  const handleOpenAddGenerationStandardModal = () => {
+    setEditingGenerationStandard(null);
+    setEditingGenerationTitle('');
+    setEditingGenerationContent('');
+    setShowEditGenerationStandardModal(true);
+  };
+
+  const handleOpenEditGenerationStandardModal = (std) => {
+    setEditingGenerationStandard(std);
+    setEditingGenerationTitle(std.title || '');
+    setEditingGenerationContent(std.content || '');
+    setShowEditGenerationStandardModal(true);
+  };
+
+  const handleSaveEditGenerationStandard = async () => {
+    if (!editingGenerationTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingGenerationContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingGenerationStandard) {
+      // Edit mode
+      updatedList = generationStandardsList.map(s => 
+        s.id === editingGenerationStandard.id 
+          ? { ...s, title: editingGenerationTitle, content: editingGenerationContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_generation_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingGenerationTitle,
+        content: editingGenerationContent
+      };
+      updatedList = [...generationStandardsList, newStd];
+    }
+
+    setIsSavingGenerationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/generation-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setGenerationStandardsList(updatedList);
+      showNotification('문제생성 지침이 저장되었습니다.', 'success');
+      setShowEditGenerationStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingGenerationStandardsList(false);
     }
   };
 
@@ -13357,6 +13615,14 @@ export default function App() {
 
                 <button
                   type="button"
+                  onClick={handleOpenManageTopicInstructionsModal}
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>지침</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleOpenManageGradingStandardsModal}
                   className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
@@ -13369,6 +13635,14 @@ export default function App() {
                   className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>검증</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageGenerationStandardsModal}
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>문제</span>
                 </button>
               </div>
               
@@ -14012,25 +14286,33 @@ export default function App() {
 
               <div className="h-px bg-slate-800/60 my-1 shrink-0" />
 
+              {selectedTopic && (
+                <button
+                  onClick={handleOpenManageTopicInstructionsModal}
+                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border-amber-500/40 transition-all cursor-pointer active:scale-95"
+                  title="토픽 전용 문제 출제 지침을 관리합니다."
+                >
+                  <span>지침</span>
+                </button>
+              )}
+
               {selectedTopic?.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border-violet-500/40 transition-all cursor-pointer active:scale-95"
+                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border-violet-500/40 transition-all cursor-pointer active:scale-95"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
-                  <FileText size={12} className="text-violet-400" />
-                  <span>원보고서</span>
+                  <span>보고서</span>
                 </button>
               )}
 
               {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
-                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slate-900/85 hover:bg-slate-850 text-slate-300 hover:text-white border-slate-700/40 transition-all cursor-pointer active:scale-95"
+                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slate-900/85 hover:bg-slate-850 text-slate-300 hover:text-white border-slate-700/40 transition-all cursor-pointer active:scale-95"
                   title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                 >
-                  <Clock size={12} className="text-violet-400" />
-                  <span>AI이력</span>
+                  <span>ai</span>
                 </button>
               )}
 
@@ -14038,16 +14320,14 @@ export default function App() {
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
-                  className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                  className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border-violet-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                 >
-                  {loadingAI ? (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  {loadingAI && (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  ) : (
-                    <span className="text-xs">🔄</span>
                   )}
                   <span>리프레쉬</span>
                 </button>
@@ -14063,10 +14343,9 @@ export default function App() {
                     setSelectedTopic(null); 
                   }
                 }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
+                className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
                 title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
               >
-                <span className="text-[10px]">❌</span>
                 <span>닫기</span>
               </button>
             </div>
@@ -14110,40 +14389,45 @@ export default function App() {
             </div>
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
+              {selectedTopic && (
+                <button
+                  onClick={handleOpenManageTopicInstructionsModal}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                  title="토픽 전용 문제 출제 지침을 관리합니다."
+                >
+                  <span className="whitespace-nowrap">지침</span>
+                </button>
+              )}
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
-                  <FileText size={12} className="flex-shrink-0" />
-                  <span className="whitespace-nowrap">원보고서</span>
+                  <span className="whitespace-nowrap">보고서</span>
                 </button>
               )}
               {selectedTopic && isDesktop && (
                 <button
                   onClick={() => setShowAiHistoryModal(true)}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
                   title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                 >
-                  <Clock size={12} className="text-violet-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap">AI이력</span>
+                  <span className="whitespace-nowrap">ai</span>
                 </button>
               )}
               {selectedTopic && (
                 <button
                   onClick={handleRefreshReviewQuestions}
                   disabled={loadingAI}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1 whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                 >
-                  {loadingAI ? (
-                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  {loadingAI && (
+                    <svg className="animate-spin h-3.5 w-3.5 text-violet-300 mr-1 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  ) : (
-                    <span className="text-violet-300 flex-shrink-0">🔄</span>
                   )}
                   <span className="whitespace-nowrap">리프레쉬</span>
                 </button>
@@ -15194,14 +15478,14 @@ export default function App() {
                     )}
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center gap-1 ${
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
                           : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
                       }`}
                       title="공학용 계산기 토글"
                     >
-                      <span>🧮 계산기</span>
+                      <span>calc</span>
                     </button>
                     <button
                       onClick={() => {
@@ -15216,10 +15500,10 @@ export default function App() {
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
                       }}
-                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center"
                       title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
                     >
-                      <span>🧹 튜터클린</span>
+                      <span>클린</span>
                     </button>
                   </div>
                 </div>
@@ -15230,10 +15514,9 @@ export default function App() {
                       type="button"
                       onClick={() => handleGenerateTopicProblem(selectedTopic)}
                       disabled={isChatLoading}
-                      className="flex-grow flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <HelpCircle size={10} className="text-amber-400" />
-                      <span>문제 출제 📝</span>
+                      <span>문제 출제</span>
                     </button>
                     <button
                       type="button"
@@ -15948,6 +16231,193 @@ export default function App() {
         </div>
       )}
 
+      {/* ⚙️ 문제생성 지침 통합 관리 모달 (Generation Standards Management Modal) */}
+      {showManageGenerationStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageGenerationStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <Sliders size={18} className="text-amber-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 문제생성 지침 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageGenerationStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 AI 문제 출제 및 생성 시 실시간 반영되는 지침 기준 목록입니다. 이곳에 추가된 모든 항목은 AI 출제위원의 **문제 생성** 시 지시사항 프롬프트로 병합되어 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingGenerationStandardsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-amber-400 font-bold animate-pulse">서버에서 문제생성 지침 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                        <th className="px-4 py-3 text-left">지침 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                      {generationStandardsList.map((std, idx) => (
+                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditGenerationStandardModal(std)}
+                                className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 hover:bg-amber-600/20 hover:border-amber-500/40 text-amber-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                              >
+                                <span>✏️ 수정</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGenerationStandard(std.id)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                disabled={isSavingGenerationStandardsList}
+                              >
+                                <span>❌ 삭제</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {generationStandardsList.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 문제생성 지침이 없습니다. 새로운 지침을 추가해보세요.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddGenerationStandardModal}
+                disabled={isLoadingGenerationStandardsList || isSavingGenerationStandardsList}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 지침 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageGenerationStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 문제생성 지침 추가/수정 서브 모달 (Generation Standard Add/Edit Sub-Modal) */}
+      {showEditGenerationStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditGenerationStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <Sliders size={18} className="text-amber-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingGenerationStandard ? '✏️ 문제생성 지침 수정' : '➕ 신규 문제생성 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditGenerationStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Instruction Title)</label>
+                <input
+                  ref={editGenerationTitleRef}
+                  type="text"
+                  value={editingGenerationTitle}
+                  onChange={(e) => setEditingGenerationTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 공식 및 수치 범위 노출 절대 금지"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-amber-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-semibold"
+                  disabled={isSavingGenerationStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  ref={editGenerationContentRef}
+                  value={editingGenerationContent}
+                  onChange={(e) => setEditingGenerationContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예:
+문제 질문 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 절대로 직접 적어 제공하지 마십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-amber-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingGenerationStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditGenerationStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingGenerationStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditGenerationStandard}
+                disabled={isSavingGenerationStandardsList}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingGenerationStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>지침 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ✏️ 검증 기준 추가/수정 서브 모달 (Validation Standard Add/Edit Sub-Modal) */}
       {showEditValidationStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditValidationStandardModal(false)}>
@@ -16023,6 +16493,193 @@ export default function App() {
                   </>
                 ) : (
                   <span>기준 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 토픽 전용 출제 지침 통합 관리 모달 */}
+      {showManageTopicInstructionsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageTopicInstructionsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <Sliders size={18} className="text-amber-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">지침 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageTopicInstructionsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 이 토픽에서 AI 문제를 출제/재출제할 때 실시간 반영되는 전용 지침 목록입니다. 이곳에 추가된 모든 지침 항목은 출제 프롬프트의 지시사항으로 병합됩니다.
+              </p>
+              
+              {isLoadingTopicInstructionsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-amber-400 font-bold animate-pulse">서버에서 지침 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                        <th className="px-4 py-3 text-left">지침 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                      {topicInstructionsList.map((inst, idx) => (
+                        <tr key={inst.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={inst.title}>{inst.title}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={inst.content}>
+                            {inst.content ? inst.content.trim().replace(/\n/g, ' ').slice(0, 100) + (inst.content.trim().length > 100 ? '...' : '') : ''}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTopicInstructionModal(inst)}
+                                className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 hover:bg-amber-600/20 hover:border-amber-500/40 text-amber-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                              >
+                                <span>수정</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTopicInstruction(inst.id)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                disabled={isSavingTopicInstructionsList}
+                              >
+                                <span>삭제</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {topicInstructionsList.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 출제 지침이 없습니다. 새로운 지침을 추가해보세요.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddTopicInstructionModal}
+                disabled={isLoadingTopicInstructionsList || isSavingTopicInstructionsList}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>추가</span>
+              </button>
+              <button
+                onClick={() => setShowManageTopicInstructionsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 토픽 전용 출제 지침 추가/수정 서브 모달 */}
+      {showEditTopicInstructionModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditTopicInstructionModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <Sliders size={18} className="text-amber-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingTopicInstruction ? '토픽 출제 지침 수정' : '신규 토픽 출제 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditTopicInstructionModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Instruction Title)</label>
+                <input
+                  ref={editTopicInstructionTitleRef}
+                  type="text"
+                  value={editingTopicInstructionTitle}
+                  onChange={(e) => setEditingTopicInstructionTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 특정 출제 유형 제한 및 강조"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-amber-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-semibold"
+                  disabled={isSavingTopicInstructionsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  ref={editTopicInstructionContentRef}
+                  value={editingTopicInstructionContent}
+                  onChange={(e) => setEditingTopicInstructionContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예:
+이 토픽에서는 주관식 표 채우기 형태의 문제만 출제하며, 사용자 답변에 수학기호(LaTeX)가 올바르게 들어가는지 평가하십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-amber-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingTopicInstructionsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditTopicInstructionModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingTopicInstructionsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditTopicInstruction}
+                disabled={isSavingTopicInstructionsList}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingTopicInstructionsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>저장</span>
                 )}
               </button>
             </div>
@@ -17534,14 +18191,14 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
-                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center gap-1 ${
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
                           : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
                       }`}
                       title="공학용 계산기 토글"
                     >
-                      <span>🧮 계산기</span>
+                      <span>calc</span>
                     </button>
                     <button
                       onClick={() => {
@@ -17556,10 +18213,10 @@ export default function App() {
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
                       }}
-                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                      className="px-2.5 py-1 text-[10px] font-black bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 hover:text-white border border-rose-800/80 hover:border-rose-700/80 rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center"
                       title="튜터 관련 대화 내용, 캐시 및 저장메모리 청소"
                     >
-                      <span>🧹 튜터클린</span>
+                      <span>클린</span>
                     </button>
                   </div>
                 </div>
@@ -17973,14 +18630,14 @@ export default function App() {
                     )}
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
                     showFloatingCalculator 
                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
                       : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
                   }`}
                   title="공학용 계산기 플로팅 창 토글"
                 >
-                  <span>🧮 계산기</span>
+                  <span>calc</span>
                 </button>
                 <button
                   onClick={() => {
@@ -17988,11 +18645,10 @@ export default function App() {
                       saveFormulaChatHistory([]);
                     }
                   }}
-                  className="px-3 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                  className="px-3 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center"
                   title="AI 튜터와의 모든 대화 기록 비우기"
                 >
-                  <Trash2 size={12} className="text-slate-400" />
-                  <span>튜터클린</span>
+                  <span>클린</span>
                 </button>
                 <button
                   onClick={() => {
@@ -18925,14 +19581,14 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
                     showFloatingCalculator 
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                       : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
                   }`}
                   title="공학용 계산기 플로팅 창 토글"
                 >
-                  <span>🧮 계산기</span>
+                  <span>calc</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -18950,10 +19606,9 @@ export default function App() {
                   onClick={async () => {
                     await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, true);
                   }}
-                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center gap-1.5"
+                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 hover:text-white border border-emerald-500/20 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center flex items-center justify-center"
                   title="답안 변경사항 실시간 저장"
                 >
-                  <Save size={12} />
                   저장
                 </button>
               </div>

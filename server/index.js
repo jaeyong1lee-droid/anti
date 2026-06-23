@@ -16,6 +16,7 @@ import { gradeSubjective } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
 import { GRADING_STANDARDS, gradingStandardsList, updateLiveGradingStandards } from './plugins/gradingStandards.js';
 import { VALIDATION_STANDARDS, validationStandardsList, updateLiveValidationStandards } from './plugins/validationStandards.js';
+import { GENERATION_STANDARDS, generationStandardsList, updateLiveGenerationStandards } from './plugins/generationStandards.js';
 import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched } from './plugins/validationPlugin.js';
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 
@@ -3798,6 +3799,7 @@ ${adjustments.map((a, idx) => `
     }
 
     const coreSubject = getCoreSubjectFromTitle(topic.title);
+    const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
 
     const prompt = (topic.category === '계산') ? `
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원입니다.
@@ -3845,6 +3847,8 @@ ${adjustments.map((a, idx) => `
 - **정확히 4개의 문제**만 배열에 담아 JSON 형식으로 반환하십시오. (1, 2번은 표채우기 형태 등 주관식 문제, 3번은 의미/교훈 문제, 4번은 대책 문제)
 - 다른 부가 설명이나 코드 블록(\`\`\`json) 기호 없이 순수한 JSON 배열 데이터만 반환하십시오.
 
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
 
 [응답 JSON 포맷]:
@@ -4005,6 +4009,8 @@ ${adjustmentsPrompt}
       🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \sim 500)s_u$ 등), 비례 관계 식 등을 **절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
        🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.** (예: 공식 $A = B \times C$에 대해 "B가 증가할 때 A의 변화"를 묻는 문제를 출제했다면, 동일한 테스트 세트 내에 "C가 증가할 때 A의 변화"를 묻는 질문은 사실상 동일한 비례 관계 메커니즘을 묻는 중복 문제이므로 **절대로 같이 내지 말고**, 완전히 다른 공학적 개념이나 새로운 지식을 묻는 독립적인 문제로만 구성하십시오.)
 
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
 
@@ -4303,6 +4309,7 @@ app.get('/api/question-feedback/all', async (req, res) => {
 // 6-3. Single Question Regeneration API
 app.post('/api/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions } = req.body;
+  const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
@@ -4391,7 +4398,9 @@ ${otherQs.map((q, i) => {
 
       // targetType 결정
       let targetType = '객관식 (4지선다)';
+      let targetSubtype = ''; // 12번형태 또는 13번형태 구분을 위해 추가
       const currentType = currentQuestion?.type || '';
+
       if (currentType.includes('개요')) {
         targetType = '주관식 (개요)';
       } else if (currentType.includes('공식')) {
@@ -4400,8 +4409,21 @@ ${otherQs.map((q, i) => {
         targetType = '주관식 (표채우기)';
       } else if (currentType.includes('단답형') || currentType.includes('단답')) {
         targetType = '주관식 (단답형)';
+        // 주관식 단답형은 12번(개념) 혹은 13번(대책) 중 하나로 랜덤 적용
+        const rand = Math.floor(Math.random() * 2);
+        targetSubtype = rand === 0 ? '12번형태' : '13번형태';
       } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
-        targetType = '객관식 (4지선다)';
+        // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
+        const rand = Math.floor(Math.random() * 3);
+        if (rand === 0) {
+          targetType = '객관식 (4지선다)';
+        } else if (rand === 1) {
+          targetType = '주관식 (단답형)';
+          targetSubtype = '12번형태';
+        } else {
+          targetType = '주관식 (단답형)';
+          targetSubtype = '13번형태';
+        }
       } else {
         // fallback based on index if we can't determine it
         if (questionIdx === 0) targetType = '주관식 (개요)';
@@ -4502,14 +4524,31 @@ ${otherQs.map((q, i) => {
   '  "explanation": "상세 해설"\n' +
   '}' + BT;
       } else if (targetType === '주관식 (단답형)') {
-        typeRequirement = BT + '[주관식 (단답형)] 유형으로 생성하십시오:\n' +
-  '- 목적: 구체적인 실무 문제 상황이나 공학적 개념에 대해 서술형으로 묻고 1줄짜리 명확한 답을 요구하는 질문.\n' +
-  '- "type" 값: 반드시 "주관식 (단답형)"\n' +
-  '- "question": 토픽과 관련된 중요 이론이나 실무 시나리오에 대해 묻는 질문.\n' +
-  '- "answer": 핵심 키워드가 **강조**된 1줄 서술형 모범답안 (최소 15자에서 최대 30자 내외).\n' +
-  '- "explanation": 답안에 대한 논리적이고 전문적인 상세 해설.' + BT;
+        if (targetSubtype === '12번형태') {
+          typeRequirement = BT + '[주관식 (단답형) - 개념 평가형(12번 형태)] 유형으로 생성하십시오:\n' +
+    '- 목적: 해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)을 깊이 있게 평가하는 질문입니다.\n' +
+    '- "type" 값: 반드시 "주관식 (단답형)"\n' +
+    '- "question": 해당 토픽의 핵심 공학적 정의, 거동 원리, 또는 학술적 개념의 본질을 묻는 질문 문장을 작성하십시오.\n' +
+    '- "answer": 질문에 부합하는 명확한 공학적 정의 또는 원리를 설명하며, 핵심 키워드가 **강조**된 1줄 서술형 모범답안 (최소 15자에서 최대 30자 내외)으로 작성하십시오.\n' +
+    '- "explanation": 개념에 대한 논리적이고 전문적인 상세 해설.' + BT;
+        } else if (targetSubtype === '13번형태') {
+          typeRequirement = BT + '[주관식 (단답형) - 실무 대책형(13번 형태)] 유형으로 생성하십시오:\n' +
+    '- 목적: 해당 토픽과 관련된 구체적인 실무 지반공학적 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문입니다.\n' +
+    '- "type" 값: 반드시 "주관식 (단답형)"\n' +
+    '- "question": 실무 현장에서 발생할 수 있는 구체적인 문제 상황(시나리오)을 서술하고, 이에 대한 공학적 대처 방안이나 방지 대책을 묻는 질문 문장을 작성하십시오.\n' +
+    '- "answer": 구체적인 실무 해결 대책이나 현장 조치 사항을 포함하며, 핵심 키워드가 **강조**된 1줄 서술형 모범답안 (최소 15자에서 최대 30자 내외)으로 작성하십시오.\n' +
+    '- "explanation": 실무 대책에 대한 논리적이고 전문적인 상세 해설.' + BT;
+        } else {
+          typeRequirement = BT + '[주관식 (단답형)] 유형으로 생성하십시오:\n' +
+    '- 목적: 구체적인 실무 문제 상황이나 공학적 개념에 대해 서술형으로 묻고 1줄짜리 명확한 답을 요구하는 질문.\n' +
+    '- "type" 값: 반드시 "주관식 (단답형)"\n' +
+    '- "question": 토픽과 관련된 중요 이론이나 실무 시나리오에 대해 묻는 질문.\n' +
+    '- "answer": 핵심 키워드가 **강조**된 1줄 서술형 모범답안 (최소 15자에서 최대 30자 내외).\n' +
+    '- "explanation": 답안에 대한 논리적이고 전문적인 상세 해설.' + BT;
+        }
         formatRequirement = BT + '{\n' +
   '  "type": "주관식 (단답형)",\n' +
+  '  "question": "질문 문장",\n' +
   '  "answer": "핵심 키워드가 **강조**된 1줄 서술형 답안",\n' +
   '  "explanation": "상세 해설"\n' +
   '}' + BT;
@@ -4577,6 +4616,9 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 - [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
+
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
@@ -4685,6 +4727,7 @@ ${formatRequirement}
       
       let qType = '객관식';
       let qSubtype = '';
+      let targetSubtype = ''; // 12번형태 또는 13번형태 지정을 위한 추가
       
       if (currentType.includes('주관식')) {
         qType = '주관식';
@@ -4698,13 +4741,28 @@ ${formatRequirement}
           qSubtype = '표채우기';
         } else if (currentSubtype.includes('단답') || currentSubtype.includes('단답형')) {
           qSubtype = '단답형';
+          // 주관식 단답형은 12번 혹은 13번형태 중 하나로 랜덤 적용
+          const rand = Math.floor(Math.random() * 2);
+          targetSubtype = rand === 0 ? '12번형태' : '13번형태';
         } else {
           // fallback if subtype is unknown
           qSubtype = '개요';
         }
       } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
-        qType = '객관식';
-        qSubtype = '';
+        // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
+        const rand = Math.floor(Math.random() * 3);
+        if (rand === 0) {
+          qType = '객관식';
+          qSubtype = '';
+        } else if (rand === 1) {
+          qType = '주관식';
+          qSubtype = '단답형';
+          targetSubtype = '12번형태';
+        } else {
+          qType = '주관식';
+          qSubtype = '단답형';
+          targetSubtype = '13번형태';
+        }
       } else {
         // fallback based on features
         if (currentQuestion?.tableData) {
@@ -4838,16 +4896,32 @@ ${formatRequirement}
   '  "concept": "비교 테이블 설명"\n' +
   '}' + BT;
         } else if (qSubtype === '단답형') {
-          typeRequirement = BT + '[주관식 단답형 유형]으로 생성하십시오:\n' +
-  '- "type": "주관식"\n' +
-  '- "subtype": "단답형"\n' +
-  '- "question": 구체적인 실무 문제점/시나리오를 지문으로 제시하고 해결책/대안을 요구하는 질문\n' +
-  '- "answer": 핵심 키워드 강조가 들어간 1줄 서술형 모범답안\n' +
-  '- "concept": 핵심 개념 1줄 요약' + BT;
+          if (targetSubtype === '12번형태') {
+            typeRequirement = BT + '[주관식 단답형 - 개념 평가형(12번 형태)] 유형으로 생성하십시오:\n' +
+    '- "type": "주관식"\n' +
+    '- "subtype": "단답형"\n' +
+    '- "question": 해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)을 평가하는 질문 문장\n' +
+    '- "answer": 핵심 키워드 강조가 들어간 1줄 서술형 모범답안\n' +
+    '- "concept": 핵심 개념 1줄 요약' + BT;
+          } else if (targetSubtype === '13번형태') {
+            typeRequirement = BT + '[주관식 단답형 - 실무 대책형(13번 형태)] 유형으로 생성하십시오:\n' +
+    '- "type": "주관식"\n' +
+    '- "subtype": "단답형"\n' +
+    '- "question": 해당 토픽과 관련된 구체적인 실무 지반공학적 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 문장\n' +
+    '- "answer": 핵심 키워드 강조가 들어간 1줄 서술형 모범답안\n' +
+    '- "concept": 핵심 개념 1줄 요약' + BT;
+          } else {
+            typeRequirement = BT + '[주관식 단답형 유형]으로 생성하십시오:\n' +
+    '- "type": "주관식"\n' +
+    '- "subtype": "단답형"\n' +
+    '- "question": 구체적인 실무 문제점/시나리오를 지문으로 제시하고 해결책/대안을 요구하는 질문\n' +
+    '- "answer": 핵심 키워드 강조가 들어간 1줄 서술형 모범답안\n' +
+    '- "concept": 핵심 개념 1줄 요약' + BT;
+          }
           formatRequirement = BT + '{\n' +
   '  "type": "주관식",\n' +
   '  "subtype": "단답형",\n' +
-  '  "question": "구체적인 실무 시나리오 질문...",\n' +
+  '  "question": "질문 문장",\n' +
   '  "answer": "핵심 키워드가 **강조**된 1줄 서술형 답안",\n' +
   '  "concept": "단답형 설명"\n' +
   '}' + BT;
@@ -4922,6 +4996,9 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 - [기초 소스 문제]의 질문 텍스트와 완벽히 똑같이 복사하지 마십시오. 반드시 눈에 띄게 문장이나 내용이 변형/응용되어야 합니다.
 
 ${typeRequirement}
+
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
@@ -5010,6 +5087,7 @@ ${formatRequirement}
 // 6-6. Interactive Question Adjustment API based on user feedback
 app.post('/api/question/adjust', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, userFeedback } = req.body;
+  const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
@@ -5209,6 +5287,9 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 
 [사용자 조정 요청 (매우 중요!)]:
 "${userFeedback}"
+
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 
 [출제 요구사항 - 중요]:
 반드시 위의 **[기초 소스 문제]**를 기반으로 하되, **[사용자 조정 요청]** 사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 **새로운 단 1개의 문제**를 재출제해 주십시오.
@@ -5428,6 +5509,9 @@ ${sourceQuestionExplanation ? `- 해설: ${sourceQuestionExplanation}` : ''}
 
 [사용자 조정 요청 (매우 중요!)]:
 "${userFeedback}"
+
+${topicInstructionsPrompt}
+${GENERATION_STANDARDS}
 
 [출제 요구사항 - 중요]:
 반드시 위의 **[기초 소스 문제]**를 기반으로 하되, **[사용자 조정 요청]** 사항을 100% 반영하여 수정, 보완, 응용 또는 전면 개편된 **새로운 단 1개의 문제**를 재출제해 주십시오.
@@ -5763,6 +5847,7 @@ ${adjustmentsPrompt}
 2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
@@ -6139,6 +6224,7 @@ ${formulasText || '저장된 내용 없음'}
 2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+${GENERATION_STANDARDS}
 ${ENGINEERING_STANDARDS}
 4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
 
@@ -7771,6 +7857,134 @@ export function updateLiveValidationStandards(newList) {
   }
 });
 
+// GET /api/generation-standards → Retrieve structured generation standards list
+app.get('/api/generation-standards', async (req, res) => {
+  try {
+    try {
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
+      if (row && row.value) {
+        const list = JSON.parse(row.value);
+        return res.json({ standards: list });
+      }
+    } catch (dbErr) {
+      console.error('Failed to read generation standards from database:', dbErr.message);
+    }
+
+    res.json({ standards: generationStandardsList });
+  } catch (err) {
+    console.error('GET /api/generation-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/generation-standards → Save/update structured generation standards list
+app.post('/api/generation-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (!Array.isArray(standards)) {
+      return res.status(400).json({ error: 'standards must be an array' });
+    }
+
+    updateLiveGenerationStandards(standards);
+
+    try {
+      await saveSessionValue('generation_standards', JSON.stringify(standards));
+      console.log('Successfully saved generation standards to database.');
+    } catch (dbErr) {
+      console.error('Failed to save generation standards to database:', dbErr.message);
+    }
+
+    try {
+      const standardsFilePath = path.join(__dirname, 'plugins', 'generationStandards.js');
+      const newContent = `// This file is auto-generated by the system. Do not edit manually.
+export let generationStandardsList = \${JSON.stringify(standards, null, 2)};
+
+export let GENERATION_STANDARDS = assembleGenerationStandardsPrompt(generationStandardsList);
+
+export function assembleGenerationStandardsPrompt(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return "- 등록된 문제생성 지침 기준이 없습니다.";
+  }
+  return list.map((std, idx) => \`\${idx + 1}. **\${std.title}**:\\\\n   - \${std.content}\`).join('\\\\n');
+}
+
+export function updateLiveGenerationStandards(newList) {
+  generationStandardsList = newList;
+  GENERATION_STANDARDS = assembleGenerationStandardsPrompt(newList);
+}
+`;
+      const resolvedContent = newContent.replace('\${JSON.stringify(standards, null, 2)}', JSON.stringify(standards, null, 2));
+      await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
+      console.log('Successfully wrote generation standards to local file.');
+    } catch (fsErr) {
+      if (fsErr.code === 'EROFS') {
+        console.log('Read-only file system detected (Vercel). Bypassed local file write.');
+      } else {
+        throw fsErr;
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/generation-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 헬퍼 함수: 토픽 지침 목록 조회 및 프롬프트 문자열 조립
+async function getFormattedTopicInstructions(topicId) {
+  if (!topicId) return '';
+  try {
+    const key = 'topic_instructions_' + topicId;
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [key]);
+    if (row && row.value) {
+      const list = JSON.parse(row.value);
+      if (Array.isArray(list) && list.length > 0) {
+        const formatted = list.map((item, idx) => (idx + 1) + '. **' + item.title + '**:\n   - ' + item.content).join('\n');
+        return '\n[🚨 이 토픽(' + topicId + ')의 전용 문제 출제 및 변환 지침 - 반드시 반영하십시오]:\n' + formatted + '\n';
+      }
+    }
+  } catch (err) {
+    console.error('Failed to get topic instructions for topic ' + topicId + ':', err.message);
+  }
+  return '';
+}
+
+// GET /api/topics/:id/instructions → Retrieve topic specific instructions list
+app.get('/api/topics/:id/instructions', async (req, res) => {
+  try {
+    const topicId = req.params.id;
+    const key = 'topic_instructions_' + topicId;
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [key]);
+    if (row && row.value) {
+      const list = JSON.parse(row.value);
+      return res.json({ instructions: list });
+    }
+    res.json({ instructions: [] });
+  } catch (err) {
+    console.error('GET /api/topics/:id/instructions error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/topics/:id/instructions → Save/update topic specific instructions list
+app.post('/api/topics/:id/instructions', async (req, res) => {
+  try {
+    const topicId = req.params.id;
+    const { instructions } = req.body;
+    if (!Array.isArray(instructions)) {
+      return res.status(400).json({ error: 'instructions must be an array' });
+    }
+    const key = 'topic_instructions_' + topicId;
+    await saveSessionValue(key, JSON.stringify(instructions));
+    console.log('Successfully saved topic instructions for topic ' + topicId + ' to database.');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/topics/:id/instructions error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/verify-pin → Verify the entry PIN code
 app.post('/api/verify-pin', (req, res) => {
   try {
@@ -8348,6 +8562,25 @@ async function initializeValidationStandards() {
   }
 }
 
+async function initializeGenerationStandards() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
+    if (row && row.value) {
+      const list = JSON.parse(row.value);
+      if (Array.isArray(list)) {
+        updateLiveGenerationStandards(list);
+        console.log('Loaded generation standards from database at startup.');
+      }
+    } else {
+      // Save default list to database if not present
+      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('generation_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(generationStandardsList)]);
+      console.log('Saved default generation standards to database at startup.');
+    }
+  } catch (err) {
+    console.error('Failed to initialize generation standards from database at startup:', err.message);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
@@ -8356,6 +8589,7 @@ async function startServer() {
     await initializeEngineeringStandards();
     await initializeGradingStandards();
     await initializeValidationStandards();
+    await initializeGenerationStandards();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
@@ -8399,6 +8633,7 @@ if (!process.env.VERCEL) {
     await initializeEngineeringStandards();
     await initializeGradingStandards();
     await initializeValidationStandards();
+    await initializeGenerationStandards();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
