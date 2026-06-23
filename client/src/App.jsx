@@ -1529,7 +1529,7 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
       };
 };
 
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10 }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -1733,6 +1733,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 e.target.blur();
+                                if (tableRef.current) {
+                                  const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                                  const curIdx = textareas.indexOf(e.target);
+                                  if (curIdx !== -1) {
+                                    if (curIdx === textareas.length - 1) {
+                                      if (onSubmit) onSubmit();
+                                    } else {
+                                      textareas[curIdx + 1].focus();
+                                    }
+                                  }
+                                }
                               }
                             }}
                           />
@@ -14035,6 +14046,11 @@ export default function App() {
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
                                     weight={W}
+                                    onSubmit={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
                                   />
                                 );
                               })()}
@@ -15897,6 +15913,11 @@ export default function App() {
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={examTableGradingResults}
                                     weight={W}
+                                    onSubmit={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                    }}
                                   />
                                 );
                               })()}
