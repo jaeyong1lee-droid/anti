@@ -33,7 +33,7 @@ export function assembleGenerationStandardsPrompt(list) {
   if (!Array.isArray(list) || list.length === 0) {
     return "- 등록된 문제생성 지침 기준이 없습니다.";
   }
-  return list.map((std, idx) => `${idx + 1}. **${std.title}**:\\n   - ${std.content}`).join('\\n');
+  return list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
 }
 
 export function updateLiveGenerationStandards(newList) {
