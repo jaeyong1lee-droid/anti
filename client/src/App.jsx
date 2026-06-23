@@ -14984,7 +14984,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1">
+            <div className="md:hidden flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start border-t border-slate-800/40 pt-3">
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
@@ -15048,9 +15048,11 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
-                    .catch(e => console.warn('세션 삭제 실패:', e));
-                  setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
+                  if (window.confirm("종합평가를 종료하시겠습니까? (재개 시 새 문제가 생성됩니다)")) {
+                    fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                      .catch(e => console.warn('세션 삭제 실패:', e));
+                    setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
+                  }
                 }}
                 className="px-1 py-1.5 sm:px-4 sm:py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 hover:text-white border border-rose-500/20 rounded-xl text-[10px] sm:text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-1 sm:flex-initial text-center whitespace-nowrap"
                 title="종합평가 종료 (재개 시 새 문제 생성)"
@@ -15928,32 +15930,78 @@ export default function App() {
                     {examTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
                         <button
-                          onClick={handleOpenManageStandardsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="글로벌 문제 생성 지침(기준)을 편집합니다."
+                          onClick={handleAddExamQuestions}
+                          disabled={loadingExam}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-500/40 transition-all cursor-pointer active:scale-95 shadow-md items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="종합평가에 신규 AI 문제 10문항 추가 (기존 풀이 보존)"
                         >
-                          <span>기준</span>
+                          {loadingExam ? (
+                            <svg className="animate-spin h-3 w-3 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <span>➕</span>
+                          )}
+                          <span>문제추가</span>
                         </button>
                         <button
-                          onClick={handleOpenManageGradingStandardsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="채점 지침을 관리합니다."
+                          onClick={handleRefreshExamQuestions}
+                          disabled={loadingExam}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="종합평가 전체 문제 실시간 AI 재출제"
                         >
-                          <span>채점</span>
+                          {loadingExam ? (
+                            <svg className="animate-spin h-3 w-3 text-amber-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <span>🔄</span>
+                          )}
+                          <span>리프레쉬</span>
                         </button>
                         <button
-                          onClick={handleOpenManageValidationStandardsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-cyan-950/85 hover:bg-cyan-900 text-cyan-350 hover:text-white border border-cyan-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="자가검증 지침을 관리합니다."
+                          onClick={async () => {
+                            savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
+                            try {
+                              const r = await fetch(`${API_BASE}/api/session/exam`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  examQuestions, 
+                                  examRevealed, 
+                                  examAnswers, 
+                                  examTopic,
+                                  tableAnswers: examTableAnswers,
+                                  tableGradingResults: examTableGradingResults,
+                                  savedExamScroll: savedExamScroll.current 
+                                }),
+                              });
+                              if (!r.ok) throw new Error('서버 응답 오류');
+                            } catch (e) {
+                              console.warn('세션 저장 실패:', e);
+                              showNotification('다른 기기와 동기화에 실패했습니다. 로컬에만 저장됩니다.', 'error');
+                            }
+                            setShowExam(false);
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md items-center gap-1"
+                          title="화면만 숨김 (재개 시 문제 유지)"
                         >
-                          <span>검증</span>
+                          <span>닫기</span>
                         </button>
                         <button
-                          onClick={handleOpenManageGenerationStandardsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-350 hover:text-white border border-emerald-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="문제 관리 지침을 관리합니다."
+                          onClick={() => {
+                            if (window.confirm("종합평가를 종료하시겠습니까? (재개 시 새 문제가 생성됩니다)")) {
+                              fetch(`${API_BASE}/api/session/exam`, { method: 'DELETE' })
+                                .catch(e => console.warn('세션 삭제 실패:', e));
+                              setShowExam(false); setExamQuestions([]); setExamRevealed({}); setExamAnswers({}); setExamTopic(null); setExamOptionExplanations({}); setExamTableAnswers({}); setExamTableGradingResults({}); setShowAnswersState({}); setExamShowAnswersState({});
+                            }
+                          }}
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-500/40 transition-all cursor-pointer active:scale-95 shadow-md items-center gap-1"
+                          title="종합평가 종료 (재개 시 새 문제 생성)"
                         >
-                          <span>문제</span>
+                          <span>종료</span>
                         </button>
                       </div>
                     )}
