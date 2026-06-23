@@ -26,6 +26,21 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Preferred model state and loader
+let globalPreferredModel = 'gemini-3.1-flash-lite';
+
+async function loadPreferredModel() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
+    if (row && row.value) {
+      globalPreferredModel = row.value;
+      console.log(`[Setting Loaded] Preferred Model: ${globalPreferredModel}`);
+    }
+  } catch (e) {
+    console.warn("Failed to load preferred model setting:", e);
+  }
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -142,6 +157,26 @@ setInterval(() => {
     }
   }
 }, 60000);
+
+// Preferred model API
+app.get('/api/preferred-model', (req, res) => {
+  res.json({ model: globalPreferredModel });
+});
+
+app.post('/api/preferred-model', async (req, res) => {
+  const { model } = req.body;
+  if (model === 'gemini-3.1-flash-lite' || model === 'gemini-3.5-flash') {
+    globalPreferredModel = model;
+    try {
+      await saveSessionValue('preferred_model', model);
+      console.log(`[Setting Saved] Preferred Model updated to: ${model}`);
+      return res.json({ success: true, model });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+  return res.status(400).json({ error: 'Invalid model' });
+});
 
 // Polling endpoint for AI progress
 app.get('/api/progress/:progressId', (req, res) => {
@@ -900,6 +935,14 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
           'gemini-2.0-flash',
           'gemini-1.5-flash'
         ];
+      }
+      
+      if (globalPreferredModel) {
+        const idx = MODELS.indexOf(globalPreferredModel);
+        if (idx !== -1) {
+          MODELS.splice(idx, 1);
+          MODELS.unshift(globalPreferredModel);
+        }
       }
       
       let basicModelFailedCount = 0;
@@ -8119,6 +8162,7 @@ async function startServer() {
   try {
     await initDatabase();
     console.log('Database schema initialization completed.');
+    await loadPreferredModel();
     await initializeEngineeringStandards();
     await migrateSpacedIntervals();
     await healPendingSchedules();
@@ -8159,6 +8203,7 @@ if (!process.env.VERCEL) {
   // Vercel 서버리스 환경에서는 데이터베이스 연결 및 테이블 자동 생성을 비동기로 조용히 가동합니다.
   initDatabase().then(async () => {
     console.log('Vercel serverless DB initialization completed.');
+    await loadPreferredModel();
     await initializeEngineeringStandards();
     await migrateSpacedIntervals();
     await healPendingSchedules();

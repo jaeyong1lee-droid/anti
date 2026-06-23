@@ -264,7 +264,18 @@ function replaceRoots(str) {
     
     if (depth === 0) {
       const content = processed.substring(index + matchLength, scanIdx - 1);
-      const replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
+      
+      // Check if the match is already inside an existing math block
+      const beforeText = processed.substring(0, index);
+      const dollarCount = (beforeText.match(/\$/g) || []).length;
+      const isAlreadyInMath = (dollarCount % 2 === 1);
+      
+      let replacement;
+      if (isAlreadyInMath) {
+        replacement = rootNum ? `\\sqrt[${rootNum}]{${content}}` : `\\sqrt{${content}}`;
+      } else {
+        replacement = rootNum ? `$\\sqrt[${rootNum}]{${content}}$` : `$\\sqrt{${content}}$`;
+      }
       processed = processed.substring(0, index) + replacement + processed.substring(scanIdx);
     } else {
       break;
@@ -277,6 +288,9 @@ function replaceRoots(str) {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
   let processed = text;
+
+  // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
+  processed = processed.replace(/₩/g, '\\');
 
   // Replace Greek unicode letters and standalone words with LaTeX commands
   processed = processed.replace(/β/g, '\\beta')
@@ -315,49 +329,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Parse root patterns
   processed = replaceRoots(processed);
 
-  // [🚨 극단적 비상 복구 필터 🚨]
-  // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
-  processed = processed.replace(
-    /<\s*divclass\b[\s\S]*?<\/\s*div\s*>/gi,
-    (htmlBlock) => {
-      const match = htmlBlock.match(/<\s*annotationencoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i);
-      if (match && match[1]) {
-        const formula = match[1].trim().replace(/\\+/g, '\\');
-        return ` $${formula}$ `;
-      }
-      return '';
-    }
-  );
-  if (!isNested) {
-    processed = htmlTableToMarkdown(processed, passedPoissonSymbol);
-    processed = wrapMarkdownTables(processed);
-  }
-
-  // (Poisson's ratio healing logic moved below JSON escape restoration to prevent table breaking)
-
-  // [Self-Healing] Restore collapsed newlines for variable list items
-  processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
-
-  // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
-  // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
-  if (typeof processed === 'string') {
-    processed = processed.split('\n').map(line => {
-      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
-      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
-    }).join('\n');
-  }
-
-  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
-  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
-  // Collapse double or multiple backslashes before % to single backslash
-  processed = processed.replace(/\\{2,}%/g, '\\%');
-
-  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
-
   // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
   processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
+                       .replace(/\x0a\s*e\b/g, '\\ne')
                        .replace(/\x0a\s*u\b/g, '\\nu')
                        .replace(/\x0a\s*abla\b/g, '\\nabla')
                        .replace(/\x0a\s*earrow\b/g, '\\nearrow')
@@ -436,6 +410,48 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
   processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
 
+  // [🚨 극단적 비상 복구 필터 🚨]
+  // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
+  processed = processed.replace(
+    /<\s*divclass\b[\s\S]*?<\/\s*div\s*>/gi,
+    (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotationencoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    }
+  );
+
+  if (!isNested) {
+    processed = htmlTableToMarkdown(processed, poissonSymbol);
+    processed = wrapMarkdownTables(processed);
+  }
+
+  // (Poisson's ratio healing logic moved above JSON escape restoration to prevent table breaking)
+
+  // [Self-Healing] Restore collapsed newlines for variable list items
+  processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
+
+  // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
+  // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
+  if (typeof processed === 'string') {
+    processed = processed.split('\n').map(line => {
+      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
+      return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
+    }).join('\n');
+  }
+
+  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
+  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
+  // Collapse double or multiple backslashes before % to single backslash
+  processed = processed.replace(/\\{2,}%/g, '\\%');
+
+  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
+  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
+
   // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
   const isMathVariable = (str) => {
     if (/^[a-zA-Z0-9]$/.test(str)) return true;
@@ -510,6 +526,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
           return subToken.content.replace(simpleVariableRegex, (match) => {
             const trailingSpaces = match.match(/\s*$/)[0];
             const trimmed = match.trim();
+            if (trimmed === 'START_TABLE' || trimmed === 'END_TABLE') return match;
             const trailingPunctuation = trimmed.match(/[.,;:!]+$/);
             const punc = trailingPunctuation ? trailingPunctuation[0] : '';
             const formula = trimmed.slice(0, trimmed.length - punc.length).trim();

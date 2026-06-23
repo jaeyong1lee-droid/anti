@@ -50,7 +50,8 @@ import {
   HelpCircle,
   Sliders,
   Image,
-  Lock
+  Lock,
+  Cpu
 } from 'lucide-react';
 
 // ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
@@ -5081,6 +5082,7 @@ export default function App() {
   const [topicFilter, setTopicFilter] = useState('전체');
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
+  const [preferredModel, setPreferredModel] = useState('gemini-3.1-flash-lite');
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
@@ -5738,6 +5740,23 @@ export default function App() {
         }
       })
       .catch(err => console.warn('Failed to load right_sidebar_width from database:', err));
+  }, []);
+
+  // Load preferred AI model on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/api/preferred-model`)
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Network response not ok');
+      })
+      .then(data => {
+        if (data.model) setPreferredModel(data.model);
+      })
+      .catch(err => {
+        console.warn('Failed to load preferred model from server, using local fallback:', err);
+        const localVal = localStorage.getItem('anti_preferred_model');
+        if (localVal) setPreferredModel(localVal);
+      });
   }, []);
 
   // --- Formula Adjust States & Context Registration ---
@@ -10022,6 +10041,27 @@ export default function App() {
     }
   };
 
+  const handleTogglePreferredModel = async () => {
+    const nextModel = preferredModel === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.1-flash-lite';
+    setPreferredModel(nextModel);
+    localStorage.setItem('anti_preferred_model', nextModel);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/preferred-model`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ model: nextModel })
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+    } catch (error) {
+      console.warn('Failed to sync preferred model to server:', error);
+    }
+  };
+
   const handleDeleteStandard = async (id) => {
     if (!window.confirm('정말 이 공학 기준을 삭제하시겠습니까?')) return;
     const updatedList = standardsList.filter(s => s.id !== id);
@@ -13047,6 +13087,19 @@ export default function App() {
                 >
                   <Sliders size={11} className="text-violet-400" />
                   <span>기준정립 ⚙️</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTogglePreferredModel}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md select-none ${
+                    preferredModel === 'gemini-3.5-flash'
+                      ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30'
+                      : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30'
+                  }`}
+                >
+                  <Cpu size={11} className={preferredModel === 'gemini-3.5-flash' ? 'text-cyan-400' : 'text-emerald-400'} />
+                  <span>{preferredModel === 'gemini-3.5-flash' ? '3.5 FLASH' : '3.1 FLASH LITE'}</span>
                 </button>
               </div>
               
