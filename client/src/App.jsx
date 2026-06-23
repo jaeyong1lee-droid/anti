@@ -13596,7 +13596,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageStandardsModal}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>기준</span>
                 </button>
@@ -13616,7 +13616,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageTopicInstructionsModal}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>지침</span>
                 </button>
@@ -13624,7 +13624,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageGradingStandardsModal}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>채점</span>
                 </button>
@@ -13632,7 +13632,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageValidationStandardsModal}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>검증</span>
                 </button>
@@ -13640,7 +13640,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleOpenManageGenerationStandardsModal}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
                 >
                   <span>문제</span>
                 </button>
