@@ -27,7 +27,11 @@ export const standardsList = [
   }
 ];
 
-export const ENGINEERING_STANDARDS = standardsList.map(s => s.content).join('\n\n');
+export let ENGINEERING_STANDARDS = standardsList.map(s => s.content).join('\n\n');
+
+export function updateLiveEngineeringStandards(newList) {
+  ENGINEERING_STANDARDS = newList.map(s => s.content).join('\n\n');
+}
 
 // Backwards compatibility exports
 export const STRESS_CONVENTION = "";
