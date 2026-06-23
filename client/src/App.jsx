@@ -5037,6 +5037,8 @@ export default function App() {
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
+  const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
+  const [regenTargetInfo, setRegenTargetInfo] = useState(null);
   const [lastActiveReview, setLastActiveReview] = useState(null);
   useEffect(() => {
     const saved = localStorage.getItem('anti_last_active_review');
@@ -9198,10 +9200,17 @@ export default function App() {
   };
 
   // Regenerate a single question (mode: 'review' or 'exam')
-  const handleRegenerateQuestion = async (mode, idx, currentQ) => {
-    if (!window.confirm('이 문제를 새로운 다른 문제로 변환(재생성)하시겠습니까?')) {
-      return;
-    }
+  const handleRegenerateQuestion = (mode, idx, currentQ) => {
+    setRegenTargetInfo({ mode, idx, currentQ });
+    setShowRegenTypeModal(true);
+  };
+
+  const executeRegenerateQuestion = async (targetTypeSelection) => {
+    if (!regenTargetInfo) return;
+    const { mode, idx, currentQ } = regenTargetInfo;
+    setShowRegenTypeModal(false);
+    setRegenTargetInfo(null);
+
     const isReview = mode === 'review';
     const key = isReview
       ? (selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`)
@@ -9219,10 +9228,11 @@ export default function App() {
         currentQuestion: currentQ,
         questionIdx: idx,
         allQuestions: isReview ? aiQuestions : examQuestions,
-        progressId
+        progressId,
+        targetTypeSelection
       };
 
-      console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type });
+      console.log('[변환] 요청 시작:', { mode, idx, topicId: body.topicId, type: currentQ?.type, targetTypeSelection });
 
       const res = await fetch(`${API_BASE}/api/question/regenerate`, {
         method: 'POST',
@@ -16837,6 +16847,69 @@ export default function App() {
               </button>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* 문제 변환 타입 선택 모달 */}
+      {showRegenTypeModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300 animate-fadeIn" onClick={() => { setShowRegenTypeModal(false); setRegenTargetInfo(null); }}>
+          <div className="relative w-full max-w-sm flex flex-col bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden glassmorphism text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+            
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800/80 bg-slate-950/45">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
+                  <Sparkles size={16} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-sm font-black tracking-tight text-white">문제 변환 유형 선택</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">원하시는 형태의 문제 유형을 선택하십시오.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowRegenTypeModal(false); setRegenTargetInfo(null); }}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* 본문 버튼 리스트 */}
+            <div className="p-5 flex flex-col gap-3">
+              <button
+                onClick={() => executeRegenerateQuestion('mc')}
+                className="w-full py-3 px-4 rounded-xl border border-violet-500/30 bg-violet-950/40 hover:bg-violet-900 text-violet-300 hover:text-white text-xs font-black transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-md"
+              >
+                <span>1. 객관식 (4지선다)</span>
+                <span className="text-[10px] text-violet-400/80">선택</span>
+              </button>
+              <button
+                onClick={() => executeRegenerateQuestion('subj')}
+                className="w-full py-3 px-4 rounded-xl border border-amber-500/30 bg-amber-950/40 hover:bg-amber-900 text-amber-300 hover:text-white text-xs font-black transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-md"
+              >
+                <span>2. 주관식 (개념/대책 랜덤)</span>
+                <span className="text-[10px] text-amber-400/80">선택</span>
+              </button>
+              <button
+                onClick={() => executeRegenerateQuestion('table')}
+                className="w-full py-3 px-4 rounded-xl border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900 text-emerald-350 hover:text-white text-xs font-black transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-md"
+              >
+                <span>3. 칸채우기 (비교 표채우기)</span>
+                <span className="text-[10px] text-emerald-400/80">선택</span>
+              </button>
+            </div>
+
+            {/* 푸터 */}
+            <div className="px-5 py-3.5 border-t border-slate-800/80 bg-slate-950/30 flex justify-end">
+              <button
+                onClick={() => { setShowRegenTypeModal(false); setRegenTargetInfo(null); }}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-black transition-all cursor-pointer active:scale-95"
+              >
+                취소
+              </button>
+            </div>
+
           </div>
         </div>
       )}

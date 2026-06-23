@@ -4308,7 +4308,7 @@ app.get('/api/question-feedback/all', async (req, res) => {
 
 // 6-3. Single Question Regeneration API
 app.post('/api/question/regenerate', async (req, res) => {
-  const { mode, topicId, currentQuestion, questionIdx, allQuestions } = req.body;
+  const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
   const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
   const localCallLLM = (sys, prompt, img, scenario, opts) => 
@@ -4401,34 +4401,45 @@ ${otherQs.map((q, i) => {
       let targetSubtype = ''; // 12번형태 또는 13번형태 구분을 위해 추가
       const currentType = currentQuestion?.type || '';
 
-      if (currentType.includes('개요')) {
-        targetType = '주관식 (개요)';
-      } else if (currentType.includes('공식')) {
-        targetType = '주관식 (공식)';
-      } else if (currentType.includes('표채우기') || currentQuestion?.tableData) {
-        targetType = '주관식 (표채우기)';
-      } else if (currentType.includes('단답형') || currentType.includes('단답')) {
+      if (targetTypeSelection === 'mc') {
+        targetType = '객관식 (4지선다)';
+      } else if (targetTypeSelection === 'subj') {
         targetType = '주관식 (단답형)';
-        // 주관식 단답형은 12번(개념) 혹은 13번(대책) 중 하나로 랜덤 적용
         const rand = Math.floor(Math.random() * 2);
         targetSubtype = rand === 0 ? '12번형태' : '13번형태';
-      } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
-        // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
-        const rand = Math.floor(Math.random() * 3);
-        if (rand === 0) {
-          targetType = '객관식 (4지선다)';
-        } else if (rand === 1) {
-          targetType = '주관식 (단답형)';
-          targetSubtype = '12번형태';
-        } else {
-          targetType = '주관식 (단답형)';
-          targetSubtype = '13번형태';
-        }
+      } else if (targetTypeSelection === 'table') {
+        targetType = '주관식 (표채우기)';
       } else {
-        // fallback based on index if we can't determine it
-        if (questionIdx === 0) targetType = '주관식 (개요)';
-        else if (questionIdx === 1) targetType = '주관식 (공식)';
-        else targetType = '객관식 (4지선다)';
+        // 기존 결정 로직
+        if (currentType.includes('개요')) {
+          targetType = '주관식 (개요)';
+        } else if (currentType.includes('공식')) {
+          targetType = '주관식 (공식)';
+        } else if (currentType.includes('표채우기') || currentQuestion?.tableData) {
+          targetType = '주관식 (표채우기)';
+        } else if (currentType.includes('단답형') || currentType.includes('단답')) {
+          targetType = '주관식 (단답형)';
+          // 주관식 단답형은 12번(개념) 혹은 13번(대책) 중 하나로 랜덤 적용
+          const rand = Math.floor(Math.random() * 2);
+          targetSubtype = rand === 0 ? '12번형태' : '13번형태';
+        } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
+          // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
+          const rand = Math.floor(Math.random() * 3);
+          if (rand === 0) {
+            targetType = '객관식 (4지선다)';
+          } else if (rand === 1) {
+            targetType = '주관식 (단답형)';
+            targetSubtype = '12번형태';
+          } else {
+            targetType = '주관식 (단답형)';
+            targetSubtype = '13번형태';
+          }
+        } else {
+          // fallback based on index if we can't determine it
+          if (questionIdx === 0) targetType = '주관식 (개요)';
+          else if (questionIdx === 1) targetType = '주관식 (공식)';
+          else targetType = '객관식 (4지선다)';
+        }
       }
 
       if (!hasAnyAiKey) {
@@ -4729,51 +4740,65 @@ ${formatRequirement}
       let qSubtype = '';
       let targetSubtype = ''; // 12번형태 또는 13번형태 지정을 위한 추가
       
-      if (currentType.includes('주관식')) {
+      if (targetTypeSelection === 'mc') {
+        qType = '객관식';
+        qSubtype = '';
+      } else if (targetTypeSelection === 'subj') {
         qType = '주관식';
-        if (currentSubtype.includes('개요')) {
-          qSubtype = '개요';
-        } else if (currentSubtype.includes('공식')) {
-          qSubtype = '공식';
-        } else if (currentSubtype.includes('서술')) {
-          qSubtype = '서술';
-        } else if (currentSubtype.includes('표채우기') || currentQuestion?.tableData) {
-          qSubtype = '표채우기';
-        } else if (currentSubtype.includes('단답') || currentSubtype.includes('단답형')) {
-          qSubtype = '단답형';
-          // 주관식 단답형은 12번 혹은 13번형태 중 하나로 랜덤 적용
-          const rand = Math.floor(Math.random() * 2);
-          targetSubtype = rand === 0 ? '12번형태' : '13번형태';
-        } else {
-          // fallback if subtype is unknown
-          qSubtype = '개요';
-        }
-      } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
-        // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
-        const rand = Math.floor(Math.random() * 3);
-        if (rand === 0) {
-          qType = '객관식';
-          qSubtype = '';
-        } else if (rand === 1) {
-          qType = '주관식';
-          qSubtype = '단답형';
-          targetSubtype = '12번형태';
-        } else {
-          qType = '주관식';
-          qSubtype = '단답형';
-          targetSubtype = '13번형태';
-        }
+        qSubtype = '단답형';
+        const rand = Math.floor(Math.random() * 2);
+        targetSubtype = rand === 0 ? '12번형태' : '13번형태';
+      } else if (targetTypeSelection === 'table') {
+        qType = '주관식';
+        qSubtype = '표채우기';
       } else {
-        // fallback based on features
-        if (currentQuestion?.tableData) {
+        // 기존 결정 로직
+        if (currentType.includes('주관식')) {
           qType = '주관식';
-          qSubtype = '표채우기';
-        } else if (currentQuestion?.options && currentQuestion.options.length > 0) {
-          qType = '객관식';
-          qSubtype = '';
+          if (currentSubtype.includes('개요')) {
+            qSubtype = '개요';
+          } else if (currentSubtype.includes('공식')) {
+            qSubtype = '공식';
+          } else if (currentSubtype.includes('서술')) {
+            qSubtype = '서술';
+          } else if (currentSubtype.includes('표채우기') || currentQuestion?.tableData) {
+            qSubtype = '표채우기';
+          } else if (currentSubtype.includes('단답') || currentSubtype.includes('단답형')) {
+            qSubtype = '단답형';
+            // 주관식 단답형은 12번 혹은 13번형태 중 하나로 랜덤 적용
+            const rand = Math.floor(Math.random() * 2);
+            targetSubtype = rand === 0 ? '12번형태' : '13번형태';
+          } else {
+            // fallback if subtype is unknown
+            qSubtype = '개요';
+          }
+        } else if (currentType.includes('객관식') || (currentQuestion?.options && currentQuestion.options.length > 0)) {
+          // 객관식은 객관식 또는 주관식 12번, 13번형태 중 하나로 변경
+          const rand = Math.floor(Math.random() * 3);
+          if (rand === 0) {
+            qType = '객관식';
+            qSubtype = '';
+          } else if (rand === 1) {
+            qType = '주관식';
+            qSubtype = '단답형';
+            targetSubtype = '12번형태';
+          } else {
+            qType = '주관식';
+            qSubtype = '단답형';
+            targetSubtype = '13번형태';
+          }
         } else {
-          qType = '주관식';
-          qSubtype = '개요';
+          // fallback based on features
+          if (currentQuestion?.tableData) {
+            qType = '주관식';
+            qSubtype = '표채우기';
+          } else if (currentQuestion?.options && currentQuestion.options.length > 0) {
+            qType = '객관식';
+            qSubtype = '';
+          } else {
+            qType = '주관식';
+            qSubtype = '개요';
+          }
         }
       }
       if (!hasAnyAiKey) {
