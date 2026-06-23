@@ -122,6 +122,28 @@ const safeSessionStorage = (() => {
 const localStorage = safeLocalStorage;
 const sessionStorage = safeSessionStorage;
 
+const formatReviewDate = (completedAt, plannedDate) => {
+  if (completedAt) {
+    try {
+      const d = new Date(completedAt);
+      if (!isNaN(d.getTime())) {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${mm}.${dd}`;
+      }
+    } catch (e) {
+      console.warn('formatReviewDate error:', e);
+    }
+  }
+  if (plannedDate) {
+    const match = plannedDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[2]}.${match[3]}`;
+    }
+  }
+  return '';
+};
+
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
 function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   const containerRef = useRef(null);
