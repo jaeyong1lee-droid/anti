@@ -5507,6 +5507,7 @@ export default function App() {
           question: q.question,
           correctAnswer,
           userAnswer,
+          explanation: q.explanation || '',
           category: showExam ? examTopic?.category : selectedTopic?.category,
           progressId
         })

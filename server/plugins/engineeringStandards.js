@@ -78,6 +78,17 @@ const SITUATIONAL_FEASIBILITY_CONVENTION = `
 `;
 
 // ============================================================================
+// [5] 수리학적 침투 및 파이핑/보일링 대책 기준 (Seepage Pressure & Piping/Boiling)
+// ============================================================================
+const SEEPAGE_PRESSURE_CONVENTION = `
+[🌊 수리학적 침투 및 파이핑/보일링 대책 채점 기준]:
+- 댐이나 제방의 파이핑(Piping) 및 보일링(Boiling) 대책에 대한 채점 시 아래의 수리학적 물리 법칙을 정확하게 고수하여 평가하십시오:
+  1. **수두차($\\Delta h$) 감소 = 침투압 감소**: 상하류 간의 수두차($\\Delta h = h_1 - h_2$)가 줄어들면 동수경사($i = \\Delta h / L$)와 침투압 및 침투수력(seepage force)이 감소하여 지반이 안정화됩니다.
+  2. **하류 수위 상승(수두 $h_2$ 상승) 또는 링 다이크(Ring Dike)**: 하류 측 용출구 주변 수위를 상승시키거나 물을 가두는 조치(예: 물고임 링 다이크 축조)는 상하류 수두차를 줄여 파이핑을 제어하는 역학적으로 매우 타당한 응급 대책입니다. 이를 "침투압을 증가시켜 파이핑을 가속화한다"고 평가하는 오류를 절대 범하지 마십시오.
+  3. **상류 수위 저하 또는 댐 문 개방(방류)**: 상류 저수지 수위($h_1$)를 낮추는 조치는 상하류 수두차를 줄여 파이핑을 제어하는 적합한 대책입니다.
+`;
+
+// ============================================================================
 // 종합 Export — 모든 기준을 하나의 문자열로 결합
 // ============================================================================
 
@@ -93,9 +104,11 @@ ${SUBGRADE_REACTION_CONVENTION}
 ${GRAPH_AND_TABLE_CONVENTION}
 
 ${SITUATIONAL_FEASIBILITY_CONVENTION}
+
+${SEEPAGE_PRESSURE_CONVENTION}
 `.trim();
 
 /**
  * 개별 기준도 별도로 export하여, 특정 프롬프트에 선택적으로 주입할 수 있습니다.
  */
-export { STRESS_CONVENTION, SUBGRADE_REACTION_CONVENTION, GRAPH_AND_TABLE_CONVENTION, SITUATIONAL_FEASIBILITY_CONVENTION };
+export { STRESS_CONVENTION, SUBGRADE_REACTION_CONVENTION, GRAPH_AND_TABLE_CONVENTION, SITUATIONAL_FEASIBILITY_CONVENTION, SEEPAGE_PRESSURE_CONVENTION };
