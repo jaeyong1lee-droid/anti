@@ -54,85 +54,71 @@ import {
 } from 'lucide-react';
 
 // ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
-try {
-  window.localStorage.setItem('__test_storage_ls__', '1');
-  window.localStorage.removeItem('__test_storage_ls__');
-} catch (e) {
-  console.warn('[Polyfill] Native window.localStorage is blocked. Redefining it with memory fallback.', e);
-  const memoryStore = {};
-  const mockStorage = {
-    getItem(key) {
-      return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
-    },
-    setItem(key, value) {
-      memoryStore[key] = String(value);
-    },
-    removeItem(key) {
-      delete memoryStore[key];
-    },
-    clear() {
-      Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
-    },
-    key(index) {
-      return Object.keys(memoryStore)[index] || null;
-    },
-    get length() {
-      return Object.keys(memoryStore).length;
-    }
-  };
+const safeLocalStorage = (() => {
   try {
-    Object.defineProperty(window, 'localStorage', {
-      value: mockStorage,
-      writable: true,
-      configurable: true
-    });
-  } catch (err) {
-    console.error('Failed to override window.localStorage:', err);
-    try {
-      window.localStorage = mockStorage;
-    } catch (e2) {}
+    window.localStorage.setItem('__test_storage_ls__', '1');
+    window.localStorage.removeItem('__test_storage_ls__');
+    return window.localStorage;
+  } catch (e) {
+    console.warn('[Polyfill] Native window.localStorage is blocked. Using memory fallback.', e);
+    const memoryStore = {};
+    return {
+      getItem(key) {
+        return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
+      },
+      setItem(key, value) {
+        memoryStore[key] = String(value);
+      },
+      removeItem(key) {
+        delete memoryStore[key];
+      },
+      clear() {
+        Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
+      },
+      key(index) {
+        return Object.keys(memoryStore)[index] || null;
+      },
+      get length() {
+        return Object.keys(memoryStore).length;
+      }
+    };
   }
-}
+})();
 
-try {
-  window.sessionStorage.setItem('__test_storage_ss__', '1');
-  window.sessionStorage.removeItem('__test_storage_ss__');
-} catch (e) {
-  console.warn('[Polyfill] Native window.sessionStorage is blocked. Redefining it with memory fallback.', e);
-  const memoryStore = {};
-  const mockStorage = {
-    getItem(key) {
-      return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
-    },
-    setItem(key, value) {
-      memoryStore[key] = String(value);
-    },
-    removeItem(key) {
-      delete memoryStore[key];
-    },
-    clear() {
-      Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
-    },
-    key(index) {
-      return Object.keys(memoryStore)[index] || null;
-    },
-    get length() {
-      return Object.keys(memoryStore).length;
-    }
-  };
+const safeSessionStorage = (() => {
   try {
-    Object.defineProperty(window, 'sessionStorage', {
-      value: mockStorage,
-      writable: true,
-      configurable: true
-    });
-  } catch (err) {
-    console.error('Failed to override window.sessionStorage:', err);
-    try {
-      window.sessionStorage = mockStorage;
-    } catch (e2) {}
+    window.sessionStorage.setItem('__test_storage_ss__', '1');
+    window.sessionStorage.removeItem('__test_storage_ss__');
+    return window.sessionStorage;
+  } catch (e) {
+    console.warn('[Polyfill] Native window.sessionStorage is blocked. Using memory fallback.', e);
+    const memoryStore = {};
+    return {
+      getItem(key) {
+        return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
+      },
+      setItem(key, value) {
+        memoryStore[key] = String(value);
+      },
+      removeItem(key) {
+        delete memoryStore[key];
+      },
+      clear() {
+        Object.keys(memoryStore).forEach(k => delete memoryStore[k]);
+      },
+      key(index) {
+        return Object.keys(memoryStore)[index] || null;
+      },
+      get length() {
+        return Object.keys(memoryStore).length;
+      }
+    };
   }
-}
+})();
+
+// Shadow the global variables locally for the scope of this module
+const localStorage = safeLocalStorage;
+const sessionStorage = safeSessionStorage;
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
 function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
