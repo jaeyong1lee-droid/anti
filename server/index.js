@@ -7796,6 +7796,45 @@ async function initializeGenerationStandards() {
   }
 }
 
+async function syncStandardsFromProduction() {
+  const isVercel = !!process.env.VERCEL;
+  if (isVercel) {
+    console.log('[Sync] Deployed production server (Vercel) detected. Bypassing production standards sync.');
+    return;
+  }
+  
+  console.log('[Sync] Local server started. Synchronizing standards from production (https://anti-ashy.vercel.app)...');
+  
+  const standardsToSync = [
+    { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards },
+    { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards },
+    { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards },
+    { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards }
+  ];
+  
+  for (const item of standardsToSync) {
+    try {
+      const res = await fetch(`https://anti-ashy.vercel.app/api/${item.api}`);
+      if (!res.ok) {
+        console.warn(`[Sync] Failed to fetch ${item.key} from production: HTTP ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      const standards = data.standards;
+      if (Array.isArray(standards) && standards.length > 0) {
+        // Update live memory state
+        item.updater(standards);
+        
+        // Save to database to persist across restarts
+        await saveSessionValue(item.key, JSON.stringify(standards));
+        console.log(`[Sync] Synced ${item.key} (${standards.length} items) successfully.`);
+      }
+    } catch (err) {
+      console.warn(`[Sync] Error syncing ${item.key}:`, err.message);
+    }
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
@@ -7805,6 +7844,8 @@ async function startServer() {
     await initializeGradingStandards();
     await initializeValidationStandards();
     await initializeGenerationStandards();
+    // Sync from production to local database if running locally
+    await syncStandardsFromProduction();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
