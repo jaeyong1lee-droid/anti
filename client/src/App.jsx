@@ -49,7 +49,8 @@ import {
   Signal,
   HelpCircle,
   Sliders,
-  Image
+  Image,
+  Lock
 } from 'lucide-react';
 
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
@@ -6377,6 +6378,13 @@ export default function App() {
   const [editingContent, setEditingContent] = useState('');
   const [isSavingStandardsList, setIsSavingStandardsList] = useState(false);
   const [isLoadingStandardsList, setIsLoadingStandardsList] = useState(false);
+  
+  // PIN Code entry restriction states
+  const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isPinVerifying, setIsPinVerifying] = useState(false);
+  const [isPinInputShaking, setIsPinInputShaking] = useState(false);
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
@@ -10036,6 +10044,47 @@ export default function App() {
     }
   };
 
+  const handleVerifyPin = async (e) => {
+    if (e) e.preventDefault();
+    if (!pinInput.trim()) {
+      setPinError('PIN 코드를 입력해주세요.');
+      triggerPinShake();
+      return;
+    }
+    
+    setIsPinVerifying(true);
+    setPinError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/verify-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        sessionStorage.setItem('pin_verified', 'true');
+        setIsPinVerified(true);
+        showNotification('성공적으로 인증되었습니다.', 'success');
+      } else {
+        setPinError(data.error || '올바르지 않은 PIN 코드입니다.');
+        triggerPinShake();
+      }
+    } catch (err) {
+      console.error(err);
+      setPinError('서버 연결 오류가 발생했습니다.');
+      triggerPinShake();
+    } finally {
+      setIsPinVerifying(false);
+    }
+  };
+
+  const triggerPinShake = () => {
+    setIsPinInputShaking(true);
+    setTimeout(() => {
+      setIsPinInputShaking(false);
+    }, 500);
+  };
+
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
   const handleSendChat = async (customMessage) => {
     const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
@@ -12059,6 +12108,76 @@ export default function App() {
     // Unconditionally load answersheet questions on mount to prevent state desync and subsequent data loss
     loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
   }, []);
+
+  if (!isPinVerified) {
+    return (
+      <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-slateCustom-950 text-slate-100 p-4 font-sans select-none">
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
+          }
+          .animate-shake {
+            animation: shake 0.5s ease-in-out;
+          }
+        `}</style>
+
+        {/* Toast Notification */}
+        {notification && (
+          <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl transition-all duration-300 transform scale-100 ${
+            notification.type === 'error' 
+              ? 'bg-rose-950/90 text-rose-200 border border-rose-500/50' 
+              : 'bg-emerald-950/90 text-emerald-200 border border-emerald-500/50'
+          }`}>
+            {notification.type === 'error' ? <Info size={20} /> : <CheckCircle size={20} />}
+            <span className="text-sm font-semibold">{notification.message}</span>
+          </div>
+        )}
+
+        <div className={`w-full max-w-[360px] bg-slateCustom-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center space-y-6 text-center transition-all ${isPinInputShaking ? 'animate-shake' : ''}`}>
+          
+          <div className="p-4 bg-violet-500/10 text-violet-400 rounded-2xl">
+            <Lock size={36} className="text-violet-500 animate-pulse" />
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-lg font-black text-white">Spaced Repetition System</h2>
+            <p className="text-xs text-slate-400 font-semibold">웹 시스템 진입을 위해 PIN 코드를 입력하십시오.</p>
+          </div>
+
+          <form onSubmit={handleVerifyPin} className="w-full space-y-4">
+            <div className="space-y-2">
+              <input
+                type="password"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder="PIN CODE"
+                className="w-full text-center bg-slate-950/60 border border-slate-800 focus:border-violet-500 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all font-mono font-bold tracking-widest"
+                disabled={isPinVerifying}
+                autoFocus
+              />
+              {pinError && (
+                <p className="text-[10px] text-rose-400 font-bold leading-normal">{pinError}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isPinVerifying}
+              className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-violet-950/40"
+            >
+              {isPinVerifying ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <span>진입하기 🔓</span>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">

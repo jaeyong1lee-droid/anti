@@ -7575,6 +7575,22 @@ export const USER_CONVENTIONS = "";
   }
 });
 
+// POST /api/verify-pin → Verify the entry PIN code
+app.post('/api/verify-pin', (req, res) => {
+  try {
+    const { pin } = req.body;
+    const expectedPin = process.env.PIN_CODE || '7942';
+    if (pin === expectedPin) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false, error: '올바르지 않은 PIN 코드입니다.' });
+    }
+  } catch (err) {
+    console.error('POST /api/verify-pin error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
