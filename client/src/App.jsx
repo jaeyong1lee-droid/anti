@@ -6474,6 +6474,15 @@ export default function App() {
   const [isSavingGradingStandardsList, setIsSavingGradingStandardsList] = useState(false);
   const [isLoadingGradingStandardsList, setIsLoadingGradingStandardsList] = useState(false);
   
+  const [showManageValidationStandardsModal, setShowManageValidationStandardsModal] = useState(false);
+  const [showEditValidationStandardModal, setShowEditValidationStandardModal] = useState(false);
+  const [validationStandardsList, setValidationStandardsList] = useState([]);
+  const [editingValidationStandard, setEditingValidationStandard] = useState(null);
+  const [editingValidationTitle, setEditingValidationTitle] = useState('');
+  const [editingValidationContent, setEditingValidationContent] = useState('');
+  const [isSavingValidationStandardsList, setIsSavingValidationStandardsList] = useState(false);
+  const [isLoadingValidationStandardsList, setIsLoadingValidationStandardsList] = useState(false);
+  
   // PIN Code entry restriction states
   const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
   const [pinInput, setPinInput] = useState('');
@@ -10278,6 +10287,125 @@ export default function App() {
     }
   };
 
+  const editValidationTitleRef = useRef(null);
+  const editValidationContentRef = useRef(null);
+
+  useEffect(() => {
+    if (showEditValidationStandardModal) {
+      setTimeout(() => {
+        if (editValidationTitleRef.current) {
+          editValidationTitleRef.current.focus();
+          editValidationTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditValidationStandardModal]);
+
+  const handleOpenManageValidationStandardsModal = async () => {
+    setShowManageValidationStandardsModal(true);
+    setIsLoadingValidationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/validation-standards`);
+      if (!res.ok) throw new Error('검증 기준 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setValidationStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingValidationStandardsList(false);
+    }
+  };
+
+  const handleDeleteValidationStandard = async (id) => {
+    if (!window.confirm('정말 이 검증 기준을 삭제하시겠습니까?')) return;
+    const updatedList = validationStandardsList.filter(s => s.id !== id);
+    setIsSavingValidationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/validation-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setValidationStandardsList(updatedList);
+      showNotification('검증 기준이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingValidationStandardsList(false);
+    }
+  };
+
+  const handleOpenAddValidationStandardModal = () => {
+    setEditingValidationStandard(null);
+    setEditingValidationTitle('');
+    setEditingValidationContent('');
+    setShowEditValidationStandardModal(true);
+  };
+
+  const handleOpenEditValidationStandardModal = (std) => {
+    setEditingValidationStandard(std);
+    setEditingValidationTitle(std.title || '');
+    setEditingValidationContent(std.content || '');
+    setShowEditValidationStandardModal(true);
+  };
+
+  const handleSaveEditValidationStandard = async () => {
+    if (!editingValidationTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingValidationContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingValidationStandard) {
+      // Edit mode
+      updatedList = validationStandardsList.map(s => 
+        s.id === editingValidationStandard.id 
+          ? { ...s, title: editingValidationTitle, content: editingValidationContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_validation_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingValidationTitle,
+        content: editingValidationContent
+      };
+      updatedList = [...validationStandardsList, newStd];
+    }
+
+    setIsSavingValidationStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/validation-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setValidationStandardsList(updatedList);
+      showNotification('검증 기준이 저장되었습니다.', 'success');
+      setShowEditValidationStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingValidationStandardsList(false);
+    }
+  };
+
   const handleVerifyPin = async (e) => {
     if (e) e.preventDefault();
     if (!pinInput.trim()) {
@@ -13234,6 +13362,14 @@ export default function App() {
                 >
                   <span>채점</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageValidationStandardsModal}
+                  className="flex items-center justify-center px-3 py-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>검증</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -15113,6 +15249,13 @@ export default function App() {
                     >
                       <span>채점</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenManageValidationStandardsModal}
+                      className="flex-grow flex items-center justify-center py-1.5 px-1.5 rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/30 transition-all active:scale-98 text-[10px] font-black cursor-pointer"
+                    >
+                      <span>검증</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -15687,6 +15830,193 @@ export default function App() {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
                 {isSavingGradingStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>기준 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 검증 기준 통합 관리 모달 (Validation Standards Management Modal) */}
+      {showManageValidationStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageValidationStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg">
+                  <Sliders size={18} className="text-cyan-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 검증 지시 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageValidationStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 문제 생성 자가 검증 시 사용되는 지시 기준 목록입니다. 이곳에 추가된 모든 항목은 AI 검수위원의 **문제 검증** 시 지시사항 프롬프트로 병합되어 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingValidationStandardsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-cyan-400 font-bold animate-pulse">서버에서 검증 기준 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">기준 제목</th>
+                        <th className="px-4 py-3 text-left">기준 내용 요약</th>
+                        <th className="px-4 py-3 text-center w-36">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+                      {validationStandardsList.map((std, idx) => (
+                        <tr key={std.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[190px]" title={std.title}>{std.title}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap" title={std.content}>
+                            {std.content ? std.content.trim().replace(/\n/g, ' ').slice(0, 100) + (std.content.trim().length > 100 ? '...' : '') : ''}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditValidationStandardModal(std)}
+                                className="px-2 py-1 bg-cyan-600/10 border border-cyan-500/20 hover:bg-cyan-600/20 hover:border-cyan-500/40 text-cyan-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                              >
+                                <span>✏️ 수정</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteValidationStandard(std.id)}
+                                className="px-2 py-1 bg-rose-600/10 border border-rose-500/20 hover:bg-rose-600/20 hover:border-rose-500/40 text-rose-400 rounded-lg transition-all text-[10px] font-black cursor-pointer active:scale-95 flex items-center gap-1"
+                                disabled={isSavingValidationStandardsList}
+                              >
+                                <span>❌ 삭제</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {validationStandardsList.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 검증 기준이 없습니다. 새로운 기준을 추가해보세요.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddValidationStandardModal}
+                disabled={isLoadingValidationStandardsList || isSavingValidationStandardsList}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 기준 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageValidationStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 검증 기준 추가/수정 서브 모달 (Validation Standard Add/Edit Sub-Modal) */}
+      {showEditValidationStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditValidationStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg">
+                  <Sliders size={18} className="text-cyan-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingValidationStandard ? '✏️ 검증 기준 수정' : '➕ 신규 검증 기준 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditValidationStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 제목 (Topic Title)</label>
+                <input
+                  ref={editValidationTitleRef}
+                  type="text"
+                  value={editingValidationTitle}
+                  onChange={(e) => setEditingValidationTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: LaTeX 수식 문법 정밀 검증"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-cyan-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all font-semibold"
+                  disabled={isSavingValidationStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">기준 세부 내용 (Prompt Convention Text)</label>
+                <textarea
+                  ref={editValidationContentRef}
+                  value={editingValidationContent}
+                  onChange={(e) => setEditingValidationContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예:
+지문, 보기, 해설, 정답 내의 모든 LaTeX 수식($기호로 둘러싸인 표현)이 문법적으로 올바른지 확인하고 오류가 있다면 수정하십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-cyan-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingValidationStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditValidationStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingValidationStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditValidationStandard}
+                disabled={isSavingValidationStandardsList}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingValidationStandardsList ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>저장 중...</span>

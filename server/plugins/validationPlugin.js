@@ -4,6 +4,7 @@
  * 이 플러그인은 생성된 문제의 정답 및 해설이 학술적/공학적으로 올바른지 검증하고 수정하는 기능만을 수행합니다.
  */
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
+import { VALIDATION_STANDARDS } from './validationStandards.js';
 
 /**
  * AI가 생성한 문제의 정답과 해설의 올바름 여부를 검증하고 오류를 교정(Self-Healing)하여 반환합니다.
@@ -30,12 +31,7 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
 제공된 문제 객체(JSON)의 질문(question) 내용과 정답(answer/answers) 및 해설(explanation)을 비교하여, 제시된 정답이 공학적/학술적으로 맞는지 검증하십시오.
 
 [🚨 중요 검수 및 교정 사항]:
-1. **정답의 정확성 검증**:
-   - 질문에서 묻는 바와 제시된 정답(answer 또는 answers의 각 입력 항목)이 공학적 이론, 공식, 수치 계산상으로 100% 일치하고 올바른지 확인하십시오.
-   - 해설(explanation)에 적힌 설명이나 계산 과정이 정답과 논리적으로 일치하는지 확인하고, 모순이 있다면 정답과 해설을 올바르게 교정하십시오.
-2. **LaTeX 수식 문법 검증**:
-   - 지문, 보기, 해설, 정답 내의 모든 LaTeX 수식($기호로 둘러싸인 표현)이 문법적으로 올바른지 확인하고 오류가 있다면 수정하십시오 (예: 중괄호 {} 매칭, 백슬래시 이중 이스케이프 '\\\\' 적용 상태 등).
-3. 마크다운 백틱(\`\`\`) 기호나 부가 설명 없이 오직 완성된 최종 JSON 객체 텍스트만 반환하십시오.
+${VALIDATION_STANDARDS}
 
 [공학적 검증 표준 기준]:
 ${ENGINEERING_STANDARDS}
