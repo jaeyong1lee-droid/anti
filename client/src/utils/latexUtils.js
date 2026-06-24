@@ -284,10 +284,57 @@ function replaceRoots(str) {
   return processed;
 }
 
+export function healInvertedDelimiters(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  const hasFormulaCommands = (str) => {
+    // Check if it has backslash/won commands or common math notations
+    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
+    return rx.test(str);
+  };
+
+  const parts = text.split('$');
+  if (parts.length > 2) {
+    let oddPlainCount = 0;
+    let evenFormulaCount = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+      const isOdd = i % 2 !== 0;
+      const content = parts[i].trim();
+      if (!content) continue;
+
+      const isFormula = hasFormulaCommands(content);
+      if (isOdd && !isFormula && /[가-힣]/.test(content)) {
+        oddPlainCount++;
+      }
+      if (!isOdd && isFormula) {
+        evenFormulaCount++;
+      }
+    }
+
+    if (oddPlainCount > 0 && evenFormulaCount > 0) {
+      // Rebuild by swapping delimiters
+      let rebuilt = '';
+      for (let i = 0; i < parts.length; i++) {
+        const content = parts[i];
+        if (hasFormulaCommands(content)) {
+          // If it's a formula, make sure it is wrapped in $
+          rebuilt += `$${content.trim()}$`;
+        } else {
+          // Otherwise, it's plain text, keep it as-is (without $)
+          rebuilt += content;
+        }
+      }
+      return rebuilt;
+    }
+  }
+  return text;
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
-  let processed = text;
+  let processed = healInvertedDelimiters(text);
 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');

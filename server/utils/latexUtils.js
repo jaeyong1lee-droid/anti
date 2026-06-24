@@ -284,10 +284,57 @@ function replaceRoots(str) {
   return processed;
 }
 
+export function healInvertedDelimiters(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  const hasFormulaCommands = (str) => {
+    // Check if it has backslash/won commands or common math notations
+    const rx = /(?:₩|\\)(?:Delta|sigma|gamma|cdot|tau|pi|theta|alpha|beta|phi|omega|mu|lambda|rho|nu|times|frac|dfrac|le|ge|ne|neq|sqrt|sum|int|partial|sin|cos|tan)\b|[+\-*/=<>_^]|\b[a-zA-Z]_[a-zA-Z0-9]\b/i;
+    return rx.test(str);
+  };
+
+  const parts = text.split('$');
+  if (parts.length > 2) {
+    let oddPlainCount = 0;
+    let evenFormulaCount = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+      const isOdd = i % 2 !== 0;
+      const content = parts[i].trim();
+      if (!content) continue;
+
+      const isFormula = hasFormulaCommands(content);
+      if (isOdd && !isFormula && /[가-힣]/.test(content)) {
+        oddPlainCount++;
+      }
+      if (!isOdd && isFormula) {
+        evenFormulaCount++;
+      }
+    }
+
+    if (oddPlainCount > 0 && evenFormulaCount > 0) {
+      // Rebuild by swapping delimiters
+      let rebuilt = '';
+      for (let i = 0; i < parts.length; i++) {
+        const content = parts[i];
+        if (hasFormulaCommands(content)) {
+          // If it's a formula, make sure it is wrapped in $
+          rebuilt += `$${content.trim()}$`;
+        } else {
+          // Otherwise, it's plain text, keep it as-is (without $)
+          rebuilt += content;
+        }
+      }
+      return rebuilt;
+    }
+  }
+  return text;
+}
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
-  let processed = text;
+  let processed = healInvertedDelimiters(text);
 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
@@ -915,6 +962,7 @@ export const LATEX_PROMPT_INSTRUCTIONS = `
 15. 🚨 [HTML 태그 사용 절대 금지]: 어떠한 경우에도 답변 항목 내부에 <div>, <span>, <strong> 등 임의의 HTML 스타일 태그를 직접 작성하여 주입하지 마십시오. 레이아웃 붕괴를 유발하므로 텍스트 강조 시에는 오직 마크다운 문법(예: **강조**)을 사용하십시오.
 19. 🚨 [빈 기호/제목 출력 금지]: 특정 항목(예: '메커니즘', '기본가정' 등)에 해당하는 내용이 없거나 쓸 필요가 없다면, 해당 소제목 기호나 단락 자체를 아예 생략하고 출력하지 마십시오. 빈 글머리 기호(예: "• 메커니즘:")만 덩그러니 남겨두는 행위는 엄격히 금지합니다.
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
+21. 🚨 [수식 구분자($) 위치 반전 절대 금지]: 수식이 들어간 부분에만 수식 구분자($)를 씌워야 하며, 반대로 수식 외부의 한글 설명 부분에 $를 씌우고 실제 수식을 $ 바깥에 방치하는 극단적인 마킹 실수를 절대 저지르지 마십시오. (올바른 예: $u = u_0 + \Delta u$ 이므로... / 잘못된 예: u = u_0 + \Delta u $이므로$)
 
 [원시 JSON 출력 엄격 준수 규칙]
 - JSON 구조 내부의 문자열에 LaTeX 수식을 작성할 때, 백슬래시(\\) 기호는 JSON 문법 표준에 의거하여 반드시 두 번 겹친 이스케이프 형태('\\\\frac', '\\\\alpha')로만 출력해야 합니다. 
@@ -954,5 +1002,6 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 18. 🚨 [달러 기호 매칭 오류 및 이탈 방지 규칙]: 리스트 기호나 숫자가 포함된 번호 매기기(예: "1) 연성 벽체...", "2) 고강성...")가 포함된 문단 내에서 공식들을 나열할 때, 각 공식들은 개별적으로 완벽히 수식 기호($)로 열고 닫혀 있어야 합니다. 절대로 여는 수식 기호가 없는 상태에서 닫는 수식 기호만 배치하거나, 혹은 어설프게 매칭되어 한글 제목 전체가 수식 영역 안으로 빨려 들어가지 않도록 극도로 유의하십시오.
     - ❌ [절대 금지 오류 예시]: d_{H,max1} = ... $ 2) CIP 공법 적용 시: $ d_{H,max2} = ... (중간 한글 제목이 달러 기호에 갇히는 형태는 렌더링을 완전히 망가뜨립니다.)
 20. 🚨 [수식 변수 및 아래첨자 결합 유지 규칙]: 수학 기호나 공식 내에서 물리량 변수 기호와 그 아래첨자(예: Nc, Df, kh 등)는 절대로 중간에 달러 기호($ 또는 $$)를 끼워 넣어서 서로 다른 블록으로 쪼개서 출력하지 마십시오. 반드시 수식 전체를 감싸서 하나의 수식 블록 내에 모두 포함시켜야 합니다. (예: $N_c$ (O) / N$_c$ (X), $\\text{N}_c$ (O) / \\text{N}$$_c (X))
+21. 🚨 [수식 구분자($) 위치 반전 절대 금지]: 수식이 들어간 부분에만 수식 구분자($)를 씌워야 하며, 반대로 수식 외부의 한글 설명 부분에 $를 씌우고 실제 수식을 $ 바깥에 방치하는 극단적인 마킹 실수를 절대 저지르지 마십시오. (올바른 예: $u = u_0 + \Delta u$ 이므로... / 잘못된 예: u = u_0 + \Delta u $이므로$)
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
