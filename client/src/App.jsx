@@ -542,6 +542,29 @@ const buildHtmlDocument = (text, isPopup = false) => {
       .katex-display {
         padding: 0.5em 8px !important;
         margin: 0.25em 0 !important;
+        white-space: nowrap !important;
+      }
+      .katex-display > .katex {
+        display: inline-block !important;
+        white-space: nowrap !important;
+        text-align: initial !important;
+      }
+      .katex-display > .katex > .katex-html {
+        display: inline-block !important;
+        white-space: nowrap !important;
+      }
+      .katex-display > .katex > .katex-html > .base {
+        display: inline-block !important;
+        white-space: nowrap !important;
+      }
+      .formula-scroll-container {
+        white-space: nowrap !important;
+      }
+      .formula-scroll-container .katex-display {
+        overflow-x: visible !important;
+        max-width: none !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
       }
       
       /* Custom elegant thin dark scrollbars for light pastel green theme */

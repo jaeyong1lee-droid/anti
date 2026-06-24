@@ -107,10 +107,27 @@ div[class*="overflow-y-auto"] {
   scrollbar-color: rgba(255, 255, 255, 0.35) transparent !important; /* Firefox colors */
 }
 
-/* Give block formulas slight horizontal padding to prevent mathematical offsets from triggering scrollbars */
+/* Give block formulas slight horizontal padding to prevent mathematical offsets from triggering scrollbars & force single line scrolling */
 .katex-display {
   padding: 0.5em 8px !important;
   margin: 0.25em 0 !important;
+  white-space: nowrap !important;
+}
+
+.katex-display > .katex {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  text-align: initial !important;
+}
+
+.katex-display > .katex > .katex-html {
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+.katex-display > .katex > .katex-html > .base {
+  display: inline-block !important;
+  white-space: nowrap !important;
 }
 
 /* Custom elegant thin scrollbar for Webkit browsers (Chrome, Safari, iOS, Android) */
@@ -573,6 +590,15 @@ div[class*="overflow-y-auto"] {
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   scrollbar-color: rgba(244, 63, 94, 0.65) rgba(15, 23, 42, 0.4) !important;
+  white-space: nowrap !important;
+}
+
+/* Prevent nested scrollbars and allow outer formula-scroll-container to handle overflow */
+.formula-scroll-container .katex-display {
+  overflow-x: visible !important;
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Custom scrollbar styling for webkit browser engine (iOS Safari, Android Chrome, Chrome/Safari on desktop) */
