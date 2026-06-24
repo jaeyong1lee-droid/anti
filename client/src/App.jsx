@@ -1063,7 +1063,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       const dx = clientX - startPos.current.x;
       const dy = clientY - startPos.current.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 15) return;
+      if (dist < 35) return;
     }
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -2834,6 +2834,9 @@ export default function App() {
   const [editingFormulaText, setEditingFormulaText] = useState("");
   const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
   const [formulaConfirmTarget, setFormulaConfirmTarget] = useState(null);
+  useEffect(() => {
+    window.__isFormulaConfirmOpen = !!formulaConfirmTarget;
+  }, [formulaConfirmTarget]);
   const [tutorAttachedFormula, setTutorAttachedFormula] = useState(null);
   const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
 
@@ -4692,8 +4695,8 @@ export default function App() {
       const selection = window.getSelection();
       if (!selection) return;
 
-      // If formula long press is active, ignore drag popup
-      if (window.__isFormulaLongPressing) {
+      // If formula long press is active or formula confirm target is open, ignore drag popup
+      if (window.__isFormulaLongPressing || window.__isFormulaConfirmOpen) {
         return;
       }
 
@@ -4815,15 +4818,19 @@ export default function App() {
 
     const handlePointerUp = () => {
       isMouseDown.current = false;
-      const selection = window.getSelection();
-      const text = selection ? selection.toString().trim() : "";
-      if (text) {
-        if (dragStartTimeout) {
-          clearTimeout(dragStartTimeout);
-          dragStartTimeout = null;
+      // Allow selection to settle on touch/mouse release
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection ? selection.toString().trim() : "";
+        if (text) {
+          selectionStarted.current = false;
+          if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+          }
+          showPopup();
         }
-        showPopup();
-      }
+      }, 100);
     };
 
     const handleIframeSelectionChange = (e) => {
