@@ -3057,13 +3057,13 @@ ${adjustments.map((a, idx) => `
 3. **3번 문항 (공학적 의미/교훈 주관식 문제)**:
    - **"type" 값**: 반드시 "주관식 (단답형)"
    - **질문 구성**: 앞선 1~2번 계산 문제의 전개 과정이나 계산 결과가 설계 및 시공 실무에 주는 교훈, 공학적 의미(지반 거동 해석, 매개변수 감도 분석, 파괴 메커니즘 등)를 서술하도록 질문하십시오.
-   - **정답("answer")**: 채점관이 납득할 수 있는 핵심적인 공학적 설명 문장(최소 60자에서 최대 100자 내외)으로 작성하되, 단순 요약이나 평서문(~다, ~입니다) 어미를 절대 배제하고 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~확보 등)로 끝나야 하며, 중요한 필수 공학 키워드는 마크다운 강조 기호인 **키워드**로 감싸서 작성하십시오.
+   - **정답("answer")**: 채점관이 납득할 수 있는 핵심적인 공학적 설명 문장(최소 120자에서 최대 200자 내외)으로 장황하게 작성하되, 단순 요약이나 평서문(~다, ~입니다) 어미를 절대 배제하고 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~확보 등)로 끝나야 하며, 중요한 필수 공학 키워드는 마크다운 강조 기호인 **키워드**로 감싸서 작성하십시오.
    - **"explanation"**: 왜 이것이 중요한 공학적 교훈이자 의미를 가지는지 상세히 서술하십시오.
 
 4. **4번 문항 (관련 공학적 문제 발생 시 대책 주관식 문제)**:
    - **"type" 값**: 반드시 "주관식 (단답형)"
    - **질문 구성**: 이 계산 문제의 주제와 밀접하게 연관된 실무 지반공학적 문제 상황(예: 한계 상태 초과, 지반 붕괴/침하 위험, 계측치 경고 등)을 가정하고, 현장 기술사 관점에서의 구체적인 실무 대책 및 공학적 방안을 기술하도록 질문하십시오. (일반문제 13번 대책형과 비슷한 결입니다)
-   - **정답("answer")**: 구체적인 현장 대책(지반 개량 공법, 하중 저감 대책, 보강 공법 적용, 차수/배수 공법 등)을 명확하게 최소 60자에서 최대 100자 내외로 상세히 작성하되, 단순 요약이나 평서문(~다, ~입니다) 어미를 절대 배제하고 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~확보 등)로 끝나야 하며, 중요한 필수 공학 키워드는 마크다운 강조 기호인 **키워드**로 감싸서 작성하십시오.
+   - **정답("answer")**: 구체적인 현장 대책(지반 개량 공법, 하중 저감 대책, 보강 공법 적용, 차수/배수 공법 등)을 명확하게 최소 120자에서 최대 200자 내외로 매우 장황하고 상세히 작성하되, 단순 요약이나 평서문(~다, ~입니다) 어미를 절대 배제하고 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~확보 등)로 끝나야 하며, 중요한 필수 공학 키워드는 마크다운 강조 기호인 **키워드**로 감싸서 작성하십시오.
    - **"explanation"**: 제안된 대책 공법의 상세 메커니즘과 현장 적용 시 공학적 유의사항을 상세히 기술하십시오.
 
 [🚨 절대 준수 사항]:
@@ -3178,7 +3178,7 @@ ${adjustmentsPrompt}
    - 출제 원칙:
      * 12번 문제: 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
      * 13번 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
-     * 정답("answer"): 12번과 13번의 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 60자에서 최대 100자 내외)으로 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
+     * 정답("answer"): 12번과 13번의 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 120자에서 최대 200자 내외)으로 장황하게 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
      * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
 
    [3번~11번 문제 중 3개] 주관식 (표채우기):
@@ -3196,7 +3196,7 @@ ${adjustmentsPrompt}
            - 수압파쇄시험 vs 응력해방법 비교 시: '측정 데이터의 정확성과 신뢰성을 확보하기 위해 현장에서 통제/확보해야 할 주요 조치 사항'
         🔍 **자기 검증 필수**: 구분 항목 작성 후 반드시 자문하십시오—**"이 구분항목을 비교 대상 컬럼(헤더) 없이 단독으로 읽었을 때, 무슨 토픽/주제에 대한 비교표인지 추측할 수 있는가?"** → 추측할 수 없다면 구분항목이 너무 범용적인 것이므로, 해당 토픽의 고유 특성을 반영하여 더 구체적으로 수정하십시오.
    - ⚠️ [중요 금지 규칙 - 입력 편의성 극대화]: 주관식 표채우기 문제 출제 시, 사용자가 직접 수식(예: $\\sqrt{k_h/k_v}$와 같은 루트, 제곱, 분수식 등)이나 로마자/그리스 문자 기호, 또는 단위(m, kN, Pa 등)를 직접 키보드로 입력해야 하는 문제는 **절대로 출제하지 마십시오.** 키보드로 기호 및 수식을 입력하는 것은 불가능에 가깝고 오타 발생률이 극도로 높습니다.
-   - ⚠️ [정답 구성 원칙]: 수식이나 공식 자체를 묻고 싶다면 반드시 '객관식'으로 질문을 구성하십시오. 주관식 표채우기 빈칸(\`[INPUT_1]\`)에는 단순히 '면모 구조 형성'이나 '이온 교환' 같은 5~6자 내외의 단순 용어 명칭은 **절대로 출제하지 마십시오.** 대신 **핵심 원리/개념을 관통하여 15자~20자 내외로 서술해야 하는 서술형 문구**이거나, 혹은 **특정 공학적 상황을 가정했을 때 대처 방안 및 어떻게 해야 하는가에 대해 15자~20자 내외로 명확히 답하는 구체적인 서술형 문구**를 정답으로 구성하십시오.
+   - ⚠️ [정답 구성 원칙]: 수식이나 공식 자체를 묻고 싶다면 반드시 '객관식'으로 질문을 구성하십시오. 주관식 표채우기 빈칸(\`[INPUT_1]\`)에는 단순히 '면모 구조 형성'이나 '이온 교환' 같은 5~6자 내외의 단순 용어 명칭은 **절대로 출제하지 마십시오.** 대신 **핵심 원리/개념을 관통하여 최소 120자에서 최대 200자 내외로 매우 장황하게 서술해야 하는 장문 메커니즘 설명형 문구**이거나, 혹은 **특정 공학적 상황을 가정했을 때 대처 방안 및 어떻게 해야 하는가에 대해 최소 120자에서 최대 200자 내외로 명확히 답하는 구체적인 서술형 문구**를 정답으로 구성하십시오.
     - ⚠️ [지문과 빈칸 요구사항의 완벽한 일치화 - 극도로 중요!]:
       * 표채우기 문항 출제 시, 질문 지문(question)의 서술 내용과 표(tableData) 내 빈칸(INPUT)의 요구사항, 그리고 정답(answers)의 형태가 반드시 100% 완벽하게 일치해야 합니다.
       * **계산형(수치 입력) 일치화**: 만약 표의 빈칸이 수치 계산 결과(예: 특정 깊이에서의 주동토압력, 지하수위 변화에 따른 수평 응력 등)나 수학적 수치를 요구한다면, 질문 지문에서는 절대 "지반공학적 설계 의미를 기술하라"거나 "이유와 특성을 설명하라"와 같은 서술적 요구사항을 포함하지 마십시오. 지문은 오직 "빈칸 (A), (B)에 들어갈 계산 값을 구하여 표를 완성하십시오"처럼 수치 계산/기입만을 지시해야 합니다.
@@ -3212,7 +3212,7 @@ ${adjustmentsPrompt}
    - "tableData": 표의 데이터를 구조화한 객체. 반드시 다음 키를 포함하는 오브젝트여야 합니다:
      * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["구분 항목", "소일네일링", "어스앵커"])
      * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 첫 번째 '구분 항목' 열을 제외하고, 출제하고자 하는 핵심 비교 포인트만 순차적으로 '[INPUT_1]', '[INPUT_2]' 등의 입력 토큰으로 비워두고, 나머지 셀들은 일반 텍스트 설명문구(정답 및 힌트가 되는 모범 서술형 문장)로 채워 자연스러운 표의 문맥을 보존하십시오. ❌ 모든 비교 셀을 기계적으로 무조건 전부 비워두는 것을 엄격히 금지합니다. (예: rows 구조: [["지지 매커니즘", "[INPUT_1]", "[INPUT_2]"], ["설계 핵심 변수", "[INPUT_3]", "인장력을 도입하여 변위를 적극적 제어"]])
-   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "인장 및 전단력에 대한 수동적 저항", "INPUT_2": "정착지반 마찰저항 및 인장력 선도입", "INPUT_3": "선행 긴장력을 도입하지 않음", "INPUT_4": "인장력을 도입하여 변위를 적극적 제어"}). 각 모범 답안은 핵심 메커니즘을 상세히 기술하는 **15자~20자 내외의 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
+   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "인장 및 전단력에 대한 수동적 저항", "INPUT_2": "정착지반 마찰저항 및 인장력 선도입", "INPUT_3": "선행 긴장력을 도입하지 않음", "INPUT_4": "인장력을 도입하여 변위를 적극적 제어"}). 각 모범 답안은 핵심 메커니즘과 지반의 반응 인과관계를 상세히 서술하는 **최소 120자에서 최대 200자 내외의 장문 메커니즘 설명식 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
      🚨 **[모범 답안-구분항목 범주 일치 원칙 - 극도로 중요!]**: 각 INPUT의 모범 답안은 반드시 **해당 행의 구분 항목(행 제목)이 요구하는 답변 범주**에 정확히 부합하는 내용이어야 합니다. 예를 들어 구분 항목이 '실무 활용처 및 적용 사례'이면 모범 답안도 '어디에 쓰이는지(활용처)'를 기술해야 하고, '시공 시 유의사항 및 한계'이면 '주의해야 할 점(유의사항)'을 기술해야 합니다. 구분 항목이 묻는 범주와 전혀 다른 범주의 답(예: 유의점을 물었는데 활용처를 답안으로 작성)은 **출제 오류**이므로 절대 발생시키지 마십시오.
    - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
 
@@ -7284,7 +7284,7 @@ app.get('/api/debug-db', async (req, res) => {
   }
 });
 
-// TEMPORARY: Update question 11 and all seepage-related question correct answers in database
+// TEMPORARY: Update question 11 and all seepage/pile-related question correct answers in database
 app.get('/api/temp-update-db', async (req, res) => {
   try {
     const updateQuestionObj = (formulaQuestions) => {
@@ -7293,13 +7293,22 @@ app.get('/api/temp-update-db', async (req, res) => {
         if (!q) return q;
         
         // 댐 침투 또는 침윤선 관련 질문 검출 (ID 11 또는 제목/질문에 '침투' 혹은 '침윤선' 포함 시)
-        const isTarget = q.id === 11 || 
-                         (q.title && (q.title.includes('침투') || q.title.includes('침윤선'))) ||
-                         (q.question && (q.question.includes('침투') || q.question.includes('침윤선')));
+        const isSeepageTarget = q.id === 11 || 
+                                (q.title && (q.title.includes('침투') || q.title.includes('침윤선'))) ||
+                                (q.question && (q.question.includes('침투') || q.question.includes('침윤선')));
+        
+        // 말뚝 기초 t-z, q-z 거동 관련 질문 검출 (제목/질문에 '말뚝', '주면마찰', '선단지' 포함 시)
+        const isPileTarget = (q.title && (q.title.includes('말뚝') || q.title.includes('주면마찰') || q.title.includes('선단지'))) ||
+                             (q.question && (q.question.includes('말뚝') || q.question.includes('주면마찰') || q.question.includes('선단지')));
                          
-        if (isTarget) {
-          console.log(`[Migration] Migrating question ID: ${q.id}, Title: ${q.title}`);
+        if (isSeepageTarget) {
+          console.log(`[Migration] Migrating Seepage Question ID: ${q.id}, Title: ${q.title}`);
           
+          const answerA = "댐 제체 상류측 사면 표면에 조밀한 불투수성 점토 코어 코아존(Core zone)을 다짐 형성하거나 콘크리트 표면 차수벽(CFRD), 아스팔트 콘크리트 차수벽 및 불투수성 차수 시트 등 투수계수가 극히 낮은 강력한 차단 장벽을 연속적으로 시공함으로써, 외부 저수지로부터 제체 내부로 유입되는 전체 침투 유량(Q) 자체를 물리적으로 원천 차단함과 동시에 침투 경로를 장대하게 연장시켜 유동 속도 및 동수경사(i)를 설계 허용치 이하로 대폭 저하시키고 국부적인 파이핑 파괴 현상을 미연에 방지하여 침투 거동에 대한 장기적 공학 안정성을 능동적으로 확보함";
+          const answerB = "투수계수가 주변 모체 토사에 비해 압도적으로 높은 청결한 자갈, 쇄석 및 필터용 모래 재료(Blanket Drain, Toe Drain, 침투 배수구 등)를 하류측 경계부에 체계적으로 배치하여, 제체 내부로 이미 유입되어 유동하는 유수압 및 침투수를 하류 외측 사면 노출면에서 분출이나 세굴 없이 안전하게 포집함과 동시에 중력 작용 하에 신속하고 원활하게 제체 외곽으로 배수 유도함으로써 유수압에 의한 침투압(유효응력 감소)을 급격히 소산시키고 지반 입자의 유실(Piping)을 물리적으로 완벽히 방지함";
+          const answerC = "불투수성 점토 코어 벽체 또는 차수 차벽의 바로 전면에서 매우 강한 상하류 수위차에 기인한 침투류 흐름이 직접적으로 접촉 차단되므로, 불투수성 차수벽 내부 두께 구간을 침투수가 힘겹게 투과하는 과정에서 급격한 전수두 손실(Total head loss) 및 에너지 감쇄가 집중적으로 강제 유도되며, 이 결과 차벽 바로 뒷면인 하류 지반 구역부터는 제체 내부의 자유수면(Free surface)인 침윤선(Phreatic line)의 연직 높이가 급격히 하향 굴절되어 댐 바닥 기초면 부근 및 저면 근처로 극적인 낙하 거동을 보이게 됨";
+          const answerD = "제체 내부 깊숙이 유출 및 침투하는 자유 유수를 하부 사면 토구부에 특별히 설계된 수평 드레인(Horizontal Drain)과 필터 구조체가 중력 배수 집수 작용을 통해 하류 외측 사면 밖으로 강제로 신속히 방출시킴으로써, 상승하려는 침윤선이 제체 하류측 노출 사면(유출면)으로 직접 접하여 분출되는 현상을 완벽히 차단하고 하방으로만 완만하고 안정되게 침투 흐름을 유도하여 제체 저면 및 기초 지반 근처로 침윤선의 연직 위치를 극도로 낮게 하강 제어함";
+
           // 1. table_data 형식 업데이트
           if (Array.isArray(q.table_data)) {
             q.table_data = q.table_data.map(row => {
@@ -7308,9 +7317,9 @@ app.get('/api/temp-update-db', async (req, res) => {
                 if (Array.isArray(row.cols)) {
                   row.cols = row.cols.map(col => {
                     if (col.col_header && (col.col_header.includes('차수') || col.col_header.includes('A'))) {
-                      col.answer = "제체 상류측에 점토 코어, 콘크리트 차수벽(CFRD), 또는 차수 시트 등 불투수성 차벽을 조밀하게 형성하여 침투 유량(Q) 자체를 물리적으로 직접 차단합니다. 이로 인해 침투수의 흐름을 억제하여 하류측으로 유입되는 유속과 동수경사(i)를 설계 기준치 이하로 대폭 감쇠시켜 침투 안정성을 확보합니다.";
+                      col.answer = answerA;
                     } else if (col.col_header && (col.col_header.includes('배수') || col.col_header.includes('B'))) {
-                      col.answer = "투수성이 매우 높은 자갈, 모래, 필터재(Blanket, Toe Drain 등)를 하류측 경계나 제체 내부 사면에 선제적으로 포설하여, 유입된 침투류가 흙 입자를 유실시키지 않고 사전에 유도된 안전한 배수 통로를 따라 원활하고 신속하게 하류 외측으로 배출되도록 함으로써 지반 내 축적되는 침투류 압력을 소산시킵니다.";
+                      col.answer = answerB;
                     }
                     return col;
                   });
@@ -7319,9 +7328,9 @@ app.get('/api/temp-update-db', async (req, res) => {
                 if (Array.isArray(row.cols)) {
                   row.cols = row.cols.map(col => {
                     if (col.col_header && (col.col_header.includes('차수') || col.col_header.includes('C'))) {
-                      col.answer = "차수벽(또는 불투수성 코어) 전단에서 침투류 흐름이 막히기 때문에 차수재 두께 구간을 통과하면서 급격한 전수두 강하(Head drop)가 일어납니다. 이 급격한 수두 감쇄 메커니즘을 유도하여, 차수벽 바로 뒷면(하류측)부터 제체 내부의 침윤선(자유수면) 높이를 하부 바닥 기초면 근처로 급격히 저하시킵니다.";
+                      col.answer = answerC;
                     } else if (col.col_header && (col.col_header.includes('배수') || col.col_header.includes('D'))) {
-                      col.answer = "제체 내부로 유출되는 침투수를 하단부 필터 및 배수재가 집수하여 하류 사면 밖으로 바로 빠져나가게 만듭니다. 이를 통해 침윤선이 제체 하류 사면의 공기와 만나는 면(유출면, Seepage Face)으로 직접 뿜어져 나오지 못하도록 억제하고, 침윤선 자체를 제체 밑바닥 저면 쪽으로 대폭 끌어내려 강하시킵니다.";
+                      col.answer = answerD;
                     }
                     return col;
                   });
@@ -7331,39 +7340,74 @@ app.get('/api/temp-update-db', async (req, res) => {
             });
           }
           
-          // 2. answers (INPUT) 맵 객체 형식 업데이트
+          // 2. answers (INPUT) 맵 객체 형식 업데이트 (2배 장문형 및 명사형 종결어미)
           if (q.answers) {
-            // INPUT_1 (A: 침투제어 차수), INPUT_2 (B: 침투제어 배수)
-            // INPUT_3 (C: 침윤선 차수), INPUT_4 (D: 침윤선 배수) 형태로 구성된 경우 강제 매핑
-            if (q.answers.INPUT_1 !== undefined) {
-              q.answers.INPUT_1 = "제체 상류측에 점토 코어, 콘크리트 차수벽(CFRD), 또는 차수 시트 등 불투수성 차벽을 조밀하게 형성하여 침투 유량(Q) 자체를 물리적으로 직접 차단합니다. 이로 인해 침투수의 흐름을 억제하여 하류측으로 유입되는 유속과 동수경사(i)를 설계 기준치 이하로 대폭 감쇠시켜 침투 안정성을 확보합니다.";
-            }
-            if (q.answers.INPUT_2 !== undefined) {
-              q.answers.INPUT_2 = "투수성이 매우 높은 자갈, 모래, 필터재(Blanket, Toe Drain 등)를 하류측 경계나 제체 내부 사면에 선제적으로 포설하여, 유입된 침투류가 흙 입자를 유실시키지 않고 사전에 유도된 안전한 배수 통로를 따라 원활하고 신속하게 하류 외측으로 배출되도록 함으로써 지반 내 축적되는 침투류 압력을 소산시킵니다.";
-            }
-            if (q.answers.INPUT_3 !== undefined) {
-              q.answers.INPUT_3 = "차수벽(또는 불투수성 코어) 전단에서 침투류 흐름이 막히기 때문에 차수재 두께 구간을 통과하면서 급격한 전수두 강하(Head drop)가 일어납니다. 이 급격한 수두 감쇄 메커니즘을 유도하여, 차수벽 바로 뒷면(하류측)부터 제체 내부의 침윤선(자유수면) 높이를 하부 바닥 기초면 근처로 급격히 저하시킵니다.";
-            }
-            if (q.answers.INPUT_4 !== undefined) {
-              q.answers.INPUT_4 = "제체 내부로 유출되는 침투수를 하단부 필터 및 배수재가 집수하여 하류 사면 밖으로 바로 빠져나가게 만듭니다. 이를 통해 침윤선이 제체 하류 사면의 공기와 만나는 면(유출면, Seepage Face)으로 직접 뿜어져 나오지 못하도록 억제하고, 침윤선 자체를 제체 밑바닥 저면 쪽으로 대폭 끌어내려 강하시킵니다.";
-            }
-            
-            // 혹시 다른 INPUT 번호일 경우의 예외 보완
-            if (q.answers.INPUT_5 !== undefined) {
-              q.answers.INPUT_5 = "차수벽(또는 불투수성 코어) 전단에서 침투류 흐름이 막히기 때문에 차수재 두께 구간을 통과하면서 급격한 전수두 강하(Head drop)가 일어납니다. 이 급격한 수두 감쇄 메커니즘을 유도하여, 차수벽 바로 뒷면(하류측)부터 제체 내부의 침윤선(자유수면) 높이를 하부 바닥 기초면 근처로 급격히 저하시킵니다.";
-            }
-            if (q.answers.INPUT_6 !== undefined) {
-              q.answers.INPUT_6 = "제체 내부로 유출되는 침투수를 하단부 필터 및 배수재가 집수하여 하류 사면 밖으로 바로 빠져나가게 만듭니다. 이를 통해 침윤선이 제체 하류 사면의 공기와 만나는 면(유출면, Seepage Face)으로 직접 뿜어져 나오지 못하도록 억제하고, 침윤선 자체를 제체 밑바닥 저면 쪽으로 대폭 끌어내려 강하시킵니다.";
-            }
+            if (q.answers.INPUT_1 !== undefined) q.answers.INPUT_1 = answerA;
+            if (q.answers.INPUT_2 !== undefined) q.answers.INPUT_2 = answerB;
+            if (q.answers.INPUT_3 !== undefined) q.answers.INPUT_3 = answerC;
+            if (q.answers.INPUT_4 !== undefined) q.answers.INPUT_4 = answerD;
+            if (q.answers.INPUT_5 !== undefined) q.answers.INPUT_5 = answerC;
+            if (q.answers.INPUT_6 !== undefined) q.answers.INPUT_6 = answerD;
           }
         }
+        
+        if (isPileTarget) {
+          console.log(`[Migration] Migrating Pile Question ID: ${q.id}, Title: ${q.title}`);
+          
+          const answerA = "연직 압축 하중을 받는 말뚝의 거동 과정에서, 말뚝 본체의 외주면 표면(Interface)과 이를 둘러싸고 있는 인접 주변 지반 사이의 극소 경계면 영역에서 불가피하게 수반되는 상대적인 하향 전단 변위로 인해 흙 입자 상호 간의 조밀한 물리적 맞물림 구조가 해제되고 전단 응력이 급격히 응축되면서 극대화되며, 축적된 전단 응력이 경계면 흙의 한계 전단강도 값에 최종적으로 도달함에 따라 미끄러짐(Sliding) 형태의 국부적인 경계면 전단 파괴가 외주면 전체를 따라 동시다발적 및 집중적으로 유도되는 지반 역학적 거동 형태";
+          const answerB = "말뚝 하단부 선단부의 하부 지지 지반에서 상부로부터 전달되는 거대한 연직 하중에 저항하기 위해 선단 직하부의 흙 입자들이 압축 및 밀착되면서 탄소성 거동을 나타내며 극심한 체적 압축 변형을 겪고, 한계를 초과하면서 말뚝 선단 아래 지반 내부의 가상 전단 미끄러짐 파괴선(Prandtl 또는 Terzaghi 쐐기 영역)을 따라 극한 저항 능력이 점진적 및 공간적으로 완전 발현되어 주변 지반으로 전단 융기 파괴가 연쇄적으로 파급되며 말뚝을 최종적으로 지탱하는 거동 형태";
+          const answerC = "주면부 마찰 전단 저항력이 지반 강도에 따라 최대치로 발현되기 위해, 말뚝의 직경(D) 대비 약 0.5%에서 1.0%에 불과한 지극히 미소하고 미세한 수준의 하향 상대 변위(Micro-deformation)가 말뚝과 주변 지반 경계면 사이에 선제적으로 침하 형태로 발생하기만 해도 주변 흙의 전단 저항 성능 및 극한 주동 마찰력이 아주 신속하고 즉각적으로 100% 완전 발현되는 기하학적 및 역학적 특징";
+          const answerD = "하부 선단 지층의 조밀한 압축성과 강도 발현을 위한 소성 평형 상태의 토사 쐐기 영역이 공간적으로 완전히 성숙 및 발달하여 극한 선단 지지력이 최대로 발현되기 위해, 말뚝 직경(D)의 최소 10%에서 최대 25% 이상이라는 매우 지대하고 큰 수준의 거대한 연직 방향 대변위 침하량(Large displacement)이 수반되어야 지반 내부의 전단 강도 저항력이 최종 한계 상태에 도달하게 되는 역학적 특징";
+
+          // 1. table_data 형식 업데이트
+          if (Array.isArray(q.table_data)) {
+            q.table_data = q.table_data.map(row => {
+              const header = row.row_header || '';
+              if (header.includes('지배적인 역학') || header.includes('(A)') || header.includes('(B)')) {
+                if (Array.isArray(row.cols)) {
+                  row.cols = row.cols.map(col => {
+                    if (col.col_header && (col.col_header.includes('주면') || col.col_header.includes('A'))) {
+                      col.answer = answerA;
+                    } else if (col.col_header && (col.col_header.includes('선단') || col.col_header.includes('B'))) {
+                      col.answer = answerB;
+                    }
+                    return col;
+                  });
+                }
+              } else if (header.includes('상대 침하량') || header.includes('(C)') || header.includes('(D)')) {
+                if (Array.isArray(row.cols)) {
+                  row.cols = row.cols.map(col => {
+                    if (col.col_header && (col.col_header.includes('주면') || col.col_header.includes('C'))) {
+                      col.answer = answerC;
+                    } else if (col.col_header && (col.col_header.includes('선단') || col.col_header.includes('D'))) {
+                      col.answer = answerD;
+                    }
+                    return col;
+                  });
+                }
+              }
+              return row;
+            });
+          }
+          
+          // 2. answers (INPUT) 맵 객체 형식 업데이트 (2배 장문형 및 명사형 종결어미)
+          if (q.answers) {
+            if (q.answers.INPUT_1 !== undefined) q.answers.INPUT_1 = answerA;
+            if (q.answers.INPUT_2 !== undefined) q.answers.INPUT_2 = answerB;
+            if (q.answers.INPUT_3 !== undefined) q.answers.INPUT_3 = answerC;
+            if (q.answers.INPUT_4 !== undefined) q.answers.INPUT_4 = answerD;
+            if (q.answers.INPUT_5 !== undefined) q.answers.INPUT_5 = answerC;
+            if (q.answers.INPUT_6 !== undefined) q.answers.INPUT_6 = answerD;
+          }
+        }
+        
         return q;
       });
     };
 
     let log = [];
 
-    // 1. app_session 테이블 전체를 스캔하여 댐/침투 관련 세션 키를 모두 갱신
+    // 1. app_session 테이블 전체를 스캔하여 댐/말뚝 관련 세션 키를 모두 갱신
     const sessions = await dbQuery.all("SELECT key, value FROM app_session");
     for (const s of sessions) {
       if (!s.value) continue;
@@ -7411,8 +7455,6 @@ app.get('/api/temp-update-db', async (req, res) => {
     // 2. topics 테이블 업데이트 (안전하게 컬럼 존재성 검사 후 에러 방증)
     try {
       const topics = await dbQuery.all("SELECT id, title FROM topics");
-      // topics 테이블의 pdf_data 등에서 침투 관련 텍스트 데이터를 찾아 교정하거나
-      // schema가 다른 구 버전 DB 등을 호환 처리
       log.push(`Scanned topics count: ${topics.length}`);
     } catch (topicErr) {
       log.push(`Skipped topics scan: ${topicErr.message}`);
