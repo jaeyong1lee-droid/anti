@@ -41,4 +41,5 @@ build/
 client/dist/
 .env*
 .vercel/
+scratch/
 
