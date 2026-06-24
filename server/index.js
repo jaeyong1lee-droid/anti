@@ -6952,6 +6952,9 @@ app.post('/api/engineering-standards', async (req, res) => {
     // 3. Save to local file system
     await writeStandardToFile('engineering_standards', standards);
 
+    // 4. Push to Vercel production server
+    pushStandardToProduction('engineering-standards', standards).catch(() => {});
+
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/engineering-standards error:', err);
@@ -7002,6 +7005,9 @@ app.post('/api/grading-standards', async (req, res) => {
 
     // 3. Save to local file system
     await writeStandardToFile('grading_standards', standards);
+
+    // 4. Push to Vercel production server
+    pushStandardToProduction('grading-standards', standards).catch(() => {});
 
     res.json({ ok: true });
   } catch (err) {
@@ -7054,6 +7060,9 @@ app.post('/api/validation-standards', async (req, res) => {
     // 3. Save to local file system
     await writeStandardToFile('validation_standards', standards);
 
+    // 4. Push to Vercel production server
+    pushStandardToProduction('validation-standards', standards).catch(() => {});
+
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/validation-standards error:', err);
@@ -7100,6 +7109,9 @@ app.post('/api/generation-standards', async (req, res) => {
 
     // 3. Save to local file system
     await writeStandardToFile('generation_standards', standards);
+
+    // 4. Push to Vercel production server
+    pushStandardToProduction('generation-standards', standards).catch(() => {});
 
     res.json({ ok: true });
   } catch (err) {
@@ -7834,6 +7846,25 @@ export const USER_CONVENTIONS = "";
     } else {
       console.error(`Failed to write ${key} to local file:`, fsErr.message);
     }
+  }
+}
+
+async function pushStandardToProduction(apiPath, standards) {
+  const isVercel = !!process.env.VERCEL;
+  if (isVercel) return;
+  try {
+    const res = await fetch(`https://anti-ashy.vercel.app/api/${apiPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ standards })
+    });
+    if (res.ok) {
+      console.log(`[Push] Successfully pushed ${apiPath} to Vercel production.`);
+    } else {
+      console.warn(`[Push] Failed to push ${apiPath} to Vercel production: HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[Push] Network error pushing ${apiPath} to Vercel production:`, err.message);
   }
 }
 
