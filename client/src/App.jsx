@@ -1048,9 +1048,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     const katexEl = target.closest('.katex, .katex-display');
     if (!katexEl) return;
 
+    // Set global flag indicating that formula long press is active
+    window.__isFormulaLongPressing = true;
+
     longPressTimer.current = setTimeout(() => {
       isLongPressActive.current = true;
       triggerAddFormula(katexEl);
+      window.__isFormulaLongPressing = false;
     }, 2000);
   };
 
@@ -1059,12 +1063,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       const dx = clientX - startPos.current.x;
       const dy = clientY - startPos.current.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 25) return;
+      if (dist < 15) return;
     }
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    window.__isFormulaLongPressing = false;
   };
 
   const handleMouseDown = (e) => {
@@ -4679,88 +4684,129 @@ export default function App() {
   // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
     let selectionTimeout = null;
+    let dragStartTimeout = null;
     const isMouseDown = { current: false };
+    const selectionStarted = { current: false };
+
+    const showPopup = () => {
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      // If formula long press is active, ignore drag popup
+      if (window.__isFormulaLongPressing) {
+        return;
+      }
+
+      // If the selection is inside the popup, ignore selection changes
+      let anchorNode = selection.anchorNode;
+      let isInsidePopup = false;
+      let node = anchorNode;
+      while (node) {
+        if (node.id === 'drag-ai-popup') {
+          isInsidePopup = true;
+          break;
+        }
+        node = node.parentNode;
+      }
+      if (isInsidePopup) {
+        return;
+      }
+
+      // If the active element is an iframe, let the iframe's selection handler handle it
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.tagName === 'IFRAME') {
+        return;
+      }
+
+      const text = getSelectionTextWithLatex(selection);
+
+      if (!text) {
+        setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+        return;
+      }
+
+      // Ignore selections in input fields, textareas, etc.
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      try {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        // Find closest data-qkey on parent elements of selection
+        let anchorEl = selection.anchorNode;
+        if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
+          anchorEl = anchorEl.parentElement;
+        }
+        const cardEl = anchorEl?.closest('[data-qkey]');
+        const foundQKey = cardEl?.getAttribute('data-qkey') || '';
+
+        setSelectionPopup(prev => ({
+          show: true,
+          text: text,
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + 8,
+          question: '',
+          questionKey: foundQKey,
+          tutorType: foundQKey ? prev.tutorType : 'sidebar'
+        }));
+      } catch (err) {}
+    };
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
 
-      // If user is actively dragging (mouse/touch is down), do not show the popup yet
-      if (isMouseDown.current) {
+      const selection = window.getSelection();
+      const text = selection ? selection.toString().trim() : "";
+
+      if (!text) {
+        selectionStarted.current = false;
+        if (dragStartTimeout) {
+          clearTimeout(dragStartTimeout);
+          dragStartTimeout = null;
+        }
+        setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
         return;
       }
 
-      selectionTimeout = setTimeout(() => {
-        const selection = window.getSelection();
-        if (!selection) return;
-
-        // If the selection is inside the popup, ignore selection changes
-        let anchorNode = selection.anchorNode;
-        let isInsidePopup = false;
-        let node = anchorNode;
-        while (node) {
-          if (node.id === 'drag-ai-popup') {
-            isInsidePopup = true;
-            break;
-          }
-          node = node.parentNode;
+      // If selection just started, start the 1.5s timer
+      if (!selectionStarted.current) {
+        selectionStarted.current = true;
+        if (dragStartTimeout) {
+          clearTimeout(dragStartTimeout);
         }
-        if (isInsidePopup) {
-          return;
-        }
-
-        // Ignore selections that start inside a KaTeX element to prioritize formula long-press
-        let anchorEl = anchorNode;
-        if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
-          anchorEl = anchorEl.parentElement;
-        }
-        if (anchorEl && anchorEl.closest('.katex, .katex-display')) {
-          return;
-        }
-
-        // If the active element is an iframe, let the iframe's selection handler handle it
-        const activeEl = document.activeElement;
-        if (activeEl && activeEl.tagName === 'IFRAME') {
-          return;
-        }
-
-        const text = getSelectionTextWithLatex(selection);
-
-        if (!text) {
-          setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
-          return;
-        }
-
-        // Ignore selections in input fields, textareas, etc.
-        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-          return;
-        }
-
-        try {
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0) return;
-
-          // Find closest data-qkey on parent elements of selection
-          let anchorEl = selection.anchorNode;
-          if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
-            anchorEl = anchorEl.parentElement;
-          }
-          const cardEl = anchorEl?.closest('[data-qkey]');
-          const foundQKey = cardEl?.getAttribute('data-qkey') || '';
-
-          setSelectionPopup(prev => ({
-            show: true,
-            text: text,
-            x: rect.left + rect.width / 2,
-            y: rect.bottom + 8,
-            question: '',
-            questionKey: foundQKey,
-            tutorType: foundQKey ? prev.tutorType : 'sidebar'
-          }));
-        } catch (err) {}
-      }, 200); // 200ms debounce
+        dragStartTimeout = setTimeout(() => {
+          showPopup();
+        }, 1500);
+      } else {
+        // Debounce selection coordinate updates during active drag
+        selectionTimeout = setTimeout(() => {
+          setSelectionPopup(prev => {
+            if (prev.show) {
+              const sel = window.getSelection();
+              if (sel && sel.rangeCount > 0) {
+                try {
+                  const range = sel.getRangeAt(0);
+                  const rect = range.getBoundingClientRect();
+                  if (rect.width > 0 && rect.height > 0) {
+                    return {
+                      ...prev,
+                      text: getSelectionTextWithLatex(sel),
+                      x: rect.left + rect.width / 2,
+                      y: rect.bottom + 8
+                    };
+                  }
+                } catch (e) {}
+              }
+            }
+            return prev;
+          });
+        }, 200);
+      }
     };
 
     const handlePointerDown = () => {
@@ -4769,8 +4815,15 @@ export default function App() {
 
     const handlePointerUp = () => {
       isMouseDown.current = false;
-      // Trigger selection change logic when drag/touch ends
-      handleSelectionChange();
+      const selection = window.getSelection();
+      const text = selection ? selection.toString().trim() : "";
+      if (text) {
+        if (dragStartTimeout) {
+          clearTimeout(dragStartTimeout);
+          dragStartTimeout = null;
+        }
+        showPopup();
+      }
     };
 
     const handleIframeSelectionChange = (e) => {
@@ -4817,6 +4870,7 @@ export default function App() {
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
+      if (dragStartTimeout) clearTimeout(dragStartTimeout);
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('mouseup', handlePointerUp);
