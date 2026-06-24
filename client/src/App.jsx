@@ -4787,6 +4787,22 @@ export default function App() {
     }
   }, [selectionPopup.show, selectionPopup.text]);
 
+  // Automatically close selection popup on any view/tab screen transition
+  useEffect(() => {
+    setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+  }, [
+    viewMode,
+    selectedTopic?.id,
+    showExam,
+    showFormulaExam,
+    showTheoryExam,
+    showAnswerSheet,
+    reviewMobileTab,
+    examMobileTab,
+    formulaMobileTab,
+    answersheetMobileTab
+  ]);
+
   const handleCaretPlacement = (e, containerName) => {
     // If the user is dragging or has selected text, do not show/update the caret to prevent clearing selection
     const selection = window.getSelection();
