@@ -7287,7 +7287,97 @@ app.get('/api/debug-db', async (req, res) => {
   }
 });
 
+// TEMPORARY: Update question 11 correct answer in database
+app.get('/api/temp-update-db', async (req, res) => {
+  try {
+    const updateQuestionObj = (formulaQuestions) => {
+      if (!Array.isArray(formulaQuestions)) return formulaQuestions;
+      return formulaQuestions.map(q => {
+        if (q && q.id === 11) {
+          if (Array.isArray(q.table_data)) {
+            q.table_data = q.table_data.map(row => {
+              const header = row.row_header || '';
+              if (header.includes('(A)')) {
+                if (Array.isArray(row.cols)) {
+                  row.cols = row.cols.map(col => {
+                    if (col.col_header && col.col_header.includes('차수')) {
+                      col.answer = "제체 상류측에 점토 코어, 콘크리트 차수벽(CFRD), 또는 차수 시트 등 불투수성 차벽을 조밀하게 형성하여 침투 유량(Q) 자체를 물리적으로 직접 차단합니다. 이로 인해 침투수의 흐름을 억제하여 하류측으로 유입되는 유속과 동수경사(i)를 설계 기준치 이하로 대폭 감쇠시켜 침투 안정성을 확보합니다.";
+                    } else if (col.col_header && col.col_header.includes('배수')) {
+                      col.answer = "투수성이 매우 높은 자갈, 모래, 필터재(Blanket, Toe Drain 등)를 하류측 경계나 제체 내부 사면에 선제적으로 포설하여, 유입된 침투류가 흙 입자를 유실시키지 않고 사전에 유도된 안전한 배수 통로를 따라 원활하고 신속하게 하류 외측으로 배출되도록 함으로써 지반 내 축적되는 침투류 압력을 소산시킵니다.";
+                    }
+                    return col;
+                  });
+                }
+              } else if (header.includes('(B)')) {
+                if (Array.isArray(row.cols)) {
+                  row.cols = row.cols.map(col => {
+                    if (col.col_header && col.col_header.includes('차수')) {
+                      col.answer = "불투수성 차수벽 전면부(상류측)에 수위차에 의한 강력한 침투수력(단위체적당 침투력 j = i * r_w)이 집중적으로 작용하게 되며, 차수벽 바로 뒷면인 배면부(하류측)는 흐름 차단 효과 덕분에 상대적으로 아주 낮고 안정한 상태의 저수압 분포가 유지되어 침투 파괴 위험을 제어합니다.";
+                    } else if (col.col_header && col.col_header.includes('배수')) {
+                      col.answer = "침투 배출 경로 상의 동수경사(i)를 효과적으로 경감시켜 제체 자중을 상쇄시키는 상향 침투수력을 소거합니다. 특히 하류 유출단 부근에서의 유출 침투압을 완화하여 모래 지반이 상향 수류에 의해 끓어오르는 분사현상(Boiling) 및 흙 입자가 파이프 모양 구멍을 만들며 빠져나가는 파이핑(Piping) 파괴를 원천 방지합니다.";
+                    }
+                    return col;
+                  });
+                }
+              } else if (header.includes('(C)')) {
+                if (Array.isArray(row.cols)) {
+                  row.cols = row.cols.map(col => {
+                    if (col.col_header && col.col_header.includes('차수')) {
+                      col.answer = "차수벽(또는 불투수성 코어) 전단에서 침투류 흐름이 막히기 때문에 차수재 두께 구간을 통과하면서 급격한 전수두 강하(Head drop)가 일어납니다. 이 급격한 수두 감쇄 메커니즘을 유도하여, 차수벽 바로 뒷면(하류측)부터 제체 내부의 침윤선(자유수면) 높이를 하부 바닥 기초면 근처로 급격히 저하시킵니다.";
+                    } else if (col.col_header && col.col_header.includes('배수')) {
+                      col.answer = "제체 내부로 유출되는 침투수를 하단부 필터 및 배수재가 집수하여 하류 사면 밖으로 바로 빠져나가게 만듭니다. 이를 통해 침윤선이 제체 하류 사면의 공기와 만나는 면(유출면, Seepage Face)으로 직접 뿜어져 나오지 못하도록 억제하고, 침윤선 자체를 제체 밑바닥 저면 쪽으로 대폭 끌어내려 강하시킵니다.";
+                    }
+                    return col;
+                  });
+                }
+              }
+              return row;
+            });
+          }
+        }
+        return q;
+      });
+    };
 
+    let log = [];
+
+    // 1. Update app_session key = 'formula_questions'
+    const row1 = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    if (row1 && row1.value) {
+      const parsed = JSON.parse(row1.value);
+      const list = Array.isArray(parsed) ? parsed : (parsed.formulaQuestions || []);
+      const updated = updateQuestionObj(list);
+      const val = Array.isArray(parsed) ? updated : { ...parsed, formulaQuestions: updated };
+      await saveSessionValue('formula_questions', JSON.stringify(val));
+      log.push("Updated key: formula_questions");
+    }
+
+    // 2. Update app_session key = 'review_questions_topic_2'
+    const row2 = await dbQuery.get("SELECT value FROM app_session WHERE key = 'review_questions_topic_2'");
+    if (row2 && row2.value) {
+      const parsed = JSON.parse(row2.value);
+      const list = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+      const updated = updateQuestionObj(list);
+      const val = Array.isArray(parsed) ? updated : { ...parsed, questions: updated };
+      await saveSessionValue('review_questions_topic_2', JSON.stringify(val));
+      log.push("Updated key: review_questions_topic_2");
+    }
+
+    // 3. Update topics table where id = 2
+    const row3 = await dbQuery.get("SELECT current_questions FROM topics WHERE id = 2");
+    if (row3 && row3.current_questions) {
+      const parsed = JSON.parse(row3.current_questions);
+      const list = Array.isArray(parsed) ? parsed : [];
+      const updated = updateQuestionObj(list);
+      await dbQuery.run("UPDATE topics SET current_questions = ? WHERE id = 2", [JSON.stringify(updated)]);
+      log.push("Updated topics table id = 2");
+    }
+
+    res.json({ success: true, log });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
