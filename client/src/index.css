@@ -139,8 +139,10 @@ div[class*="overflow-y-auto"] {
 
 /* Disable default selection and context menu on mobile touch-hold for long-pressable formulas only on touch devices */
 @media (pointer: coarse) {
-  .enable-add-formula,
-  .enable-add-formula * {
+  .enable-add-formula .katex,
+  .enable-add-formula .katex-display,
+  .enable-add-formula .katex *,
+  .enable-add-formula .katex-display * {
     user-select: none !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;

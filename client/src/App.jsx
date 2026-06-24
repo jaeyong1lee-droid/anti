@@ -1038,10 +1038,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     isLongPressActive.current = false;
     startPos.current = { x: clientX, y: clientY };
 
-    let katexEl = target.closest('.katex, .katex-display');
-    if (!katexEl) {
-      katexEl = target.querySelector('.katex, .katex-display');
-    }
+    const katexEl = target.closest('.katex, .katex-display');
     if (!katexEl) return;
 
     longPressTimer.current = setTimeout(() => {
@@ -1108,7 +1105,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     onTouchMove: handleTouchMove,
     onTouchEnd: handleTouchEndOrCancel,
     onTouchCancel: handleTouchEndOrCancel,
-    onContextMenu: (e) => e.preventDefault(),
+    onContextMenu: (e) => {
+      const katexEl = e.target.closest('.katex, .katex-display');
+      if (katexEl) {
+        e.preventDefault();
+      }
+    },
   } : {};
 
   // 0.5) 필수공식/이론유도 내 지반 단위중량 기호 y(\y) 그리스 감마(\gamma) 자가치유 규칙 탑재
