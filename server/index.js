@@ -203,6 +203,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// On-demand standards sync from production (non-blocking, throttled to max once per minute)
+let lastProductionSyncTime = 0;
+const SYNC_COOLDOWN = 60000; // 1 minute cooldown
+
+app.use((req, res, next) => {
+  const isVercel = !!process.env.VERCEL;
+  if (!isVercel && req.url.startsWith('/api/')) {
+    const now = Date.now();
+    if (now - lastProductionSyncTime > SYNC_COOLDOWN) {
+      lastProductionSyncTime = now;
+      syncStandardsFromProduction().catch(err => {
+        console.warn('[On-Demand Sync] Error syncing standards from production:', err.message);
+      });
+    }
+  }
+  next();
+});
+
 // Multer memory storage for holding PDF/HTML files in buffer
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -7819,72 +7837,6 @@ export const USER_CONVENTIONS = "";
   }
 }
 
-async function startPeriodicStandardsSync() {
-  const isVercel = !!process.env.VERCEL;
-  if (isVercel) return;
-
-  const checkInterval = 15000; // Check every 15 seconds
-  setInterval(async () => {
-    // 1) Sync from database
-    const standardsToSync = [
-      { key: 'generation_standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
-      { key: 'engineering_standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
-      { key: 'grading_standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
-      { key: 'validation_standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
-    ];
-
-    for (const item of standardsToSync) {
-      try {
-        const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [item.key]);
-        if (row && row.value) {
-          const list = JSON.parse(row.value);
-          if (Array.isArray(list)) {
-            const currentStr = JSON.stringify(item.currentList());
-            const newStr = JSON.stringify(list);
-            if (currentStr !== newStr) {
-              item.updater(list);
-              await writeStandardToFile(item.key, list);
-              console.log(`[Periodic Sync] Detected database change for ${item.key}. Local file updated.`);
-            }
-          }
-        }
-      } catch (err) {
-        // fail silently
-      }
-    }
-
-    // 2) Sync from production API just in case they run SQLite locally but use Vercel on phone
-    const productionSyncList = [
-      { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
-      { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
-      { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
-      { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
-    ];
-
-    for (const item of productionSyncList) {
-      try {
-        const res = await fetch(`https://anti-ashy.vercel.app/api/${item.api}`);
-        if (res.ok) {
-          const data = await res.json();
-          const standards = data.standards;
-          if (Array.isArray(standards) && standards.length > 0) {
-            const currentStr = JSON.stringify(item.currentList());
-            const newStr = JSON.stringify(standards);
-            if (currentStr !== newStr) {
-              item.updater(standards);
-              await saveSessionValue(item.key, JSON.stringify(standards));
-              await writeStandardToFile(item.key, standards);
-              console.log(`[Periodic Sync] Synced ${item.key} from production to local file.`);
-            }
-          }
-        }
-      } catch (err) {
-        // fail silently
-      }
-    }
-  }, checkInterval);
-}
-
 async function syncStandardsFromProduction() {
   const isVercel = !!process.env.VERCEL;
   if (isVercel) {
@@ -7892,13 +7844,13 @@ async function syncStandardsFromProduction() {
     return;
   }
   
-  console.log('[Sync] Local server started. Synchronizing standards from production (https://anti-ashy.vercel.app)...');
+  console.log('[Sync] Synchronizing standards from production (https://anti-ashy.vercel.app)...');
   
   const standardsToSync = [
-    { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards },
-    { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards },
-    { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards },
-    { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards }
+    { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
+    { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
+    { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
+    { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
   ];
   
   for (const item of standardsToSync) {
@@ -7911,14 +7863,18 @@ async function syncStandardsFromProduction() {
       const data = await res.json();
       const standards = data.standards;
       if (Array.isArray(standards) && standards.length > 0) {
-        // Update live memory state
-        item.updater(standards);
-        
-        // Save to database to persist across restarts
-        await saveSessionValue(item.key, JSON.stringify(standards));
-        // Sync to local physical files as well
-        await writeStandardToFile(item.key, standards);
-        console.log(`[Sync] Synced ${item.key} (${standards.length} items) successfully.`);
+        const currentStr = JSON.stringify(item.currentList());
+        const newStr = JSON.stringify(standards);
+        if (currentStr !== newStr) {
+          // Update live memory state
+          item.updater(standards);
+          
+          // Save to database to persist across restarts
+          await saveSessionValue(item.key, JSON.stringify(standards));
+          // Sync to local physical files as well
+          await writeStandardToFile(item.key, standards);
+          console.log(`[Sync] Synced ${item.key} (${standards.length} items) successfully.`);
+        }
       }
     } catch (err) {
       console.warn(`[Sync] Error syncing ${item.key}:`, err.message);
@@ -7937,7 +7893,6 @@ async function startServer() {
     await initializeGenerationStandards();
     // Sync from production to local database if running locally
     await syncStandardsFromProduction();
-    startPeriodicStandardsSync();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
