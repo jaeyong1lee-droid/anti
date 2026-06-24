@@ -7345,6 +7345,41 @@ app.get('/api/temp-update-db', async (req, res) => {
   }
 });
 
+// TEMPORARY: Search production database for a keyword
+app.get('/api/temp-search-db', async (req, res) => {
+  try {
+    const keyword = req.query.keyword || '전수두';
+    const tablesRes = await dbQuery.all("SELECT table_name FROM information_schema.tables WHERE table_schema='public'");
+    const tables = tablesRes.map(r => r.table_name);
+    let results = [];
+
+    for (const table of tables) {
+      const colsRes = await dbQuery.all(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = ? AND data_type IN ('text', 'character varying', 'json', 'jsonb')
+      `, [table]);
+      const cols = colsRes.map(c => c.column_name);
+      
+      for (const col of cols) {
+        try {
+          const matchRes = await dbQuery.get(`SELECT COUNT(*) as count FROM ${table} WHERE "${col}"::text LIKE ?`, [`%${keyword}%`]);
+          const count = parseInt(matchRes.count, 10);
+          if (count > 0) {
+            const rows = await dbQuery.all(`SELECT * FROM ${table} WHERE "${col}"::text LIKE ? LIMIT 5`, [`%${keyword}%`]);
+            results.push({ table, col, count, rows });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
