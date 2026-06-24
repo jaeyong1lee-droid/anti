@@ -18943,7 +18943,7 @@ export default function App() {
             left: `${Math.max(16, Math.min(window.innerWidth - 340, selectionPopup.x - 170))}px`,
             top: `${Math.max(16, Math.min(window.innerHeight - 200, selectionPopup.y))}px`,
             zIndex: 99999,
-            animation: 'dragPopupFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
           className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans"
         >
@@ -18952,10 +18952,15 @@ export default function App() {
               from {
                 opacity: 0;
                 transform: translateY(8px) scale(0.95);
+                pointer-events: none;
+              }
+              99% {
+                pointer-events: none;
               }
               to {
                 opacity: 1;
                 transform: translateY(0) scale(1);
+                pointer-events: auto;
               }
             }
           `}</style>
