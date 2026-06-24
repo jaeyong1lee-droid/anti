@@ -7924,6 +7924,14 @@ async function startServer() {
     await initializeGenerationStandards();
     // Sync from production to local database if running locally
     await syncStandardsFromProduction();
+    
+    // Start periodic background sync from production once every hour (3600000 ms)
+    setInterval(() => {
+      syncStandardsFromProduction().catch(err => {
+        console.warn('[Periodic Sync] Error syncing standards from production:', err.message);
+      });
+    }, 3600000);
+
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
