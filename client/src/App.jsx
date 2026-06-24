@@ -976,6 +976,39 @@ const renderKatexString = (math, options) => {
   return options.displayMode ? `$$${math}$$` : `$${math}$`;
 };
 
+const getSelectionTextWithLatex = (selection) => {
+  if (!selection || selection.rangeCount === 0) return "";
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) return "";
+  
+  const fragment = range.cloneContents();
+  
+  // Find all .katex elements inside the fragment
+  const katexes = Array.from(fragment.querySelectorAll('.katex'));
+  
+  // Also check if any root nodes of the fragment are .katex elements
+  const rootKatexes = Array.from(fragment.childNodes).filter(node => 
+    node.nodeType === Node.ELEMENT_NODE && 
+    (node.classList.contains('katex') || node.classList.contains('katex-display'))
+  );
+  
+  const allKatexes = [...new Set([...katexes, ...rootKatexes])];
+  
+  for (const el of allKatexes) {
+    const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+    if (annotation) {
+      const latex = (annotation.textContent || annotation.innerText || "").trim();
+      const isDisplay = el.classList.contains('katex-display') || el.closest('.katex-display') || el.querySelector('.katex-display');
+      const textNode = document.createTextNode(isDisplay ? `\n$$${latex}$$\n` : `$${latex}$`);
+      if (el.parentNode) {
+        el.parentNode.replaceChild(textNode, el);
+      }
+    }
+  }
+  
+  return (fragment.textContent || "").trim();
+};
+
 // Dynamic KaTeX loader & Math text renderer
 const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false }) {
   if (!text) return null;
@@ -1243,6 +1276,52 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             intervals.forEach((delay) => {
               setTimeout(adjustHeight, delay);
             });
+
+            // Listen for selection inside iframe
+            try {
+              const doc = iframe.contentWindow?.document;
+              if (doc) {
+                const handleIframeSelection = () => {
+                  setTimeout(() => {
+                    const iframeSelection = iframe.contentWindow?.getSelection();
+                    if (!iframeSelection || iframeSelection.rangeCount === 0) return;
+                    const selectedText = getSelectionTextWithLatex(iframeSelection);
+                    
+                    // Ignore selections in input fields, textareas, etc.
+                    const activeEl = doc.activeElement;
+                    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                      return;
+                    }
+
+                    if (!selectedText) {
+                      const closeEvent = new CustomEvent('anti-selection-close');
+                      window.parent.dispatchEvent(closeEvent);
+                      return;
+                    }
+                    
+                    try {
+                      const range = iframeSelection.getRangeAt(0);
+                      const rect = range.getBoundingClientRect();
+                      const iframeRect = iframe.getBoundingClientRect();
+                      
+                      const changeEvent = new CustomEvent('anti-selection-change', {
+                        detail: {
+                          text: selectedText,
+                          x: iframeRect.left + rect.left + rect.width / 2,
+                          y: iframeRect.top + rect.bottom + 8
+                        }
+                      });
+                      window.parent.dispatchEvent(changeEvent);
+                    } catch (err) {}
+                  }, 50);
+                };
+
+                doc.addEventListener('mouseup', handleIframeSelection);
+                doc.addEventListener('touchend', handleIframeSelection);
+              }
+            } catch (err) {
+              console.warn('Failed to bind iframe selection events:', err);
+            }
           }}
           title="Interactive Simulator Drawing"
         />
@@ -4563,7 +4642,7 @@ export default function App() {
       setTimeout(() => {
         const selection = window.getSelection();
         if (!selection) return;
-        const text = selection.toString().trim();
+        const text = getSelectionTextWithLatex(selection);
         
         // If clicked inside the popup, do not close or update it
         const popupEl = document.getElementById('drag-ai-popup');
@@ -4598,11 +4677,31 @@ export default function App() {
       }, 50);
     };
 
+    const handleIframeSelectionChange = (e) => {
+      const { text, x, y } = e.detail;
+      setSelectionPopup({
+        show: true,
+        text: text,
+        x: x,
+        y: y,
+        question: ''
+      });
+    };
+
+    const handleIframeSelectionClose = () => {
+      setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+    };
+
     document.addEventListener('mouseup', handleSelectionEnd);
     document.addEventListener('touchend', handleSelectionEnd);
+    window.addEventListener('anti-selection-change', handleIframeSelectionChange);
+    window.addEventListener('anti-selection-close', handleIframeSelectionClose);
+
     return () => {
       document.removeEventListener('mouseup', handleSelectionEnd);
       document.removeEventListener('touchend', handleSelectionEnd);
+      window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
+      window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
   }, []);
 
@@ -13511,7 +13610,16 @@ export default function App() {
                                 className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
                               />
                             )}
-                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                            {msg.text && (
+                              <div className="whitespace-pre-wrap">
+                                <LatexRenderer 
+                                  text={msg.text} 
+                                  katexLoaded={katexLoaded} 
+                                  enableAddFormula={false}
+                                  isMarkdown={true}
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <LatexRenderer 
@@ -16385,7 +16493,16 @@ export default function App() {
                                 className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
                               />
                             )}
-                            {msg.text && <div className="whitespace-pre-wrap">{msg.text}</div>}
+                            {msg.text && (
+                              <div className="whitespace-pre-wrap">
+                                <LatexRenderer 
+                                  text={msg.text} 
+                                  katexLoaded={katexLoaded} 
+                                  enableAddFormula={false}
+                                  isMarkdown={true}
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <LatexRenderer 
