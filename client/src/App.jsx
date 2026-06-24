@@ -1010,7 +1010,7 @@ const getSelectionTextWithLatex = (selection) => {
 };
 
 // Dynamic KaTeX loader & Math text renderer
-const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false, questionKey = "" }) {
   if (!text) return null;
 
   const longPressTimer = useRef(null);
@@ -1281,10 +1281,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             try {
               const doc = iframe.contentWindow?.document;
               if (doc) {
+                let iframeSelectionTimeout = null;
                 const handleIframeSelection = () => {
-                  setTimeout(() => {
+                  if (iframeSelectionTimeout) clearTimeout(iframeSelectionTimeout);
+                  iframeSelectionTimeout = setTimeout(() => {
                     const iframeSelection = iframe.contentWindow?.getSelection();
-                    if (!iframeSelection || iframeSelection.rangeCount === 0) return;
+                    if (!iframeSelection) return;
                     const selectedText = getSelectionTextWithLatex(iframeSelection);
                     
                     // Ignore selections in input fields, textareas, etc.
@@ -1308,16 +1310,16 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                         detail: {
                           text: selectedText,
                           x: iframeRect.left + rect.left + rect.width / 2,
-                          y: iframeRect.top + rect.bottom + 8
+                          y: iframeRect.top + rect.bottom + 8,
+                          questionKey: questionKey
                         }
                       });
                       window.parent.dispatchEvent(changeEvent);
                     } catch (err) {}
-                  }, 50);
+                  }, 400); // 400ms debounce
                 };
 
-                doc.addEventListener('mouseup', handleIframeSelection);
-                doc.addEventListener('touchend', handleIframeSelection);
+                doc.addEventListener('selectionchange', handleIframeSelection);
               }
             } catch (err) {
               console.warn('Failed to bind iframe selection events:', err);
@@ -2306,7 +2308,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false) => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "") => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ');
   
@@ -2395,7 +2397,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       <div className="space-y-3 w-full">
         {!(resolvedCategory === '계산' && showImage) && (
           <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
-            <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} />
+            <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
           </div>
         )}
         {renderImageElement()}
@@ -2414,7 +2416,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
                 >
                   <span className="text-indigo-400/80 mt-0.5 select-none font-bold">·</span>
                   <div className="flex-grow select-text">
-                    <LatexRenderer text={cond} katexLoaded={katexLoaded} enableAddFormula={true} />
+                    <LatexRenderer text={cond} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
                   </div>
                 </div>
               ))}
@@ -2438,7 +2440,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
     <>
       {!(resolvedCategory === '계산' && showImage) && (
         <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full">
-          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} />
+          <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
         </div>
       )}
       {renderImageElement()}
@@ -2891,7 +2893,9 @@ export default function App() {
     text: '',
     x: 0,
     y: 0,
-    question: ''
+    question: '',
+    questionKey: '',
+    tutorType: 'sidebar' // 'sidebar' | 'card'
   });
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
@@ -4637,18 +4641,36 @@ export default function App() {
 
   // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
-    const handleSelectionEnd = (e) => {
-      // Allow DOM selection states to settle
-      setTimeout(() => {
+    let selectionTimeout = null;
+    let lastInteractionTarget = null;
+
+    const handleGlobalInteraction = (e) => {
+      lastInteractionTarget = e.target;
+    };
+
+    const handleSelectionChange = () => {
+      if (selectionTimeout) {
+        clearTimeout(selectionTimeout);
+      }
+
+      selectionTimeout = setTimeout(() => {
+        // If the interaction target was inside the popup, ignore selection changes
+        if (lastInteractionTarget && lastInteractionTarget.closest && lastInteractionTarget.closest('#drag-ai-popup')) {
+          return;
+        }
+
+        // If the active element is an iframe, let the iframe's selection handler handle it
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'IFRAME') {
+          return;
+        }
+        if (lastInteractionTarget && lastInteractionTarget.tagName === 'IFRAME') {
+          return;
+        }
+
         const selection = window.getSelection();
         if (!selection) return;
         const text = getSelectionTextWithLatex(selection);
-        
-        // If clicked inside the popup, do not close or update it
-        const popupEl = document.getElementById('drag-ai-popup');
-        if (popupEl && popupEl.contains(e.target)) {
-          return;
-        }
 
         if (!text) {
           setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
@@ -4656,7 +4678,6 @@ export default function App() {
         }
 
         // Ignore selections in input fields, textareas, etc.
-        const activeEl = document.activeElement;
         if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
           return;
         }
@@ -4666,40 +4687,58 @@ export default function App() {
           const rect = range.getBoundingClientRect();
           if (rect.width === 0 || rect.height === 0) return;
 
-          setSelectionPopup({
+          // Find closest data-qkey on parent elements of selection
+          let anchorEl = selection.anchorNode;
+          if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
+            anchorEl = anchorEl.parentElement;
+          }
+          const cardEl = anchorEl?.closest('[data-qkey]');
+          const foundQKey = cardEl?.getAttribute('data-qkey') || '';
+
+          setSelectionPopup(prev => ({
             show: true,
             text: text,
             x: rect.left + rect.width / 2,
             y: rect.bottom + 8,
-            question: ''
-          });
+            question: '',
+            questionKey: foundQKey,
+            tutorType: foundQKey ? prev.tutorType : 'sidebar'
+          }));
         } catch (err) {}
-      }, 50);
+      }, 400); // 400ms debounce
     };
 
     const handleIframeSelectionChange = (e) => {
-      const { text, x, y } = e.detail;
-      setSelectionPopup({
+      const { text, x, y, questionKey } = e.detail;
+      setSelectionPopup(prev => ({
         show: true,
         text: text,
         x: x,
         y: y,
-        question: ''
-      });
+        question: '',
+        questionKey: questionKey || '',
+        tutorType: questionKey ? prev.tutorType : 'sidebar'
+      }));
     };
 
     const handleIframeSelectionClose = () => {
+      if (lastInteractionTarget && lastInteractionTarget.closest && lastInteractionTarget.closest('#drag-ai-popup')) {
+        return;
+      }
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
 
-    document.addEventListener('mouseup', handleSelectionEnd);
-    document.addEventListener('touchend', handleSelectionEnd);
+    document.addEventListener('mousedown', handleGlobalInteraction, true);
+    document.addEventListener('touchstart', handleGlobalInteraction, true);
+    document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
     return () => {
-      document.removeEventListener('mouseup', handleSelectionEnd);
-      document.removeEventListener('touchend', handleSelectionEnd);
+      if (selectionTimeout) clearTimeout(selectionTimeout);
+      document.removeEventListener('mousedown', handleGlobalInteraction, true);
+      document.removeEventListener('touchstart', handleGlobalInteraction, true);
+      document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
@@ -7517,8 +7556,8 @@ export default function App() {
   };
 
   // ── Ask AI Tutor In-Card (Expanded panel) ───────────────────────────
-  const handleAskCardTutor = async (key, q) => {
-    const userQuery = (tutorInputText[key] || '').trim();
+  const handleAskCardTutor = async (key, q, customQuery) => {
+    const userQuery = (typeof customQuery === 'string' ? customQuery : (tutorInputText[key] || '')).trim();
     if (!userQuery) return;
 
     setTutorAnswers(prev => ({
@@ -7546,7 +7585,8 @@ export default function App() {
       
       // 사용자 입력 정보 추가
       const isExam = key.startsWith('e_');
-      const idx = parseInt(key.split('_')[1], 10);
+      const parts = key.split('_');
+      const idx = parseInt(parts[parts.length - 1], 10);
       const isMC = q.options && q.options.length > 0;
       
       let userAttemptInfo = '';
@@ -8695,31 +8735,62 @@ export default function App() {
     // Construct the prompt
     const finalPrompt = `[선택한 본문 문구]\n"${selectionPopup.text}"\n\n[이 문구에 대한 질문]\n${qText}`;
     
-    // Send to Chat Sidebar
-    if (showFormulaExam) {
-      handleSendFormulaChatMessage(null, finalPrompt);
+    // Check if user selected card tutor and we have a valid question key
+    if (selectionPopup.tutorType === 'card' && selectionPopup.questionKey && !showFormulaExam) {
+      const isExam = selectionPopup.questionKey.startsWith('e_');
+      const parts = selectionPopup.questionKey.split('_');
+      const idx = parseInt(parts[parts.length - 1], 10);
+      const qObj = isExam ? examQuestions[idx] : aiQuestions[idx];
+      
+      if (qObj) {
+        // Update tutor text state
+        setTutorInputText(prev => ({ ...prev, [selectionPopup.questionKey]: qText }));
+        // Open card tutor
+        setActiveTutorInputKey(selectionPopup.questionKey);
+        setTutorCollapsed(prev => ({ ...prev, [selectionPopup.questionKey]: false }));
+        // Send request
+        handleAskCardTutor(selectionPopup.questionKey, qObj, qText);
+        
+        // Scroll card into view
+        setTimeout(() => {
+          const bodyRef = isExam ? examBodyRef : quizBodyRef;
+          const cardClass = isExam ? '.exam-card-item' : '.quiz-card-item';
+          const cards = bodyRef.current?.querySelectorAll(cardClass);
+          if (cards && cards[idx]) {
+            bodyRef.current.scrollTo({
+              top: cards[idx].offsetTop - 20,
+              behavior: 'smooth'
+            });
+          }
+        }, 100);
+      }
     } else {
-      handleSendChat(finalPrompt);
+      // Send to Chat Sidebar
+      if (showFormulaExam) {
+        handleSendFormulaChatMessage(null, finalPrompt);
+      } else {
+        handleSendChat(finalPrompt);
+      }
+      
+      // If on mobile portrait, switch to the tutor chat tab
+      if (!isDesktop && !isMobileLandscape) {
+        if (showExam) {
+          setExamMobileTab('tutor');
+        } else if (showFormulaExam) {
+          setFormulaMobileTab('tutor');
+        } else {
+          setReviewMobileTab('tutor');
+        }
+      }
+
+      // If on mobile landscape, ensure sidebar is visible
+      if (isMobileLandscape) {
+        setLandscapeSidebarHidden(false);
+      }
     }
     
     // Close the popup
-    setSelectionPopup({ show: false, text: '', x: 0, y: 0, question: '' });
-    
-    // If on mobile portrait, switch to the tutor chat tab
-    if (!isDesktop && !isMobileLandscape) {
-      if (showExam) {
-        setExamMobileTab('tutor');
-      } else if (showFormulaExam) {
-        setFormulaMobileTab('tutor');
-      } else {
-        setReviewMobileTab('tutor');
-      }
-    }
-
-    // If on mobile landscape, ensure sidebar is visible
-    if (isMobileLandscape) {
-      setLandscapeSidebarHidden(false);
-    }
+    setSelectionPopup({ show: false, text: '', x: 0, y: 0, question: '', questionKey: '', tutorType: 'sidebar' });
   };
 
   const handleGenerateTopicProblem = async (topic) => {
