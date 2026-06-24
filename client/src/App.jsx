@@ -2840,7 +2840,9 @@ export default function App() {
   const [refreshingFormulaIdx, setRefreshingFormulaIdx] = useState(null);
   const [formulaConfirmTarget, setFormulaConfirmTarget] = useState(null);
   useEffect(() => {
-    window.__isFormulaConfirmOpen = !!formulaConfirmTarget;
+    if (!formulaConfirmTarget) {
+      window.__isFormulaConfirmOpen = false;
+    }
   }, [formulaConfirmTarget]);
   const [tutorAttachedFormula, setTutorAttachedFormula] = useState(null);
   const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
@@ -3573,6 +3575,7 @@ export default function App() {
 
   useEffect(() => {
     window.__handleFormulaConfirmRequest = (math, fullText, source) => {
+      window.__isFormulaConfirmOpen = true; // Set synchronously to prevent race condition
       let contextText = fullText || "";
       const selTopic = selectedTopicRefForFormula.current;
       const exTopic = examTopicRefForFormula.current;
@@ -4706,8 +4709,8 @@ export default function App() {
         const selection = window.getSelection();
         if (!selection) return;
 
-        // If formula long press is active or formula confirm target is open, ignore drag popup
-        if (window.__isFormulaLongPressing || window.__isFormulaConfirmOpen) {
+        // If formula confirm target is open, ignore drag popup
+        if (window.__isFormulaConfirmOpen) {
           return;
         }
 
