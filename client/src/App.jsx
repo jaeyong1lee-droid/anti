@@ -4765,6 +4765,28 @@ export default function App() {
     };
   }, []);
 
+  // Synchronize CSS Custom Highlight to keep selection visible even when input is focused
+  useEffect(() => {
+    if (typeof CSS === 'undefined' || !CSS.highlights) return;
+
+    if (selectionPopup.show) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (range && !range.collapsed) {
+          try {
+            const highlight = new Highlight(range);
+            CSS.highlights.set('anti-selected-text', highlight);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    } else {
+      CSS.highlights.delete('anti-selected-text');
+    }
+  }, [selectionPopup.show, selectionPopup.text]);
+
   const handleCaretPlacement = (e, containerName) => {
     // If the user is dragging or has selected text, do not show/update the caret to prevent clearing selection
     const selection = window.getSelection();
@@ -18976,6 +18998,12 @@ export default function App() {
             >
               ✕
             </button>
+          </div>
+
+          {/* Selected Text Preview */}
+          <div className="text-[11px] text-slate-300 bg-slateCustom-950/60 border border-slate-800/80 rounded-xl px-2.5 py-2 max-h-[50px] overflow-y-auto leading-relaxed select-text font-medium custom-vertical-scrollbar">
+            <span className="text-slate-400 font-extrabold mr-1">대상 문구:</span>
+            "{selectionPopup.text}"
           </div>
 
           {/* Input & Submit */}

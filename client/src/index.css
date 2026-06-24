@@ -796,3 +796,9 @@ div[class*="overflow-y-auto"] {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* 🎨 Drag Selection Persistent Custom Highlight Style */
+::highlight(anti-selected-text) {
+  background-color: rgba(244, 63, 94, 0.25) !important; /* rose-500 with opacity */
+  color: inherit !important;
+}
+
