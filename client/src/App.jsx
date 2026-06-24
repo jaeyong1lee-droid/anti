@@ -4651,73 +4651,94 @@ export default function App() {
   // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
     let selectionTimeout = null;
+    let isPointerDown = false;
+
+    const handlePointerDown = () => {
+      isPointerDown = true;
+    };
+
+    const handlePointerUp = () => {
+      isPointerDown = false;
+      // Trigger selection check with a tiny delay after releasing to let Selection API update
+      if (selectionTimeout) {
+        clearTimeout(selectionTimeout);
+      }
+      selectionTimeout = setTimeout(handleSelectionCheck, 50);
+    };
+
+    const handleSelectionCheck = () => {
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      // If the selection is inside the popup, ignore selection changes
+      let anchorNode = selection.anchorNode;
+      let isInsidePopup = false;
+      let node = anchorNode;
+      while (node) {
+        if (node.id === 'drag-ai-popup') {
+          isInsidePopup = true;
+          break;
+        }
+        node = node.parentNode;
+      }
+      if (isInsidePopup) {
+        return;
+      }
+
+      // If the active element is an iframe, let the iframe's selection handler handle it
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.tagName === 'IFRAME') {
+        return;
+      }
+
+      const text = getSelectionTextWithLatex(selection);
+
+      if (!text) {
+        setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+        return;
+      }
+
+      // Ignore selections in input fields, textareas, etc.
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      try {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        // Find closest data-qkey on parent elements of selection
+        let anchorEl = selection.anchorNode;
+        if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
+          anchorEl = anchorEl.parentElement;
+        }
+        const cardEl = anchorEl?.closest('[data-qkey]');
+        const foundQKey = cardEl?.getAttribute('data-qkey') || '';
+
+        setSelectionPopup(prev => ({
+          show: true,
+          text: text,
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + 8,
+          question: '',
+          questionKey: foundQKey,
+          tutorType: foundQKey ? prev.tutorType : 'sidebar'
+        }));
+      } catch (err) {}
+    };
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
 
-      selectionTimeout = setTimeout(() => {
-        const selection = window.getSelection();
-        if (!selection) return;
+      // If dragging/selecting is actively in progress, do not trigger the popup
+      if (isPointerDown) {
+        return;
+      }
 
-        // If the selection is inside the popup, ignore selection changes
-        let anchorNode = selection.anchorNode;
-        let isInsidePopup = false;
-        let node = anchorNode;
-        while (node) {
-          if (node.id === 'drag-ai-popup') {
-            isInsidePopup = true;
-            break;
-          }
-          node = node.parentNode;
-        }
-        if (isInsidePopup) {
-          return;
-        }
-
-        // If the active element is an iframe, let the iframe's selection handler handle it
-        const activeEl = document.activeElement;
-        if (activeEl && activeEl.tagName === 'IFRAME') {
-          return;
-        }
-
-        const text = getSelectionTextWithLatex(selection);
-
-        if (!text) {
-          setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
-          return;
-        }
-
-        // Ignore selections in input fields, textareas, etc.
-        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-          return;
-        }
-
-        try {
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0) return;
-
-          // Find closest data-qkey on parent elements of selection
-          let anchorEl = selection.anchorNode;
-          if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
-            anchorEl = anchorEl.parentElement;
-          }
-          const cardEl = anchorEl?.closest('[data-qkey]');
-          const foundQKey = cardEl?.getAttribute('data-qkey') || '';
-
-          setSelectionPopup(prev => ({
-            show: true,
-            text: text,
-            x: rect.left + rect.width / 2,
-            y: rect.bottom + 8,
-            question: '',
-            questionKey: foundQKey,
-            tutorType: foundQKey ? prev.tutorType : 'sidebar'
-          }));
-        } catch (err) {}
-      }, 200); // 200ms debounce
+      selectionTimeout = setTimeout(handleSelectionCheck, 200); // 200ms debounce
     };
 
     const handleIframeSelectionChange = (e) => {
@@ -4753,12 +4774,20 @@ export default function App() {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
 
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    document.addEventListener('mouseup', handlePointerUp);
+    document.addEventListener('touchend', handlePointerUp);
     document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('mouseup', handlePointerUp);
+      document.removeEventListener('touchend', handlePointerUp);
       document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
