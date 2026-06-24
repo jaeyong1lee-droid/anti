@@ -1074,11 +1074,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;
-    startPress(e.clientX, e.clientY, e.target);
+    startPress(e.screenX, e.screenY, e.target);
   };
 
   const handleMouseMove = (e) => {
-    cancelPress(e.clientX, e.clientY, true);
+    cancelPress(e.screenX, e.screenY, true);
   };
 
   const handleMouseUpOrLeave = () => {
@@ -1087,12 +1087,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    startPress(touch.clientX, touch.clientY, e.target);
+    startPress(touch.screenX, touch.screenY, e.target);
   };
 
   const handleTouchMove = (e) => {
     const touch = e.touches[0];
-    cancelPress(touch.clientX, touch.clientY, true);
+    cancelPress(touch.screenX, touch.screenY, true);
   };
 
   const handleTouchEndOrCancel = () => {
@@ -2839,6 +2839,21 @@ export default function App() {
   }, [formulaConfirmTarget]);
   const [tutorAttachedFormula, setTutorAttachedFormula] = useState(null);
   const [formulaAddedTarget, setFormulaAddedTarget] = useState(null);
+  
+  const cancelledSelectionRange = useRef(null);
+  const handleCancelSelectionPopup = () => {
+    setSelectionPopup(prev => ({ ...prev, show: false }));
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      try {
+        cancelledSelectionRange.current = sel.getRangeAt(0).cloneRange();
+      } catch (e) {
+        cancelledSelectionRange.current = null;
+      }
+    } else {
+      cancelledSelectionRange.current = null;
+    }
+  };
 
   
   // Date selector for easy testing (defaults to today's local date 'YYYY-MM-DD')
@@ -4700,6 +4715,20 @@ export default function App() {
         return;
       }
 
+      // If the selection is the same as the cancelled selection, ignore showing the popup
+      if (cancelledSelectionRange.current && selection.rangeCount > 0) {
+        try {
+          const r = selection.getRangeAt(0);
+          const sameStart = r.startContainer === cancelledSelectionRange.current.startContainer &&
+                            r.startOffset === cancelledSelectionRange.current.startOffset;
+          const sameEnd = r.endContainer === cancelledSelectionRange.current.endContainer &&
+                          r.endOffset === cancelledSelectionRange.current.endOffset;
+          if (sameStart && sameEnd) {
+            return;
+          }
+        } catch (e) {}
+      }
+
       // If the selection is inside the popup, ignore selection changes
       let anchorNode = selection.anchorNode;
       let isInsidePopup = false;
@@ -4768,6 +4797,7 @@ export default function App() {
 
       if (!text) {
         selectionStarted.current = false;
+        cancelledSelectionRange.current = null;
         if (dragStartTimeout) {
           clearTimeout(dragStartTimeout);
           dragStartTimeout = null;
@@ -19241,7 +19271,7 @@ export default function App() {
               💬 AI 튜터 질문하기
             </span>
             <button
-              onClick={() => setSelectionPopup(prev => ({ ...prev, show: false }))}
+              onClick={handleCancelSelectionPopup}
               className="text-slate-400 hover:text-slate-100 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-800 transition-all cursor-pointer border-none bg-transparent"
             >
               ✕
@@ -19268,6 +19298,12 @@ export default function App() {
               placeholder="문구에 대해 질문을 입력하세요..."
               className="flex-1 bg-slateCustom-950 border border-slate-850 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2 focus:outline-none transition-all font-bold placeholder-slate-500"
             />
+            <button
+              onClick={handleCancelSelectionPopup}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-extrabold rounded-xl transition-all cursor-pointer active:scale-95 border-none flex-shrink-0"
+            >
+              취소
+            </button>
             <button
               onClick={handleDragAiSubmit}
               className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-rose-600 hover:from-violet-500 hover:to-rose-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer active:scale-95 shadow-md border-none flex-shrink-0"
