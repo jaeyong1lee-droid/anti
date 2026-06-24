@@ -4965,7 +4965,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, restoringReviewSession]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -4991,7 +4991,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory, loadingExam]);
 
   // ── 30-Second Multi-Device Real-Time Sync Polling
   useEffect(() => {
@@ -5136,7 +5136,8 @@ export default function App() {
     };
   }, [
     selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory,
-    showExam, examQuestions, examAnswers, examRevealed, examTableAnswers, examTableGradingResults
+    showExam, examQuestions, examAnswers, examRevealed, examTableAnswers, examTableGradingResults,
+    restoringReviewSession, loadingExam
   ]);
 
   const forceSaveActiveSessions = async (isUnloading = false) => {
@@ -6507,22 +6508,6 @@ export default function App() {
             return { ...copy, ...(finalData.tutorAnswers || {}) };
           });
           setChatHistory(finalData.chatHistory || []);
-        }
-
-        let localScroll = undefined;
-        if (localSaved) {
-          try {
-            const parsed = JSON.parse(localSaved);
-            if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
-          } catch(e){}
-        }
-        const targetScroll = localScroll !== undefined ? localScroll : (finalData.savedQuizScroll || 0);
-        if (targetScroll) {
-          savedQuizScroll.current = targetScroll;
-          requestAnimationFrame(() => {
-            if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
-          });
-        }
         } else {
           let initialSelectedAnswers = {};
           let initialRevealedQuestions = {};
@@ -6636,6 +6621,21 @@ export default function App() {
               savedQuizScroll: 0
             })
           }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
+        }
+
+        let localScroll = undefined;
+        if (localSaved) {
+          try {
+            const parsed = JSON.parse(localSaved);
+            if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
+          } catch(e){}
+        }
+        const targetScroll = localScroll !== undefined ? localScroll : (finalData.savedQuizScroll || 0);
+        if (targetScroll) {
+          savedQuizScroll.current = targetScroll;
+          requestAnimationFrame(() => {
+            if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
+          });
         }
       } else {
         stopProgressPolling('문제 생성에 실패했습니다.', 100, false);
