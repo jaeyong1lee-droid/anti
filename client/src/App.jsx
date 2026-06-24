@@ -2807,6 +2807,13 @@ export default function App() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiQuestions, setAiQuestions] = useState([]);
   const [restoringReviewSession, setRestoringReviewSession] = useState(true);
+  const [selectionPopup, setSelectionPopup] = useState({
+    show: false,
+    text: '',
+    x: 0,
+    y: 0,
+    question: ''
+  });
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
@@ -4548,6 +4555,56 @@ export default function App() {
       }
     }
   }, [selectedTopic, aiQuestions]);
+
+  // ── Drag Selection AI Tutor Popup Listener ───────────────────
+  useEffect(() => {
+    const handleSelectionEnd = (e) => {
+      // Allow DOM selection states to settle
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (!selection) return;
+        const text = selection.toString().trim();
+        
+        // If clicked inside the popup, do not close or update it
+        const popupEl = document.getElementById('drag-ai-popup');
+        if (popupEl && popupEl.contains(e.target)) {
+          return;
+        }
+
+        if (!text) {
+          setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+          return;
+        }
+
+        // Ignore selections in input fields, textareas, etc.
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          return;
+        }
+
+        try {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return;
+
+          setSelectionPopup({
+            show: true,
+            text: text,
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + 8,
+            question: ''
+          });
+        } catch (err) {}
+      }, 50);
+    };
+
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd);
+    return () => {
+      document.removeEventListener('mouseup', handleSelectionEnd);
+      document.removeEventListener('touchend', handleSelectionEnd);
+    };
+  }, []);
 
   useEffect(() => {
     if (examTopic && examQuestions.length > 0) {
@@ -8532,6 +8589,40 @@ export default function App() {
     }
   };
 
+  const handleDragAiSubmit = () => {
+    const qText = selectionPopup.question.trim();
+    if (!qText) return;
+    
+    // Construct the prompt
+    const finalPrompt = `[선택한 본문 문구]\n"${selectionPopup.text}"\n\n[이 문구에 대한 질문]\n${qText}`;
+    
+    // Send to Chat Sidebar
+    if (showFormulaExam) {
+      handleSendFormulaChatMessage(null, finalPrompt);
+    } else {
+      handleSendChat(finalPrompt);
+    }
+    
+    // Close the popup
+    setSelectionPopup({ show: false, text: '', x: 0, y: 0, question: '' });
+    
+    // If on mobile portrait, switch to the tutor chat tab
+    if (!isDesktop && !isMobileLandscape) {
+      if (showExam) {
+        setExamMobileTab('tutor');
+      } else if (showFormulaExam) {
+        setFormulaMobileTab('tutor');
+      } else {
+        setReviewMobileTab('tutor');
+      }
+    }
+
+    // If on mobile landscape, ensure sidebar is visible
+    if (isMobileLandscape) {
+      setLandscapeSidebarHidden(false);
+    }
+  };
+
   const handleGenerateTopicProblem = async (topic) => {
     if (!topic) return;
     
@@ -10315,12 +10406,14 @@ export default function App() {
     }
   };
 
-  const handleSendFormulaChatMessage = async (e) => {
+  const handleSendFormulaChatMessage = async (e, customMessage) => {
     if (e) e.preventDefault();
-    if (isFormulaChatLoading || !formulaChatInput.trim() || selectedFormulaIdx === -1) return;
+    const userMessage = (typeof customMessage === 'string' ? customMessage : formulaChatInput).trim();
+    if (isFormulaChatLoading || !userMessage || selectedFormulaIdx === -1) return;
     
-    const userMessage = formulaChatInput.trim();
-    setFormulaChatInput('');
+    if (typeof customMessage !== 'string') {
+      setFormulaChatInput('');
+    }
     
     const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage }];
     saveFormulaChatHistory(updatedHistory);
@@ -18525,6 +18618,76 @@ export default function App() {
         isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
         onClose={() => setShowFloatingCalculator(false)} 
       />
+
+      {/* Drag Selection AI Tutor Popup */}
+      {selectionPopup.show && (
+        <div
+          id="drag-ai-popup"
+          style={{
+            position: 'fixed',
+            left: `${Math.max(16, Math.min(window.innerWidth - 340, selectionPopup.x - 170))}px`,
+            top: `${Math.max(16, Math.min(window.innerHeight - 200, selectionPopup.y))}px`,
+            zIndex: 99999,
+            animation: 'dragPopupFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          }}
+          className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans"
+        >
+          <style>{`
+            @keyframes dragPopupFadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.95);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+              }
+            }
+          `}</style>
+          
+          {/* Header */}
+          <div className="flex items-center justify-between text-[11px] font-black text-rose-400 select-none">
+            <span className="flex items-center gap-1.5">
+              💬 AI 튜터 질문하기
+            </span>
+            <button
+              onClick={() => setSelectionPopup(prev => ({ ...prev, show: false }))}
+              className="text-slate-400 hover:text-slate-100 text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-800 transition-all cursor-pointer border-none bg-transparent"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Selected Text Preview */}
+          <div className="text-[11px] text-slate-300 bg-slateCustom-950/60 border border-slate-800/80 rounded-xl px-2.5 py-2 max-h-[50px] overflow-y-auto leading-relaxed select-text font-medium custom-vertical-scrollbar">
+            <span className="text-slate-400 font-extrabold mr-1">대상 문구:</span>
+            "{selectionPopup.text}"
+          </div>
+
+          {/* Input & Submit */}
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              autoFocus
+              value={selectionPopup.question}
+              onChange={(e) => setSelectionPopup(prev => ({ ...prev, question: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleDragAiSubmit();
+                }
+              }}
+              placeholder="문구에 대해 질문을 입력하세요..."
+              className="flex-1 bg-slateCustom-950 border border-slate-850 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2 focus:outline-none transition-all font-bold placeholder-slate-500"
+            />
+            <button
+              onClick={handleDragAiSubmit}
+              className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-rose-600 hover:from-violet-500 hover:to-rose-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer active:scale-95 shadow-md border-none flex-shrink-0"
+            >
+              전송
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
