@@ -7287,6 +7287,64 @@ app.get('/api/debug-db', async (req, res) => {
   }
 });
 
+// TEMPORARY: Update question 11 correct answer in database
+app.get('/api/temp-update-db', async (req, res) => {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    if (!row || !row.value) {
+      return res.json({ error: "formula_questions not found in database" });
+    }
+    
+    const parsed = JSON.parse(row.value);
+    let formulaQuestions = null;
+    if (parsed && Array.isArray(parsed.formulaQuestions)) {
+      formulaQuestions = parsed.formulaQuestions;
+    } else if (Array.isArray(parsed)) {
+      formulaQuestions = parsed;
+    }
+
+    if (!formulaQuestions) {
+      return res.json({ error: "formulaQuestions is not an array", parsed });
+    }
+    
+    let updatedCount = 0;
+    const updatedQuestions = formulaQuestions.map(q => {
+      if (q && q.id === 11) {
+        if (Array.isArray(q.table_data)) {
+          q.table_data = q.table_data.map(row => {
+            if (row.row_header && row.row_header.includes('(C)')) {
+              if (Array.isArray(row.cols)) {
+                row.cols = row.cols.map(col => {
+                  if (col.col_header && col.col_header.includes('차수')) {
+                    col.answer = "차수벽(또는 불투수성 Core) 전단에서 침투 수류의 흐름을 직접 차단하여 상류측에 전수두(Total Head)를 집중시키고, 차수재 경계면을 통과하면서 급격한 전수두 강하(Head Drop)를 유도하여 차수재 배면(하류측)의 침윤선을 하부 저면으로 급격하게 강하시킵니다.";
+                    updatedCount++;
+                  } else if (col.col_header && col.col_header.includes('배수')) {
+                    col.answer = "제체 내부로 유입된 침투류를 투수성이 큰 필터 및 배수재(Blanket, Toe Drain 등)로 신속히 유도 및 집수하여 외부로 원활히 배출시킴으로써, 침윤선이 제체 하류 사면으로 직접 유출되는 현상(Seepage Face 형성)을 방지하고 침윤선을 제체 바닥 근처 하부로 대폭 강하시킵니다.";
+                    updatedCount++;
+                  }
+                  return col;
+                });
+              }
+            }
+            return row;
+          });
+        }
+      }
+      return q;
+    });
+    
+    if (updatedCount > 0) {
+      const newValue = Array.isArray(parsed) ? updatedQuestions : { ...parsed, formulaQuestions: updatedQuestions };
+      await saveSessionValue('formula_questions', JSON.stringify(newValue));
+      return res.json({ success: true, message: `Successfully updated ${updatedCount} answers inside formula_questions` });
+    } else {
+      return res.json({ success: false, message: "Question ID 11 or Row (C) not found in formula_questions" });
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/session/answersheet/upload → PDF/HTML 분석하여 답안지 생성
 async function ensureAnswersheetReportsTable() {
   try {
