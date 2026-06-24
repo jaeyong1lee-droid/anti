@@ -4679,10 +4679,16 @@ export default function App() {
   // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
     let selectionTimeout = null;
+    const isMouseDown = { current: false };
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
+      }
+
+      // If user is actively dragging (mouse/touch is down), do not show the popup yet
+      if (isMouseDown.current) {
+        return;
       }
 
       selectionTimeout = setTimeout(() => {
@@ -4757,6 +4763,16 @@ export default function App() {
       }, 200); // 200ms debounce
     };
 
+    const handlePointerDown = () => {
+      isMouseDown.current = true;
+    };
+
+    const handlePointerUp = () => {
+      isMouseDown.current = false;
+      // Trigger selection change logic when drag/touch ends
+      handleSelectionChange();
+    };
+
     const handleIframeSelectionChange = (e) => {
       const { text, x, y, questionKey } = e.detail;
       setSelectionPopup(prev => ({
@@ -4791,12 +4807,21 @@ export default function App() {
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('mousedown', handlePointerDown, { passive: true });
+    document.addEventListener('mouseup', handlePointerUp, { passive: true });
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    document.addEventListener('touchend', handlePointerUp, { passive: true });
+
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
       document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('mouseup', handlePointerUp);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('touchend', handlePointerUp);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
