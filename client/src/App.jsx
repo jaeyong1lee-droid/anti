@@ -4764,6 +4764,12 @@ export default function App() {
   }, []);
 
   const handleCaretPlacement = (e, containerName) => {
+    // If the user is dragging or has selected text, do not show/update the caret to prevent clearing selection
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim() !== '') {
+      return;
+    }
+
     // Ignore clicks on interactive elements
     const target = e.target;
     if (target.closest('input, textarea, button, a, [role="button"], #drag-ai-popup')) {
