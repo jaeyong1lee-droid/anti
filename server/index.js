@@ -743,14 +743,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
  */
 async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
-  try {
-    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
-    if (row && row.value) {
-      globalPreferredModel = row.value;
-    }
-  } catch (err) {
-    console.warn("Failed to load preferred model from DB in callLLMWithFailover:", err.message);
-  }
+  // [성능 최적화] 매 호출마다 DB를 조회하는 대신, 이미 GET/POST 엔드포인트에서 갱신 및 캐싱되고 있는 globalPreferredModel 값을 바로 사용합니다.
+
 
   const keys = [
     process.env.GEMINI_API_KEY,
@@ -974,11 +968,14 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       }
       
       if (globalPreferredModel) {
-        const idx = MODELS.indexOf(globalPreferredModel);
-        if (idx !== -1) {
-          MODELS.splice(idx, 1);
-          MODELS.unshift(globalPreferredModel);
-        }
+        const model1 = globalPreferredModel;
+        const model2 = model1 === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.1-flash-lite';
+        
+        // 기존 배열에서 1순위와 2순위 후보 모델을 제거한 후 맨 앞으로 강제 정렬하여
+        // 3.1 LITE 선택 시 2순위 3.5, 3.5 선택 시 2순위 3.1 LITE 구조를 강제 보장합니다.
+        MODELS = MODELS.filter(m => m !== model1 && m !== model2);
+        MODELS.unshift(model2);
+        MODELS.unshift(model1);
       }
       
       let basicModelFailedCount = 0;
