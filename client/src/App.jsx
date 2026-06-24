@@ -2806,6 +2806,7 @@ export default function App() {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiQuestions, setAiQuestions] = useState([]);
+  const [restoringReviewSession, setRestoringReviewSession] = useState(true);
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
@@ -4526,8 +4527,8 @@ export default function App() {
   // ── Restore scroll position on topic/question load or refresh (PC/모바일 공통 스크롤 유지)
   useEffect(() => {
     if (selectedTopic && aiQuestions.length > 0) {
-      const key = selectedTopic.finalScheduleId 
-        ? `anti_review_progress_sched_${selectedTopic.finalScheduleId}`
+      const key = selectedTopic.schedule_id 
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
         : `anti_review_progress_${selectedTopic.id}`;
       const localProgress = localStorage.getItem(key);
       if (localProgress) {
@@ -4629,7 +4630,7 @@ export default function App() {
 
   // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
   useEffect(() => {
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly && !restoringReviewSession) {
       const delayDebounceFn = setTimeout(() => {
         fetch(`${API_BASE}/api/session/review`, {
           method: 'POST',
@@ -4686,7 +4687,7 @@ export default function App() {
 
     const performSync = async () => {
       // 1. Review Quiz Sync (includes calculation table questions)
-      if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly && !restoringReviewSession) {
         // If the user is currently typing in a text area, skip sync to avoid cursor jumps
         const activeEl = document.activeElement;
         const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
@@ -4946,54 +4947,63 @@ export default function App() {
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
 
-  const handlePullToRefreshReload = (mode) => {
+  const handlePullToRefreshReload = async (mode) => {
     if (mode === 'review' && selectedTopic) {
       const topicId = selectedTopic.id;
-      const finalScheduleId = selectedTopic.schedule_id;
-      const key = finalScheduleId 
-        ? `anti_review_progress_sched_${finalScheduleId}`
-        : `anti_review_progress_${topicId}`;
-      localStorage.removeItem(key);
-      
-      const saved = localStorage.getItem('anti_app_state');
-      if (saved) {
-        try {
-          const s = JSON.parse(saved);
-          delete s.aiQuestions;
-          delete s.revealedQuestions;
-          delete s.selectedAnswers;
-          delete s.tableAnswers;
-          delete s.tableGradingResults;
-          delete s.tutorAnswers;
-          delete s.tutorInputText;
-          delete s.chatHistory;
-          localStorage.setItem('anti_app_state', JSON.stringify(s));
-        } catch (e) {
-          console.warn(e);
+      const scheduleId = selectedTopic.schedule_id || '';
+      try {
+        const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}`);
+        const resData = await res.json();
+        if (resData.success && resData.data) {
+          const server = resData.data;
+          if (server.questions && Array.isArray(server.questions)) {
+            setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: selectedTopic.category })));
+          }
+          setSelectedAnswers(server.selectedAnswers || {});
+          setRevealedQuestions(server.revealedQuestions || {});
+          setTableAnswers(server.tableAnswers || {});
+          setTableGradingResults(server.tableGradingResults || {});
+          setTutorAnswers(server.tutorAnswers || {});
+          setTutorInputText(server.tutorInputText || {});
+          setChatHistory(server.chatHistory || []);
+          showNotification('복습 데이터를 최신 상태로 동기화했습니다!', 'success');
+        } else {
+          showNotification('동기화할 세션 데이터가 없습니다.', 'info');
         }
+      } catch (err) {
+        console.warn('Pull-to-refresh review sync error:', err);
+        showNotification('서버 동기화 실패', 'error');
+      } finally {
+        setReviewRefreshing(false);
+        setReviewPull(0);
       }
     } else if (mode === 'exam') {
-      localStorage.removeItem('anti_exam_progress');
-      
-      const saved = localStorage.getItem('anti_app_state');
-      if (saved) {
-        try {
-          const s = JSON.parse(saved);
-          delete s.examQuestions;
-          delete s.examRevealed;
-          delete s.examAnswers;
-          delete s.examTableAnswers;
-          delete s.examTableGradingResults;
-          delete s.tutorAnswers;
-          delete s.tutorInputText;
-          delete s.chatHistory;
-          localStorage.setItem('anti_app_state', JSON.stringify(s));
-        } catch (e) {
-          console.warn(e);
+      try {
+        const res = await fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`);
+        const resData = await res.json();
+        if (resData && resData.data) {
+          const server = resData.data;
+          if (server.examQuestions && Array.isArray(server.examQuestions)) {
+            setExamQuestions(server.examQuestions.map(q => healQuizQuestionObject(q)));
+          }
+          setExamAnswers(server.examAnswers || {});
+          setExamRevealed(server.examRevealed || {});
+          setExamTableAnswers(server.examTableAnswers || {});
+          setExamTableGradingResults(server.examTableGradingResults || {});
+          if (server.examTopic) setExamTopic(server.examTopic);
+          setChatHistory(server.chatHistory || []);
+          showNotification('종합평가 데이터를 최신 상태로 동기화했습니다!', 'success');
+        } else {
+          showNotification('동기화할 종합평가 데이터가 없습니다.', 'info');
         }
+      } catch (err) {
+        console.warn('Pull-to-refresh exam sync error:', err);
+        showNotification('서버 동기화 실패', 'error');
+      } finally {
+        setExamRefreshing(false);
+        setExamPull(0);
       }
     }
-    window.location.reload();
   };
 
   const getCurrentTabIndex = () => {
@@ -10453,29 +10463,64 @@ export default function App() {
 
   // ── Restore active modal data on mount after all functions are defined
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('anti_app_state');
-      if (saved) {
-        const s = JSON.parse(saved);
-        if (s.selectedTopic) {
-          console.log('[Mount Restore] Restoring selected topic AI questions:', s.selectedTopic);
-          handleOpenAIQuestions(
-            s.selectedTopic.id, 
-            s.selectedTopic.title, 
-            s.selectedTopic.keywords, 
-            s.selectedTopic.pdf_name, 
-            s.selectedTopic.mode || 'ai', 
-            s.selectedTopic.schedule_id, 
-            s.selectedTopic.review_round, 
-            s.selectedTopic.isBonus,
-            false,
-            s.selectedTopic.category
-          ).catch(e => console.warn('[Mount Restore] Failed to load AI questions:', e));
+    const restoreActiveSession = async () => {
+      try {
+        const saved = localStorage.getItem('anti_app_state');
+        if (saved) {
+          const s = JSON.parse(saved);
+          if (s.selectedTopic) {
+            console.log('[Mount Restore] Restoring active review session from server:', s.selectedTopic);
+            const topicId = s.selectedTopic.id;
+            const scheduleId = s.selectedTopic.schedule_id || '';
+            
+            // Try to fetch the cached review session from the server first
+            const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}`);
+            const resData = await res.json();
+            
+            if (resData.success && resData.data) {
+              const server = resData.data;
+              console.log('[Mount Restore] Server review session found. Syncing...');
+              setSelectedTopic(s.selectedTopic);
+              if (server.questions && Array.isArray(server.questions)) {
+                setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+              }
+              setSelectedAnswers(server.selectedAnswers || {});
+              setRevealedQuestions(server.revealedQuestions || {});
+              setTableAnswers(server.tableAnswers || {});
+              setTableGradingResults(server.tableGradingResults || {});
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
+              setChatHistory(server.chatHistory || []);
+              setRestoringReviewSession(false);
+            } else {
+              console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
+              await handleOpenAIQuestions(
+                s.selectedTopic.id, 
+                s.selectedTopic.title, 
+                s.selectedTopic.keywords, 
+                s.selectedTopic.pdf_name, 
+                s.selectedTopic.mode || 'ai', 
+                s.selectedTopic.schedule_id, 
+                s.selectedTopic.review_round, 
+                s.selectedTopic.isBonus,
+                false,
+                s.selectedTopic.category
+              );
+              setRestoringReviewSession(false);
+            }
+          } else {
+            setRestoringReviewSession(false);
+          }
+        } else {
+          setRestoringReviewSession(false);
         }
+      } catch (e) {
+        console.warn('[Mount Restore] Failed to parse saved state or fetch:', e);
+        setRestoringReviewSession(false);
       }
-    } catch (e) {
-      console.warn('[Mount Restore] Failed to parse saved state for AI questions:', e);
-    }
+    };
+
+    restoreActiveSession();
 
     // Unconditionally load answersheet questions on mount to prevent state desync and subsequent data loss
     loadAnswersheetQuestions().catch(e => console.warn('[Mount Restore] Failed to load answersheet:', e));
@@ -12073,7 +12118,7 @@ export default function App() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
-                  <span>리프레쉬</span>
+                  <span>AI 재출제</span>
                 </button>
               )}
 
@@ -12173,7 +12218,7 @@ export default function App() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
-                  <span className="whitespace-nowrap">리프레쉬</span>
+                  <span className="whitespace-nowrap">AI 재출제</span>
                 </button>
               )}
               <button
@@ -13222,7 +13267,7 @@ export default function App() {
                           ) : (
                             <span className="text-violet-300 flex-shrink-0">🔄</span>
                           )}
-                          <span>리프레쉬</span>
+                          <span>AI 재출제</span>
                         </button>
                         <button
                           onClick={() => { 
@@ -16586,7 +16631,7 @@ export default function App() {
                           ) : (
                             <span className="text-violet-300 flex-shrink-0">🔄</span>
                           )}
-                          <span>리프레쉬</span>
+                          <span>AI 재출제</span>
                         </button>
                         <button
                           onClick={() => { 
