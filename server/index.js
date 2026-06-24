@@ -7819,6 +7819,72 @@ export const USER_CONVENTIONS = "";
   }
 }
 
+async function startPeriodicStandardsSync() {
+  const isVercel = !!process.env.VERCEL;
+  if (isVercel) return;
+
+  const checkInterval = 15000; // Check every 15 seconds
+  setInterval(async () => {
+    // 1) Sync from database
+    const standardsToSync = [
+      { key: 'generation_standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
+      { key: 'engineering_standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
+      { key: 'grading_standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
+      { key: 'validation_standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
+    ];
+
+    for (const item of standardsToSync) {
+      try {
+        const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [item.key]);
+        if (row && row.value) {
+          const list = JSON.parse(row.value);
+          if (Array.isArray(list)) {
+            const currentStr = JSON.stringify(item.currentList());
+            const newStr = JSON.stringify(list);
+            if (currentStr !== newStr) {
+              item.updater(list);
+              await writeStandardToFile(item.key, list);
+              console.log(`[Periodic Sync] Detected database change for ${item.key}. Local file updated.`);
+            }
+          }
+        }
+      } catch (err) {
+        // fail silently
+      }
+    }
+
+    // 2) Sync from production API just in case they run SQLite locally but use Vercel on phone
+    const productionSyncList = [
+      { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
+      { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
+      { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
+      { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
+    ];
+
+    for (const item of productionSyncList) {
+      try {
+        const res = await fetch(`https://anti-ashy.vercel.app/api/${item.api}`);
+        if (res.ok) {
+          const data = await res.json();
+          const standards = data.standards;
+          if (Array.isArray(standards) && standards.length > 0) {
+            const currentStr = JSON.stringify(item.currentList());
+            const newStr = JSON.stringify(standards);
+            if (currentStr !== newStr) {
+              item.updater(standards);
+              await saveSessionValue(item.key, JSON.stringify(standards));
+              await writeStandardToFile(item.key, standards);
+              console.log(`[Periodic Sync] Synced ${item.key} from production to local file.`);
+            }
+          }
+        }
+      } catch (err) {
+        // fail silently
+      }
+    }
+  }, checkInterval);
+}
+
 async function syncStandardsFromProduction() {
   const isVercel = !!process.env.VERCEL;
   if (isVercel) {
@@ -7871,6 +7937,7 @@ async function startServer() {
     await initializeGenerationStandards();
     // Sync from production to local database if running locally
     await syncStandardsFromProduction();
+    startPeriodicStandardsSync();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();

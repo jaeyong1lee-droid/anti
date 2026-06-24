@@ -3877,6 +3877,14 @@ export default function App() {
   const [answersheetRefreshing, setAnswersheetRefreshing] = useState(false);
   const answersheetTouchStartY = useRef(0);
 
+  const [reviewPull, setReviewPull] = useState(0);
+  const [reviewRefreshing, setReviewRefreshing] = useState(false);
+  const reviewTouchStartY = useRef(0);
+
+  const [examPull, setExamPull] = useState(0);
+  const [examRefreshing, setExamRefreshing] = useState(false);
+  const examTouchStartY = useRef(0);
+
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 768);
@@ -4937,6 +4945,56 @@ export default function App() {
       return () => clearTimeout(delayDebounceFn);
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+
+  const handlePullToRefreshReload = (mode) => {
+    if (mode === 'review' && selectedTopic) {
+      const topicId = selectedTopic.id;
+      const finalScheduleId = selectedTopic.schedule_id;
+      const key = finalScheduleId 
+        ? `anti_review_progress_sched_${finalScheduleId}`
+        : `anti_review_progress_${topicId}`;
+      localStorage.removeItem(key);
+      
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        try {
+          const s = JSON.parse(saved);
+          delete s.aiQuestions;
+          delete s.revealedQuestions;
+          delete s.selectedAnswers;
+          delete s.tableAnswers;
+          delete s.tableGradingResults;
+          delete s.tutorAnswers;
+          delete s.tutorInputText;
+          delete s.chatHistory;
+          localStorage.setItem('anti_app_state', JSON.stringify(s));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    } else if (mode === 'exam') {
+      localStorage.removeItem('anti_exam_progress');
+      
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        try {
+          const s = JSON.parse(saved);
+          delete s.examQuestions;
+          delete s.examRevealed;
+          delete s.examAnswers;
+          delete s.examTableAnswers;
+          delete s.examTableGradingResults;
+          delete s.tutorAnswers;
+          delete s.tutorInputText;
+          delete s.chatHistory;
+          localStorage.setItem('anti_app_state', JSON.stringify(s));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    }
+    window.location.reload();
+  };
 
   const getCurrentTabIndex = () => {
     if (showAnswerSheet) return 3;
@@ -12208,8 +12266,59 @@ export default function App() {
                     lastQuizScrollbarClickTime.current = now;
                   }
                 }}
+                onTouchStart={(e) => {
+                  if (!isDesktop && !isMobileLandscape && quizBodyRef.current && quizBodyRef.current.scrollTop === 0) {
+                    reviewTouchStartY.current = e.touches[0].clientY;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (!isDesktop && !isMobileLandscape && quizBodyRef.current && quizBodyRef.current.scrollTop === 0 && !reviewRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - reviewTouchStartY.current;
+                    if (deltaY > 0) {
+                      const dist = Math.min(deltaY * 0.4, 80);
+                      setReviewPull(dist);
+                      if (dist > 10 && e.cancelable) {
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={() => {
+                  if (!isDesktop && !isMobileLandscape && !reviewRefreshing) {
+                    if (reviewPull >= 60) {
+                      setReviewRefreshing(true);
+                      setReviewPull(40);
+                      showNotification('새로고침 중...', 'info');
+                      setTimeout(() => {
+                        handlePullToRefreshReload('review');
+                      }, 500);
+                    } else {
+                      setReviewPull(0);
+                    }
+                  }
+                }}
                 className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
               >
+                {/* Pull to Refresh Indicator */}
+                {(reviewPull > 0 || reviewRefreshing) && (
+                  <div 
+                    style={{ height: `${reviewPull}px` }} 
+                    className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
+                  >
+                    {reviewRefreshing ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-brand-400" />
+                        <span>새로고침 중...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ChevronDown size={14} className={`transition-transform duration-200 ${reviewPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
+                        <span>{reviewPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               {loadingAI ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                   <div className="relative">
@@ -15090,8 +15199,59 @@ export default function App() {
                     lastExamScrollbarClickTime.current = now;
                   }
                 }}
+                onTouchStart={(e) => {
+                  if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0) {
+                    examTouchStartY.current = e.touches[0].clientY;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (!isDesktop && !isMobileLandscape && examBodyRef.current && examBodyRef.current.scrollTop === 0 && !examRefreshing) {
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - examTouchStartY.current;
+                    if (deltaY > 0) {
+                      const dist = Math.min(deltaY * 0.4, 80);
+                      setExamPull(dist);
+                      if (dist > 10 && e.cancelable) {
+                        e.preventDefault();
+                      }
+                    }
+                  }
+                }}
+                onTouchEnd={() => {
+                  if (!isDesktop && !isMobileLandscape && !examRefreshing) {
+                    if (examPull >= 60) {
+                      setExamRefreshing(true);
+                      setExamPull(40);
+                      showNotification('새로고침 중...', 'info');
+                      setTimeout(() => {
+                        handlePullToRefreshReload('exam');
+                      }, 500);
+                    } else {
+                      setExamPull(0);
+                    }
+                  }
+                }}
                 className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
+                {/* Pull to Refresh Indicator */}
+                {(examPull > 0 || examRefreshing) && (
+                  <div 
+                    style={{ height: `${examPull}px` }} 
+                    className="w-full flex items-center justify-center overflow-hidden transition-all duration-150 text-slate-400 text-xs font-semibold gap-2 bg-slateCustom-950/40 border-b border-slate-800/40 select-none flex-shrink-0"
+                  >
+                    {examRefreshing ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-brand-400" />
+                        <span>새로고침 중...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ChevronDown size={14} className={`transition-transform duration-200 ${examPull >= 60 ? 'rotate-180 text-brand-400' : ''}`} />
+                        <span>{examPull >= 60 ? '놓아서 새로고침' : '아래로 당겨서 새로고침'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
             {loadingExam && examQuestions.length === 0 ? (
               <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
                 <div className="relative">
@@ -18245,6 +18405,24 @@ export default function App() {
             }
           }}
           theme="violet"
+          onPullMove={(dy) => {
+            if (dy > 0) {
+              const dist = Math.min(dy * 0.4, 80);
+              setReviewPull(dist);
+            }
+          }}
+          onPullEnd={(dy) => {
+            if (dy >= 60) {
+              setReviewRefreshing(true);
+              setReviewPull(40);
+              showNotification('새로고침 중...', 'info');
+              setTimeout(() => {
+                handlePullToRefreshReload('review');
+              }, 500);
+            } else {
+              setReviewPull(0);
+            }
+          }}
         />
       )}
 
@@ -18261,6 +18439,24 @@ export default function App() {
             }
           }}
           theme="amber"
+          onPullMove={(dy) => {
+            if (dy > 0) {
+              const dist = Math.min(dy * 0.4, 80);
+              setExamPull(dist);
+            }
+          }}
+          onPullEnd={(dy) => {
+            if (dy >= 60) {
+              setExamRefreshing(true);
+              setExamPull(40);
+              showNotification('새로고침 중...', 'info');
+              setTimeout(() => {
+                handlePullToRefreshReload('exam');
+              }, 500);
+            } else {
+              setExamPull(0);
+            }
+          }}
         />
       )}
 
@@ -18288,7 +18484,7 @@ export default function App() {
   );
 }
 
-function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
+function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet', onPullMove, onPullEnd }) {
   const [isCover, setIsCover] = useState(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -18369,6 +18565,7 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
       startPosX: pos.x,
       startPosY: pos.y,
       isDragging: false,
+      dy: 0,
     };
   };
 
@@ -18380,6 +18577,12 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
 
     if (Math.hypot(dx, dy) > 6) {
       dragStart.current.isDragging = true;
+    }
+
+    dragStart.current.dy = dy;
+
+    if (onPullMove) {
+      onPullMove(dy);
     }
 
     let newX = startPosX + dx;
@@ -18400,6 +18603,12 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet' }) {
 
   const handleEnd = (targetElement) => {
     if (!dragStart.current) return;
+    const dy = dragStart.current.dy || 0;
+
+    if (onPullEnd) {
+      onPullEnd(dy);
+    }
+
     if (!dragStart.current.isDragging) {
       if (targetElement) {
         const btn = targetElement.closest('[data-tab]');
