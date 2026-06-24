@@ -566,6 +566,15 @@ const buildHtmlDocument = (text, isPopup = false) => {
         padding-left: 0 !important;
         padding-right: 0 !important;
       }
+      .enable-add-formula .katex,
+      .enable-add-formula .katex-display,
+      .formula-scroll-container.enable-add-formula .katex,
+      .formula-scroll-container.enable-add-formula .katex-display {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+      }
       
       /* Custom elegant thin dark scrollbars for light pastel green theme */
       .katex-display::-webkit-scrollbar,
@@ -1115,12 +1124,16 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    startPress(touch.screenX, touch.screenY, e.target);
+    const x = touch.screenX !== undefined ? touch.screenX : touch.clientX;
+    const y = touch.screenY !== undefined ? touch.screenY : touch.clientY;
+    startPress(x, y, e.target);
   };
 
   const handleTouchMove = (e) => {
     const touch = e.touches[0];
-    cancelPress(touch.screenX, touch.screenY, true);
+    const x = touch.screenX !== undefined ? touch.screenX : touch.clientX;
+    const y = touch.screenY !== undefined ? touch.screenY : touch.clientY;
+    cancelPress(x, y, true);
   };
 
   const handleTouchEndOrCancel = () => {

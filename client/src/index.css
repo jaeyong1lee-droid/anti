@@ -601,6 +601,17 @@ div[class*="overflow-y-auto"] {
   padding-right: 0 !important;
 }
 
+/* Disable user selection on KaTeX formulas when long-press export is enabled to prevent mobile selection wiggling & touchcancel */
+.enable-add-formula .katex,
+.enable-add-formula .katex-display,
+.formula-scroll-container.enable-add-formula .katex,
+.formula-scroll-container.enable-add-formula .katex-display {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
 /* Custom scrollbar styling for webkit browser engine (iOS Safari, Android Chrome, Chrome/Safari on desktop) */
 .formula-scroll-container::-webkit-scrollbar {
   height: 6px !important;
