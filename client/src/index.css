@@ -590,7 +590,6 @@ div[class*="overflow-y-auto"] {
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   scrollbar-color: rgba(244, 63, 94, 0.65) rgba(15, 23, 42, 0.4) !important;
-  white-space: nowrap !important;
 }
 
 /* Prevent nested scrollbars and allow outer formula-scroll-container to handle overflow */

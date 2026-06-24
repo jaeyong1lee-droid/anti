@@ -557,9 +557,6 @@ const buildHtmlDocument = (text, isPopup = false) => {
         display: inline-block !important;
         white-space: nowrap !important;
       }
-      .formula-scroll-container {
-        white-space: nowrap !important;
-      }
       .formula-scroll-container .katex-display {
         overflow-x: visible !important;
         max-width: none !important;
