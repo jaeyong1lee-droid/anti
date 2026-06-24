@@ -1032,6 +1032,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       }
     } catch (e) {}
 
+    // Hide drag selection AI tutor popup
+    if (typeof window.__hideSelectionPopup === 'function') {
+      window.__hideSelectionPopup();
+    }
+
     const cleanMath = mathTex.trim();
     if (typeof window.__handleFormulaConfirmRequest === 'function') {
       window.__handleFormulaConfirmRequest(cleanMath, text, formulaSource);
@@ -3579,8 +3584,12 @@ export default function App() {
       }
       setFormulaConfirmTarget({ math, fullText: contextText, source: source || 'main' });
     };
+    window.__hideSelectionPopup = () => {
+      setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+    };
     return () => {
       delete window.__handleFormulaConfirmRequest;
+      delete window.__hideSelectionPopup;
     };
   }, []);
 
