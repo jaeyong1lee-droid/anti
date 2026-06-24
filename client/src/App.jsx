@@ -5023,18 +5023,41 @@ export default function App() {
               JSON.stringify(server.questions || []) !== JSON.stringify(aiQuestions);
 
             if (isDiff) {
-              console.log('[Realtime Sync] Syncing review state from server (30s interval)...');
-              if (server.questions && Array.isArray(server.questions)) {
-                const healed = server.questions.map(q => healQuizQuestionObject({ ...q, category: selectedTopic.category }));
-                setAiQuestions(healed);
+              const countSolved = (mc, tbl, tut) => {
+                let count = 0;
+                if (mc) count += Object.keys(mc).length;
+                if (tbl) {
+                  Object.values(tbl).forEach(val => {
+                    if (val && String(val).trim() !== '') count++;
+                  });
+                }
+                if (tut) {
+                  Object.values(tut).forEach(val => {
+                    if (val && String(val).trim() !== '') count++;
+                  });
+                }
+                return count;
+              };
+
+              const localSolved = countSolved(selectedAnswers, tableAnswers, tutorInputText);
+              const serverSolved = countSolved(server.selectedAnswers, server.tableAnswers, server.tutorInputText);
+
+              if (serverSolved >= localSolved) {
+                console.log(`[Realtime Sync] Overwriting local review state with server state (Server: ${serverSolved}, Local: ${localSolved})`);
+                if (server.questions && Array.isArray(server.questions)) {
+                  const healed = server.questions.map(q => healQuizQuestionObject({ ...q, category: selectedTopic.category }));
+                  setAiQuestions(healed);
+                }
+                setSelectedAnswers(server.selectedAnswers || {});
+                setRevealedQuestions(server.revealedQuestions || {});
+                setTableAnswers(server.tableAnswers || {});
+                setTableGradingResults(server.tableGradingResults || {});
+                setTutorAnswers(server.tutorAnswers || {});
+                setTutorInputText(server.tutorInputText || {});
+                setChatHistory(server.chatHistory || []);
+              } else {
+                console.log(`[Realtime Sync] Local review state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
-              setSelectedAnswers(server.selectedAnswers || {});
-              setRevealedQuestions(server.revealedQuestions || {});
-              setTableAnswers(server.tableAnswers || {});
-              setTableGradingResults(server.tableGradingResults || {});
-              setTutorAnswers(server.tutorAnswers || {});
-              setTutorInputText(server.tutorInputText || {});
-              setChatHistory(server.chatHistory || []);
             }
           }
         } catch (err) {
@@ -5062,15 +5085,41 @@ export default function App() {
               JSON.stringify(server.examQuestions || []) !== JSON.stringify(examQuestions);
 
             if (isDiff) {
-              console.log('[Realtime Sync] Syncing exam state from server (30s interval)...');
-              if (server.examQuestions && Array.isArray(server.examQuestions)) {
-                const healed = server.examQuestions.map(q => healQuizQuestionObject(q));
-                setExamQuestions(healed);
+              const countSolved = (mc, tbl, tut) => {
+                let count = 0;
+                if (mc) count += Object.keys(mc).length;
+                if (tbl) {
+                  Object.values(tbl).forEach(val => {
+                    if (val && String(val).trim() !== '') count++;
+                  });
+                }
+                if (tut) {
+                  Object.values(tut).forEach(val => {
+                    if (val && String(val).trim() !== '') count++;
+                  });
+                }
+                return count;
+              };
+
+              const localSolved = countSolved(examAnswers, examTableAnswers, tutorInputText);
+              const serverSolved = countSolved(server.examAnswers, server.examTableAnswers, server.tutorInputText);
+
+              if (serverSolved >= localSolved) {
+                console.log(`[Realtime Sync] Overwriting local exam state with server state (Server: ${serverSolved}, Local: ${localSolved})`);
+                if (server.examQuestions && Array.isArray(server.examQuestions)) {
+                  const healed = server.examQuestions.map(q => healQuizQuestionObject(q));
+                  setExamQuestions(healed);
+                }
+                setExamAnswers(server.examAnswers || {});
+                setExamRevealed(server.examRevealed || {});
+                setExamTableAnswers(server.examTableAnswers || {});
+                setExamTableGradingResults(server.examTableGradingResults || {});
+                if (server.tutorAnswers) setTutorAnswers(server.tutorAnswers);
+                if (server.tutorInputText) setTutorInputText(server.tutorInputText);
+                if (server.chatHistory) setChatHistory(server.chatHistory);
+              } else {
+                console.log(`[Realtime Sync] Local exam state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
-              setExamAnswers(server.examAnswers || {});
-              setExamRevealed(server.examRevealed || {});
-              setExamTableAnswers(server.examTableAnswers || {});
-              setExamTableGradingResults(server.examTableGradingResults || {});
             }
           }
         } catch (err) {
@@ -5790,7 +5839,10 @@ export default function App() {
           revealedQuestions: revealedQuestions,
           tableAnswers: tableAnswers,
           tableGradingResults: tableGradingResults,
-          referenceDate: referenceDate
+          referenceDate: referenceDate,
+          tutorAnswers: tutorAnswers,
+          tutorInputText: tutorInputText,
+          chatHistory: chatHistory
         })
       });
       const data = await res.json();
@@ -5977,6 +6029,9 @@ export default function App() {
         setRevealedQuestions(data.data.revealedQuestions || {});
         setTableAnswers(data.data.tableAnswers || {});
         setTableGradingResults(data.data.tableGradingResults || {});
+        if (data.data.tutorAnswers) setTutorAnswers(data.data.tutorAnswers);
+        if (data.data.tutorInputText) setTutorInputText(data.data.tutorInputText);
+        if (data.data.chatHistory) setChatHistory(data.data.chatHistory);
       } else {
         // [Fallback] 이전 데이터 기록이 존재하지 않는 경우 (업데이트 이전 항목 등), 실시간 API를 통해 가볍게 기출문제만 재조회
         showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
@@ -6385,76 +6440,89 @@ export default function App() {
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
         
         // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
-        if (data.isCached && (data.selectedAnswers || data.revealedQuestions || data.tableAnswers || data.tableGradingResults)) {
-          setSelectedAnswers(data.selectedAnswers || {});
-          setRevealedQuestions(data.revealedQuestions || {});
-          setTableAnswers(data.tableAnswers || {});
-          setTableGradingResults(data.tableGradingResults || {});
+        let finalData = data;
+        const localKey = finalScheduleId 
+          ? `anti_review_progress_sched_${finalScheduleId}`
+          : `anti_review_progress_${topicId}`;
+        const localSaved = localStorage.getItem(localKey);
+        
+        if (localSaved) {
+          try {
+            const localData = JSON.parse(localSaved);
+            const countSolved = (d) => {
+              if (!d) return 0;
+              let count = 0;
+              if (d.selectedAnswers) count += Object.keys(d.selectedAnswers).length;
+              if (d.tableAnswers) {
+                Object.values(d.tableAnswers).forEach(val => {
+                  if (val && String(val).trim() !== '') count++;
+                });
+              }
+              if (d.tutorInputText) {
+                Object.values(d.tutorInputText).forEach(val => {
+                  if (val && String(val).trim() !== '') count++;
+                });
+              }
+              return count;
+            };
+            const localSolved = countSolved(localData);
+            const serverSolved = countSolved(data);
+            if (localSolved > serverSolved) {
+              console.log(`[handleOpenAIQuestions] Local progress has more solved questions (${localSolved}) than server (${serverSolved}). Using local progress.`);
+              finalData = {
+                questions: data.questions,
+                selectedAnswers: localData.selectedAnswers || {},
+                revealedQuestions: localData.revealedQuestions || {},
+                tableAnswers: localData.tableAnswers || {},
+                tableGradingResults: localData.tableGradingResults || {},
+                tutorAnswers: localData.tutorAnswers || {},
+                tutorInputText: localData.tutorInputText || {},
+                chatHistory: localData.chatHistory || [],
+                savedQuizScroll: localData.savedQuizScroll || 0,
+                isCached: true
+              };
+            }
+          } catch(e) {
+            console.warn('Failed to parse local review progress during handleOpenAIQuestions:', e);
+          }
+        }
+
+        if (finalData.isCached && (finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText)) {
+          setSelectedAnswers(finalData.selectedAnswers || {});
+          setRevealedQuestions(finalData.revealedQuestions || {});
+          setTableAnswers(finalData.tableAnswers || {});
+          setTableGradingResults(finalData.tableGradingResults || {});
           setTutorInputText(prev => {
             const copy = { ...prev };
             Object.keys(copy).forEach(k => {
               if (k.startsWith('r_')) delete copy[k];
             });
-            return { ...copy, ...(data.tutorInputText || {}) };
+            return { ...copy, ...(finalData.tutorInputText || {}) };
           });
           setTutorAnswers(prev => {
             const copy = { ...prev };
             Object.keys(copy).forEach(k => {
               if (k.startsWith('r_')) delete copy[k];
             });
-            return { ...copy, ...(data.tutorAnswers || {}) };
+            return { ...copy, ...(finalData.tutorAnswers || {}) };
           });
-          setChatHistory(data.chatHistory || []);
+          setChatHistory(finalData.chatHistory || []);
+        }
 
-          // 로컬 진행상황 병합/보완 (새로고침 시 입력했던 주관식 답안 유실 방지)
+        let localScroll = undefined;
+        if (localSaved) {
           try {
-            const key = finalScheduleId 
-              ? `anti_review_progress_sched_${finalScheduleId}`
-              : `anti_review_progress_${topicId}`;
-            const localProgress = localStorage.getItem(key);
-            if (localProgress) {
-              const parsed = JSON.parse(localProgress);
-              if (parsed.tableAnswers) {
-                setTableAnswers(prev => ({ ...prev, ...parsed.tableAnswers }));
-              }
-              if (parsed.selectedAnswers) {
-                setSelectedAnswers(prev => ({ ...prev, ...parsed.selectedAnswers }));
-              }
-              if (parsed.revealedQuestions) {
-                setRevealedQuestions(prev => ({ ...prev, ...parsed.revealedQuestions }));
-              }
-              if (parsed.tableGradingResults) {
-                setTableGradingResults(prev => ({ ...prev, ...parsed.tableGradingResults }));
-              }
-              if (parsed.tutorAnswers) {
-                setTutorAnswers(prev => ({ ...prev, ...parsed.tutorAnswers }));
-              }
-              if (parsed.tutorInputText) {
-                setTutorInputText(prev => ({ ...prev, ...parsed.tutorInputText }));
-              }
-              if (parsed.chatHistory && parsed.chatHistory.length > 0) {
-                setChatHistory(parsed.chatHistory);
-              }
-            }
-          } catch (e) {}
-          const key = finalScheduleId 
-            ? `anti_review_progress_sched_${finalScheduleId}`
-            : `anti_review_progress_${topicId}`;
-          const localProgress = localStorage.getItem(key);
-          let localScroll = undefined;
-          if (localProgress) {
-            try {
-              const parsed = JSON.parse(localProgress);
-              if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
-            } catch(e){}
-          }
-          const targetScroll = localScroll !== undefined ? localScroll : (data.savedQuizScroll || 0);
-          if (targetScroll) {
-            savedQuizScroll.current = targetScroll;
-            requestAnimationFrame(() => {
-              if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
-            });
-          }
+            const parsed = JSON.parse(localSaved);
+            if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
+          } catch(e){}
+        }
+        const targetScroll = localScroll !== undefined ? localScroll : (finalData.savedQuizScroll || 0);
+        if (targetScroll) {
+          savedQuizScroll.current = targetScroll;
+          requestAnimationFrame(() => {
+            if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
+          });
+        }
         } else {
           let initialSelectedAnswers = {};
           let initialRevealedQuestions = {};
@@ -10861,16 +10929,57 @@ export default function App() {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
               setSelectedTopic(s.selectedTopic);
-              if (server.questions && Array.isArray(server.questions)) {
-                setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+
+              // Load the one with the most solved questions!
+              const localKey = s.selectedTopic.schedule_id 
+                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}`
+                : `anti_review_progress_${s.selectedTopic.id}`;
+              const localSaved = localStorage.getItem(localKey);
+              let finalData = server;
+              
+              if (localSaved) {
+                try {
+                  const localData = JSON.parse(localSaved);
+                  const countSolved = (d) => {
+                    if (!d) return 0;
+                    let count = 0;
+                    if (d.selectedAnswers) count += Object.keys(d.selectedAnswers).length;
+                    if (d.tableAnswers) {
+                      Object.values(d.tableAnswers).forEach(val => {
+                        if (val && String(val).trim() !== '') count++;
+                      });
+                    }
+                    if (d.tutorInputText) {
+                      Object.values(d.tutorInputText).forEach(val => {
+                        if (val && String(val).trim() !== '') count++;
+                      });
+                    }
+                    return count;
+                  };
+                  const localSolved = countSolved(localData);
+                  const serverSolved = countSolved(server);
+                  if (localSolved > serverSolved) {
+                    console.log(`[Mount Restore] Local storage review progress has more solved questions (${localSolved}) than server (${serverSolved}). Using local progress.`);
+                    finalData = {
+                      questions: server.questions, // keep server's questions
+                      ...localData
+                    };
+                  }
+                } catch(e) {
+                  console.warn('Failed to parse local review progress during mount restore:', e);
+                }
               }
-              setSelectedAnswers(server.selectedAnswers || {});
-              setRevealedQuestions(server.revealedQuestions || {});
-              setTableAnswers(server.tableAnswers || {});
-              setTableGradingResults(server.tableGradingResults || {});
-              setTutorAnswers(server.tutorAnswers || {});
-              setTutorInputText(server.tutorInputText || {});
-              setChatHistory(server.chatHistory || []);
+
+              if (finalData.questions && Array.isArray(finalData.questions)) {
+                setAiQuestions(finalData.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+              }
+              setSelectedAnswers(finalData.selectedAnswers || {});
+              setRevealedQuestions(finalData.revealedQuestions || {});
+              setTableAnswers(finalData.tableAnswers || {});
+              setTableGradingResults(finalData.tableGradingResults || {});
+              setTutorAnswers(finalData.tutorAnswers || {});
+              setTutorInputText(finalData.tutorInputText || {});
+              setChatHistory(finalData.chatHistory || []);
               setRestoringReviewSession(false);
             } else {
               console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');

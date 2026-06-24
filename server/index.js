@@ -1933,7 +1933,7 @@ app.post('/api/schedules/:id/complete', async (req, res) => {
 
 // 3.1. 퀴즈 제출 결과 채점 및 스케줄 상태 업데이트 엔드포인트
 app.post('/api/quiz/submit', async (req, res) => {
-  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate } = req.body;
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate, tutorAnswers, tutorInputText, chatHistory } = req.body;
 
   if (!schedule_id || !topic_id) {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
@@ -2035,7 +2035,10 @@ app.post('/api/quiz/submit', async (req, res) => {
         selectedAnswers: selectedAnswers || {}, 
         revealedQuestions: revealedQuestions || {},
         tableAnswers: tableAnswers || {},
-        tableGradingResults: tableGradingResults || {}
+        tableGradingResults: tableGradingResults || {},
+        tutorAnswers: tutorAnswers || {},
+        tutorInputText: tutorInputText || {},
+        chatHistory: chatHistory || []
       });
       await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
       await dbQuery.run(
@@ -6497,6 +6500,44 @@ app.post('/api/session/exam', async (req, res) => {
   try {
     await ensureSessionTable();
     const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedExamScroll } = req.body;
+
+    // Compare solved count to prevent overwriting progress with empty or less progress
+    const countSolved = (data) => {
+      if (!data) return 0;
+      let count = 0;
+      // MC answers for exam are in examAnswers
+      const answers = data.examAnswers || data.selectedAnswers;
+      if (answers) {
+        count += Object.keys(answers).length;
+      }
+      if (data.tableAnswers) {
+        Object.values(data.tableAnswers).forEach(val => {
+          if (val && String(val).trim() !== '') count++;
+        });
+      }
+      if (data.tutorInputText) {
+        Object.values(data.tutorInputText).forEach(val => {
+          if (val && String(val).trim() !== '') count++;
+        });
+      }
+      return count;
+    };
+
+    const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', ['exam_session']);
+    if (existingRow && existingRow.value) {
+      try {
+        const existingData = JSON.parse(existingRow.value);
+        const existingSolved = countSolved(existingData);
+        const incomingSolved = countSolved(req.body);
+        if (existingSolved > incomingSolved) {
+          console.log(`[Sync Aborted] Existing exam session has MORE solved questions (${existingSolved}) than incoming (${incomingSolved}).`);
+          return res.json({ ok: true, message: 'Server has more progress. Sync aborted.' });
+        }
+      } catch (e) {
+        console.warn('Failed to compare solved counts for exam session:', e);
+      }
+    }
+
     const value = JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: tableAnswers || {}, tableGradingResults: tableGradingResults || {}, tutorAnswers: tutorAnswers || {}, tutorInputText: tutorInputText || {}, chatHistory: chatHistory || [], savedExamScroll });
     // Safe UPSERT (prevents concurrent unique key violations)
     await saveSessionValue('exam_session', value);
@@ -6560,6 +6601,42 @@ app.post('/api/session/review', async (req, res) => {
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
       ? `review_questions_schedule_${scheduleId}`
       : `review_questions_topic_${topicId}`;
+
+    // Compare solved count to prevent overwriting progress with empty or less progress
+    const countSolved = (data) => {
+      if (!data) return 0;
+      let count = 0;
+      if (data.selectedAnswers) {
+        count += Object.keys(data.selectedAnswers).length;
+      }
+      if (data.tableAnswers) {
+        Object.values(data.tableAnswers).forEach(val => {
+          if (val && String(val).trim() !== '') count++;
+        });
+      }
+      if (data.tutorInputText) {
+        Object.values(data.tutorInputText).forEach(val => {
+          if (val && String(val).trim() !== '') count++;
+        });
+      }
+      return count;
+    };
+
+    const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (existingRow && existingRow.value) {
+      try {
+        const existingData = JSON.parse(existingRow.value);
+        const existingSolved = countSolved(existingData);
+        const incomingSolved = countSolved(req.body);
+        if (existingSolved > incomingSolved) {
+          console.log(`[Sync Aborted] Existing session has MORE solved questions (${existingSolved}) than incoming (${incomingSolved}). Key: ${key}`);
+          return res.json({ ok: true, message: 'Server has more progress. Sync aborted.' });
+        }
+      } catch (e) {
+        console.warn('Failed to compare solved counts for review session:', e);
+      }
+    }
+
     const value = JSON.stringify({
       questions,
       selectedAnswers: selectedAnswers || {},
