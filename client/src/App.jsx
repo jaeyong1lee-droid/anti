@@ -1025,6 +1025,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     const mathTex = annotation.textContent || annotation.innerText;
     if (!mathTex) return;
     
+    // Clear selection to prevent drag-selection popup from showing up
+    try {
+      if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+      }
+    } catch (e) {}
+
     const cleanMath = mathTex.trim();
     if (typeof window.__handleFormulaConfirmRequest === 'function') {
       window.__handleFormulaConfirmRequest(cleanMath, text, formulaSource);
@@ -1044,7 +1051,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     longPressTimer.current = setTimeout(() => {
       isLongPressActive.current = true;
       triggerAddFormula(katexEl);
-    }, 1500);
+    }, 2000);
   };
 
   const cancelPress = (clientX, clientY, isMove = false) => {
@@ -1052,7 +1059,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       const dx = clientX - startPos.current.x;
       const dy = clientY - startPos.current.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 10) return;
+      if (dist < 25) return;
     }
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -4694,6 +4701,15 @@ export default function App() {
           node = node.parentNode;
         }
         if (isInsidePopup) {
+          return;
+        }
+
+        // Ignore selections that start inside a KaTeX element to prioritize formula long-press
+        let anchorEl = anchorNode;
+        if (anchorEl && anchorEl.nodeType === Node.TEXT_NODE) {
+          anchorEl = anchorEl.parentElement;
+        }
+        if (anchorEl && anchorEl.closest('.katex, .katex-display')) {
           return;
         }
 
