@@ -2897,6 +2897,13 @@ export default function App() {
     questionKey: '',
     tutorType: 'sidebar' // 'sidebar' | 'card'
   });
+  const [activeCaret, setActiveCaret] = useState({
+    show: false,
+    container: null, // 'review' | 'exam'
+    x: 0,
+    y: 0,
+    height: 18
+  });
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
@@ -4642,11 +4649,6 @@ export default function App() {
   // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
     let selectionTimeout = null;
-    let lastInteractionTarget = null;
-
-    const handleGlobalInteraction = (e) => {
-      lastInteractionTarget = e.target;
-    };
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
@@ -4654,8 +4656,21 @@ export default function App() {
       }
 
       selectionTimeout = setTimeout(() => {
-        // If the interaction target was inside the popup, ignore selection changes
-        if (lastInteractionTarget && lastInteractionTarget.closest && lastInteractionTarget.closest('#drag-ai-popup')) {
+        const selection = window.getSelection();
+        if (!selection) return;
+
+        // If the selection is inside the popup, ignore selection changes
+        let anchorNode = selection.anchorNode;
+        let isInsidePopup = false;
+        let node = anchorNode;
+        while (node) {
+          if (node.id === 'drag-ai-popup') {
+            isInsidePopup = true;
+            break;
+          }
+          node = node.parentNode;
+        }
+        if (isInsidePopup) {
           return;
         }
 
@@ -4664,12 +4679,7 @@ export default function App() {
         if (activeEl && activeEl.tagName === 'IFRAME') {
           return;
         }
-        if (lastInteractionTarget && lastInteractionTarget.tagName === 'IFRAME') {
-          return;
-        }
 
-        const selection = window.getSelection();
-        if (!selection) return;
         const text = getSelectionTextWithLatex(selection);
 
         if (!text) {
@@ -4705,7 +4715,7 @@ export default function App() {
             tutorType: foundQKey ? prev.tutorType : 'sidebar'
           }));
         } catch (err) {}
-      }, 400); // 400ms debounce
+      }, 200); // 200ms debounce
     };
 
     const handleIframeSelectionChange = (e) => {
@@ -4722,27 +4732,88 @@ export default function App() {
     };
 
     const handleIframeSelectionClose = () => {
-      if (lastInteractionTarget && lastInteractionTarget.closest && lastInteractionTarget.closest('#drag-ai-popup')) {
-        return;
+      const selection = window.getSelection();
+      if (selection) {
+        let anchorNode = selection.anchorNode;
+        let isInsidePopup = false;
+        let node = anchorNode;
+        while (node) {
+          if (node.id === 'drag-ai-popup') {
+            isInsidePopup = true;
+            break;
+          }
+          node = node.parentNode;
+        }
+        if (isInsidePopup) {
+          return;
+        }
       }
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
 
-    document.addEventListener('mousedown', handleGlobalInteraction, true);
-    document.addEventListener('touchstart', handleGlobalInteraction, true);
     document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
-      document.removeEventListener('mousedown', handleGlobalInteraction, true);
-      document.removeEventListener('touchstart', handleGlobalInteraction, true);
       document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
   }, []);
+
+  const handleCaretPlacement = (e, containerName) => {
+    // Ignore clicks on interactive elements
+    const target = e.target;
+    if (target.closest('input, textarea, button, a, [role="button"], #drag-ai-popup')) {
+      return;
+    }
+
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+    if (clientX === undefined || clientY === undefined) return;
+
+    const container = containerName === 'review' ? quizBodyRef.current : examBodyRef.current;
+    if (!container) return;
+
+    let range = null;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(clientX, clientY);
+    } else if (document.caretPositionFromPoint) {
+      const position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
+        range = document.createRange();
+        range.setStart(position.offsetNode, position.offset);
+        range.collapse(true);
+      }
+    }
+
+    if (range) {
+      const rect = range.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      if (rect && rect.height > 0) {
+        setActiveCaret({
+          show: true,
+          container: containerName,
+          x: rect.left - containerRect.left + container.scrollLeft,
+          y: rect.top - containerRect.top + container.scrollTop,
+          height: rect.height
+        });
+        return;
+      }
+    }
+
+    // Fallback: use click coordinate relative to container
+    const containerRect = container.getBoundingClientRect();
+    setActiveCaret({
+      show: true,
+      container: containerName,
+      x: clientX - containerRect.left + container.scrollLeft,
+      y: clientY - containerRect.top + container.scrollTop - 9,
+      height: 18
+    });
+  };
 
   useEffect(() => {
     if (examTopic && examQuestions.length > 0) {
@@ -12544,6 +12615,7 @@ export default function App() {
           </div>
               <div 
                 ref={quizBodyRef} 
+                onClick={(e) => handleCaretPlacement(e, 'review')}
                 onScroll={(e) => {
                   const scrollTop = e.currentTarget.scrollTop;
                   savedQuizScroll.current = scrollTop;
@@ -12608,6 +12680,29 @@ export default function App() {
                 }}
                 className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
               >
+                {activeCaret.show && activeCaret.container === 'review' && (
+                  <>
+                    <style>{`
+                      @keyframes customCaretBlink {
+                        from, to { background-color: transparent }
+                        50% { background-color: #f43f5e }
+                      }
+                    `}</style>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${activeCaret.x}px`,
+                        top: `${activeCaret.y}px`,
+                        width: '2px',
+                        height: `${activeCaret.height}px`,
+                        backgroundColor: '#f43f5e',
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        animation: 'customCaretBlink 1.2s step-end infinite'
+                      }}
+                    />
+                  </>
+                )}
                 {/* Pull to Refresh Indicator */}
                 {(reviewPull > 0 || reviewRefreshing) && (
                   <div 
@@ -15489,6 +15584,7 @@ export default function App() {
           </div>
               <div 
                 ref={examBodyRef} 
+                onClick={(e) => handleCaretPlacement(e, 'exam')}
                 onScroll={(e) => {
                   const scrollTop = e.currentTarget.scrollTop;
                   savedExamScroll.current = scrollTop;
@@ -15550,6 +15646,29 @@ export default function App() {
                 }}
                 className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
+                {activeCaret.show && activeCaret.container === 'exam' && (
+                  <>
+                    <style>{`
+                      @keyframes customCaretBlink {
+                        from, to { background-color: transparent }
+                        50% { background-color: #f43f5e }
+                      }
+                    `}</style>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${activeCaret.x}px`,
+                        top: `${activeCaret.y}px`,
+                        width: '2px',
+                        height: `${activeCaret.height}px`,
+                        backgroundColor: '#f43f5e',
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        animation: 'customCaretBlink 1.2s step-end infinite'
+                      }}
+                    />
+                  </>
+                )}
                 {/* Pull to Refresh Indicator */}
                 {(examPull > 0 || examRefreshing) && (
                   <div 
