@@ -563,15 +563,6 @@ const buildHtmlDocument = (text, isPopup = false) => {
         padding-left: 0 !important;
         padding-right: 0 !important;
       }
-      .enable-add-formula .katex,
-      .enable-add-formula .katex-display,
-      .formula-scroll-container.enable-add-formula .katex,
-      .formula-scroll-container.enable-add-formula .katex-display {
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-      }
       
       /* Custom elegant thin dark scrollbars for light pastel green theme */
       .katex-display::-webkit-scrollbar,
