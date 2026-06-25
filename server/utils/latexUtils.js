@@ -489,7 +489,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // (Poisson's ratio healing logic moved above JSON escape restoration to prevent table breaking)
 
   // [Self-Healing] Restore collapsed newlines for variable list items
-  processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
+  processed = processed.replace(/(?<=:[^\n]*)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\}]+)\s*:)/g, '\n$1');
 
   // [Self-Healing] Auto-wrap raw LaTeX symbols/variables in bullet lists with $ if missing
   // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
