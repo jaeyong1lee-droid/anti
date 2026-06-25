@@ -339,6 +339,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
 
+  // Replace hashtag (#) prefix before LaTeX commands/Greek letters with backslash (\)
+  const hashKeywords = [
+    'alpha', 'beta', 'gamma', 'sigma', 'tau', 'phi', 'theta', 'epsilon', 'pi', 'delta', 'omega', 'mu', 'lambda', 'psi', 'rho', 'eta', 'nu', 'xi', 'zeta', 'chi', 'upsilon', 'kappa',
+    'Delta', 'Sigma', 'Gamma', 'Phi', 'Theta', 'Omega',
+    'frac', 'dfrac', 'sqrt', 'cdot', 'times', 'div', 'pm', 'infty', 'partial', 'sum', 'int', 'sim',
+    'le', 'ge', 'lt', 'gt', 'sin', 'cos', 'tan', 'log', 'ln', 'nabla', 'neq', 'ne', 'approx'
+  ];
+  const hashRegex = new RegExp(`#(${hashKeywords.join('|')})(?![a-zA-Z])`, 'g');
+  processed = processed.replace(hashRegex, '\\$1');
+
   // Replace Greek unicode letters and standalone words with LaTeX commands
   processed = processed.replace(/β/g, '\\beta')
                        .replace(/α/g, '\\alpha')
