@@ -1668,7 +1668,7 @@ app.get('/api/dashboard', async (req, res) => {
     const endDate = getLocalDateString(new Date(queryDate), 2);
     const completedSchedules = await dbQuery.all(
       `SELECT topic_id, completed_at FROM schedules 
-       WHERE status = 'completed' AND completed_at IS NOT NULL 
+       WHERE (status = 'completed' OR status = 'failed') AND completed_at IS NOT NULL 
          AND completed_at >= ? AND completed_at <= ?`,
       [startDate + 'T00:00:00.000Z', endDate + 'T23:59:59.999Z']
     );
@@ -1736,7 +1736,7 @@ async function generateWeakPointRecommendation(queryDate) {
   const excludedRows = await dbQuery.all(
     `SELECT DISTINCT topic_id FROM schedules 
      WHERE (status = 'pending' AND planned_date <= ?) 
-        OR (review_round = 99 AND planned_date = ? AND status = 'completed')`,
+        OR (review_round = 99 AND planned_date = ? AND (status = 'completed' OR status = 'failed'))`,
     [queryDate, queryDate]
   );
   const excludedTopicIds = excludedRows.map(r => r.topic_id);
@@ -1745,7 +1745,7 @@ async function generateWeakPointRecommendation(queryDate) {
   const scoreHistory = await dbQuery.all(
     `SELECT topic_id, AVG(score) as avg_score
      FROM schedules
-     WHERE status = 'completed' AND score IS NOT NULL
+     WHERE (status = 'completed' OR status = 'failed') AND score IS NOT NULL
      GROUP BY topic_id
      HAVING AVG(score) <= 90
      ORDER BY avg_score ASC`
@@ -1972,7 +1972,7 @@ app.post('/api/quiz/submit', async (req, res) => {
       // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
       if (schedule_id === 9999 || String(schedule_id) === '9999' || !schedule_id) {
         const lastCompleted = await dbQuery.get(
-          `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
+          `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
           [topic_id]
         );
         if (lastCompleted) {
@@ -6706,9 +6706,9 @@ app.get('/api/session/completed-review/by-topic/:topicId', async (req, res) => {
   }
   try {
     await ensureSessionTable();
-    // 가장 최근에 완료된 스케줄 ID 조회
+    // 가장 최근에 완료/실패된 스케줄 ID 조회
     const schedule = await dbQuery.get(
-      `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
+      `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
       [topicId]
     );
     if (schedule) {
