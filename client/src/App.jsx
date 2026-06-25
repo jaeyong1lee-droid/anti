@@ -4838,9 +4838,18 @@ export default function App() {
           fnode = fnode.parentNode;
         }
 
-        // If selection focus or anchor is inside the popup, restore the last valid range
-        if (isAnchorInsidePopup || isFocusInsidePopup) {
-          if (isFocusInsidePopup && lastValidRange) {
+        const activeEl = document.activeElement;
+        const isInputFocused = activeEl && activeEl.closest('#drag-ai-popup') && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+
+        // If the selection started inside the popup, or an input element in the popup is focused,
+        // allow selection changes naturally so typing and cursor navigation work.
+        if (isAnchorInsidePopup || isInputFocused) {
+          return;
+        }
+
+        // Only lock selection if they started selecting from OUTSIDE and dragged INTO the popup
+        if (isFocusInsidePopup) {
+          if (lastValidRange) {
             try {
               selection.removeAllRanges();
               selection.addRange(lastValidRange);
@@ -4850,7 +4859,6 @@ export default function App() {
         }
 
         // If the active element is an iframe, let the iframe's selection handler handle it
-        const activeEl = document.activeElement;
         if (activeEl && activeEl.tagName === 'IFRAME') {
           return;
         }
