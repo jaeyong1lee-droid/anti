@@ -6709,7 +6709,7 @@ export default function App() {
       const data = await res.json();
       console.log(`[handleOpenAIQuestions] Parsed response data:`, data);
 
-      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
+      if (selectedTopicRef.current?.id !== topicId) {
         console.log(`[handleOpenAIQuestions] Topic changed. Ignoring loaded data for topicId=${topicId}`);
         stopProgressPolling();
         return;
@@ -6945,14 +6945,14 @@ export default function App() {
       }
     } catch (err) {
       stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
-      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== finalScheduleId) {
+      if (selectedTopicRef.current?.id !== topicId) {
         return;
       }
       console.error('AI call error:', err);
       showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
       setAiError(err.message || '서버 통신 오류');
     } finally {
-      if (selectedTopicRef.current?.id === topicId && selectedTopicRef.current?.schedule_id === finalScheduleId) {
+      if (selectedTopicRef.current?.id === topicId) {
         setLoadingAI(false);
       }
     }
