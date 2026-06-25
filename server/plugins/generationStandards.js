@@ -29,6 +29,11 @@ export let generationStandardsList = [
     "id": "user_generation_cpjrwj5",
     "title": "복합 문제",
     "content": "하나의 토픽 내에서 2가지 이상의 세부 항목을 질문할 경우, 각각의 정의를 묻는 방식도 중요하지만  \n두 항목 간의 상호 관계, 역학적 메커니즘의 차이, 설계/시공 시의 상호 영향성, 혹은 공학적 비교 분석을 요구하는 통합형 문제를 출제하십시오.."
+  },
+  {
+    "id": "user_generation_2jcza3a",
+    "title": "답변길이 ",
+    "content": "답변길이는 30~50내외로 메커니즘 위주로 외우기 쉽게 답변할 것"
   }
 ];
 
