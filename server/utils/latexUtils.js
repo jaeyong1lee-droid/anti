@@ -221,7 +221,7 @@ const MATH_COMMANDS = [
 
 // Regex matching math formulas containing at least one whitelisted command
 const formulaRegex = new RegExp(
-  `(?:\\b[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,·]+)?` +
+  `(?:[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/=.,·][a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,·]*)?` +
   `\\\\(?:${MATH_COMMANDS.join('|')})` +
   `(?![a-zA-Z])` +
   `[a-zA-Z0-9_'\^\\(\\)\\{\\}\\[\\]\\+\\-\\*\\/= \\t.,<>%\\\\·]*`,
@@ -334,7 +334,15 @@ export function healInvertedDelimiters(text) {
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
-  let processed = healInvertedDelimiters(text);
+
+  // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
+  let processed = text.replace(/[–—−]/g, '-');
+  processed = healInvertedDelimiters(processed);
+
+  // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
+  const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
+  const greekRegex = new RegExp(`(?<!\\\\)\\b(${greekLetters})_?(\\d+)\\b`, 'g');
+  processed = processed.replace(greekRegex, '\\$1_$2');
 
   // Replace Won symbol (₩) with backslash (\) to restore LaTeX commands
   processed = processed.replace(/₩/g, '\\');
