@@ -2947,17 +2947,8 @@ export default function App() {
   });
 
   const selectionPopupRef = useRef(selectionPopup);
-  const basePosRef = useRef({ x: 0, y: 0 });
-  const targetPosRef = useRef({ x: 0, y: 0 });
-  const currPosRef = useRef({ x: 0, y: 0 });
-
   useEffect(() => {
     selectionPopupRef.current = selectionPopup;
-    if (!isDraggingPopupRef.current) {
-      basePosRef.current = { x: selectionPopup.x, y: selectionPopup.y };
-      targetPosRef.current = { x: selectionPopup.x, y: selectionPopup.y };
-      currPosRef.current = { x: selectionPopup.x, y: selectionPopup.y };
-    }
   }, [selectionPopup]);
 
   const isDraggingPopupRef = useRef(false);
@@ -4740,6 +4731,14 @@ export default function App() {
     };
     const handleDocumentMouseUp = () => {
       isMouseDown = false;
+      const popupState = selectionPopupRef.current;
+      if (popupState.show) {
+        const el = document.getElementById('drag-ai-popup');
+        if (el) {
+          el.style.left = `${popupState.x}px`;
+          el.style.top = `${popupState.y}px`;
+        }
+      }
     };
 
     const handlePointerMove = (e) => {
@@ -4748,12 +4747,31 @@ export default function App() {
         return;
       }
 
+      // If typing or focusing input inside popup, do not dodge
+      if (document.activeElement && document.activeElement.closest('#drag-ai-popup')) {
+        return;
+      }
+
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
+      const el = document.getElementById('drag-ai-popup');
+      if (!el) return;
+
+      // If cursor is inside the popup container, do not dodge
+      const rect = el.getBoundingClientRect();
+      if (
+        clientX >= rect.left - 10 &&
+        clientX <= rect.right + 10 &&
+        clientY >= rect.top - 10 &&
+        clientY <= rect.bottom + 10
+      ) {
+        return;
+      }
+
       // Base coordinates (where selectionPopup was created)
-      const bx = basePosRef.current.x;
-      const by = basePosRef.current.y;
+      const bx = popupState.x;
+      const by = popupState.y;
 
       // Center of base position
       const px = bx + 160; // Center X
@@ -4763,22 +4781,23 @@ export default function App() {
       const dy = py - clientY;
       const dist = Math.hypot(dx, dy);
 
-      const threshold = 140; // 140px threshold to trigger dodging (increased slightly for smoother approach)
+      const threshold = 120; // 120px threshold to trigger dodging
+      let targetX = bx;
+      let targetY = by;
+
       if (dist < threshold && dist > 0) {
-        const force = (threshold - dist) * 0.85; // Strength of push
+        const force = (threshold - dist) * 0.75; // Strength of push
         
-        let targetX = bx + (dx / dist) * force;
-        let targetY = by + (dy / dist) * force;
+        targetX = bx + (dx / dist) * force;
+        targetY = by + (dy / dist) * force;
 
         // Clamp to viewport
         targetX = Math.max(16, Math.min(window.innerWidth - 340, targetX));
         targetY = Math.max(16, Math.min(window.innerHeight - 200, targetY));
-
-        targetPosRef.current = { x: targetX, y: targetY };
-      } else {
-        // If pointer is far away, slide back to the base position
-        targetPosRef.current = { x: bx, y: by };
       }
+
+      el.style.left = `${targetX}px`;
+      el.style.top = `${targetY}px`;
     };
 
     const handleSelectionChange = () => {
@@ -4940,51 +4959,6 @@ export default function App() {
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
   }, []);
-
-  // Physics-based lerp animation loop for smooth selection popup dodging
-  React.useLayoutEffect(() => {
-    if (!selectionPopup.show) return;
-
-    let rAFId = null;
-
-    // Set initial position immediately (useLayoutEffect runs before paint to prevent 1-frame flash)
-    const el = document.getElementById('drag-ai-popup');
-    if (el) {
-      el.style.left = `${currPosRef.current.x}px`;
-      el.style.top = `${currPosRef.current.y}px`;
-    }
-
-    const updatePhysics = () => {
-      const target = targetPosRef.current;
-      const curr = currPosRef.current;
-
-      const dx = target.x - curr.x;
-      const dy = target.y - curr.y;
-
-      if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) {
-        curr.x = target.x;
-        curr.y = target.y;
-      } else {
-        // Smooth easing: move 12% closer on each frame (butter-smooth lerp)
-        curr.x += dx * 0.12;
-        curr.y += dy * 0.12;
-      }
-
-      const popupEl = document.getElementById('drag-ai-popup');
-      if (popupEl) {
-        popupEl.style.left = `${curr.x}px`;
-        popupEl.style.top = `${curr.y}px`;
-      }
-
-      rAFId = requestAnimationFrame(updatePhysics);
-    };
-
-    rAFId = requestAnimationFrame(updatePhysics);
-
-    return () => {
-      if (rAFId) cancelAnimationFrame(rAFId);
-    };
-  }, [selectionPopup.show]);
 
   // Synchronize CSS Custom Highlight to keep selection visible even when input is focused
   useEffect(() => {
@@ -19227,6 +19201,8 @@ export default function App() {
           id="drag-ai-popup"
           style={{
             position: 'fixed',
+            left: `${selectionPopup.x}px`,
+            top: `${selectionPopup.y}px`,
             zIndex: 99999,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
