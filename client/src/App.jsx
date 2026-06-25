@@ -5255,6 +5255,54 @@ export default function App() {
                 console.log(`[Realtime Sync] Local review state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
             }
+          } else if (selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999 && String(selectedTopic.schedule_id) !== '9999' && String(selectedTopic.schedule_id) !== 'null' && String(selectedTopic.schedule_id) !== 'undefined' && !selectedTopic.isReadOnly) {
+            // Check if it was completed on another device
+            try {
+              const compRes = await fetch(`${API_BASE}/api/session/completed-review/${selectedTopic.schedule_id}`);
+              const compData = await compRes.json();
+              if (compRes.ok && compData.success && compData.data) {
+                console.log('[Realtime Sync] Review completed on another device. Switching to completed view.');
+                const targetTopic = {
+                  ...selectedTopic,
+                  isReadOnly: true
+                };
+                setSelectedTopic(targetTopic);
+                
+                const completed = compData.data;
+                if (completed.questions && Array.isArray(completed.questions)) {
+                  setAiQuestions(completed.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
+                }
+                setSelectedAnswers(completed.selectedAnswers || {});
+                setRevealedQuestions(completed.revealedQuestions || {});
+                setTableAnswers(completed.tableAnswers || {});
+                setTableGradingResults(completed.tableGradingResults || {});
+                if (completed.tutorAnswers) setTutorAnswers(completed.tutorAnswers);
+                if (completed.tutorInputText) setTutorInputText(completed.tutorInputText);
+                if (completed.chatHistory) setChatHistory(completed.chatHistory);
+                
+                const activeInfo = {
+                  topicId: targetTopic.id,
+                  title: targetTopic.title,
+                  keywords: targetTopic.keywords || '',
+                  pdfName: targetTopic.pdf_name || '',
+                  mode: 'completed',
+                  scheduleId: targetTopic.schedule_id,
+                  reviewRound: targetTopic.review_round,
+                  isReadOnly: true
+                };
+                localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+                setLastActiveReview(activeInfo);
+                
+                const progressKey = targetTopic.schedule_id 
+                  ? `anti_review_progress_sched_${targetTopic.schedule_id}`
+                  : `anti_review_progress_${targetTopic.id}`;
+                localStorage.removeItem(progressKey);
+                
+                showNotification('다른 기기에서 복습이 완료되어 완료된 화면으로 전환되었습니다.', 'success');
+              }
+            } catch (e) {
+              console.warn('[Realtime Sync] Failed to sync completed review:', e);
+            }
           }
         } catch (err) {
           console.warn('[Realtime Sync] Review sync error:', err);
@@ -11178,20 +11226,77 @@ export default function App() {
               setChatHistory(finalData.chatHistory || []);
               setRestoringReviewSession(false);
             } else {
-              console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
-              await handleOpenAIQuestions(
-                s.selectedTopic.id, 
-                s.selectedTopic.title, 
-                s.selectedTopic.keywords, 
-                s.selectedTopic.pdf_name, 
-                s.selectedTopic.mode || 'ai', 
-                s.selectedTopic.schedule_id, 
-                s.selectedTopic.review_round, 
-                s.selectedTopic.isBonus,
-                false,
-                s.selectedTopic.category
-              );
-              setRestoringReviewSession(false);
+              // Try checking if completed on server
+              let isAlreadyCompleted = false;
+              let completedData = null;
+              if (scheduleId && scheduleId !== 9999 && String(scheduleId) !== '9999' && String(scheduleId) !== 'null' && String(scheduleId) !== 'undefined') {
+                try {
+                  const compRes = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
+                  const compData = await compRes.json();
+                  if (compRes.ok && compData.success && compData.data) {
+                    isAlreadyCompleted = true;
+                    completedData = compData.data;
+                  }
+                } catch (e) {
+                  console.warn('[Mount Restore] Failed to check completed review:', e);
+                }
+              }
+
+              if (isAlreadyCompleted && completedData) {
+                console.log('[Mount Restore] Review already completed on another device. Loading as read-only completed review.');
+                const targetTopic = {
+                  ...s.selectedTopic,
+                  isReadOnly: true
+                };
+                setSelectedTopic(targetTopic);
+                
+                if (completedData.questions && Array.isArray(completedData.questions)) {
+                  setAiQuestions(completedData.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
+                }
+                setSelectedAnswers(completedData.selectedAnswers || {});
+                setRevealedQuestions(completedData.revealedQuestions || {});
+                setTableAnswers(completedData.tableAnswers || {});
+                setTableGradingResults(completedData.tableGradingResults || {});
+                if (completedData.tutorAnswers) setTutorAnswers(completedData.tutorAnswers);
+                if (completedData.tutorInputText) setTutorInputText(completedData.tutorInputText);
+                if (completedData.chatHistory) setChatHistory(completedData.chatHistory);
+                setRestoringReviewSession(false);
+
+                // Clean up the local storage's temporary progress for this schedule
+                const progressKey = targetTopic.schedule_id 
+                  ? `anti_review_progress_sched_${targetTopic.schedule_id}`
+                  : `anti_review_progress_${targetTopic.id}`;
+                localStorage.removeItem(progressKey);
+                
+                // Also update last active review
+                const activeInfo = {
+                  topicId: targetTopic.id,
+                  title: targetTopic.title,
+                  keywords: targetTopic.keywords || '',
+                  pdfName: targetTopic.pdf_name || '',
+                  mode: 'completed',
+                  scheduleId: targetTopic.schedule_id,
+                  reviewRound: targetTopic.review_round,
+                  isReadOnly: true
+                };
+                localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+                setLastActiveReview(activeInfo);
+              } else {
+                console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
+                await handleOpenAIQuestions(
+                  s.selectedTopic.id, 
+                  s.selectedTopic.title, 
+                  s.selectedTopic.keywords, 
+                  s.selectedTopic.pdf_name, 
+                  s.selectedTopic.mode || 'ai', 
+                  s.selectedTopic.schedule_id, 
+                  s.selectedTopic.review_round, 
+                  s.selectedTopic.isBonus,
+                  false,
+                  s.selectedTopic.category
+                );
+                setRestoringReviewSession(false);
+              }
             }
           } else {
             setRestoringReviewSession(false);
