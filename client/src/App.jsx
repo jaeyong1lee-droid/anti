@@ -6700,6 +6700,7 @@ export default function App() {
       const queryParams = [`progressId=${progressId}`];
       if (mode === 'local') queryParams.push('local=true');
       if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
+      if (isPractice) queryParams.push('isPractice=true');
       url += '?' + queryParams.join('&');
       
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
@@ -6720,6 +6721,26 @@ export default function App() {
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
+
+        if (data.scheduleId) {
+          finalScheduleId = data.scheduleId;
+          setSelectedTopic(prev => {
+            if (prev && prev.id === topicId) {
+              const updated = { ...prev, schedule_id: data.scheduleId };
+              selectedTopicRef.current = updated;
+              return updated;
+            }
+            return prev;
+          });
+          setLastActiveReview(prev => {
+            if (prev && prev.topicId === topicId) {
+              const updated = { ...prev, scheduleId: data.scheduleId };
+              localStorage.setItem('anti_last_active_review', JSON.stringify(updated));
+              return updated;
+            }
+            return prev;
+          });
+        }
         
         // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
         let finalData = data;

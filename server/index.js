@@ -2713,6 +2713,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
   }
 
+  let resolvedScheduleId;
+
   try {
     const topicSql = `SELECT * FROM topics WHERE id = ?`;
     console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
@@ -2727,9 +2729,21 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     // 캐싱된 복습 세션 문제 복원
     await ensureSessionTable();
     const scheduleId = req.query.scheduleId;
-    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}`
-      : `review_questions_topic_${topicId}`;
+    const isPractice = req.query.isPractice === 'true';
+    resolvedScheduleId = scheduleId;
+
+    if (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined' || resolvedScheduleId === 9999) {
+      const today = getLocalDateString();
+      const initialStatus = isPractice ? 'practice' : 'pending';
+      const insertRes = await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, ?)`,
+        [topicId, today, initialStatus]
+      );
+      resolvedScheduleId = insertRes.id;
+      console.log(`[AI-Questions] Created new schedule ID ${resolvedScheduleId} for topicId ${topicId} (status: ${initialStatus})`);
+    }
+
+    const key = `review_questions_schedule_${resolvedScheduleId}`;
     const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (cached && cached.value) {
       console.log(`[Cache Hit] Serving saved review questions for key ${key}`);
@@ -2770,7 +2784,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
                 questions: healed,
                 ...cachedMeta,
                 isFallback: false,
-                isCached: true
+                isCached: true,
+                scheduleId: resolvedScheduleId
               });
             }
           }
@@ -2896,7 +2911,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         questions: deduplicatedCore,
         isFallback: true, // Treat as fallback as AI was bypassed
         mode: 'ai-optimized',
-        info: 'Handcrafted premium routing bypass'
+        info: 'Handcrafted premium routing bypass',
+        scheduleId: resolvedScheduleId
       });
     }
 
@@ -2932,7 +2948,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
         questions: deduplicatedFallback, 
         isFallback: true,
         mode: 'local',
-        error: forceLocal ? null : '백엔드 환경변수에 AI API 키가 존재하지 않습니다.'
+        error: forceLocal ? null : '백엔드 환경변수에 AI API 키가 존재하지 않습니다.',
+        scheduleId: resolvedScheduleId
       });
     }
 
@@ -3364,7 +3381,7 @@ try {
           console.warn('Failed to auto-save generated review questions to app_session:', e);
         }
 
-        res.json({ questions: deduplicatedQuestions, isFallback: false });
+        res.json({ questions: deduplicatedQuestions, isFallback: false, scheduleId: resolvedScheduleId });
     } catch (aiError) {
       console.error('Gemini API call failed, generating fallbacks:', aiError);
       const isQuota = aiError.message?.includes('Quota') || aiError.message?.includes('quota') || aiError.message?.includes('rate') || aiError.message?.includes('429');
@@ -3395,7 +3412,7 @@ try {
         console.warn('Failed to auto-save fallback review questions to app_session:', e);
       }
 
-      res.json({ questions: deduplicatedFallback, isFallback: true, error: errorMsg });
+      res.json({ questions: deduplicatedFallback, isFallback: true, error: errorMsg, scheduleId: resolvedScheduleId });
     }
   } catch (error) {
     console.error('Error in AI question generation route:', error);
