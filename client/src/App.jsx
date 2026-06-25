@@ -5255,63 +5255,90 @@ export default function App() {
                 console.log(`[Realtime Sync] Local review state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
             }
-          } else if (selectedTopic.schedule_id && selectedTopic.schedule_id !== 9999 && String(selectedTopic.schedule_id) !== '9999' && String(selectedTopic.schedule_id) !== 'null' && String(selectedTopic.schedule_id) !== 'undefined' && !selectedTopic.isReadOnly) {
+          } else if (!selectedTopic.isReadOnly) {
             // Check if it was completed on another device
-            try {
-              const compRes = await fetch(`${API_BASE}/api/session/completed-review/${selectedTopic.schedule_id}`);
-              const compData = await compRes.json();
-              if (compRes.ok && compData.success && compData.data) {
-                console.log('[Realtime Sync] Review completed on another device. Switching to completed view.');
-                const targetTopic = {
-                  ...selectedTopic,
-                  isReadOnly: true
-                };
-                setSelectedTopic(targetTopic);
-                
-                // Reset UI states for read-only completed view
-                setShowAnswerSheet(false);
-                setReviewMobileTab('list');
-                setShowAnswersState({});
-                setExamShowAnswersState({});
-                setIsFallback(false);
-                setAiError('');
-                setShowFullReport(false);
-                setReportText('');
+            const scheduleId = selectedTopic.schedule_id;
+            let compData = null;
+            let completedScheduleId = null;
 
-                const completed = compData.data;
-                if (completed.questions && Array.isArray(completed.questions)) {
-                  setAiQuestions(completed.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
+            // 1. Try by schedule ID
+            if (scheduleId && scheduleId !== 9999 && String(scheduleId) !== '9999' && String(scheduleId) !== 'null' && String(scheduleId) !== 'undefined') {
+              try {
+                const compRes = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
+                const resJson = await compRes.json();
+                if (compRes.ok && resJson.success && resJson.data) {
+                  compData = resJson.data;
+                  completedScheduleId = scheduleId;
                 }
-                setSelectedAnswers(completed.selectedAnswers || {});
-                setRevealedQuestions(completed.revealedQuestions || {});
-                setTableAnswers(completed.tableAnswers || {});
-                setTableGradingResults(completed.tableGradingResults || {});
-                if (completed.tutorAnswers) setTutorAnswers(completed.tutorAnswers);
-                if (completed.tutorInputText) setTutorInputText(completed.tutorInputText);
-                if (completed.chatHistory) setChatHistory(completed.chatHistory);
-                
-                const activeInfo = {
-                  topicId: targetTopic.id,
-                  title: targetTopic.title,
-                  keywords: targetTopic.keywords || '',
-                  pdfName: targetTopic.pdf_name || '',
-                  mode: 'completed',
-                  scheduleId: targetTopic.schedule_id,
-                  reviewRound: targetTopic.review_round,
-                  isReadOnly: true
-                };
-                localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
-                setLastActiveReview(activeInfo);
-                
-                const progressKey = targetTopic.schedule_id 
-                  ? `anti_review_progress_sched_${targetTopic.schedule_id}`
-                  : `anti_review_progress_${targetTopic.id}`;
-                localStorage.removeItem(progressKey);
-                
-                showNotification('다른 기기에서 복습이 완료되어 완료된 화면으로 전환되었습니다.', 'success');
+              } catch (e) {
+                console.warn('[Realtime Sync] Failed to sync completed review by scheduleId:', e);
               }
-            } catch (e) {
-              console.warn('[Realtime Sync] Failed to sync completed review:', e);
+            }
+
+            // 2. Fall back to checking by topic ID (important for bonus reviews where scheduleId starts as null)
+            if (!compData && selectedTopic.id) {
+              try {
+                const compRes = await fetch(`${API_BASE}/api/session/completed-review/by-topic/${selectedTopic.id}`);
+                const resJson = await compRes.json();
+                if (compRes.ok && resJson.success && resJson.data) {
+                  compData = resJson.data;
+                  completedScheduleId = resJson.scheduleId || scheduleId;
+                }
+              } catch (e) {
+                console.warn('[Realtime Sync] Failed to sync completed review by topicId:', e);
+              }
+            }
+
+            if (compData) {
+              console.log('[Realtime Sync] Review completed on another device. Switching to completed view.');
+              const targetTopic = {
+                ...selectedTopic,
+                schedule_id: completedScheduleId,
+                isReadOnly: true
+              };
+              setSelectedTopic(targetTopic);
+              
+              // Reset UI states for read-only completed view
+              setShowAnswerSheet(false);
+              setReviewMobileTab('list');
+              setShowAnswersState({});
+              setExamShowAnswersState({});
+              setIsFallback(false);
+              setAiError('');
+              setShowFullReport(false);
+              setReportText('');
+
+              const completed = compData;
+              if (completed.questions && Array.isArray(completed.questions)) {
+                setAiQuestions(completed.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
+              }
+              setSelectedAnswers(completed.selectedAnswers || {});
+              setRevealedQuestions(completed.revealedQuestions || {});
+              setTableAnswers(completed.tableAnswers || {});
+              setTableGradingResults(completed.tableGradingResults || {});
+              if (completed.tutorAnswers) setTutorAnswers(completed.tutorAnswers);
+              if (completed.tutorInputText) setTutorInputText(completed.tutorInputText);
+              if (completed.chatHistory) setChatHistory(completed.chatHistory);
+              
+              const activeInfo = {
+                topicId: targetTopic.id,
+                title: targetTopic.title,
+                keywords: targetTopic.keywords || '',
+                pdfName: targetTopic.pdf_name || '',
+                mode: 'completed',
+                scheduleId: targetTopic.schedule_id,
+                reviewRound: targetTopic.review_round,
+                isReadOnly: true
+              };
+              localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+              setLastActiveReview(activeInfo);
+              
+              const progressKey = targetTopic.schedule_id 
+                ? `anti_review_progress_sched_${targetTopic.schedule_id}`
+                : `anti_review_progress_${targetTopic.id}`;
+              localStorage.removeItem(progressKey);
+              
+              showNotification('다른 기기에서 복습이 완료되어 완료된 화면으로 전환되었습니다.', 'success');
             }
           }
         } catch (err) {
@@ -11239,16 +11266,35 @@ export default function App() {
               // Try checking if completed on server
               let isAlreadyCompleted = false;
               let completedData = null;
+              let completedScheduleId = scheduleId;
+
+              // 1. Try by schedule ID
               if (scheduleId && scheduleId !== 9999 && String(scheduleId) !== '9999' && String(scheduleId) !== 'null' && String(scheduleId) !== 'undefined') {
                 try {
                   const compRes = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
-                  const compData = await compRes.json();
-                  if (compRes.ok && compData.success && compData.data) {
+                  const resJson = await compRes.json();
+                  if (compRes.ok && resJson.success && resJson.data) {
                     isAlreadyCompleted = true;
-                    completedData = compData.data;
+                    completedData = resJson.data;
+                    completedScheduleId = scheduleId;
                   }
                 } catch (e) {
-                  console.warn('[Mount Restore] Failed to check completed review:', e);
+                  console.warn('[Mount Restore] Failed to check completed review by scheduleId:', e);
+                }
+              }
+
+              // 2. Fall back to checking by topic ID (important for bonus reviews where scheduleId starts as null)
+              if (!isAlreadyCompleted && topicId) {
+                try {
+                  const compRes = await fetch(`${API_BASE}/api/session/completed-review/by-topic/${topicId}`);
+                  const resJson = await compRes.json();
+                  if (compRes.ok && resJson.success && resJson.data) {
+                    isAlreadyCompleted = true;
+                    completedData = resJson.data;
+                    completedScheduleId = resJson.scheduleId || scheduleId;
+                  }
+                } catch (e) {
+                  console.warn('[Mount Restore] Failed to check completed review by topicId:', e);
                 }
               }
 
@@ -11256,6 +11302,7 @@ export default function App() {
                 console.log('[Mount Restore] Review already completed on another device. Loading as read-only completed review.');
                 const targetTopic = {
                   ...s.selectedTopic,
+                  schedule_id: completedScheduleId,
                   isReadOnly: true
                 };
                 setSelectedTopic(targetTopic);

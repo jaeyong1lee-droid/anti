@@ -6698,6 +6698,36 @@ app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
   }
 });
 
+// GET /api/session/completed-review/by-topic/:topicId → 특정 토픽의 가장 최근 완료된 복습 상세 풀이 기록 반환
+app.get('/api/session/completed-review/by-topic/:topicId', async (req, res) => {
+  const topicId = req.params.topicId;
+  try {
+    await ensureSessionTable();
+    // 가장 최근에 완료된 스케줄 ID 조회
+    const schedule = await dbQuery.get(
+      `SELECT id FROM schedules WHERE topic_id = ? AND status = 'completed' ORDER BY completed_at DESC LIMIT 1`,
+      [topicId]
+    );
+    if (schedule) {
+      const row = await dbQuery.get(
+        'SELECT value FROM app_session WHERE key = ?',
+        [`completed_review_schedule_${schedule.id}`]
+      );
+      if (row && row.value) {
+        const data = JSON.parse(row.value);
+        if (data && Array.isArray(data.questions)) {
+          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+        }
+        return res.json({ success: true, scheduleId: schedule.id, data });
+      }
+    }
+    res.json({ success: false, error: '해당 토픽의 완료된 복습 기록이 없습니다.' });
+  } catch (err) {
+    console.error('GET /api/session/completed-review/by-topic error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/session/last-active-review → 가장 최근 공부 중이거나 완료했던 복습 세션 정보 반환
 app.get('/api/session/last-active-review', async (req, res) => {
   try {
