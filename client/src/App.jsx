@@ -2946,6 +2946,13 @@ export default function App() {
     tutorType: 'sidebar' // 'sidebar' | 'card'
   });
 
+  const selectionPopupRef = useRef(selectionPopup);
+  useEffect(() => {
+    selectionPopupRef.current = selectionPopup;
+  }, [selectionPopup]);
+
+  const isDraggingPopupRef = useRef(false);
+
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
@@ -4717,6 +4724,53 @@ export default function App() {
   useEffect(() => {
     let selectionTimeout = null;
     let lastValidRange = null;
+    let isMouseDown = false;
+
+    const handleDocumentMouseDown = () => {
+      isMouseDown = true;
+    };
+    const handleDocumentMouseUp = () => {
+      isMouseDown = false;
+    };
+
+    const handlePointerMove = (e) => {
+      const popupState = selectionPopupRef.current;
+      if (!popupState.show || !isMouseDown || isDraggingPopupRef.current) {
+        return;
+      }
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      // Popup coordinates
+      const px = popupState.x + 160; // Center X (width is 320)
+      const py = popupState.y + 70;  // Center Y (height is ~140)
+
+      const dx = px - clientX;
+      const dy = py - clientY;
+      const dist = Math.hypot(dx, dy);
+
+      const threshold = 120; // 120px threshold to trigger dodging
+      if (dist < threshold && dist > 0) {
+        const force = (threshold - dist) * 0.75; // Strength of push
+        
+        let newX = popupState.x + (dx / dist) * force;
+        let newY = popupState.y + (dy / dist) * force;
+
+        // Clamp to viewport
+        newX = Math.max(16, Math.min(window.innerWidth - 340, newX));
+        newY = Math.max(16, Math.min(window.innerHeight - 200, newY));
+
+        // If coordinates changed, update state
+        if (Math.abs(newX - popupState.x) > 1 || Math.abs(newY - popupState.y) > 1) {
+          setSelectionPopup(prev => ({
+            ...prev,
+            x: newX,
+            y: newY
+          }));
+        }
+      }
+    };
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
@@ -4850,12 +4904,28 @@ export default function App() {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
 
+    window.addEventListener('mousedown', handleDocumentMouseDown);
+    window.addEventListener('mouseup', handleDocumentMouseUp);
+    window.addEventListener('touchstart', handleDocumentMouseDown);
+    window.addEventListener('touchend', handleDocumentMouseUp);
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('touchmove', handlePointerMove, { passive: true });
+
     document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
     return () => {
       if (selectionTimeout) clearTimeout(selectionTimeout);
+      window.removeEventListener('mousedown', handleDocumentMouseDown);
+      window.removeEventListener('mouseup', handleDocumentMouseUp);
+      window.removeEventListener('touchstart', handleDocumentMouseDown);
+      window.removeEventListener('touchend', handleDocumentMouseUp);
+
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('touchmove', handlePointerMove);
+
       document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
@@ -4903,6 +4973,12 @@ export default function App() {
   const handlePopupDragStart = (e) => {
     if (e.target.closest('button, input, textarea')) return;
     
+    isDraggingPopupRef.current = true;
+    const popupEl = document.getElementById('drag-ai-popup');
+    if (popupEl) {
+      popupEl.style.transition = 'none';
+    }
+    
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     
@@ -4930,6 +5006,11 @@ export default function App() {
     };
 
     const handleDragEnd = () => {
+      isDraggingPopupRef.current = false;
+      const finalPopupEl = document.getElementById('drag-ai-popup');
+      if (finalPopupEl) {
+        finalPopupEl.style.transition = 'left 0.25s cubic-bezier(0.16, 1, 0.3, 1), top 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+      }
       window.removeEventListener('mousemove', handleDragMove);
       window.removeEventListener('mouseup', handleDragEnd);
       window.removeEventListener('touchmove', handleDragMove);
@@ -19099,7 +19180,8 @@ export default function App() {
             left: `${selectionPopup.x}px`,
             top: `${selectionPopup.y}px`,
             zIndex: 99999,
-            animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            transition: 'left 0.25s cubic-bezier(0.16, 1, 0.3, 1), top 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
           className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
         >
