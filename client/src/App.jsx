@@ -2954,13 +2954,7 @@ export default function App() {
     questionKey: '',
     tutorType: 'sidebar' // 'sidebar' | 'card'
   });
-  const [activeCaret, setActiveCaret] = useState({
-    show: false,
-    container: null, // 'review' | 'exam'
-    x: 0,
-    y: 0,
-    height: 18
-  });
+
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
@@ -4796,8 +4790,8 @@ export default function App() {
           setSelectionPopup(prev => ({
             show: true,
             text: text,
-            x: rect.left + rect.width / 2,
-            y: rect.bottom + 8,
+            x: Math.max(16, Math.min(window.innerWidth - 340, rect.left + rect.width / 2 - 160)),
+            y: Math.max(16, Math.min(window.innerHeight - 200, rect.bottom + 8)),
             question: '',
             questionKey: foundQKey,
             tutorType: foundQKey ? prev.tutorType : 'sidebar'
@@ -4811,8 +4805,8 @@ export default function App() {
       setSelectionPopup(prev => ({
         show: true,
         text: text,
-        x: x,
-        y: y,
+        x: Math.max(16, Math.min(window.innerWidth - 340, x - 160)),
+        y: Math.max(16, Math.min(window.innerHeight - 200, y)),
         question: '',
         questionKey: questionKey || '',
         tutorType: questionKey ? prev.tutorType : 'sidebar'
@@ -4889,63 +4883,49 @@ export default function App() {
     answersheetMobileTab
   ]);
 
-  const handleCaretPlacement = (e, containerName) => {
-    // If the user is dragging or has selected text, do not show/update the caret to prevent clearing selection
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim() !== '') {
-      return;
-    }
+  const handlePopupDragStart = (e) => {
+    if (e.target.closest('button, input, textarea')) return;
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    const startX = clientX;
+    const startY = clientY;
+    const startPopupX = selectionPopup.x;
+    const startPopupY = selectionPopup.y;
 
-    // Ignore clicks on interactive elements
-    const target = e.target;
-    if (target.closest('input, textarea, button, a, [role="button"], #drag-ai-popup')) {
-      return;
-    }
+    const handleDragMove = (moveEvent) => {
+      if (moveEvent.cancelable) moveEvent.preventDefault();
+      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
-    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
-    if (clientX === undefined || clientY === undefined) return;
+      const dx = currentX - startX;
+      const dy = currentY - startY;
 
-    const container = containerName === 'review' ? quizBodyRef.current : examBodyRef.current;
-    if (!container) return;
+      const newX = Math.max(16, Math.min(window.innerWidth - 340, startPopupX + dx));
+      const newY = Math.max(16, Math.min(window.innerHeight - 200, startPopupY + dy));
 
-    let range = null;
-    if (document.caretRangeFromPoint) {
-      range = document.caretRangeFromPoint(clientX, clientY);
-    } else if (document.caretPositionFromPoint) {
-      const position = document.caretPositionFromPoint(clientX, clientY);
-      if (position) {
-        range = document.createRange();
-        range.setStart(position.offsetNode, position.offset);
-        range.collapse(true);
-      }
-    }
+      setSelectionPopup(prev => ({
+        ...prev,
+        x: newX,
+        y: newY
+      }));
+    };
 
-    if (range) {
-      const rect = range.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      if (rect && rect.height > 0) {
-        setActiveCaret({
-          show: true,
-          container: containerName,
-          x: rect.left - containerRect.left + container.scrollLeft,
-          y: rect.top - containerRect.top + container.scrollTop,
-          height: rect.height
-        });
-        return;
-      }
-    }
+    const handleDragEnd = () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
 
-    // Fallback: use click coordinate relative to container
-    const containerRect = container.getBoundingClientRect();
-    setActiveCaret({
-      show: true,
-      container: containerName,
-      x: clientX - containerRect.left + container.scrollLeft,
-      y: clientY - containerRect.top + container.scrollTop - 9,
-      height: 18
-    });
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchmove', handleDragMove, { passive: false });
+    window.addEventListener('touchend', handleDragEnd);
   };
+
+
 
   useEffect(() => {
     if (examTopic && examQuestions.length > 0) {
@@ -12855,8 +12835,7 @@ export default function App() {
             </div>
           </div>
               <div 
-                ref={quizBodyRef} 
-                onClick={(e) => handleCaretPlacement(e, 'review')}
+                ref={quizBodyRef}
                 onScroll={(e) => {
                   const scrollTop = e.currentTarget.scrollTop;
                   savedQuizScroll.current = scrollTop;
@@ -12921,29 +12900,7 @@ export default function App() {
                 }}
                 className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
               >
-                {activeCaret.show && activeCaret.container === 'review' && (
-                  <>
-                    <style>{`
-                      @keyframes customCaretBlink {
-                        from, to { background-color: transparent }
-                        50% { background-color: #f43f5e }
-                      }
-                    `}</style>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${activeCaret.x}px`,
-                        top: `${activeCaret.y}px`,
-                        width: '2px',
-                        height: `${activeCaret.height}px`,
-                        backgroundColor: '#f43f5e',
-                        zIndex: 9999,
-                        pointerEvents: 'none',
-                        animation: 'customCaretBlink 1.2s step-end infinite'
-                      }}
-                    />
-                  </>
-                )}
+
                 {/* Pull to Refresh Indicator */}
                 {(reviewPull > 0 || reviewRefreshing) && (
                   <div 
@@ -15824,8 +15781,7 @@ export default function App() {
             </div>
           </div>
               <div 
-                ref={examBodyRef} 
-                onClick={(e) => handleCaretPlacement(e, 'exam')}
+                ref={examBodyRef}
                 onScroll={(e) => {
                   const scrollTop = e.currentTarget.scrollTop;
                   savedExamScroll.current = scrollTop;
@@ -15887,29 +15843,7 @@ export default function App() {
                 }}
                 className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
-                {activeCaret.show && activeCaret.container === 'exam' && (
-                  <>
-                    <style>{`
-                      @keyframes customCaretBlink {
-                        from, to { background-color: transparent }
-                        50% { background-color: #f43f5e }
-                      }
-                    `}</style>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: `${activeCaret.x}px`,
-                        top: `${activeCaret.y}px`,
-                        width: '2px',
-                        height: `${activeCaret.height}px`,
-                        backgroundColor: '#f43f5e',
-                        zIndex: 9999,
-                        pointerEvents: 'none',
-                        animation: 'customCaretBlink 1.2s step-end infinite'
-                      }}
-                    />
-                  </>
-                )}
+
                 {/* Pull to Refresh Indicator */}
                 {(examPull > 0 || examRefreshing) && (
                   <div 
@@ -19173,8 +19107,8 @@ export default function App() {
           id="drag-ai-popup"
           style={{
             position: 'fixed',
-            left: `${Math.max(16, Math.min(window.innerWidth - 340, selectionPopup.x - 170))}px`,
-            top: `${Math.max(16, Math.min(window.innerHeight - 200, selectionPopup.y))}px`,
+            left: `${selectionPopup.x}px`,
+            top: `${selectionPopup.y}px`,
             zIndex: 99999,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
@@ -19199,7 +19133,11 @@ export default function App() {
           `}</style>
           
           {/* Header */}
-          <div className="flex items-center justify-between text-[11px] font-black text-rose-400 select-none">
+          <div 
+            onMouseDown={handlePopupDragStart}
+            onTouchStart={handlePopupDragStart}
+            className="flex items-center justify-between text-[11px] font-black text-rose-400 select-none cursor-grab active:cursor-grabbing"
+          >
             <span className="flex items-center gap-1.5">
               💬 AI 튜터 질문하기
             </span>
