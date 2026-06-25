@@ -387,6 +387,9 @@ async function migrateSchedulesTable() {
       try {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN category TEXT DEFAULT '일반'`);
       } catch (e) {}
+      try {
+        await dbQuery.run(`ALTER TABLE app_session ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+      } catch (e) {}
       console.log('Local SQLite schedules and topics tables migration checked.');
     }
   } catch (err) {

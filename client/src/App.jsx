@@ -5268,6 +5268,16 @@ export default function App() {
                 };
                 setSelectedTopic(targetTopic);
                 
+                // Reset UI states for read-only completed view
+                setShowAnswerSheet(false);
+                setReviewMobileTab('list');
+                setShowAnswersState({});
+                setExamShowAnswersState({});
+                setIsFallback(false);
+                setAiError('');
+                setShowFullReport(false);
+                setReportText('');
+
                 const completed = compData.data;
                 if (completed.questions && Array.isArray(completed.questions)) {
                   setAiQuestions(completed.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
@@ -11250,6 +11260,16 @@ export default function App() {
                 };
                 setSelectedTopic(targetTopic);
                 
+                // Reset UI states for read-only completed view
+                setShowAnswerSheet(false);
+                setReviewMobileTab('list');
+                setShowAnswersState({});
+                setExamShowAnswersState({});
+                setIsFallback(false);
+                setAiError('');
+                setShowFullReport(false);
+                setReportText('');
+
                 if (completedData.questions && Array.isArray(completedData.questions)) {
                   setAiQuestions(completedData.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
                 }
