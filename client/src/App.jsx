@@ -4714,9 +4714,9 @@ export default function App() {
     }
   }, [selectedTopic, aiQuestions]);
 
-  // ── Drag Selection AI Tutor Popup Listener ───────────────────
   useEffect(() => {
     let selectionTimeout = null;
+    let lastValidRange = null;
 
     const handleSelectionChange = () => {
       if (selectionTimeout) {
@@ -4725,25 +4725,45 @@ export default function App() {
 
       selectionTimeout = setTimeout(() => {
         const selection = window.getSelection();
-        if (!selection) return;
+        if (!selection || selection.rangeCount === 0) return;
 
         // If formula confirm target is open, ignore drag popup
         if (window.__isFormulaConfirmOpen) {
           return;
         }
 
-        // If the selection is inside the popup, ignore selection changes
+        // Check if anchorNode or focusNode is inside the popup
         let anchorNode = selection.anchorNode;
-        let isInsidePopup = false;
+        let focusNode = selection.focusNode;
+
+        let isAnchorInsidePopup = false;
         let node = anchorNode;
         while (node) {
           if (node.id === 'drag-ai-popup') {
-            isInsidePopup = true;
+            isAnchorInsidePopup = true;
             break;
           }
           node = node.parentNode;
         }
-        if (isInsidePopup) {
+
+        let isFocusInsidePopup = false;
+        let fnode = focusNode;
+        while (fnode) {
+          if (fnode.id === 'drag-ai-popup') {
+            isFocusInsidePopup = true;
+            break;
+          }
+          fnode = fnode.parentNode;
+        }
+
+        // If selection focus or anchor is inside the popup, restore the last valid range
+        if (isAnchorInsidePopup || isFocusInsidePopup) {
+          if (isFocusInsidePopup && lastValidRange) {
+            try {
+              selection.removeAllRanges();
+              selection.addRange(lastValidRange);
+            } catch (err) {}
+          }
           return;
         }
 
@@ -4757,8 +4777,14 @@ export default function App() {
 
         if (!text) {
           setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+          lastValidRange = null;
           return;
         }
+
+        // Save current selection range as last valid range
+        try {
+          lastValidRange = selection.getRangeAt(0).cloneRange();
+        } catch (err) {}
 
         // Ignore selections in input fields, textareas, etc.
         if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
@@ -19075,7 +19101,7 @@ export default function App() {
             zIndex: 99999,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
-          className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans"
+          className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
         >
           <style>{`
             @keyframes dragPopupFadeIn {
@@ -19113,7 +19139,7 @@ export default function App() {
           </div>
 
           {/* Selected Text Preview */}
-          <div className="text-[11px] text-slate-300 bg-slateCustom-950/60 border border-slate-800/80 rounded-xl px-2.5 py-2 max-h-[50px] overflow-y-auto leading-relaxed select-text font-medium custom-vertical-scrollbar">
+          <div className="text-[11px] text-slate-300 bg-slateCustom-950/60 border border-slate-800/80 rounded-xl px-2.5 py-2 max-h-[50px] overflow-y-auto leading-relaxed select-none font-medium custom-vertical-scrollbar">
             <span className="text-slate-400 font-extrabold mr-1">대상 문구:</span>
             "{selectionPopup.text}"
           </div>
