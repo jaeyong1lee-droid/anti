@@ -1847,17 +1847,24 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
     return res.status(400).json({ error: '토픽 ID 정보가 누락되었습니다.' });
   }
 
+  const topicIdInt = parseInt(topicId, 10);
+  const targetScheduleIdInt = targetScheduleId ? parseInt(targetScheduleId, 10) : null;
+
+  if (isNaN(topicIdInt)) {
+    return res.status(400).json({ error: '유효한 토픽 ID가 아닙니다.' });
+  }
+
   try {
     let existing = null;
-    if (targetScheduleId) {
-      existing = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    if (targetScheduleIdInt) {
+      existing = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleIdInt]);
     }
 
     if (!existing) {
       // 오늘 해당 토픽에 대해 이미 보너스 완료(round = 99) 기록이 있는지 점검
       existing = await dbQuery.get(
         'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-        [topicId, today]
+        [topicIdInt, today]
       );
     }
 
@@ -1874,7 +1881,7 @@ app.post('/api/schedules/bonus/complete', async (req, res) => {
       await dbQuery.run(
         `INSERT INTO schedules (topic_id, review_round, planned_date, status, completed_at, score, correct_count, total_count)
          VALUES (?, 99, ?, 'completed', ?, ?, NULL, NULL)`,
-        [topicId, today, now, score !== undefined ? score : null]
+        [topicIdInt, today, now, score !== undefined ? score : null]
       );
     }
 
@@ -1936,21 +1943,28 @@ app.post('/api/quiz/submit', async (req, res) => {
     return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
   }
 
+  const topicIdInt = parseInt(topic_id, 10);
+  let scheduleIdInt = parseInt(schedule_id, 10);
+
+  if (isNaN(topicIdInt) || isNaN(scheduleIdInt)) {
+    return res.status(400).json({ error: '유효한 topic_id와 schedule_id가 아닙니다.' });
+  }
+
   const now = new Date().toISOString();
 
   try {
-    let targetScheduleId = schedule_id;
+    let targetScheduleId = scheduleIdInt;
 
     if (isBonus) {
       let existingBonus = null;
-      if (schedule_id && schedule_id !== 9999 && String(schedule_id) !== '9999') {
-        existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [schedule_id]);
+      if (scheduleIdInt && scheduleIdInt !== 9999) {
+        existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [scheduleIdInt]);
       }
       if (!existingBonus) {
         const today = getLocalDateString();
         existingBonus = await dbQuery.get(
           'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-          [topic_id, today]
+          [topicIdInt, today]
         );
       }
 
@@ -1958,11 +1972,11 @@ app.post('/api/quiz/submit', async (req, res) => {
         const today = getLocalDateString();
         await dbQuery.run(
           `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, 'pending')`,
-          [topic_id, today]
+          [topicIdInt, today]
         );
         const newlyCreated = await dbQuery.get(
           'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
-          [topic_id, today]
+          [topicIdInt, today]
         );
         targetScheduleId = newlyCreated.id;
       } else {
@@ -1970,17 +1984,17 @@ app.post('/api/quiz/submit', async (req, res) => {
       }
     } else {
       // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
-      if (schedule_id === 9999 || String(schedule_id) === '9999' || !schedule_id) {
+      if (scheduleIdInt === 9999 || !scheduleIdInt) {
         const lastCompleted = await dbQuery.get(
           `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
-          [topic_id]
+          [topicIdInt]
         );
         if (lastCompleted) {
           targetScheduleId = lastCompleted.id;
         } else {
           const anySchedule = await dbQuery.get(
             `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
-            [topic_id]
+            [topicIdInt]
           );
           if (anySchedule) {
             targetScheduleId = anySchedule.id;
@@ -1988,6 +2002,9 @@ app.post('/api/quiz/submit', async (req, res) => {
         }
       }
     }
+
+    // Ensure targetScheduleId is coerced to integer
+    targetScheduleId = parseInt(targetScheduleId, 10);
 
     // 1. 해당 스케줄이 실제로 존재하는지 확인
     const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
@@ -2733,14 +2750,24 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     resolvedScheduleId = scheduleId;
 
     if (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined' || resolvedScheduleId === 9999) {
-      const today = getLocalDateString();
-      const initialStatus = isPractice ? 'practice' : 'pending';
-      const insertRes = await dbQuery.run(
-        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, ?)`,
-        [topicId, today, initialStatus]
+      // Check if there is an existing pending/practice schedule for this topic
+      const existingPending = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'pending' OR status = 'practice') ORDER BY id DESC LIMIT 1`,
+        [topicId]
       );
-      resolvedScheduleId = insertRes.id;
-      console.log(`[AI-Questions] Created new schedule ID ${resolvedScheduleId} for topicId ${topicId} (status: ${initialStatus})`);
+      if (existingPending) {
+        resolvedScheduleId = existingPending.id;
+        console.log(`[AI-Questions] Reusing existing pending/practice schedule ID ${resolvedScheduleId} for topicId ${topicId}`);
+      } else {
+        const today = getLocalDateString();
+        const initialStatus = isPractice ? 'practice' : 'pending';
+        const insertRes = await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, ?)`,
+          [topicId, today, initialStatus]
+        );
+        resolvedScheduleId = insertRes.id;
+        console.log(`[AI-Questions] Created new schedule ID ${resolvedScheduleId} for topicId ${topicId} (status: ${initialStatus})`);
+      }
     }
 
     const key = `review_questions_schedule_${resolvedScheduleId}`;
@@ -6586,6 +6613,19 @@ app.get('/api/session/review', async (req, res) => {
     if (!topicId) {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
+
+    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
+      const scheduleIdInt = parseInt(scheduleId, 10);
+      if (!isNaN(scheduleIdInt)) {
+        const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
+        if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+          const keyStale = `review_questions_schedule_${scheduleIdInt}`;
+          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [keyStale]);
+          return res.json({ success: false, error: '이미 완료된 복습 일정입니다.' });
+        }
+      }
+    }
+
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
       ? `review_questions_schedule_${scheduleId}`
       : `review_questions_topic_${topicId}`;
@@ -6614,6 +6654,17 @@ app.post('/api/session/review', async (req, res) => {
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
+
+    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
+      const scheduleIdInt = parseInt(scheduleId, 10);
+      if (!isNaN(scheduleIdInt)) {
+        const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
+        if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+          return res.status(400).json({ error: '이미 완료된 복습 일정입니다. 저장할 수 없습니다.' });
+        }
+      }
+    }
+
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
       ? `review_questions_schedule_${scheduleId}`
       : `review_questions_topic_${topicId}`;
