@@ -2961,6 +2961,9 @@ export default function App() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // If the user has not verified the PIN code yet, ignore screen off/on triggers to prevent showing quiz on app launch/PIN screen
+      if (!isPinVerified) return;
+
       // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
         if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
@@ -3007,6 +3010,7 @@ export default function App() {
     };
 
     const handleBlur = () => {
+      if (!isPinVerified) return;
       hasBeenHiddenRef.current = true;
     };
 
@@ -3023,7 +3027,7 @@ export default function App() {
       window.removeEventListener('pageshow', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [isLockscreenQuizEnabled]);
+  }, [isLockscreenQuizEnabled, isPinVerified]);
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
