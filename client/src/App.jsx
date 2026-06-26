@@ -2957,11 +2957,13 @@ export default function App() {
     return null;
   };
 
+  const hasBeenHiddenRef = useRef(false);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        if (isLockscreenQuizEnabled) {
+        if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
           const queryDate = getLockscreenQueryDate();
           const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
           if (cached) {
@@ -2974,6 +2976,8 @@ export default function App() {
                 setLockscreenSelectedOption(null);
                 setLockscreenAnswerResult(null);
                 setShowLockscreenQuiz(true);
+                // Reset flag
+                hasBeenHiddenRef.current = false;
               }
             } catch (e) {
               console.error('Failed to parse cached lockscreen questions:', e);
@@ -2989,27 +2993,35 @@ export default function App() {
                   setLockscreenSelectedOption(null);
                   setLockscreenAnswerResult(null);
                   setShowLockscreenQuiz(true);
+                  // Reset flag
+                  hasBeenHiddenRef.current = false;
                 }
                 return questions;
               });
             }
           });
         }
+      } else if (document.visibilityState === 'hidden') {
+        hasBeenHiddenRef.current = true;
       }
+    };
+
+    const handleBlur = () => {
+      hasBeenHiddenRef.current = true;
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
     window.addEventListener('pageshow', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
     
-    if (isLockscreenQuizEnabled) {
-      handleVisibilityChange();
-    }
+    // We explicitly DO NOT trigger on initial app launch mount
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
       window.removeEventListener('pageshow', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
     };
   }, [isLockscreenQuizEnabled]);
   
