@@ -12083,7 +12083,7 @@ export default function App() {
 
   if (!isPinVerified) {
     return (
-      <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-slateCustom-950 text-slate-100 p-4 font-sans select-none">
+      <div className="fixed inset-0 z-[9999999] flex flex-col items-center justify-center bg-slateCustom-950 text-slate-100 p-4 font-sans select-none">
         <style>{`
           @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -12157,7 +12157,7 @@ export default function App() {
       {showLockscreenQuiz && (() => {
         if (lockscreenLoading) {
           return (
-            <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+            <div className="fixed inset-0 z-[9999999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
               <div className="w-full max-w-lg flex flex-col space-y-6 my-auto items-center text-center">
                 <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
                   <Lock className="text-indigo-400 animate-pulse" size={28} />
@@ -12171,7 +12171,7 @@ export default function App() {
 
         if (lockscreenQuestions.length === 0) {
           return (
-            <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+            <div className="fixed inset-0 z-[9999999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
               <div className="w-full max-w-lg flex flex-col space-y-6 my-auto items-center text-center">
                 <div className="p-3 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">
                   <Lock size={28} />
@@ -12213,7 +12213,7 @@ export default function App() {
         if (!currentQuestion || !Array.isArray(currentQuestion.options)) return null;
 
         return (
-          <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+          <div className="fixed inset-0 z-[9999999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
             <div className="w-full max-w-lg flex flex-col space-y-6 my-auto">
               {/* Header */}
               <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b border-slate-800/60">
