@@ -19804,7 +19804,16 @@ export default function App() {
       {isRealTimeTutorOpen && (
         <div
           id="realtime-ai-tutor"
-          style={{
+          style={(!isDesktop && !isMobileLandscape) ? {
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            width: '100vw',
+            height: '100dvh',
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+          } : {
             position: 'fixed',
             left: `${realTimeTutorPos.x}px`,
             top: `${realTimeTutorPos.y}px`,
@@ -19814,12 +19823,14 @@ export default function App() {
             display: 'flex',
             flexDirection: 'column',
           }}
-          className="bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl backdrop-blur-md font-sans overflow-hidden select-none animate-dragPopupFadeIn"
+          className={`bg-slate-900/95 shadow-2xl backdrop-blur-md font-sans overflow-hidden select-none animate-dragPopupFadeIn ${
+            (!isDesktop && !isMobileLandscape) ? '' : 'border border-slate-700/60 rounded-2xl'
+          }`}
         >
           {/* Header */}
           <div
-            onMouseDown={handleRealTimeMoveStart}
-            onTouchStart={handleRealTimeMoveStart}
+            onMouseDown={(!isDesktop && !isMobileLandscape) ? undefined : handleRealTimeMoveStart}
+            onTouchStart={(!isDesktop && !isMobileLandscape) ? undefined : handleRealTimeMoveStart}
             className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 cursor-grab active:cursor-grabbing select-none"
           >
             <div className="flex items-center gap-2">
@@ -19990,16 +20001,18 @@ export default function App() {
           </form>
 
           {/* Resize Handle */}
-          <div
-            onMouseDown={handleRealTimeResizeStart}
-            onTouchStart={handleRealTimeResizeStart}
-            className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize flex items-end justify-end p-0.5 select-none"
-            style={{ zIndex: 100000 }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" className="text-slate-500 hover:text-slate-300 transition-colors">
-              <path d="M10,0 L0,10 M10,3 L3,10 M10,6 L6,10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </div>
+          {(isDesktop || isMobileLandscape) && (
+            <div
+              onMouseDown={handleRealTimeResizeStart}
+              onTouchStart={handleRealTimeResizeStart}
+              className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize flex items-end justify-end p-0.5 select-none"
+              style={{ zIndex: 100000 }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" className="text-slate-500 hover:text-slate-300 transition-colors">
+                <path d="M10,0 L0,10 M10,3 L3,10 M10,6 L6,10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+          )}
         </div>
       )}
     </div>
