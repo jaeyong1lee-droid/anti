@@ -11951,8 +11951,8 @@ export default function App() {
         if (!currentQuestion || !Array.isArray(currentQuestion.options)) return null;
 
         return (
-          <div className="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-xl flex flex-col justify-center items-center p-6 text-slate-100 font-sans select-none overflow-y-auto">
-            <div className="w-full max-w-xl bg-slateCustom-900 border border-slate-800/80 rounded-3xl p-6 md:p-8 flex flex-col shadow-2xl space-y-6 my-auto">
+          <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+            <div className="w-full max-w-lg flex flex-col space-y-6 my-auto">
               {/* Header */}
               <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b border-slate-800/60">
                 <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
