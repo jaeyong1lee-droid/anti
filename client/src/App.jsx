@@ -11970,7 +11970,7 @@ export default function App() {
               </div>
 
               {/* Question */}
-              <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 md:p-6 min-h-[120px] flex items-center justify-center text-center text-sm md:text-base font-bold text-slate-100 leading-relaxed">
+              <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 md:p-6 min-h-[120px] flex items-center justify-center text-center text-[15px] font-bold text-slate-100 leading-relaxed">
                 <div className="w-full">
                   <LatexRenderer text={currentQuestion.question} katexLoaded={katexLoaded} />
                 </div>
@@ -12011,13 +12011,13 @@ export default function App() {
                           setLockscreenAnswerResult('incorrect');
                         }
                       }}
-                      className={`w-full py-3.5 px-5 rounded-2xl border text-xs md:text-sm font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
+                      className={`w-full py-3.5 px-5 rounded-2xl border text-[15px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
                     >
                       <div className="flex-1 min-w-0">
                         <LatexRenderer text={option} katexLoaded={katexLoaded} />
                       </div>
                       {lockscreenSelectedOption && (
-                        <span className="shrink-0 text-xs">
+                        <span className="shrink-0 text-[15px]">
                           {isCorrect ? '⭕ 정답' : isSelected ? '❌ 오답' : ''}
                         </span>
                       )}
@@ -12029,15 +12029,15 @@ export default function App() {
               {/* Answer Result & Explanation / Unlock Action */}
               {lockscreenAnswerResult && (
                 <div className="space-y-4 pt-2">
-                  <div className={`rounded-2xl p-4 border text-xs md:text-sm leading-relaxed ${
+                  <div className={`rounded-2xl p-4 border text-[15px] leading-relaxed ${
                     lockscreenAnswerResult === 'correct'
                       ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
                       : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
                   }`}>
-                    <p className="font-extrabold flex items-center gap-1.5 mb-1 text-[13px] md:text-sm">
+                    <p className="font-extrabold flex items-center gap-1.5 mb-1 text-[15px]">
                       {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다. 다시 시도해 주세요.'}
                     </p>
-                    <p className="text-slate-400 font-medium">
+                    <p className="text-slate-400 font-medium text-[15px]">
                       <strong>해설:</strong> {currentQuestion.explanation}
                     </p>
                   </div>
@@ -12049,13 +12049,13 @@ export default function App() {
                           setLockscreenSelectedOption(null);
                           setLockscreenAnswerResult(null);
                         }}
-                        className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
+                        className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
                       >
                         <RefreshCw size={15} />
                         <span>다른 보기 다시 고르기</span>
                       </button>
                     ) : (
-                      <div className="w-full py-3.5 bg-emerald-650/20 text-emerald-300 border border-emerald-500/30 rounded-2xl text-xs md:text-sm font-black text-center flex items-center justify-center gap-1.5 select-none">
+                      <div className="w-full py-3.5 bg-emerald-650/20 text-emerald-300 border border-emerald-500/30 rounded-2xl text-[15px] font-black text-center flex items-center justify-center gap-1.5 select-none">
                         <CheckCircle size={15} className="animate-pulse" />
                         <span>자동으로 잠금 해제 중...</span>
                       </div>
