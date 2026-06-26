@@ -4503,13 +4503,22 @@ export default function App() {
     if (!isPinVerified || isDesktop) return;
     
     const interval = setInterval(() => {
-      lastTickRef.current = Date.now();
+      // Only tick when the tab is visible to prevent background updates from masking sleep state
+      if (document.visibilityState === 'visible') {
+        lastTickRef.current = Date.now();
+      }
     }, 1000);
     
     return () => clearInterval(interval);
   }, [isPinVerified, isDesktop]);
 
   useEffect(() => {
+    if (!isPinVerified || isDesktop) return;
+
+    // Reset lastTickRef immediately upon hook binding (login / app start)
+    // to prevent stale startup timestamps from triggering the quiz
+    lastTickRef.current = Date.now();
+
     const handleVisibilityChange = () => {
       // If the user has not verified the PIN code yet, or if on PC (isDesktop), ignore screen off/on triggers
       if (!isPinVerified || isDesktop) return;
@@ -4557,6 +4566,9 @@ export default function App() {
             }
           });
         }
+      } else if (document.visibilityState === 'hidden') {
+        // When app is minimized or screen turns off, update tick to current time so the grace period starts fresh
+        lastTickRef.current = Date.now();
       }
     };
 
