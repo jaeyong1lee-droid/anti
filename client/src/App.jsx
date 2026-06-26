@@ -2931,14 +2931,13 @@ export default function App() {
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const kst = new Date(utc + (9 * 3600000));
     const hours = kst.getHours();
-    const targetDate = new Date(kst);
-    if (hours < 5) {
-      targetDate.setDate(targetDate.getDate() - 1);
-    }
-    const yyyy = targetDate.getFullYear();
-    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(targetDate.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    
+    const yyyy = kst.getFullYear();
+    const mm = String(kst.getMonth() + 1).padStart(2, '0');
+    const dd = String(kst.getDate()).padStart(2, '0');
+    
+    const blockIndex = Math.floor(hours / 3);
+    return `${yyyy}-${mm}-${dd}-block-${blockIndex}`;
   };
 
   const syncLockscreenQuestions = async (targetDateStr) => {

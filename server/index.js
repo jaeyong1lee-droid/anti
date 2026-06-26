@@ -7083,7 +7083,20 @@ app.post('/api/options/:key', async (req, res) => {
 app.get('/api/lockscreen/sync', async (req, res) => {
   try {
     await ensureSessionTable();
-    const date = req.query.date || getLocalDateString();
+    
+    let date = req.query.date;
+    if (!date) {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const kst = new Date(utc + (9 * 3600000));
+      const hours = kst.getHours();
+      const yyyy = kst.getFullYear();
+      const mm = String(kst.getMonth() + 1).padStart(2, '0');
+      const dd = String(kst.getDate()).padStart(2, '0');
+      const blockIndex = Math.floor(hours / 3);
+      date = `${yyyy}-${mm}-${dd}-block-${blockIndex}`;
+    }
+
     const cacheKey = `lockscreen_questions_${date}`;
     
     // 1. Check cached version
