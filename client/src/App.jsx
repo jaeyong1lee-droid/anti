@@ -1030,7 +1030,7 @@ const getSelectionTextWithLatex = (selection) => {
 };
 
 // Dynamic KaTeX loader & Math text renderer
-const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false, questionKey = "" }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false, questionKey = "", isRealTimeTutor = false }) {
   if (!text) return null;
 
   const longPressTimer = useRef(null);
@@ -1361,7 +1361,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                           text: selectedText,
                           x: iframeRect.left + rect.left + rect.width / 2,
                           y: iframeRect.top + rect.bottom + 8,
-                          questionKey: questionKey
+                          questionKey: questionKey,
+                          isRealTimeTutor: isRealTimeTutor
                         }
                       });
                       window.parent.dispatchEvent(changeEvent);
@@ -4893,36 +4894,42 @@ export default function App() {
         if (!selection.isCollapsed) {
           let anchorNode = selection.anchorNode;
           let focusNode = selection.focusNode;
+          
+          // Check if selection is inside the real-time AI tutor popup
+          const isInsideRealTimeTutor = !!(anchorNode?.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode)?.closest('#realtime-ai-tutor');
+          
           let katexEl = null;
 
-          if (anchorNode) {
-            const parent = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-            katexEl = parent?.closest('.katex, .katex-display');
-          }
-          if (!katexEl && focusNode) {
-            const parent = focusNode.nodeType === Node.TEXT_NODE ? focusNode.parentElement : focusNode;
-            katexEl = parent?.closest('.katex, .katex-display');
-          }
-          if (!katexEl && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            let container = range.commonAncestorContainer;
-            if (container) {
-              const parent = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+          if (!isInsideRealTimeTutor) {
+            if (anchorNode) {
+              const parent = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
               katexEl = parent?.closest('.katex, .katex-display');
-              if (!katexEl && parent) {
-                const df = range.cloneContents();
-                const found = df.querySelector('.katex, .katex-display');
-                if (found) {
-                  const textContent = found.textContent || "";
-                  const allKatexes = parent.querySelectorAll('.katex, .katex-display');
-                  for (const el of allKatexes) {
-                    if (el.textContent === textContent) {
-                      katexEl = el;
-                      break;
+            }
+            if (!katexEl && focusNode) {
+              const parent = focusNode.nodeType === Node.TEXT_NODE ? focusNode.parentElement : focusNode;
+              katexEl = parent?.closest('.katex, .katex-display');
+            }
+            if (!katexEl && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              let container = range.commonAncestorContainer;
+              if (container) {
+                const parent = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+                katexEl = parent?.closest('.katex, .katex-display');
+                if (!katexEl && parent) {
+                  const df = range.cloneContents();
+                  const found = df.querySelector('.katex, .katex-display');
+                  if (found) {
+                    const textContent = found.textContent || "";
+                    const allKatexes = parent.querySelectorAll('.katex, .katex-display');
+                    for (const el of allKatexes) {
+                      if (el.textContent === textContent) {
+                        katexEl = el;
+                        break;
+                      }
                     }
-                  }
-                  if (!katexEl && allKatexes.length > 0) {
-                    katexEl = allKatexes[0];
+                    if (!katexEl && allKatexes.length > 0) {
+                      katexEl = allKatexes[0];
+                    }
                   }
                 }
               }
@@ -5078,6 +5085,9 @@ export default function App() {
           const cardEl = anchorEl?.closest('[data-qkey]');
           const foundQKey = cardEl?.getAttribute('data-qkey') || '';
 
+          // Check if selection is inside the real-time AI tutor popup
+          const isInsideRealTimeTutor = !!anchorEl?.closest('#realtime-ai-tutor');
+
           setSelectionPopup(prev => ({
             show: true,
             text: text,
@@ -5085,14 +5095,14 @@ export default function App() {
             y: Math.max(16, Math.min(window.innerHeight - 200, rect.bottom + 8)),
             question: '',
             questionKey: foundQKey,
-            tutorType: foundQKey ? prev.tutorType : 'sidebar'
+            tutorType: isInsideRealTimeTutor ? 'realtime' : (foundQKey ? prev.tutorType : 'sidebar')
           }));
         } catch (err) {}
       }, 200); // 200ms debounce
     };
 
     const handleIframeSelectionChange = (e) => {
-      const { text, x, y, questionKey } = e.detail;
+      const { text, x, y, questionKey, isRealTimeTutor } = e.detail;
       setSelectionPopup(prev => ({
         show: true,
         text: text,
@@ -5100,7 +5110,7 @@ export default function App() {
         y: Math.max(16, Math.min(window.innerHeight - 200, y)),
         question: '',
         questionKey: questionKey || '',
-        tutorType: questionKey ? prev.tutorType : 'sidebar'
+        tutorType: isRealTimeTutor ? 'realtime' : (questionKey ? prev.tutorType : 'sidebar')
       }));
     };
 
@@ -8679,15 +8689,17 @@ export default function App() {
     setRealTimeAttachedImage(null);
   };
 
-  const handleSendRealTimeMessage = async (e) => {
+  const handleSendRealTimeMessage = async (e, customMessage) => {
     if (e) e.preventDefault();
-    if (!realTimeTutorInput.trim() && !realTimeAttachedImage) return;
+    const userMessage = (typeof customMessage === 'string' ? customMessage : realTimeTutorInput).trim();
+    if (!userMessage && !realTimeAttachedImage) return;
 
-    const userMessage = realTimeTutorInput;
     const apiMessage = userMessage;
     const currentAttachedImage = realTimeAttachedImage;
 
-    setRealTimeTutorInput('');
+    if (typeof customMessage !== 'string') {
+      setRealTimeTutorInput('');
+    }
     setRealTimeAttachedImage(null);
 
     setRealTimeChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
@@ -9596,27 +9608,31 @@ export default function App() {
         }, 100);
       }
     } else {
-      // Send to Chat Sidebar
-      if (showFormulaExam) {
-        handleSendFormulaChatMessage(null, finalPrompt);
+      if (selectionPopup.tutorType === 'realtime') {
+        handleSendRealTimeMessage(null, finalPrompt);
       } else {
-        handleSendChat(finalPrompt);
-      }
-      
-      // If on mobile portrait, switch to the tutor chat tab
-      if (!isDesktop && !isMobileLandscape) {
-        if (showExam) {
-          setExamMobileTab('tutor');
-        } else if (showFormulaExam) {
-          setFormulaMobileTab('tutor');
+        // Send to Chat Sidebar
+        if (showFormulaExam) {
+          handleSendFormulaChatMessage(null, finalPrompt);
         } else {
-          setReviewMobileTab('tutor');
+          handleSendChat(finalPrompt);
         }
-      }
+        
+        // If on mobile portrait, switch to the tutor chat tab
+        if (!isDesktop && !isMobileLandscape) {
+          if (showExam) {
+            setExamMobileTab('tutor');
+          } else if (showFormulaExam) {
+            setFormulaMobileTab('tutor');
+          } else {
+            setReviewMobileTab('tutor');
+          }
+        }
 
-      // If on mobile landscape, ensure sidebar is visible
-      if (isMobileLandscape) {
-        setLandscapeSidebarHidden(false);
+        // If on mobile landscape, ensure sidebar is visible
+        if (isMobileLandscape) {
+          setLandscapeSidebarHidden(false);
+        }
       }
     }
     
@@ -15809,9 +15825,16 @@ export default function App() {
                 onClick={() => {
                   const target = formulaConfirmTarget;
                   setFormulaConfirmTarget(null);
-                  setTutorAttachedFormula(target.math);
-                  setReviewMobileTab('tutor');
-                  setExamMobileTab('tutor');
+                  if (isRealTimeTutorOpen) {
+                    setRealTimeTutorInput(prev => {
+                      const suffix = `$${target.math}$`;
+                      return prev ? `${prev} ${suffix}` : suffix;
+                    });
+                  } else {
+                    setTutorAttachedFormula(target.math);
+                    setReviewMobileTab('tutor');
+                    setExamMobileTab('tutor');
+                  }
                 }}
                 className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
               >
@@ -19773,7 +19796,7 @@ export default function App() {
             position: 'fixed',
             left: `${selectionPopup.x}px`,
             top: `${selectionPopup.y}px`,
-            zIndex: 99999,
+            zIndex: 100050,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
           className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
@@ -19927,7 +19950,14 @@ export default function App() {
                         className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm"
                         style={{ fontSize: isDesktop ? '16px' : '14px' }}
                       >
-                        <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+                        <LatexRenderer 
+                          text={msg.text} 
+                          katexLoaded={katexLoaded} 
+                          isMarkdown={true} 
+                          enableAddFormula={true} 
+                          formulaSource="tutor" 
+                          isRealTimeTutor={true} 
+                        />
                       </div>
                     </>
                   ) : (
@@ -19935,7 +19965,14 @@ export default function App() {
                       className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-sm md:text-base font-medium leading-relaxed break-words shadow-sm w-full"
                       style={{ fontSize: isDesktop ? '16px' : '14px' }}
                     >
-                      <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
+                      <LatexRenderer 
+                        text={msg.text} 
+                        katexLoaded={katexLoaded} 
+                        isMarkdown={true} 
+                        enableAddFormula={true} 
+                        formulaSource="tutor" 
+                        isRealTimeTutor={true} 
+                      />
                     </div>
                   )}
                 </div>

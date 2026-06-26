@@ -166,7 +166,7 @@ export let validationStandardsList = [
   {
     "id": "def_val_1",
     "title": "정답의 정확성 검증",
-    "content": "질문에서 묻는 바와 제시된 정답(answer 또는 answers of each input item)이 공학적 이론, 공식, 수치 계산상으로 100% 일치하고 올바른지 확인하십시오. 해설(explanation)에 적힌 설명이나 계산 과정이 정답과 논리적으로 일치하는지 확인하고, 모순이 있다면 정답과 해설을 올바르게 교정하십시오."
+    "content": "객관식인경우 : 질문에서 묻는 바와 제시된 정답(answer 또는 answers of each input item)이 공학적 이론, 공식, 수치 계산상으로 100% 일치하고 올바른지 확인하십시오. 해설(explanation)에 적힌 설명이나 계산 과정이 정답과 논리적으로 일치하는지 확인하고, 모순이 있다면 정답과 해설을 올바르게 교정하십시오."
   },
   {
     "id": "def_val_2",
