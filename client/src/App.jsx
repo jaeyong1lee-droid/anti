@@ -11417,7 +11417,7 @@ export default function App() {
     
     const targetFormula = formulaQuestions[idx];
     if (targetFormula) {
-      const derivePrompt = `이 공식($${targetFormula.formula || ''}$)의 유도과정을 자세히 설명해 주세요.`;
+      const derivePrompt = `이 공식(${targetFormula.formula || ''})의 유도과정을 자세히 설명해 주세요.`;
       handleSendFormulaChatMessage(null, derivePrompt, idx);
     }
   };
