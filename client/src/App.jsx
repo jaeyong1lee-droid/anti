@@ -4826,10 +4826,43 @@ export default function App() {
         // Intercept partial formula selections and convert to full formula export
         if (!selection.isCollapsed) {
           let anchorNode = selection.anchorNode;
-          if (anchorNode && anchorNode.nodeType === Node.TEXT_NODE) {
-            anchorNode = anchorNode.parentElement;
+          let focusNode = selection.focusNode;
+          let katexEl = null;
+
+          if (anchorNode) {
+            const parent = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+            katexEl = parent?.closest('.katex, .katex-display');
           }
-          const katexEl = anchorNode?.closest('.katex, .katex-display');
+          if (!katexEl && focusNode) {
+            const parent = focusNode.nodeType === Node.TEXT_NODE ? focusNode.parentElement : focusNode;
+            katexEl = parent?.closest('.katex, .katex-display');
+          }
+          if (!katexEl && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            let container = range.commonAncestorContainer;
+            if (container) {
+              const parent = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+              katexEl = parent?.closest('.katex, .katex-display');
+              if (!katexEl && parent) {
+                const df = range.cloneContents();
+                const found = df.querySelector('.katex, .katex-display');
+                if (found) {
+                  const textContent = found.textContent || "";
+                  const allKatexes = parent.querySelectorAll('.katex, .katex-display');
+                  for (const el of allKatexes) {
+                    if (el.textContent === textContent) {
+                      katexEl = el;
+                      break;
+                    }
+                  }
+                  if (!katexEl && allKatexes.length > 0) {
+                    katexEl = allKatexes[0];
+                  }
+                }
+              }
+            }
+          }
+
           if (katexEl) {
             const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
             if (annotation) {
