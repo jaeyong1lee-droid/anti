@@ -2937,7 +2937,7 @@ export default function App() {
 
   const generateNewLockscreenQuestion = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=1`);
+      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=3`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.questions) {
@@ -4532,6 +4532,7 @@ export default function App() {
   
   // PIN Code entry restriction states
   const [isPinVerified, setIsPinVerified] = useState(() => sessionStorage.getItem('pin_verified') === 'true');
+  const wasPinVerifiedOnMount = useRef(sessionStorage.getItem('pin_verified') === 'true');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [isPinVerifying, setIsPinVerifying] = useState(false);
@@ -4620,6 +4621,10 @@ export default function App() {
   // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
     if (isPinVerified && !isDesktop && isLockscreenQuizEnabled) {
+      if (wasPinVerifiedOnMount.current) {
+        wasPinVerifiedOnMount.current = false;
+        return;
+      }
       triggerLockscreenQuiz();
     }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
@@ -5168,7 +5173,7 @@ export default function App() {
         }
 
         // On mobile/touch devices, require at least 5 characters to show the popup
-        const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         if (isTouch) {
           const cleanText = text.trim();
           if (cleanText.length < 5) {
@@ -5180,7 +5185,6 @@ export default function App() {
 
         // Check drag distance to ensure it's a deliberate drag (PC environment only)
         if (startSelectionPos && lastPointerPos) {
-          const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
           if (!isTouch) {
             const dx = lastPointerPos.x - startSelectionPos.x;
             const dy = lastPointerPos.y - startSelectionPos.y;
@@ -5208,6 +5212,8 @@ export default function App() {
           if (range.collapsed) return;
 
           let rect = range.getBoundingClientRect();
+          let useFallbackPos = false;
+
           if (rect.width === 0 || rect.height === 0) {
             const rects = range.getClientRects();
             if (rects.length > 0) {
@@ -5223,7 +5229,12 @@ export default function App() {
             }
           }
 
-          if (rect.width === 0 || rect.height === 0) return;
+          if ((rect.width === 0 || rect.height === 0) && !lastPointerPos && !startSelectionPos) {
+            return;
+          }
+          if (rect.width === 0 || rect.height === 0) {
+            useFallbackPos = true;
+          }
 
           // Find closest data-qkey on parent elements of selection
           let anchorEl = selection.anchorNode;
@@ -5236,11 +5247,33 @@ export default function App() {
           // Check if selection is inside the real-time AI tutor popup
           const isInsideRealTimeTutor = !!anchorEl?.closest('#realtime-ai-tutor');
 
+          let popupX = 0;
+          let popupY = 0;
+
+          if (isTouch) {
+            // On mobile, horizontally span with 16px margins
+            popupX = 16;
+            
+            // For Y position, try to use selection bottom, fallback to pointer position if rect is invalid
+            const selectionBottom = useFallbackPos 
+              ? (lastPointerPos?.y || startSelectionPos?.y || 100) 
+              : rect.bottom;
+            popupY = Math.max(16, Math.min(window.innerHeight - 220, selectionBottom + 8));
+          } else {
+            // On desktop, center relative to the selection rect
+            const selectionLeft = useFallbackPos ? (lastPointerPos?.x || startSelectionPos?.x || 160) : rect.left;
+            const selectionWidth = useFallbackPos ? 0 : rect.width;
+            const selectionBottom = useFallbackPos ? (lastPointerPos?.y || startSelectionPos?.y || 100) : rect.bottom;
+
+            popupX = Math.max(16, Math.min(window.innerWidth - 340, selectionLeft + selectionWidth / 2 - 160));
+            popupY = Math.max(16, Math.min(window.innerHeight - 200, selectionBottom + 8));
+          }
+
           setSelectionPopup(prev => ({
             show: true,
             text: text,
-            x: Math.max(16, Math.min(window.innerWidth - 340, rect.left + rect.width / 2 - 160)),
-            y: Math.max(16, Math.min(window.innerHeight - 200, rect.bottom + 8)),
+            x: popupX,
+            y: popupY,
             question: '',
             questionKey: foundQKey,
             tutorType: isInsideRealTimeTutor ? 'realtime' : (foundQKey ? prev.tutorType : 'sidebar')
@@ -12249,6 +12282,52 @@ export default function App() {
               {/* Answer Result & Explanation / Unlock Action */}
               {lockscreenAnswerResult && (
                 <div className="space-y-4 pt-2">
+                  <div className="flex gap-3">
+                    {lockscreenAnswerResult === 'correct' ? (
+                      <button
+                        onClick={() => {
+                          setShowLockscreenQuiz(false);
+                          setLockscreenSelectedOption(null);
+                          setLockscreenAnswerResult(null);
+
+                          // Clear cached question and pre-generate the next one immediately
+                          localStorage.removeItem('anti_lockscreen_questions');
+                          generateNewLockscreenQuestion();
+                        }}
+                        className="w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500"
+                      >
+                        <Unlock size={15} />
+                        <span>진입하기 🔓</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          const hasNext = currentLockscreenIndex < lockscreenQuestions.length - 1;
+                          if (hasNext) {
+                            setCurrentLockscreenIndex(prev => prev + 1);
+                            setLockscreenSelectedOption(null);
+                            setLockscreenAnswerResult(null);
+                          } else {
+                            // No more questions left, generate fresh ones
+                            setLockscreenLoading(true);
+                            generateNewLockscreenQuestion().then(questions => {
+                              if (questions && Array.isArray(questions) && questions.length > 0) {
+                                setLockscreenQuestions(questions);
+                                setCurrentLockscreenIndex(0);
+                              }
+                              setLockscreenSelectedOption(null);
+                              setLockscreenAnswerResult(null);
+                              setLockscreenLoading(false);
+                            });
+                          }
+                        }}
+                        className="w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500"
+                      >
+                        <span>다음문제 풀기 ➡️</span>
+                      </button>
+                    )}
+                  </div>
+
                   <div className={`rounded-2xl p-4 border text-[15px] leading-relaxed ${
                     lockscreenAnswerResult === 'correct'
                       ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
@@ -12260,28 +12339,6 @@ export default function App() {
                     <p className="text-slate-400 font-medium text-[15px]">
                       <strong>해설:</strong> <LatexRenderer text={currentQuestion.explanation} katexLoaded={katexLoaded} />
                     </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setShowLockscreenQuiz(false);
-                        setLockscreenSelectedOption(null);
-                        setLockscreenAnswerResult(null);
-
-                        // Clear cached question and pre-generate the next one immediately
-                        localStorage.removeItem('anti_lockscreen_questions');
-                        generateNewLockscreenQuestion();
-                      }}
-                      className={`w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 ${
-                        lockscreenAnswerResult === 'correct'
-                          ? 'bg-emerald-600 hover:bg-emerald-500'
-                          : 'bg-slate-800 hover:bg-slate-700'
-                      }`}
-                    >
-                      <Unlock size={15} />
-                      <span>진입하기 🔓</span>
-                    </button>
                   </div>
                 </div>
               )}
@@ -20436,7 +20493,7 @@ export default function App() {
             zIndex: 100050,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
-          className="w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
+          className="w-[calc(100vw-32px)] sm:w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
         >
           <style>{`
             @keyframes dragPopupFadeIn {
