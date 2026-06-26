@@ -4497,17 +4497,28 @@ export default function App() {
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
 
   const lastTickRef = useRef(Date.now());
+  const tickCountRef = useRef(0);
 
   // Interval to update the tick timestamp and trigger quiz immediately when CPU resumes
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
     
-    // Reset lastTickRef immediately upon hook binding (login / app start)
+    // Reset lastTickRef and tick count immediately upon hook binding (login / app start)
+    tickCountRef.current = 0;
     lastTickRef.current = Date.now();
 
     const interval = setInterval(() => {
       const now = Date.now();
       const timeDiff = now - lastTickRef.current;
+
+      tickCountRef.current += 1;
+
+      // During the first 5 seconds of the app session, bypass sleep checks to prevent
+      // heavy mounting blockages (like dashboard component loading) from triggering false sleep detections
+      if (tickCountRef.current <= 5) {
+        lastTickRef.current = now;
+        return;
+      }
 
       // If the time gap is greater than 3.5 seconds, it means the screen was turned off (the device slept)
       if (isLockscreenQuizEnabled && timeDiff > 3500) {
