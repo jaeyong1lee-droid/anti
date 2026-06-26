@@ -15,6 +15,7 @@ import PDFDocument from 'pdfkit';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList, updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
 import { GENERATION_STANDARDS, generationStandardsList, updateLiveGenerationStandards } from './plugins/generationStandards.js';
+import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
 import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched, VALIDATION_STANDARDS, validationStandardsList, updateLiveValidationStandards } from './plugins/validationPlugin.js';
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
@@ -7138,7 +7139,7 @@ app.get('/api/lockscreen/sync', async (req, res) => {
     // 3. Generate quiz using both formula and topic candidates
     console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics...`);
     const callLLM = getCallLLM(req);
-    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM, count);
+    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM, count, LOCKSCREEN_STANDARDS);
 
     return res.json({ success: true, questions: generatedQuestions });
   } catch (err) {
@@ -7362,6 +7363,56 @@ app.post('/api/generation-standards', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/generation-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/lockscreen-standards → Retrieve structured lockscreen standards list
+app.get('/api/lockscreen-standards', async (req, res) => {
+  try {
+    try {
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+      if (row && row.value) {
+        const list = JSON.parse(row.value);
+        return res.json({ standards: list });
+      }
+    } catch (dbErr) {
+      console.error('Failed to read lockscreen standards from database:', dbErr.message);
+    }
+
+    res.json({ standards: lockscreenStandardsList });
+  } catch (err) {
+    console.error('GET /api/lockscreen-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/lockscreen-standards → Save/update structured lockscreen standards list
+app.post('/api/lockscreen-standards', async (req, res) => {
+  try {
+    const { standards } = req.body;
+    if (!Array.isArray(standards)) {
+      return res.status(400).json({ error: 'standards must be an array' });
+    }
+
+    updateLiveLockscreenStandards(standards);
+
+    try {
+      await saveSessionValue('lockscreen_standards', JSON.stringify(standards));
+      console.log('Successfully saved lockscreen standards to database.');
+    } catch (dbErr) {
+      console.error('Failed to save lockscreen standards to database:', dbErr.message);
+    }
+
+    // 3. Save to local file system
+    await writeStandardToFile('lockscreen_standards', standards);
+
+    // 4. Push to Vercel production server
+    pushStandardToProduction('lockscreen-standards', standards).catch(() => {});
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/lockscreen-standards error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -8283,6 +8334,26 @@ async function initializeGenerationStandards() {
   }
 }
 
+async function initializeLockscreenStandards() {
+  try {
+    const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+    if (row && row.value) {
+      const list = JSON.parse(row.value);
+      if (Array.isArray(list)) {
+        updateLiveLockscreenStandards(list);
+        console.log('Loaded lockscreen standards from database at startup.');
+        await writeStandardToFile('lockscreen_standards', list);
+      }
+    } else {
+      // Save default list to database if not present
+      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('lockscreen_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(lockscreenStandardsList)]);
+      console.log('Saved default lockscreen standards to database at startup.');
+    }
+  } catch (err) {
+    console.error('Failed to initialize lockscreen standards from database at startup:', err.message);
+  }
+}
+
 async function writeStandardToFile(key, standards) {
   try {
     if (key === 'generation_standards') {
@@ -8306,6 +8377,27 @@ export function updateLiveGenerationStandards(newList) {
 `;
       await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
       console.log('Successfully wrote generation standards to local file.');
+    } else if (key === 'lockscreen_standards') {
+      const standardsFilePath = path.join(__dirname, 'plugins', 'lockscreenStandards.js');
+      const resolvedContent = `// This file is auto-generated by the system. Do not edit manually.
+export let lockscreenStandardsList = ${JSON.stringify(standards, null, 2)};
+
+export let LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(lockscreenStandardsList);
+
+export function assembleLockscreenStandardsPrompt(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return "- 등록된 락스크린 출제 지침 기준이 없습니다.";
+  }
+  return list.map((std, idx) => \`\${idx + 1}. **\${std.title}**:\\n   - \${std.content}\`).join('\\n');
+}
+
+export function updateLiveLockscreenStandards(newList) {
+  lockscreenStandardsList = newList;
+  LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(newList);
+}
+`;
+      await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
+      console.log('Successfully wrote lockscreen standards to local file.');
     } else if (key === 'engineering_standards') {
       const standardsFilePath = path.join(__dirname, 'plugins', 'engineeringStandards.js');
       const resolvedContent = `// This file is auto-generated by the system. Do not edit manually.
@@ -8388,6 +8480,7 @@ async function syncStandardsFromProduction() {
   
   const standardsToSync = [
     { key: 'generation_standards', api: 'generation-standards', updater: updateLiveGenerationStandards, currentList: () => generationStandardsList },
+    { key: 'lockscreen_standards', api: 'lockscreen-standards', updater: updateLiveLockscreenStandards, currentList: () => lockscreenStandardsList },
     { key: 'engineering_standards', api: 'engineering-standards', updater: updateLiveEngineeringStandards, currentList: () => standardsList },
     { key: 'grading_standards', api: 'grading-standards', updater: updateLiveGradingStandards, currentList: () => gradingStandardsList },
     { key: 'validation_standards', api: 'validation-standards', updater: updateLiveValidationStandards, currentList: () => validationStandardsList }
@@ -8431,6 +8524,7 @@ async function startServer() {
     await initializeGradingStandards();
     await initializeValidationStandards();
     await initializeGenerationStandards();
+    await initializeLockscreenStandards();
     // Sync from production to local database if running locally
     await syncStandardsFromProduction();
     
@@ -8485,6 +8579,7 @@ if (!process.env.VERCEL) {
     await initializeGradingStandards();
     await initializeValidationStandards();
     await initializeGenerationStandards();
+    await initializeLockscreenStandards();
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();

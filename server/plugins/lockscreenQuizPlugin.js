@@ -7,7 +7,7 @@ import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
  * @param {Function} callLLMWithFailover LLM call utility
  * @returns {Promise<Array>} List of generated multiple-choice questions
  */
-export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover, count = 1) {
+export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover, count = 1, lockscreenInstructionsPrompt = '') {
   if ((!Array.isArray(formulaCandidates) || formulaCandidates.length === 0) && (!Array.isArray(topicCandidates) || topicCandidates.length === 0)) {
     throw new Error('No candidate data available to generate quiz');
   }
@@ -43,6 +43,9 @@ ${t.textContent}`;
   const userPrompt = `
 [대상 후보군]:
 ${candidateText}
+
+[출제 지침 기준 (Lockscreen Generation Standards)]:
+${lockscreenInstructionsPrompt}
 
 [출제 요구사항]:
 1. **문제 개수**: 반드시 정확히 **${count}개의 객관식 문제**를 출제해 배열 형태로 반환하십시오.

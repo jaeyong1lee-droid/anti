@@ -4511,6 +4511,15 @@ export default function App() {
   const [editingGenerationContent, setEditingGenerationContent] = useState('');
   const [isSavingGenerationStandardsList, setIsSavingGenerationStandardsList] = useState(false);
   const [isLoadingGenerationStandardsList, setIsLoadingGenerationStandardsList] = useState(false);
+
+  const [showManageLockscreenStandardsModal, setShowManageLockscreenStandardsModal] = useState(false);
+  const [showEditLockscreenStandardModal, setShowEditLockscreenStandardModal] = useState(false);
+  const [lockscreenStandardsList, setLockscreenStandardsList] = useState([]);
+  const [editingLockscreenStandard, setEditingLockscreenStandard] = useState(null);
+  const [editingLockscreenTitle, setEditingLockscreenTitle] = useState('');
+  const [editingLockscreenContent, setEditingLockscreenContent] = useState('');
+  const [isSavingLockscreenStandardsList, setIsSavingLockscreenStandardsList] = useState(false);
+  const [isLoadingLockscreenStandardsList, setIsLoadingLockscreenStandardsList] = useState(false);
   
   const [showManageTopicInstructionsModal, setShowManageTopicInstructionsModal] = useState(false);
   const [showEditTopicInstructionModal, setShowEditTopicInstructionModal] = useState(false);
@@ -9247,6 +9256,8 @@ export default function App() {
   const editTopicInstructionContentRef = useRef(null);
   const editGenerationTitleRef = useRef(null);
   const editGenerationContentRef = useRef(null);
+  const editLockscreenTitleRef = useRef(null);
+  const editLockscreenContentRef = useRef(null);
 
   useEffect(() => {
     if (showEditTopicInstructionModal) {
@@ -9258,6 +9269,17 @@ export default function App() {
       }, 100);
     }
   }, [showEditTopicInstructionModal]);
+
+  useEffect(() => {
+    if (showEditLockscreenStandardModal) {
+      setTimeout(() => {
+        if (editLockscreenTitleRef.current) {
+          editLockscreenTitleRef.current.focus();
+          editLockscreenTitleRef.current.select();
+        }
+      }, 100);
+    }
+  }, [showEditLockscreenStandardModal]);
 
   useEffect(() => {
     if (showEditValidationStandardModal) {
@@ -9605,6 +9627,111 @@ export default function App() {
       showNotification(err.message, 'error');
     } finally {
       setIsSavingGenerationStandardsList(false);
+    }
+  };
+
+  const handleOpenManageLockscreenStandardsModal = async () => {
+    setShowManageLockscreenStandardsModal(true);
+    setIsLoadingLockscreenStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen-standards`);
+      if (!res.ok) throw new Error('락스크린 출제 지침 데이터를 불러오지 못했습니다.');
+      const data = await res.json();
+      setLockscreenStandardsList(data.standards || []);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsLoadingLockscreenStandardsList(false);
+    }
+  };
+
+  const handleDeleteLockscreenStandard = async (id) => {
+    if (!window.confirm('정말 이 락스크린 출제 지침을 삭제하시겠습니까?')) return;
+    const updatedList = lockscreenStandardsList.filter(s => s.id !== id);
+    setIsSavingLockscreenStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '삭제 저장에 실패했습니다.');
+      }
+      setLockscreenStandardsList(updatedList);
+      showNotification('락스크린 출제 지침이 삭제되었습니다.', 'success');
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingLockscreenStandardsList(false);
+    }
+  };
+
+  const handleOpenAddLockscreenStandardModal = () => {
+    setEditingLockscreenStandard(null);
+    setEditingLockscreenTitle('');
+    setEditingLockscreenContent('');
+    setShowEditLockscreenStandardModal(true);
+  };
+
+  const handleOpenEditLockscreenStandardModal = (std) => {
+    setEditingLockscreenStandard(std);
+    setEditingLockscreenTitle(std.title || '');
+    setEditingLockscreenContent(std.content || '');
+    setShowEditLockscreenStandardModal(true);
+  };
+
+  const handleSaveEditLockscreenStandard = async () => {
+    if (!editingLockscreenTitle.trim()) {
+      showNotification('제목을 입력해주세요.', 'error');
+      return;
+    }
+    if (!editingLockscreenContent.trim()) {
+      showNotification('내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    let updatedList;
+    if (editingLockscreenStandard) {
+      // Edit mode
+      updatedList = lockscreenStandardsList.map(s => 
+        s.id === editingLockscreenStandard.id 
+          ? { ...s, title: editingLockscreenTitle, content: editingLockscreenContent } 
+          : s
+      );
+    } else {
+      // Add mode
+      const newId = 'user_lockscreen_' + Math.random().toString(36).substring(2, 9);
+      const newStd = {
+        id: newId,
+        title: editingLockscreenTitle,
+        content: editingLockscreenContent
+      };
+      updatedList = [...lockscreenStandardsList, newStd];
+    }
+
+    setIsSavingLockscreenStandardsList(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen-standards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standards: updatedList })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '저장에 실패했습니다.');
+      }
+      setLockscreenStandardsList(updatedList);
+      showNotification('락스크린 출제 지침이 저장되었습니다.', 'success');
+      setShowEditLockscreenStandardModal(false);
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingLockscreenStandardsList(false);
     }
   };
 
@@ -13053,6 +13180,14 @@ export default function App() {
                 >
                   <span>문제</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenManageLockscreenStandardsModal}
+                  className="hidden md:flex items-center justify-center px-3 py-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer shadow-md"
+                >
+                  <span>락스크린</span>
+                </button>
               </div>
               
               {/* Search bar inside allTopics view */}
@@ -15862,6 +15997,191 @@ export default function App() {
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
                 {isSavingGenerationStandardsList ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>저장 중...</span>
+                  </>
+                ) : (
+                  <span>지침 저장 💾</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚙️ 락스크린 출제 지침 통합 관리 모달 (Lockscreen Standards Management Modal) */}
+      {showManageLockscreenStandardsModal && (
+        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageLockscreenStandardsModal(false)}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                  <Sliders size={18} className="text-indigo-500 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">⚙️ 락스크린 출제 지침 통합 관리</h3>
+              </div>
+              <button
+                onClick={() => setShowManageLockscreenStandardsModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-3">
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                💡 AI 락스크린 문제 출제 시 반영되는 지침 기준 목록입니다. 이곳에 추가된 모든 항목은 AI 출제위원의 **락스크린 문제 생성** 시 지시사항 프롬프트로 병합되어 실시간 반영됩니다.
+              </p>
+              
+              {isLoadingLockscreenStandardsList ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-2 w-full">
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-indigo-400 font-bold animate-pulse">서버에서 락스크린 출제 지침 데이터를 로드하는 중입니다...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-800 rounded-xl">
+                  <table className="w-full text-xs text-slate-300 divide-y divide-slate-800">
+                    <thead className="bg-slate-950/60 font-black text-slate-400 select-none">
+                      <tr>
+                        <th className="px-4 py-3 text-left w-12">번호</th>
+                        <th className="px-4 py-3 text-left w-48">지침 제목</th>
+                        <th className="px-4 py-3 text-left">세부 지침 내용</th>
+                        <th className="px-4 py-3 text-center w-24">작업</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
+                      {lockscreenStandardsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-semibold">
+                            등록된 락스크린 출제 지침이 없습니다. 새로운 지침을 추가해보세요.
+                          </td>
+                        </tr>
+                      ) : (
+                        lockscreenStandardsList.map((std, idx) => (
+                          <tr key={std.id || idx} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-mono font-bold text-slate-500 text-left">{idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-slate-200 text-left whitespace-nowrap">{std.title}</td>
+                            <td className="px-4 py-3 text-slate-400 text-left font-medium leading-relaxed max-w-md whitespace-pre-wrap">{std.content}</td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleOpenEditLockscreenStandardModal(std)}
+                                  className="p-1.5 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                                  title="지침 수정"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLockscreenStandard(std.id)}
+                                  className="p-1.5 hover:bg-slate-800 rounded-lg text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                                  title="지침 삭제"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+              <button
+                onClick={handleOpenAddLockscreenStandardModal}
+                disabled={isLoadingLockscreenStandardsList || isSavingLockscreenStandardsList}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>신규 지침 추가 ➕</span>
+              </button>
+              <button
+                onClick={() => setShowManageLockscreenStandardsModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ 락스크린 출제 지침 추가/수정 서브 모달 (Lockscreen Standard Add/Edit Sub-Modal) */}
+      {showEditLockscreenStandardModal && (
+        <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditLockscreenStandardModal(false)}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                  <Sliders size={18} className="text-indigo-500" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">
+                  {editingLockscreenStandard ? '✏️ 락스크린 출제 지침 수정' : '➕ 신규 락스크린 출제 지침 추가'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditLockscreenStandardModal(false)}
+                className="w-6 h-6 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-2 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 제목 (Instruction Title)</label>
+                <input
+                  ref={editLockscreenTitleRef}
+                  type="text"
+                  value={editingLockscreenTitle}
+                  onChange={(e) => setEditingLockscreenTitle(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예: 공식, 기준, 숫자 중심 출제"
+                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-semibold"
+                  disabled={isSavingLockscreenStandardsList}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">지침 세부 내용 (Prompt Instruction Text)</label>
+                <textarea
+                  ref={editLockscreenContentRef}
+                  value={editingLockscreenContent}
+                  onChange={(e) => setEditingLockscreenContent(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="예:
+락스크린 문제는 반드시 공식(수식 매칭, 변수 정의, 비례 관계 등), 설계 및 시공 기준(KDS 등), 그리고 구체적인 수치/숫자값만 질문 대상으로 삼으십시오."
+                  className="w-full h-80 bg-slate-950/60 border border-slate-800 focus:border-indigo-500/80 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-mono leading-relaxed resize-none"
+                  disabled={isSavingLockscreenStandardsList}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowEditLockscreenStandardModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                disabled={isSavingLockscreenStandardsList}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveEditLockscreenStandard}
+                disabled={isSavingLockscreenStandardsList}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                {isSavingLockscreenStandardsList ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>저장 중...</span>
