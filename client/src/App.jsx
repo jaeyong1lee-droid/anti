@@ -19854,7 +19854,7 @@ export default function App() {
           >
             <div className="flex items-center gap-2">
               <span className="text-base select-none leading-none">🤖</span>
-              <span className="text-sm font-extrabold text-white">실시간 AI 튜터</span>
+              <span className="text-sm md:text-base font-extrabold text-white" style={{ fontSize: isDesktop ? '16px' : '14px' }}>실시간 AI 튜터</span>
             </div>
             <div className="flex items-center gap-1">
               {/* Reset Chat History */}
@@ -19892,8 +19892,8 @@ export default function App() {
             {realTimeChatHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-3 select-none">
                 <div className="p-4 bg-slate-800/60 rounded-3xl text-3xl animate-bounce">🤖</div>
-                <div className="text-sm font-extrabold text-slate-200">반갑습니다! 실시간 AI 튜터입니다.</div>
-                <div className="text-xs text-slate-400 max-w-[280px] leading-relaxed">
+                <div className="text-sm md:text-base font-extrabold text-slate-200" style={{ fontSize: isDesktop ? '16px' : '14px' }}>반갑습니다! 실시간 AI 튜터입니다.</div>
+                <div className="text-xs md:text-sm text-slate-400 max-w-[280px] leading-relaxed" style={{ fontSize: isDesktop ? '16px' : '14px' }}>
                   Spaced Repetition 복습 스케줄러를 학습하며 생기는 이론적인 질문, 학습 팁 등 어떤 것이든 편하게 여쭤보세요! 👦👧
                 </div>
               </div>
@@ -19901,7 +19901,7 @@ export default function App() {
               realTimeChatHistory.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col gap-1 max-w-[85%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
+                  className={`flex flex-col gap-1 max-w-[85%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start w-full'}`}
                 >
                   {msg.role === 'user' ? (
                     <>
@@ -19910,21 +19910,19 @@ export default function App() {
                           <img src={`data:${msg.image.mimeType};base64,${msg.image.data}`} alt="attachment" className="w-full h-auto" />
                         </div>
                       )}
-                      <div className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-xs font-semibold leading-relaxed break-words shadow-sm">
-                        {msg.text}
+                      <div 
+                        className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm"
+                        style={{ fontSize: isDesktop ? '16px' : '14px' }}
+                      >
+                        <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
                       </div>
                     </>
                   ) : (
-                    <div className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-xs font-medium leading-relaxed break-words shadow-sm">
-                      {msg.text.split('\n').map((line, idx) => (
-                        <div key={idx} className="min-h-[1.2em]">
-                          {line.includes('$') || line.includes('\\(') || line.includes('\\[') ? (
-                            <LatexRenderer text={line} />
-                          ) : (
-                            line
-                          )}
-                        </div>
-                      ))}
+                    <div 
+                      className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-sm md:text-base font-medium leading-relaxed break-words shadow-sm w-full"
+                      style={{ fontSize: isDesktop ? '16px' : '14px' }}
+                    >
+                      <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} />
                     </div>
                   )}
                 </div>
@@ -19932,7 +19930,10 @@ export default function App() {
             )}
 
             {isRealTimeChatLoading && (
-              <div className="self-start flex items-center gap-2 bg-slate-800/50 border border-slate-700/30 px-3.5 py-2 rounded-2xl rounded-tl-none text-xs text-slate-400 font-medium">
+              <div 
+                className="self-start flex items-center gap-2 bg-slate-800/50 border border-slate-700/30 px-3.5 py-2 rounded-2xl rounded-tl-none text-xs md:text-base text-slate-400 font-medium"
+                style={{ fontSize: isDesktop ? '16px' : '14px' }}
+              >
                 <span className="flex gap-1">
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -19990,7 +19991,8 @@ export default function App() {
                 onChange={(e) => setRealTimeTutorInput(e.target.value)}
                 disabled={isRealTimeChatLoading}
                 placeholder="실시간 튜터에게 질문하기..."
-                className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-xs rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500"
+                className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-sm md:text-base rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500"
+                style={{ fontSize: isDesktop ? '16px' : '14px' }}
               />
 
               <button
