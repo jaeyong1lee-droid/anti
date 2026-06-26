@@ -5058,6 +5058,15 @@ export default function App() {
       setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
     };
 
+    const handleContextMenu = (e) => {
+      const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+      if (isTouch) {
+        if (!e.target.closest('input, textarea, [contenteditable="true"]')) {
+          e.preventDefault();
+        }
+      }
+    };
+
     window.addEventListener('mousedown', handleDocumentMouseDown);
     window.addEventListener('mouseup', handleDocumentMouseUp);
     window.addEventListener('touchstart', handleDocumentMouseDown);
@@ -5067,6 +5076,7 @@ export default function App() {
     window.addEventListener('touchmove', handlePointerMove, { passive: true });
 
     document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('anti-selection-change', handleIframeSelectionChange);
     window.addEventListener('anti-selection-close', handleIframeSelectionClose);
 
@@ -5081,6 +5091,7 @@ export default function App() {
       window.removeEventListener('touchmove', handlePointerMove);
 
       document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('anti-selection-change', handleIframeSelectionChange);
       window.removeEventListener('anti-selection-close', handleIframeSelectionClose);
     };
