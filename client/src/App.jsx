@@ -607,9 +607,14 @@ const buildHtmlDocument = (text, isPopup = false) => {
         box-sizing: border-box !important;
       }
 
-      /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
-      .katex {
+      /* Restore KaTeX fonts against wildcard !important overrides in HTML reports and disable selection */
+      .katex, .katex-display {
         font-family: KaTeX_Main, "Times New Roman", serif !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-touch-callout: none !important;
       }
       .katex * {
         font-family: inherit !important;
@@ -1072,6 +1077,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
     const katexEl = target.closest('.katex, .katex-display');
     if (!katexEl) return;
+
+    // Clear any active selections immediately to prevent partial highlights on mobile touch
+    try {
+      if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+      }
+    } catch (e) {}
 
     // Set global flags indicating formula touch is active
     window.__isFormulaLongPressing = true;
