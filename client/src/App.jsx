@@ -4913,6 +4913,17 @@ export default function App() {
           return;
         }
 
+        // On mobile/touch devices, require at least 5 characters to show the popup
+        const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+        if (isTouch) {
+          const cleanText = text.trim();
+          if (cleanText.length < 5) {
+            setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+            lastValidRange = null;
+            return;
+          }
+        }
+
         // Check drag distance to ensure it's a deliberate drag (PC environment only)
         if (startSelectionPos && lastPointerPos) {
           const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
