@@ -1077,9 +1077,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     window.__isFormulaLongPressing = true;
     window.__isFormulaTouchActive = true;
 
-    // Use shorter duration on touch screens to trigger before native menus interfere
     const isTouchDevice = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-    const duration = isTouchDevice ? 700 : 1500;
+    const duration = isTouchDevice ? 700 : 2000;
 
     longPressTimer.current = setTimeout(() => {
       isLongPressActive.current = true;
@@ -4890,72 +4889,7 @@ export default function App() {
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
 
-        // Intercept partial formula selections and convert to full formula export
-        if (!selection.isCollapsed) {
-          let anchorNode = selection.anchorNode;
-          let focusNode = selection.focusNode;
-          
-          // Check if selection is inside the real-time AI tutor popup
-          const isInsideRealTimeTutor = !!(anchorNode?.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode)?.closest('#realtime-ai-tutor');
-          
-          let katexEl = null;
-
-          if (!isInsideRealTimeTutor) {
-            if (anchorNode) {
-              const parent = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-              katexEl = parent?.closest('.katex, .katex-display');
-            }
-            if (!katexEl && focusNode) {
-              const parent = focusNode.nodeType === Node.TEXT_NODE ? focusNode.parentElement : focusNode;
-              katexEl = parent?.closest('.katex, .katex-display');
-            }
-            if (!katexEl && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              let container = range.commonAncestorContainer;
-              if (container) {
-                const parent = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
-                katexEl = parent?.closest('.katex, .katex-display');
-                if (!katexEl && parent) {
-                  const df = range.cloneContents();
-                  const found = df.querySelector('.katex, .katex-display');
-                  if (found) {
-                    const textContent = found.textContent || "";
-                    const allKatexes = parent.querySelectorAll('.katex, .katex-display');
-                    for (const el of allKatexes) {
-                      if (el.textContent === textContent) {
-                        katexEl = el;
-                        break;
-                      }
-                    }
-                    if (!katexEl && allKatexes.length > 0) {
-                      katexEl = allKatexes[0];
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          if (katexEl) {
-            const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
-            if (annotation) {
-              const mathTex = (annotation.textContent || annotation.innerText || "").trim();
-              if (mathTex) {
-                const container = katexEl.closest('[data-qkey], p, li, div');
-                const contextText = container ? (container.textContent || "").trim() : "";
-                
-                try {
-                  selection.removeAllRanges();
-                } catch (e) {}
-
-                if (typeof window.__handleFormulaConfirmRequest === 'function') {
-                  window.__handleFormulaConfirmRequest(mathTex, contextText, 'main');
-                }
-                return;
-              }
-            }
-          }
-        }
+        // Drag-selection formula interceptor removed to ensure dragging always selects text / opens AI tutor input popup
 
         // If formula confirm target is open or long pressing/touching, ignore drag popup
         if (window.__isFormulaConfirmOpen || window.__isFormulaLongPressing || window.__isFormulaTouchActive) {
