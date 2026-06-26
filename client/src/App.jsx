@@ -2965,6 +2965,59 @@ export default function App() {
   const [showAiProgress, setShowAiProgress] = useState(false);
   const progressIntervalRef = useRef(null);
 
+  // Real-Time Global AI Tutor States
+  const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(false);
+  const [realTimeChatHistory, setRealTimeChatHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_realtime_chat_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [realTimeTutorInput, setRealTimeTutorInput] = useState('');
+  const [isRealTimeChatLoading, setIsRealTimeChatLoading] = useState(false);
+  const [realTimeAttachedImage, setRealTimeAttachedImage] = useState(null);
+  
+  const [realTimeTutorSize, setRealTimeTutorSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_realtime_tutor_size');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.width && parsed.height) return parsed;
+      }
+    } catch (e) {}
+    const defaultWidth = Math.min(window.innerWidth - 32, 450);
+    const defaultHeight = Math.min(window.innerHeight - 32, 600);
+    return { width: defaultWidth, height: defaultHeight };
+  });
+
+  const [realTimeTutorPos, setRealTimeTutorPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_realtime_tutor_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
+      }
+    } catch (e) {}
+    const w = Math.min(window.innerWidth - 32, 450);
+    const h = Math.min(window.innerHeight - 32, 600);
+    return { x: (window.innerWidth - w) / 2, y: (window.innerHeight - h) / 2 };
+  });
+
+  const realTimeFileInputRef = useRef(null);
+  const realTimeChatBodyRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('anti_realtime_chat_history', JSON.stringify(realTimeChatHistory));
+  }, [realTimeChatHistory]);
+
+  useEffect(() => {
+    if (realTimeChatBodyRef.current) {
+      realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+    }
+  }, [realTimeChatHistory, isRealTimeChatLoading]);
+
   // AI History Tracking States
   const [aiHistory, setAiHistory] = useState(() => {
     try {
@@ -8587,6 +8640,155 @@ export default function App() {
     }
   };
 
+  // ── Real-Time Global AI Tutor Event Handlers ───────────────────────
+  const handleRealTimeImageAttachment = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotification('이미지 파일만 첨부할 수 있습니다.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result.split(',')[1];
+      setRealTimeAttachedImage({
+        name: file.name,
+        mimeType: file.type,
+        data: base64Data
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearRealTimeAttachedImage = () => {
+    setRealTimeAttachedImage(null);
+  };
+
+  const handleSendRealTimeMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!realTimeTutorInput.trim() && !realTimeAttachedImage) return;
+
+    const userMessage = realTimeTutorInput;
+    const apiMessage = userMessage;
+    const currentAttachedImage = realTimeAttachedImage;
+
+    setRealTimeTutorInput('');
+    setRealTimeAttachedImage(null);
+
+    setRealTimeChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
+    setIsRealTimeChatLoading(true);
+
+    const progressId = 'realtime_tutor_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          history: realTimeChatHistory.map(h => ({ role: h.role, text: h.text })), 
+          message: apiMessage,
+          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          progressId
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+      stopProgressPolling('답변 생성이 완료되었습니다!', 100);
+      setRealTimeChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
+    } catch (err) {
+      stopProgressPolling('답변 생성 실패', 100, false);
+      setRealTimeChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
+    } finally {
+      setIsRealTimeChatLoading(false);
+    }
+  };
+
+  const handleRealTimeResizeStart = (e) => {
+    e.stopPropagation();
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const startWidth = realTimeTutorSize.width;
+    const startHeight = realTimeTutorSize.height;
+    const startX = clientX;
+    const startY = clientY;
+
+    const handleResizeMove = (moveEvent) => {
+      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      const newWidth = Math.max(320, Math.min(window.innerWidth - 32, startWidth + dx));
+      const newHeight = Math.max(400, Math.min(window.innerHeight - 32, startHeight + dy));
+
+      setRealTimeTutorSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleResizeEnd = () => {
+      setRealTimeTutorSize(curr => {
+        localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(curr));
+        return curr;
+      });
+      window.removeEventListener('mousemove', handleResizeMove);
+      window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchmove', handleResizeMove);
+      window.removeEventListener('touchend', handleResizeEnd);
+    };
+
+    window.addEventListener('mousemove', handleResizeMove);
+    window.addEventListener('mouseup', handleResizeEnd);
+    window.addEventListener('touchmove', handleResizeMove, { passive: false });
+    window.addEventListener('touchend', handleResizeEnd);
+  };
+
+  const handleRealTimeMoveStart = (e) => {
+    if (e.target.closest('button, svg, path, input, textarea')) return;
+
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const startXPos = realTimeTutorPos.x;
+    const startYPos = realTimeTutorPos.y;
+    const startX = clientX;
+    const startY = clientY;
+
+    const handleMove = (moveEvent) => {
+      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      const newX = Math.max(0, Math.min(window.innerWidth - realTimeTutorSize.width, startXPos + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - realTimeTutorSize.height, startYPos + dy));
+
+      setRealTimeTutorPos({ x: newX, y: newY });
+    };
+
+    const handleMoveEnd = () => {
+      setRealTimeTutorPos(curr => {
+        localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(curr));
+        return curr;
+      });
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleMoveEnd);
+      window.removeEventListener('touchmove', handleMove, { passive: false });
+      window.removeEventListener('touchend', handleMoveEnd);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleMoveEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleMoveEnd);
+  };
+
   const handleRequestHint = async (questionText) => {
     if (!questionText) return;
     setHintText('');
@@ -11658,48 +11860,73 @@ export default function App() {
 
       {/* Top Premium Navbar */}
       <header className="w-full glass-panel border-b border-slate-800 py-5 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 landscape-hide">
-        <div className="flex items-center gap-4 landscape-hide">
-          <div className="p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple flex items-center justify-center">
-            {(!isDesktop && !isMobileLandscape) ? (
-              <span className="text-2xl select-none leading-none">👦👧</span>
-            ) : (
-              <Brain className="text-white" size={28} />
-            )}
+        <div className="flex items-center justify-between w-full md:w-auto gap-4 landscape-hide">
+          <div className="flex items-center gap-3">
+            <div className="p-2 md:p-3 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-2xl glow-purple flex items-center justify-center">
+              {(!isDesktop && !isMobileLandscape) ? (
+                <span className="text-xl select-none leading-none">👦👧</span>
+              ) : (
+                <Brain className="text-white" size={28} />
+              )}
+            </div>
+            <div>
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
+              </h1>
+              {(!(!isDesktop && !isMobileLandscape)) && (
+                <p className="text-xs md:text-sm text-slate-400 font-medium">
+                  에빙하우스 망각곡선 기반 스케줄링 & AI 기출 예상문제 출제 비서
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-              {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
-            </h1>
-            {(!(!isDesktop && !isMobileLandscape)) && (
-              <p className="text-xs md:text-sm text-slate-400 font-medium">
-                에빙하우스 망각곡선 기반 스케줄링 & AI 기출 예상문제 출제 비서
-              </p>
-            )}
-          </div>
-        </div>
 
+          {/* AI Tutor Button on Mobile */}
+          {(!isDesktop && !isMobileLandscape) && (viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
+            <button 
+              onClick={() => setIsRealTimeTutorOpen(true)}
+              className="flex items-center gap-1.5 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
+            >
+              <MessageSquare size={13} />
+              <span>AI 튜터</span>
+            </button>
+          )}
+        </div>
+ 
         {/* Date Tester Slider & Tabs */}
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
           {(!isDesktop && !isMobileLandscape) ? null : (
-            <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
-              <Calendar size={16} className="text-brand-400" />
-              <label className="text-xs font-semibold text-slate-400 whitespace-nowrap">복습 기준일:</label>
-              <input 
-                type="date" 
-                value={referenceDate}
-                onChange={(e) => setReferenceDate(e.target.value)}
-                className="bg-transparent text-sm font-bold text-white border-0 focus:ring-0 focus:outline-none cursor-pointer w-full"
-              />
-              {referenceDate !== getTodayString() && (
+            <>
+              {/* AI Tutor Button on PC */}
+              {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <button 
-                  onClick={() => setReferenceDate(getTodayString())}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors flex-shrink-0"
-                  title="오늘 날짜로 리셋"
+                  onClick={() => setIsRealTimeTutorOpen(true)}
+                  className="flex items-center gap-2 bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer select-none border-none"
                 >
-                  <RefreshCw size={14} />
+                  <MessageSquare size={15} />
+                  <span>실시간 AI 튜터</span>
                 </button>
               )}
-            </div>
+              <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
+                <Calendar size={16} className="text-brand-400" />
+                <label className="text-xs font-semibold text-slate-400 whitespace-nowrap">복습 기준일:</label>
+                <input 
+                  type="date" 
+                  value={referenceDate}
+                  onChange={(e) => setReferenceDate(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-white border-0 focus:ring-0 focus:outline-none cursor-pointer w-full"
+                />
+                {referenceDate !== getTodayString() && (
+                  <button 
+                    onClick={() => setReferenceDate(getTodayString())}
+                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors flex-shrink-0"
+                    title="오늘 날짜로 리셋"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex md:hidden landscape-flex-important flex-col gap-2 w-full">
@@ -19599,6 +19826,193 @@ export default function App() {
             >
               전송
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Real-time Global AI Tutor Popup Modal */}
+      {isRealTimeTutorOpen && (
+        <div
+          id="realtime-ai-tutor"
+          style={{
+            position: 'fixed',
+            left: `${realTimeTutorPos.x}px`,
+            top: `${realTimeTutorPos.y}px`,
+            width: `${realTimeTutorSize.width}px`,
+            height: `${realTimeTutorSize.height}px`,
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          className="bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl backdrop-blur-md font-sans overflow-hidden select-none animate-dragPopupFadeIn"
+        >
+          {/* Header */}
+          <div
+            onMouseDown={handleRealTimeMoveStart}
+            onTouchStart={handleRealTimeMoveStart}
+            className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 cursor-grab active:cursor-grabbing select-none"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base select-none leading-none">🤖</span>
+              <span className="text-sm font-extrabold text-white">실시간 AI 튜터</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Reset Chat History */}
+              {realTimeChatHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('대화 기록을 모두 초기화하시겠습니까?')) {
+                      setRealTimeChatHistory([]);
+                    }
+                  }}
+                  className="p-1 hover:bg-slate-700/60 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                  title="대화 기록 초기화"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsRealTimeTutorOpen(false)}
+                className="p-1 hover:bg-slate-700/60 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <div
+            ref={realTimeChatBodyRef}
+            className="flex-grow overflow-y-auto p-4 flex flex-col gap-3.5 select-text scrollbar-thin"
+            style={{ scrollbarWidth: 'thin' }}
+          >
+            {realTimeChatHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-3 select-none">
+                <div className="p-4 bg-slate-800/60 rounded-3xl text-3xl animate-bounce">🤖</div>
+                <div className="text-sm font-extrabold text-slate-200">반갑습니다! 실시간 AI 튜터입니다.</div>
+                <div className="text-xs text-slate-400 max-w-[280px] leading-relaxed">
+                  Spaced Repetition 복습 스케줄러를 학습하며 생기는 이론적인 질문, 학습 팁 등 어떤 것이든 편하게 여쭤보세요! 👦👧
+                </div>
+              </div>
+            ) : (
+              realTimeChatHistory.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col gap-1 max-w-[85%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
+                >
+                  {msg.role === 'user' ? (
+                    <>
+                      {msg.image && (
+                        <div className="rounded-xl overflow-hidden border border-slate-700/60 max-w-[150px] mb-1">
+                          <img src={`data:${msg.image.mimeType};base64,${msg.image.data}`} alt="attachment" className="w-full h-auto" />
+                        </div>
+                      )}
+                      <div className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-xs font-semibold leading-relaxed break-words shadow-sm">
+                        {msg.text}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-xs font-medium leading-relaxed break-words shadow-sm">
+                      {msg.text.split('\n').map((line, idx) => (
+                        <div key={idx} className="min-h-[1.2em]">
+                          {line.includes('$') || line.includes('\\(') || line.includes('\\[') ? (
+                            <LatexRenderer text={line} />
+                          ) : (
+                            line
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+
+            {isRealTimeChatLoading && (
+              <div className="self-start flex items-center gap-2 bg-slate-800/50 border border-slate-700/30 px-3.5 py-2 rounded-2xl rounded-tl-none text-xs text-slate-400 font-medium">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </span>
+                <span>답변을 생성하고 있습니다...</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Input Area */}
+          <form
+            onSubmit={handleSendRealTimeMessage}
+            className="p-3 bg-slate-800/40 border-t border-slate-700/40 flex flex-col gap-2 flex-shrink-0"
+          >
+            {realTimeAttachedImage && (
+              <div className="flex items-center gap-2 bg-slate-800/80 border border-slate-700/50 p-1.5 rounded-xl self-start">
+                <img
+                  src={`data:${realTimeAttachedImage.mimeType};base64,${realTimeAttachedImage.data}`}
+                  alt="preview"
+                  className="w-8 h-8 rounded object-cover"
+                />
+                <span className="text-[10px] text-slate-300 truncate max-w-[120px] font-bold">{realTimeAttachedImage.name}</span>
+                <button
+                  type="button"
+                  onClick={handleClearRealTimeAttachedImage}
+                  className="text-[10px] text-rose-400 hover:text-rose-300 font-bold border-none bg-transparent cursor-pointer ml-1"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => realTimeFileInputRef.current?.click()}
+                disabled={isRealTimeChatLoading}
+                className="w-8 h-8 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 flex-shrink-0 border-none bg-transparent"
+                title="이미지 첨부"
+              >
+                <Paperclip size={14} />
+              </button>
+              <input
+                type="file"
+                ref={realTimeFileInputRef}
+                onChange={handleRealTimeImageAttachment}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <input
+                type="text"
+                value={realTimeTutorInput}
+                onChange={(e) => setRealTimeTutorInput(e.target.value)}
+                disabled={isRealTimeChatLoading}
+                placeholder="실시간 튜터에게 질문하기..."
+                className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-xs rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500"
+              />
+
+              <button
+                type="submit"
+                disabled={(!realTimeTutorInput.trim() && !realTimeAttachedImage) || isRealTimeChatLoading}
+                className="w-8 h-8 bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white rounded-xl flex items-center justify-center transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer active:scale-95 flex-shrink-0 border-none"
+              >
+                <Send size={13} />
+              </button>
+            </div>
+          </form>
+
+          {/* Resize Handle */}
+          <div
+            onMouseDown={handleRealTimeResizeStart}
+            onTouchStart={handleRealTimeResizeStart}
+            className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize flex items-end justify-end p-0.5 select-none"
+            style={{ zIndex: 100000 }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" className="text-slate-500 hover:text-slate-300 transition-colors">
+              <path d="M10,0 L0,10 M10,3 L3,10 M10,6 L6,10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
       )}
