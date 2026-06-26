@@ -4496,7 +4496,18 @@ export default function App() {
   const [isPinVerifying, setIsPinVerifying] = useState(false);
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
 
-  const hasBeenHiddenRef = useRef(false);
+  const lastTickRef = useRef(Date.now());
+
+  // Interval to update the tick timestamp every 1 second
+  useEffect(() => {
+    if (!isPinVerified || isDesktop) return;
+    
+    const interval = setInterval(() => {
+      lastTickRef.current = Date.now();
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isPinVerified, isDesktop]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -4505,9 +4516,12 @@ export default function App() {
 
       // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
-          // Reset flag synchronously immediately to prevent double/triple trigger calls from sequential events
-          hasBeenHiddenRef.current = false;
+        const timeDiff = Date.now() - lastTickRef.current;
+
+        // If the time gap is greater than 3.5 seconds, it means the screen was turned off (the device slept)
+        if (isLockscreenQuizEnabled && timeDiff > 3500) {
+          // Reset tick immediately
+          lastTickRef.current = Date.now();
 
           const queryDate = getLockscreenQueryDate();
           let didShowFromCache = false;
@@ -4543,28 +4557,17 @@ export default function App() {
             }
           });
         }
-      } else if (document.visibilityState === 'hidden') {
-        hasBeenHiddenRef.current = true;
       }
-    };
-
-    const handleBlur = () => {
-      if (!isPinVerified || isDesktop) return;
-      hasBeenHiddenRef.current = true;
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
     window.addEventListener('pageshow', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    
-    // We explicitly DO NOT trigger on initial app launch mount
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
       window.removeEventListener('pageshow', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
     };
   }, [isLockscreenQuizEnabled, isPinVerified, isDesktop]);
 
