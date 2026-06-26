@@ -2919,6 +2919,92 @@ export default function App() {
       console.error('잠금화면 퀴즈 설정 동기화 실패:', err);
     }
   };
+
+  const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(false);
+  const [lockscreenQuestions, setLockscreenQuestions] = useState([]);
+  const [currentLockscreenIndex, setCurrentLockscreenIndex] = useState(0);
+  const [lockscreenSelectedOption, setLockscreenSelectedOption] = useState(null);
+  const [lockscreenAnswerResult, setLockscreenAnswerResult] = useState(null);
+
+  const getLockscreenQueryDate = () => {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kst = new Date(utc + (9 * 3600000));
+    const hours = kst.getHours();
+    const targetDate = new Date(kst);
+    if (hours < 5) {
+      targetDate.setDate(targetDate.getDate() - 1);
+    }
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const syncLockscreenQuestions = async (targetDateStr) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen/sync?date=${targetDateStr}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.questions) {
+          localStorage.setItem(`anti_lockscreen_questions_${targetDateStr}`, JSON.stringify(data.questions));
+          return data.questions;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync daily lockscreen questions:', err);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (isLockscreenQuizEnabled) {
+          const queryDate = getLockscreenQueryDate();
+          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
+          if (cached) {
+            try {
+              const questions = JSON.parse(cached);
+              if (Array.isArray(questions) && questions.length > 0) {
+                setLockscreenQuestions(questions);
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+              }
+            } catch (e) {
+              console.error('Failed to parse cached lockscreen questions:', e);
+            }
+          }
+          
+          syncLockscreenQuestions(queryDate).then(questions => {
+            if (questions && Array.isArray(questions) && questions.length > 0) {
+              setLockscreenQuestions(prev => {
+                if (!prev || prev.length === 0) {
+                  const randIdx = Math.floor(Math.random() * questions.length);
+                  setCurrentLockscreenIndex(randIdx);
+                  setLockscreenSelectedOption(null);
+                  setLockscreenAnswerResult(null);
+                  setShowLockscreenQuiz(true);
+                }
+                return questions;
+              });
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (isLockscreenQuizEnabled) {
+      handleVisibilityChange();
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isLockscreenQuizEnabled]);
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
@@ -11833,6 +11919,126 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
+      {/* ===== 잠금화면 퀴즈 오버레이 ===== */}
+      {showLockscreenQuiz && lockscreenQuestions.length > 0 && (() => {
+        const currentQuestion = lockscreenQuestions[currentLockscreenIndex];
+        if (!currentQuestion) return null;
+
+        return (
+          <div className="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-xl flex flex-col justify-center items-center p-6 text-slate-100 font-sans select-none overflow-y-auto">
+            <div className="w-full max-w-xl bg-slateCustom-900 border border-slate-800/80 rounded-3xl p-6 md:p-8 flex flex-col shadow-2xl space-y-6 my-auto">
+              {/* Header */}
+              <div className="flex flex-col items-center text-center space-y-2 pb-4 border-b border-slate-800/60">
+                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
+                  <Lock className="text-indigo-400 animate-pulse" size={28} />
+                </div>
+                <h2 className="text-lg font-black text-white flex items-center gap-1.5 justify-center">
+                  <span>필수공식 잠금해제 퀴즈</span>
+                </h2>
+                <p className="text-xs text-slate-400 font-semibold">
+                  화면 잠금을 해제하기 위해 아래 문제의 올바른 답을 선택하십시오.
+                </p>
+              </div>
+
+              {/* Question */}
+              <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 md:p-6 min-h-[120px] flex items-center justify-center text-center text-sm md:text-base font-bold text-slate-100 leading-relaxed">
+                <div className="w-full">
+                  <LatexRenderer text={currentQuestion.question} katexLoaded={katexLoaded} />
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="grid grid-cols-1 gap-3">
+                {currentQuestion.options.map((option, idx) => {
+                  const isSelected = lockscreenSelectedOption === option;
+                  const isCorrect = option === currentQuestion.answer;
+                  
+                  let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
+                  if (lockscreenSelectedOption) {
+                    if (isCorrect) {
+                      optionClass = 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-black';
+                    } else if (isSelected) {
+                      optionClass = 'bg-rose-950/80 border-rose-500 text-rose-200 font-black';
+                    } else {
+                      optionClass = 'bg-slate-950/20 border-slate-800/40 text-slate-600 opacity-60';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      disabled={lockscreenSelectedOption !== null}
+                      onClick={() => {
+                        setLockscreenSelectedOption(option);
+                        if (isCorrect) {
+                          setLockscreenAnswerResult('correct');
+                        } else {
+                          setLockscreenAnswerResult('incorrect');
+                        }
+                      }}
+                      className={`w-full py-3.5 px-5 rounded-2xl border text-xs md:text-sm font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <LatexRenderer text={option} katexLoaded={katexLoaded} />
+                      </div>
+                      {lockscreenSelectedOption && (
+                        <span className="shrink-0 text-xs">
+                          {isCorrect ? '⭕ 정답' : isSelected ? '❌ 오답' : ''}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Answer Result & Explanation / Unlock Action */}
+              {lockscreenAnswerResult && (
+                <div className="space-y-4 pt-2">
+                  <div className={`rounded-2xl p-4 border text-xs md:text-sm leading-relaxed ${
+                    lockscreenAnswerResult === 'correct'
+                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
+                  }`}>
+                    <p className="font-extrabold flex items-center gap-1.5 mb-1 text-[13px] md:text-sm">
+                      {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다. 다시 시도해 주세요.'}
+                    </p>
+                    <p className="text-slate-400 font-medium">
+                      <strong>해설:</strong> {currentQuestion.explanation}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    {lockscreenAnswerResult === 'incorrect' ? (
+                      <button
+                        onClick={() => {
+                          setLockscreenSelectedOption(null);
+                          setLockscreenAnswerResult(null);
+                        }}
+                        className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw size={15} />
+                        <span>다른 보기 다시 고르기</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setShowLockscreenQuiz(false);
+                          setLockscreenSelectedOption(null);
+                          setLockscreenAnswerResult(null);
+                        }}
+                        className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer shadow-lg shadow-emerald-950/40 active:scale-95 text-center flex items-center justify-center gap-1.5"
+                      >
+                        <Lock size={15} />
+                        <span>잠금 해제 (진입하기)</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {/* Mobile Mock Status Bar on Main Page */}
       
       {/* Toast Notification */}
