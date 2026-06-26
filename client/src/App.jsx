@@ -2957,77 +2957,7 @@ export default function App() {
     return null;
   };
 
-  const hasBeenHiddenRef = useRef(false);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // If the user has not verified the PIN code yet, or if on PC (isDesktop), ignore screen off/on triggers
-      if (!isPinVerified || isDesktop) return;
-
-      // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
-      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
-          // Reset flag synchronously immediately to prevent double/triple trigger calls from sequential events
-          hasBeenHiddenRef.current = false;
-
-          const queryDate = getLockscreenQueryDate();
-          let didShowFromCache = false;
-
-          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
-          if (cached) {
-            try {
-              const questions = JSON.parse(cached);
-              if (Array.isArray(questions) && questions.length > 0) {
-                setLockscreenQuestions(questions);
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-                didShowFromCache = true;
-              }
-            } catch (e) {
-              console.error('Failed to parse cached lockscreen questions:', e);
-            }
-          }
-          
-          syncLockscreenQuestions(queryDate).then(questions => {
-            if (questions && Array.isArray(questions) && questions.length > 0) {
-              setLockscreenQuestions(questions);
-              if (!didShowFromCache) {
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-              }
-            }
-          });
-        }
-      } else if (document.visibilityState === 'hidden') {
-        hasBeenHiddenRef.current = true;
-      }
-    };
-
-    const handleBlur = () => {
-      if (!isPinVerified || isDesktop) return;
-      hasBeenHiddenRef.current = true;
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleVisibilityChange);
-    window.addEventListener('pageshow', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    
-    // We explicitly DO NOT trigger on initial app launch mount
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleVisibilityChange);
-      window.removeEventListener('pageshow', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [isLockscreenQuizEnabled, isPinVerified, isDesktop]);
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
@@ -4565,6 +4495,79 @@ export default function App() {
   const [pinError, setPinError] = useState('');
   const [isPinVerifying, setIsPinVerifying] = useState(false);
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
+
+  const hasBeenHiddenRef = useRef(false);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // If the user has not verified the PIN code yet, or if on PC (isDesktop), ignore screen off/on triggers
+      if (!isPinVerified || isDesktop) return;
+
+      // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
+      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
+        if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
+          // Reset flag synchronously immediately to prevent double/triple trigger calls from sequential events
+          hasBeenHiddenRef.current = false;
+
+          const queryDate = getLockscreenQueryDate();
+          let didShowFromCache = false;
+
+          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
+          if (cached) {
+            try {
+              const questions = JSON.parse(cached);
+              if (Array.isArray(questions) && questions.length > 0) {
+                setLockscreenQuestions(questions);
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+                didShowFromCache = true;
+              }
+            } catch (e) {
+              console.error('Failed to parse cached lockscreen questions:', e);
+            }
+          }
+          
+          syncLockscreenQuestions(queryDate).then(questions => {
+            if (questions && Array.isArray(questions) && questions.length > 0) {
+              setLockscreenQuestions(questions);
+              if (!didShowFromCache) {
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+              }
+            }
+          });
+        }
+      } else if (document.visibilityState === 'hidden') {
+        hasBeenHiddenRef.current = true;
+      }
+    };
+
+    const handleBlur = () => {
+      if (!isPinVerified || isDesktop) return;
+      hasBeenHiddenRef.current = true;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+    window.addEventListener('pageshow', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    
+    // We explicitly DO NOT trigger on initial app launch mount
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('pageshow', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isLockscreenQuizEnabled, isPinVerified, isDesktop]);
+
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
   const mobileTutorFileInputRef = useRef(null);
@@ -11945,7 +11948,7 @@ export default function App() {
       {/* ===== 잠금화면 퀴즈 오버레이 ===== */}
       {showLockscreenQuiz && lockscreenQuestions.length > 0 && (() => {
         const currentQuestion = lockscreenQuestions[currentLockscreenIndex];
-        if (!currentQuestion) return null;
+        if (!currentQuestion || !Array.isArray(currentQuestion.options)) return null;
 
         return (
           <div className="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-xl flex flex-col justify-center items-center p-6 text-slate-100 font-sans select-none overflow-y-auto">
