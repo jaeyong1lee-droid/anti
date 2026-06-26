@@ -12035,12 +12035,6 @@ export default function App() {
                         setLockscreenSelectedOption(option);
                         if (isCorrect) {
                           setLockscreenAnswerResult('correct');
-                          // Automatically unlock after 800ms so they see the success feedback
-                          setTimeout(() => {
-                            setShowLockscreenQuiz(false);
-                            setLockscreenSelectedOption(null);
-                            setLockscreenAnswerResult(null);
-                          }, 800);
                         } else {
                           setLockscreenAnswerResult('incorrect');
                         }
@@ -12077,24 +12071,21 @@ export default function App() {
                   </div>
 
                   <div className="flex gap-3">
-                    {lockscreenAnswerResult === 'incorrect' ? (
-                      <button
-                        onClick={() => {
-                          setShowLockscreenQuiz(false);
-                          setLockscreenSelectedOption(null);
-                          setLockscreenAnswerResult(null);
-                        }}
-                        className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
-                      >
-                        <Unlock size={15} />
-                        <span>진입하기 🔓</span>
-                      </button>
-                    ) : (
-                      <div className="w-full py-3.5 bg-emerald-650/20 text-emerald-300 border border-emerald-500/30 rounded-2xl text-[15px] font-black text-center flex items-center justify-center gap-1.5 select-none">
-                        <CheckCircle size={15} className="animate-pulse" />
-                        <span>자동으로 잠금 해제 중...</span>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        setShowLockscreenQuiz(false);
+                        setLockscreenSelectedOption(null);
+                        setLockscreenAnswerResult(null);
+                      }}
+                      className={`w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 ${
+                        lockscreenAnswerResult === 'correct'
+                          ? 'bg-emerald-600 hover:bg-emerald-500'
+                          : 'bg-slate-800 hover:bg-slate-700'
+                      }`}
+                    >
+                      <Unlock size={15} />
+                      <span>진입하기 🔓</span>
+                    </button>
                   </div>
                 </div>
               )}
