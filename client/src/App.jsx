@@ -1083,12 +1083,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     }, 2000);
   };
 
-  const cancelPress = (clientX, clientY, isMove = false) => {
+  const cancelPress = (clientX, clientY, isMove = false, isTouch = false) => {
     if (isMove) {
       const dx = clientX - startPos.current.x;
       const dy = clientY - startPos.current.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 35) return;
+      const threshold = isTouch ? 80 : 35;
+      if (dist < threshold) return;
     }
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -1103,11 +1104,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   };
 
   const handleMouseMove = (e) => {
-    cancelPress(e.screenX, e.screenY, true);
+    cancelPress(e.screenX, e.screenY, true, false);
   };
 
   const handleMouseUpOrLeave = () => {
-    cancelPress(0, 0, false);
+    cancelPress(0, 0, false, false);
   };
 
   const handleTouchStart = (e) => {
@@ -1121,11 +1122,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     const touch = e.touches[0];
     const x = touch.screenX !== undefined ? touch.screenX : touch.clientX;
     const y = touch.screenY !== undefined ? touch.screenY : touch.clientY;
-    cancelPress(x, y, true);
+    cancelPress(x, y, true, true);
   };
 
   const handleTouchEndOrCancel = () => {
-    cancelPress(0, 0, false);
+    cancelPress(0, 0, false, true);
   };
 
   const handleFormulaClick = (e) => {
@@ -4725,9 +4726,15 @@ export default function App() {
     let selectionTimeout = null;
     let lastValidRange = null;
     let isMouseDown = false;
+    let startSelectionPos = null;
+    let lastPointerPos = null;
 
-    const handleDocumentMouseDown = () => {
+    const handleDocumentMouseDown = (e) => {
       isMouseDown = true;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startSelectionPos = { x: clientX, y: clientY };
+      lastPointerPos = { x: clientX, y: clientY };
     };
     const handleDocumentMouseUp = () => {
       isMouseDown = false;
@@ -4742,6 +4749,10 @@ export default function App() {
     };
 
     const handlePointerMove = (e) => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      lastPointerPos = { x: clientX, y: clientY };
+
       const popupState = selectionPopupRef.current;
       if (!popupState.show || !isMouseDown || isDraggingPopupRef.current) {
         return;
@@ -4751,9 +4762,6 @@ export default function App() {
       if (document.activeElement && document.activeElement.closest('#drag-ai-popup')) {
         return;
       }
-
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
       const el = document.getElementById('drag-ai-popup');
       if (!el) return;
@@ -4869,6 +4877,20 @@ export default function App() {
           setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
           lastValidRange = null;
           return;
+        }
+
+        // Check drag distance to ensure it's a deliberate drag
+        if (startSelectionPos && lastPointerPos) {
+          const dx = lastPointerPos.x - startSelectionPos.x;
+          const dy = lastPointerPos.y - startSelectionPos.y;
+          const dragDistance = Math.hypot(dx, dy);
+          
+          const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+          const minDragDist = isTouch ? 60 : 15;
+          
+          if (dragDistance < minDragDist) {
+            return;
+          }
         }
 
         // Save current selection range as last valid range
