@@ -19914,7 +19914,7 @@ export default function App() {
               realTimeChatHistory.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col gap-1 max-w-[85%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start w-full'}`}
+                  className={`flex flex-col gap-1 ${msg.role === 'user' ? 'max-w-[85%] self-end items-end' : 'max-w-[98%] self-start items-start w-full'}`}
                 >
                   {msg.role === 'user' ? (
                     <>
