@@ -4502,14 +4502,27 @@ export default function App() {
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
     
-    // Reset lastTickRef and tick count immediately upon hook binding (login / app start)
-    tickCountRef.current = 0;
-    lastTickRef.current = Date.now();
+    // Check if the user just verified the PIN and logged in
+    const justLoggedIn = sessionStorage.getItem('just_logged_in') === 'true';
+    if (justLoggedIn) {
+      sessionStorage.removeItem('just_logged_in');
+      tickCountRef.current = 0;
+      lastTickRef.current = Date.now();
+      localStorage.setItem('anti_last_tick_time', String(Date.now()));
+    } else {
+      // Re-initialize from localStorage to handle fresh tab reloads/suspensions
+      const lastTickStr = localStorage.getItem('anti_last_tick_time');
+      const lastTickVal = lastTickStr ? parseInt(lastTickStr, 10) : Date.now();
+      lastTickRef.current = lastTickVal;
+      tickCountRef.current = 10; // Keep it outside the grace period
+    }
 
     const interval = setInterval(() => {
       // Only tick when the tab is visible to keep lastTickRef fresh
       if (document.visibilityState === 'visible') {
-        lastTickRef.current = Date.now();
+        const now = Date.now();
+        lastTickRef.current = now;
+        localStorage.setItem('anti_last_tick_time', String(now));
         tickCountRef.current += 1;
       }
     }, 1000);
@@ -4523,16 +4536,21 @@ export default function App() {
 
     const handleWakeup = () => {
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        const timeDiff = Date.now() - lastTickRef.current;
+        // Read from localStorage to ensure we capture the most accurate timestamp
+        const lastTickStr = localStorage.getItem('anti_last_tick_time');
+        const lastTickVal = lastTickStr ? parseInt(lastTickStr, 10) : lastTickRef.current;
+        const timeDiff = Date.now() - lastTickVal;
 
-        // Bypass during the first 5 ticks (grace period) of the session
+        // Bypass during the first 5 ticks (grace period) of a fresh login session
         if (tickCountRef.current <= 5) {
           lastTickRef.current = Date.now();
+          localStorage.setItem('anti_last_tick_time', String(Date.now()));
           return;
         }
 
         if (isLockscreenQuizEnabled && timeDiff > 3500) {
           lastTickRef.current = Date.now();
+          localStorage.setItem('anti_last_tick_time', String(Date.now()));
 
           const queryDate = getLockscreenQueryDate();
           let didShowFromCache = false;
@@ -4570,6 +4588,9 @@ export default function App() {
         }
       }
     };
+
+    // Run immediately on registration to capture fresh startup/resume triggers
+    handleWakeup();
 
     document.addEventListener('visibilitychange', handleWakeup);
     window.addEventListener('focus', handleWakeup);
@@ -9591,6 +9612,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok && data.success) {
         sessionStorage.setItem('pin_verified', 'true');
+        sessionStorage.setItem('just_logged_in', 'true');
         setIsPinVerified(true);
         showNotification('성공적으로 인증되었습니다.', 'success');
       } else {
