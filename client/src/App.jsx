@@ -51,6 +51,7 @@ import {
   Sliders,
   Image,
   Lock,
+  Unlock,
   Cpu
 } from 'lucide-react';
 import { FloatingCalculator } from './components/ScientificCalculator';
@@ -12068,7 +12069,7 @@ export default function App() {
                       : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
                   }`}>
                     <p className="font-extrabold flex items-center gap-1.5 mb-1 text-[15px]">
-                      {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다. 다시 시도해 주세요.'}
+                      {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다.'}
                     </p>
                     <p className="text-slate-400 font-medium text-[15px]">
                       <strong>해설:</strong> {currentQuestion.explanation}
@@ -12079,13 +12080,14 @@ export default function App() {
                     {lockscreenAnswerResult === 'incorrect' ? (
                       <button
                         onClick={() => {
+                          setShowLockscreenQuiz(false);
                           setLockscreenSelectedOption(null);
                           setLockscreenAnswerResult(null);
                         }}
                         className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5"
                       >
-                        <RefreshCw size={15} />
-                        <span>다른 보기 다시 고르기</span>
+                        <Unlock size={15} />
+                        <span>진입하기 🔓</span>
                       </button>
                     ) : (
                       <div className="w-full py-3.5 bg-emerald-650/20 text-emerald-300 border border-emerald-500/30 rounded-2xl text-[15px] font-black text-center flex items-center justify-center gap-1.5 select-none">
