@@ -17,6 +17,7 @@ import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } 
 import { GENERATION_STANDARDS, generationStandardsList, updateLiveGenerationStandards } from './plugins/generationStandards.js';
 import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched, VALIDATION_STANDARDS, validationStandardsList, updateLiveValidationStandards } from './plugins/validationPlugin.js';
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
+import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -7074,6 +7075,51 @@ app.post('/api/options/:key', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error(`POST /api/options/${req.params.key} error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/lockscreen/sync → Get or generate daily lockscreen quiz questions
+app.get('/api/lockscreen/sync', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const date = req.query.date || getLocalDateString();
+    const cacheKey = `lockscreen_questions_${date}`;
+    
+    // 1. Check cached version
+    const cachedRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [cacheKey]);
+    if (cachedRow && cachedRow.value) {
+      try {
+        const questions = JSON.parse(cachedRow.value);
+        return res.json({ success: true, date, questions });
+      } catch (e) {
+        console.warn(`Failed to parse cached lockscreen questions for key ${cacheKey}, will regenerate:`, e);
+      }
+    }
+
+    // 2. Fetch formula questions
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+    if (rows.length === 0 || !rows[0].value) {
+      return res.status(404).json({ success: false, error: '등록된 필수 공식이 없습니다. 먼저 필수공식을 등록해주세요.' });
+    }
+
+    const parsed = JSON.parse(rows[0].value);
+    const formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
+    if (formulaQuestions.length === 0) {
+      return res.status(404).json({ success: false, error: '등록된 필수 공식이 없습니다. 먼저 필수공식을 등록해주세요.' });
+    }
+
+    // 3. Generate daily quiz
+    console.log(`[Lockscreen Quiz] Generating 5 questions for date ${date} using ${formulaQuestions.length} formulas...`);
+    const callLLM = getCallLLM(req);
+    const generatedQuestions = await generateDailyLockscreenQuestions(formulaQuestions, callLLM);
+
+    // 4. Save to cache
+    await saveSessionValue(cacheKey, JSON.stringify(generatedQuestions));
+
+    return res.json({ success: true, date, questions: generatedQuestions });
+  } catch (err) {
+    console.error('GET /api/lockscreen/sync error:', err);
     res.status(500).json({ error: err.message });
   }
 });

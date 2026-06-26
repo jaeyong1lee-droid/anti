@@ -2897,6 +2897,28 @@ export default function App() {
   const [editingTopicId, setEditingTopicId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   const [preferredModel, setPreferredModel] = useState('gemini-3.1-flash-lite');
+  const [isLockscreenQuizEnabled, setIsLockscreenQuizEnabled] = useState(() => {
+    return localStorage.getItem('anti_lockscreen_quiz_enabled') === 'true';
+  });
+
+  const toggleLockscreenQuiz = async () => {
+    const newVal = !isLockscreenQuizEnabled;
+    setIsLockscreenQuizEnabled(newVal);
+    localStorage.setItem('anti_lockscreen_quiz_enabled', String(newVal));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/options/lockscreen_quiz_enabled`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: String(newVal) })
+      });
+      if (!res.ok) {
+        throw new Error('Failed to update option on server');
+      }
+    } catch (err) {
+      console.error('잠금화면 퀴즈 설정 동기화 실패:', err);
+    }
+  };
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
@@ -3653,6 +3675,20 @@ export default function App() {
         const localVal = localStorage.getItem('anti_preferred_model');
         if (localVal) setPreferredModel(localVal);
       });
+  }, []);
+
+  // Load lockscreen_quiz_enabled from server database on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/api/options/lockscreen_quiz_enabled`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.value !== null) {
+          const serverVal = data.value === 'true' || data.value === true;
+          setIsLockscreenQuizEnabled(serverVal);
+          localStorage.setItem('anti_lockscreen_quiz_enabled', String(serverVal));
+        }
+      })
+      .catch(err => console.warn('Failed to load lockscreen_quiz_enabled from database:', err));
   }, []);
 
   // --- Formula Adjust States & Context Registration ---
@@ -11873,13 +11909,27 @@ export default function App() {
 
           {/* AI Tutor Button on Mobile */}
           {(!isDesktop && !isMobileLandscape) && (viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
-            <button 
-              onClick={() => setIsRealTimeTutorOpen(true)}
-              className="flex items-center gap-1.5 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
-            >
-              <MessageSquare size={13} />
-              <span>AI 튜터</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleLockscreenQuiz}
+                className={`flex items-center gap-1 px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-sm cursor-pointer select-none border border-solid ${
+                  isLockscreenQuizEnabled
+                    ? 'bg-emerald-600/90 border-emerald-500 text-white'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-400'
+                }`}
+                title="잠금화면 퀴즈 ON/OFF"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isLockscreenQuizEnabled ? 'bg-emerald-300' : 'bg-slate-500'}`} />
+                <span>잠금퀴즈 {isLockscreenQuizEnabled ? 'ON' : 'OFF'}</span>
+              </button>
+              <button 
+                onClick={() => setIsRealTimeTutorOpen(true)}
+                className="flex items-center gap-1.5 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
+              >
+                <MessageSquare size={13} />
+                <span>AI 튜터</span>
+              </button>
+            </div>
           )}
         </div>
  
@@ -11889,13 +11939,27 @@ export default function App() {
             <>
               {/* AI Tutor Button on PC */}
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
-                <button 
-                  onClick={() => setIsRealTimeTutorOpen(true)}
-                  className="flex items-center gap-2 bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer select-none border-none"
-                >
-                  <MessageSquare size={15} />
-                  <span>실시간 AI 튜터</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleLockscreenQuiz}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer select-none border border-solid ${
+                      isLockscreenQuizEnabled
+                        ? 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                    }`}
+                    title="잠금화면 퀴즈 ON/OFF"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isLockscreenQuizEnabled ? 'bg-emerald-300' : 'bg-slate-500'}`} />
+                    <span>잠금퀴즈 {isLockscreenQuizEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                  <button 
+                    onClick={() => setIsRealTimeTutorOpen(true)}
+                    className="flex items-center gap-2 bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer select-none border-none"
+                  >
+                    <MessageSquare size={15} />
+                    <span>실시간 AI 튜터</span>
+                  </button>
+                </div>
               )}
               <div className="flex items-center gap-3 bg-slateCustom-900 border border-slate-800 rounded-xl px-4 py-2 w-full md:w-auto">
                 <Calendar size={16} className="text-brand-400" />
