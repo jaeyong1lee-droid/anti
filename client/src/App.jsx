@@ -2961,12 +2961,15 @@ export default function App() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // If the user has not verified the PIN code yet, ignore screen off/on triggers to prevent showing quiz on app launch/PIN screen
-      if (!isPinVerified) return;
+      // If the user has not verified the PIN code yet, or if on PC (isDesktop), ignore screen off/on triggers
+      if (!isPinVerified || isDesktop) return;
 
       // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
         if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
+          // Reset flag synchronously immediately to prevent double/triple trigger calls from sequential events
+          hasBeenHiddenRef.current = false;
+
           const queryDate = getLockscreenQueryDate();
           let didShowFromCache = false;
 
@@ -2981,8 +2984,6 @@ export default function App() {
                 setLockscreenSelectedOption(null);
                 setLockscreenAnswerResult(null);
                 setShowLockscreenQuiz(true);
-                // Reset flag
-                hasBeenHiddenRef.current = false;
                 didShowFromCache = true;
               }
             } catch (e) {
@@ -2999,8 +3000,6 @@ export default function App() {
                 setLockscreenSelectedOption(null);
                 setLockscreenAnswerResult(null);
                 setShowLockscreenQuiz(true);
-                // Reset flag
-                hasBeenHiddenRef.current = false;
               }
             }
           });
@@ -3011,7 +3010,7 @@ export default function App() {
     };
 
     const handleBlur = () => {
-      if (!isPinVerified) return;
+      if (!isPinVerified || isDesktop) return;
       hasBeenHiddenRef.current = true;
     };
 
@@ -3028,7 +3027,7 @@ export default function App() {
       window.removeEventListener('pageshow', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [isLockscreenQuizEnabled, isPinVerified]);
+  }, [isLockscreenQuizEnabled, isPinVerified, isDesktop]);
   
   // HTML Edit Modal States
   const [showHtmlEditModal, setShowHtmlEditModal] = useState(false);
