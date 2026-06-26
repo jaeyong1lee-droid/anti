@@ -1192,7 +1192,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     }
   }
 
-  const isHeavy = isHeavyHtml(renderText);
+  const isHeavy = isHeavyHtml(renderText) && !isRealTimeTutor && formulaSource !== 'tutor';
 
   // Manage iframe resize event listener and message listener cleanly
   useEffect(() => {
