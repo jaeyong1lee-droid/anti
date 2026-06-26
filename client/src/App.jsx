@@ -3913,6 +3913,12 @@ export default function App() {
     localStorage.setItem(key, String(selectedFormulaIdx));
   }, [selectedFormulaIdx, selectedTopic?.id]);
 
+  const isDragPopupAllowed = !!(selectedTopic || showExam || showFormulaExam || showTheoryExam || showAnswerSheet || isRealTimeTutorOpen);
+  const isDragPopupAllowedRef = useRef(isDragPopupAllowed);
+  useEffect(() => {
+    isDragPopupAllowedRef.current = isDragPopupAllowed;
+  }, [isDragPopupAllowed]);
+
   // Save formulaMobileTab when it changes
   useEffect(() => {
     const key = `anti_formula_mobile_tab_${selectedTopic?.id || 'default'}`;
@@ -4885,6 +4891,11 @@ export default function App() {
       }
 
       selectionTimeout = setTimeout(() => {
+        if (!isDragPopupAllowedRef.current) {
+          setSelectionPopup(prev => prev.show ? { ...prev, show: false } : prev);
+          return;
+        }
+
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
 
@@ -5035,6 +5046,7 @@ export default function App() {
     };
 
     const handleIframeSelectionChange = (e) => {
+      if (!isDragPopupAllowedRef.current) return;
       const { text, x, y, questionKey, isRealTimeTutor } = e.detail;
       setSelectionPopup(prev => ({
         show: true,
