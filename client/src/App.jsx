@@ -2966,7 +2966,16 @@ export default function App() {
   const progressIntervalRef = useRef(null);
 
   // Real-Time Global AI Tutor States
-  const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(false);
+  const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_realtime_tutor_open');
+      const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+      if (isTouch) return false;
+      return saved === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
   const [realTimeChatHistory, setRealTimeChatHistory] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_realtime_chat_history');
@@ -3007,6 +3016,10 @@ export default function App() {
 
   const realTimeFileInputRef = useRef(null);
   const realTimeChatBodyRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('anti_realtime_tutor_open', isRealTimeTutorOpen ? 'true' : 'false');
+  }, [isRealTimeTutorOpen]);
 
   useEffect(() => {
     localStorage.setItem('anti_realtime_chat_history', JSON.stringify(realTimeChatHistory));
