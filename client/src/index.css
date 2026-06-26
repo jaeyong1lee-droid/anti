@@ -130,6 +130,18 @@ div[class*="overflow-y-auto"] {
   white-space: nowrap !important;
 }
 
+/* Prevent text selection and native callout menus on KaTeX formulas when long-press export is enabled */
+.enable-add-formula .katex,
+.enable-add-formula .katex-display,
+.enable-add-formula .katex *,
+.enable-add-formula .katex-display * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
 /* Custom elegant thin scrollbar for Webkit browsers (Chrome, Safari, iOS, Android) */
 .katex-display::-webkit-scrollbar,
 .overflow-x-auto::-webkit-scrollbar {
