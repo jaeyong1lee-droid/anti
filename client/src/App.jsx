@@ -3877,11 +3877,8 @@ export default function App() {
   // 2) Load Chat History when selectedTopic or selectedFormulaIdx changes
   useEffect(() => {
     const topicKey = selectedTopic?.id || 'default';
-    if (selectedFormulaIdx === -1) {
-      setFormulaChatHistory([]);
-      return;
-    }
-    const chatKey = `anti_formula_chat_history_${topicKey}_${selectedFormulaIdx}`;
+    const suffix = selectedFormulaIdx === -1 ? 'general' : selectedFormulaIdx;
+    const chatKey = `anti_formula_chat_history_${topicKey}_${suffix}`;
     const savedChat = localStorage.getItem(chatKey);
     if (savedChat) {
       try {
@@ -3903,7 +3900,8 @@ export default function App() {
     setFormulaChatHistory(prev => {
       const next = typeof historyOrFn === 'function' ? historyOrFn(prev) : historyOrFn;
       const nextArray = Array.isArray(next) ? next : [];
-      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}_${selectedFormulaIdx}`;
+      const suffix = selectedFormulaIdx === -1 ? 'general' : selectedFormulaIdx;
+      const key = `anti_formula_chat_history_${selectedTopic?.id || 'default'}_${suffix}`;
       localStorage.setItem(key, JSON.stringify(nextArray));
       return nextArray;
     });
@@ -11355,10 +11353,10 @@ export default function App() {
     }
   };
 
-  const handleSendFormulaChatMessage = async (e, customMessage) => {
+  const handleSendFormulaChatMessage = async (e, customMessage, targetFormulaIdx = selectedFormulaIdx) => {
     if (e) e.preventDefault();
     const userMessage = (typeof customMessage === 'string' ? customMessage : formulaChatInput).trim();
-    if (isFormulaChatLoading || !userMessage || selectedFormulaIdx === -1) return;
+    if (isFormulaChatLoading || !userMessage) return;
     
     if (typeof customMessage !== 'string') {
       setFormulaChatInput('');
@@ -11374,8 +11372,13 @@ export default function App() {
       }
     });
     
-    const selected = formulaQuestions[selectedFormulaIdx];
-    const promptText = `[수험생이 선택하여 논의 중인 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]\n\n질문: ${userMessage}`;
+    let promptText = userMessage;
+    if (targetFormulaIdx !== -1) {
+      const selected = formulaQuestions[targetFormulaIdx];
+      if (selected) {
+        promptText = `[수험생이 선택하여 논의 중인 공식 정보: 공식명 - ${selected.title || ''}, 공식 - ${selected.formula || ''}, 주요 개념 - ${selected.concept || ''}]\n\n질문: ${userMessage}`;
+      }
+    }
     
     const progressId = 'tutor_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
@@ -11405,6 +11408,17 @@ export default function App() {
           formulaChatBodyRef.current.scrollTop = formulaChatBodyRef.current.scrollHeight;
         }
       });
+    }
+  };
+
+  const handleDeriveFormula = (idx) => {
+    handleFormulaSelect(idx);
+    setFormulaMobileTab('tutor');
+    
+    const targetFormula = formulaQuestions[idx];
+    if (targetFormula) {
+      const derivePrompt = `이 공식($${targetFormula.formula || ''}$)의 유도과정을 자세히 설명해 주세요.`;
+      handleSendFormulaChatMessage(null, derivePrompt, idx);
     }
   };
 
@@ -18226,18 +18240,15 @@ export default function App() {
                               </button>
                             )}
 
-                            {/* AI Adjust Formula Button */}
-                            {!q.isDirectlyAdded && (
+                            {/* AI Derive Formula Button */}
+                            {!isNewEmptyCard && (
                               <button
-                                onClick={() => setAdjustingFormulaInputKey(prev => prev === idx ? null : idx)}
-                                disabled={adjustingFormulaLoading[idx]}
-                                className={`p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 hover:border-brand-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
-                                  adjustingFormulaLoading[idx] ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                                title="공식 제목, 핵심개념, 기호정의를 조율하기 위한 피드백 입력창 토글"
+                                onClick={() => handleDeriveFormula(idx)}
+                                className="p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40"
+                                title="이 공식의 상세한 유도과정을 실시간 AI 튜터에게 질문하기"
                               >
-                                <Edit2 size={12} />
-                                <span>공식조정</span>
+                                <Sigma size={12} />
+                                <span>공식유도</span>
                               </button>
                             )}
 
@@ -18324,40 +18335,6 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* 공식조정 입력 및 결과 보드 */}
-                        {adjustingFormulaInputKey === idx && (
-                          <div className="mt-2.5 p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-xl w-full">
-                            <label className="block text-[10px] font-black text-indigo-400 mb-1.5 select-none">🛠️ 공식조정 의견을 제시해 주세요:</label>
-                            <textarea
-                              rows={2}
-                              value={adjustingFormulaText[idx] || ''}
-                              onChange={(e) => {
-                                const text = e.target.value;
-                                setAdjustingFormulaText(prev => ({ ...prev, [idx]: text }));
-                              }}
-                              placeholder="예: 이 공식의 명칭을 '터널 여굴 두께 공식'으로 바꾼 뒤, 변수 L을 터널 굴착 길이로 맞추어 개념을 자세히 써줘..."
-                              className="w-full text-xs p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-2 resize-none animate-fade-in"
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => setAdjustingFormulaInputKey(null)}
-                                className="text-[10px] px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                              >
-                                취소
-                              </button>
-                              <button
-                                onClick={() => handleAdjustFormula(idx)}
-                                disabled={adjustingFormulaLoading[idx]}
-                                className="text-[10px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-bold cursor-pointer disabled:opacity-50"
-                              >
-                                {adjustingFormulaLoading[idx] ? '조정 중...' : '조정하기'}
-                              </button>
-                            </div>
-                            {adjustingFormulaLoading[idx] && (
-                              <div className="text-[10px] text-indigo-400 font-bold animate-pulse py-1.5 mt-2">⏳ AI가 의견을 반영하여 공식을 재구성 중입니다...</div>
-                            )}
-                          </div>
-                        )}
 
                         {/* Real-time LaTeX rendered Output Display Window */}
                         {!isMobileLandscape && isOutputVisible && (
@@ -18518,20 +18495,20 @@ export default function App() {
                   ref={formulaChatBodyRef}
                   className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-1.5 md:pr-2 space-y-4 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar"
                 >
-                  {selectedFormulaIdx === -1 ? (
+                  {(selectedFormulaIdx === -1 && formulaChatHistory.length === 0) ? (
                     <div className="text-center py-16 px-4 opacity-50 flex flex-col items-center justify-center h-full">
                       <div className="p-4 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-2xl mb-3 animate-bounce-slow">
                         <MessageSquare size={32} />
                       </div>
                       <p className="text-xs text-slate-300 font-bold">공식에 대해 AI 튜터와 논의해 보세요!</p>
                       <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">
-                        상단의 드롭다운 메뉴나 왼쪽 공식 카드에서 <strong>[AI 토론]</strong> 버튼을 눌러 공식 대화를 시작하세요.
+                        공식을 선택하거나, 공식 선택 없이 자유롭게 AI 공식 튜터와 질문 및 대화를 시작해 보세요.
                       </p>
                     </div>
                   ) : (
                     <div className="w-full flex flex-col gap-4">
                       {/* Formula display block - always shown at the top! */}
-                      {(() => {
+                      {selectedFormulaIdx !== -1 && (() => {
                         const formulaStr = formulaQuestions[selectedFormulaIdx]?.formula || '';
                         const lines = formulaStr.split('\n');
                         const mathLines = lines.filter(line => {
@@ -18605,19 +18582,19 @@ export default function App() {
                   <form onSubmit={handleSendFormulaChatMessage} className="flex gap-2">
                     <input
                       type="text"
-                      disabled={selectedFormulaIdx === -1 || isFormulaChatLoading}
+                      disabled={isFormulaChatLoading}
                       value={formulaChatInput}
                       onChange={(e) => setFormulaChatInput(e.target.value)}
                       placeholder={
                         selectedFormulaIdx === -1 
-                          ? "공식을 먼저 선택해 주세요..." 
+                          ? "AI 공식 튜터에게 자유롭게 질문해 보세요..." 
                           : "공식에 대해 질문해 보세요 (예: 유도과정, 적용조건)..."
                       }
                       className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none placeholder-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
                       type="submit"
-                      disabled={selectedFormulaIdx === -1 || isFormulaChatLoading || !formulaChatInput.trim()}
+                      disabled={isFormulaChatLoading || !formulaChatInput.trim()}
                       className="px-4 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
                     >
                       <span>보내기</span>
