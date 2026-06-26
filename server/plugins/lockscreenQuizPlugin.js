@@ -7,7 +7,7 @@ import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
  * @param {Function} callLLMWithFailover LLM call utility
  * @returns {Promise<Array>} List of generated multiple-choice questions
  */
-export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover) {
+export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover, count = 1) {
   if ((!Array.isArray(formulaCandidates) || formulaCandidates.length === 0) && (!Array.isArray(topicCandidates) || topicCandidates.length === 0)) {
     throw new Error('No candidate data available to generate quiz');
   }
@@ -36,7 +36,7 @@ ${t.textContent}`;
   }
 
   const systemInstruction = `당신은 대한민국 토목공학, 지반공학, 구조공학 등 기술사 시험 출제위원입니다.
-제시된 공식 후보군 및 토픽 본문 텍스트 데이터를 기반으로, 수험생이 화면 잠금을 해제할 때 풀 수 있는 하루치 객관식(3지선다형) 퀴즈 5문제를 출제하십시오.
+제시된 공식 후보군 및 토픽 본문 텍스트 데이터를 기반으로, 수험생이 화면 잠금을 해제할 때 풀 수 있는 객관식(3지선다형) 퀴즈 ${count}문제를 출제하십시오.
 질문의 유형, 보기의 형태, 수치 질문 대상을 매번 다양하게 변형하여 출제해 주십시오.
 반드시 아래 지정된 JSON 배열 포맷으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.`;
 
@@ -45,9 +45,9 @@ ${t.textContent}`;
 ${candidateText}
 
 [출제 요구사항]:
-1. **문제 개수**: 반드시 정확히 **5개의 객관식 문제**를 출제해 배열 형태로 반환하십시오.
+1. **문제 개수**: 반드시 정확히 **${count}개의 객관식 문제**를 출제해 배열 형태로 반환하십시오.
 2. **출제 구성 및 비율**:
-   - 제공된 **공식 후보군**에 관한 문제와 **토픽 기준수치/정량적 수치 후보군**에 관한 문제를 적절히 혼합하여 총 5문제를 출제하십시오.
+   - 제공된 **공식 후보군**에 관한 문제와 **토픽 기준수치/정량적 수치 후보군**에 관한 문제를 적절히 혼합하여 총 ${count}문제를 출제하십시오.
 3. **🚨 [정답 유형 제한 - 극도로 중요!]**:
    - 질문은 무조건 **"맞는 것(올바른 것)"** 또는 **"올바른 기준수치/값"**을 고르도록 요구해야 합니다.
    - **절대로 "틀린 것", "올바르지 않은 것", "잘못된 것"을 고르는 문제는 출제하지 마십시오.** (예: "다음 중 ~에 대해 틀린 설명은?" 같은 질문 금지)
@@ -74,7 +74,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정답 보기의 텍스트와 토씨 하나 틀리지 않는 정답 텍스트",
     "explanation": "이 공식, 개념 또는 기준 수치에 대한 핵심 메커니즘 및 근거 위주의 해설"
   },
-  ... (총 5개 생성)
+  ... (총 ${count}개 생성)
 ]
 `;
 

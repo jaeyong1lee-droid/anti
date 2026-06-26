@@ -2907,6 +2907,13 @@ export default function App() {
     setIsLockscreenQuizEnabled(newVal);
     localStorage.setItem('anti_lockscreen_quiz_enabled', String(newVal));
 
+    if (newVal) {
+      const cached = localStorage.getItem('anti_lockscreen_questions');
+      if (!cached) {
+        generateNewLockscreenQuestion();
+      }
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/options/lockscreen_quiz_enabled`, {
         method: 'POST',
@@ -2926,35 +2933,60 @@ export default function App() {
   const [currentLockscreenIndex, setCurrentLockscreenIndex] = useState(0);
   const [lockscreenSelectedOption, setLockscreenSelectedOption] = useState(null);
   const [lockscreenAnswerResult, setLockscreenAnswerResult] = useState(null);
+  const [lockscreenLoading, setLockscreenLoading] = useState(false);
 
-  const getLockscreenQueryDate = () => {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const kst = new Date(utc + (9 * 3600000));
-    const hours = kst.getHours();
-    
-    const yyyy = kst.getFullYear();
-    const mm = String(kst.getMonth() + 1).padStart(2, '0');
-    const dd = String(kst.getDate()).padStart(2, '0');
-    
-    const blockIndex = Math.floor(hours / 3);
-    return `${yyyy}-${mm}-${dd}-block-${blockIndex}`;
-  };
-
-  const syncLockscreenQuestions = async (targetDateStr) => {
+  const generateNewLockscreenQuestion = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/lockscreen/sync?date=${targetDateStr}`);
+      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=1`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.questions) {
-          localStorage.setItem(`anti_lockscreen_questions_${targetDateStr}`, JSON.stringify(data.questions));
+          localStorage.setItem('anti_lockscreen_questions', JSON.stringify(data.questions));
           return data.questions;
         }
       }
     } catch (err) {
-      console.warn('Failed to sync daily lockscreen questions:', err);
+      console.warn('Failed to generate lockscreen question:', err);
     }
     return null;
+  };
+
+  const triggerLockscreenQuiz = () => {
+    if (!isLockscreenQuizEnabled) return;
+    
+    const cached = localStorage.getItem('anti_lockscreen_questions');
+    if (cached) {
+      try {
+        const questions = JSON.parse(cached);
+        if (Array.isArray(questions) && questions.length > 0) {
+          setLockscreenQuestions(questions);
+          setCurrentLockscreenIndex(0);
+          setLockscreenSelectedOption(null);
+          setLockscreenAnswerResult(null);
+          setShowLockscreenQuiz(true);
+          setLockscreenLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to parse cached lockscreen questions:', e);
+      }
+    }
+    
+    setShowLockscreenQuiz(true);
+    setLockscreenQuestions([]);
+    setLockscreenLoading(true);
+    setLockscreenSelectedOption(null);
+    setLockscreenAnswerResult(null);
+
+    generateNewLockscreenQuestion().then(questions => {
+      if (questions && Array.isArray(questions) && questions.length > 0) {
+        setLockscreenQuestions(questions);
+        setCurrentLockscreenIndex(0);
+      } else {
+        setLockscreenQuestions([]);
+      }
+      setLockscreenLoading(false);
+    });
   };
 
 
@@ -4498,6 +4530,7 @@ export default function App() {
 
   const lastTickRef = useRef(Date.now());
   const tickCountRef = useRef(0);
+  const wasInBackgroundRef = useRef(false);
 
   // Interval to update the tick timestamp while visible
   useEffect(() => {
@@ -4536,72 +4569,53 @@ export default function App() {
     if (!isPinVerified || isDesktop) return;
 
     const handleWakeup = () => {
-      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        // Read from localStorage to ensure we capture the most accurate timestamp
-        const lastTickStr = localStorage.getItem('anti_last_tick_time');
-        const lastTickVal = lastTickStr ? parseInt(lastTickStr, 10) : lastTickRef.current;
-        const timeDiff = Date.now() - lastTickVal;
+      // Bypass during the first 5 ticks (grace period) of a fresh login session
+      if (tickCountRef.current <= 5) {
+        return;
+      }
 
-        // Bypass during the first 5 ticks (grace period) of a fresh login session
-        if (tickCountRef.current <= 5) {
-          lastTickRef.current = Date.now();
-          localStorage.setItem('anti_last_tick_time', String(Date.now()));
-          return;
-        }
-
-        if (isLockscreenQuizEnabled && timeDiff > 3500) {
-          lastTickRef.current = Date.now();
-          localStorage.setItem('anti_last_tick_time', String(Date.now()));
-
-          const queryDate = getLockscreenQueryDate();
-          let didShowFromCache = false;
-
-          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
-          if (cached) {
-            try {
-              const questions = JSON.parse(cached);
-              if (Array.isArray(questions) && questions.length > 0) {
-                setLockscreenQuestions(questions);
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-                didShowFromCache = true;
-              }
-            } catch (e) {
-              console.error('Failed to parse cached lockscreen questions:', e);
-            }
-          }
-          
-          syncLockscreenQuestions(queryDate).then(questions => {
-            if (questions && Array.isArray(questions) && questions.length > 0) {
-              setLockscreenQuestions(questions);
-              if (!didShowFromCache) {
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-              }
-            }
-          });
+      const isVisible = document.visibilityState === 'visible' || document.hasFocus?.();
+      if (isVisible) {
+        if (wasInBackgroundRef.current && isLockscreenQuizEnabled) {
+          wasInBackgroundRef.current = false;
+          triggerLockscreenQuiz();
         }
       }
     };
 
-    // Run immediately on registration to capture fresh startup/resume triggers
-    handleWakeup();
+    const handleBlur = () => {
+      wasInBackgroundRef.current = true;
+    };
 
-    document.addEventListener('visibilitychange', handleWakeup);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        wasInBackgroundRef.current = true;
+      } else if (document.visibilityState === 'visible') {
+        handleWakeup();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleWakeup);
     window.addEventListener('pageshow', handleWakeup);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleWakeup);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleWakeup);
       window.removeEventListener('pageshow', handleWakeup);
     };
+  }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
+
+  // Proactive pre-generation of lockscreen question when app is ready
+  useEffect(() => {
+    if (isPinVerified && !isDesktop && isLockscreenQuizEnabled) {
+      const cached = localStorage.getItem('anti_lockscreen_questions');
+      if (!cached) {
+        generateNewLockscreenQuestion();
+      }
+    }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
   const chatBodyRef = useRef(null);
@@ -11983,7 +11997,61 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
       {/* ===== 잠금화면 퀴즈 오버레이 ===== */}
-      {showLockscreenQuiz && lockscreenQuestions.length > 0 && (() => {
+      {showLockscreenQuiz && (() => {
+        if (lockscreenLoading) {
+          return (
+            <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+              <div className="w-full max-w-lg flex flex-col space-y-6 my-auto items-center text-center">
+                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">
+                  <Lock className="text-indigo-400 animate-pulse" size={28} />
+                </div>
+                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm font-semibold text-slate-400">잠금해제 퀴즈를 생성하고 있습니다...</p>
+              </div>
+            </div>
+          );
+        }
+
+        if (lockscreenQuestions.length === 0) {
+          return (
+            <div className="fixed inset-0 z-[99999] bg-slate-950/98 backdrop-blur-2xl flex flex-col justify-center items-center px-4 py-8 text-slate-100 font-sans select-none overflow-y-auto">
+              <div className="w-full max-w-lg flex flex-col space-y-6 my-auto items-center text-center">
+                <div className="p-3 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">
+                  <Lock size={28} />
+                </div>
+                <p className="text-sm font-semibold text-slate-400">잠금해제 퀴즈를 불러오지 못했습니다.</p>
+                <div className="flex gap-3 w-full max-w-xs mt-2">
+                  <button
+                    onClick={() => {
+                      setLockscreenLoading(true);
+                      generateNewLockscreenQuestion().then(questions => {
+                        if (questions && questions.length > 0) {
+                          setLockscreenQuestions(questions);
+                          setCurrentLockscreenIndex(0);
+                        }
+                        setLockscreenLoading(false);
+                      });
+                    }}
+                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    다시 시도
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLockscreenQuiz(false);
+                      setLockscreenSelectedOption(null);
+                      setLockscreenAnswerResult(null);
+                    }}
+                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    진입하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         const currentQuestion = lockscreenQuestions[currentLockscreenIndex];
         if (!currentQuestion || !Array.isArray(currentQuestion.options)) return null;
 
@@ -12066,7 +12134,7 @@ export default function App() {
                       {lockscreenAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다.'}
                     </p>
                     <p className="text-slate-400 font-medium text-[15px]">
-                      <strong>해설:</strong> {currentQuestion.explanation}
+                      <strong>해설:</strong> <LatexRenderer text={currentQuestion.explanation} katexLoaded={katexLoaded} />
                     </p>
                   </div>
 
@@ -12076,6 +12144,10 @@ export default function App() {
                         setShowLockscreenQuiz(false);
                         setLockscreenSelectedOption(null);
                         setLockscreenAnswerResult(null);
+
+                        // Clear cached question and pre-generate the next one immediately
+                        localStorage.removeItem('anti_lockscreen_questions');
+                        generateNewLockscreenQuestion();
                       }}
                       className={`w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 ${
                         lockscreenAnswerResult === 'correct'

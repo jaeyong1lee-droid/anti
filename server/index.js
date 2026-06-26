@@ -7084,33 +7084,9 @@ app.get('/api/lockscreen/sync', async (req, res) => {
   try {
     await ensureSessionTable();
     
-    let date = req.query.date;
-    if (!date) {
-      const now = new Date();
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      const kst = new Date(utc + (9 * 3600000));
-      const hours = kst.getHours();
-      const yyyy = kst.getFullYear();
-      const mm = String(kst.getMonth() + 1).padStart(2, '0');
-      const dd = String(kst.getDate()).padStart(2, '0');
-      const blockIndex = Math.floor(hours / 3);
-      date = `${yyyy}-${mm}-${dd}-block-${blockIndex}`;
-    }
-
-    const cacheKey = `lockscreen_questions_${date}`;
+    const count = parseInt(req.query.count || '1', 10);
     
-    // 1. Check cached version
-    const cachedRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [cacheKey]);
-    if (cachedRow && cachedRow.value) {
-      try {
-        const questions = JSON.parse(cachedRow.value);
-        return res.json({ success: true, date, questions });
-      } catch (e) {
-        console.warn(`Failed to parse cached lockscreen questions for key ${cacheKey}, will regenerate:`, e);
-      }
-    }
-
-    // 2. Fetch formula questions
+    // 1. Fetch formula questions
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
     let formulaQuestions = [];
     if (rows.length > 0 && rows[0].value) {
@@ -7122,16 +7098,19 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       }
     }
 
-    // Pick 5 random formula candidates
+    const formulaLimit = count === 1 ? 2 : 5;
+    const topicLimit = count === 1 ? 1 : 3;
+
+    // Pick random formula candidates
     const formulaCandidates = [...formulaQuestions]
       .sort(() => 0.5 - Math.random())
-      .slice(0, 5);
+      .slice(0, formulaLimit);
 
-    // 3. Fetch topics to extract standard criteria / quantitative values
+    // 2. Fetch topics to extract standard criteria / quantitative values
     const topicRows = await dbQuery.all('SELECT id, title, keywords FROM topics');
     const pickedTopics = [...topicRows]
       .sort(() => 0.5 - Math.random())
-      .slice(0, 3);
+      .slice(0, topicLimit);
 
     const topicCandidates = [];
     for (const t of pickedTopics) {
@@ -7156,15 +7135,12 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
     }
 
-    // 4. Generate daily quiz using both formula and topic candidates
-    console.log(`[Lockscreen Quiz] Generating 5 questions for date ${date} using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics...`);
+    // 3. Generate quiz using both formula and topic candidates
+    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics...`);
     const callLLM = getCallLLM(req);
-    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM);
+    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM, count);
 
-    // 5. Save to cache
-    await saveSessionValue(cacheKey, JSON.stringify(generatedQuestions));
-
-    return res.json({ success: true, date, questions: generatedQuestions });
+    return res.json({ success: true, questions: generatedQuestions });
   } catch (err) {
     console.error('GET /api/lockscreen/sync error:', err);
     res.status(500).json({ error: err.message });
