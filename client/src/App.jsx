@@ -4617,13 +4617,10 @@ export default function App() {
     };
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
-  // Proactive pre-generation of lockscreen question when app is ready
+  // Proactive trigger of lockscreen quiz on app startup, mount, and refresh when enabled
   useEffect(() => {
     if (isPinVerified && !isDesktop && isLockscreenQuizEnabled) {
-      const cached = localStorage.getItem('anti_lockscreen_questions');
-      if (!cached) {
-        generateNewLockscreenQuestion();
-      }
+      triggerLockscreenQuiz();
     }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
