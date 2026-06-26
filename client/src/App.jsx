@@ -4499,7 +4499,7 @@ export default function App() {
   const lastTickRef = useRef(Date.now());
   const tickCountRef = useRef(0);
 
-  // Interval to update the tick timestamp and trigger quiz immediately when CPU resumes
+  // Interval to update the tick timestamp while visible
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
     
@@ -4508,63 +4508,79 @@ export default function App() {
     lastTickRef.current = Date.now();
 
     const interval = setInterval(() => {
-      const now = Date.now();
-      const timeDiff = now - lastTickRef.current;
-
-      tickCountRef.current += 1;
-
-      // During the first 5 seconds of the app session, bypass sleep checks to prevent
-      // heavy mounting blockages (like dashboard component loading) from triggering false sleep detections
-      if (tickCountRef.current <= 5) {
-        lastTickRef.current = now;
-        return;
-      }
-
-      // If the time gap is greater than 3.5 seconds, it means the screen was turned off (the device slept)
-      if (isLockscreenQuizEnabled && timeDiff > 3500) {
-        // Reset tick immediately
-        lastTickRef.current = now;
-
-        const queryDate = getLockscreenQueryDate();
-        let didShowFromCache = false;
-
-        const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
-        if (cached) {
-          try {
-            const questions = JSON.parse(cached);
-            if (Array.isArray(questions) && questions.length > 0) {
-              setLockscreenQuestions(questions);
-              const randIdx = Math.floor(Math.random() * questions.length);
-              setCurrentLockscreenIndex(randIdx);
-              setLockscreenSelectedOption(null);
-              setLockscreenAnswerResult(null);
-              setShowLockscreenQuiz(true);
-              didShowFromCache = true;
-            }
-          } catch (e) {
-            console.error('Failed to parse cached lockscreen questions:', e);
-          }
-        }
-        
-        syncLockscreenQuestions(queryDate).then(questions => {
-          if (questions && Array.isArray(questions) && questions.length > 0) {
-            setLockscreenQuestions(questions);
-            if (!didShowFromCache) {
-              const randIdx = Math.floor(Math.random() * questions.length);
-              setCurrentLockscreenIndex(randIdx);
-              setLockscreenSelectedOption(null);
-              setLockscreenAnswerResult(null);
-              setShowLockscreenQuiz(true);
-            }
-          }
-        });
-      } else {
-        // Update tick count continuously in background to keep tracking fresh
-        lastTickRef.current = now;
+      // Only tick when the tab is visible to keep lastTickRef fresh
+      if (document.visibilityState === 'visible') {
+        lastTickRef.current = Date.now();
+        tickCountRef.current += 1;
       }
     }, 1000);
     
     return () => clearInterval(interval);
+  }, [isPinVerified, isDesktop]);
+
+  // Listener to trigger the quiz immediately on visibility change (wake up / app return)
+  useEffect(() => {
+    if (!isPinVerified || isDesktop) return;
+
+    const handleWakeup = () => {
+      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
+        const timeDiff = Date.now() - lastTickRef.current;
+
+        // Bypass during the first 5 ticks (grace period) of the session
+        if (tickCountRef.current <= 5) {
+          lastTickRef.current = Date.now();
+          return;
+        }
+
+        if (isLockscreenQuizEnabled && timeDiff > 3500) {
+          lastTickRef.current = Date.now();
+
+          const queryDate = getLockscreenQueryDate();
+          let didShowFromCache = false;
+
+          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
+          if (cached) {
+            try {
+              const questions = JSON.parse(cached);
+              if (Array.isArray(questions) && questions.length > 0) {
+                setLockscreenQuestions(questions);
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+                didShowFromCache = true;
+              }
+            } catch (e) {
+              console.error('Failed to parse cached lockscreen questions:', e);
+            }
+          }
+          
+          syncLockscreenQuestions(queryDate).then(questions => {
+            if (questions && Array.isArray(questions) && questions.length > 0) {
+              setLockscreenQuestions(questions);
+              if (!didShowFromCache) {
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+              }
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeup);
+    window.addEventListener('focus', handleWakeup);
+    window.addEventListener('pageshow', handleWakeup);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeup);
+      window.removeEventListener('focus', handleWakeup);
+      window.removeEventListener('pageshow', handleWakeup);
+    };
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
   const chatBodyRef = useRef(null);
