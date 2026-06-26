@@ -2969,8 +2969,6 @@ export default function App() {
   const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_realtime_tutor_open');
-      const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-      if (isTouch) return false;
       return saved === 'true';
     } catch (e) {
       return false;
