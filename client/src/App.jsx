@@ -4984,7 +4984,24 @@ export default function App() {
 
         try {
           const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
+          if (range.collapsed) return;
+
+          let rect = range.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            const rects = range.getClientRects();
+            if (rects.length > 0) {
+              rect = rects[0];
+            } else {
+              let parent = range.commonAncestorContainer;
+              if (parent && parent.nodeType === Node.TEXT_NODE) {
+                parent = parent.parentElement;
+              }
+              if (parent) {
+                rect = parent.getBoundingClientRect();
+              }
+            }
+          }
+
           if (rect.width === 0 || rect.height === 0) return;
 
           // Find closest data-qkey on parent elements of selection
