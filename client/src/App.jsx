@@ -2937,7 +2937,7 @@ export default function App() {
 
   const generateNewLockscreenQuestion = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=3`);
+      const res = await fetch(`${API_BASE}/api/lockscreen/sync?count=3&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.questions) {

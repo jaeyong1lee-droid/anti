@@ -7083,6 +7083,7 @@ app.post('/api/options/:key', async (req, res) => {
 // GET /api/lockscreen/sync → Get or generate daily lockscreen quiz questions
 app.get('/api/lockscreen/sync', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     
     const count = parseInt(req.query.count || '1', 10);
