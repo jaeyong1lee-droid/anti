@@ -4498,90 +4498,81 @@ export default function App() {
 
   const lastTickRef = useRef(Date.now());
 
-  // Interval to update the tick timestamp every 1 second
+  // Interval to update the tick timestamp and trigger quiz immediately when CPU resumes
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
     
+    // Reset lastTickRef immediately upon hook binding (login / app start)
+    lastTickRef.current = Date.now();
+
     const interval = setInterval(() => {
-      // Only tick when the tab is visible to prevent background updates from masking sleep state
-      if (document.visibilityState === 'visible') {
-        lastTickRef.current = Date.now();
+      const now = Date.now();
+      const timeDiff = now - lastTickRef.current;
+
+      // If the time gap is greater than 3.5 seconds, it means the screen was turned off (the device slept)
+      if (isLockscreenQuizEnabled && timeDiff > 3500) {
+        // Reset tick immediately
+        lastTickRef.current = now;
+
+        const queryDate = getLockscreenQueryDate();
+        let didShowFromCache = false;
+
+        const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
+        if (cached) {
+          try {
+            const questions = JSON.parse(cached);
+            if (Array.isArray(questions) && questions.length > 0) {
+              setLockscreenQuestions(questions);
+              const randIdx = Math.floor(Math.random() * questions.length);
+              setCurrentLockscreenIndex(randIdx);
+              setLockscreenSelectedOption(null);
+              setLockscreenAnswerResult(null);
+              setShowLockscreenQuiz(true);
+              didShowFromCache = true;
+            }
+          } catch (e) {
+            console.error('Failed to parse cached lockscreen questions:', e);
+          }
+        }
+        
+        syncLockscreenQuestions(queryDate).then(questions => {
+          if (questions && Array.isArray(questions) && questions.length > 0) {
+            setLockscreenQuestions(questions);
+            if (!didShowFromCache) {
+              const randIdx = Math.floor(Math.random() * questions.length);
+              setCurrentLockscreenIndex(randIdx);
+              setLockscreenSelectedOption(null);
+              setLockscreenAnswerResult(null);
+              setShowLockscreenQuiz(true);
+            }
+          }
+        });
+      } else {
+        // Only tick when the tab is visible to prevent background updates from masking sleep state
+        if (document.visibilityState === 'visible') {
+          lastTickRef.current = now;
+        }
       }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [isPinVerified, isDesktop]);
+  }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
 
-    // Reset lastTickRef immediately upon hook binding (login / app start)
-    // to prevent stale startup timestamps from triggering the quiz
-    lastTickRef.current = Date.now();
-
     const handleVisibilityChange = () => {
-      // If the user has not verified the PIN code yet, or if on PC (isDesktop), ignore screen off/on triggers
-      if (!isPinVerified || isDesktop) return;
-
-      // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
-      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
-        const timeDiff = Date.now() - lastTickRef.current;
-
-        // If the time gap is greater than 3.5 seconds, it means the screen was turned off (the device slept)
-        if (isLockscreenQuizEnabled && timeDiff > 3500) {
-          // Reset tick immediately
-          lastTickRef.current = Date.now();
-
-          const queryDate = getLockscreenQueryDate();
-          let didShowFromCache = false;
-
-          const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
-          if (cached) {
-            try {
-              const questions = JSON.parse(cached);
-              if (Array.isArray(questions) && questions.length > 0) {
-                setLockscreenQuestions(questions);
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-                didShowFromCache = true;
-              }
-            } catch (e) {
-              console.error('Failed to parse cached lockscreen questions:', e);
-            }
-          }
-          
-          syncLockscreenQuestions(queryDate).then(questions => {
-            if (questions && Array.isArray(questions) && questions.length > 0) {
-              setLockscreenQuestions(questions);
-              if (!didShowFromCache) {
-                const randIdx = Math.floor(Math.random() * questions.length);
-                setCurrentLockscreenIndex(randIdx);
-                setLockscreenSelectedOption(null);
-                setLockscreenAnswerResult(null);
-                setShowLockscreenQuiz(true);
-              }
-            }
-          });
-        }
-      } else if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === 'hidden') {
         // When app is minimized or screen turns off, update tick to current time so the grace period starts fresh
         lastTickRef.current = Date.now();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleVisibilityChange);
-    window.addEventListener('pageshow', handleVisibilityChange);
-    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleVisibilityChange);
-      window.removeEventListener('pageshow', handleVisibilityChange);
     };
-  }, [isLockscreenQuizEnabled, isPinVerified, isDesktop]);
+  }, [isPinVerified, isDesktop]);
 
   const chatBodyRef = useRef(null);
   const tutorFileInputRef = useRef(null);
