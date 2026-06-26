@@ -2959,7 +2959,8 @@ export default function App() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      // Trigger if the page is visible or has focus, ensuring reliability across mobile browsers and PWAs
+      if (document.visibilityState === 'visible' || document.hasFocus?.()) {
         if (isLockscreenQuizEnabled) {
           const queryDate = getLockscreenQueryDate();
           const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
@@ -2998,11 +2999,17 @@ export default function App() {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+    window.addEventListener('pageshow', handleVisibilityChange);
+    
     if (isLockscreenQuizEnabled) {
       handleVisibilityChange();
     }
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('pageshow', handleVisibilityChange);
     };
   }, [isLockscreenQuizEnabled]);
   
@@ -11972,6 +11979,12 @@ export default function App() {
                         setLockscreenSelectedOption(option);
                         if (isCorrect) {
                           setLockscreenAnswerResult('correct');
+                          // Automatically unlock after 800ms so they see the success feedback
+                          setTimeout(() => {
+                            setShowLockscreenQuiz(false);
+                            setLockscreenSelectedOption(null);
+                            setLockscreenAnswerResult(null);
+                          }, 800);
                         } else {
                           setLockscreenAnswerResult('incorrect');
                         }
@@ -12020,17 +12033,10 @@ export default function App() {
                         <span>다른 보기 다시 고르기</span>
                       </button>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setShowLockscreenQuiz(false);
-                          setLockscreenSelectedOption(null);
-                          setLockscreenAnswerResult(null);
-                        }}
-                        className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer shadow-lg shadow-emerald-950/40 active:scale-95 text-center flex items-center justify-center gap-1.5"
-                      >
-                        <Lock size={15} />
-                        <span>잠금 해제 (진입하기)</span>
-                      </button>
+                      <div className="w-full py-3.5 bg-emerald-650/20 text-emerald-300 border border-emerald-500/30 rounded-2xl text-xs md:text-sm font-black text-center flex items-center justify-center gap-1.5 select-none">
+                        <CheckCircle size={15} className="animate-pulse" />
+                        <span>자동으로 잠금 해제 중...</span>
+                      </div>
                     )}
                   </div>
                 </div>
