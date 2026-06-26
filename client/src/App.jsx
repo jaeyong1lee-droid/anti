@@ -16073,7 +16073,7 @@ export default function App() {
                                   className="p-1.5 hover:bg-slate-800 rounded-lg text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
                                   title="지침 수정"
                                 >
-                                  <Edit size={13} />
+                                  <Edit2 size={13} />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteLockscreenStandard(std.id)}
