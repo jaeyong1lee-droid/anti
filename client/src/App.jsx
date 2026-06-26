@@ -2968,6 +2968,8 @@ export default function App() {
       if (document.visibilityState === 'visible' || document.hasFocus?.()) {
         if (isLockscreenQuizEnabled && hasBeenHiddenRef.current) {
           const queryDate = getLockscreenQueryDate();
+          let didShowFromCache = false;
+
           const cached = localStorage.getItem(`anti_lockscreen_questions_${queryDate}`);
           if (cached) {
             try {
@@ -2981,6 +2983,7 @@ export default function App() {
                 setShowLockscreenQuiz(true);
                 // Reset flag
                 hasBeenHiddenRef.current = false;
+                didShowFromCache = true;
               }
             } catch (e) {
               console.error('Failed to parse cached lockscreen questions:', e);
@@ -2989,18 +2992,16 @@ export default function App() {
           
           syncLockscreenQuestions(queryDate).then(questions => {
             if (questions && Array.isArray(questions) && questions.length > 0) {
-              setLockscreenQuestions(prev => {
-                if (!prev || prev.length === 0) {
-                  const randIdx = Math.floor(Math.random() * questions.length);
-                  setCurrentLockscreenIndex(randIdx);
-                  setLockscreenSelectedOption(null);
-                  setLockscreenAnswerResult(null);
-                  setShowLockscreenQuiz(true);
-                  // Reset flag
-                  hasBeenHiddenRef.current = false;
-                }
-                return questions;
-              });
+              setLockscreenQuestions(questions);
+              if (!didShowFromCache) {
+                const randIdx = Math.floor(Math.random() * questions.length);
+                setCurrentLockscreenIndex(randIdx);
+                setLockscreenSelectedOption(null);
+                setLockscreenAnswerResult(null);
+                setShowLockscreenQuiz(true);
+                // Reset flag
+                hasBeenHiddenRef.current = false;
+              }
             }
           });
         }
