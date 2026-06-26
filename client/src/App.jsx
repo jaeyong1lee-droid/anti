@@ -607,14 +607,9 @@ const buildHtmlDocument = (text, isPopup = false) => {
         box-sizing: border-box !important;
       }
 
-      /* Restore KaTeX fonts against wildcard !important overrides in HTML reports and disable selection */
-      .katex, .katex-display {
+      /* Restore KaTeX fonts against wildcard !important overrides in HTML reports */
+      .katex {
         font-family: KaTeX_Main, "Times New Roman", serif !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-        -webkit-touch-callout: none !important;
       }
       .katex * {
         font-family: inherit !important;
@@ -1077,13 +1072,6 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
     const katexEl = target.closest('.katex, .katex-display');
     if (!katexEl) return;
-
-    // Clear any active selections immediately to prevent partial highlights on mobile touch
-    try {
-      if (window.getSelection) {
-        window.getSelection().removeAllRanges();
-      }
-    } catch (e) {}
 
     // Set global flags indicating formula touch is active
     window.__isFormulaLongPressing = true;
@@ -4834,6 +4822,34 @@ export default function App() {
       selectionTimeout = setTimeout(() => {
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
+
+        // Intercept partial formula selections and convert to full formula export
+        if (!selection.isCollapsed) {
+          let anchorNode = selection.anchorNode;
+          if (anchorNode && anchorNode.nodeType === Node.TEXT_NODE) {
+            anchorNode = anchorNode.parentElement;
+          }
+          const katexEl = anchorNode?.closest('.katex, .katex-display');
+          if (katexEl) {
+            const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
+            if (annotation) {
+              const mathTex = (annotation.textContent || annotation.innerText || "").trim();
+              if (mathTex) {
+                const container = katexEl.closest('[data-qkey], p, li, div');
+                const contextText = container ? (container.textContent || "").trim() : "";
+                
+                try {
+                  selection.removeAllRanges();
+                } catch (e) {}
+
+                if (typeof window.__handleFormulaConfirmRequest === 'function') {
+                  window.__handleFormulaConfirmRequest(mathTex, contextText, 'main');
+                }
+                return;
+              }
+            }
+          }
+        }
 
         // If formula confirm target is open or long pressing/touching, ignore drag popup
         if (window.__isFormulaConfirmOpen || window.__isFormulaLongPressing || window.__isFormulaTouchActive) {
