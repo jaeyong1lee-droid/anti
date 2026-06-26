@@ -1073,14 +1073,19 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     const katexEl = target.closest('.katex, .katex-display');
     if (!katexEl) return;
 
-    // Set global flag indicating that formula long press is active
+    // Set global flags indicating formula touch is active
     window.__isFormulaLongPressing = true;
+    window.__isFormulaTouchActive = true;
+
+    // Use shorter duration on touch screens to trigger before native menus interfere
+    const isTouchDevice = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+    const duration = isTouchDevice ? 700 : 1500;
 
     longPressTimer.current = setTimeout(() => {
       isLongPressActive.current = true;
       triggerAddFormula(katexEl);
       window.__isFormulaLongPressing = false;
-    }, 2000);
+    }, duration);
   };
 
   const cancelPress = (clientX, clientY, isMove = false, isTouch = false) => {
@@ -1096,15 +1101,20 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       longPressTimer.current = null;
     }
     window.__isFormulaLongPressing = false;
+
+    // Keep active flag for 300ms after touch release to block asynchronous selection change popups
+    setTimeout(() => {
+      window.__isFormulaTouchActive = false;
+    }, 300);
   };
 
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;
-    startPress(e.screenX, e.screenY, e.target);
+    startPress(e.clientX, e.clientY, e.target);
   };
 
   const handleMouseMove = (e) => {
-    cancelPress(e.screenX, e.screenY, true, false);
+    cancelPress(e.clientX, e.clientY, true, false);
   };
 
   const handleMouseUpOrLeave = () => {
@@ -1113,16 +1123,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
-    const x = touch.screenX !== undefined ? touch.screenX : touch.clientX;
-    const y = touch.screenY !== undefined ? touch.screenY : touch.clientY;
-    startPress(x, y, e.target);
+    startPress(touch.clientX, touch.clientY, e.target);
   };
 
   const handleTouchMove = (e) => {
     const touch = e.touches[0];
-    const x = touch.screenX !== undefined ? touch.screenX : touch.clientX;
-    const y = touch.screenY !== undefined ? touch.screenY : touch.clientY;
-    cancelPress(x, y, true, true);
+    cancelPress(touch.clientX, touch.clientY, true, true);
   };
 
   const handleTouchEndOrCancel = () => {
@@ -4817,8 +4823,8 @@ export default function App() {
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0) return;
 
-        // If formula confirm target is open, ignore drag popup
-        if (window.__isFormulaConfirmOpen) {
+        // If formula confirm target is open or long pressing/touching, ignore drag popup
+        if (window.__isFormulaConfirmOpen || window.__isFormulaLongPressing || window.__isFormulaTouchActive) {
           return;
         }
 
@@ -4879,17 +4885,18 @@ export default function App() {
           return;
         }
 
-        // Check drag distance to ensure it's a deliberate drag
+        // Check drag distance to ensure it's a deliberate drag (PC environment only)
         if (startSelectionPos && lastPointerPos) {
-          const dx = lastPointerPos.x - startSelectionPos.x;
-          const dy = lastPointerPos.y - startSelectionPos.y;
-          const dragDistance = Math.hypot(dx, dy);
-          
           const isTouch = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-          const minDragDist = isTouch ? 60 : 15;
-          
-          if (dragDistance < minDragDist) {
-            return;
+          if (!isTouch) {
+            const dx = lastPointerPos.x - startSelectionPos.x;
+            const dy = lastPointerPos.y - startSelectionPos.y;
+            const dragDistance = Math.hypot(dx, dy);
+            const minDragDist = 15;
+            
+            if (dragDistance < minDragDist) {
+              return;
+            }
           }
         }
 
