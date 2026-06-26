@@ -7099,22 +7099,56 @@ app.get('/api/lockscreen/sync', async (req, res) => {
 
     // 2. Fetch formula questions
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
-    if (rows.length === 0 || !rows[0].value) {
-      return res.status(404).json({ success: false, error: '등록된 필수 공식이 없습니다. 먼저 필수공식을 등록해주세요.' });
+    let formulaQuestions = [];
+    if (rows.length > 0 && rows[0].value) {
+      try {
+        const parsed = JSON.parse(rows[0].value);
+        formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
+      } catch (e) {
+        console.warn('Failed to parse formula questions:', e);
+      }
     }
 
-    const parsed = JSON.parse(rows[0].value);
-    const formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
-    if (formulaQuestions.length === 0) {
-      return res.status(404).json({ success: false, error: '등록된 필수 공식이 없습니다. 먼저 필수공식을 등록해주세요.' });
+    // Pick 5 random formula candidates
+    const formulaCandidates = [...formulaQuestions]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 5);
+
+    // 3. Fetch topics to extract standard criteria / quantitative values
+    const topicRows = await dbQuery.all('SELECT id, title, keywords FROM topics');
+    const pickedTopics = [...topicRows]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+    const topicCandidates = [];
+    for (const t of pickedTopics) {
+      const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
+      if (fullTopic) {
+        try {
+          const textContent = await getTopicText(fullTopic);
+          const truncatedText = textContent ? textContent.substring(0, 3000) : '';
+          topicCandidates.push({
+            id: fullTopic.id,
+            title: fullTopic.title,
+            keywords: fullTopic.keywords || '',
+            textContent: truncatedText
+          });
+        } catch (err) {
+          console.warn(`Failed to extract text for topic ID ${fullTopic.id} inside lockscreen sync:`, err);
+        }
+      }
     }
 
-    // 3. Generate daily quiz
-    console.log(`[Lockscreen Quiz] Generating 5 questions for date ${date} using ${formulaQuestions.length} formulas...`);
+    if (formulaCandidates.length === 0 && topicCandidates.length === 0) {
+      return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
+    }
+
+    // 4. Generate daily quiz using both formula and topic candidates
+    console.log(`[Lockscreen Quiz] Generating 5 questions for date ${date} using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics...`);
     const callLLM = getCallLLM(req);
-    const generatedQuestions = await generateDailyLockscreenQuestions(formulaQuestions, callLLM);
+    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM);
 
-    // 4. Save to cache
+    // 5. Save to cache
     await saveSessionValue(cacheKey, JSON.stringify(generatedQuestions));
 
     return res.json({ success: true, date, questions: generatedQuestions });
