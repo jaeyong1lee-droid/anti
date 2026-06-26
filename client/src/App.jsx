@@ -3757,6 +3757,13 @@ export default function App() {
           const serverVal = data.value === 'true' || data.value === true;
           setIsLockscreenQuizEnabled(serverVal);
           localStorage.setItem('anti_lockscreen_quiz_enabled', String(serverVal));
+          
+          if (serverVal) {
+            const cached = localStorage.getItem('anti_lockscreen_questions');
+            if (!cached) {
+              generateNewLockscreenQuestion();
+            }
+          }
         }
       })
       .catch(err => console.warn('Failed to load lockscreen_quiz_enabled from database:', err));
