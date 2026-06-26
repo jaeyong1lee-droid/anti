@@ -4482,7 +4482,10 @@ export default function App() {
           if (isAWeakness && !isBWeakness) return -1;
           if (!isAWeakness && isBWeakness) return 1;
           
-          return (a.review_round || 0) - (b.review_round || 0);
+          if ((a.review_round || 0) !== (b.review_round || 0)) {
+            return (a.review_round || 0) - (b.review_round || 0);
+          }
+          return (a.topic_id || 0) - (b.topic_id || 0);
         });
         setTodayReviews(uniqueList);
         if (data && Array.isArray(data.completedTopicIds)) {
