@@ -338,6 +338,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Zero Width Space (\u200b) 제어문자 완전 박멸
   let processed = text.replace(/\u200b/g, '');
 
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  processed = processed.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
+
   // HTML 엔티티 복구
   processed = processed.replace(/&#x27;/g, "'")
                        .replace(/&quot;/g, '"')
@@ -1159,6 +1162,7 @@ When generating LaTeX formulas inside a JSON string, you must strictly escape th
 - 🚨 [여러 수식 나열 시 가독성 확보 철칙 - 극도로 중요!]: 한 문장이나 한 줄 내에 여러 개의 독립된 수식(예: \\epsilon_x = ..., \\epsilon_y = ...)을 연속해서 나열할 때는 절대로 다닥다닥 붙여서 출력하지 마십시오.
   1) 인라인 나열 시: 수식과 수식 사이에 반드시 쉼표(,)를 작성하고 공백(스페이스)을 명확하게 두어 구분하십시오. (예: \\epsilon_x = ..., \\epsilon_y = ...)
   2) 줄바꿈 나열 시 (적극 권장): 각 수식마다 줄바꿈(엔터)을 적용하여 한 줄에 한 수식씩만 깔끔하게 배치되도록 정돈하십시오.
+  3) 한글 문장 마침(예: ~다., ~가 됩니다., ~정의됩니다.)이나 콜론(:) 뒤에 수학 공식이나 수식($ 또는 $$)이 시작될 때는 절대로 문장에 이어서 붙여 적지 마십시오. 가독성을 위해 반드시 개행(줄바꿈 \\n\\n)을 두 번 적용하여 새로운 행에 공식이 깔끔하게 표시되도록 정돈해 주십시오.
 `;
 
 export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
@@ -1190,5 +1194,6 @@ export const LATEX_CHAT_PROMPT_INSTRUCTIONS = `
 22. 🚨 [여러 수식 나열 시 가독성 확보 철칙 - 극도로 중요!]: 한 문장이나 한 줄 내에 여러 개의 독립된 수식(예: \\epsilon_x = ..., \\epsilon_y = ...)을 연속해서 나열할 때는 절대로 다닥다닥 붙여서 출력하지 마십시오.
   1) 인라인 나열 시: 수식과 수식 사이에 반드시 쉼표(,)를 작성하고 공백(스페이스)을 명확하게 두어 구분하십시오. (예: \\epsilon_x = ..., \\epsilon_y = ...)
   2) 줄바꿈 나열 시 (적극 권장): 각 수식마다 줄바꿈(엔터)을 적용하여 한 줄에 한 수식씩만 깔끔하게 배치되도록 정돈하십시오.
+  3) 한글 문장 마침(예: ~다., ~가 됩니다., ~정의됩니다.)이나 콜론(:) 뒤에 수학 공식이나 수식($ 또는 $$)이 시작될 때는 절대로 문장에 이어서 붙여 적지 마십시오. 가독성을 위해 반드시 개행(줄바꿈 \\n\\n)을 두 번 적용하여 새로운 행에 공식이 깔끔하게 표시되도록 정돈해 주십시오.
 `;
 // Trigger redeployment with clean UTF-8 BOM-less encoding.
