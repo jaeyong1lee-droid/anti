@@ -12299,6 +12299,35 @@ export default function App() {
               setChatHistory(finalData.chatHistory || []);
               setRestoringReviewSession(false);
             } else {
+              // [🚨 로컬 캐시 폴백 복원 🚨]
+              // 서버 세션 데이터가 아직 없을 때, 로컬 스토리지에 해당 세션 캐시가 존재하는지 우선 검사하여 복원
+              const localKey = s.selectedTopic.schedule_id 
+                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${activeSid}`
+                : `anti_review_progress_${s.selectedTopic.id}_${activeSid}`;
+              const localSaved = localStorage.getItem(localKey);
+              if (localSaved) {
+                try {
+                  const localData = JSON.parse(localSaved);
+                  if (localData && localData.questions && Array.isArray(localData.questions)) {
+                    console.log('[Mount Restore] Server session query failed, but local progress cache found. Restoring from LocalStorage.');
+                    setSelectedTopic(s.selectedTopic);
+                    setReviewSessionId(activeSid);
+                    setAiQuestions(localData.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+                    setSelectedAnswers(localData.selectedAnswers || {});
+                    setRevealedQuestions(localData.revealedQuestions || {});
+                    setTableAnswers(localData.tableAnswers || {});
+                    setTableGradingResults(localData.tableGradingResults || {});
+                    setTutorAnswers(localData.tutorAnswers || {});
+                    setTutorInputText(localData.tutorInputText || {});
+                    setChatHistory(localData.chatHistory || []);
+                    setRestoringReviewSession(false);
+                    return; // 복구 완료
+                  }
+                } catch (e) {
+                  console.warn('Failed to restore from local progress cache:', e);
+                }
+              }
+
               // Try checking if completed on server
               let isAlreadyCompleted = false;
               let completedData = null;
@@ -12319,8 +12348,9 @@ export default function App() {
                 }
               }
 
-              // 2. Fall back to checking by topic ID (important for bonus reviews where scheduleId starts as null)
-              if (!isAlreadyCompleted && topicId) {
+              // 2. Fall back to checking by topic ID (ONLY when scheduleId is missing/invalid to prevent loading past rounds like 18-03 on a new 18-04 session)
+              const hasNoSchedule = !scheduleId || scheduleId === 9999 || String(scheduleId) === '9999' || String(scheduleId) === 'null' || String(scheduleId) === 'undefined';
+              if (!isAlreadyCompleted && topicId && hasNoSchedule) {
                 try {
                   const compRes = await fetch(`${API_BASE}/api/session/completed-review/by-topic/${topicId}`);
                   const resJson = await compRes.json();
