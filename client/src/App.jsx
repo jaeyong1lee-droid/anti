@@ -7168,11 +7168,13 @@ export default function App() {
     // If it's a restore or there's already an active (uncompleted) session ID stored in localStorage, preserve it!
     let newSid;
     const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
-    if (isRestore || (existingSid && existingSid !== 'legacy_default')) {
+    const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_');
+    if (isRestore || (isAbsoluteSid && existingSid !== 'legacy_default')) {
       newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
       localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     } else {
       newSid = renewSessionId(topicId, finalScheduleId, finalReviewRound);
+      localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     }
     setReviewSessionId(newSid);
 
@@ -12094,12 +12096,14 @@ export default function App() {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
               setSelectedTopic(s.selectedTopic);
-              if (server.sessionId) {
+              const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
+              if (isServerSidAbsolute) {
                 setReviewSessionId(server.sessionId);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
               } else {
                 const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
                 setReviewSessionId(localSid);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
               }
 
               // Load the one with the most solved questions!
