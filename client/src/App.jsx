@@ -3658,6 +3658,9 @@ export default function App() {
     const activeAnswers = showExam ? examTableAnswers : tableAnswers;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
+    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const nextGrading = { ...currentGrading };
+    
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
 
@@ -3694,32 +3697,48 @@ export default function App() {
           })
         });
         const data = await res.json();
-        activeSetGradingResults(prev => ({
-          ...prev,
-          [`${qIdx}_${inputId}`]: {
-            isCorrect: data.isCorrect,
-            score: data.score,
-            reason: data.reason,
-            suggestedModelAnswer: data.suggestedModelAnswer
-          }
-        }));
+        nextGrading[`${qIdx}_${inputId}`] = {
+          isCorrect: data.isCorrect,
+          score: data.score,
+          reason: data.reason,
+          suggestedModelAnswer: data.suggestedModelAnswer
+        };
       } catch (err) {
         console.error('Grading error:', err);
         const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
         const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
-        activeSetGradingResults(prev => ({
-          ...prev,
-          [`${qIdx}_${inputId}`]: {
-            isCorrect,
-            score: isCorrect ? 10 : 0,
-            reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
-          }
-        }));
+        nextGrading[`${qIdx}_${inputId}`] = {
+          isCorrect,
+          score: isCorrect ? 10 : 0,
+          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+        };
       }
     });
 
     try {
       await Promise.all(promises);
+      
+      activeSetGradingResults(nextGrading);
+
+      // Save state immediately to DB/session to guarantee persistence
+      if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+        await fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            sessionId: reviewSessionId,
+            questions: aiQuestions,
+            selectedAnswers,
+            revealedQuestions,
+            tableAnswers,
+            tableGradingResults: nextGrading,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      }
+
       stopProgressPolling('채점 완료!', 100);
     } catch (e) {
       stopProgressPolling('채점 실패', 100, false);
