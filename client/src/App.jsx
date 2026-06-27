@@ -5841,7 +5841,7 @@ export default function App() {
             savedQuizScroll: quizBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
-      }, 1000); // 1.0-second debounce to prevent spamming server on rapid inputs
+      }, 100); // 100ms debounce for instant real-time synchronization
 
       return () => clearTimeout(delayDebounceFn);
     }
