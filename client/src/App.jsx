@@ -2922,7 +2922,9 @@ export default function App() {
   };
   const [lastNeonSyncTime, setLastNeonSyncTime] = useState(() => {
     const saved = localStorage.getItem('anti_last_neon_sync_time');
-    return saved ? new Date(saved) : null;
+    if (saved) return new Date(saved);
+    const vercelSaved = localStorage.getItem('anti_last_sync_time');
+    return vercelSaved ? new Date(vercelSaved) : null;
   });
   const updateNeonSyncTime = (date) => {
     setLastNeonSyncTime(date);
@@ -12703,13 +12705,13 @@ export default function App() {
                   {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
                 </span>
                 {isDesktop && (
-                  <div className="flex flex-col gap-1 select-none">
-                    <span className="text-[9px] md:text-[10px] font-medium text-emerald-400/95 tracking-normal normal-case px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-800/30">
+                  <div className="flex flex-col gap-0.5 select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
+                    <span className="text-emerald-400/90">
                       vercel : {lastSyncTime 
                         ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
                         : '대기 중'}
                     </span>
-                    <span className="text-[9px] md:text-[10px] font-medium text-cyan-400/95 tracking-normal normal-case px-2 py-0.5 rounded-full bg-cyan-950/40 border border-cyan-800/30">
+                    <span className="text-cyan-400/90">
                       neon : {lastNeonSyncTime 
                         ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
                         : '대기 중'}
