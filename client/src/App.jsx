@@ -15252,6 +15252,8 @@ export default function App() {
                       onClick={() => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                           setChatHistory([]);
+                          setTutorAnswers({});
+                          setTutorInputText({});
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
                           }
@@ -17193,6 +17195,8 @@ export default function App() {
                 onClick={() => {
                   if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                     setChatHistory([]);
+                    setTutorAnswers({});
+                    setTutorInputText({});
                     if (typeof setCurrentAttachedImage === 'function') {
                       setCurrentAttachedImage(null);
                     }
@@ -18331,6 +18335,8 @@ export default function App() {
                       onClick={() => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                           setChatHistory([]);
+                          setTutorAnswers({});
+                          setTutorInputText({});
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
                           }
