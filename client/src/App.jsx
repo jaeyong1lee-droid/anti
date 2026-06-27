@@ -14961,7 +14961,11 @@ export default function App() {
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n\n${stripHtmlTagsFromRawData(q.formula)}\n`;
+                                                let formulaText = stripHtmlTagsFromRawData(q.formula).trim();
+                                                if (formulaText && !formulaText.startsWith('$')) {
+                                                  formulaText = `$${formulaText}$`;
+                                                }
+                                                baseAns += `\n\n**[공식]**\n\n${formulaText}\n`;
                                                 if (q.structure) {
                                                   baseAns += `\n**[기호 정의]**\n\n${stripHtmlTagsFromRawData(q.structure)}\n`;
                                                 }
@@ -18088,7 +18092,11 @@ export default function App() {
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n\n${stripHtmlTagsFromRawData(q.formula)}\n`;
+                                                let formulaText = stripHtmlTagsFromRawData(q.formula).trim();
+                                                if (formulaText && !formulaText.startsWith('$')) {
+                                                  formulaText = `$${formulaText}$`;
+                                                }
+                                                baseAns += `\n\n**[공식]**\n\n${formulaText}\n`;
                                                 if (q.structure) {
                                                   baseAns += `\n**[기호 정의]**\n\n${stripHtmlTagsFromRawData(q.structure)}\n`;
                                                 }
