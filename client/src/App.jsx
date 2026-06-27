@@ -1475,12 +1475,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   // 1. [연속 문장 내 개행 병합 가드]:
-  // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
-  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작/종료하는 새로운 문단은 병합 대상에서 제외합니다.
-  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$\$[^\$]+?\$\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
-  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+  // (수식과 결합된 개행이 브라우저-네이티브 whitespace-pre-wrap 렌더링에 의해 안전하게 보존되므로 더 이상 병합이 필요하지 않습니다. 주석 처리합니다.)
+  // cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$\$[^\$]+?\$\$)/g, '$1 $2');
+  // cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+  // cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
+  // cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
 
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
@@ -1525,7 +1524,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     if (isInline) {
       return (
         <span 
-          className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+          className={`${className} select-text whitespace-pre-wrap ${enableAddFormula ? 'enable-add-formula' : ''}`}
           {...eventHandlers}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
@@ -1533,7 +1532,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     }
     return (
       <div 
-        className={`${className} select-text w-full formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        className={`${className} select-text w-full whitespace-pre-wrap formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
         {...eventHandlers}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
@@ -1644,8 +1643,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             </div>
           );
         } else {
-          // 비인라인 일반 텍스트의 경우, 빈 행을 제거하고 단락 숫자(1., 2. 등)가 있는 줄만 위아래 여백 적용
-          // KaTeX HTML이 개행 기호 split으로 인해 깨지는 것을 막기 위해 전체 텍스트에서 수식을 먼저 치환한 다음 개행으로 쪼갭니다.
+          // 비인라인 일반 텍스트 및 인라인 수식
           let htmlContent = part.content;
           try {
             htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
@@ -1661,54 +1659,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
             console.warn(e);
           }
 
-          const textLines = htmlContent.split('\n');
-
           return (
-            <div key={idx} className="select-text">
-              {textLines.map((line, lIdx) => {
-                const cleanLine = line.trim();
-                if (cleanLine === '') {
-                  return <div key={lIdx} className="h-2 select-none" />;
-                }
-                // 1. 또는 2.1. 또는 단계 2.1 등 단락 구분 숫자가 있는 경우 위아래 여백 부여
-                const isHeading = /^\s*\d+\.\d+(\.\d+)*\./.test(cleanLine) || /^\s*단계\s*\d+(\.\d+)*/.test(cleanLine);
-                
-                if (isHeading) {
-                  return (
-                    <div 
-                      key={lIdx}
-                      className={`${lIdx === 0 ? 'pt-2' : 'pt-6'} pb-2 font-extrabold text-white text-[14px] sm:text-[16px] leading-relaxed select-text block`}
-                      dangerouslySetInnerHTML={{ __html: line }}
-                    />
-                  );
-                }
-
-                // 치환된 KaTeX가 단독으로 한 줄을 차지하는 경우 가운데 정렬 마크업 적용
-                const isStandaloneMath = (cleanLine.startsWith('<span class="katex') || cleanLine.startsWith('<div class="katex')) && cleanLine.endsWith('</span>');
-
-                if (isStandaloneMath) {
-                  return (
-                    <div 
-                      key={lIdx}
-                      className="formula-scroll-container w-full py-1 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text"
-                      onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                      onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                      onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                      onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                      dangerouslySetInnerHTML={{ __html: line }}
-                    />
-                  );
-                }
-
-                return (
-                  <div 
-                    key={lIdx}
-                    className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text block"
-                    dangerouslySetInnerHTML={{ __html: line }}
-                  />
-                );
-              })}
-            </div>
+            <div 
+              key={idx}
+              className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
           );
         }
       })}
