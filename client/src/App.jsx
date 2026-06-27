@@ -486,9 +486,9 @@ const cleanAndSanitizeMathText = (rawText) => {
   // 0. KaTeX 파싱 경고 및 에러를 유발하는 Zero Width Space (\u200b / 8203) 제어문자 제거
   cleaned = cleaned.replace(/\u200b/g, '');
 
-  // 0.5. 수식 내부에 잘못 침투하여 깨진 상태로 유입된 모든 HTML/MathML 태그들 (< divclass, < spanclass, < mathxmlns 등) 완전 박멸 소독 (단어 경계 해제 및 멀티라인 대응)
-  cleaned = cleaned.replace(/<\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?>/gi, '')
-                   .replace(/&lt;\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?&gt;/gi, '');
+  // 0.5. 수식 내부에 잘못 침투하여 깨진 상태로 유입된 모든 HTML/MathML 태그들 (< divclass, < spanclass, < mathxmlns 등) 완전 박멸 소독 (단어 경계 해제 및 멀티라인 대응, 변종 태그 대응)
+  cleaned = cleaned.replace(/<\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?>/gi, '')
+                   .replace(/&lt;\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?&gt;/gi, '');
 
   cleaned = cleanCorruptedFormula(cleaned);
   
