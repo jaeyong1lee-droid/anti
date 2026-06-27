@@ -20,7 +20,37 @@ import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList, updateLiveGra
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
 import { GENERATION_STANDARDS, generationStandardsList, updateLiveGenerationStandards } from './plugins/generationStandards.js';
 import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
-import { validateAndHealQuestion, deduplicateQuestions, isQuestionMismatched, VALIDATION_STANDARDS, validationStandardsList, updateLiveValidationStandards } from './plugins/validationPlugin.js';
+
+// validationPlugin.js가 완전히 삭제되었으므로 Stub으로 대체하여 무결성을 유지합니다.
+export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+  if (question && typeof question === 'object') {
+    if (!question.validationLogs) {
+      question.validationLogs = [];
+    }
+    question.validationLogs.push(`[자가 검증 스킵] 검증 기능 및 validationPlugin 파일이 물리적으로 삭제되어 작동하지 않습니다.`);
+  }
+  return question;
+}
+
+export function deduplicateQuestions(questions) {
+  return questions;
+}
+
+export function isQuestionMismatched(question, topicTitle, topicKeywords) {
+  return null;
+}
+
+export let validationStandardsList = [];
+export let VALIDATION_STANDARDS = "- 등록된 검증 지시 기준이 없습니다.";
+
+export function updateLiveValidationStandards(newList) {
+  if (Array.isArray(newList)) {
+    validationStandardsList = newList;
+    VALIDATION_STANDARDS = "- 등록된 검증 지시 기준이 없습니다.";
+    console.log("[ValidationStandards Stub] Live validation standards prompt updated. Count:", newList.length);
+  }
+}
+
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 
@@ -9117,14 +9147,7 @@ export const USER_CONVENTIONS = "";
       await fs.promises.writeFile(filePath, updatedContent, 'utf-8');
       console.log('Successfully wrote grading standards to local file (gradingPlugin.js).');
     } else if (key === 'validation_standards') {
-      const filePath = path.join(__dirname, 'plugins', 'validationPlugin.js');
-      const fileContent = await fs.promises.readFile(filePath, 'utf-8');
-      const updatedContent = fileContent.replace(
-        /export let validationStandardsList = \[\s*[\s\S]*?\n\];/m,
-        `export let validationStandardsList = ${JSON.stringify(standards, null, 2)};`
-      );
-      await fs.promises.writeFile(filePath, updatedContent, 'utf-8');
-      console.log('Successfully wrote validation standards to local file (validationPlugin.js).');
+      console.log('Bypassed writing validation standards to local file since validationPlugin was removed.');
     }
 
     // 로컬 파일 저장이 성공했다면 비동기로 git commit & push 파이프라인을 가동합니다.
