@@ -9879,16 +9879,20 @@ export default function App() {
     }
     setAttachedImage(null);
     
-    // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가
+    // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가하고 즉시 비웁니다.
     let apiMessage = userMessage;
     if (tutorAttachedFormula) {
       apiMessage = `[수험생이 첨부한 공식: ${tutorAttachedFormula}]\n\n${userMessage}`;
     }
     const sentAttachedFormula = tutorAttachedFormula;
-    // setTutorAttachedFormula(null); // 전송 후 비우지 않고 그대로 유지
+    setTutorAttachedFormula(null); // 전송 후 즉시 비우기
 
     const userMsgIdx = chatHistory.length;
-    setChatHistory(prev => [...prev, { role: 'user', text: userMessage, image: currentAttachedImage }]);
+    let displayMessage = userMessage;
+    if (sentAttachedFormula) {
+      displayMessage = `$$${sentAttachedFormula}$$\n\n${userMessage}`;
+    }
+    setChatHistory(prev => [...prev, { role: 'user', text: displayMessage, image: currentAttachedImage }]);
     setIsChatLoading(true);
 
     requestAnimationFrame(() => {
@@ -15302,13 +15306,9 @@ export default function App() {
                     >
                       ✕
                     </button>
-                    <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
                     <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
                       <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">
-                      이 공식에 대해 아래 입력창에 질문해보세요!
-                    </p>
                   </div>
                 )}
 
@@ -18379,13 +18379,9 @@ export default function App() {
                     >
                       ✕
                     </button>
-                    <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
                     <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
                       <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">
-                      이 공식에 대해 아래 입력창에 질문해보세요!
-                    </p>
                   </div>
                 )}
 
