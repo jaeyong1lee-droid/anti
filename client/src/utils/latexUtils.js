@@ -498,9 +498,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         const trimmedPlain = plainText.trim();
         const isPlainSpaceOrComma = trimmedPlain === '' || trimmedPlain === ',';
         const isShortParenthesis = trimmedPlain.startsWith('(') && trimmedPlain.endsWith(')') && trimmedPlain.length <= 20;
-        const isShortKoreanConnector = /^[가-힣\s]+$/.test(trimmedPlain) && trimmedPlain.length <= 6;
         
-        const isSeparating = isPlainSpaceOrComma || isShortParenthesis || isShortKoreanConnector;
+        const isSeparating = isPlainSpaceOrComma || isShortParenthesis;
         if (isSeparating) {
           shouldSplit[i] = true;
         }
