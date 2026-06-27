@@ -234,8 +234,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // 단, 마크다운의 해시태그(# 제목)나 HTML 컬러코드(#ffffff)와 충돌나지 않도록, # 뒤에 영문 수식 명령어/변수명이 오는 경우만 정밀 매치
   processed = processed.replace(/#([a-zA-Z]{1,20}(?:_[a-zA-Z0-9]+)?)\b/g, '\\$1');
 
-  // 인라인 분수식 승격 시 짝이 깨져 잔재로 남은 단일 달러($) 기호 정밀 제거 및 수식 치환
-  processed = processed.replace(/\$(?!\$)([^\$]+?\\(?:d?frac|sqrt|sum|int)[^\$]+?)\$/g, (match, p1) => `$$${p1}$$`);
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
