@@ -937,37 +937,37 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       const genAI = new GoogleGenerativeAI(key);
       let MODELS = [
         'gemini-3.1-flash-lite',
-        'gemini-3.5-flash',
         'gemini-2.5-flash',
         'gemini-2.5-flash-lite',
+        'gemini-3.5-flash',
         'gemini-2.0-flash',
         'gemini-1.5-flash'
       ];
       if (scenario === 'validation') {
         MODELS = [
           'gemini-3.1-flash-lite',
-          'gemini-3.5-flash-lite',
-          'gemini-3.5-flash',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
+          'gemini-3.5-flash-lite',
+          'gemini-3.5-flash',
           'gemini-2.0-flash',
           'gemini-1.5-flash'
         ];
       } else if (scenario === 'grading') {
         MODELS = [
           'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
+          'gemini-3.5-flash',
           'gemini-2.0-flash',
           'gemini-1.5-flash'
         ];
       } else if (scenario === 'question' || scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation') {
         MODELS = [
           'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
+          'gemini-3.5-flash',
           'gemini-2.0-flash',
           'gemini-1.5-flash'
         ];
@@ -975,12 +975,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       
       if (globalPreferredModel) {
         const model1 = globalPreferredModel;
-        const model2 = model1 === 'gemini-3.1-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.1-flash-lite';
-        
-        // 기존 배열에서 1순위와 2순위 후보 모델을 제거한 후 맨 앞으로 강제 정렬하여
-        // 3.1 LITE 선택 시 2순위 3.5, 3.5 선택 시 2순위 3.1 LITE 구조를 강제 보장합니다.
-        MODELS = MODELS.filter(m => m !== model1 && m !== model2);
-        MODELS.unshift(model2);
+        // 선택한 모델(model1)을 제거 후 맨 앞으로 보내어, 2.5-flash 및 2.5-flash-lite 등의 폴백 순서가 그대로 유지되도록 합니다.
+        MODELS = MODELS.filter(m => m !== model1);
         MODELS.unshift(model1);
       }
       
