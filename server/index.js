@@ -11,6 +11,10 @@ import { generateFallbackQuestions } from './fallback_generator.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 import PDFDocument from 'pdfkit';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList, updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
@@ -8600,11 +8604,34 @@ export const USER_CONVENTIONS = "";
       await fs.promises.writeFile(filePath, updatedContent, 'utf-8');
       console.log('Successfully wrote validation standards to local file (validationPlugin.js).');
     }
+
+    // 로컬 파일 저장이 성공했다면 비동기로 git commit & push 파이프라인을 가동합니다.
+    autoGitPushStandards(key).catch(() => {});
   } catch (fsErr) {
     if (fsErr.code === 'EROFS') {
       console.log(`Read-only file system detected (Vercel). Bypassed file write for ${key}.`);
     } else {
       console.error(`Failed to write ${key} to local file:`, fsErr.message);
+    }
+  }
+}
+
+async function autoGitPushStandards(key) {
+  if (process.env.VERCEL) {
+    return;
+  }
+  try {
+    console.log(`[Auto Git Sync] Starting automatic git commit & push for ${key}...`);
+    await execAsync('git add .');
+    const commitMsg = `feat: auto-update ${key} standards from UI [${new Date().toLocaleTimeString()}]`;
+    await execAsync(`git commit -m "${commitMsg}"`);
+    await execAsync('git push');
+    console.log(`[Auto Git Sync] Successfully pushed ${key} updates to GitHub origin!`);
+  } catch (err) {
+    if (err.message && err.message.includes('nothing to commit')) {
+      console.log('[Auto Git Sync] Nothing to commit, working directory is clean.');
+    } else {
+      console.error('[Auto Git Sync] Failed to run auto git commit & push:', err.message);
     }
   }
 }
