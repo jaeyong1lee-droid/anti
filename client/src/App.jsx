@@ -1474,6 +1474,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     );
   }
 
+  // 0. [Legacy 오염 데이터 복원 필터]:
+  // 이전의 쪼개기 규칙 때문에 DB에 수식 중간이 $ \n\n $ 로 찢어져 저장된 데이터를 실시간으로 접합하여 복원합니다.
+  cleanedText = cleanedText.replace(/\$\s*\n+\s*\$/g, ' ');
+
   // 1. [연속 문장 내 개행 병합 가드]:
   // (수식과 결합된 개행이 브라우저-네이티브 whitespace-pre-wrap 렌더링에 의해 안전하게 보존되므로 더 이상 병합이 필요하지 않습니다. 주석 처리합니다.)
   // cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$\$[^\$]+?\$\$)/g, '$1 $2');
