@@ -7312,7 +7312,7 @@ export default function App() {
     );
   };
 
-  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null) => {
+  const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null, isRestore = false) => {
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
@@ -7344,7 +7344,7 @@ export default function App() {
     localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
     setLastActiveReview(activeInfo);
 
-    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}, category=${topicCategory}`);
+    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}, category=${topicCategory}, isRestore=${isRestore}`);
     setReviewMobileTab('list');
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
@@ -7365,8 +7365,14 @@ export default function App() {
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
     
-    // Renew session ID for a fresh study round, forcing server to overwrite stale progress
-    const newSid = renewSessionId(topicId, finalScheduleId);
+    // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
+    // If it's a restore, preserve the last active session ID.
+    let newSid;
+    if (isRestore) {
+      newSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || getOrCreateSessionId(topicId, finalScheduleId);
+    } else {
+      newSid = renewSessionId(topicId, finalScheduleId);
+    }
     setReviewSessionId(newSid);
 
     setLoadingAI(true);
@@ -12388,7 +12394,8 @@ export default function App() {
                   s.selectedTopic.review_round, 
                   s.selectedTopic.isBonus,
                   false,
-                  s.selectedTopic.category
+                  s.selectedTopic.category,
+                  true // isRestore = true
                 );
                 setRestoringReviewSession(false);
               }
