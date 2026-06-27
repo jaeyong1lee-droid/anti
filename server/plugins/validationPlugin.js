@@ -15,63 +15,14 @@ import { GENERATION_STANDARDS } from './generationStandards.js';
  * @param {string} fileText 파일 텍스트
  */
 export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
-  if (!question || typeof question !== 'object') return question;
-
-  const validationLogs = question.validationLogs || [];
-
-  if (typeof callLLMWithFailover !== 'function') {
-    return question;
-  }
-
-  try {
-    console.log(`[ValidationPlugin] Verifying answer correctness for question: "${(question.concept || question.question || '').substring(0, 40)}..."`);
-    
-    const validatorSystemInstruction = `[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 검수 작업을 개시하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
-당신은 대한민국 국가기술자격 토목공학/지반공학 기술사 시험 전문 검수위원으로서 검수를 수행하기 전, 아래 명시된 **자가 검증 절대 지침들**과 **문제 생성 및 변환 지침**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 오류를 교정(Self-Healing)해야 합니다.
-
-[🚨 자가 검증 절대 지침 (Validation Standards)]:
-${VALIDATION_STANDARDS}
-
-[🚨 문제 생성 및 변환 절대 지침 (Generation Standards)]:
-${GENERATION_STANDARDS}
-
-[🔬 공학 기준 절대 지침 (Engineering Standards)]:
-${ENGINEERING_STANDARDS}
-
----------------------------------------------------------
-[검수 및 교정 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공된 문제 객체(JSON)의 질문(question) 내용과 정답(answer/answers) 및 해설(explanation)을 비교하여, 제시된 정답이 공학적/학술적으로 맞는지 검증하고 교정하십시오.`;
-
-    const userPrompt = `
-다음 문제 객체의 질문, 정답, 해설을 분석하여 정답의 학술적/공학적 타당성을 검증하십시오.
-오류가 있다면 정답과 해설을 올바르게 수정하고, 이상이 없다면 원본과 동일하게 유지하여 최종 문제 JSON만 반환해 주십시오.
-
-[첨부파일 본문 텍스트 일부]:
-${fileText ? fileText.substring(0, 8000) : '제공되지 않음'}
-
-[검증 대상 문제 JSON]:
-${JSON.stringify(question)}
-`;
-
-    const responseText = await callLLMWithFailover(validatorSystemInstruction, userPrompt, null, 'validation', { temperature: 0.0 });
-    const corrected = parseLlmJson(responseText);
-    
-    if (corrected && typeof corrected === 'object' && corrected.question) {
-      console.log(`[ValidationPlugin] Answer correctness verification and correction completed.`);
-      validationLogs.push(`[AI 정답 검증 완료] 문항의 정답 및 해설의 공학적 타당성 검증을 완료하고 교정본을 반영했습니다.`);
-      
-      // 원래 문제 유형 유지
-      corrected.type = question.type;
-      return { ...question, ...corrected, validationLogs };
-    } else {
-      validationLogs.push(`[AI 정답 검증 완료] 정답 및 해설에 이상이 없어 원래대로 유지합니다.`);
+  // 검증 기능 비활성화: 입력받은 문항을 그대로 반환합니다.
+  if (question && typeof question === 'object') {
+    if (!question.validationLogs) {
+      question.validationLogs = [];
     }
-  } catch (err) {
-    console.warn(`[ValidationPlugin] Answer verification failed or skipped:`, err.message);
-    validationLogs.push(`[AI 정답 검증 실패] 오류: ${err.message}`);
+    question.validationLogs.push(`[자가 검증 건너뜀] 자가 검증 및 교정 기능이 비활성화되었습니다.`);
   }
-
-  return { ...question, validationLogs };
+  return question;
 }
 
 /**
@@ -168,23 +119,7 @@ export function isQuestionMismatched(question, topicTitle, topicKeywords) {
   return null;
 }
 
-export let validationStandardsList = [
-  {
-    "id": "def_val_1",
-    "title": "정답의 정확성 검증",
-    "content": "객관식인경우 : 질문에서 묻는 바와 제시된 정답(answer 또는 answers of each input item)이 공학적 이론, 공식, 수치 계산상으로 100% 일치하고 올바른지 확인하십시오. 해설(explanation)에 적힌 설명이나 계산 과정이 정답과 논리적으로 일치하는지 확인하고, 모순이 있다면 정답과 해설을 올바르게 교정하십시오."
-  },
-  {
-    "id": "def_val_2",
-    "title": "LaTeX 수식 문법 검증",
-    "content": "지문, 보기, 해설, 정답 내의 모든 LaTeX 수식($기호로 둘러싸인 표현)이 문법적으로 올바른지 확인하고 오류가 있다면 수정하십시오 (예: 중괄호 {} 매칭, 백슬래시 이중 이스케이프 '\\\\' 적용 상태 등)."
-  },
-  {
-    "id": "def_val_3",
-    "title": "JSON 정밀 규격 검증",
-    "content": "마크다운 백틱(```) 기호나 부가 설명 없이 오직 완성된 최종 JSON 객체 텍스트만 반환하여 파서가 정상적으로 JSON을 파싱할 수 있게 엄격한 규격을 준수하십시오."
-  }
-];
+export let validationStandardsList = [];
 
 export let VALIDATION_STANDARDS = assembleValidationStandardsPrompt(validationStandardsList);
 
