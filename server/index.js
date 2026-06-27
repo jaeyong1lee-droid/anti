@@ -7033,7 +7033,12 @@ app.post('/api/session/review', async (req, res) => {
         // [🚨 진행도 덮어쓰기 방지 🚨]
         // 같은 세션 ID를 공유하고, 명시적인 수동 리셋 액션(isResetAction)이 아닐 때만 진행도가 더 적은 데이터로의 덮어쓰기를 제한합니다.
         // 세션 ID가 다르거나 수동 리셋인 경우 무조건 덮어쓰기를 허용합니다.
-        const isResetAction = req.body.isResetAction === true;
+        // 프론트엔드가 이전 빌드 번들에 머물러 있는 경우(Vercel 일일 한도 초과 등)를 대비해, 대화 내역이 가득 차 있다가 비워진 경우도 리셋으로 간주합니다.
+        const existingHasChat = existingData.chatHistory && existingData.chatHistory.length > 0;
+        const incomingHasChat = req.body.chatHistory && req.body.chatHistory.length > 0;
+        const isTutorCleaned = existingHasChat && !incomingHasChat;
+
+        const isResetAction = req.body.isResetAction === true || isTutorCleaned;
         if (existingSessionId === incomingSessionId && !isResetAction) {
           const existingSolved = countSolved(existingData);
           const incomingSolved = countSolved(req.body);
