@@ -335,14 +335,15 @@ export function healInvertedDelimiters(text) {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
-  // Zero Width Space (\u200b) 제어문자 완전 박멸 및 깨진 HTML/MathML 태그들 완전 박멸 소독 (단어 경계 해제 및 멀티라인 대응, 변종 태그 대응)
-  let processed = text.replace(/\u200b/g, '')
-                      .replace(/<\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?>/gi, '')
-                      .replace(/&lt;\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?&gt;/gi, '');
+  try {
+    // Zero Width Space (\u200b) 제어문자 완전 박멸 및 깨진 HTML/MathML 태그들 완전 박멸 소독 (단어 경계 해제 및 안전한 비백트래킹 한정자 적용)
+    let processed = text.replace(/\u200b/g, '')
+                        .replace(/<\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[^>]*>/gi, '')
+                        .replace(/&lt;\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[^&]*&gt;/gi, '');
 
-  // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
-  processed = processed.replace(/[–—−]/g, '-');
-  processed = healInvertedDelimiters(processed);
+    // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
+    processed = processed.replace(/[–—−]/g, '-');
+    processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
   const greekLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
@@ -782,6 +783,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   }
 
   return result;
+  } catch (err) {
+    console.error('Error inside healLatexFormulas:', err);
+    return text;
+  }
 }
 
 // 오브젝트 딥 힐러 트리구조

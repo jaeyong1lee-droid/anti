@@ -481,40 +481,45 @@ const cleanCorruptedFormula = (formula) => {
 const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
-  let cleaned = rawText;
-  
-  // 0. KaTeX 파싱 경고 및 에러를 유발하는 Zero Width Space (\u200b / 8203) 제어문자 제거
-  cleaned = cleaned.replace(/\u200b/g, '');
+  try {
+    let cleaned = rawText;
+    
+    // 0. KaTeX 파싱 경고 및 에러를 유발하는 Zero Width Space (\u200b / 8203) 제어문자 제거
+    cleaned = cleaned.replace(/\u200b/g, '');
 
-  // 0.5. 수식 내부에 잘못 침투하여 깨진 상태로 유입된 모든 HTML/MathML 태그들 (< divclass, < spanclass, < mathxmlns 등) 완전 박멸 소독 (단어 경계 해제 및 멀티라인 대응, 변종 태그 대응)
-  cleaned = cleaned.replace(/<\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?>/gi, '')
-                   .replace(/&lt;\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[\s\S]*?&gt;/gi, '');
+    // 0.5. 수식 내부에 잘못 침투하여 깨진 상태로 유입된 모든 HTML/MathML 태그들 (< divclass, < spanclass, < mathxmlns 등) 완전 박멸 소독 (단어 경계 해제 및 안전한 비백트래킹 한정자 적용)
+    cleaned = cleaned.replace(/<\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[^>]*>/gi, '')
+                     .replace(/&lt;\s*\/?\s*(divclass|spanclass|mathxmlns|div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)[^&]*&gt;/gi, '');
 
-  cleaned = cleanCorruptedFormula(cleaned);
-  
-  // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
-  cleaned = cleaned.replace(/&#x27;/g, "'")
-                   .replace(/&quot;/g, '"')
-                   .replace(/&lt;/g, '<')
-                   .replace(/&gt;/g, '>')
-                   .replace(/&amp;/g, '&');
-  
-  // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
-  cleaned = cleaned.replace(/_따라서/g, '따라서');
+    cleaned = cleanCorruptedFormula(cleaned);
+    
+    // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
+    cleaned = cleaned.replace(/&#x27;/g, "'")
+                     .replace(/&quot;/g, '"')
+                     .replace(/&lt;/g, '<')
+                     .replace(/&gt;/g, '>')
+                     .replace(/&amp;/g, '&');
+                     
+    // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
+    cleaned = cleaned.replace(/_따라서/g, '따라서');
 
-  // 3. LaTeX 디스플레이 수식 구분자 \[...\] → $$...$$ 변환 (LatexRenderer는 $$만 인식)
-  cleaned = cleaned.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => {
-    return `$$${math}$$`;
-  });
+    // 3. LaTeX 디스플레이 수식 구분자 \[...\] → $$...$$ 변환 (LatexRenderer는 $$만 인식)
+    cleaned = cleaned.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => {
+      return `$$${math}$$`;
+    });
 
-  // 4. LaTeX 인라인 수식 구분자 \(...\) → $...$ 변환
-  cleaned = cleaned.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => {
-    // 한국어만 있는 괄호 내용은 수식이 아닌 일반 텍스트이므로 제외
-    if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
-    return `$${math}$`;
-  });
+    // 4. LaTeX 인라인 수식 구분자 \(...\) → $...$ 변환
+    cleaned = cleaned.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => {
+      // 한국어만 있는 괄호 내용은 수식이 아닌 일반 텍스트이므로 제외
+      if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
+      return `$${math}$`;
+    });
 
-  return cleaned;
+    return cleaned;
+  } catch (err) {
+    console.error('Error inside cleanAndSanitizeMathText:', err);
+    return rawText;
+  }
 };
 
 const buildHtmlDocument = (text, isPopup = false) => {
