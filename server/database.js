@@ -22,11 +22,17 @@ const isVercel = !!process.env.VERCEL;
 let db = null;
 let pgPool = null;
 
-// Safely parse a PostgreSQL connection URL into individual config params.
-// This avoids pg library misinterpreting special characters (e.g. !!!!) in passwords.
+// Clean up connectionString to remove problematic parameters for node-postgres
+let sanitizedConnectionString = connectionString;
+if (connectionString) {
+  sanitizedConnectionString = connectionString
+    .replace(/[?&]channel_binding=[^&]*/g, '')
+    .trim();
+}
+
+// Safely parse a PostgreSQL connection URL into individual config params (only for logging).
 function parseDbUrl(rawUrl) {
   try {
-    // Replace leading 'postgres://' with 'postgresql://' for URL parsing
     const normalized = rawUrl.replace(/^postgres:\/\//, 'postgresql://');
     const url = new URL(normalized);
     return {
@@ -37,37 +43,24 @@ function parseDbUrl(rawUrl) {
       database: url.pathname.replace(/^\//, ''),
     };
   } catch (e) {
-    console.error('Failed to parse DATABASE_URL, falling back to raw connection string:', e.message);
     return null;
   }
 }
 
 if (isPostgres) {
   console.log('PostgreSQL database URL detected. Connecting to Cloud PostgreSQL database...');
-  const parsed = parseDbUrl(connectionString);
+  const parsed = parseDbUrl(sanitizedConnectionString);
   if (parsed) {
     console.log(`Parsed DB config → host: ${parsed.host}, port: ${parsed.port}, user: ${parsed.user}, db: ${parsed.database}`);
-    pgPool = new pg.Pool({
-      user: parsed.user,
-      password: parsed.password,
-      host: parsed.host,
-      port: parsed.port,
-      database: parsed.database,
-      ssl: { rejectUnauthorized: false },
-      max: 20, // Neon serverless connection limit protection
-      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-      connectionTimeoutMillis: 10000, // Timeout after 10 seconds trying to connect
-    });
-  } else {
-    // Fallback: use connection string directly
-    pgPool = new pg.Pool({
-      connectionString: connectionString,
-      ssl: { rejectUnauthorized: false },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-    });
   }
+  
+  pgPool = new pg.Pool({
+    connectionString: sanitizedConnectionString,
+    ssl: { rejectUnauthorized: false },
+    max: 20, // Neon serverless connection limit protection
+    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+    connectionTimeoutMillis: 30000, // Extend timeout to 30 seconds for Neon wake-up spin
+  });
 
   // Gracefully handle idle client errors to prevent server crash or connection lockup on Neon pauses
   pgPool.on('error', (err, client) => {
@@ -125,6 +118,22 @@ function translateSql(sql) {
   return sql.replace(/\?/g, () => `$${index++}`);
 }
 
+async function executeWithRetry(fn, maxRetries = 3, delayMs = 2000) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn();
+    } catch (err) {
+      attempt++;
+      console.warn(`[DB Retry] Database query failed (attempt ${attempt}/${maxRetries}):`, err.message);
+      if (attempt >= maxRetries) {
+        throw err;
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 export const dbQuery = {
   async run(sql, params = []) {
     if (isPostgres) {
@@ -134,14 +143,11 @@ export const dbQuery = {
       if (isInsert && !translatedSql.includes('app_session')) {
         translatedSql += ' RETURNING id';
       }
-      try {
+      return executeWithRetry(async () => {
         const res = await pgPool.query(translatedSql, params);
         const lastID = isInsert && res.rows[0] && res.rows[0].id ? res.rows[0].id : null;
         return { id: lastID, changes: res.rowCount };
-      } catch (err) {
-        console.error('PostgreSQL query error (run):', err);
-        throw err;
-      }
+      });
     } else {
       const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
@@ -157,13 +163,10 @@ export const dbQuery = {
     if (isPostgres) {
       if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       const translatedSql = translateSql(sql);
-      try {
+      return executeWithRetry(async () => {
         const res = await pgPool.query(translatedSql, params);
         return res.rows[0] || null;
-      } catch (err) {
-        console.error('PostgreSQL query error (get):', err);
-        throw err;
-      }
+      });
     } else {
       const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
@@ -179,13 +182,10 @@ export const dbQuery = {
     if (isPostgres) {
       if (!pgPool) throw new Error('PostgreSQL Pool is not initialized. Please configure DATABASE_URL.');
       const translatedSql = translateSql(sql);
-      try {
+      return executeWithRetry(async () => {
         const res = await pgPool.query(translatedSql, params);
         return res.rows;
-      } catch (err) {
-        console.error('PostgreSQL query error (all):', err);
-        throw err;
-      }
+      });
     } else {
       const localDb = await getSQLiteDb();
       return new Promise((resolve, reject) => {
@@ -204,8 +204,11 @@ export async function initDatabase() {
     if (isPostgres) {
       try {
         console.log('Verifying Cloud PostgreSQL connection...');
-        // Execute a quick probe query to ensure database is responsive
-        await pgPool.query('SELECT NOW()');
+        // Execute a quick probe query with retry to ensure database is responsive
+        await executeWithRetry(async () => {
+          await pgPool.query('SELECT NOW()');
+        }, 5, 3000); // 5 retries, 3 seconds delay each to allow Neon compute to wake up
+
         
         // 1. topics table: stores studied topics and raw PDF data as a BYTEA
         await pgPool.query(`
