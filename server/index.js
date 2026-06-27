@@ -860,7 +860,7 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         keyExhausted = true;
       }
     } else if (isGroq) {
-      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
+      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'gemma2-9b-it'];
       let basicModelFailedCount = 0;
       for (const modelName of GROQ_MODELS) {
         if (keyExhausted) break;
