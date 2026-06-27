@@ -22,18 +22,16 @@ const isVercel = !!process.env.VERCEL;
 let db = null;
 let pgPool = null;
 
-// Clean up connectionString to remove problematic parameters for node-postgres
-let sanitizedConnectionString = connectionString;
-if (connectionString) {
-  sanitizedConnectionString = connectionString
-    .replace(/[?&]channel_binding=[^&]*/g, '')
-    .trim();
-}
-
-// Safely parse a PostgreSQL connection URL into individual config params (only for logging).
-function parseDbUrl(rawUrl) {
+// Safely parse and sanitize PostgreSQL URL parameters
+function parseDbUrlAndSanitize(rawUrl) {
   try {
-    const normalized = rawUrl.replace(/^postgres:\/\//, 'postgresql://');
+    if (!rawUrl) return null;
+    // Clean up connectionString to remove problematic parameters for node-postgres
+    const cleanedUrl = rawUrl
+      .replace(/[?&]channel_binding=[^&]*/g, '')
+      .trim();
+
+    const normalized = cleanedUrl.replace(/^postgres:\/\//, 'postgresql://');
     const url = new URL(normalized);
     return {
       user: decodeURIComponent(url.username),
@@ -41,26 +39,41 @@ function parseDbUrl(rawUrl) {
       host: url.hostname,
       port: url.port ? parseInt(url.port, 10) : 5432,
       database: url.pathname.replace(/^\//, ''),
+      sslmode: url.searchParams.get('sslmode') || 'require'
     };
   } catch (e) {
+    console.error('Failed to parse and sanitize DATABASE_URL:', e.message);
     return null;
   }
 }
 
 if (isPostgres) {
   console.log('PostgreSQL database URL detected. Connecting to Cloud PostgreSQL database...');
-  const parsed = parseDbUrl(sanitizedConnectionString);
+  const parsed = parseDbUrlAndSanitize(connectionString);
   if (parsed) {
     console.log(`Parsed DB config → host: ${parsed.host}, port: ${parsed.port}, user: ${parsed.user}, db: ${parsed.database}`);
+    pgPool = new pg.Pool({
+      user: parsed.user,
+      password: parsed.password,
+      host: parsed.host,
+      port: parsed.port,
+      database: parsed.database,
+      ssl: parsed.sslmode === 'disable' ? false : { rejectUnauthorized: false },
+      max: 20, // Neon serverless connection limit protection
+      idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+      connectionTimeoutMillis: 30000, // Extend timeout to 30 seconds for Neon wake-up spin
+    });
+  } else {
+    // Fallback: use connection string directly (with sanitization)
+    const cleanedString = connectionString ? connectionString.replace(/[?&]channel_binding=[^&]*/g, '').trim() : '';
+    pgPool = new pg.Pool({
+      connectionString: cleanedString,
+      ssl: { rejectUnauthorized: false },
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000,
+    });
   }
-  
-  pgPool = new pg.Pool({
-    connectionString: sanitizedConnectionString,
-    ssl: { rejectUnauthorized: false },
-    max: 20, // Neon serverless connection limit protection
-    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-    connectionTimeoutMillis: 30000, // Extend timeout to 30 seconds for Neon wake-up spin
-  });
 
   // Gracefully handle idle client errors to prevent server crash or connection lockup on Neon pauses
   pgPool.on('error', (err, client) => {
