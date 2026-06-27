@@ -15188,8 +15188,51 @@ export default function App() {
               </div>
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
+                {chatHistory.map((msg, i) => (
+                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                    <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
+                      {msg.role === 'user' ? '나' : 'Gemini'}
+                    </div>
+                    <div className={
+                      msg.role === 'user'
+                        ? 'px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm'
+                        : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
+                    }>
+                      {msg.role === 'user' ? (
+                        <div className="flex flex-col gap-2">
+                          {msg.image && (
+                            <img 
+                              src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                              alt="첨부 이미지" 
+                              className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                            />
+                          )}
+                          {msg.text && (
+                            <div className="whitespace-pre-wrap">
+                              <LatexRenderer 
+                                text={msg.text} 
+                                katexLoaded={katexLoaded} 
+                                enableAddFormula={false}
+                                isMarkdown={true}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <LatexRenderer 
+                          text={msg.text} 
+                          katexLoaded={katexLoaded} 
+                          enableAddFormula={true}
+                          formulaSource="tutor"
+                          isMarkdown={true}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+
                 {tutorAttachedFormula && (
-                  <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in mb-3">
+                  <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
                     <button
                       type="button"
                       onClick={() => setTutorAttachedFormula(null)}
@@ -15208,56 +15251,13 @@ export default function App() {
                   </div>
                 )}
 
-                {chatHistory.length === 0 ? (
+                {chatHistory.length === 0 && !tutorAttachedFormula && (
                   <div className="flex flex-col gap-4 w-full">
                     <div className="text-center py-10 opacity-50">
                       <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
                       <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
                     </div>
                   </div>
-                ) : (
-                  chatHistory.map((msg, i) => (
-                    <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
-                        {msg.role === 'user' ? '나' : 'Gemini'}
-                      </div>
-                      <div className={
-                        msg.role === 'user'
-                          ? 'px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm'
-                          : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
-                      }>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img 
-                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                alt="첨부 이미지" 
-                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                              />
-                            )}
-                            {msg.text && (
-                              <div className="whitespace-pre-wrap">
-                                <LatexRenderer 
-                                  text={msg.text} 
-                                  katexLoaded={katexLoaded} 
-                                  enableAddFormula={false}
-                                  isMarkdown={true}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <LatexRenderer 
-                            text={msg.text} 
-                            katexLoaded={katexLoaded} 
-                            enableAddFormula={true}
-                            formulaSource="tutor"
-                            isMarkdown={true}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))
                 )}
                 {isChatLoading && (
                   <div className="flex flex-col items-start w-full">
@@ -18265,75 +18265,76 @@ export default function App() {
               </div>
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
-                {chatHistory.length === 0 ? (
-                  <div className="flex flex-col gap-4 w-full">
-                    {tutorAttachedFormula && (
-                      <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
-                        <button
-                          type="button"
-                          onClick={() => setTutorAttachedFormula(null)}
-                          className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
-                          title="공식 제거"
-                        >
-                          ✕
-                        </button>
-                        <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
-                        <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
-                          <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
+                {chatHistory.map((msg, i) => (
+                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                    <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
+                      {msg.role === 'user' ? '나' : 'Gemini'}
+                    </div>
+                    <div className={
+                      msg.role === 'user' 
+                        ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                        : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
+                    }>
+                      {msg.role === 'user' ? (
+                        <div className="flex flex-col gap-2">
+                          {msg.image && (
+                            <img 
+                              src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                              alt="첨부 이미지" 
+                              className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
+                            />
+                          )}
+                          {msg.text && (
+                            <div className="whitespace-pre-wrap">
+                              <LatexRenderer 
+                                text={msg.text} 
+                                katexLoaded={katexLoaded} 
+                                enableAddFormula={false}
+                                isMarkdown={true}
+                              />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-2 font-semibold">
-                          이 공식에 대해 아래 입력창에 질문해보세요!
-                        </p>
-                      </div>
-                    )}
+                      ) : (
+                        <LatexRenderer 
+                          text={msg.text} 
+                          katexLoaded={katexLoaded} 
+                          enableAddFormula={true}
+                          formulaSource="tutor"
+                          isMarkdown={true}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {tutorAttachedFormula && (
+                  <div className="w-full bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center relative animate-fade-in">
+                    <button
+                      type="button"
+                      onClick={() => setTutorAttachedFormula(null)}
+                      className="absolute top-2 right-2 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer font-bold w-4 h-4 flex items-center justify-center rounded-full bg-slate-800"
+                      title="공식 제거"
+                    >
+                      ✕
+                    </button>
+                    <div className="text-[10px] font-black text-violet-400 mb-2 tracking-wider">📎 전송된 공식</div>
+                    <div className="overflow-x-auto p-2 bg-slate-950/60 border border-slate-800 rounded-lg">
+                      <LatexRenderer text={`$${tutorAttachedFormula}$`} katexLoaded={katexLoaded} />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">
+                      이 공식에 대해 아래 입력창에 질문해보세요!
+                    </p>
+                  </div>
+                )}
+
+                {chatHistory.length === 0 && !tutorAttachedFormula && (
+                  <div className="flex flex-col gap-4 w-full">
                     <div className="text-center py-10 opacity-50">
                       <MessageSquare size={32} className="mx-auto mb-2 text-slate-500" />
                       <p className="text-[11px] text-slate-400">문제 풀이 중 궁금한 점을<br/>무엇이든 물어보세요!</p>
                     </div>
                   </div>
-                ) : (
-                  chatHistory.map((msg, i) => (
-                    <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
-                      <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
-                        {msg.role === 'user' ? '나' : 'Gemini'}
-                      </div>
-                      <div className={
-                        msg.role === 'user' 
-                          ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                          : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
-                      }>
-                        {msg.role === 'user' ? (
-                          <div className="flex flex-col gap-2">
-                            {msg.image && (
-                              <img 
-                                src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
-                                alt="첨부 이미지" 
-                                className="max-w-full max-h-48 rounded-xl object-contain border border-indigo-455 shadow-md"
-                              />
-                            )}
-                            {msg.text && (
-                              <div className="whitespace-pre-wrap">
-                                <LatexRenderer 
-                                  text={msg.text} 
-                                  katexLoaded={katexLoaded} 
-                                  enableAddFormula={false}
-                                  isMarkdown={true}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <LatexRenderer 
-                            text={msg.text} 
-                            katexLoaded={katexLoaded} 
-                            enableAddFormula={true}
-                            formulaSource="tutor"
-                            isMarkdown={true}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))
                 )}
                 {isChatLoading && (
                   <div className="flex flex-col items-start w-full">
