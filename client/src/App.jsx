@@ -4944,6 +4944,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const firstMatchRef = useRef(null);
   const lastQuizTopicId = useRef(null); // 마지막으로 로드한 퀴즈 토픽 ID (닫기 후 재열 감지용)
+  const lastQuizScheduleId = useRef(null); // 마지막으로 로드한 퀴즈 스케줄 ID (닫기 후 재열 감지용)
   const quizBodyRef = useRef(null);     // 퀴즈 패널 스크롤 컨테이너
   const savedQuizScroll = useRef(0);    // 퀴즈 패널 저장된 스크롤 위치
   const examBodyRef = useRef(null);     // 종합평가 패널 스크롤 컨테이너
@@ -6862,6 +6863,7 @@ export default function App() {
       setOpenSections({});
       setReviewOptionExplanations({});
       lastQuizTopicId.current = null;
+      lastQuizScheduleId.current = null;
     }
   };
 
@@ -7352,7 +7354,7 @@ export default function App() {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
     // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
-    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && selectedTopic?.schedule_id === finalScheduleId) {
+    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && lastQuizScheduleId.current === finalScheduleId) {
       console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
       const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
       setSelectedTopic(targetTopic);
@@ -7424,9 +7426,14 @@ export default function App() {
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
+        lastQuizScheduleId.current = finalScheduleId; // 스케줄 ID 기록
 
         if (data.scheduleId) {
           finalScheduleId = data.scheduleId;
+          lastQuizScheduleId.current = data.scheduleId; // 업데이트된 스케줄 ID 반영
+          if (newSid) {
+            localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, newSid);
+          }
           setSelectedTopic(prev => {
             if (prev && prev.id === topicId) {
               const updated = { ...prev, schedule_id: data.scheduleId };
@@ -7909,6 +7916,7 @@ export default function App() {
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = selectedTopic.id;
+        lastQuizScheduleId.current = selectedTopic.schedule_id;
         setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
         
         // 공부중 버튼 캐시 및 상태 연동 업데이트
@@ -14461,6 +14469,7 @@ export default function App() {
                     setIsFallback(false);
                     setAiError('');
                     lastQuizTopicId.current = null; 
+                    lastQuizScheduleId.current = null; 
                   }}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                   title="문제 초기화 (재개 시 새 문제 생성)"
@@ -15489,6 +15498,7 @@ export default function App() {
                             setIsFallback(false);
                             setAiError('');
                             lastQuizTopicId.current = null; 
+                            lastQuizScheduleId.current = null; 
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-700/50 transition-all cursor-pointer active:scale-95 shadow-md"
                           title="문제 초기화 (재개 시 새 문제 생성)"
