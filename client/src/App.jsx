@@ -2910,7 +2910,16 @@ export default function App() {
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
-  const [lastSyncTime, setLastSyncTime] = useState(null);
+  const [lastSyncTime, setLastSyncTime] = useState(() => {
+    const saved = localStorage.getItem('anti_last_sync_time');
+    return saved ? new Date(saved) : null;
+  });
+  const updateSyncTime = (date) => {
+    setLastSyncTime(date);
+    if (date) {
+      localStorage.setItem('anti_last_sync_time', date.toISOString());
+    }
+  };
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
@@ -5656,7 +5665,7 @@ export default function App() {
           .then(res => res.json())
           .then(data => {
             if (data.success) {
-              setLastSyncTime(new Date());
+              updateSyncTime(new Date());
             }
           })
           .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
@@ -7371,7 +7380,7 @@ export default function App() {
         }
 
         if (finalData.isCached && (finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText)) {
-          setLastSyncTime(new Date());
+          updateSyncTime(new Date());
           setSelectedAnswers(finalData.selectedAnswers || {});
           setRevealedQuestions(finalData.revealedQuestions || {});
           setTableAnswers(finalData.tableAnswers || {});
@@ -7507,7 +7516,7 @@ export default function App() {
             .then(res => res.json())
             .then(data => {
               if (data.success) {
-                setLastSyncTime(new Date());
+                updateSyncTime(new Date());
               }
             })
             .catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
@@ -12126,7 +12135,7 @@ export default function App() {
             if (resData.success && resData.data) {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
-              setLastSyncTime(new Date());
+              updateSyncTime(new Date());
               setSelectedTopic(s.selectedTopic);
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
               if (isServerSidAbsolute) {
