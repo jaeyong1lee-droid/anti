@@ -509,11 +509,19 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     
     let rebuilt = parts[0];
     for (let i = 1; i < parts.length; i += 2) {
-      const formula = parts[i];
-      const plainText = parts[i + 1];
+      let formula = parts[i];
+      let plainText = parts[i + 1];
       
       const splitBefore = shouldSplit[i - 1];
       const splitAfter = shouldSplit[i + 1];
+      
+      if (plainText !== undefined && splitAfter) {
+        const trimmed = plainText.trim();
+        if (trimmed.startsWith(',')) {
+          formula = formula.trim() + ',';
+          plainText = plainText.replace(/^\s*,\s*/, '');
+        }
+      }
       
       if (splitBefore || splitAfter) {
         rebuilt += `$$${formula}$$`;
