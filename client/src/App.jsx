@@ -336,21 +336,14 @@ const generateLocalConceptQuestion = (quizItem, targetFormula, allFormulas) => {
   }
 };
 
-const getOrCreateSessionId = (topicId, scheduleId) => {
-  const key = `anti_session_id_${topicId}_${scheduleId || '9999'}`;
-  let sid = localStorage.getItem(key);
-  if (!sid) {
-    sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-    localStorage.setItem(key, sid);
-  }
-  return sid;
+const getOrCreateSessionId = (topicId, scheduleId, reviewRound) => {
+  const roundVal = reviewRound || '99';
+  return `sess_topic_${topicId}_round_${roundVal}`;
 };
 
-const renewSessionId = (topicId, scheduleId) => {
-  const key = `anti_session_id_${topicId}_${scheduleId || '9999'}`;
-  const newSid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-  localStorage.setItem(key, newSid);
-  return newSid;
+const renewSessionId = (topicId, scheduleId, reviewRound) => {
+  const roundVal = reviewRound || '99';
+  return `sess_topic_${topicId}_round_${roundVal}`;
 };
 
 const LOCAL_DISTRACTOR_FORMULAS = [
@@ -7176,10 +7169,10 @@ export default function App() {
     let newSid;
     const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
     if (isRestore || (existingSid && existingSid !== 'legacy_default')) {
-      newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId);
+      newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
       localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     } else {
-      newSid = renewSessionId(topicId, finalScheduleId);
+      newSid = renewSessionId(topicId, finalScheduleId, finalReviewRound);
     }
     setReviewSessionId(newSid);
 
@@ -7572,7 +7565,7 @@ export default function App() {
     if (!selectedTopic) return;
 
     // Renew session ID for a fresh retry round to bypass server solved-overwrite protection
-    const newSid = renewSessionId(selectedTopic.id, selectedTopic.schedule_id);
+    const newSid = renewSessionId(selectedTopic.id, selectedTopic.schedule_id, selectedTopic.review_round);
     setReviewSessionId(newSid);
 
     const isReadOnly = !!selectedTopic.isReadOnly;
@@ -12105,7 +12098,7 @@ export default function App() {
                 setReviewSessionId(server.sessionId);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
               } else {
-                const localSid = getOrCreateSessionId(topicId, scheduleId);
+                const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
                 setReviewSessionId(localSid);
               }
 
