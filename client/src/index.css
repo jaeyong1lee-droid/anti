@@ -130,6 +130,18 @@ div[class*="overflow-y-auto"] {
   white-space: nowrap !important;
 }
 
+/* Improve KaTeX formula font rendering for Korean text */
+.katex {
+  font-family: 'KaTeX_Main', 'Pretendard', 'Malgun Gothic', sans-serif !important;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.katex .text {
+  font-family: 'Pretendard', 'Malgun Gothic', sans-serif !important;
+}
+
 /* Prevent text selection and native callout menus on KaTeX formulas when long-press export is enabled */
 .enable-add-formula .katex,
 .enable-add-formula .katex-display,
