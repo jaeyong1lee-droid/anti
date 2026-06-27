@@ -7215,6 +7215,7 @@ app.post('/api/engineering-standards', async (req, res) => {
     // 4. Push to Vercel production server
     pushStandardToProduction('engineering-standards', standards).catch(() => {});
 
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/engineering-standards error:', err);
@@ -7269,6 +7270,7 @@ app.post('/api/grading-standards', async (req, res) => {
     // 4. Push to Vercel production server
     pushStandardToProduction('grading-standards', standards).catch(() => {});
 
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/grading-standards error:', err);
@@ -7323,6 +7325,7 @@ app.post('/api/validation-standards', async (req, res) => {
     // 4. Push to Vercel production server
     pushStandardToProduction('validation-standards', standards).catch(() => {});
 
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/validation-standards error:', err);
@@ -7373,6 +7376,7 @@ app.post('/api/generation-standards', async (req, res) => {
     // 4. Push to Vercel production server
     pushStandardToProduction('generation-standards', standards).catch(() => {});
 
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/generation-standards error:', err);
@@ -7423,6 +7427,7 @@ app.post('/api/lockscreen-standards', async (req, res) => {
     // 4. Push to Vercel production server
     pushStandardToProduction('lockscreen-standards', standards).catch(() => {});
 
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/lockscreen-standards error:', err);
@@ -7447,6 +7452,17 @@ async function getFormattedTopicInstructions(topicId) {
     console.error('Failed to get topic instructions for topic ' + topicId + ':', err.message);
   }
   return '';
+}
+
+
+// 헬퍼 함수: 지침 변경 시 기존 캐시된 모든 퀴즈 세션 일괄 삭제 (실시간 동기화용)
+async function purgeAllQuizCaches() {
+  try {
+    await dbQuery.run("DELETE FROM app_session WHERE key LIKE 'review_questions_schedule_%' OR key LIKE 'review_questions_topic_%'");
+    console.log('[Cache Clean] Successfully purged all cached quiz question sessions due to standards modification.');
+  } catch (err) {
+    console.error('[Cache Clean] Failed to purge cached quiz questions:', err.message);
+  }
 }
 
 // GET /api/topics/:id/instructions → Retrieve topic specific instructions list
@@ -7477,6 +7493,7 @@ app.post('/api/topics/:id/instructions', async (req, res) => {
     const key = 'topic_instructions_' + topicId;
     await saveSessionValue(key, JSON.stringify(instructions));
     console.log('Successfully saved topic instructions for topic ' + topicId + ' to database.');
+    await purgeAllQuizCaches();
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/topics/:id/instructions error:', err);
