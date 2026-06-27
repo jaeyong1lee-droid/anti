@@ -7368,10 +7368,12 @@ export default function App() {
     selectedTopicRef.current = targetTopic;
     
     // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
-    // If it's a restore, preserve the last active session ID.
+    // If it's a restore or there's already an active (uncompleted) session ID stored in localStorage, preserve it!
     let newSid;
-    if (isRestore) {
-      newSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || getOrCreateSessionId(topicId, finalScheduleId);
+    const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
+    if (isRestore || (existingSid && existingSid !== 'legacy_default')) {
+      newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId);
+      localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     } else {
       newSid = renewSessionId(topicId, finalScheduleId);
     }
@@ -7401,6 +7403,7 @@ export default function App() {
       if (mode === 'local') queryParams.push('local=true');
       if (finalScheduleId) queryParams.push(`scheduleId=${finalScheduleId}`);
       if (isPractice) queryParams.push('isPractice=true');
+      if (newSid) queryParams.push(`sessionId=${newSid}`);
       url += '?' + queryParams.join('&');
       
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);

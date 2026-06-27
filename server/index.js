@@ -2793,8 +2793,19 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       }
     }
 
-    const key = `review_questions_schedule_${resolvedScheduleId}`;
-    const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    const sId = req.query.sessionId || 'legacy_default';
+    const key = resolvedScheduleId
+      ? `review_questions_schedule_${resolvedScheduleId}_sess_${sId}`
+      : `review_questions_topic_${topicId}_sess_${sId}`;
+
+    let cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (!cached) {
+      // Fallback: Check if there is legacy data stored under the old non-session key format
+      const legacyKey = resolvedScheduleId
+        ? `review_questions_schedule_${resolvedScheduleId}`
+        : `review_questions_topic_${topicId}`;
+      cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
+    }
     if (cached && cached.value) {
       console.log(`[Cache Hit Check] Serving saved review questions for key ${key}`);
       const parsed = JSON.parse(cached.value);
