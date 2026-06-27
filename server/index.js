@@ -7531,8 +7531,7 @@ ${topicTitle}
     const analysisResult = rawAnalysis.trim();
     
     if (progressId) {
-      const lines = analysisResult.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 2);
-      const displayMsg = `0단계: AI 지침 분석 완료! 👉 [준수 조항]: ${lines.join(' / ')}`;
+      const displayMsg = `0단계: AI 지침 분석 완료!`;
       updateProgress(progressId, 0, displayMsg, 15);
       await new Promise(resolve => setTimeout(resolve, 800)); 
     }
