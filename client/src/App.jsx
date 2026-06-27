@@ -484,8 +484,7 @@ const cleanAndSanitizeMathText = (rawText) => {
   let cleaned = rawText;
   cleaned = cleanCorruptedFormula(cleaned);
 
-  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  cleaned = cleaned.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
+
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -536,8 +535,7 @@ const stripHtmlTagsFromRawData = (text) => {
   
   let clean = text.replace(/\u200b/g, '');
 
-  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  clean = clean.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
+
 
   // HTML 엔티티 복구
   clean = clean.replace(/&#x27;/g, "'")
@@ -996,24 +994,54 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   // 4.5. Render horizontal rules (divider lines) to HTML
   tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 1.2rem 0;" />');
 
-  // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists)
-  if (isMarkdown) {
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1. $2</div>');
-    tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">• $1</div>');
-    
-    tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
-    tempText = tempText.replace(/^[ \t]*([a-zA-Z가-힣]\))\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
-    tempText = tempText.replace(/^[ \t]*([①-⑳])\s*(.*?)$/gm, '<div style="margin-top: 1rem; margin-bottom: 1rem; padding-left: 1.25rem; text-indent: -1.25rem; color: #ffffff; line-height: 1.6;">$1 $2</div>');
-  } else {
-    tempText = tempText.replace(/^[ \t]*(?:\*|-|•)[ \t]+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">• $1</div>');
-    tempText = tempText.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1. $2</div>');
-    tempText = tempText.replace(/^[ \t]*(\d+\))\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
-    tempText = tempText.replace(/^[ \t]*([a-zA-Z가-힣]\))\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
-    tempText = tempText.replace(/^[ \t]*([①-⑳])\s*(.*?)$/gm, '<div style="margin-top: 0.2rem; margin-bottom: 0.2rem; padding-left: 1rem; text-indent: -1rem; color: #ffffff; line-height: 1.5;">$1 $2</div>');
+  // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists) - 멀티라인 범위화 적용
+  const lines = tempText.split('\n');
+  const renderedLines = [];
+  let currentListBlock = null;
+  const listMarkerRegex = /^(?:[ \t]*(?:\*|-|•)[ \t]+|(\d+)\.\s+|(\d+\))\s*|([a-zA-Z가-힣]\))\s*|([①-⑳])\s*)/;
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    const match = line.match(listMarkerRegex);
+
+    if (match) {
+      if (currentListBlock) {
+        renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
+      }
+      const isBullet = line.trim().startsWith('*') || line.trim().startsWith('-') || line.trim().startsWith('•');
+      let displayMarker = '';
+      if (isBullet) {
+        displayMarker = '• ';
+      }
+      
+      const contentWithoutMarker = line.replace(listMarkerRegex, '');
+      const marginVal = isMarkdown ? '1rem' : '0.2rem';
+      const paddingVal = isMarkdown ? '1.25rem' : '1rem';
+      const lineHi = isMarkdown ? '1.6' : '1.5';
+      
+      currentListBlock = {
+        outerStyleStart: `<div style="margin-top: ${marginVal}; margin-bottom: ${marginVal}; padding-left: ${paddingVal}; text-indent: -${paddingVal}; color: #ffffff; line-height: ${lineHi};">`,
+        content: [displayMarker + contentWithoutMarker]
+      };
+    } else if (line.trim() === '') {
+      if (currentListBlock) {
+        renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
+        currentListBlock = null;
+      }
+      renderedLines.push('');
+    } else {
+      if (currentListBlock) {
+        currentListBlock.content.push(line);
+      } else {
+        renderedLines.push(line);
+      }
+    }
   }
 
-  // 5.5. Remove extra newlines around list divs to prevent spacers/br from adding huge gaps
-  tempText = tempText.replace(/(<\/div>)\n+(<div style="[^"]*">(?:•|\d+\.|\d+\)|[a-zA-Z가-힣]\)|[①-⑳]))/g, '$1$2');
+  if (currentListBlock) {
+    renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
+  }
+  tempText = renderedLines.join('\n');
 
   // 6. Spacers for paragraph gaps
   if (isMarkdown) {
