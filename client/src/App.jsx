@@ -1412,15 +1412,17 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     );
   }
 
-  // Convert simple block math (double dollars) to inline math (single dollars) if they are short and simple
-  cleanedText = cleanedText.replace(/\$\$\s*([^\$\n]{1,50})\s*\$\$/g, (match, formula) => {
-    const lower = formula.toLowerCase();
-    const hasBlockElement = /\\frac|\\sqrt|\\sum|\\int|\\begin|\\end|\\\\|=/.test(lower);
-    if (!hasBlockElement) {
-      return `$${formula.trim()}$`;
+  // [한글 사이 수식 자동 인라인화 가드]:
+  // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
+  // 줄 바꿈 없이 텍스트 사이에 한 줄로 렌더링되도록 강제로 $ ... $ (인라인 수식)로 일괄 전환합니다.
+  const rawLines = cleanedText.split('\n');
+  const processedLines = rawLines.map(line => {
+    if (/[\uAC00-\uD7A3]/.test(line)) {
+      return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, '$$$1$');
     }
-    return match;
+    return line;
   });
+  cleanedText = processedLines.join('\n');
 
   // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
   cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
