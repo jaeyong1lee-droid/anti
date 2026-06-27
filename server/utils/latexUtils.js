@@ -3,8 +3,9 @@ export function tokenizeForHealing(text) {
   if (!text) return [];
   const tokens = [];
   let lastIndex = 0;
-  // Match table blocks or inline/display math blocks
-  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(\$\$.*?\$\$)|(\$[^\$\n]{1,200}\$)/gs;
+  
+  // Match table blocks or inline/display math blocks (matching multiline values cleanly)
+  const regex = /(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)|(<table>[\s\S]*?<\/table>)|(\$\$[\s\S]*?\$\$)|(\$[^\$]+?\$)/g;
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -12,7 +13,7 @@ export function tokenizeForHealing(text) {
     if (before) tokens.push({ type: 'text', content: before });
     
     const content = match[0];
-    if (content.startsWith('<!--START_TABLE-->')) {
+    if (content.startsWith('<!--START_TABLE-->') || content.startsWith('<table>')) {
       tokens.push({ type: 'table', content });
     } else {
       tokens.push({
@@ -225,75 +226,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     processed = wrapMarkdownTables(processed);
   }
 
-  // (Poisson's ratio healing logic moved below JSON escape restoration to prevent table breaking)
-
-  // [Self-Healing] Restore collapsed newlines for variable list items
-  processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
-
-  // 샵(#) 기호로 기형적으로 치환된 LaTeX 수식 기호 복원 (예: #sigma -> \sigma, #dfrac -> \dfrac)
-  // 단, 마크다운의 해시태그(# 제목)나 HTML 컬러코드(#ffffff)와 충돌나지 않도록, # 뒤에 영문 수식 명령어/변수명이 오는 경우만 정밀 매치
-  processed = processed.replace(/#([a-zA-Z]{1,20}(?:_[a-zA-Z0-9]+)?)\b/g, '\\$1');
-
-
-  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
-  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
-  // Collapse double or multiple backslashes before % to single backslash
-  processed = processed.replace(/\\{2,}%/g, '\\%');
-
-  // [Self-Healing] 수식 분리 오작동 치유 (예: \quad \text{N}$$_c or N$$_c or \text{N}$$_c -> $$\quad \text{N}_c)
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$\$(\s*_[a-zA-Z0-9])/g, '$$$$ $1$2');
-  processed = processed.replace(/(\\quad\s*\\text\{[a-zA-Z]+\}|\b[a-zA-Z]+\b|\b\\text\{[a-zA-Z]+\})\s*\$(\s*_[a-zA-Z0-9])/g, '$$ $1$2');
-
-  // Restore LaTeX commands corrupted by JSON escape sequence parsing (e.g. \neq -> \x0a + eq)
-  processed = processed.replace(/\x0a\s*eq\b/g, '\\neq')
-                       .replace(/\x0a\s*u\b/g, '\\nu')
-                       .replace(/\x0a\s*abla\b/g, '\\nabla')
-                       .replace(/\x0a\s*earrow\b/g, '\\nearrow')
-                       .replace(/\x0a\s*eg\b/g, '\\neg')
-                       .replace(/\x0a\s*i\b/g, '\\ni')
-                       .replace(/\x0a\s*otin\b/g, '\\notin')
-                       .replace(/\x0a\s*geq\b/g, '\\ngeq')
-                       .replace(/\x0a\s*leq\b/g, '\\nleq')
-                       .replace(/\x0a\s*sim\b/g, '\\nsim')
-                       .replace(/\x0a\s*cong\b/g, '\\ncong')
-                       .replace(/\x0a\s*parallel\b/g, '\\nparallel')
-                       .replace(/\x0a\s*ewline\b/g, '\\newline')
-                       .replace(/\x0a\s*oindent\b/g, '\\noindent');
-
-  processed = processed.replace(/\x09\s*heta\b/g, '\\theta')
-                       .replace(/\x09\s*au\b/g, '\\tau')
-                       .replace(/\x09\s*an\b/g, '\\tan')
-                       .replace(/\x09\s*imes\b/g, '\\times')
-                       .replace(/\x09\s*ilde\b/g, '\\tilde')
-                       .replace(/\x09\s*ext\b/g, '\\text')
-                       .replace(/\x09\s*frac\b/g, '\\tfrac')
-                       .replace(/\x09\s*riangle\b/g, '\\triangle')
-                       .replace(/\x09\s*op\b/g, '\\top')
-                       .replace(/\x09\s*o\b/g, '\\to');
-
-  processed = processed.replace(/\x0d\s*ho\b/g, '\\rho')
-                       .replace(/\x0d\s*ight\b/g, '\\right')
-                       .replace(/\x0d\s*ule\b/g, '\\rule')
-                       .replace(/\x0d\s*angle\b/g, '\\rangle')
-                       .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
-
-  processed = processed.replace(/\x08\s*eta\b/g, '\\beta')
-                       .replace(/\x08\s*ar\b/g, '\\bar')
-                       .replace(/\x08\s*egin\b/g, '\\begin')
-                       .replace(/\x08\s*ullet\b/g, '\\bullet');
-
-  processed = processed.replace(/\x0c\s*rac\b/g, '\\frac')
-                       .replace(/\x0c\s*orall\b/g, '\\forall')
-                       .replace(/\x0c\s*lat\b/g, '\\flat')
-                       .replace(/\x0c\s*rown\b/g, '\\frown');
-
-  // [Self-Healing] 포아송비 기호 오류 자가치유 (u 나 v 기호를 그리스 문자 \nu 로 변환)
-  // 포아송비 또는 비배수 조건 관련 문맥이 존재하는 경우에만 자가치유 작동 (간극수압 u 기호 오염 방지)
+  // 2. Pre-detect Poisson's ratio symbol to scope it correctly
   let poissonSymbol = passedPoissonSymbol;
   if (!poissonSymbol) {
     if (/포아송/i.test(processed)) {
-      // Check for 'u' used as Poisson's ratio ANYWHERE in the text (not just adjacent to 포아송).
-      // Patterns: 1+u, 1-u, 1-2u, $u$, $u_u$, $u'$, 포아송비(u), etc.
       if (/(?:\b1\s*[-+]\s*(?:2\s*)?u\b|\$u[_']|\$u\$|포아송[^.]{0,20}u)/i.test(processed)) {
         poissonSymbol = 'u';
       }
@@ -305,132 +241,182 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
   }
 
-  if (poissonSymbol) {
-    // Handle subscripted notation: $u_u$ → $\nu_u$, $v_u$ → $\nu_u$ (undrained Poisson's ratio)
-    processed = processed.replace(new RegExp(`\\$${poissonSymbol}(_[a-zA-Z0-9])\\$`, 'g'), (match, sub) => {
-      return `$\\nu${sub}$`;
-    });
-    // Handle primed notation: $u'$ → $\nu'$ (drained Poisson's ratio)
-    processed = processed.replace(new RegExp(`\\$${poissonSymbol}'\\$`, 'g'), "$\\nu'$");
-
-    const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$|\\b${poissonSymbol}\\b)`, 'g');
-    processed = processed.replace(standaloneRegex, (match) => {
-      return match.includes('$') ? '$\\nu$' : '\\nu';
-    });
-  }
-
-  // 항상 변환해야 하는 일반적인 포아송비 수식 관계식 치유 (예: 3(1-2u), 2(1+u), 3(1-2v), 2(1+v), 1-u, 1-v)
-  processed = processed.replace(/(?<=\b1\s*-\s*2\s*)[uv]\b/g, '\\nu');
-  processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
-  processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
-
-  // Also handle already space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z", "k_xeqk_z" -> "k_x \neq k_z")
-  const isMathVariable = (str) => {
-    if (/^[a-zA-Z0-9]$/.test(str)) return true;
-    if (/[\\_^]/.test(str)) return true;
-    if (str.startsWith('\\')) return true;
-    return false;
-  };
-  processed = processed.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, (match, p1, p2, offset, string) => {
-    if (string[offset - 1] === '\\') {
-      return match;
-    }
-    if (isMathVariable(p1) && isMathVariable(p2)) {
-      return `${p1} \\neq ${p2}`;
-    }
-    return match;
-  });
-
-  // 블록 수식($$) 바로 뒤에 공백이나 줄바꿈을 포함하여 단위가 올 경우, 해당 단위를 수식 블록 안의 \text{}로 병합하여 줄바꿈 방지
-  processed = processed.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*(\n*)\s*(kN\/m\\\^2|kN\/m\^2|kN\/m²|kN\/m\\\^3|kN\/m\^3|kN\/m³|t\/m\\\^3|t\/m\^3|t\/m³|kg\/cm\\\^2|kg\/cm\^2|kg\/cm²|kPa|MPa|kN|N|m|cm|mm|m\\\^2|m\^2|m²|m\\\^3|m\^3|m³|g\/cm\\\^3|g\/cm\^3|g\/cm³|kg\/m\\\^3|kg\/m\^3|kg\/m³|%)(?![a-zA-Z0-9가-힣])/gi, (match, math, newlines, unit) => {
-    let katexUnit = unit.replace(/\\/g, '');
-    if (katexUnit.includes('^')) {
-      const parts = katexUnit.split('^');
-      katexUnit = `\\text{${parts[0]}}^${parts[1]}`;
-    } else if (katexUnit.includes('²')) {
-      const base = katexUnit.replace('²', '');
-      katexUnit = `\\text{${base}}^2`;
-    } else if (katexUnit.includes('³')) {
-      const base = katexUnit.replace('³', '');
-      katexUnit = `\\text{${base}}^3`;
-    } else {
-      katexUnit = `\\text{${katexUnit}}`;
-    }
-    return `$$ ${math.trim()} \\quad ${katexUnit} $$`;
-  });
-
-  // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 병합하던 파괴적인 규칙 제거 (단일 개행의 자연스러운 가독성 보존)
-  // 단, 마크다운 표 영역은 기존처럼 개별 셀 치유 적용
-  const sections = processed.split(/(<!--START_TABLE-->[\s\S]*?<!--END_TABLE-->)/g);
-  processed = sections.map(section => {
-    if (section.startsWith('<!--START_TABLE-->')) {
-      return healMarkdownTable(section, poissonSymbol); // 표 영역은 개별 셀 치유 및 원본 구조 유지
-    }
-    return section;
-  }).join('');
-
-  // 불필요한 HTML 태그 정제
-  processed = processed.replace(/<br\s*\/?>/gi, '\n\n')
-                       .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
-                       .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
-                       .replace(/\n{3,}/g, '\n\n');
-
+  // [Step 1: Tokenize]
   const tokens = tokenizeForHealing(processed);
-  processed = tokens.map(token => {
+
+  // [Step 2: Area-Specific Healing]
+  const healedTokens = tokens.map(token => {
     if (token.type === 'table') {
-      return token.content; // Skip healing on the table structure itself!
+      // Tables are healed recursively inside their cells
+      return {
+        type: 'table',
+        content: healMarkdownTable(token.content, poissonSymbol)
+      };
     }
+
     if (token.type === 'text') {
       let t = token.content;
-      // Remove greedy formulaPattern wrapper and only escape angle brackets for safety
-      return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
-    } else {
-      let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
-      math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
-      math = math.replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
-                 .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
-      return token.type === 'block-math' ? `\n\n$$${math}$$\n\n` : `$${math}$`;
+      // Soft cleanup of obsolete HTML tags, keeping single-newlines untouched
+      t = t.replace(/<br\s*\/?>/gi, '\n\n')
+           .replace(/<div[^>]*>\s*[•*]?\s*([^<]+?)\s*<\/div>/gi, '\n\n* $1')
+           .replace(/<\/?(?:div|p|span|li|ul|ol)\b[^>]*>/gi, '')
+           .replace(/\n{3,}/g, '\n\n');
+      
+      // Escape loose inequality brackets for KaTeX safety
+      t = t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
+      
+      // Restore input fields
+      t = t.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
+
+      // Add soft padding for collapsed variable list items if matching
+      t = t.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
+
+      return { type: 'text', content: t };
     }
-  }).join('');
 
-  // 4. 절대 준수 수칙: 토큰 기반 인터페이스 외부 공백 완벽 마킹
-  const finalTokens = tokenizeForHealing(processed);
+    // Math token (inline-math or block-math)
+    let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
+
+    // Double escape fixes
+    math = math.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1')
+               .replace(/\\{2,}%/g, '\\%');
+
+    // JSON Escape restoration
+    math = math.replace(/\x0a\s*eq\b/g, '\\neq')
+               .replace(/\x0a\s*u\b/g, '\\nu')
+               .replace(/\x0a\s*abla\b/g, '\\nabla')
+               .replace(/\x0a\s*earrow\b/g, '\\nearrow')
+               .replace(/\x0a\s*eg\b/g, '\\neg')
+               .replace(/\x0a\s*i\b/g, '\\ni')
+               .replace(/\x0a\s*otin\b/g, '\\notin')
+               .replace(/\x0a\s*geq\b/g, '\\ngeq')
+               .replace(/\x0a\s*leq\b/g, '\\nleq')
+               .replace(/\x0a\s*sim\b/g, '\\nsim')
+               .replace(/\x0a\s*cong\b/g, '\\ncong')
+               .replace(/\x0a\s*parallel\b/g, '\\nparallel')
+               .replace(/\x0a\s*ewline\b/g, '\\newline')
+               .replace(/\x0a\s*oindent\b/g, '\\noindent');
+
+    math = math.replace(/\x09\s*heta\b/g, '\\theta')
+               .replace(/\x09\s*au\b/g, '\\tau')
+               .replace(/\x09\s*an\b/g, '\\tan')
+               .replace(/\x09\s*imes\b/g, '\\times')
+               .replace(/\x09\s*ilde\b/g, '\\tilde')
+               .replace(/\x09\s*ext\b/g, '\\text')
+               .replace(/\x09\s*frac\b/g, '\\frac')
+               .replace(/\x09\s*riangle\b/g, '\\triangle')
+               .replace(/\x09\s*op\b/g, '\\top')
+               .replace(/\x09\s*o\b/g, '\\to');
+
+    math = math.replace(/\x0d\s*ho\b/g, '\\rho')
+               .replace(/\x0d\s*ight\b/g, '\\right')
+               .replace(/\x0d\s*ule\b/g, '\\rule')
+               .replace(/\x0d\s*angle\b/g, '\\rangle')
+               .replace(/\x0d\s*ightarrow\b/g, '\\rightarrow');
+
+    math = math.replace(/\x08\s*eta\b/g, '\\beta')
+               .replace(/\x08\s*ar\b/g, '\\bar')
+               .replace(/\x08\s*egin\b/g, '\\begin')
+               .replace(/\x08\s*ullet\b/g, '\\bullet');
+
+    math = math.replace(/\x0c\s*rac\b/g, '\\frac')
+               .replace(/\x0c\s*orall\b/g, '\\forall')
+               .replace(/\x0c\s*lat\b/g, '\\flat')
+               .replace(/\x0c\s*rown\b/g, '\\frown');
+
+    // Poisson's ratio symbol healing inside math context
+    if (poissonSymbol) {
+      math = math.replace(new RegExp(`\\b${poissonSymbol}(_[a-zA-Z0-9])\\b`, 'g'), '\\nu$1')
+                 .replace(new RegExp(`\\b${poissonSymbol}'\\b`, 'g'), "\\nu'");
+      
+      const standaloneRegex = new RegExp(`(?<!\\\\)\\b${poissonSymbol}\\b`, 'g');
+      math = math.replace(standaloneRegex, '\\nu');
+    }
+
+    // Always-on Poisson's ratio shorthand fixes
+    math = math.replace(/(?<=\b1\s*-\s*2\s*)[uv]\b/g, '\\nu')
+               .replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu')
+               .replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
+
+    // Fix space-corrupted "eq" symbols (e.g. "k_x eq k_z" -> "k_x \neq k_z")
+    math = math.replace(/\b([a-zA-Z0-9_\\'\^]+)\s*eq\s*([a-zA-Z0-9_\\'\^]+)\b/g, '$1 \\neq $2');
+
+    // Recover missing backslashes
+    math = healBackslashes(math);
+
+    // KaTeX spaces and alignment cleanups
+    math = math.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ')
+               .replace(/</g, '\\lt ').replace(/>/g, '\\gt ')
+               .replace(/_\s+/g, '_').replace(/\^\s+/g, '^');
+
+    // Restore hash tags inside math
+    math = math.replace(/#([a-zA-Z]{1,20}(?:_[a-zA-Z0-9]+)?)\b/g, '\\$1');
+
+    // Merge unit symbols attached to blocks if possible
+    // (Handled globally or inside assembler. Let's keep it clean here)
+
+    // Elevate inline fractions or sum symbols to block equations (Aesthetic rule 2)
+    let type = token.type;
+    if (type === 'inline-math' && /\\(frac|dfrac|sum|int|triangle)\b/i.test(math)) {
+      type = 'block-math';
+    }
+
+    return { type, content: math };
+  });
+
+  // [Step 3: Assemble]
   let result = '';
+  for (let i = 0; i < healedTokens.length; i++) {
+    const current = healedTokens[i];
 
-  for (let i = 0; i < finalTokens.length; i++) {
-    const current = finalTokens[i];
-    if (i === 0) {
+    if (current.type === 'table') {
       result += current.content;
       continue;
     }
-    const prev = finalTokens[i - 1];
-    let needSpace = false;
 
-    if (prev.type === 'text' && current.type !== 'text') {
-      const lastChar = prev.content[prev.content.length - 1];
-      if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type === 'text') {
-      const firstChar = current.content[0];
-      if (firstChar && !/\s/.test(firstChar) && !/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) needSpace = true;
-    } else if (prev.type !== 'text' && current.type !== 'text') {
-      needSpace = true;
+    if (current.type === 'block-math') {
+      result = result.trimEnd();
+      result += `\n\n$$${current.content}$$\n\n`;
+      continue;
     }
-    result += needSpace ? ' ' + current.content : current.content;
+
+    if (current.type === 'inline-math') {
+      const prev = healedTokens[i - 1];
+      if (prev && prev.type === 'text') {
+        const lastChar = prev.content[prev.content.length - 1];
+        if (lastChar && !/\s/.test(lastChar) && !/[\(\[\{\'\"]/.test(lastChar)) {
+          result += ' ';
+        }
+      }
+      result += `$${current.content}$`;
+      continue;
+    }
+
+    // Text token assembly
+    let textVal = current.content;
+    const prev = healedTokens[i - 1];
+    if (prev && prev.type === 'inline-math') {
+      const firstChar = textVal[0];
+      const isKoreanParticle = /^[은는이가을를의로에와과도만]/.test(textVal) || /^(?:입니다|일때|라하면|값은)/.test(textVal);
+      
+      if (firstChar && !/\s/.test(firstChar)) {
+        if (isKoreanParticle) {
+          // Attach tightly to particle suffix
+        } else if (!/[\,\.\?\!\)\]\}\:\;\*]/.test(firstChar)) {
+          result += ' ';
+        }
+      }
+    }
+    result += textVal;
   }
 
-  // 한국어 조사 결합 어미 공백 규격 조율
-  result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
-  result = result.replace(/[ \t]+/g, ' ').trim();
-
-  // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
-  result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
-
+  // Post cleanups
+  result = result.replace(/[ \t]+/g, ' ');
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
   }
 
-  // [🚨 극단적 비상 복구 필터 🚨]
-  // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
+  // Restore legacy KaTeX html block structures if any
   result = result.replace(
     /<\s*(div|span)\s*class\b[\s\S]*?<\/\s*\1\s*>/gi,
     (htmlBlock) => {
@@ -443,7 +429,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }
   );
 
-  return result;
+  return result.trim();
 }
 
 // 오브젝트 딥 힐러 트리구조
