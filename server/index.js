@@ -2729,6 +2729,8 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
   let progressTimer = null;
   if (progressId) {
+    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
+    await new Promise(resolve => setTimeout(resolve, 800));
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
   }
 
@@ -3478,6 +3480,8 @@ app.post('/api/grade-subjective', async (req, res) => {
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, temperature: 0.0, progressId });
 
   if (progressId) {
+    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
+    await new Promise(resolve => setTimeout(resolve, 800));
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
   }
 
@@ -3632,6 +3636,8 @@ app.post('/api/question/regenerate', async (req, res) => {
 
   let progressTimer = null;
   if (progressId) {
+    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
+    await new Promise(resolve => setTimeout(resolve, 800));
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
   }
 
@@ -4435,6 +4441,8 @@ app.post('/api/question/adjust', async (req, res) => {
 
   let progressTimer = null;
   if (progressId) {
+    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
+    await new Promise(resolve => setTimeout(resolve, 800));
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 의견 반영 조절 시작...', 50, 1500, 5);
   }
 
@@ -4960,6 +4968,11 @@ ${formatRequirement}
 
 // 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini (5문항 분할 배치 최적화 버전)
 app.post('/api/exam/all', async (req, res) => {
+  const progressId = req.query.progressId || req.body.progressId;
+  if (progressId) {
+    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
+    await new Promise(resolve => setTimeout(resolve, 800));
+  }
   try {
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
