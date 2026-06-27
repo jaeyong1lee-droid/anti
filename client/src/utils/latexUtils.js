@@ -687,7 +687,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     if (section.startsWith('<!--START_TABLE-->')) {
       return healMarkdownTable(section, poissonSymbol); // 표 영역은 개별 셀 치유 및 원본 구조 유지
     }
-    return section.replace(/(?<!\n)\n(?!\n|\s*(?:###|\*|[-–—−•·▪▫▶▷]|\d+\.|\d+\)|[a-zA-Z가-힣]\.|[a-zA-Z가-힣]\)|[a-zA-Z0-9_\\\^\(\)\{\}\$]+\s*:))/g, ' ');
+    // 문장 한복판에 쪼개진 단일 줄바꿈(\n)을 공백으로 병합하던 규칙을 비활성화하여 줄바꿈을 보존합니다.
+    return section;
   }).join('');
 
   // 불필요한 HTML 태그 정제
