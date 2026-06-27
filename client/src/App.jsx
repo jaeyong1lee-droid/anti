@@ -2920,6 +2920,16 @@ export default function App() {
       localStorage.setItem('anti_last_sync_time', date.toISOString());
     }
   };
+  const [lastNeonSyncTime, setLastNeonSyncTime] = useState(() => {
+    const saved = localStorage.getItem('anti_last_neon_sync_time');
+    return saved ? new Date(saved) : null;
+  });
+  const updateNeonSyncTime = (date) => {
+    setLastNeonSyncTime(date);
+    if (date) {
+      localStorage.setItem('anti_last_neon_sync_time', date.toISOString());
+    }
+  };
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
@@ -5666,6 +5676,7 @@ export default function App() {
           .then(data => {
             if (data.success) {
               updateSyncTime(new Date());
+              updateNeonSyncTime(new Date());
             }
           })
           .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
@@ -5770,6 +5781,7 @@ export default function App() {
               }
             }
             updateSyncTime(new Date());
+            updateNeonSyncTime(new Date());
           } else if (!selectedTopic.isReadOnly) {
             // Check if it was completed on another device
             const scheduleId = selectedTopic.schedule_id;
@@ -7382,6 +7394,7 @@ export default function App() {
 
         if (finalData.isCached && (finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText)) {
           updateSyncTime(new Date());
+          updateNeonSyncTime(new Date());
           setSelectedAnswers(finalData.selectedAnswers || {});
           setRevealedQuestions(finalData.revealedQuestions || {});
           setTableAnswers(finalData.tableAnswers || {});
@@ -7518,6 +7531,7 @@ export default function App() {
             .then(data => {
               if (data.success) {
                 updateSyncTime(new Date());
+                updateNeonSyncTime(new Date());
               }
             })
             .catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
@@ -12137,6 +12151,7 @@ export default function App() {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
               updateSyncTime(new Date());
+              updateNeonSyncTime(new Date());
               setSelectedTopic(s.selectedTopic);
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
               if (isServerSidAbsolute) {
@@ -12688,11 +12703,18 @@ export default function App() {
                   {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
                 </span>
                 {isDesktop && (
-                  <span className="text-[10px] md:text-xs font-normal text-emerald-400/90 tracking-normal normal-case select-none px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-800/30">
-                    vercel : {lastSyncTime 
-                      ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
-                      : '대기 중'}
-                  </span>
+                  <div className="flex flex-col gap-1 select-none">
+                    <span className="text-[9px] md:text-[10px] font-medium text-emerald-400/95 tracking-normal normal-case px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-800/30">
+                      vercel : {lastSyncTime 
+                        ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
+                        : '대기 중'}
+                    </span>
+                    <span className="text-[9px] md:text-[10px] font-medium text-cyan-400/95 tracking-normal normal-case px-2 py-0.5 rounded-full bg-cyan-950/40 border border-cyan-800/30">
+                      neon : {lastNeonSyncTime 
+                        ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
+                        : '대기 중'}
+                    </span>
+                  </div>
                 )}
               </h1>
               {(!(!isDesktop && !isMobileLandscape)) && (
