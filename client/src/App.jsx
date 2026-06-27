@@ -7284,6 +7284,9 @@ export default function App() {
                   if (val && String(val).trim() !== '') count++;
                 });
               }
+              if (d.tutorAnswers) {
+                count += Object.keys(d.tutorAnswers).length;
+              }
               return count;
             };
             const localSolved = countSolved(localData);

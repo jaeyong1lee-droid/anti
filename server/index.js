@@ -2800,55 +2800,56 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     let cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
 
-    // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
-    if (!cached && resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined') {
-      const pattern = `review_questions_schedule_${resolvedScheduleId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
+    // [🚨 크로스 디바이스 세션 통합 발굴 및 자동 바인딩 폴백 🚨]
+    let newestSessionRow = null;
+    const patterns = [];
+    if (resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined') {
+      patterns.push(`review_questions_schedule_${resolvedScheduleId}_sess_%`);
+    }
+    patterns.push(`review_questions_topic_${topicId}_sess_%`);
+
+    if (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined') {
+      const existingPending = await dbQuery.get(
+        `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'pending' OR status = 'practice') ORDER BY id DESC LIMIT 1`,
+        [topicId]
+      );
+      if (existingPending) {
+        patterns.push(`review_questions_schedule_${existingPending.id}_sess_%`);
+      }
+    }
+
+    for (const pattern of patterns) {
+      const row = await dbQuery.get(
         'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
         [pattern]
       );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device POST Cache] Auto-bound active session from key: ${newestSessionRow.key}`);
-        cached = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(cached.value);
-          const prefix = `review_questions_schedule_${resolvedScheduleId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            cached.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse auto-bound sessionId in POST cache check:', e);
+      if (row) {
+        if (!newestSessionRow) {
+          newestSessionRow = row;
         }
       }
     }
 
-    if (!cached && (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined')) {
-      const pattern = `review_questions_topic_${topicId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
-        [pattern]
-      );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device POST Cache] Auto-bound active session by topic from key: ${newestSessionRow.key}`);
-        cached = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(cached.value);
-          const prefix = `review_questions_topic_${topicId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            cached.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse auto-bound sessionId by topic in POST cache check:', e);
+    if (!cached && newestSessionRow) {
+      console.log(`[Unified Cross-Device Cache] Auto-bound active session from key: ${newestSessionRow.key}`);
+      cached = newestSessionRow;
+      try {
+        const parsedVal = JSON.parse(cached.value);
+        let extractedSid = '';
+        if (newestSessionRow.key.includes('_sess_')) {
+          const parts = newestSessionRow.key.split('_sess_');
+          extractedSid = parts[parts.length - 1];
         }
+        if (parsedVal && extractedSid) {
+          parsedVal.sessionId = extractedSid;
+          cached.value = JSON.stringify(parsedVal);
+        }
+      } catch (e) {
+        console.warn('Failed to parse auto-bound sessionId in unified cache check:', e);
       }
     }
 
     if (!cached) {
-      // Fallback: Check if there is legacy data stored under the old non-session key format
       const legacyKey = resolvedScheduleId
         ? `review_questions_schedule_${resolvedScheduleId}`
         : `review_questions_topic_${topicId}`;
@@ -7159,6 +7160,9 @@ app.post('/api/session/review', async (req, res) => {
         Object.values(data.tutorInputText).forEach(val => {
           if (val && String(val).trim() !== '') count++;
         });
+      }
+      if (data.tutorAnswers) {
+        count += Object.keys(data.tutorAnswers).length;
       }
       return count;
     };
