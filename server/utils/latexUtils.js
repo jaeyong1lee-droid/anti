@@ -672,8 +672,9 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     }).join('\n');
   }
 
-  // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
-  processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
+  // [🔥 이중 이스케이프 축소 규칙 비활성화]:
+  // JSON 문자열 파싱 중 백슬래시 유실을 예방하기 위해, 백슬래시 이중화를 강제로 축소하지 않고 온전히 유지합니다.
+  // processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
   processed = processed.replace(/\\{2,}%/g, '\\%');
 
