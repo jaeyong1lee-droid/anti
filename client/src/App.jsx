@@ -14046,11 +14046,9 @@ export default function App() {
           <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
             <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
               <div className="flex items-center gap-2.5 min-w-0">
-                {selectedTopic.schedule_id && (
-                  <span className="text-[10px] font-black text-slate-500 select-none shrink-0 border border-slate-800 bg-slate-900/60 px-1.5 py-0.5 rounded-md">
-                    ID: {selectedTopic.schedule_id}
-                  </span>
-                )}
+                <span className="text-[10px] font-black text-slate-500 select-none shrink-0 border border-slate-800 bg-slate-900/60 px-1.5 py-0.5 rounded-md">
+                  {String(selectedTopic.id || 0).padStart(2, '0')} - {String(selectedTopic.review_round || 0).padStart(2, '0')}
+                </span>
                 <Brain className="w-6 h-6 sm:w-7 sm:h-7 text-violet-400 shrink-0" />
                 <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
                   {selectedTopic.title}
