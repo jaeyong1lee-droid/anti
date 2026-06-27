@@ -2910,6 +2910,7 @@ export default function App() {
   
   // Views: 'dashboard' (today's tasks) or 'all_topics' (all materials tracker)
   const [viewMode, setViewMode] = useState('dashboard');
+  const [lastSyncTime, setLastSyncTime] = useState(null);
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
@@ -5636,7 +5637,14 @@ export default function App() {
             chatHistory,
             savedQuizScroll: quizBodyRef.current?.scrollTop || 0
           })
-        }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setLastSyncTime(new Date());
+            }
+          })
+          .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
       }, 30000); // 30-second debounce for lightweight performance
 
       return () => clearTimeout(delayDebounceFn);
@@ -7348,6 +7356,7 @@ export default function App() {
         }
 
         if (finalData.isCached && (finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText)) {
+          setLastSyncTime(new Date());
           setSelectedAnswers(finalData.selectedAnswers || {});
           setRevealedQuestions(finalData.revealedQuestions || {});
           setTableAnswers(finalData.tableAnswers || {});
@@ -7479,7 +7488,14 @@ export default function App() {
               tutorAnswers: initialTutorAnswers,
               savedQuizScroll: 0
             })
-          }).catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setLastSyncTime(new Date());
+              }
+            })
+            .catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
         }
 
         let localScroll = undefined;
@@ -12095,6 +12111,7 @@ export default function App() {
             if (resData.success && resData.data) {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
+              setLastSyncTime(new Date());
               setSelectedTopic(s.selectedTopic);
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
               if (isServerSidAbsolute) {
@@ -12638,8 +12655,17 @@ export default function App() {
               )}
             </div>
             <div>
-              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-                {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight flex items-center gap-3">
+                <span className="bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                  {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
+                </span>
+                {isDesktop && (
+                  <span className="text-[10px] md:text-xs font-normal text-emerald-400/90 tracking-normal normal-case select-none px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-800/30">
+                    vercel : {lastSyncTime 
+                      ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
+                      : '대기 중'}
+                  </span>
+                )}
               </h1>
               {(!(!isDesktop && !isMobileLandscape)) && (
                 <p className="text-xs md:text-sm text-slate-400 font-medium">
