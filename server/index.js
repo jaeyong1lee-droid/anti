@@ -6960,11 +6960,19 @@ app.get('/api/session/review', async (req, res) => {
       }
     }
 
+    const sId = req.query.sessionId || 'legacy_default';
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}`
-      : `review_questions_topic_${topicId}`;
+      ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+      : `review_questions_topic_${topicId}_sess_${sId}`;
     
-    const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (!row) {
+      // Fallback: Check if there is legacy data stored under the old non-session key format
+      const legacyKey = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+        ? `review_questions_schedule_${scheduleId}`
+        : `review_questions_topic_${topicId}`;
+      row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
+    }
     if (row && row.value) {
       const data = JSON.parse(row.value);
       if (data) {
@@ -7019,9 +7027,10 @@ app.post('/api/session/review', async (req, res) => {
       }
     }
 
+    const sId = sessionId || 'legacy_default';
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}`
-      : `review_questions_topic_${topicId}`;
+      ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+      : `review_questions_topic_${topicId}_sess_${sId}`;
 
     // Compare solved count to prevent overwriting progress with empty or less progress
     const countSolved = (data) => {

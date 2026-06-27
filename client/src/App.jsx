@@ -5598,8 +5598,8 @@ export default function App() {
       const debounceTimer = setTimeout(() => {
         try {
           const key = selectedTopic.schedule_id 
-            ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-            : `anti_review_progress_${selectedTopic.id}`;
+            ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${reviewSessionId || 'default'}`
+            : `anti_review_progress_${selectedTopic.id}_${reviewSessionId || 'default'}`;
           localStorage.setItem(key, JSON.stringify({
             revealedQuestions,
             selectedAnswers,
@@ -5615,7 +5615,7 @@ export default function App() {
       }, 500);
       return () => clearTimeout(debounceTimer);
     }
-  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
 
   // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
   useEffect(() => {
@@ -7235,8 +7235,8 @@ export default function App() {
         // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
         let finalData = data;
         const localKey = finalScheduleId 
-          ? `anti_review_progress_sched_${finalScheduleId}`
-          : `anti_review_progress_${topicId}`;
+          ? `anti_review_progress_sched_${finalScheduleId}_${newSid || 'default'}`
+          : `anti_review_progress_${topicId}_${newSid || 'default'}`;
         const localSaved = localStorage.getItem(localKey);
         
         if (localSaved) {
@@ -12020,7 +12020,8 @@ export default function App() {
             const scheduleId = s.selectedTopic.schedule_id || '';
             
             // Try to fetch the cached review session from the server first
-            const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}`);
+            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
+            const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
             const resData = await res.json();
             
             if (resData.success && resData.data) {
@@ -12036,9 +12037,10 @@ export default function App() {
               }
 
               // Load the one with the most solved questions!
+              const finalSid = server.sessionId || activeSid || 'default';
               const localKey = s.selectedTopic.schedule_id 
-                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}`
-                : `anti_review_progress_${s.selectedTopic.id}`;
+                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${finalSid}`
+                : `anti_review_progress_${s.selectedTopic.id}_${finalSid}`;
               const localSaved = localStorage.getItem(localKey);
               let finalData = server;
               
