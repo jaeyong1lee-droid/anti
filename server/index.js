@@ -8654,12 +8654,51 @@ async function autoGitPushStandards(key) {
   if (process.env.VERCEL) {
     return;
   }
+  
+  const getGitCmd = async () => {
+    try {
+      await execAsync('git --version');
+      return 'git';
+    } catch {
+      const paths = [
+        'C:\\Program Files\\Git\\cmd\\git.exe',
+        'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Git', 'cmd', 'git.exe')
+      ];
+      for (const p of paths) {
+        if (fs.existsSync(p)) {
+          return `"${p}"`;
+        }
+      }
+      return 'git';
+    }
+  };
+
   try {
+    const gitCmd = await getGitCmd();
+    console.log(`[Auto Git Sync] Resolved Git command path: ${gitCmd}`);
     console.log(`[Auto Git Sync] Starting automatic git commit & push for ${key}...`);
-    await execAsync('git add .');
+
+    const execOpts = {
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_ASKPASS: 'true'
+      }
+    };
+
+    try {
+      await execAsync(`${gitCmd} config --get user.name`, execOpts);
+    } catch {
+      console.log('[Auto Git Sync] user.name is missing. Setting up fallback configuration...');
+      await execAsync(`${gitCmd} config --local user.name "AI Tutor AutoSync"`, execOpts);
+      await execAsync(`${gitCmd} config --local user.email "tutor-autosync@anti.internal"`, execOpts);
+    }
+
+    await execAsync(`${gitCmd} add .`, execOpts);
     const commitMsg = `feat: auto-update ${key} standards from UI [${new Date().toLocaleTimeString()}]`;
-    await execAsync(`git commit -m "${commitMsg}"`);
-    await execAsync('git push');
+    await execAsync(`${gitCmd} commit -m "${commitMsg}"`, execOpts);
+    await execAsync(`${gitCmd} push origin main`, execOpts);
     console.log(`[Auto Git Sync] Successfully pushed ${key} updates to GitHub origin!`);
   } catch (err) {
     if (err.message && err.message.includes('nothing to commit')) {
