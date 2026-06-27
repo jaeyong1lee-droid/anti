@@ -6112,10 +6112,11 @@ export default function App() {
 
     // 1) Save active review session immediately to localStorage (synchronously)
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-      console.log('[forceSaveActiveSessions] Immediately saving active review session');
+      console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
+      const activeSid = reviewSessionId || 'default';
       const key = selectedTopic.schedule_id 
-        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-        : `anti_review_progress_${selectedTopic.id}`;
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
+        : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
       try {
         localStorage.setItem(key, JSON.stringify({
           revealedQuestions,
@@ -6137,6 +6138,7 @@ export default function App() {
         body: JSON.stringify({
           topicId: selectedTopic.id,
           scheduleId: selectedTopic.schedule_id,
+          sessionId: activeSid,
           questions: aiQuestions,
           selectedAnswers,
           revealedQuestions,
@@ -14391,23 +14393,26 @@ export default function App() {
               </button>
               {selectedTopic && (
                 <button
-                  onClick={() => { 
-                    if (selectedTopic?.id) {
-                      const deleteUrl = selectedTopic.schedule_id
-                        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
-                        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-                      fetch(deleteUrl, { method: 'DELETE' })
-                        .catch(e => console.warn('세션 초기화 실패:', e));
+                onClick={() => { 
+                  if (selectedTopic?.id) {
+                    const deleteUrl = selectedTopic.schedule_id
+                      ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${selectedTopic.schedule_id}`
+                      : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
+                    fetch(deleteUrl, { method: 'DELETE' })
+                      .catch(e => console.warn('세션 초기화 실패:', e));
 
-                      // Remove both schedule-specific and topic-specific progress keys to guarantee complete cleanup
-                      if (selectedTopic.schedule_id) {
-                        localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}`);
-                      }
-                      localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
+                    // Remove both schedule-specific and topic-specific progress keys to guarantee complete cleanup
+                    const activeSid = reviewSessionId || 'default';
+                    if (selectedTopic.schedule_id) {
+                      localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`);
+                      localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}`);
                     }
-                    localStorage.removeItem('anti_last_active_review');
-                    setLastActiveReview(null);
-                    setSelectedTopic(null);
+                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}_${activeSid}`);
+                    localStorage.removeItem(`anti_review_progress_${selectedTopic.id}`);
+                  }
+                  localStorage.removeItem('anti_last_active_review');
+                  setLastActiveReview(null);
+                  setSelectedTopic(null);
                     setAiQuestions([]);
                     setRevealedQuestions({});
                     setSelectedAnswers({});
