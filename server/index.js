@@ -2799,6 +2799,54 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       : `review_questions_topic_${topicId}_sess_${sId}`;
 
     let cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+
+    // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
+    if (!cached && resolvedScheduleId && resolvedScheduleId !== '9999' && resolvedScheduleId !== 'null' && resolvedScheduleId !== 'undefined') {
+      const pattern = `review_questions_schedule_${resolvedScheduleId}_sess_%`;
+      const newestSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        [pattern]
+      );
+      if (newestSessionRow) {
+        console.log(`[Cross-Device POST Cache] Auto-bound active session from key: ${newestSessionRow.key}`);
+        cached = newestSessionRow;
+        try {
+          const parsedVal = JSON.parse(cached.value);
+          const prefix = `review_questions_schedule_${resolvedScheduleId}_sess_`;
+          const extractedSid = newestSessionRow.key.replace(prefix, '');
+          if (parsedVal && extractedSid) {
+            parsedVal.sessionId = extractedSid;
+            cached.value = JSON.stringify(parsedVal);
+          }
+        } catch (e) {
+          console.warn('Failed to parse auto-bound sessionId in POST cache check:', e);
+        }
+      }
+    }
+
+    if (!cached && (!resolvedScheduleId || resolvedScheduleId === '9999' || resolvedScheduleId === 'null' || resolvedScheduleId === 'undefined')) {
+      const pattern = `review_questions_topic_${topicId}_sess_%`;
+      const newestSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        [pattern]
+      );
+      if (newestSessionRow) {
+        console.log(`[Cross-Device POST Cache] Auto-bound active session by topic from key: ${newestSessionRow.key}`);
+        cached = newestSessionRow;
+        try {
+          const parsedVal = JSON.parse(cached.value);
+          const prefix = `review_questions_topic_${topicId}_sess_`;
+          const extractedSid = newestSessionRow.key.replace(prefix, '');
+          if (parsedVal && extractedSid) {
+            parsedVal.sessionId = extractedSid;
+            cached.value = JSON.stringify(parsedVal);
+          }
+        } catch (e) {
+          console.warn('Failed to parse auto-bound sessionId by topic in POST cache check:', e);
+        }
+      }
+    }
+
     if (!cached) {
       // Fallback: Check if there is legacy data stored under the old non-session key format
       const legacyKey = resolvedScheduleId
@@ -6977,6 +7025,57 @@ app.get('/api/session/review', async (req, res) => {
       : `review_questions_topic_${topicId}_sess_${sId}`;
     
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    
+    // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
+    // 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면,
+    // DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
+    if (!row && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
+      const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
+      const newestSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        [pattern]
+      );
+      if (newestSessionRow) {
+        console.log(`[Cross-Device Sync] Auto-bound active session from key: ${newestSessionRow.key}`);
+        row = newestSessionRow;
+        try {
+          const parsedVal = JSON.parse(row.value);
+          const prefix = `review_questions_schedule_${scheduleId}_sess_`;
+          const extractedSid = newestSessionRow.key.replace(prefix, '');
+          if (parsedVal && extractedSid) {
+            parsedVal.sessionId = extractedSid;
+            row.value = JSON.stringify(parsedVal);
+          }
+        } catch (e) {
+          console.warn('Failed to parse and inject auto-bound sessionId:', e);
+        }
+      }
+    }
+
+    // 토픽 ID 기준 최신 세션 폴백 (보너스/연습 세션 등 scheduleId가 없는 복습인 경우)
+    if (!row && (!scheduleId || scheduleId === '9999' || scheduleId === 'null' || scheduleId === 'undefined')) {
+      const pattern = `review_questions_topic_${topicId}_sess_%`;
+      const newestSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        [pattern]
+      );
+      if (newestSessionRow) {
+        console.log(`[Cross-Device Sync] Auto-bound active session by topic from key: ${newestSessionRow.key}`);
+        row = newestSessionRow;
+        try {
+          const parsedVal = JSON.parse(row.value);
+          const prefix = `review_questions_topic_${topicId}_sess_`;
+          const extractedSid = newestSessionRow.key.replace(prefix, '');
+          if (parsedVal && extractedSid) {
+            parsedVal.sessionId = extractedSid;
+            row.value = JSON.stringify(parsedVal);
+          }
+        } catch (e) {
+          console.warn('Failed to parse and inject auto-bound sessionId:', e);
+        }
+      }
+    }
+
     if (!row) {
       // Fallback: Check if there is legacy data stored under the old non-session key format
       const legacyKey = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
