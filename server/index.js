@@ -8706,23 +8706,13 @@ async function backfillPastScheduleScores() {
 }
 
 function mergeDefaultAndDbStandards(defaultList, dbList) {
-  if (!Array.isArray(dbList)) return defaultList;
-  const defaultMap = new Map(defaultList.map(item => [item.id, item]));
-  const mergedList = [];
-  for (const dbItem of dbList) {
-    if (defaultMap.has(dbItem.id)) {
-      const defaultItem = defaultMap.get(dbItem.id);
-      mergedList.push({ ...defaultItem });
-      defaultMap.delete(dbItem.id);
-    } else {
-      mergedList.push(dbItem);
-    }
+  // DB에 저장된 지침 목록이 존재한다면, 사용자의 추가/수정/삭제 내역이 100% 보존되도록 DB 목록을 그대로 최종 권위로 삼아 반환합니다.
+  if (Array.isArray(dbList)) {
+    return dbList;
   }
-  for (const remainingItem of defaultMap.values()) {
-    mergedList.push(remainingItem);
-  }
-  return mergedList;
+  return defaultList;
 }
+
 
 async function initializeEngineeringStandards() {
   try {

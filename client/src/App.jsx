@@ -16101,7 +16101,7 @@ export default function App() {
                 onClick={() => setShowManageGenerationStandardsModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
-                닫기
+                닫기 (적용 완료)
               </button>
             </div>
           </div>
@@ -16286,7 +16286,7 @@ export default function App() {
                 onClick={() => setShowManageLockscreenStandardsModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
-                닫기
+                닫기 (적용 완료)
               </button>
             </div>
           </div>
@@ -16555,7 +16555,7 @@ export default function App() {
                 onClick={() => setShowManageTopicInstructionsModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
-                닫기
+                닫기 (적용 완료)
               </button>
             </div>
           </div>
