@@ -3484,15 +3484,6 @@ try {
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
-  let standardsAnalysis = '';
-  const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: 0.0, progressId });
-  };
-  if (progressId) {
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
-    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
-  }
 
   let dynamicGradingStandards = GRADING_STANDARDS;
   let dynamicEngineeringStandards = ENGINEERING_STANDARDS;
@@ -3518,6 +3509,16 @@ app.post('/api/grade-subjective', async (req, res) => {
     }
   } catch (dbErr) {
     console.error('Failed to dynamically fetch engineering standards from database:', dbErr);
+  }
+
+  let standardsAnalysis = '';
+  const localCallLLM = (sys, prompt, img, scenario, opts) => {
+    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: 0.0, progressId });
+  };
+  if (progressId) {
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
+    updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
   }
 
   let attempt = 0;
