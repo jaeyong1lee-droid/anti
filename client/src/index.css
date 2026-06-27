@@ -802,7 +802,7 @@ div[class*="overflow-y-auto"] {
   line-height: 1.6 !important;
 }
 
-/* Force all child elements (paragraphs, list items, tables, formulas, and headings) to strictly use 1em (inheriting 14px/16px) */
+/* Force all child elements (paragraphs, list items, tables, and headings) to strictly use 1em (inheriting 14px/16px) */
 .tutor-msg-text h1, .tutor-response-content h1,
 .tutor-msg-text h2, .tutor-response-content h2,
 .tutor-msg-text h3, .tutor-response-content h3,
@@ -814,10 +814,14 @@ div[class*="overflow-y-auto"] {
 .tutor-msg-text td, .tutor-response-content td,
 .tutor-msg-text th, .tutor-response-content th,
 .tutor-msg-text strong, .tutor-response-content strong,
-.tutor-msg-text b, .tutor-response-content b,
-.tutor-msg-text .katex, .tutor-response-content .katex {
+.tutor-msg-text b, .tutor-response-content b {
   font-size: 1em !important;
   line-height: 1.6 !important;
+}
+
+/* Enforce slightly larger base size (1.21em) for formulas to visually match the body text weight and height */
+.tutor-msg-text .katex, .tutor-response-content .katex {
+  font-size: 1.21em !important;
 }
 
 /* Retain structural bold styling for headings and bold texts to maintain layout hierarchy */
