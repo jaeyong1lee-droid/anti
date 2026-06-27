@@ -486,12 +486,6 @@ const cleanAndSanitizeMathText = (rawText) => {
 
   // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
   cleaned = cleaned.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
-
-  // 수식이 끝나고 바로 한글 단어(2글자 이상)가 따라붙는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  cleaned = cleaned.replace(/(\$\$?)\s*([\uac00-\ud7a3]{2,})/g, '$1\n\n$2');
-
-  // 수식이 연속적으로 나열되는 경우 개행(\n\n) 주입
-  cleaned = cleaned.replace(/(\$\$?)\s*(\$\$?)/g, '$1\n\n$2');
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -544,12 +538,6 @@ const stripHtmlTagsFromRawData = (text) => {
 
   // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
   clean = clean.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
-
-  // 수식이 끝나고 바로 한글 단어(2글자 이상)가 따라붙는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  clean = clean.replace(/(\$\$?)\s*([\uac00-\ud7a3]{2,})/g, '$1\n\n$2');
-
-  // 수식이 연속적으로 나열되는 경우 개행(\n\n) 주입
-  clean = clean.replace(/(\$\$?)\s*(\$\$?)/g, '$1\n\n$2');
 
   // HTML 엔티티 복구
   clean = clean.replace(/&#x27;/g, "'")
