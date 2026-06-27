@@ -13,13 +13,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 import PDFDocument from 'pdfkit';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList, updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
 import { GENERATION_STANDARDS, generationStandardsList, updateLiveGenerationStandards } from './plugins/generationStandards.js';
 import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
+import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
+import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
+
+const execAsync = promisify(exec);
 
 // validationPlugin.js가 완전히 삭제되었으므로 Stub으로 대체하여 무결성을 유지합니다.
 export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
@@ -50,9 +52,6 @@ export function updateLiveValidationStandards(newList) {
     console.log("[ValidationStandards Stub] Live validation standards prompt updated. Count:", newList.length);
   }
 }
-
-import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
-import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
