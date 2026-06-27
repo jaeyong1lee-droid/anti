@@ -2398,9 +2398,11 @@ app.get('/api/debug-env', async (req, res) => {
     }
   }
 
-  // Live DB connection test
+  // Live DB connection test and diagnostics
   let dbLiveTest = 'not_attempted';
   let dbLiveError = null;
+  let liveTopics = [];
+  let liveSchedules = [];
   if (connectionString) {
     try {
       const { default: pg } = await import('pg');
@@ -2416,11 +2418,25 @@ app.get('/api/debug-env', async (req, res) => {
         connectionTimeoutMillis: 5000,
       });
       await testPool.query('SELECT 1');
+      
+      const topicsRes = await testPool.query('SELECT id, title, category, keywords FROM topics ORDER BY id ASC');
+      liveTopics = topicsRes.rows;
+      
+      const schedulesRes = await testPool.query('SELECT id, topic_id, review_round, status, planned_date FROM schedules ORDER BY id DESC LIMIT 20');
+      liveSchedules = schedulesRes.rows;
+
       await testPool.end();
       dbLiveTest = 'success';
     } catch (e) {
       dbLiveTest = 'failed';
       dbLiveError = e.message;
+    }
+  }
+
+  const progressList = [];
+  if (global.progressTracker) {
+    for (const [key, value] of global.progressTracker.entries()) {
+      progressList.push({ progressId: key, ...value });
     }
   }
 
@@ -2447,6 +2463,9 @@ app.get('/api/debug-env', async (req, res) => {
     dbInitError: global.dbInitError || null,
     dbLiveTest,
     dbLiveError,
+    liveTopics,
+    liveSchedules,
+    progressList,
     envKeys: envKeys,
     nodeEnv: process.env.NODE_ENV || 'development',
     time: new Date().toISOString()
