@@ -1479,6 +1479,14 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   // cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
   // cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
 
+  // [인라인 수식 안전 격리 공백 및 디스플레이 승격 가드]:
+  // (A) 인라인 수식 $ ... $ 내부에 높이가 큰 수식(분수, 제곱근, 합, 적분 등)이 들어있는 경우 디스플레이 수식 $$ ... $$ 로 자동 승격하여 행간을 확보하고 자연스러운 개행을 유도합니다.
+  cleanedText = cleanedText.replace(/\$(?!\$)([^\$]+?\\(?:d?frac|sqrt|sum|int)[^\$]+?)\$/g, '$$$$$1$$$$');
+
+  // (B) 수식 기호($) 경계선이 한글/영문/숫자와 공백 없이 닿아있는 경우 가독성을 위해 격리 공백(스페이스 한 칸)을 안전하게 삽입합니다.
+  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])(\$[^\$]+\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)([\uAC00-\uD7A3a-zA-Z0-9])/g, '$1 $2');
+
   // 2. [한글 사이 수식 자동 인라인화 가드]:
   // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
   // 줄 바꿈 없이 텍스트 사이에 한 줄로 렌더링되도록 강제로 $ ... $ (인라인 수식)로 일괄 전환합니다.
