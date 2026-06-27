@@ -1412,7 +1412,15 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     );
   }
 
-  // [한글 사이 수식 자동 인라인화 가드]:
+  // 1. [연속 문장 내 개행 병합 가드]:
+  // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
+  // 정밀한 줄바꿈 방지를 위해 수식과 텍스트를 동일한 한 줄로 먼저 병합(Merge)합니다.
+  cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s])/g, '$1 $2');
+  cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s])/g, '$1 $2');
+
+  // 2. [한글 사이 수식 자동 인라인화 가드]:
   // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
   // 줄 바꿈 없이 텍스트 사이에 한 줄로 렌더링되도록 강제로 $ ... $ (인라인 수식)로 일괄 전환합니다.
   const rawLines = cleanedText.split('\n');
@@ -1423,10 +1431,6 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     return line;
   });
   cleanedText = processedLines.join('\n');
-
-  // Clean up newlines and extra spaces around inline math if they are part of a continuous sentence
-  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
 
   // Check if text contains HTML tags (fully supported for custom layouts/tables/styling)
   const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
