@@ -119,17 +119,22 @@ function translateSql(sql) {
 }
 
 async function executeWithRetry(fn, maxRetries = 3, delayMs = 2000) {
+  const isVercel = !!process.env.VERCEL;
+  // If running on Vercel, shorten retries and delays to avoid exceeding serverless timeout limits (max 10s)
+  const actualRetries = isVercel ? 2 : maxRetries;
+  const actualDelay = isVercel ? 200 : delayMs;
+
   let attempt = 0;
-  while (attempt < maxRetries) {
+  while (attempt < actualRetries) {
     try {
       return await fn();
     } catch (err) {
       attempt++;
-      console.warn(`[DB Retry] Database query failed (attempt ${attempt}/${maxRetries}):`, err.message);
-      if (attempt >= maxRetries) {
+      console.warn(`[DB Retry] Database query failed (attempt ${attempt}/${actualRetries}):`, err.message);
+      if (attempt >= actualRetries) {
         throw err;
       }
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise(resolve => setTimeout(resolve, actualDelay));
     }
   }
 }

@@ -8,7 +8,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db:backup": "node -e \"import('./backupManager.js').then(m => m.runBackup())\"",
-    "db:restore": "node restore.js"
+    "db:restore": "node restore.js",
+    "sync-standards": "node scratch/sync_standards_from_prod.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.11.0",
