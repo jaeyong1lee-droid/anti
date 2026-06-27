@@ -773,333 +773,241 @@ function extractJsonArray(str) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * 5월 30일 업그레이드 완료된 다중 API 키 순환, 지수 백오프(Exponential Backoff), 3단계 모델 폴백 시스템
- * 429 감지 시 즉각 2초 -> 4초 -> 8초의 지수 백오프로 자동 대기 후 재시도하며, 완전히 소진될 때만 다음 보조 키로 감쇄 전환
- */
 async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   // [성능 최적화] 매 호출마다 DB를 조회하는 대신, 이미 GET/POST 엔드포인트에서 갱신 및 캐싱되고 있는 globalPreferredModel 값을 바로 사용합니다.
 
-
-  const keys = [
-    process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY_SECONDARY,
-    process.env.GEMINI_API_KEY_TERTIARY,
-    process.env.XAI_API_KEY,
-    process.env.GROK_API_KEY
-  ]
-    .filter(Boolean)
-    .map(k => k.trim().replace(/^['"]|['"]$/g, ''));
-
-  if (keys.length === 0) {
-    throw new Error('GEMINI_API_KEY 또는 XAI_API_KEY가 설정되어 있지 않습니다.');
-  }
+  // 1. API 키 취득 및 정규화
+  const primaryKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
+  const secondaryKey = process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.trim().replace(/^['"]|['"]$/g, '') : null;
+  const tertiaryKey = process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.trim().replace(/^['"]|['"]$/g, '') : null;
+  const xaiKey = process.env.XAI_API_KEY ? process.env.XAI_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
+  const grokKey = process.env.GROK_API_KEY ? process.env.GROK_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
 
   const keyErrors = [];
   const hasImage = image && image.data && image.mimeType;
+
+  // 2. 사용자가 규정한 최적화 실행 리스트 구성
+  const executionList = [];
+
+  // [1순위] 첫번째 키의 3.1 flash lite
+  if (primaryKey) {
+    executionList.push({ key: primaryKey, label: 'Key #1', model: 'gemini-3.1-flash-lite', type: 'gemini' });
+  }
+  // [2순위] 첫번째 키의 3.5 flash
+  if (primaryKey) {
+    executionList.push({ key: primaryKey, label: 'Key #1', model: 'gemini-3.5-flash', type: 'gemini' });
+  }
+
+  // [3순위] 두번째 키의 3.1 flash lite (만약 두번째 키가 Groq 등 특수 접두사를 가질 경우 우회 처리)
+  if (secondaryKey) {
+    const isGroq = secondaryKey.startsWith('gsk_');
+    const isGrok = secondaryKey.startsWith('xai-');
+    if (isGroq) {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'llama-3.3-70b-versatile', type: 'groq' });
+    } else if (isGrok) {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'grok-2-1212', type: 'grok' });
+    } else {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'gemini-3.1-flash-lite', type: 'gemini' });
+    }
+  }
+  // [4순위] 두번째 키의 3.5 flash
+  if (secondaryKey) {
+    const isGroq = secondaryKey.startsWith('gsk_');
+    const isGrok = secondaryKey.startsWith('xai-');
+    if (isGroq) {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'llama-3.1-8b-instant', type: 'groq' });
+    } else if (isGrok) {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'grok-2', type: 'grok' });
+    } else {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'gemini-3.5-flash', type: 'gemini' });
+    }
+  }
+
+  // [5순위 이후 - 백업용 후속 로직 (기존 호환성 보장)]
+  const geminiBackups = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  
+  // 첫번째 키의 나머지 하위 모델들
+  if (primaryKey) {
+    geminiBackups.forEach(m => {
+      executionList.push({ key: primaryKey, label: 'Key #1', model: m, type: 'gemini' });
+    });
+  }
+  // 두번째 키의 나머지 하위 모델들 (Gemini일 경우)
+  if (secondaryKey && !secondaryKey.startsWith('gsk_') && !secondaryKey.startsWith('xai-')) {
+    geminiBackups.forEach(m => {
+      executionList.push({ key: secondaryKey, label: 'Key #2', model: m, type: 'gemini' });
+    });
+  }
+  // 세번째 키(Tertiary) 백업
+  if (tertiaryKey) {
+    const allGemini = ['gemini-3.1-flash-lite', 'gemini-3.5-flash', ...geminiBackups];
+    allGemini.forEach(m => {
+      executionList.push({ key: tertiaryKey, label: 'Key #3', model: m, type: 'gemini' });
+    });
+  }
+  // XAI/Grok 백업 키들
+  if (xaiKey) {
+    ['grok-2-1212', 'grok-2', 'grok-beta'].forEach(m => {
+      executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: m, type: 'grok' });
+    });
+  }
+  if (grokKey) {
+    ['grok-2-1212', 'grok-2', 'grok-beta'].forEach(m => {
+      executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: m, type: 'grok' });
+    });
+  }
+
+  // 3. 플랫 루프 실행
   let attemptedAny = false;
 
-  for (let kIdx = 0; kIdx < keys.length; kIdx++) {
-    const key = keys[kIdx];
+  for (let idx = 0; idx < executionList.length; idx++) {
+    const task = executionList[idx];
+    const key = task.key;
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
-    const isGrok = key.startsWith('xai-');
-    const isGroq = key.startsWith('gsk_');
+    const modelName = task.model;
+    const isGroq = task.type === 'groq';
+    const isGrok = task.type === 'grok';
 
-    if (hasImage && (isGrok || isGroq)) {
-      console.log(`[Skip Text-Only Key] Key #${kIdx + 1} (${maskedKey}) - Grok/Groq은 이미지 입력을 지원하지 않으므로 건너뜁니다.`);
+    // 이미지 추출이 포함된 경우 Groq/Grok은 패스(Gemini만 가능)
+    if (hasImage && (isGroq || isGrok)) {
       continue;
     }
 
     attemptedAny = true;
-    let keyExhausted = false;
-    let keyLastError = null;
+    let attempt = 0;
+    const maxAttempts = 2; // 각 시도당 1회 지수 백오프 재시도 포함
+    let delay = 1000;
 
-    if (isGrok) {
-      const GROK_MODELS = ['grok-2-1212', 'grok-2', 'grok-beta'];
-      let basicModelFailedCount = 0;
-      for (const modelName of GROK_MODELS) {
-        if (keyExhausted) break;
-
-        let attempt = 0;
-        const maxAttempts = 2; // 1 retry (2s)
-        let delay = 2000; // Initial delay: 2s
-
-        while (attempt < maxAttempts) {
-          try {
-            console.log(`[Grok 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-            const messages = [];
-            if (systemInstruction) {
-              messages.push({ role: 'system', content: systemInstruction });
-            }
-            messages.push({ role: 'user', content: userPrompt });
-
-            reportLlmProgress(options, scenario, modelName);
-            const response = await fetch('https://api.x.ai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${key}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                model: modelName,
-                messages: messages,
-                temperature: options.temperature !== undefined ? options.temperature : 0.2,
-                ...(scenario === 'grading' ? { response_format: { type: "json_object" } } : {})
-              })
-            });
-
-            if (!response.ok) {
-              const errBody = await response.text().catch(() => '');
-              throw new Error(`HTTP Error ${response.status}: ${errBody}`);
-            }
-
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content?.trim();
-            if (text) {
-              console.log(`[Grok 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-              return text;
-            } else {
-              throw new Error('Grok response empty or invalid choices structure');
-            }
-          } catch (err) {
-            console.warn(`[Grok 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-            keyLastError = err;
-
-            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429') || err.message?.includes('Limit');
-            if (isQuota) {
-              attempt++;
-              if (attempt < maxAttempts) {
-                console.log(`[지수 백오프] 429 감지 (Grok). ${delay}ms 후 재시도합니다...`);
-                await sleep(delay);
-                delay *= 2; // Double the delay
-              } else {
-                console.warn(`[Grok Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
-                basicModelFailedCount++;
-                break;
-              }
-            } else {
-              basicModelFailedCount++;
-              break;
-            }
+    while (attempt < maxAttempts) {
+      try {
+        if (isGrok) {
+          console.log(`[Grok 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+          const messages = [];
+          if (systemInstruction) {
+            messages.push({ role: 'system', content: systemInstruction });
           }
-        }
-      }
-      if (basicModelFailedCount >= GROK_MODELS.length) {
-        console.warn(`[Grok Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
-        keyExhausted = true;
-      }
-    } else if (isGroq) {
-      const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'gemma2-9b-it'];
-      let basicModelFailedCount = 0;
-      for (const modelName of GROQ_MODELS) {
-        if (keyExhausted) break;
+          messages.push({ role: 'user', content: userPrompt });
 
-        let attempt = 0;
-        const maxAttempts = 2; // 1 retry (2s)
-        let delay = 2000; // Initial delay: 2s
-
-        while (attempt < maxAttempts) {
-          try {
-            console.log(`[Groq 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-            const messages = [];
-            if (systemInstruction) {
-              messages.push({ role: 'system', content: systemInstruction });
-            }
-            messages.push({ role: 'user', content: userPrompt });
-
-            reportLlmProgress(options, scenario, modelName);
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${key}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                model: modelName,
-                messages: messages,
-                temperature: options.temperature !== undefined ? options.temperature : 0.2
-              })
-            });
-
-            if (!response.ok) {
-              const errBody = await response.text().catch(() => '');
-              throw new Error(`HTTP Error ${response.status}: ${errBody}`);
-            }
-
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content?.trim();
-            if (text) {
-              console.log(`[Groq 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-              return text;
-            } else {
-              throw new Error('Groq response empty or invalid choices structure');
-            }
-          } catch (err) {
-            console.warn(`[Groq 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-            keyLastError = err;
-
-            const isQuota = err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate') || err.status === 429 || err.message?.includes('429') || err.message?.includes('Limit');
-            if (isQuota) {
-              attempt++;
-              if (attempt < maxAttempts) {
-                console.log(`[지수 백오프] 429 감지 (Groq). ${delay}ms 후 재시도합니다...`);
-                await sleep(delay);
-                delay *= 2;
-              } else {
-                console.warn(`[Groq Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
-                basicModelFailedCount++;
-                break;
-              }
-            } else {
-              basicModelFailedCount++;
-              break;
-            }
-          }
-        }
-      }
-      if (basicModelFailedCount >= GROQ_MODELS.length) {
-        console.warn(`[Groq Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
-        keyExhausted = true;
-      }
-    } else {
-      // Gemini (심폐소생 순환 로직 최적화 파트)
-      const genAI = new GoogleGenerativeAI(key);
-      let MODELS = [
-        'gemini-3.1-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash'
-      ];
-      if (scenario === 'validation') {
-        MODELS = [
-          'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite',
-          'gemini-3.5-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash'
-        ];
-      } else if (scenario === 'grading') {
-        MODELS = [
-          'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash'
-        ];
-      } else if (scenario === 'question' || scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation') {
-        MODELS = [
-          'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
-          'gemini-2.5-flash',
-          'gemini-2.5-flash-lite',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash'
-        ];
-      }
-      
-      if (globalPreferredModel) {
-        const model1 = globalPreferredModel;
-        let model2 = null;
-        if (model1 === 'gemini-3.1-flash-lite') {
-          model2 = 'gemini-3.5-flash';
-        } else if (model1 === 'gemini-3.5-flash') {
-          model2 = 'gemini-3.1-flash-lite';
-        }
-        
-        if (model2) {
-          // 3.1-flash-lite 또는 3.5-flash 선택 시 1, 2위에 항상 고정
-          MODELS = MODELS.filter(m => m !== model1 && m !== model2);
-          MODELS.unshift(model2);
-          MODELS.unshift(model1);
-        } else {
-          // 그 외의 모델 선택 시 선택 모델만 1순위로 올림
-          MODELS = MODELS.filter(m => m !== model1);
-          MODELS.unshift(model1);
-        }
-      }
-      
-      let basicModelFailedCount = 0;
-
-      for (const modelName of MODELS) {
-        let attempt = 0;
-        const maxAttempts = 2; // 실패 시 딱 1번만 더 재시도 (최초 1회 + 재시도 1회 = 총 2회 시도)
-        let delay = 1000; // 재시도 대기 시간 1초로 최적화
-
-        while (attempt < maxAttempts) {
-          try {
-            console.log(`[Gemini 시도] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
-            const model = genAI.getGenerativeModel({
+          reportLlmProgress(options, scenario, modelName);
+          const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
               model: modelName,
-              systemInstruction: systemInstruction || undefined,
-              generationConfig: {
-                temperature: options.temperature !== undefined ? options.temperature : 0.2,
-                ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
-              }
-            }, { apiVersion: 'v1beta' });
-            
-            let generateContentArg = userPrompt;
-            if (image && image.data && image.mimeType) {
-              generateContentArg = [
-                userPrompt,
-                {
-                  inlineData: {
-                    mimeType: image.mimeType,
-                    data: image.data
-                  }
-                }
-              ];
-            }
-            
-            reportLlmProgress(options, scenario, modelName);
-            const result = await model.generateContent(generateContentArg);
-            const text = result.response.text().trim();
-            if (text) {
-              console.log(`[Gemini 성공] Key #${kIdx + 1} (${maskedKey}), 모델: ${modelName}`);
-              return text;
-            }
-          } catch (err) {
-            console.warn(`[Gemini 실패] Key #${kIdx + 1} (${maskedKey}), ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
-            keyLastError = err;
+              messages: messages,
+              temperature: options.temperature !== undefined ? options.temperature : 0.2,
+              ...(scenario === 'grading' ? { response_format: { type: "json_object" } } : {})
+            })
+          });
 
-            const isQuota = (err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate')) && !err.message?.includes('not found') && !err.message?.includes('Model');
-            if (isQuota) {
-              attempt++;
-              if (attempt < maxAttempts) {
-                console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도합니다...`);
-                await sleep(delay);
-                delay *= 2;
-              } else {
-                console.warn(`[Gemini Model Limit] Key #${kIdx + 1}의 ${modelName} 호출 한도 초과. 다음 하위 모델로 우회합니다.`);
-                basicModelFailedCount++;
-                break; // 현재 모델의 while 루프만 탈출하고 다음 modelName 자원을 계속 탐색
-              }
-            } else {
-              // 쿼터 에러가 아닌 다른 치명적 에러 발생 시에도 하위 모델 기회 균등 보장
-              basicModelFailedCount++;
-              break;
+          if (!response.ok) {
+            const errBody = await response.text().catch(() => '');
+            throw new Error(`HTTP Error ${response.status}: ${errBody}`);
+          }
+
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content?.trim();
+          if (text) {
+            console.log(`[Grok 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
+            return text;
+          } else {
+            throw new Error('Grok response empty');
+          }
+
+        } else if (isGroq) {
+          console.log(`[Groq 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+          const messages = [];
+          if (systemInstruction) {
+            messages.push({ role: 'system', content: systemInstruction });
+          }
+          messages.push({ role: 'user', content: userPrompt });
+
+          reportLlmProgress(options, scenario, modelName);
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: messages,
+              temperature: options.temperature !== undefined ? options.temperature : 0.2
+            })
+          });
+
+          if (!response.ok) {
+            const errBody = await response.text().catch(() => '');
+            throw new Error(`HTTP Error ${response.status}: ${errBody}`);
+          }
+
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content?.trim();
+          if (text) {
+            console.log(`[Groq 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
+            return text;
+          } else {
+            throw new Error('Groq response empty');
+          }
+
+        } else {
+          // Gemini API 시도
+          console.log(`[Gemini 시도] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1})`);
+          const genAI = new GoogleGenerativeAI(key);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemInstruction || undefined,
+            generationConfig: {
+              temperature: options.temperature !== undefined ? options.temperature : 0.2,
+              ...(scenario === 'grading' ? { responseMimeType: 'application/json' } : {})
             }
+          }, { apiVersion: 'v1beta' });
+
+          let generateContentArg = userPrompt;
+          if (image && image.data && image.mimeType) {
+            generateContentArg = [
+              userPrompt,
+              {
+                inlineData: {
+                  mimeType: image.mimeType,
+                  data: image.data
+                }
+              }
+            ];
+          }
+
+          reportLlmProgress(options, scenario, modelName);
+          const result = await model.generateContent(generateContentArg);
+          const text = result.response.text().trim();
+          if (text) {
+            console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
+            return text;
+          } else {
+            throw new Error('Gemini response empty');
           }
         }
-      }
+      } catch (err) {
+        console.warn(`[API 시도 실패] ${task.label} (${maskedKey}), 모델: ${modelName} (시도 #${attempt + 1}): ${err.message?.substring(0, 120)}`);
+        keyErrors.push(`${task.label} (${modelName}): ${err.message?.substring(0, 120)}`);
 
-      // [핵심] 3가지 백오프 대상 모델이 '전부' 무력화되었을 때만 최종 키 사망 마킹 처리
-      if (basicModelFailedCount >= MODELS.length) {
-        console.warn(`[Gemini Key Exhausted] Key #${kIdx + 1} (${maskedKey})의 모든 가용 모델 한도 소진. 다음 보조 API 키로 전환합니다.`);
-        keyExhausted = true;
+        // Quota 한도 초과 오류(429 등) 감지 시 재시도 진행
+        const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
+        if (isQuota) {
+          attempt++;
+          if (attempt < maxAttempts) {
+            console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도...`);
+            await sleep(delay);
+            delay *= 2;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
       }
-    }
-
-    if (keyLastError) {
-      const errMsg = keyLastError.message || 'Unknown error';
-      let keyType = 'Gemini';
-      if (isGrok) keyType = 'Grok';
-      else if (isGroq) keyType = 'Groq';
-      keyErrors.push(`Key #${kIdx + 1} (${keyType}): ${errMsg.substring(0, 120)}`);
     }
   }
 
@@ -1108,10 +1016,11 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
   }
 
   if (keyErrors.length > 0) {
+    const uniqueErrors = [...new Set(keyErrors)].slice(0, 3);
     if (hasImage) {
-      throw new Error(`이미지 분석을 위한 모든 Gemini API 키가 할당량 초과(429 Rate Limit) 또는 장애로 인해 사용 불가능합니다. 잠시 후 다시 시도해 주세요. (상세 오류 요약: ${keyErrors.join(' | ')})`);
+      throw new Error(`이미지 분석을 위한 모든 API 키가 할당량 초과(429) 또는 오류로 인해 실패했습니다. (상세 오류 요약: ${uniqueErrors.join(' | ')})`);
     } else {
-      throw new Error(`[AI 호출 실패] ${keyErrors.join(' | ')}`);
+      throw new Error(`[AI 호출 실패] ${uniqueErrors.join(' | ')}`);
     }
   }
 
