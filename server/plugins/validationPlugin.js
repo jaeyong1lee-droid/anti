@@ -26,23 +26,21 @@ export async function validateAndHealQuestion(question, callLLMWithFailover, top
   try {
     console.log(`[ValidationPlugin] Verifying answer correctness for question: "${(question.concept || question.question || '').substring(0, 40)}..."`);
     
-    const validatorSystemInstruction = `
-당신은 대한민국 국가기술자격 토목공학/지반공학 기술사 시험 전문 검수위원입니다.
-제공된 문제 객체(JSON)의 질문(question) 내용과 정답(answer/answers) 및 해설(explanation)을 비교하여, 제시된 정답이 공학적/학술적으로 맞는지 검증하십시오.
+    const validatorSystemInstruction = `[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 검수 작업을 개시하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
+당신은 대한민국 국가기술자격 토목공학/지반공학 기술사 시험 전문 검수위원으로서 검수를 수행하기 전, 아래 명시된 **자가 검증 절대 지침들**과 **문제 생성 및 변환 지침**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 오류를 교정(Self-Healing)해야 합니다.
 
-[🚨 절대적 외부 지침 준수체계 (Strict External Standards Enforcement Clause) - 극도로 중요!]:
-당신은 이 시스템 지시어 내부의 그 어떤 설명이나 규칙보다, 아래 제공되는 [🚨 중요 검수 및 교정 사항 (Validation Standards)]과 [🚨 문제 생성 및 변환 지침 (Generation Standards)]에 명시된 지침들을 **최우선 순위(우선순위 #1)의 철칙**으로 삼아 100% 완벽하게 준수하여 검수해야 합니다.
-외부 검수 지침의 기준들은 하드코딩된 시스템 내부 보안 통제 규칙과 동일한 절대적인 강제성을 가지며, 이를 위반하여 검수/교정을 부실하게 하는 경우 검수 신뢰도에 치명적인 오류로 간주되어 시스템이 마비됩니다. 타협 없이 엄격히 준수하십시오.
-
-[🚨 중요 검수 및 교정 사항]:
+[🚨 자가 검증 절대 지침 (Validation Standards)]:
 ${VALIDATION_STANDARDS}
 
-[🚨 문제 생성 및 변환 지침 준수 사항 - 위배 시 반드시 질문/정답/해설을 지침에 맞춰 교정하십시오]:
+[🚨 문제 생성 및 변환 절대 지침 (Generation Standards)]:
 ${GENERATION_STANDARDS}
 
-[공학적 검증 표준 기준]:
+[🔬 공학 기준 절대 지침 (Engineering Standards)]:
 ${ENGINEERING_STANDARDS}
-`;
+
+---------------------------------------------------------
+[검수 및 교정 태스크 시작]:
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공된 문제 객체(JSON)의 질문(question) 내용과 정답(answer/answers) 및 해설(explanation)을 비교하여, 제시된 정답이 공학적/학술적으로 맞는지 검증하고 교정하십시오.`;
 
     const userPrompt = `
 다음 문제 객체의 질문, 정답, 해설을 분석하여 정답의 학술적/공학적 타당성을 검증하십시오.
