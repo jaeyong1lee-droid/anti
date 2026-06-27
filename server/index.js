@@ -2721,6 +2721,24 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
 
+  let resolvedScheduleId;
+  let topic = null;
+
+  try {
+    const topicSql = `SELECT * FROM topics WHERE id = ?`;
+    console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
+    topic = await dbQuery.get(topicSql, [topicId]);
+
+    if (!topic) {
+      console.warn(`[POST /api/topics/:id/ai-questions] Topic NOT found in DB for topicId=${topicId}`);
+      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
+    }
+    console.log(`[POST /api/topics/:id/ai-questions] Found topic in DB: title="${topic.title}", keywords="${topic.keywords}", pdf_name="${topic.pdf_name}"`);
+  } catch (err) {
+    console.error('[POST /api/topics/:id/ai-questions] Topic fetch error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+
   const progressId = req.query.progressId || req.body.progressId;
   let standardsAnalysis = '';
   let progressTimer = null;
@@ -2733,19 +2751,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
   }
 
-  let resolvedScheduleId;
-
   try {
-    const topicSql = `SELECT * FROM topics WHERE id = ?`;
-    console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
-    const topic = await dbQuery.get(topicSql, [topicId]);
-
-    if (!topic) {
-      console.warn(`[POST /api/topics/:id/ai-questions] Topic NOT found in DB for topicId=${topicId}`);
-      return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
-    }
-    console.log(`[POST /api/topics/:id/ai-questions] Found topic in DB: title="${topic.title}", keywords="${topic.keywords}", pdf_name="${topic.pdf_name}"`);
-
     // 캐싱된 복습 세션 문제 복원
     await ensureSessionTable();
     const scheduleId = req.query.scheduleId;
