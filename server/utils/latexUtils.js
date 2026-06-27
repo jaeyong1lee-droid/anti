@@ -427,7 +427,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [🚨 극단적 비상 복구 필터 🚨]
   // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
   result = result.replace(
-    /<\s*div\s+class\b[\s\S]*?<\/\s*div\s*>/gi,
+    /<\s*(div|span)\s*class\b[\s\S]*?<\/\s*\1\s*>/gi,
     (htmlBlock) => {
       const match = htmlBlock.match(/<\s*annotation[^>]*encoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i);
       if (match && match[1]) {
