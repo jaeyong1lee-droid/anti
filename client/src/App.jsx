@@ -995,6 +995,19 @@ const renderKatexString = (math, options) => {
   // Escape bare % signs that are not already escaped (\%), since % is a comment
   // character in TeX/KaTeX and causes "Unexpected end of input" parse errors.
   processedMath = processedMath.replace(/(?<!\\)%/g, '\\%');
+
+  // 🚨 [달러 기호($) 중복 포장 자가 치방 가드]:
+  // 만약 렌더링 대상 수식에 수식 모드 선언인 '$' 기호가 맨 앞/뒤에 여전히 남아있다면, 
+  // KaTeX 파싱 에러(Can't use function '$' in math mode)를 원천 차단하기 위해 이들을 제거합니다.
+  let cleaned = processedMath.trim();
+  if (cleaned.startsWith('$$') && cleaned.endsWith('$$')) {
+    cleaned = cleaned.substring(2, cleaned.length - 2).trim();
+  } else if (cleaned.startsWith('$') && cleaned.endsWith('$')) {
+    cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+  }
+  cleaned = cleaned.replace(/^\$|\$/g, '').trim();
+  processedMath = cleaned;
+
   if (window.katex) {
     try {
       // Force throwOnError: true to prevent KaTeX from generating title strings with '$'
@@ -1011,7 +1024,7 @@ const renderKatexString = (math, options) => {
       return `<span class="katex-error" style="color:#cc0000; font-family: monospace;" title="KaTeX error: ${escapedMath}">${escapedMath}</span>`;
     }
   }
-  return options.displayMode ? `$$${math}$$` : `$${math}$`;
+  return options.displayMode ? `$$${processedMath}$$` : `$${processedMath}$`;
 };
 
 const getSelectionTextWithLatex = (selection) => {
@@ -1507,20 +1520,6 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
                 className="inline bg-transparent select-text"
                 dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
-            );
-          } else if (false) { // Dummy check to bypass block layout
-            const mathHtml = '';
-            return (
-              <span 
-                key={idx} 
-                className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
-                  onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                  onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                  onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                  onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
-                  dangerouslySetInnerHTML={{ __html: mathHtml }} 
-                />
-              </span>
             );
           } else {
             let htmlContent = part.content;
