@@ -7527,7 +7527,7 @@ async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, sce
     // 0.45초 간격으로 실제로 읽고 있는 지침의 제목을 순차적으로 롤링 노출
     intervalId = setInterval(() => {
       const currentTitle = activeList[titleIndex % activeList.length].title;
-      updateProgress(progressId, 0, `0단계: AI가 최우선 절대 지침 분석 중... 📖 [읽는 지침]: ${currentTitle}`, 10);
+      updateProgress(progressId, 0, `0단계: AI가 최우선 절대 지침 분석 중... 📖 [지침]: ${currentTitle}`, 10);
       titleIndex++;
     }, 450);
   }
