@@ -7609,12 +7609,8 @@ ${topicTitle}
 }
 
 async function purgeAllQuizCaches() {
-  try {
-    await dbQuery.run("DELETE FROM app_session WHERE key LIKE 'review_questions_schedule_%' OR key LIKE 'review_questions_topic_%'");
-    console.log('[Cache Clean] Successfully purged all cached quiz question sessions due to standards modification.');
-  } catch (err) {
-    console.error('[Cache Clean] Failed to purge cached quiz questions:', err.message);
-  }
+  // 지침 변경 시 기존 복습 문제 캐시를 날리지 않도록 비활성화 (사용자의 학습 이력 영구 보존)
+  console.log('[Cache Clean] Bypassed automatic quiz cache purging to preserve user review histories.');
 }
 
 // GET /api/topics/:id/instructions → Retrieve topic specific instructions list
