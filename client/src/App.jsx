@@ -5561,6 +5561,21 @@ export default function App() {
 
   // ── Save state to localStorage whenever key state changes (debounced for performance)
   useEffect(() => {
+    if (!selectedTopic) {
+      try {
+        const saved = localStorage.getItem('anti_app_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          parsed.selectedTopic = null;
+          parsed.aiQuestions = [];
+          localStorage.setItem('anti_app_state', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('anti_app_state selectedTopic 즉시 비우기 실패:', e);
+      }
+      return;
+    }
+
     const debounceTimer = setTimeout(() => {
       try {
         localStorage.setItem('anti_app_state', JSON.stringify({
@@ -12147,6 +12162,9 @@ export default function App() {
                       Object.values(d.tutorInputText).forEach(val => {
                         if (val && String(val).trim() !== '') count++;
                       });
+                    }
+                    if (d.tutorAnswers) {
+                      count += Object.keys(d.tutorAnswers).length;
                     }
                     return count;
                   };
