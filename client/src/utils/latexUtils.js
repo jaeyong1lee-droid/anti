@@ -475,6 +475,48 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
   processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
 
+  // [🚨 가독성 수동 개선 필터 (ReDoS 예방 루프 방식) 🚨]
+  // 등호나 연산자, 분수가 포함된 수식($...$)들이 콤마나 개행 없이 다닥다닥 붙어 나열되거나, 중간에 짧은 설명만 끼고 나열되는 경우 강제로 단락 줄바꿈(\n\n)을 주입합니다.
+  const formatConsecutiveFormulas = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const parts = text.split('$');
+    if (parts.length < 3) return text;
+    
+    let rebuilt = parts[0];
+    for (let i = 1; i < parts.length; i += 2) {
+      const formula = parts[i];
+      const plainText = parts[i + 1];
+      
+      rebuilt += `$${formula}$`;
+      
+      if (plainText !== undefined) {
+        const hasNextFormula = (i + 2) < parts.length;
+        if (hasNextFormula) {
+          const nextFormula = parts[i + 2];
+          const isRelation1 = formula.includes('=') || formula.includes('\\frac');
+          const isRelation2 = nextFormula.includes('=') || nextFormula.includes('\\frac');
+          
+          if (isRelation1 || isRelation2) {
+            const trimmedPlain = plainText.trim();
+            const isSeparating = trimmedPlain.length <= 40 && (
+              trimmedPlain === '' || 
+              trimmedPlain === ',' || 
+              /^[가-힣\s(),]+$/.test(trimmedPlain)
+            );
+            
+            if (isSeparating) {
+              rebuilt += (plainText.startsWith(' ') ? ' ' : '') + trimmedPlain + '\n\n';
+              continue;
+            }
+          }
+        }
+        rebuilt += plainText;
+      }
+    }
+    return rebuilt;
+  };
+  processed = formatConsecutiveFormulas(processed);
+
   // [🚨 극단적 비상 복구 필터 🚨]
   // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
   processed = processed.replace(
