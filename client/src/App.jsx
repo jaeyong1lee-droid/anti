@@ -5879,7 +5879,7 @@ export default function App() {
     restoringReviewSession, loadingExam
   ]);
 
-  const forceSaveActiveSessions = async (isUnloading = false) => {
+  const forceSaveActiveSessions = async (isUnloading = false, isResetAction = false) => {
     const promises = [];
 
     // 1) Save active review session immediately to localStorage (synchronously)
@@ -5917,6 +5917,7 @@ export default function App() {
           tutorAnswers,
           tutorInputText,
           chatHistory,
+          isResetAction,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
       };
@@ -15256,7 +15257,7 @@ export default function App() {
                             setCurrentAttachedImage(null);
                           }
                           setTimeout(() => {
-                            forceSaveActiveSessions();
+                            forceSaveActiveSessions(false, true);
                           }, 50);
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
@@ -17199,7 +17200,7 @@ export default function App() {
                       setCurrentAttachedImage(null);
                     }
                     setTimeout(() => {
-                      forceSaveActiveSessions();
+                      forceSaveActiveSessions(false, true);
                     }, 50);
                     alert("튜터 데이터가 초기화되었습니다.");
                   }
@@ -18339,7 +18340,7 @@ export default function App() {
                             setCurrentAttachedImage(null);
                           }
                           setTimeout(() => {
-                            forceSaveActiveSessions();
+                            forceSaveActiveSessions(false, true);
                           }, 50);
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
