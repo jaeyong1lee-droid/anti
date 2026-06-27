@@ -484,8 +484,8 @@ const cleanAndSanitizeMathText = (rawText) => {
   let cleaned = rawText;
   cleaned = cleanCorruptedFormula(cleaned);
 
-  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  cleaned = cleaned.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  cleaned = cleaned.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -536,8 +536,8 @@ const stripHtmlTagsFromRawData = (text) => {
   
   let clean = text.replace(/\u200b/g, '');
 
-  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  clean = clean.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  clean = clean.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
 
   // HTML 엔티티 복구
   clean = clean.replace(/&#x27;/g, "'")
@@ -1475,7 +1475,12 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   // 1. [연속 문장 내 개행 병합 가드]:
-  // (수식 앞뒤의 개행 병합 가드를 주석 처리하여, 백엔드 및 본문에서 의도한 개행이 100% 보존되도록 개선합니다.)
+  // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
+  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작/종료하는 새로운 문단은 병합 대상에서 제외합니다.
+  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
 
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:

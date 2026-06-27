@@ -338,8 +338,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Zero Width Space (\u200b) 제어문자 완전 박멸
   let processed = text.replace(/\u200b/g, '');
 
-  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
-  processed = processed.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이나 줄바꿈 없이 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  processed = processed.replace(/([\uac00-\ud7a3][\.:])(\$\$?)/g, '$1\n\n$2');
 
   // HTML 엔티티 복구
   processed = processed.replace(/&#x27;/g, "'")
