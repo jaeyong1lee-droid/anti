@@ -493,10 +493,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         const hasNextFormula = (i + 2) < parts.length;
         if (hasNextFormula) {
           const nextFormula = parts[i + 2];
-          const isRelation1 = formula.includes('=') || formula.includes('\\frac');
-          const isRelation2 = nextFormula.includes('=') || nextFormula.includes('\\frac');
+          const isRelation1 = formula.includes('=') || formula.includes('<') || formula.includes('>');
+          const isRelation2 = nextFormula.includes('=') || nextFormula.includes('<') || nextFormula.includes('>');
           
-          if (isRelation1 || isRelation2) {
+          if (isRelation1 && isRelation2) {
             const trimmedPlain = plainText.trim();
             const isSeparating = trimmedPlain.length <= 40 && (
               trimmedPlain === '' || 
