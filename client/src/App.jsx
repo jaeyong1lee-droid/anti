@@ -14904,7 +14904,7 @@ export default function App() {
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = tableGradingResults[`${idx}_INPUT`];
                                               let baseAns = ans;
-                                              if (isPl && grading?.suggestedModelAnswer) {
+                                              if (grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               if (q.formula) {
@@ -18030,7 +18030,7 @@ export default function App() {
                                               const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
                                               const grading = examTableGradingResults[`${idx}_INPUT`];
                                               let baseAns = ans;
-                                              if (isPl && grading?.suggestedModelAnswer) {
+                                              if (grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               if (q.formula) {
