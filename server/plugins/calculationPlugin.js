@@ -1,7 +1,10 @@
 import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
 import { GENERATION_STANDARDS } from './generationStandards.js';
-import { validateAndHealQuestion } from './validationPlugin.js';
+// validationPlugin.js가 완전히 삭제되었으므로 Stub으로 대체하여 무결성을 유지합니다.
+async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+  return question;
+}
 
 /**
  * Extracts readable text/formulas from calculation problem screenshots/images using Gemini multimodal OCR.
