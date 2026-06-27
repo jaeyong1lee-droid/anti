@@ -6652,7 +6652,7 @@ app.get('/api/session/review', async (req, res) => {
 app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
-    const { topicId, scheduleId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
+    const { topicId, scheduleId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
@@ -6695,11 +6695,22 @@ app.post('/api/session/review', async (req, res) => {
     if (existingRow && existingRow.value) {
       try {
         const existingData = JSON.parse(existingRow.value);
-        const existingSolved = countSolved(existingData);
-        const incomingSolved = countSolved(req.body);
-        if (existingSolved > incomingSolved) {
-          console.log(`[Sync Aborted] Existing session has MORE solved questions (${existingSolved}) than incoming (${incomingSolved}). Key: ${key}`);
-          return res.json({ ok: true, message: 'Server has more progress. Sync aborted.' });
+        const existingSessionId = existingData.sessionId || '';
+        const incomingSessionId = sessionId || '';
+
+        // [🚨 진행도 덮어쓰기 방지 🚨]
+        // 같은 세션 ID를 공유하고, 명시적인 수동 리셋 액션(isResetAction)이 아닐 때만 진행도가 더 적은 데이터로의 덮어쓰기를 제한합니다.
+        // 세션 ID가 다르거나 수동 리셋인 경우 무조건 덮어쓰기를 허용합니다.
+        const isResetAction = req.body.isResetAction === true;
+        if (existingSessionId === incomingSessionId && !isResetAction) {
+          const existingSolved = countSolved(existingData);
+          const incomingSolved = countSolved(req.body);
+          if (existingSolved > incomingSolved) {
+            console.log(`[Sync Aborted] Same session ID. Existing has MORE solved questions (${existingSolved}) than incoming (${incomingSolved}). Key: ${key}`);
+            return res.json({ ok: true, message: 'Server has more progress. Sync aborted.' });
+          }
+        } else {
+          console.log(`[Sync Overwrite] Overwrite allowed (Session ID Match: ${existingSessionId === incomingSessionId}, isResetAction: ${isResetAction}). Key: ${key}`);
         }
       } catch (e) {
         console.warn('Failed to compare solved counts for review session:', e);
@@ -6707,6 +6718,7 @@ app.post('/api/session/review', async (req, res) => {
     }
 
     const value = JSON.stringify({
+      sessionId: sessionId || '',
       questions,
       selectedAnswers: selectedAnswers || {},
       revealedQuestions: revealedQuestions || {},
