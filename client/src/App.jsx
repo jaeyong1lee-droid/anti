@@ -482,6 +482,15 @@ const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
   let cleaned = rawText;
+  
+  // 0. KaTeX 파싱 경고 및 에러를 유발하는 Zero Width Space (\u200b / 8203) 제어문자 제거
+  cleaned = cleaned.replace(/\u200b/g, '');
+
+  // 0.5. 공백이 소실된 채 깨져서 유입된 HTML 태그들 (<divclass=, <spanclass=, display="block" 등) 자동 자가치유 복구
+  cleaned = cleaned.replace(/<(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li)(class|style|id|width|height|align|xmlns|display)=/gi, '<$1 $2=')
+                   .replace(/display="block"/gi, ' display="block"')
+                   .replace(/<\/([a-zA-Z0-9]+)class=/gi, '</$1 class=');
+
   cleaned = cleanCorruptedFormula(cleaned);
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
