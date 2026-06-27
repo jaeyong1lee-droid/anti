@@ -8854,6 +8854,72 @@ async function backfillPastScheduleScores() {
   }
 }
 
+// 과거에 난수(sess_xxx) 기반으로 저장되었던 app_session 내의 복습 캐시 키들을 절대 세션 ID 구조(sess_topic_X_round_Y)로 변환해주는 마이그레이션 함수
+async function migrateLegacySessionKeys() {
+  console.log('[Migration] Starting legacy session keys migration to absolute session ID format...');
+  try {
+    const rows = await dbQuery.all(`SELECT id, key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`);
+    console.log(`[Migration] Found ${rows.length} total review schedule session records.`);
+    
+    let migratedCount = 0;
+    for (const row of rows) {
+      // 키 형식: review_questions_schedule_${scheduleId}_sess_${sessionId}
+      const match = row.key.match(/^review_questions_schedule_(\d+)_sess_(sess_[a-zA-Z0-9_\-\.]+)$/);
+      if (!match) continue;
+      
+      const scheduleIdStr = match[1];
+      const legacySessionId = match[2];
+      
+      // 이미 절대 고정 포맷인 경우 건너뜀
+      if (legacySessionId.startsWith('sess_topic_') && legacySessionId.includes('_round_')) {
+        continue;
+      }
+      
+      const scheduleId = parseInt(scheduleIdStr, 10);
+      if (isNaN(scheduleId)) continue;
+      
+      try {
+        // schedules 테이블에서 이 스케줄의 topic_id 와 review_round 를 확인
+        const sched = await dbQuery.get('SELECT topic_id, review_round FROM schedules WHERE id = ?', [scheduleId]);
+        if (sched && sched.topic_id && sched.review_round !== undefined) {
+          const absoluteSid = `sess_topic_${sched.topic_id}_round_${sched.review_round}`;
+          const newKey = `review_questions_schedule_${scheduleId}_sess_${absoluteSid}`;
+          
+          // JSON value 내부에 저장되어 있는 sessionId 도 absoluteSid 로 업데이트
+          let updatedValue = row.value;
+          try {
+            const parsed = JSON.parse(row.value);
+            if (parsed) {
+              parsed.sessionId = absoluteSid;
+              updatedValue = JSON.stringify(parsed);
+            }
+          } catch(e) {
+            // 파싱 에러는 경고만 띄우고 원본 유지
+          }
+          
+          // 이미 새로운 키가 데이터베이스에 존재하는지 확인
+          const exists = await dbQuery.get('SELECT id FROM app_session WHERE key = ?', [newKey]);
+          if (!exists) {
+            // 새로운 키로 업데이트
+            await dbQuery.run('UPDATE app_session SET key = ?, value = ? WHERE id = ?', [newKey, updatedValue, row.id]);
+            migratedCount++;
+            console.log(`[Migration] Migrated legacy key ${row.key} -> ${newKey}`);
+          } else {
+            // 이미 존재한다면 예전 행을 안전하게 삭제
+            await dbQuery.run('DELETE FROM app_session WHERE id = ?', [row.id]);
+            console.log(`[Migration] Deleted duplicate legacy key ${row.key} because absolute key already exists.`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Migration] Error processing row ${row.key}:`, err);
+      }
+    }
+    console.log(`[Migration] Session keys migration completed. Migrated ${migratedCount} records.`);
+  } catch (error) {
+    console.error('[Migration] Error running legacy session keys migration:', error);
+  }
+}
+
 function mergeDefaultAndDbStandards(defaultList, dbList) {
   // DB에 저장된 지침 목록이 존재한다면, 사용자의 추가/수정/삭제 내역이 100% 보존되도록 DB 목록을 그대로 최종 권위로 삼아 반환합니다.
   if (Array.isArray(dbList)) {
@@ -9211,6 +9277,7 @@ async function startServer() {
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
+    await migrateLegacySessionKeys();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -9256,6 +9323,7 @@ if (!process.env.VERCEL) {
     await migrateSpacedIntervals();
     await healPendingSchedules();
     await backfillPastScheduleScores();
+    await migrateLegacySessionKeys();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;
