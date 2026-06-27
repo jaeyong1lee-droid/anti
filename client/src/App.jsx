@@ -7302,6 +7302,47 @@ export default function App() {
                 savedQuizScroll: localData.savedQuizScroll || 0,
                 isCached: true
               };
+
+              // [🚨 실시간 양방향 동기화 🚨]
+              // 로컬 진도가 더 많이 나간 경우, 이를 서버 세션 데이터에 즉시 강제 전송(POST)하여 최신화
+              const targetSid = data.sessionId || newSid;
+              fetch(`${API_BASE}/api/session/review`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  topicId: topicId,
+                  scheduleId: finalScheduleId,
+                  sessionId: targetSid,
+                  questions: data.questions,
+                  selectedAnswers: localData.selectedAnswers || {},
+                  revealedQuestions: localData.revealedQuestions || {},
+                  tableAnswers: localData.tableAnswers || {},
+                  tableGradingResults: localData.tableGradingResults || {},
+                  tutorAnswers: localData.tutorAnswers || {},
+                  tutorInputText: localData.tutorInputText || {},
+                  chatHistory: localData.chatHistory || [],
+                  savedQuizScroll: localData.savedQuizScroll || 0
+                })
+              }).catch(e => console.warn('로컬 진행도 서버 동기화 실패:', e));
+
+            } else if (serverSolved > localSolved) {
+              console.log(`[handleOpenAIQuestions] Server progress has more solved questions (${serverSolved}) than local (${localSolved}). Updating local storage.`);
+              // [🚨 실시간 양방향 동기화 🚨]
+              // 서버 진도가 더 많이 나간 경우, 기기 로컬스토리지를 즉시 최신화
+              try {
+                localStorage.setItem(localKey, JSON.stringify({
+                  revealedQuestions: data.revealedQuestions || {},
+                  selectedAnswers: data.selectedAnswers || {},
+                  tableAnswers: data.tableAnswers || {},
+                  tableGradingResults: data.tableGradingResults || {},
+                  tutorAnswers: data.tutorAnswers || {},
+                  tutorInputText: data.tutorInputText || {},
+                  chatHistory: data.chatHistory || [],
+                  savedQuizScroll: data.savedQuizScroll || 0
+                }));
+              } catch(e) {
+                console.warn('Failed to update local storage with server progress:', e);
+              }
             }
           } catch(e) {
             console.warn('Failed to parse local review progress during handleOpenAIQuestions:', e);
