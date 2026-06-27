@@ -8279,8 +8279,19 @@ async function initializeGradingStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
     if (row && row.value) {
-      const list = JSON.parse(row.value);
+      let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
+        let merged = false;
+        for (const defStd of gradingStandardsList) {
+          if (!list.some(s => s.id === defStd.id)) {
+            list.push(defStd);
+            merged = true;
+          }
+        }
+        if (merged) {
+          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'grading_standards'", [JSON.stringify(list)]);
+          console.log('Merged new default grading standards into database.');
+        }
         updateLiveGradingStandards(list);
         console.log('Loaded grading standards from database at startup.');
         await writeStandardToFile('grading_standards', list);
@@ -8519,17 +8530,30 @@ async function syncStandardsFromProduction() {
       const data = await res.json();
       const standards = data.standards;
       if (Array.isArray(standards) && standards.length > 0) {
+        // Merge missing defaults from the code into the synced list
+        let merged = false;
+        const mergedList = [...standards];
+        const defaultList = item.currentList();
+        if (Array.isArray(defaultList)) {
+          for (const defStd of defaultList) {
+            if (!mergedList.some(s => s.id === defStd.id)) {
+              mergedList.push(defStd);
+              merged = true;
+            }
+          }
+        }
+
         const currentStr = JSON.stringify(item.currentList());
-        const newStr = JSON.stringify(standards);
-        if (currentStr !== newStr) {
+        const newStr = JSON.stringify(mergedList);
+        if (currentStr !== newStr || merged) {
           // Update live memory state
-          item.updater(standards);
+          item.updater(mergedList);
           
           // Save to database to persist across restarts
-          await saveSessionValue(item.key, JSON.stringify(standards));
+          await saveSessionValue(item.key, JSON.stringify(mergedList));
           // Sync to local physical files as well
-          await writeStandardToFile(item.key, standards);
-          console.log(`[Sync] Synced ${item.key} (${standards.length} items) successfully.`);
+          await writeStandardToFile(item.key, mergedList);
+          console.log(`[Sync] Synced ${item.key} (${mergedList.length} items) successfully.`);
         }
       }
     } catch (err) {
