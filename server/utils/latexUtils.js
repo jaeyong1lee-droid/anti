@@ -502,6 +502,19 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       return /[.!?\n]$/.test(trimmed) || /(?:다|요|음|임|함|것|정리됩니다|대입합니다|구합니다|얻어집니다|나타납니다|설정합니다)\.?$/.test(trimmed);
     };
 
+    const hasBalancedParentheses = (str) => {
+      let p = 0, b = 0, c = 0;
+      for (let char of str) {
+        if (char === '(') p++;
+        else if (char === ')') p--;
+        else if (char === '[') b++;
+        else if (char === ']') b--;
+        else if (char === '{') c++;
+        else if (char === '}') c--;
+      }
+      return p === 0 && b === 0 && c === 0;
+    };
+
     const elevateToDisplay = new Array(parts.length).fill(false);
 
     let idx = 1;
@@ -528,15 +541,25 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         const isFollowedByParticle = startsWithKoreanParticle(textAfterGroup);
 
         if (!isFollowedByParticle) {
-          if (group.length > 1) {
-            group.forEach(gIdx => {
-              elevateToDisplay[gIdx] = true;
-            });
-          } else {
-            const textBefore = parts[idx - 1] || '';
-            const textAfter = parts[idx + 1] || '';
-            if (isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter)) {
-              elevateToDisplay[idx] = true;
+          // Check if the overall group parentheses are balanced
+          let combinedFormulaText = '';
+          group.forEach(gIdx => {
+            combinedFormulaText += parts[gIdx];
+          });
+          const isGroupBalanced = hasBalancedParentheses(combinedFormulaText);
+
+          if (isGroupBalanced) {
+            if (group.length > 1) {
+              group.forEach(gIdx => {
+                elevateToDisplay[gIdx] = true;
+              });
+            } else {
+              const textBefore = parts[idx - 1] || '';
+              const textAfter = parts[idx + 1] || '';
+              const isSelfBalanced = hasBalancedParentheses(parts[idx]);
+              if (isSelfBalanced && isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter)) {
+                elevateToDisplay[idx] = true;
+              }
             }
           }
         }
