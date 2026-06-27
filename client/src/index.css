@@ -140,6 +140,8 @@ div[class*="overflow-y-auto"] {
 
 .katex .text {
   font-family: 'Pretendard', 'Malgun Gothic', sans-serif !important;
+  font-size: 0.88em !important; /* Prevent inside-formula Korean labels from appearing too large */
+  letter-spacing: -0.01em;
 }
 
 /* Prevent text selection and native callout menus on KaTeX formulas when long-press export is enabled */
@@ -793,7 +795,9 @@ div[class*="overflow-y-auto"] {
 }
 
 
-/* AI Tutor Response - Enforce uniform sizes and normal weight, preserving KaTeX relative layouts */
+/* AI Tutor Response & Chat Bubbles - Enforce uniform sizes and normal weight, preserving KaTeX relative layouts */
+.tutor-msg-text,
+.tutor-msg-text *,
 .tutor-response-content,
 .tutor-response-content h1,
 .tutor-response-content h2,
@@ -812,6 +816,8 @@ div[class*="overflow-y-auto"] {
 }
 
 @media (min-width: 768px) {
+  .tutor-msg-text,
+  .tutor-msg-text *,
   .tutor-response-content,
   .tutor-response-content h1,
   .tutor-response-content h2,

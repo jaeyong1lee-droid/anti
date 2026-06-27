@@ -15195,8 +15195,8 @@ export default function App() {
                     </div>
                     <div className={
                       msg.role === 'user'
-                        ? 'px-3 py-2 rounded-2xl max-w-[90%] text-sm leading-relaxed bg-indigo-600 text-white rounded-br-sm'
-                        : 'text-sm leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
+                        ? 'tutor-msg-text px-3 py-2 rounded-2xl max-w-[90%] leading-relaxed bg-indigo-600 text-white rounded-br-sm'
+                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-3 md:py-2 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full'
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
@@ -18272,8 +18272,8 @@ export default function App() {
                     </div>
                     <div className={
                       msg.role === 'user' 
-                        ? 'px-4 py-2.5 rounded-2xl max-w-[95%] text-xs leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
-                        : 'text-xs leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert prose-sm max-w-none'
+                        ? 'tutor-msg-text px-4 py-2.5 rounded-2xl max-w-[95%] leading-relaxed bg-indigo-600 text-white rounded-br-sm' 
+                        : 'tutor-msg-text leading-relaxed text-slate-200 md:bg-slate-800 md:border md:border-slate-700 md:rounded-bl-sm md:px-4 md:py-2.5 md:rounded-2xl md:max-w-[99%] bg-transparent border-0 p-0 max-w-full w-full prose prose-invert max-w-none'
                     }>
                       {msg.role === 'user' ? (
                         <div className="flex flex-col gap-2">
