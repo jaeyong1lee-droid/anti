@@ -12572,7 +12572,7 @@ export default function App() {
             {/* 첫 번째 줄 */}
             <div className="flex gap-2 w-full">
               <button
-                onClick={() => { forceSaveActiveSessions(); setViewMode('dashboard'); }}
+                onClick={async () => { await forceSaveActiveSessions(); setViewMode('dashboard'); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'dashboard'
                     ? 'bg-brand-600 text-white shadow-md'
@@ -12583,7 +12583,7 @@ export default function App() {
                 오늘의 복습
               </button>
               <button
-                onClick={() => { forceSaveActiveSessions(); setViewMode('all_topics'); }}
+                onClick={async () => { await forceSaveActiveSessions(); setViewMode('all_topics'); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
                   viewMode === 'all_topics'
                     ? 'bg-brand-600 text-white shadow-md'
@@ -12594,7 +12594,7 @@ export default function App() {
                 복습토픽 ({allTopics.length})
               </button>
               <button
-                onClick={() => { forceSaveActiveSessions(); handleOpenExam(); }}
+                onClick={async () => { await forceSaveActiveSessions(); handleOpenExam(); }}
                 className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 hover:bg-amber-950/40 rounded-xl transition-all duration-200 cursor-pointer"
               >
                 <Award size={14} />
@@ -12605,14 +12605,14 @@ export default function App() {
             {/* 두 번째 줄 */}
             <div className="flex gap-2 w-full">
               <button
-                onClick={() => { forceSaveActiveSessions(); handleOpenFormulaExam(); }}
+                onClick={async () => { await forceSaveActiveSessions(); handleOpenFormulaExam(); }}
                 className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 hover:bg-rose-950/40 rounded-xl transition-all duration-200 cursor-pointer"
               >
                 <Sigma size={14} />
                 필수공식
               </button>
               <button
-                onClick={() => { forceSaveActiveSessions(); handleOpenAnswerSheet(); }}
+                onClick={async () => { await forceSaveActiveSessions(); handleOpenAnswerSheet(); }}
                 className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
                   showAnswerSheet
                     ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg'
@@ -14046,6 +14046,11 @@ export default function App() {
           <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
             <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
               <div className="flex items-center gap-2.5 min-w-0">
+                {selectedTopic.schedule_id && (
+                  <span className="text-[10px] font-black text-slate-500 select-none shrink-0 border border-slate-800 bg-slate-900/60 px-1.5 py-0.5 rounded-md">
+                    ID: {selectedTopic.schedule_id}
+                  </span>
+                )}
                 <Brain className="w-6 h-6 sm:w-7 sm:h-7 text-violet-400 shrink-0" />
                 <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
                   {selectedTopic.title}
@@ -15191,12 +15196,12 @@ export default function App() {
                           종료
                         </button>
                         <button
-                          onClick={() => { 
+                          onClick={async () => { 
                             savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                             if (selectedTopic?.isReadOnly) {
                               setSelectedTopic(null); 
                             } else {
-                              forceSaveActiveSessions();
+                              await forceSaveActiveSessions();
                               setSelectedTopic(null); 
                             }
                           }}
@@ -18692,12 +18697,12 @@ export default function App() {
                           <span>AI 재출제</span>
                         </button>
                         <button
-                          onClick={() => { 
+                          onClick={async () => { 
                             savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                             if (selectedTopic?.isReadOnly) {
                               setSelectedTopic(null); 
                             } else {
-                              forceSaveActiveSessions();
+                              await forceSaveActiveSessions();
                               setSelectedTopic(null); 
                             }
                           }}
