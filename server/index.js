@@ -8319,8 +8319,19 @@ async function initializeGenerationStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
     if (row && row.value) {
-      const list = JSON.parse(row.value);
+      let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
+        let merged = false;
+        for (const defStd of generationStandardsList) {
+          if (!list.some(s => s.id === defStd.id)) {
+            list.push(defStd);
+            merged = true;
+          }
+        }
+        if (merged) {
+          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'generation_standards'", [JSON.stringify(list)]);
+          console.log('Merged new default generation standards into database.');
+        }
         updateLiveGenerationStandards(list);
         console.log('Loaded generation standards from database at startup.');
         await writeStandardToFile('generation_standards', list);
@@ -8339,8 +8350,19 @@ async function initializeLockscreenStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
     if (row && row.value) {
-      const list = JSON.parse(row.value);
+      let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
+        let merged = false;
+        for (const defStd of lockscreenStandardsList) {
+          if (!list.some(s => s.id === defStd.id)) {
+            list.push(defStd);
+            merged = true;
+          }
+        }
+        if (merged) {
+          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'lockscreen_standards'", [JSON.stringify(list)]);
+          console.log('Merged new default lockscreen standards into database.');
+        }
         updateLiveLockscreenStandards(list);
         console.log('Loaded lockscreen standards from database at startup.');
         await writeStandardToFile('lockscreen_standards', list);

@@ -1,5 +1,6 @@
 import { LATEX_PROMPT_INSTRUCTIONS, healQuizQuestionObject } from '../utils/latexUtils.js';
 import { ENGINEERING_STANDARDS } from './engineeringStandards.js';
+import { GENERATION_STANDARDS } from './generationStandards.js';
 import { validateAndHealQuestion } from './validationPlugin.js';
 
 /**
@@ -63,7 +64,10 @@ export async function generateCalculationQuizQuestion(formulaTitle, formula, con
   const systemInstruction = `당신은 대한민국 토목공학 및 지반공학 기술사 시험 출제위원입니다.
 제시된 필수공식을 활용하여, 수험생의 정량적 계산 능력을 평가할 수 있는 고난도 4지선다형 객관식 계산 문제를 만드십시오.
 반드시 아래 지정된 JSON 규격으로만 응답해야 하며, 다른 부가 설명이나 백슬래시 에러가 있어서는 안 됩니다.
-[지반공학 용어 준수 철칙]: 'Flow Net'은 절대 '유망망'이라는 존재하지 않는 단어로 표기하지 말고, 반드시 표준 전공 용어인 '유선망'(流線網)으로 표기하십시오.`;
+
+[🚨 절대적 외부 지침 준수체계 (Strict External Standards Enforcement Clause) - 극도로 중요!]:
+당신은 이 시스템 지시어 내부의 그 어떤 설명이나 규칙보다, 아래 제공되는 [문제생성 지침 기준 (Generation Standards)]에 명시된 지침들을 **최우선 순위(우선순위 #1)의 철칙**으로 삼아 100% 완벽하게 준수해야 합니다.
+[문제생성 지침 기준 (Generation Standards)]에 적혀 있는 금지 조항이나 규칙은 하드코딩된 강력한 법률과 같으며, 이를 위반하여 생성된 문제는 즉시 불합격 처리됩니다. 한 치의 오차도 없이 무조건 따르십시오.`;
 
   const userPrompt = `
 [대상 공식]:
@@ -72,11 +76,12 @@ export async function generateCalculationQuizQuestion(formulaTitle, formula, con
 - 개념 및 설명: ${concept || ''}
 - 기본 가정: ${assumptions || ''}
 
+[문제생성 지침 기준 (Generation Standards)]:
+${GENERATION_STANDARDS}
+
 [출제 요구사항]:
 1. **실제 공학적 수치 대입 계산 문제**: 공식에 포함된 변수들에 합리적이고 타당성 있는 토목/지반공학적 설계 조건 수치(예: 수평 저항력, 부착 강도, 압밀계수, 또는 토압 조건 등)를 제시하고, 최종 계산 결과를 묻는 정량 계산 문제를 출제하십시오.
 2. **보기(options) 구성**: 4개의 보기를 제공하며, 그 중 정확히 1개만 정답이어야 합니다. 나머지 3개의 오답 보기는 단순 임의 날조 숫자가 아닌, 계산 과정에서 흔히 범할 수 있는 전형적인 오차/착오(예: 단위 변환 누락, 특정 분모/분자 위치 오류 등)를 반영한 그럴듯한 오답 수치(distractors)로 설계하십시오.
-- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
-    3. **🚨 [공식 자체 노출 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 공식을 직접 적어주거나 공식에 포함되는 기호들의 대수적 식 자체를 텍스트로 노출하지 마십시오. 학생이 변수값들만 보고 머릿속에서 공식 자체를 떠올려서 직접 수치 계산을 하도록 설계하십시오. (단, 해설(explanation)에서는 공식을 명시하고 자세한 계산 전개 과정을 기술하십시오.)
 3. **가독성 높은 LaTeX 적용**: 문제 질문(question), 보기(options), 해설(explanation)에 포함되는 모든 물리량 기호와 수식은 반드시 LaTeX 기호($)로 감싸십시오.
 4. **한글 출력**: 문제, 보기, 해설은 모두 한국어로 친절하게 작성하십시오.
 
