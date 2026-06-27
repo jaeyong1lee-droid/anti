@@ -795,40 +795,49 @@ div[class*="overflow-y-auto"] {
 }
 
 
-/* AI Tutor Response & Chat Bubbles - Enforce uniform font size on the container and let children inherit naturally */
+/* AI Tutor Response & Chat Bubbles - Enforce uniform font size (Mobile: 14px, PC: 16px) for EVERYTHING */
 .tutor-msg-text,
 .tutor-response-content {
   font-size: 14px !important;
   line-height: 1.6 !important;
 }
 
-/* Headings relative size & bold weight */
-.tutor-msg-text h1, .tutor-response-content h1 { font-size: 1.5em !important; font-weight: 700 !important; margin-top: 0.8em; margin-bottom: 0.4em; }
-.tutor-msg-text h2, .tutor-response-content h2 { font-size: 1.35em !important; font-weight: 700 !important; margin-top: 0.8em; margin-bottom: 0.4em; }
-.tutor-msg-text h3, .tutor-response-content h3 { font-size: 1.2em !important; font-weight: 700 !important; margin-top: 0.6em; margin-bottom: 0.3em; }
-.tutor-msg-text h4, .tutor-response-content h4 { font-size: 1.1em !important; font-weight: 600 !important; }
-.tutor-msg-text h5, .tutor-response-content h5 { font-size: 1.05em !important; font-weight: 600 !important; }
-.tutor-msg-text h6, .tutor-response-content h6 { font-size: 1em !important; font-weight: 600 !important; }
-
-/* Normal paragraphs, list items, and table elements inherit the container font size */
+/* Force all child elements (paragraphs, list items, tables, formulas, and headings) to strictly use 1em (inheriting 14px/16px) */
+.tutor-msg-text h1, .tutor-response-content h1,
+.tutor-msg-text h2, .tutor-response-content h2,
+.tutor-msg-text h3, .tutor-response-content h3,
+.tutor-msg-text h4, .tutor-response-content h4,
+.tutor-msg-text h5, .tutor-response-content h5,
+.tutor-msg-text h6, .tutor-response-content h6,
 .tutor-msg-text p, .tutor-response-content p,
 .tutor-msg-text li, .tutor-response-content li,
 .tutor-msg-text td, .tutor-response-content td,
-.tutor-msg-text th, .tutor-response-content th {
+.tutor-msg-text th, .tutor-response-content th,
+.tutor-msg-text strong, .tutor-response-content strong,
+.tutor-msg-text b, .tutor-response-content b,
+.tutor-msg-text .katex, .tutor-response-content .katex {
   font-size: 1em !important;
   line-height: 1.6 !important;
 }
 
-/* Restore bold elements */
+/* Retain structural bold styling for headings and bold texts to maintain layout hierarchy */
+.tutor-msg-text h1, .tutor-response-content h1,
+.tutor-msg-text h2, .tutor-response-content h2,
+.tutor-msg-text h3, .tutor-response-content h3,
+.tutor-msg-text h4, .tutor-response-content h4,
+.tutor-msg-text h5, .tutor-response-content h5,
+.tutor-msg-text h6, .tutor-response-content h6,
 .tutor-msg-text strong, .tutor-response-content strong,
 .tutor-msg-text b, .tutor-response-content b {
   font-weight: 700 !important;
 }
 
-/* Enforce KaTeX root container font size to strictly match the body text (1em) */
-.tutor-msg-text .katex,
-.tutor-response-content .katex {
-  font-size: 1em !important;
+/* Heading spacing refinements without affecting size */
+.tutor-msg-text h1, .tutor-response-content h1,
+.tutor-msg-text h2, .tutor-response-content h2,
+.tutor-msg-text h3, .tutor-response-content h3 {
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
 }
 
 @media (min-width: 768px) {
