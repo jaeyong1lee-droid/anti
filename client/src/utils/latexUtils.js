@@ -482,35 +482,52 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     const parts = text.split('$');
     if (parts.length < 3) return text;
     
+    const isRelation = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      const f = parts[i];
+      isRelation[i] = f.includes('=') || f.includes('<') || f.includes('>');
+    }
+    
+    const shouldSplit = [];
+    for (let i = 2; i < parts.length - 1; i += 2) {
+      const plainText = parts[i];
+      const prevFormulaIdx = i - 1;
+      const nextFormulaIdx = i + 1;
+      
+      if (isRelation[prevFormulaIdx] && isRelation[nextFormulaIdx]) {
+        const trimmedPlain = plainText.trim();
+        const isSeparating = trimmedPlain.length <= 40 && (
+          trimmedPlain === '' || 
+          trimmedPlain === ',' || 
+          /^[가-힣\s(),]+$/.test(trimmedPlain)
+        );
+        if (isSeparating) {
+          shouldSplit[i] = true;
+        }
+      }
+    }
+    
     let rebuilt = parts[0];
     for (let i = 1; i < parts.length; i += 2) {
       const formula = parts[i];
       const plainText = parts[i + 1];
       
-      rebuilt += `$${formula}$`;
+      const splitBefore = shouldSplit[i - 1];
+      const splitAfter = shouldSplit[i + 1];
+      
+      if (splitBefore || splitAfter) {
+        rebuilt += `$$${formula}$$`;
+      } else {
+        rebuilt += `$${formula}$`;
+      }
       
       if (plainText !== undefined) {
-        const hasNextFormula = (i + 2) < parts.length;
-        if (hasNextFormula) {
-          const nextFormula = parts[i + 2];
-          const isRelation1 = formula.includes('=') || formula.includes('<') || formula.includes('>');
-          const isRelation2 = nextFormula.includes('=') || nextFormula.includes('<') || nextFormula.includes('>');
-          
-          if (isRelation1 && isRelation2) {
-            const trimmedPlain = plainText.trim();
-            const isSeparating = trimmedPlain.length <= 40 && (
-              trimmedPlain === '' || 
-              trimmedPlain === ',' || 
-              /^[가-힣\s(),]+$/.test(trimmedPlain)
-            );
-            
-            if (isSeparating) {
-              rebuilt += (plainText.startsWith(' ') ? ' ' : '') + trimmedPlain + '\n\n';
-              continue;
-            }
-          }
+        if (splitAfter) {
+          const trimmed = plainText.trim();
+          rebuilt += trimmed ? `\n${trimmed}\n` : '\n';
+        } else {
+          rebuilt += plainText;
         }
-        rebuilt += plainText;
       }
     }
     return rebuilt;
