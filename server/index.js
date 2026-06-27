@@ -2724,13 +2724,15 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
 
   const progressId = req.query.progressId || req.body.progressId;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+  const localCallLLM = (sys, prompt, img, scenario, opts) => {
+    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
+  };
 
   let progressTimer = null;
+  let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
   }
 
@@ -3075,6 +3077,9 @@ ${adjustments.map((a, idx) => `
     const prompt = (topic.category === '계산') ? `
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
+
+[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
+${standardsAnalysis}
 
 [🚨 문제 생성 절대 준수 지침]:
 ${GENERATION_STANDARDS}
@@ -3476,12 +3481,14 @@ try {
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, temperature: 0.0, progressId });
+  const localCallLLM = (sys, prompt, img, scenario, opts) => {
+    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: 0.0, progressId });
+  };
 
+  let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
   }
 
@@ -3631,13 +3638,16 @@ app.post('/api/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
   const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => 
-    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+  const localCallLLM = (sys, prompt, img, scenario, opts) => {
+    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
+  };
 
   let progressTimer = null;
+  let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const targetQText = allQuestions && allQuestions[questionIdx] ? allQuestions[questionIdx].question : '재출제';
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, GENERATION_STANDARDS, 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
   }
 
@@ -4440,9 +4450,10 @@ app.post('/api/question/adjust', async (req, res) => {
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
 
   let progressTimer = null;
+  let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const targetQText = currentQuestion ? currentQuestion.question : '의견 조절';
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, GENERATION_STANDARDS, 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 의견 반영 조절 시작...', 50, 1500, 5);
   }
 
@@ -4969,9 +4980,9 @@ ${formatRequirement}
 // 6-1. Comprehensive Exam: Generate 70 questions from ALL topics via Gemini (5문항 분할 배치 최적화 버전)
 app.post('/api/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
+  let standardsAnalysis = '';
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: 최우선 절대 지침 분석 및 정합성 검토 중...', 10);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
   }
   try {
     const hasAnyAiKey = !!(
@@ -5228,7 +5239,8 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
+        const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${batchPrompt}`;
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question');
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -7488,6 +7500,52 @@ async function getFormattedTopicInstructions(topicId) {
 
 
 // 헬퍼 함수: 지침 변경 시 기존 캐시된 모든 퀴즈 세션 일괄 삭제 (실시간 동기화용)
+
+// 0단계: AI의 실시간 지침 분석 및 준수 포인트 도출 헬퍼 함수
+async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
+  if (progressId) {
+    updateProgress(progressId, 0, '0단계: AI가 최우선 절대 지침을 분석 및 정합성 검토 중...', 10);
+  }
+  
+  try {
+    const sysInstruction = `당신은 지반공학 출제/채점 지침을 정밀 검수하는 AI 분석관입니다.`;
+    const prompt = `
+[🚨 최우선 절대 준수 지침 목록]:
+${standards}
+
+[🎯 작업 대상 토픽/맥락]:
+${topicTitle}
+
+위의 절대 준수 지침들을 이번 [${scenario}] 작업(문제 출제 또는 채점)의 관점에서 깊이 있게 분석하십시오.
+이 지침들을 100% 준수하기 위해 **절대로 범해서는 안 될 핵심 금지사항 및 주의해야 할 실무 행동 강령**을 딱 2개의 명료하고 짧은 한글 불릿 포인트 문장으로 요약하십시오.
+(예:
+- 질문 본문 내에 구체적인 등식/공식이나 비례 관계 수식 자체를 직접 노출하는 것을 엄격히 금지함.
+- 단순 계산 대입형 문제를 배제하고 공학적 변수 간의 역학적 인과관계를 묻도록 구성함.)
+
+사족이나 서론, 결론을 완전히 생략하고 오직 2개의 불릿 포인트만 깔끔하게 출력하십시오.
+`;
+
+    // 최우선 모델을 활용하여 빠르게 0단계 분석 기동 (tutor 시나리오 컨텍스트 활용)
+    const rawAnalysis = await callLLMWithFailover(sysInstruction, prompt, null, 'tutor', { temperature: 0.1 });
+    const analysisResult = rawAnalysis.trim();
+    
+    if (progressId) {
+      const lines = analysisResult.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 2);
+      const displayMsg = `0단계: AI 지침 분석 완료! 👉 [준수 조항]: ${lines.join(' / ')}`;
+      updateProgress(progressId, 0, displayMsg, 15);
+      await new Promise(resolve => setTimeout(resolve, 800)); 
+    }
+    
+    return `\n[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항 - 반드시 위배 여부를 확인하여 작업하십시오]:\n${analysisResult}\n`;
+  } catch (err) {
+    console.warn('[Step 0 Analysis] Failed to run AI analysis on standards:', err.message);
+    if (progressId) {
+      updateProgress(progressId, 0, '0단계: 지침 분석 완료 (기본 설정 반영)', 15);
+    }
+    return '';
+  }
+}
+
 async function purgeAllQuizCaches() {
   try {
     await dbQuery.run("DELETE FROM app_session WHERE key LIKE 'review_questions_schedule_%' OR key LIKE 'review_questions_topic_%'");
