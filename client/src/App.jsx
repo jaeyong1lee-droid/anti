@@ -1419,8 +1419,13 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   if (hasHtml) {
     let htmlContent = cleanedText;
     if (window.katex) {
-      // Render block math $$ ... $$
+      const isInline = className.includes('inline');
+      // Render block math $ ... $
       htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        if (isInline) {
+          const rendered = renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+          return `<span class="inline bg-transparent select-text">${rendered}</span>`;
+        }
         const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
@@ -1495,14 +1500,20 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       >
         {parts.map((part, idx) => {
           if (part.type === 'math-block') {
-            const mathHtml = renderKatexString(part.content, { displayMode: true, throwOnError: false });
+            const mathHtml = renderKatexString(part.content, { displayMode: false, throwOnError: false });
             return (
               <span 
                 key={idx} 
-                className="my-0.5 md:my-1 inline-block w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
-              >
-                <span 
-                  className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
+                className="inline bg-transparent select-text"
+                dangerouslySetInnerHTML={{ __html: mathHtml }} 
+              />
+            );
+          } else if (false) { // Dummy check to bypass block layout
+            const mathHtml = '';
+            return (
+              <span 
+                key={idx} 
+                className="formula-scroll-container block w-full py-1.5 min-w-0 select-text" 
                   onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                   onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
                   onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
@@ -14551,8 +14562,8 @@ export default function App() {
                                   }}
                                   className={cls}
                                 >
-                                  <span className="flex gap-2 items-start select-text">
-                                    <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
+                                  <span className="flex gap-2 items-center select-text w-full">
+                                    <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-300">{['①','②','③','④'][oIdx]}</span>
                                     <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                   </span>
                                 </div>
@@ -17681,8 +17692,8 @@ export default function App() {
                                 }}
                                 className={cls}
                               >
-                                <span className="flex gap-2 items-start select-text">
-                                  <span className="font-black text-[10px] mt-0.5 flex-shrink-0 select-none">{['①','②','③','④'][oIdx]}</span>
+                                <span className="flex gap-2 items-center select-text w-full">
+                                  <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-300">{['①','②','③','④'][oIdx]}</span>
                                   <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                 </span>
                               </div>
