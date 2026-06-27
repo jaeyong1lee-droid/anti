@@ -491,6 +491,25 @@ const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/&gt;/g, '>')
                    .replace(/&amp;/g, '&');
   
+  // [🚨 극단적 비상 복구 필터 고도화 🚨]
+  // 이미 렌더링되어 DB나 세션에 들어간 복잡한 KaTeX HTML/MathML/Display 블록 전체를 포착하여
+  // 그 안의 <annotation encoding="application/x-tex"> 내부에 보존되어 있는 순수 LaTeX 수식을 추출해 복원하고,
+  // 해당 HTML 전체를 이 복원된 수식으로 교체합니다.
+  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+  cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (errMatch && errMatch[1]) {
+      const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
   // 2. 문장 맨 앞에 잘못 달라붙은 깨진 기호('_') 다듬기
   cleaned = cleaned.replace(/_따라서/g, '따라서');
 
@@ -512,10 +531,37 @@ const cleanAndSanitizeMathText = (rawText) => {
 const stripHtmlTagsFromRawData = (text) => {
   if (!text || typeof text !== 'string') return text || '';
   
-  // HTML 태그(<...>) 및 이스케이프 태그(&lt;...&gt;)와 그 내부 속성들을 완전히 박멸 소독하여 순수 역학 기호만 복원
   let clean = text.replace(/\u200b/g, '');
+
+  // HTML 엔티티 복구
+  clean = clean.replace(/&#x27;/g, "'")
+               .replace(/&quot;/g, '"')
+               .replace(/&lt;/g, '<')
+               .replace(/&gt;/g, '>')
+               .replace(/&amp;/g, '&');
+
+  // [🚨 극단적 비상 복구 필터 고도화 🚨]
+  // 이미 렌더링되어 DB나 세션에 들어간 복잡한 KaTeX HTML/MathML/Display 블록 전체를 포착하여
+  // 그 안의 <annotation encoding="application/x-tex"> 내부에 보존되어 있는 순수 LaTeX 수식을 추출해 복원하고,
+  // 해당 HTML 전체를 이 복원된 수식으로 교체합니다.
+  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+  clean = clean.replace(katexHtmlRegex, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (errMatch && errMatch[1]) {
+      const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  // 깨진 HTML/MathML 태그들 완전 박멸 소독
   clean = clean.replace(/<[^>]+>/gi, '');
-  clean = clean.replace(/&lt;[\s\S]*?&gt;/gi, '');
+  
   return clean.trim();
 };
 
