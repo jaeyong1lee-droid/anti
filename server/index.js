@@ -2739,20 +2739,11 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 
-  const progressId = req.query.progressId || req.body.progressId;
-  let standardsAnalysis = '';
-  let progressTimer = null;
-  const localCallLLM = (sys, prompt, img, scenario, opts) => {
-    const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
-    return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
-  };
-  if (progressId) {
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
-    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
-  }
+  // 1. 캐시 체크를 최상위에서 먼저 수행합니다.
+  let isCacheHit = false;
+  let cachedResponseData = null;
 
   try {
-    // 캐싱된 복습 세션 문제 복원
     await ensureSessionTable();
     const scheduleId = req.query.scheduleId;
     const isPractice = req.query.isPractice === 'true';
@@ -2782,53 +2773,71 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     const key = `review_questions_schedule_${resolvedScheduleId}`;
     const cached = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (cached && cached.value) {
-      console.log(`[Cache Hit] Serving saved review questions for key ${key}`);
-      try {
-        const parsed = JSON.parse(cached.value);
-        let cachedQuestions = null;
-        let cachedMeta = {};
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          cachedQuestions = parsed;
-        } else if (parsed && Array.isArray(parsed.questions)) {
-          cachedQuestions = parsed.questions;
-          cachedMeta = {
-            selectedAnswers: parsed.selectedAnswers || {},
-            revealedQuestions: parsed.revealedQuestions || {},
-            tableAnswers: parsed.tableAnswers || {},
-            tableGradingResults: parsed.tableGradingResults || {},
-            tutorAnswers: parsed.tutorAnswers || {},
-            tutorInputText: parsed.tutorInputText || {},
-            chatHistory: parsed.chatHistory || [],
-            savedQuizScroll: parsed.savedQuizScroll || 0
-          };
-        }
-
-        if (cachedQuestions && cachedQuestions.length > 0) {
-          // 계산 토픽인데 캐시에 일반 모드(13문제) 문제가 남아있으면 캐시 무효화
-          if (topic.category === '계산' && cachedQuestions.length !== 4) {
-            console.log(`[Cache Invalidated] Calculation topic has ${cachedQuestions.length} cached questions (expected 4). Discarding stale cache.`);
-            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-          } else {
-            // 캐시된 문제가 현재 토픽과 불일치하는지 검증
-            const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords)).length;
-            if (mismatchedCount > 0) {
-              console.log(`[Cache Invalidated] ${mismatchedCount}/${cachedQuestions.length} cached questions are mismatched with topic "${topic.title}". Discarding stale cache.`);
-              await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
-            } else {
-              const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
-              return res.json({
-                questions: healed,
-                ...cachedMeta,
-                isFallback: false,
-                isCached: true,
-                scheduleId: resolvedScheduleId
-              });
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse cached review questions:', e);
+      console.log(`[Cache Hit Check] Serving saved review questions for key ${key}`);
+      const parsed = JSON.parse(cached.value);
+      let cachedQuestions = null;
+      let cachedMeta = {};
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedQuestions = parsed;
+      } else if (parsed && Array.isArray(parsed.questions)) {
+        cachedQuestions = parsed.questions;
+        cachedMeta = {
+          selectedAnswers: parsed.selectedAnswers || {},
+          revealedQuestions: parsed.revealedQuestions || {},
+          tableAnswers: parsed.tableAnswers || {},
+          tableGradingResults: parsed.tableGradingResults || {},
+          tutorAnswers: parsed.tutorAnswers || {},
+          tutorInputText: parsed.tutorInputText || {},
+          chatHistory: parsed.chatHistory || [],
+          savedQuizScroll: parsed.savedQuizScroll || 0
+        };
       }
+
+      if (cachedQuestions && cachedQuestions.length > 0) {
+        if (!(topic.category === '계산' && cachedQuestions.length !== 4)) {
+          const mismatchedCount = cachedQuestions.filter(q => isQuestionMismatched(q, topic.title, topic.keywords)).length;
+          if (mismatchedCount === 0) {
+            const healed = cachedQuestions.map(q => healQuizQuestionObject({ ...q, category: topic.category }));
+            isCacheHit = true;
+            cachedResponseData = {
+              questions: healed,
+              ...cachedMeta,
+              isFallback: false,
+              isCached: true,
+              scheduleId: resolvedScheduleId
+            };
+          } else {
+            console.log(`[Cache Invalidated] ${mismatchedCount}/${cachedQuestions.length} cached questions mismatched. Discarding.`);
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+          }
+        } else {
+          console.log(`[Cache Invalidated] Calculation topic mismatched count. Discarding.`);
+          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse cached review questions:', e);
+  }
+
+  // 캐시가 유효하게 적중했다면, 지침 0단계 분석 호출 없이 즉각 응답을 내주고 종료합니다.
+  if (isCacheHit && cachedResponseData) {
+    console.log(`[Fast Cache Return] Bypassing standards analysis since valid cache is serving.`);
+    return res.json(cachedResponseData);
+  }
+
+  // 캐시가 없을 때만 비로소 지침 분석(Gemini 0단계) 및 진행률 바를 활성화합니다.
+  let progressTimer = null;
+  try {
+    const progressId = req.query.progressId || req.body.progressId;
+    let standardsAnalysis = '';
+    const localCallLLM = (sys, prompt, img, scenario, opts) => {
+      const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
+      return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
+    };
+    if (progressId) {
+      standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
+      progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
     }
 
     // 1) Find the most recently completed/failed schedule of this topic and extract incorrect questions
