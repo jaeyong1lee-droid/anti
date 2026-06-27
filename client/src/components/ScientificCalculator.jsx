@@ -2,21 +2,36 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
 
 function computeParenthesisPairs(str) {
+  if (!str) return {};
+  
+  // 1. 여는 괄호와 닫는 괄호 개수 차이를 계산하여 부족한 만큼 임시 닫는 괄호를 뒤에 채워줌
+  let openCount = 0;
+  let closeCount = 0;
+  for (let idx = 0; idx < str.length; idx++) {
+    if (str[idx] === '(') openCount++;
+    else if (str[idx] === ')') closeCount++;
+  }
+  let paddedStr = str;
+  if (openCount > closeCount) {
+    paddedStr += ')'.repeat(openCount - closeCount);
+  }
+
+  // 2. 패딩된 문자열을 기준으로 괄호 쌍을 생성
   const parentMap = {};
   const stack = [];
-  const rightCloseCount = new Array(str.length + 1).fill(0);
+  const rightCloseCount = new Array(paddedStr.length + 1).fill(0);
   let count = 0;
-  for (let j = str.length - 1; j >= 0; j--) {
-    if (str[j] === ')') count++;
+  for (let j = paddedStr.length - 1; j >= 0; j--) {
+    if (paddedStr[j] === ')') count++;
     rightCloseCount[j] = count;
   }
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '(') {
+  for (let i = 0; i < paddedStr.length; i++) {
+    if (paddedStr[i] === '(') {
       stack.push(i);
       while (stack.length > rightCloseCount[i]) {
         stack.shift();
       }
-    } else if (str[i] === ')') {
+    } else if (paddedStr[i] === ')') {
       if (stack.length > 0) {
         const openIdx = stack.pop();
         parentMap[openIdx] = i;
@@ -304,9 +319,9 @@ export function ScientificCalculator() {
         let level = 0;
         let commaIdx = -1;
         for (let j = openIdx + 1; j < closeIdx; j++) {
-          if (str[j] === '(') level++;
-          else if (str[j] === ')') level--;
-          else if (str[j] === ',' && level === 0) {
+          if (currentStr[j] === '(') level++;
+          else if (currentStr[j] === ')') level--;
+          else if (currentStr[j] === ',' && level === 0) {
             commaIdx = j;
             break;
           }
@@ -1220,8 +1235,8 @@ export function ScientificCalculator() {
       e.preventDefault();
       handleDpad('right');
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
       if (calcResult) {
-        e.preventDefault();
         setCalcResult('');
         setCursorPosition(calcInput.length);
         return;
@@ -1242,7 +1257,6 @@ export function ScientificCalculator() {
         const startIdx = getElementIndex(range.startContainer);
         const endIdx = getElementIndex(range.endContainer);
         if (startIdx !== null && endIdx !== null) {
-          e.preventDefault();
           const minIdx = Math.min(startIdx, endIdx);
           const maxIdx = Math.max(startIdx, endIdx) + 1;
           const before = calcInput.substring(0, minIdx);
@@ -1251,6 +1265,8 @@ export function ScientificCalculator() {
           setCursorPosition(minIdx);
           selection.removeAllRanges();
         }
+      } else {
+        handleBackspace();
       }
     }
   };
