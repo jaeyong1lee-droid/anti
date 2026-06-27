@@ -2884,6 +2884,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
             cachedResponseData = {
               questions: healed,
               ...cachedMeta,
+              sessionId: parsed.sessionId || sId,
               isFallback: false,
               isCached: true,
               scheduleId: resolvedScheduleId

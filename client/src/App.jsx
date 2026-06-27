@@ -6055,7 +6055,6 @@ export default function App() {
     };
   }, []);
 
-  // ── Auto-sync Review Quiz state to server on changes
   useEffect(() => {
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
       const delayDebounceFn = setTimeout(() => {
@@ -6065,6 +6064,7 @@ export default function App() {
           body: JSON.stringify({
             topicId: selectedTopic.id,
             scheduleId: selectedTopic.schedule_id,
+            sessionId: reviewSessionId,
             questions: aiQuestions,
             selectedAnswers,
             revealedQuestions,
@@ -6080,7 +6080,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
 
   const handlePullToRefreshReload = async (mode) => {
     if (mode === 'review' && selectedTopic) {
@@ -7230,11 +7230,17 @@ export default function App() {
         lastQuizTopicId.current = topicId; // 로드 완료 후 기록
         lastQuizScheduleId.current = finalScheduleId; // 스케줄 ID 기록
 
+        const activeSid = data.sessionId || newSid;
+        if (activeSid) {
+          setReviewSessionId(activeSid);
+          localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, activeSid);
+        }
+
         if (data.scheduleId) {
           finalScheduleId = data.scheduleId;
           lastQuizScheduleId.current = data.scheduleId; // 업데이트된 스케줄 ID 반영
-          if (newSid) {
-            localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, newSid);
+          if (activeSid) {
+            localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, activeSid);
           }
           setSelectedTopic(prev => {
             if (prev && prev.id === topicId) {
