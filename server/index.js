@@ -6967,8 +6967,28 @@ app.get('/api/session/review', async (req, res) => {
     const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (row && row.value) {
       const data = JSON.parse(row.value);
-      if (data && Array.isArray(data.questions)) {
-        data.questions = data.questions.map(q => healQuizQuestionObject(q));
+      if (data) {
+        if (Array.isArray(data.questions)) {
+          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+        }
+        // [🚨 실시간 서버단 백엔드 세탁 가드 🚨]
+        // Vercel 프론트엔드 한도 초과 상황에서도 깨끗한 렌더링을 보장하기 위해
+        // 내려보내는 tutorAnswers와 chatHistory 내부의 모든 깨진 수식/HTML 찌꺼기를 실시간 복원
+        if (data.tutorAnswers && typeof data.tutorAnswers === 'object') {
+          Object.keys(data.tutorAnswers).forEach(k => {
+            if (typeof data.tutorAnswers[k] === 'string') {
+              data.tutorAnswers[k] = healLatexFormulas(data.tutorAnswers[k]);
+            }
+          });
+        }
+        if (Array.isArray(data.chatHistory)) {
+          data.chatHistory = data.chatHistory.map(msg => {
+            if (msg && typeof msg.content === 'string') {
+              msg.content = healLatexFormulas(msg.content);
+            }
+            return msg;
+          });
+        }
       }
       res.json({ success: true, data });
     } else {

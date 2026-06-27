@@ -230,6 +230,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // [Self-Healing] Restore collapsed newlines for variable list items
   processed = processed.replace(/(?<!\n)\s+([–—−-]\s*(?:\$[^\$]+\$|[a-zA-Z0-9_\\\{\\}\$]+)\s*:)/g, '\n$1');
 
+  // 샵(#) 기호로 기형적으로 치환된 LaTeX 수식 기호 복원 (예: #sigma -> \sigma, #dfrac -> \dfrac)
+  // 단, 마크다운의 해시태그(# 제목)나 HTML 컬러코드(#ffffff)와 충돌나지 않도록, # 뒤에 영문 수식 명령어/변수명이 오는 경우만 정밀 매치
+  processed = processed.replace(/#([a-zA-Z]{1,20}(?:_[a-zA-Z0-9]+)?)\b/g, '\\$1');
+
   // [🔥 치명적 버그 해결] AI의 이중 이스케이프 오류(\\phi -> \phi) 최우선 복구
   processed = processed.replace(/\\{2,}([a-zA-Z]+)/g, '\\$1');
   // Collapse double or multiple backslashes before % to single backslash
