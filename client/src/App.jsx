@@ -1470,11 +1470,11 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   // 1. [연속 문장 내 개행 병합 가드]:
   // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
-  // 정밀한 줄바꿈 방지를 위해 수식과 텍스트를 동일한 한 줄로 먼저 병합(Merge)합니다.
+  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작하는 새로운 문단은 병합 대상에서 제외합니다.
   cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s])/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
   cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s])/g, '$1 $2');
+  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
   // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
@@ -14961,9 +14961,9 @@ export default function App() {
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
+                                                baseAns += `\n\n**[공식]**\n\n${stripHtmlTagsFromRawData(q.formula)}\n`;
                                                 if (q.structure) {
-                                                  baseAns += `\n\n**[기호 정의]**\n${stripHtmlTagsFromRawData(q.structure)}`;
+                                                  baseAns += `\n**[기호 정의]**\n\n${stripHtmlTagsFromRawData(q.structure)}\n`;
                                                 }
                                               }
                                               return baseAns;
@@ -18088,9 +18088,9 @@ export default function App() {
                                               }
                                               baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
+                                                baseAns += `\n\n**[공식]**\n\n${stripHtmlTagsFromRawData(q.formula)}\n`;
                                                 if (q.structure) {
-                                                  baseAns += `\n\n**[기호 정의]**\n${stripHtmlTagsFromRawData(q.structure)}`;
+                                                  baseAns += `\n**[기호 정의]**\n\n${stripHtmlTagsFromRawData(q.structure)}\n`;
                                                 }
                                               }
                                               return baseAns;
