@@ -5669,7 +5669,7 @@ export default function App() {
             }
           })
           .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
-      }, 30000); // 30-second debounce for lightweight performance
+      }, 1500); // 1.5-second debounce for lightweight performance
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -5769,6 +5769,7 @@ export default function App() {
                 console.log(`[Realtime Sync] Local review state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
             }
+            updateSyncTime(new Date());
           } else if (!selectedTopic.isReadOnly) {
             // Check if it was completed on another device
             const scheduleId = selectedTopic.schedule_id;
