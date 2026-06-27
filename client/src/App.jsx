@@ -1475,9 +1475,9 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   // 1. [연속 문장 내 개행 병합 가드]:
-  // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐) 단일 개행만 병합합니다.
-  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
+  // (브라우저-네이티브 whitespace-pre-wrap 렌더링에 의해 개행이 안전하게 보존되므로 더 이상 임의 병합을 하지 않습니다. 주석 처리합니다.)
+  // cleanedText = cleanedText.replace(/([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\(\[\{])[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
+  // cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F0-9a-zA-Z\)\}\]\,\.\!\?])/g, '$1 $2');
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
   // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
