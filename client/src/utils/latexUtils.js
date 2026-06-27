@@ -496,11 +496,11 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       
       if (isRelation[prevFormulaIdx] && isRelation[nextFormulaIdx]) {
         const trimmedPlain = plainText.trim();
-        const isSeparating = trimmedPlain.length <= 40 && (
-          trimmedPlain === '' || 
-          trimmedPlain === ',' || 
-          /^[가-힣\s(),]+$/.test(trimmedPlain)
-        );
+        const isPlainSpaceOrComma = trimmedPlain === '' || trimmedPlain === ',';
+        const isShortParenthesis = trimmedPlain.startsWith('(') && trimmedPlain.endsWith(')') && trimmedPlain.length <= 20;
+        const isShortKoreanConnector = /^[가-힣\s]+$/.test(trimmedPlain) && trimmedPlain.length <= 6;
+        
+        const isSeparating = isPlainSpaceOrComma || isShortParenthesis || isShortKoreanConnector;
         if (isSeparating) {
           shouldSplit[i] = true;
         }
