@@ -2724,13 +2724,12 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   console.log(`[POST /api/topics/:id/ai-questions] Triggered: req.params.id="${req.params.id}", coerced topicId=${topicId} (type: ${typeof topicId})`);
 
   const progressId = req.query.progressId || req.body.progressId;
+  let standardsAnalysis = '';
+  let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
   };
-
-  let progressTimer = null;
-  let standardsAnalysis = '';
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, topic.title, GENERATION_STANDARDS, 'generation');
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 예상 문제 생성 시작...', 50, 1500, 5);
@@ -3481,12 +3480,11 @@ try {
 app.post('/api/grade-subjective', async (req, res) => {
   const { question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category } = req.body;
   const progressId = req.body.progressId || req.query.progressId;
+  let standardsAnalysis = '';
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 채점 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, temperature: 0.0, progressId });
   };
-
-  let standardsAnalysis = '';
   if (progressId) {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, question || '주관식 채점', dynamicGradingStandards, 'grading');
     updateProgress(progressId, 1, '1단계: AI 엔진으로 제출 답안 채점 중...', 30);
@@ -3638,13 +3636,12 @@ app.post('/api/question/regenerate', async (req, res) => {
   const { mode, topicId, currentQuestion, questionIdx, allQuestions, targetTypeSelection } = req.body;
   const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
   const progressId = req.query.progressId || req.body.progressId;
+  let standardsAnalysis = '';
+  let progressTimer = null;
   const localCallLLM = (sys, prompt, img, scenario, opts) => {
     const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${prompt}`;
     return callLLMWithFailover(sys, enrichedPrompt, img, scenario, { ...opts, progressId });
   };
-
-  let progressTimer = null;
-  let standardsAnalysis = '';
   if (progressId) {
     const targetQText = allQuestions && allQuestions[questionIdx] ? allQuestions[questionIdx].question : '재출제';
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, GENERATION_STANDARDS, 'generation');
