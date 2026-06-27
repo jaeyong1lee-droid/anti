@@ -5570,23 +5570,21 @@ export default function App() {
   useEffect(() => {
     if (selectedTopic && selectedTopic.id) {
       const debounceTimer = setTimeout(() => {
-        if (Object.keys(revealedQuestions).length > 0 || Object.keys(selectedAnswers).length > 0 || Object.keys(tableAnswers).length > 0 || Object.keys(tableGradingResults).length > 0 || Object.keys(tutorAnswers).length > 0 || Object.keys(tutorInputText).length > 0 || chatHistory.length > 0) {
-          try {
-            const key = selectedTopic.schedule_id 
-              ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-              : `anti_review_progress_${selectedTopic.id}`;
-            localStorage.setItem(key, JSON.stringify({
-              revealedQuestions,
-              selectedAnswers,
-              tableAnswers,
-              tableGradingResults,
-              tutorAnswers,
-              tutorInputText,
-              chatHistory
-            }));
-          } catch (e) {
-            console.warn('localStorage 복습 진행률 저장 실패:', e);
-          }
+        try {
+          const key = selectedTopic.schedule_id 
+            ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+            : `anti_review_progress_${selectedTopic.id}`;
+          localStorage.setItem(key, JSON.stringify({
+            revealedQuestions,
+            selectedAnswers,
+            tableAnswers,
+            tableGradingResults,
+            tutorAnswers,
+            tutorInputText,
+            chatHistory
+          }));
+        } catch (e) {
+          console.warn('localStorage 복습 진행률 저장 실패:', e);
         }
       }, 500);
       return () => clearTimeout(debounceTimer);
