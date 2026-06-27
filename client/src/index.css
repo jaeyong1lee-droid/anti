@@ -825,10 +825,10 @@ div[class*="overflow-y-auto"] {
   font-weight: 700 !important;
 }
 
-/* Keep KaTeX elements rendering with their relative layout values */
-.tutor-msg-text .katex *, 
-.tutor-response-content .katex * {
-  font-size: inherit !important;
+/* Enforce KaTeX root container font size to strictly match the body text (1em) */
+.tutor-msg-text .katex,
+.tutor-response-content .katex {
+  font-size: 1em !important;
 }
 
 @media (min-width: 768px) {
