@@ -1477,9 +1477,28 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   // 1. [연속 문장 내 개행 병합 가드]:
   // (수식과 결합된 개행이 브라우저-네이티브 whitespace-pre-wrap 렌더링에 의해 안전하게 보존되므로 더 이상 병합이 필요하지 않습니다. 주석 처리합니다.)
   // cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$\$[^\$]+?\$\$)/g, '$1 $2');
-  // cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+  // cleanedText = cleanedText.replace(/(\$\$[^\$]+?\ $\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
   // cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))[ \t]*\n[ \t]*(\$[^\$]+?\$)/g, '$1 $2');
   // cleanedText = cleanedText.replace(/(\$[^\$]+?\$)[ \t]*\n[ \t]*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+
+  // [실시간 클라이언트 레이아웃 자가 치유 필터 (Legacy DB 데이터 구제 조치)]
+  // (A) 수식과 수식($)이 개행 없이 공백이나 쉼표로 붙어 나열되는 경우 강제 개행 주입
+  cleanedText = cleanedText.replace(/(\$\$?)\s*[,，]?\s*(\$\$?)/g, '$1\n\n$2');
+
+  // (B) 한글 마침표/콜론 뒤에 공백만 있거나 바로 수식이 시작되는 경우 강제 개행 주입
+  cleanedText = cleanedText.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
+
+  // (C) 수식이 끝나고 바로 한글 설명 단어(2글자 이상)가 따라붙는 경우 강제 개행 주입
+  cleanedText = cleanedText.replace(/(\$\$?)\s*([\uac00-\ud7a3]{2,})/g, '$1\n\n$2');
+
+  // (D) 단일 인라인 수식 내부에서 대문자 변수(K_0, E_u 등)와 등호(=)가 섞인 여러 개의 독립적 관계식이 한데 뭉쳐진 경우 쪼개기
+  cleanedText = cleanedText.replace(/\$([^\$]+?)\$/g, (match, math) => {
+    if (math.includes('=') && /(?<!\\)(?<![a-zA-Z])[A-Z][a-zA-Z0-9_]*\s*=/.test(math)) {
+      const splitted = math.replace(/([^\s]+?)\s*([A-Z][a-zA-Z0-9_]*\s*=)/g, '$1$ \n\n$ $2');
+      return `$${splitted}$`;
+    }
+    return match;
+  });
 
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
