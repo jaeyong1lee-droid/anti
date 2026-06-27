@@ -795,42 +795,45 @@ div[class*="overflow-y-auto"] {
 }
 
 
-/* AI Tutor Response & Chat Bubbles - Enforce uniform sizes and normal weight, preserving KaTeX relative layouts */
+/* AI Tutor Response & Chat Bubbles - Enforce uniform font size on the container and let children inherit naturally */
 .tutor-msg-text,
-.tutor-msg-text *,
-.tutor-response-content,
-.tutor-response-content h1,
-.tutor-response-content h2,
-.tutor-response-content h3,
-.tutor-response-content h4,
-.tutor-response-content h5,
-.tutor-response-content h6,
-.tutor-response-content p,
-.tutor-response-content li,
-.tutor-response-content td,
-.tutor-response-content th,
-.tutor-response-content strong,
-.tutor-response-content b {
+.tutor-response-content {
   font-size: 14px !important;
-  font-weight: 400 !important; /* normal weight */
+  line-height: 1.6 !important;
+}
+
+/* Headings relative size & bold weight */
+.tutor-msg-text h1, .tutor-response-content h1 { font-size: 1.5em !important; font-weight: 700 !important; margin-top: 0.8em; margin-bottom: 0.4em; }
+.tutor-msg-text h2, .tutor-response-content h2 { font-size: 1.35em !important; font-weight: 700 !important; margin-top: 0.8em; margin-bottom: 0.4em; }
+.tutor-msg-text h3, .tutor-response-content h3 { font-size: 1.2em !important; font-weight: 700 !important; margin-top: 0.6em; margin-bottom: 0.3em; }
+.tutor-msg-text h4, .tutor-response-content h4 { font-size: 1.1em !important; font-weight: 600 !important; }
+.tutor-msg-text h5, .tutor-response-content h5 { font-size: 1.05em !important; font-weight: 600 !important; }
+.tutor-msg-text h6, .tutor-response-content h6 { font-size: 1em !important; font-weight: 600 !important; }
+
+/* Normal paragraphs, list items, and table elements inherit the container font size */
+.tutor-msg-text p, .tutor-response-content p,
+.tutor-msg-text li, .tutor-response-content li,
+.tutor-msg-text td, .tutor-response-content td,
+.tutor-msg-text th, .tutor-response-content th {
+  font-size: 1em !important;
+  line-height: 1.6 !important;
+}
+
+/* Restore bold elements */
+.tutor-msg-text strong, .tutor-response-content strong,
+.tutor-msg-text b, .tutor-response-content b {
+  font-weight: 700 !important;
+}
+
+/* Keep KaTeX elements rendering with their relative layout values */
+.tutor-msg-text .katex *, 
+.tutor-response-content .katex * {
+  font-size: inherit !important;
 }
 
 @media (min-width: 768px) {
   .tutor-msg-text,
-  .tutor-msg-text *,
-  .tutor-response-content,
-  .tutor-response-content h1,
-  .tutor-response-content h2,
-  .tutor-response-content h3,
-  .tutor-response-content h4,
-  .tutor-response-content h5,
-  .tutor-response-content h6,
-  .tutor-response-content p,
-  .tutor-response-content li,
-  .tutor-response-content td,
-  .tutor-response-content th,
-  .tutor-response-content strong,
-  .tutor-response-content b {
+  .tutor-response-content {
     font-size: 16px !important;
   }
 }
