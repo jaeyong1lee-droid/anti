@@ -2117,19 +2117,20 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
     }
 
-    if (schedule.status !== 'completed') {
-      return res.status(400).json({ error: '완료 상태인 항목만 초기화할 수 있습니다.' });
+    if (schedule.status !== 'completed' && schedule.status !== 'practice') {
+      return res.status(400).json({ error: '완료 또는 자유복습 상태인 일정만 초기화할 수 있습니다.' });
     }
 
     const todayDateStr = getLocalDateString();
     let newPlannedDate = schedule.planned_date;
+    const targetStatus = schedule.status === 'practice' ? 'practice' : 'pending';
 
     const updateSql = `
       UPDATE schedules 
-      SET status = 'pending', completed_at = NULL, planned_date = ?, score = NULL, correct_count = NULL, total_count = NULL
+      SET status = ?, completed_at = NULL, planned_date = ?, score = NULL, correct_count = NULL, total_count = NULL
       WHERE id = ?
     `;
-    await dbQuery.run(updateSql, [newPlannedDate, scheduleId]);
+    await dbQuery.run(updateSql, [targetStatus, newPlannedDate, scheduleId]);
 
     // 복습이 대기 상태로 리셋될 경우, 뒤이어 자동 생성되었던 다음 회차의 pending 스케줄을 삭제합니다.
     const nextRound = schedule.review_round + 1;
