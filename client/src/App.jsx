@@ -7623,7 +7623,7 @@ export default function App() {
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       
-      if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
+      if (selectedTopicRef.current?.id !== currentRefreshTopicId) {
         console.log(`[handleRefreshReviewQuestions] Topic changed. Ignoring refreshed data.`);
         stopProgressPolling();
         return;
@@ -7677,14 +7677,14 @@ export default function App() {
       }
     } catch (err) {
       stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
-      if (selectedTopicRef.current?.id !== currentRefreshTopicId || selectedTopicRef.current?.schedule_id !== currentRefreshScheduleId) {
+      if (selectedTopicRef.current?.id !== currentRefreshTopicId) {
         return;
       }
       console.error('AI refresh call error:', err);
       showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
       setAiError(err.message || '서버 통신 오류');
     } finally {
-      if (selectedTopicRef.current?.id === currentRefreshTopicId && selectedTopicRef.current?.schedule_id === currentRefreshScheduleId) {
+      if (selectedTopicRef.current?.id === currentRefreshTopicId) {
         setLoadingAI(false);
       }
     }
