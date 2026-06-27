@@ -7504,8 +7504,32 @@ async function getFormattedTopicInstructions(topicId) {
 
 // 0단계: AI의 실시간 지침 분석 및 준수 포인트 도출 헬퍼 함수
 async function analyzeStandardsBeforeTask(progressId, topicTitle, standards, scenario = 'generation') {
+  let activeList = [];
+  if (scenario === 'generation') {
+    activeList = generationStandardsList;
+  } else if (scenario === 'grading') {
+    activeList = gradingStandardsList;
+  } else if (scenario === 'validation') {
+    activeList = validationStandardsList;
+  } else if (scenario === 'lockscreen') {
+    activeList = lockscreenStandardsList;
+  }
+
+  // 기본값 백업 (혹시라도 빈 배열일 경우 대비)
+  if (!activeList || activeList.length === 0) {
+    activeList = [{ title: '기본 출제 지침 규격 검토' }];
+  }
+
+  let titleIndex = 0;
+  let intervalId = null;
+
   if (progressId) {
-    updateProgress(progressId, 0, '0단계: AI가 최우선 절대 지침을 분석 및 정합성 검토 중...', 10);
+    // 0.45초 간격으로 실제로 읽고 있는 지침의 제목을 순차적으로 롤링 노출
+    intervalId = setInterval(() => {
+      const currentTitle = activeList[titleIndex % activeList.length].title;
+      updateProgress(progressId, 0, `0단계: AI가 최우선 절대 지침 분석 중... 📖 [읽는 지침]: ${currentTitle}`, 10);
+      titleIndex++;
+    }, 450);
   }
   
   try {
@@ -7519,10 +7543,6 @@ ${topicTitle}
 
 위의 절대 준수 지침들을 이번 [${scenario}] 작업(문제 출제 또는 채점)의 관점에서 깊이 있게 분석하십시오.
 이 지침들을 100% 준수하기 위해 **절대로 범해서는 안 될 핵심 금지사항 및 주의해야 할 실무 행동 강령**을 딱 2개의 명료하고 짧은 한글 불릿 포인트 문장으로 요약하십시오.
-(예:
-- 질문 본문 내에 구체적인 등식/공식이나 비례 관계 수식 자체를 직접 노출하는 것을 엄격히 금지함.
-- 단순 계산 대입형 문제를 배제하고 공학적 변수 간의 역학적 인과관계를 묻도록 구성함.)
-
 사족이나 서론, 결론을 완전히 생략하고 오직 2개의 불릿 포인트만 깔끔하게 출력하십시오.
 `;
 
@@ -7530,17 +7550,23 @@ ${topicTitle}
     const rawAnalysis = await callLLMWithFailover(sysInstruction, prompt, null, 'tutor', { temperature: 0.1 });
     const analysisResult = rawAnalysis.trim();
     
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+
     if (progressId) {
-      const displayMsg = `0단계: AI 지침 분석 완료!`;
-      updateProgress(progressId, 0, displayMsg, 15);
+      updateProgress(progressId, 0, `0단계: AI 지침 분석 완료!`, 15);
       await new Promise(resolve => setTimeout(resolve, 800)); 
     }
     
     return `\n[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항 - 반드시 위배 여부를 확인하여 작업하십시오]:\n${analysisResult}\n`;
   } catch (err) {
     console.warn('[Step 0 Analysis] Failed to run AI analysis on standards:', err.message);
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
     if (progressId) {
-      updateProgress(progressId, 0, '0단계: 지침 분석 완료 (기본 설정 반영)', 15);
+      updateProgress(progressId, 0, '0단계: AI 지침 분석 완료!', 15);
     }
     return '';
   }
