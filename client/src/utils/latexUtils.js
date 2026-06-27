@@ -488,21 +488,60 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       isRelation[i] = f.includes('=') || f.includes('<') || f.includes('>');
     }
     
-    const shouldSplit = [];
-    for (let i = 2; i < parts.length - 1; i += 2) {
-      const plainText = parts[i];
-      const prevFormulaIdx = i - 1;
-      const nextFormulaIdx = i + 1;
-      
-      if (isRelation[prevFormulaIdx] && isRelation[nextFormulaIdx]) {
-        const trimmedPlain = plainText.trim();
-        const isPlainSpaceOrComma = trimmedPlain === '' || trimmedPlain === ',';
-        const isShortParenthesis = trimmedPlain.startsWith('(') && trimmedPlain.endsWith(')') && trimmedPlain.length <= 20;
-        
-        const isSeparating = isPlainSpaceOrComma || isShortParenthesis;
-        if (isSeparating) {
-          shouldSplit[i] = true;
+    const startsWithKoreanParticle = (nextText) => {
+      if (!nextText) return false;
+      const trimmed = nextText.trim();
+      return /^(?:일\s*때|이므로|이고|이며|와\b|과\b|은\b|는\b|이\b|가\b|을\b|를\b|의\b|에\b|로\b|으로\b|라\s*하면|라\s*할\s*때|에\s*대입|을\s*대입|를\s*대입|의\s*값|을\s*구하면|를\s*구하면|에서\b|보다\b|처럼\b|하고\b|하며\b|의\s*형태|으로\s*정의)/.test(trimmed);
+    };
+
+    const isSentenceEnded = (prevText) => {
+      if (!prevText) return true;
+      const trimmed = prevText.trim();
+      if (trimmed === '') return true;
+      return /[.!?\n]$/.test(trimmed) || /(?:다|요|음|임|함|것|정리됩니다|대입합니다|구합니다|얻어집니다|나타납니다|설정합니다)\.?$/.test(trimmed);
+    };
+
+    const elevateToDisplay = new Array(parts.length).fill(false);
+
+    let idx = 1;
+    while (idx < parts.length) {
+      if (isRelation[idx]) {
+        const group = [idx];
+        let nextIdx = idx + 2;
+        while (nextIdx < parts.length) {
+          const separator = parts[nextIdx - 1];
+          const trimmedSep = separator.trim();
+          const isSepSpaceOrComma = trimmedSep === '' || trimmedSep === ',';
+          const isSepShortParenthesis = trimmedSep.startsWith('(') && trimmedSep.endsWith(')') && trimmedSep.length <= 20;
+          
+          if (isRelation[nextIdx] && (isSepSpaceOrComma || isSepShortParenthesis)) {
+            group.push(nextIdx);
+            nextIdx += 2;
+          } else {
+            break;
+          }
         }
+
+        const lastFormulaIdx = group[group.length - 1];
+        const textAfterGroup = parts[lastFormulaIdx + 1] || '';
+        const isFollowedByParticle = startsWithKoreanParticle(textAfterGroup);
+
+        if (!isFollowedByParticle) {
+          if (group.length > 1) {
+            group.forEach(gIdx => {
+              elevateToDisplay[gIdx] = true;
+            });
+          } else {
+            const textBefore = parts[idx - 1] || '';
+            const textAfter = parts[idx + 1] || '';
+            if (isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter)) {
+              elevateToDisplay[idx] = true;
+            }
+          }
+        }
+        idx = nextIdx;
+      } else {
+        idx += 2;
       }
     }
     
@@ -511,10 +550,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       let formula = parts[i];
       let plainText = parts[i + 1];
       
-      const splitBefore = shouldSplit[i - 1];
-      const splitAfter = shouldSplit[i + 1];
+      const isElevated = elevateToDisplay[i];
+      const nextElevated = elevateToDisplay[i + 2];
       
-      if (plainText !== undefined && splitAfter) {
+      if (plainText !== undefined && nextElevated) {
         const trimmed = plainText.trim();
         if (trimmed.startsWith(',')) {
           formula = formula.trim() + ',';
@@ -522,14 +561,14 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         }
       }
       
-      if (splitBefore || splitAfter) {
+      if (isElevated) {
         rebuilt += `$$${formula}$$`;
       } else {
         rebuilt += `$${formula}$`;
       }
       
       if (plainText !== undefined) {
-        if (splitAfter) {
+        if (isElevated || nextElevated) {
           const trimmed = plainText.trim();
           rebuilt += trimmed ? `\n${trimmed}\n` : '\n';
         } else {
