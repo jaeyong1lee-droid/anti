@@ -116,6 +116,11 @@ export function getGradingSystemInstruction(customGradingStandards, customEngine
   return `[🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 채점 작업을 개시하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
 당신은 지반공학 및 토목공학 전문 채점관으로서 채점을 수행하기 전, 아래 명시된 **채점 기준 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 점수 및 사유를 산정해야 합니다.
 
+🚨 [중요: 커스텀 채점 지침 최우선 적용 철칙 - 극도로 중요!]:
+- 아래 [📋 채점 기준 절대 지침] 중 사용자가 수립한 지침(예: "공식, 정량적 답변 위주 - 공식, 정량적기준을 포함해서 답변하세요" 등)은 시스템 내의 다른 일반적인 수식/부호/연산자 엄격성 가이드라인보다 **압도적으로 높은 최우선 순위**를 가집니다.
+- 만약 사용자가 답안 내에 요구되는 **수식/공식 및 정량적 매개변수 기준들을 성실히 포함하여 기술**했다면, 설령 사소한 부호 오기(예: + 와 -의 위치 바뀜, 또는 음수 기호 누락 등)나 매개변수의 경미한 표기 실수가 발견되더라도 이를 치명적 오개념으로 판정하여 0점~3점 수준의 오답 판정을 내리는 것을 **엄격히 금지**합니다.
+- 핵심 공식과 정량적 매개변수를 답안에 올바르게 포함하고 있으므로, 부호 실수가 있더라도 **반드시 부분 점수를 우수하게(10점 만점 기준 최소 7~8점 이상) 부여**하고 채점하십시오.
+
 [📋 채점 기준 절대 지침 (Grading Standards)]:
 ${gStandards}
 
@@ -199,7 +204,7 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
   }
 
   const userPrompt = `
-- 문제/맥락: ${question || '주관식 빈칸 채우기'}
+- - 문제/맥락: ${question || '주관식 빈칸 채우기'}
 ${rowHeader ? `- 표 행 제목 (Row Header): ${rowHeader}` : ''}
 ${colHeader ? `- 표 열 제목 (Column Header): ${colHeader}` : ''}
 ${explanation ? `- 전체 해설 (Explanation): ${explanation}` : ''}
