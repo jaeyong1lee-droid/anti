@@ -7249,6 +7249,18 @@ app.get('/api/engineering-standards', async (req, res) => {
   }
 });
 
+function stampUpdatedStandards(newList, oldList) {
+  if (!Array.isArray(newList)) return [];
+  const oldMap = new Map((oldList || []).map(item => [item.id, item]));
+  return newList.map(item => {
+    const oldItem = oldMap.get(item.id);
+    if (!oldItem || oldItem.content !== item.content || oldItem.title !== item.title || !item.updatedAt) {
+      return { ...item, updatedAt: new Date().toISOString() };
+    }
+    return item;
+  });
+}
+
 // POST /api/engineering-standards → Save/update structured engineering standards list
 app.post('/api/engineering-standards', async (req, res) => {
   try {
@@ -7257,22 +7269,24 @@ app.post('/api/engineering-standards', async (req, res) => {
       return res.status(400).json({ error: 'standards must be an array' });
     }
 
+    const stamped = stampUpdatedStandards(standards, standardsList);
+
     // 1. Update the live binding in memory immediately
-    updateLiveEngineeringStandards(standards);
+    updateLiveEngineeringStandards(stamped);
 
     // 2. Save to database (app_session) as the absolute source of truth
     try {
-      await saveSessionValue('engineering_standards', JSON.stringify(standards));
+      await saveSessionValue('engineering_standards', JSON.stringify(stamped));
       console.log('Successfully saved engineering standards to database.');
     } catch (dbErr) {
       console.error('Failed to save engineering standards to database:', dbErr.message);
     }
 
     // 3. Save to local file system
-    await writeStandardToFile('engineering_standards', standards);
+    await writeStandardToFile('engineering_standards', stamped);
 
     // 4. Push to Vercel production server
-    pushStandardToProduction('engineering-standards', standards).catch(() => {});
+    pushStandardToProduction('engineering-standards', stamped).catch(() => {});
 
     await purgeAllQuizCaches();
     res.json({ ok: true });
@@ -7312,22 +7326,24 @@ app.post('/api/grading-standards', async (req, res) => {
       return res.status(400).json({ error: 'standards must be an array' });
     }
 
+    const stamped = stampUpdatedStandards(standards, gradingStandardsList);
+
     // 1. Update the live binding in memory immediately
-    updateLiveGradingStandards(standards);
+    updateLiveGradingStandards(stamped);
 
     // 2. Save to database (app_session)
     try {
-      await saveSessionValue('grading_standards', JSON.stringify(standards));
+      await saveSessionValue('grading_standards', JSON.stringify(stamped));
       console.log('Successfully saved grading standards to database.');
     } catch (dbErr) {
       console.error('Failed to save grading standards to database:', dbErr.message);
     }
 
     // 3. Save to local file system
-    await writeStandardToFile('grading_standards', standards);
+    await writeStandardToFile('grading_standards', stamped);
 
     // 4. Push to Vercel production server
-    pushStandardToProduction('grading-standards', standards).catch(() => {});
+    pushStandardToProduction('grading-standards', stamped).catch(() => {});
 
     await purgeAllQuizCaches();
     res.json({ ok: true });
@@ -7367,22 +7383,24 @@ app.post('/api/validation-standards', async (req, res) => {
       return res.status(400).json({ error: 'standards must be an array' });
     }
 
+    const stamped = stampUpdatedStandards(standards, validationStandardsList);
+
     // 1. Update the live binding in memory immediately
-    updateLiveValidationStandards(standards);
+    updateLiveValidationStandards(stamped);
 
     // 2. Save to database (app_session)
     try {
-      await saveSessionValue('validation_standards', JSON.stringify(standards));
+      await saveSessionValue('validation_standards', JSON.stringify(stamped));
       console.log('Successfully saved validation standards to database.');
     } catch (dbErr) {
       console.error('Failed to save validation standards to database:', dbErr.message);
     }
 
     // 3. Save to local file system
-    await writeStandardToFile('validation_standards', standards);
+    await writeStandardToFile('validation_standards', stamped);
 
     // 4. Push to Vercel production server
-    pushStandardToProduction('validation-standards', standards).catch(() => {});
+    pushStandardToProduction('validation-standards', stamped).catch(() => {});
 
     await purgeAllQuizCaches();
     res.json({ ok: true });
@@ -7420,20 +7438,22 @@ app.post('/api/generation-standards', async (req, res) => {
       return res.status(400).json({ error: 'standards must be an array' });
     }
 
-    updateLiveGenerationStandards(standards);
+    const stamped = stampUpdatedStandards(standards, generationStandardsList);
+
+    updateLiveGenerationStandards(stamped);
 
     try {
-      await saveSessionValue('generation_standards', JSON.stringify(standards));
+      await saveSessionValue('generation_standards', JSON.stringify(stamped));
       console.log('Successfully saved generation standards to database.');
     } catch (dbErr) {
       console.error('Failed to save generation standards to database:', dbErr.message);
     }
 
     // 3. Save to local file system
-    await writeStandardToFile('generation_standards', standards);
+    await writeStandardToFile('generation_standards', stamped);
 
     // 4. Push to Vercel production server
-    pushStandardToProduction('generation-standards', standards).catch(() => {});
+    pushStandardToProduction('generation-standards', stamped).catch(() => {});
 
     await purgeAllQuizCaches();
     res.json({ ok: true });
@@ -7471,20 +7491,22 @@ app.post('/api/lockscreen-standards', async (req, res) => {
       return res.status(400).json({ error: 'standards must be an array' });
     }
 
-    updateLiveLockscreenStandards(standards);
+    const stamped = stampUpdatedStandards(standards, lockscreenStandardsList);
+
+    updateLiveLockscreenStandards(stamped);
 
     try {
-      await saveSessionValue('lockscreen_standards', JSON.stringify(standards));
+      await saveSessionValue('lockscreen_standards', JSON.stringify(stamped));
       console.log('Successfully saved lockscreen standards to database.');
     } catch (dbErr) {
       console.error('Failed to save lockscreen standards to database:', dbErr.message);
     }
 
     // 3. Save to local file system
-    await writeStandardToFile('lockscreen_standards', standards);
+    await writeStandardToFile('lockscreen_standards', stamped);
 
     // 4. Push to Vercel production server
-    pushStandardToProduction('lockscreen-standards', standards).catch(() => {});
+    pushStandardToProduction('lockscreen-standards', stamped).catch(() => {});
 
     await purgeAllQuizCaches();
     res.json({ ok: true });
