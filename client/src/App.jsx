@@ -498,7 +498,7 @@ const cleanAndSanitizeMathText = (rawText) => {
   // 이미 렌더링되어 DB나 세션에 들어간 복잡한 KaTeX HTML/MathML/Display 블록 전체를 포착하여
   // 그 안의 <annotation encoding="application/x-tex"> 내부에 보존되어 있는 순수 LaTeX 수식을 추출해 복원하고,
   // 해당 HTML 전체를 이 복원된 수식으로 교체합니다.
-  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+  const katexHtmlRegex = /<(div|span)\s+[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
   cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
     const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
     if (annotMatch && annotMatch[1]) {
