@@ -8414,106 +8414,122 @@ async function backfillPastScheduleScores() {
   }
 }
 
+function mergeDefaultAndDbStandards(defaultList, dbList) {
+  if (!Array.isArray(dbList)) return defaultList;
+  const defaultMap = new Map(defaultList.map(item => [item.id, item]));
+  const mergedList = [];
+  for (const dbItem of dbList) {
+    if (defaultMap.has(dbItem.id)) {
+      const defaultItem = defaultMap.get(dbItem.id);
+      mergedList.push({ ...defaultItem });
+      defaultMap.delete(dbItem.id);
+    } else {
+      mergedList.push(dbItem);
+    }
+  }
+  for (const remainingItem of defaultMap.values()) {
+    mergedList.push(remainingItem);
+  }
+  return mergedList;
+}
+
 async function initializeEngineeringStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
+    let finalList = standardsList;
     if (row && row.value) {
-      const list = JSON.parse(row.value);
-      if (Array.isArray(list)) {
-        updateLiveEngineeringStandards(list);
-        console.log('Loaded engineering standards from database at startup.');
-        await writeStandardToFile('engineering_standards', list);
-      }
-    } else {
-      // Save default list to database if not present
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('engineering_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(standardsList)]);
-      console.log('Saved default engineering standards to database at startup.');
+      const dbList = JSON.parse(row.value);
+      finalList = mergeDefaultAndDbStandards(standardsList, dbList);
     }
+    const isDifferent = !row || JSON.stringify(finalList) !== row.value;
+    if (isDifferent) {
+      await saveSessionValue('engineering_standards', JSON.stringify(finalList));
+      console.log('[Initialize] Synced and merged engineering standards in database.');
+    }
+    updateLiveEngineeringStandards(finalList);
+    await writeStandardToFile('engineering_standards', finalList);
   } catch (err) {
-    console.error('Failed to initialize engineering standards from database at startup:', err.message);
+    console.error('Failed to initialize engineering standards:', err.message);
   }
 }
 
 async function initializeGradingStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
+    let finalList = gradingStandardsList;
     if (row && row.value) {
-      let list = JSON.parse(row.value);
-      if (Array.isArray(list)) {
-        // Removed auto-merging deleted defaults
-        updateLiveGradingStandards(list);
-        console.log('Loaded grading standards from database at startup.');
-        await writeStandardToFile('grading_standards', list);
-      }
-    } else {
-      // Save default list to database if not present
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('grading_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(gradingStandardsList)]);
-      console.log('Saved default grading standards to database at startup.');
+      const dbList = JSON.parse(row.value);
+      finalList = mergeDefaultAndDbStandards(gradingStandardsList, dbList);
     }
+    const isDifferent = !row || JSON.stringify(finalList) !== row.value;
+    if (isDifferent) {
+      await saveSessionValue('grading_standards', JSON.stringify(finalList));
+      console.log('[Initialize] Synced and merged grading standards in database.');
+    }
+    updateLiveGradingStandards(finalList);
+    await writeStandardToFile('grading_standards', finalList);
   } catch (err) {
-    console.error('Failed to initialize grading standards from database at startup:', err.message);
+    console.error('Failed to initialize grading standards:', err.message);
   }
 }
 
 async function initializeValidationStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'validation_standards'");
+    let finalList = validationStandardsList;
     if (row && row.value) {
-      const list = JSON.parse(row.value);
-      if (Array.isArray(list)) {
-        updateLiveValidationStandards(list);
-        console.log('Loaded validation standards from database at startup.');
-        await writeStandardToFile('validation_standards', list);
-      }
-    } else {
-      // Save default list to database if not present
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('validation_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(validationStandardsList)]);
-      console.log('Saved default validation standards to database at startup.');
+      const dbList = JSON.parse(row.value);
+      finalList = mergeDefaultAndDbStandards(validationStandardsList, dbList);
     }
+    const isDifferent = !row || JSON.stringify(finalList) !== row.value;
+    if (isDifferent) {
+      await saveSessionValue('validation_standards', JSON.stringify(finalList));
+      console.log('[Initialize] Synced and merged validation standards in database.');
+    }
+    updateLiveValidationStandards(finalList);
+    await writeStandardToFile('validation_standards', finalList);
   } catch (err) {
-    console.error('Failed to initialize validation standards from database at startup:', err.message);
+    console.error('Failed to initialize validation standards:', err.message);
   }
 }
 
 async function initializeGenerationStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
+    let finalList = generationStandardsList;
     if (row && row.value) {
-      let list = JSON.parse(row.value);
-      if (Array.isArray(list)) {
-        // Removed auto-merging deleted defaults
-        updateLiveGenerationStandards(list);
-        console.log('Loaded generation standards from database at startup.');
-        await writeStandardToFile('generation_standards', list);
-      }
-    } else {
-      // Save default list to database if not present
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('generation_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(generationStandardsList)]);
-      console.log('Saved default generation standards to database at startup.');
+      const dbList = JSON.parse(row.value);
+      finalList = mergeDefaultAndDbStandards(generationStandardsList, dbList);
     }
+    const isDifferent = !row || JSON.stringify(finalList) !== row.value;
+    if (isDifferent) {
+      await saveSessionValue('generation_standards', JSON.stringify(finalList));
+      console.log('[Initialize] Synced and merged generation standards in database.');
+    }
+    updateLiveGenerationStandards(finalList);
+    await writeStandardToFile('generation_standards', finalList);
   } catch (err) {
-    console.error('Failed to initialize generation standards from database at startup:', err.message);
+    console.error('Failed to initialize generation standards:', err.message);
   }
 }
 
 async function initializeLockscreenStandards() {
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+    let finalList = lockscreenStandardsList;
     if (row && row.value) {
-      let list = JSON.parse(row.value);
-      if (Array.isArray(list)) {
-        // Removed auto-merging deleted defaults
-        updateLiveLockscreenStandards(list);
-        console.log('Loaded lockscreen standards from database at startup.');
-        await writeStandardToFile('lockscreen_standards', list);
-      }
-    } else {
-      // Save default list to database if not present
-      await dbQuery.run("INSERT INTO app_session (key, value, updated_at) VALUES ('lockscreen_standards', ?, CURRENT_TIMESTAMP)", [JSON.stringify(lockscreenStandardsList)]);
-      console.log('Saved default lockscreen standards to database at startup.');
+      const dbList = JSON.parse(row.value);
+      finalList = mergeDefaultAndDbStandards(lockscreenStandardsList, dbList);
     }
+    const isDifferent = !row || JSON.stringify(finalList) !== row.value;
+    if (isDifferent) {
+      await saveSessionValue('lockscreen_standards', JSON.stringify(finalList));
+      console.log('[Initialize] Synced and merged lockscreen standards in database.');
+    }
+    updateLiveLockscreenStandards(finalList);
+    await writeStandardToFile('lockscreen_standards', finalList);
   } catch (err) {
-    console.error('Failed to initialize lockscreen standards from database at startup:', err.message);
+    console.error('Failed to initialize lockscreen standards:', err.message);
   }
 }
 
