@@ -14099,13 +14099,17 @@ export default function App() {
                 }`}
               >
           {/* Review Header */}
-          <div className="w-full flex flex-col items-stretch justify-start px-2 md:px-5 py-3 md:py-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
+          <div className="relative w-full flex flex-col items-stretch justify-start px-2 md:px-5 pt-7 pb-3 md:pt-8 md:pb-4 bg-slateCustom-950 border-b border-violet-500/20 flex-shrink-0 gap-3 md:gap-3.5 landscape-hide">
+            {/* Absolute positioned ID and Brain icon at top-left corner */}
+            <div className="absolute top-1.5 left-3 md:top-2 md:left-5 flex items-center gap-1.5 select-none z-10">
+              <span className="text-[10px] font-black text-white select-none shrink-0 border border-slate-700 bg-slate-900/80 px-1.5 py-0.5 rounded-md">
+                {String(selectedTopic.id || 0).padStart(2, '0')} - {selectedTopic.review_round === 99 || selectedTopic.isBonus ? '약점01' : String(selectedTopic.review_round || 0).padStart(2, '0')}
+              </span>
+              <Brain className="w-4 h-4 text-violet-400 shrink-0" />
+            </div>
+
             <div className="flex items-center justify-between gap-3 min-w-0 w-full px-2.5 md:px-1">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-[10px] font-black text-white select-none shrink-0 border border-slate-700 bg-slate-900/80 px-1.5 py-0.5 rounded-md">
-                  {String(selectedTopic.id || 0).padStart(2, '0')} - {selectedTopic.review_round === 99 || selectedTopic.isBonus ? '약점01' : String(selectedTopic.review_round || 0).padStart(2, '0')}
-                </span>
-                <Brain className="w-6 h-6 sm:w-7 sm:h-7 text-violet-400 shrink-0" />
                 <h3 className="font-bold text-white text-xl sm:text-2xl truncate sm:whitespace-normal" title={selectedTopic.title}>
                   {selectedTopic.title}
                 </h3>
@@ -14955,6 +14959,7 @@ export default function App() {
                                               if (grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
+                                              baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
                                                 baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
                                                 if (q.structure) {
@@ -18081,6 +18086,7 @@ export default function App() {
                                               if (grading?.suggestedModelAnswer) {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
+                                              baseAns = stripHtmlTagsFromRawData(baseAns);
                                               if (q.formula) {
                                                 baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
                                                 if (q.structure) {
