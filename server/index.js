@@ -9331,14 +9331,6 @@ async function startServer() {
   }
 }
 
-// 임시 디버깅 용도로 암호화되어 보이지 않던 API 키 값을 노출합니다.
-app.get('/api/debug-keys', (req, res) => {
-  res.json({
-    primary: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 10)}...` : 'not_set',
-    secondary: process.env.GEMINI_API_KEY_SECONDARY || 'not_set'
-  });
-});
-
 // Express global error handler to prevent raw HTML gateway errors and enforce JSON responses
 app.use((err, req, res, next) => {
   console.error('Express global error handler:', err);
