@@ -1470,10 +1470,10 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   // 1. [연속 문장 내 개행 병합 가드]:
   // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
-  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작하는 새로운 문단은 병합 대상에서 제외합니다.
-  cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
+  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작/종료하는 새로운 문단은 병합 대상에서 제외합니다.
+  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
   cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
-  cleanedText = cleanedText.replace(/([^\s])\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
+  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
   cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
