@@ -483,6 +483,9 @@ const cleanAndSanitizeMathText = (rawText) => {
   
   let cleaned = rawText;
   cleaned = cleanCorruptedFormula(cleaned);
+
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  cleaned = cleaned.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
   
   // 1. 파싱 과정에서 HTML 코드로 변형된 엔티티 부호들을 순수 문자로 가장 먼저 강제 복구 (태그 매칭 유도)
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -532,6 +535,9 @@ const stripHtmlTagsFromRawData = (text) => {
   if (!text || typeof text !== 'string') return text || '';
   
   let clean = text.replace(/\u200b/g, '');
+
+  // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  clean = clean.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
 
   // HTML 엔티티 복구
   clean = clean.replace(/&#x27;/g, "'")
