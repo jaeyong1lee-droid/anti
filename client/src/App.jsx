@@ -1475,12 +1475,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   // 1. [연속 문장 내 개행 병합 가드]:
-  // 수식 전후에 개행(\n)이 있으나 실제로는 문장의 일부인 경우(연속된 문자/조사로 이어짐),
-  // 단, 타이틀 지시어(**[)나 리스트 기호(*, -, •)로 시작/종료하는 새로운 문단은 병합 대상에서 제외합니다.
-  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$\$[^\$]+?\$\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$\$[^\$]+?\$\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
-  cleanedText = cleanedText.replace(/([^\s](?<!\*|\]))\s*\n\s*(\$[^\$]+?\$)/g, '$1 $2');
-  cleanedText = cleanedText.replace(/(\$[^\$]+?\$)\s*\n\s*([^\s](?!\*\*\[|\*|-|•))/g, '$1 $2');
+  // (수식 앞뒤의 개행 병합 가드를 주석 처리하여, 백엔드 및 본문에서 의도한 개행이 100% 보존되도록 개선합니다.)
+
 
   // 2. [한글 사이 수식 자동 인라인화 가드]:
   // 만약 줄(Line) 바꿈이 없는 한글 문장 내에 $$ ... $$ (블록 수식)이 혼용되어 있다면,
