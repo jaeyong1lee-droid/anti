@@ -936,8 +936,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       // Gemini (심폐소생 순환 로직 최적화 파트)
       const genAI = new GoogleGenerativeAI(key);
       let MODELS = [
-        'gemini-3.5-flash',
         'gemini-3.1-flash-lite',
+        'gemini-3.5-flash',
         'gemini-2.5-flash',
         'gemini-2.5-flash-lite',
         'gemini-2.0-flash',
@@ -945,9 +945,9 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       ];
       if (scenario === 'validation') {
         MODELS = [
+          'gemini-3.1-flash-lite',
           'gemini-3.5-flash-lite',
           'gemini-3.5-flash',
-          'gemini-3.1-flash-lite',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
           'gemini-2.0-flash',
@@ -955,8 +955,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         ];
       } else if (scenario === 'grading') {
         MODELS = [
-          'gemini-3.5-flash',
           'gemini-3.1-flash-lite',
+          'gemini-3.5-flash',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
           'gemini-2.0-flash',
@@ -964,8 +964,8 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         ];
       } else if (scenario === 'question' || scenario === 'formula' || scenario === 'tutor' || scenario === 'option-explanation') {
         MODELS = [
-          'gemini-3.5-flash',
           'gemini-3.1-flash-lite',
+          'gemini-3.5-flash',
           'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
           'gemini-2.0-flash',
