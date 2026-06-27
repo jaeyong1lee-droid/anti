@@ -476,6 +476,12 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   processed = processed.replace(/(?<=\b1\s*\+\s*)[uv]\b/g, '\\nu');
   processed = processed.replace(/(?<=\b1\s*-\s*)[uv]\b/g, '\\nu');
 
+  // [🚨 가독성 수동 개선 필터 🚨]
+  // 등호나 연산자, 분수가 포함된 수식($...$)들이 콤마나 개행 없이 다닥다닥 붙어 나열되거나, 중간에 짧은 설명만 끼고 나열되는 경우 강제로 단락 줄바꿈(\n\n)을 주입합니다.
+  processed = processed.replace(/\$([^\$]*(?:=[^\$]*|\\frac[^\$]*))\$\s*(?:,\s*|\(.*?\)\s*|[가-힣 ]{1,15}\s*)+(?=\$([^\$]*(?:=[^\$]*|\\frac[^\$]*)))/g, (match) => {
+    return `${match.trim()}\n\n`;
+  });
+
   // [🚨 극단적 비상 복구 필터 🚨]
   // 이전 버전의 깨진 정규식에 의해 이미 오염되어 DB/세션에 들어간 KaTeX HTML 블록 복원
   processed = processed.replace(
