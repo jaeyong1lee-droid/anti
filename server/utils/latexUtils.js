@@ -341,6 +341,12 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // 한글 문장 마침표(.)나 콜론(:) 뒤에 공백이 있더라도 바로 수식($ 또는 $$)이 시작되는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
   processed = processed.replace(/([\uac00-\ud7a3][\.:])\s*(\$\$?)/g, '$1\n\n$2');
 
+  // 수식이 끝나고 바로 한글 단어(2글자 이상)가 따라붙는 경우 가독성을 위해 강제로 줄바꿈(\n\n) 주입
+  processed = processed.replace(/(\$\$?)\s*([\uac00-\ud7a3]{2,})/g, '$1\n\n$2');
+
+  // 수식이 연속적으로 나열되는 경우 개행(\n\n) 주입
+  processed = processed.replace(/(\$\$?)\s*(\$\$?)/g, '$1\n\n$2');
+
   // HTML 엔티티 복구
   processed = processed.replace(/&#x27;/g, "'")
                        .replace(/&quot;/g, '"')
