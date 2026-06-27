@@ -509,6 +509,16 @@ const cleanAndSanitizeMathText = (rawText) => {
   return cleaned;
 };
 
+const stripHtmlTagsFromRawData = (text) => {
+  if (!text || typeof text !== 'string') return text || '';
+  
+  // HTML 태그(<...>) 및 이스케이프 태그(&lt;...&gt;)와 그 내부 속성들을 완전히 박멸 소독하여 순수 역학 기호만 복원
+  let clean = text.replace(/\u200b/g, '');
+  clean = clean.replace(/<[^>]+>/gi, '');
+  clean = clean.replace(/&lt;[\s\S]*?&gt;/gi, '');
+  return clean.trim();
+};
+
 const buildHtmlDocument = (text, isPopup = false) => {
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   
@@ -14900,9 +14910,9 @@ export default function App() {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n${q.formula}`;
+                                                baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
                                                 if (q.structure) {
-                                                  baseAns += `\n\n**[기호 정의]**\n${q.structure}`;
+                                                  baseAns += `\n\n**[기호 정의]**\n${stripHtmlTagsFromRawData(q.structure)}`;
                                                 }
                                               }
                                               return baseAns;
@@ -18026,9 +18036,9 @@ export default function App() {
                                                 baseAns = grading.suggestedModelAnswer;
                                               }
                                               if (q.formula) {
-                                                baseAns += `\n\n**[공식]**\n${q.formula}`;
+                                                baseAns += `\n\n**[공식]**\n${stripHtmlTagsFromRawData(q.formula)}`;
                                                 if (q.structure) {
-                                                  baseAns += `\n\n**[기호 정의]**\n${q.structure}`;
+                                                  baseAns += `\n\n**[기호 정의]**\n${stripHtmlTagsFromRawData(q.structure)}`;
                                                 }
                                               }
                                               return baseAns;
