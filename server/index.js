@@ -8299,17 +8299,7 @@ async function initializeGradingStandards() {
     if (row && row.value) {
       let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
-        let merged = false;
-        for (const defStd of gradingStandardsList) {
-          if (!list.some(s => s.id === defStd.id)) {
-            list.push(defStd);
-            merged = true;
-          }
-        }
-        if (merged) {
-          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'grading_standards'", [JSON.stringify(list)]);
-          console.log('Merged new default grading standards into database.');
-        }
+        // Removed auto-merging deleted defaults
         updateLiveGradingStandards(list);
         console.log('Loaded grading standards from database at startup.');
         await writeStandardToFile('grading_standards', list);
@@ -8350,17 +8340,7 @@ async function initializeGenerationStandards() {
     if (row && row.value) {
       let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
-        let merged = false;
-        for (const defStd of generationStandardsList) {
-          if (!list.some(s => s.id === defStd.id)) {
-            list.push(defStd);
-            merged = true;
-          }
-        }
-        if (merged) {
-          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'generation_standards'", [JSON.stringify(list)]);
-          console.log('Merged new default generation standards into database.');
-        }
+        // Removed auto-merging deleted defaults
         updateLiveGenerationStandards(list);
         console.log('Loaded generation standards from database at startup.');
         await writeStandardToFile('generation_standards', list);
@@ -8381,17 +8361,7 @@ async function initializeLockscreenStandards() {
     if (row && row.value) {
       let list = JSON.parse(row.value);
       if (Array.isArray(list)) {
-        let merged = false;
-        for (const defStd of lockscreenStandardsList) {
-          if (!list.some(s => s.id === defStd.id)) {
-            list.push(defStd);
-            merged = true;
-          }
-        }
-        if (merged) {
-          await dbQuery.run("UPDATE app_session SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'lockscreen_standards'", [JSON.stringify(list)]);
-          console.log('Merged new default lockscreen standards into database.');
-        }
+        // Removed auto-merging deleted defaults
         updateLiveLockscreenStandards(list);
         console.log('Loaded lockscreen standards from database at startup.');
         await writeStandardToFile('lockscreen_standards', list);
@@ -8548,22 +8518,11 @@ async function syncStandardsFromProduction() {
       const data = await res.json();
       const standards = data.standards;
       if (Array.isArray(standards) && standards.length > 0) {
-        // Merge missing defaults from the code into the synced list
-        let merged = false;
+        // Keep production source list as-is without forcing code defaults
         const mergedList = [...standards];
-        const defaultList = item.currentList();
-        if (Array.isArray(defaultList)) {
-          for (const defStd of defaultList) {
-            if (!mergedList.some(s => s.id === defStd.id)) {
-              mergedList.push(defStd);
-              merged = true;
-            }
-          }
-        }
-
         const currentStr = JSON.stringify(item.currentList());
         const newStr = JSON.stringify(mergedList);
-        if (currentStr !== newStr || merged) {
+        if (currentStr !== newStr) {
           // Update live memory state
           item.updater(mergedList);
           
