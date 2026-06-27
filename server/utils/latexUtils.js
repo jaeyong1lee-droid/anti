@@ -464,7 +464,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     // Handle primed notation: $u'$ → $\nu'$ (drained Poisson's ratio)
     processed = processed.replace(new RegExp(`\\$${poissonSymbol}'\\$`, 'g'), "$\\nu'$");
 
-    const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$|\\b${poissonSymbol}\\b)`, 'g');
+    // 등호(=) 바로 앞의 u 또는 v 는 치환에서 제외하여 다른 물리량(체적 V, 부피탄성계수의 오용 등)의 훼손 방지
+    const standaloneRegex = new RegExp(`(?<!\\\\)(?:\\$${poissonSymbol}\\$(?!\\s*=)|\\b${poissonSymbol}\\b(?!\\s*=))`, 'g');
     processed = processed.replace(standaloneRegex, (match) => {
       return match.includes('$') ? '$\\nu$' : '\\nu';
     });
