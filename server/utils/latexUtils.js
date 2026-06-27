@@ -335,11 +335,10 @@ export function healInvertedDelimiters(text) {
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
-  // Zero Width Space (\u200b) 제어문자 완전 박멸 및 깨진 HTML 공백 복원
+  // Zero Width Space (\u200b) 제어문자 완전 박멸 및 깨진 HTML/MathML 태그들 완전 박멸 소독
   let processed = text.replace(/\u200b/g, '')
-                      .replace(/<(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li)(class|style|id|width|height|align|xmlns|display)=/gi, '<$1 $2=')
-                      .replace(/display="block"/gi, ' display="block"')
-                      .replace(/<\/([a-zA-Z0-9]+)class=/gi, '</$1 class=');
+                      .replace(/<\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)\b[^>]*>/gi, '')
+                      .replace(/&lt;\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)\b[^&]*&gt;/gi, '');
 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');

@@ -486,10 +486,9 @@ const cleanAndSanitizeMathText = (rawText) => {
   // 0. KaTeX 파싱 경고 및 에러를 유발하는 Zero Width Space (\u200b / 8203) 제어문자 제거
   cleaned = cleaned.replace(/\u200b/g, '');
 
-  // 0.5. 공백이 소실된 채 깨져서 유입된 HTML 태그들 (<divclass=, <spanclass=, display="block" 등) 자동 자가치유 복구
-  cleaned = cleaned.replace(/<(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li)(class|style|id|width|height|align|xmlns|display)=/gi, '<$1 $2=')
-                   .replace(/display="block"/gi, ' display="block"')
-                   .replace(/<\/([a-zA-Z0-9]+)class=/gi, '</$1 class=');
+  // 0.5. 수식 내부에 잘못 침투하여 깨진 상태로 유입된 모든 HTML/MathML 태그들 (< divclass, < spanclass, < mathxmlns 등) 완전 박멸 소독
+  cleaned = cleaned.replace(/<\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)\b[^>]*>/gi, '')
+                   .replace(/&lt;\s*\/?\s*(div|span|p|style|table|tr|td|th|tbody|thead|tfoot|strong|em|ul|ol|li|math|semantics|mrow|mi|mo|annotation|a|img|code|pre)\b[^&]*&gt;/gi, '');
 
   cleaned = cleanCorruptedFormula(cleaned);
   
