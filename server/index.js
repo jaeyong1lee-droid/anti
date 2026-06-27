@@ -2117,10 +2117,7 @@ app.post('/api/schedules/:id/reset', async (req, res) => {
       return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
     }
 
-    if (schedule.status !== 'completed' && schedule.status !== 'practice') {
-      return res.status(400).json({ error: '완료 또는 자유복습 상태인 일정만 초기화할 수 있습니다.' });
-    }
-
+    // Allow reset/refresh regardless of the current database status to prevent client state mismatch blocks
     const todayDateStr = getLocalDateString();
     let newPlannedDate = schedule.planned_date;
     const targetStatus = schedule.status === 'practice' ? 'practice' : 'pending';
