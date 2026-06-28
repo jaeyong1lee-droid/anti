@@ -13610,6 +13610,9 @@ export default function App() {
                                           {getCategoryBadgeText('일반', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       )}
+                                      <span className="text-slate-500 text-[11px] md:text-[13px] font-black font-mono shrink-0 select-none bg-slate-950/60 px-1.5 py-0.5 rounded-lg border border-slate-900">
+                                        id{String(topic.id).padStart(2, '0')}
+                                      </span>
                                       <h4 
                                         onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
@@ -13650,6 +13653,9 @@ export default function App() {
                                           {getCategoryBadgeText('일반', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       )}
+                                      <span className="text-slate-500 text-[9px] font-black font-mono shrink-0 select-none bg-slate-950/60 px-1.5 py-0.5 rounded-md border border-slate-900">
+                                        id{String(topic.id).padStart(2, '0')}
+                                      </span>
                                       <h4 
                                         onDoubleClick={() => {
                                           setEditingTopicId(topic.id);
