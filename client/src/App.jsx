@@ -6340,6 +6340,57 @@ export default function App() {
     lastQuizScheduleId.current = null;
   };
 
+  const handleReadOnlyScoreUpdate = async () => {
+    if (!selectedTopic || !selectedTopic.isReadOnly) return;
+    const scheduleId = lastQuizScheduleId.current || selectedTopic.schedule_id;
+    if (!scheduleId || scheduleId === 9999 || scheduleId === '9999') {
+      showNotification('유효한 복습 일정을 찾을 수 없어 점수를 업데이트하지 못했습니다.', 'error');
+      return;
+    }
+
+    const updatedScore = Math.min(100, Math.max(0, Math.round(getReviewTotalScore() * 10) / 10));
+
+    setLoadingAI(true);
+    try {
+      const saveSessionRes = await fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          scheduleId: scheduleId,
+          questions: aiQuestions,
+          selectedAnswers: selectedAnswers,
+          revealedQuestions: revealedQuestions,
+          tableAnswers: tableAnswers,
+          tableGradingResults: tableGradingResults,
+          tutorAnswers: tutorAnswers,
+          tutorInputText: tutorInputText,
+          chatHistory: chatHistory
+        })
+      });
+
+      const scoreRes = await fetch(`${API_BASE}/api/schedules/${scheduleId}/score`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: updatedScore })
+      });
+
+      if (saveSessionRes.ok && scoreRes.ok) {
+        showNotification(`성적이 ${updatedScore}점으로 정상 업데이트되었습니다!`, 'success');
+        fetchTopics();
+        handleCloseReadOnlyQuiz();
+      } else {
+        const errData = await scoreRes.json().catch(() => ({}));
+        showNotification(errData.error || '점수 업데이트에 실패했습니다.', 'error');
+      }
+    } catch (err) {
+      console.error('Error updating score manually:', err);
+      showNotification('서버 통신 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   // AI 복습 완료 버튼 클릭 시 처리
   const handleQuizCompleteClick = async () => {
     if (!selectedTopic) return;
@@ -15299,13 +15350,22 @@ export default function App() {
                     <div className="quiz-card-item text-center py-6">
                       <div className="flex justify-center gap-3 flex-wrap">
                         {selectedTopic?.isReadOnly ? (
-                          <button
-                            onClick={handleCloseReadOnlyQuiz}
-                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                            title="복습 화면을 닫습니다."
-                          >
-                            <span>닫기</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={handleCloseReadOnlyQuiz}
+                              className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              title="복습 화면을 닫습니다."
+                            >
+                              <span>닫기</span>
+                            </button>
+                            <button
+                              onClick={handleReadOnlyScoreUpdate}
+                              className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 hover:border-emerald-450 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              title="채점 점수를 최종 점수로 업데이트합니다."
+                            >
+                              <span>점수 업데이트</span>
+                            </button>
+                          </>
                         ) : (
                           aiQuestions.length > 0 && (
                             <button
