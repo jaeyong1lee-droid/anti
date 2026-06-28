@@ -24,8 +24,18 @@
   * 마운트 로컬 캐시 로드 시점, 서버 세션 데이터 응답 수신 시점, 그리고 신규 문제 생성 완료 시점에 모두 **서버의 최신 상태 데이터를 `lastSyncStateRef.current` 참조 레프와 즉시 동화**하여 기기간 덮어쓰기 버그 해결.
   * 주관식 채점 핸들러(`gradeSubjectiveQuestion`)의 즉시 저장 데이터셋에 누락되었던 `sessionId`, `tutorAnswers`, `tutorInputText`, `chatHistory`를 채워 넣어 영속성 확보.
 
+## 5. 락스크린 문제 생성 실패 및 타임아웃 문제 해결 (API & 지침 맵핑 수정)
+* **원인**: 
+  1. **지침 누락**: `generateDailyLockscreenQuestions` 함수의 인자로 `lockscreenInstructionsPrompt`가 전달되었으나, 정작 프롬프트 생성용 템플릿(System/User Prompt)에는 해당 변수가 전혀 주입되지 않고 누락되어 있어 AI가 사용자 맞춤형 락스크린 지침을 읽지 못하고 오작동하는 심각한 논리 오류가 있었습니다.
+  2. **Vercel 타임아웃 (504)**: Vercel 서버리스 환경은 **10초**의 매우 타이트한 실행 한도(Hobby plan)를 가집니다. 하지만 기존 `callLLMWithFailover` 로직은 Primary Key 실패 시, 불필요하게 429 오류에 대해 **지수 백오프 대기(sleep delay)**를 수행하고, 존재하지 않거나 과부하 상태인 12개 이상의 백업 모델들(`gemini-2.5-flash`, `gemini-3.5-flash` 등)을 연달아 순회하여 시간이 초과되는 근본적인 병목이 있었습니다.
+* **해결**:
+  1. **프롬프트 맵핑 정상화**: `systemInstruction` 템플릿 하단에 `[출제 지침 기준 (Lockscreen Generation Standards)]` 헤더와 함께 `${lockscreenInstructionsPrompt}` 변수를 정상적으로 주입 및 출력되도록 수정 완료했습니다.
+  2. **Vercel 최적화 페일오버 설계**:
+     * `isVercel` 환경 변수 감지 시, 429 할당량 초과 에러에 대해 **지수 백오프 대기 시간(sleep)을 0초로 스킵하고 즉시 다음 키/모델로 페일오버**하도록 수정하여 API 응답 속도를 획기적으로 개선했습니다.
+     * `executionList` 생성 시, 루프를 키(Key) 기준으로 먼저 그룹화하여, preferred model인 `gemini-3.1-flash-lite`와 검증된 실 운영용 `gemini-1.5-flash`를 핵심 백업으로 순차적으로 우선 배치하였습니다. 불필요하고 실패율이 높은 백업 모델 탐색 단계를 완전히 줄임으로써 10초 제한 시간 내에 안정적으로 퀴즈를 반환하도록 조치했습니다.
+
 ---
 
 ## 빌드 및 원격 반영 완료
 * **Vite Production Build**: 컴파일 에러 없이 성공적으로 완성.
-* **Git Push**: 원격지 리포지토리(`origin main`) 배포 완료.
+* **Git Push**: 원격지 리포지토리(`origin main`) 배포 및 동기화 완료 (`25e1c9f`).
