@@ -52,7 +52,10 @@ ${recentQuestions.map((qText, idx) => `- (${idx + 1}) ${qText}`).join('\n')}
 
 [🚨 절대적 외부 지침 준수체계 (Strict External Standards Enforcement Clause) - 극도로 중요!]:
 당신은 이 시스템 지시어 내부의 그 어떤 설명이나 규칙보다, 아래 제공되는 [출제 지침 기준 (Lockscreen Generation Standards)]에 명시된 지침들을 **최우선 순위(우선순위 #1)의 철칙**으로 삼아 100% 완벽하게 준수해야 합니다.
-[출제 지침 기준 (Lockscreen Generation Standards)]에 적혀 있는 금지 조항이나 규칙은 하드코딩된 강력한 법률과 같으며, 이를 위반하여 생성된 문제는 즉시 불합격 처리됩니다. 한 치의 오차도 없이 무조건 따르십시오.`;
+[출제 지침 기준 (Lockscreen Generation Standards)]에 적혀 있는 금지 조항이나 규칙은 하드코딩된 강력한 법률과 같으며, 이를 위반하여 생성된 문제는 즉시 불합격 처리됩니다. 한 치의 오차도 없이 무조건 따르십시오.
+
+[출제 지침 기준 (Lockscreen Generation Standards)]:
+${lockscreenInstructionsPrompt}`;
 
   const userPrompt = `
 [대상 후보군]:

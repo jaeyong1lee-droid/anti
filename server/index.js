@@ -789,72 +789,38 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
   // 2. 사용자가 규정한 최적화 실행 리스트 구성
   const executionList = [];
 
-  // [1순위] 첫번째 키의 3.1 flash lite
-  if (primaryKey) {
-    executionList.push({ key: primaryKey, label: 'Key #1', model: 'gemini-3.1-flash-lite', type: 'gemini' });
-  }
-  // [2순위] 첫번째 키의 3.5 flash
-  if (primaryKey) {
-    executionList.push({ key: primaryKey, label: 'Key #1', model: 'gemini-3.5-flash', type: 'gemini' });
-  }
+  const keys = [];
+  if (primaryKey) keys.push({ key: primaryKey, label: 'Key #1' });
+  if (secondaryKey) keys.push({ key: secondaryKey, label: 'Key #2' });
+  if (tertiaryKey) keys.push({ key: tertiaryKey, label: 'Key #3' });
 
-  // [3순위] 두번째 키의 3.1 flash lite (만약 두번째 키가 Groq 등 특수 접두사를 가질 경우 우회 처리)
-  if (secondaryKey) {
-    const isGroq = secondaryKey.startsWith('gsk_');
-    const isGrok = secondaryKey.startsWith('xai-');
+  for (const k of keys) {
+    const isGroq = k.key.startsWith('gsk_');
+    const isGrok = k.key.startsWith('xai-');
+
     if (isGroq) {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'llama-3.3-70b-versatile', type: 'groq' });
+      executionList.push({ key: k.key, label: k.label, model: 'llama-3.3-70b-versatile', type: 'groq' });
+      executionList.push({ key: k.key, label: k.label, model: 'llama-3.1-8b-instant', type: 'groq' });
     } else if (isGrok) {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'grok-2-1212', type: 'grok' });
+      executionList.push({ key: k.key, label: k.label, model: 'grok-2-1212', type: 'grok' });
+      executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
     } else {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'gemini-3.1-flash-lite', type: 'gemini' });
-    }
-  }
-  // [4순위] 두번째 키의 3.5 flash
-  if (secondaryKey) {
-    const isGroq = secondaryKey.startsWith('gsk_');
-    const isGrok = secondaryKey.startsWith('xai-');
-    if (isGroq) {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'llama-3.1-8b-instant', type: 'groq' });
-    } else if (isGrok) {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'grok-2', type: 'grok' });
-    } else {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: 'gemini-3.5-flash', type: 'gemini' });
+      // Gemini models (preferred first, then stable fallbacks, grouped by key)
+      executionList.push({ key: k.key, label: k.label, model: 'gemini-3.1-flash-lite', type: 'gemini' });
+      executionList.push({ key: k.key, label: k.label, model: 'gemini-1.5-flash', type: 'gemini' });
+      executionList.push({ key: k.key, label: k.label, model: 'gemini-2.0-flash', type: 'gemini' });
+      executionList.push({ key: k.key, label: k.label, model: 'gemini-3.5-flash', type: 'gemini' });
     }
   }
 
-  // [5순위 이후 - 백업용 후속 로직 (기존 호환성 보장)]
-  const geminiBackups = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-  
-  // 첫번째 키의 나머지 하위 모델들
-  if (primaryKey) {
-    geminiBackups.forEach(m => {
-      executionList.push({ key: primaryKey, label: 'Key #1', model: m, type: 'gemini' });
-    });
-  }
-  // 두번째 키의 나머지 하위 모델들 (Gemini일 경우)
-  if (secondaryKey && !secondaryKey.startsWith('gsk_') && !secondaryKey.startsWith('xai-')) {
-    geminiBackups.forEach(m => {
-      executionList.push({ key: secondaryKey, label: 'Key #2', model: m, type: 'gemini' });
-    });
-  }
-  // 세번째 키(Tertiary) 백업
-  if (tertiaryKey) {
-    const allGemini = ['gemini-3.1-flash-lite', 'gemini-3.5-flash', ...geminiBackups];
-    allGemini.forEach(m => {
-      executionList.push({ key: tertiaryKey, label: 'Key #3', model: m, type: 'gemini' });
-    });
-  }
-  // XAI/Grok 백업 키들
+  // Backup keys for xAI and Grok
   if (xaiKey) {
-    ['grok-2-1212', 'grok-2', 'grok-beta'].forEach(m => {
-      executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: m, type: 'grok' });
-    });
+    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2-1212', type: 'grok' });
+    executionList.push({ key: xaiKey, label: 'Key #4 (Grok)', model: 'grok-2', type: 'grok' });
   }
   if (grokKey) {
-    ['grok-2-1212', 'grok-2', 'grok-beta'].forEach(m => {
-      executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: m, type: 'grok' });
-    });
+    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2-1212', type: 'grok' });
+    executionList.push({ key: grokKey, label: 'Key #5 (Grok)', model: 'grok-2', type: 'grok' });
   }
 
   // 3. 플랫 루프 실행
@@ -996,6 +962,11 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
         // Quota 한도 초과 오류(429 등) 감지 시 재시도 진행
         const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
         if (isQuota) {
+          const isVercel = !!process.env.VERCEL;
+          if (isVercel) {
+            console.log('[Vercel 환경] 429 감지. 타임아웃 방지를 위해 즉시 다른 키/모델로 페일오버를 시도합니다.');
+            break;
+          }
           attempt++;
           if (attempt < maxAttempts) {
             console.log(`[지수 백오프] 429 감지. ${delay}ms 후 재시도...`);
