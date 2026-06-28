@@ -955,7 +955,14 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
           }
 
           reportLlmProgress(options, scenario, modelName);
-          const result = await model.generateContent(generateContentArg);
+          const timeoutMs = 20000; // 20 seconds timeout to prevent tarpitting from hanging the server
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Gemini request timeout after ${timeoutMs}ms`)), timeoutMs)
+          );
+          const result = await Promise.race([
+            model.generateContent(generateContentArg),
+            timeoutPromise
+          ]);
           const text = result.response.text().trim();
           if (text) {
             console.log(`[Gemini 성공] ${task.label} (${maskedKey}), 모델: ${modelName}`);
@@ -7607,10 +7614,7 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       if (updatedRecent.length > 30) {
         updatedRecent = updatedRecent.slice(0, 30);
       }
-      await dbQuery.run(
-        'REPLACE INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-        ['recent_lockscreen_questions', JSON.stringify(updatedRecent)]
-      );
+      await saveSessionValue('recent_lockscreen_questions', JSON.stringify(updatedRecent));
     }
 
     return res.json({ success: true, questions: generatedQuestions });
