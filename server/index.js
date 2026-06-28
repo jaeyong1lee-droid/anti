@@ -7561,14 +7561,21 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       .sort(() => 0.5 - Math.random())
       .slice(0, formulaLimit);
 
-    // 2. Fetch all topics to extract standard criteria / quantitative values without any slice limits
-    const pickedTopics = await dbQuery.all('SELECT * FROM topics');
-
-    const topicCandidates = await Promise.all(
-      pickedTopics.map(async (t) => {
+    // 2. Fetch all topics (meta info) from DB to maximize scope and prevent timeouts
+    const allTopics = await dbQuery.all('SELECT id, title, keywords FROM topics');
+    
+    // 이 중 본문 내용까지 추출할 토픽 후보군을 랜덤하게 12개 정도로 제한하여 Vercel CPU 타임아웃 방지
+    const textExtractionLimit = 12;
+    const shuffledTopics = [...allTopics].sort(() => 0.5 - Math.random());
+    const pickedForText = shuffledTopics.slice(0, textExtractionLimit);
+    
+    // 본문 내용 추출 대상 토픽들에 대해 병렬 처리
+    const textExtractedCandidates = await Promise.all(
+      pickedForText.map(async (t) => {
         try {
-          const textContent = await getTopicText(t);
-          const truncatedText = textContent ? textContent.substring(0, 3000) : '';
+          const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
+          const textContent = fullTopic ? await getTopicText(fullTopic) : '';
+          const truncatedText = textContent ? textContent.substring(0, 2000) : '';
           return {
             id: t.id,
             title: t.title,
@@ -7587,16 +7594,26 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       })
     );
 
-    if (formulaCandidates.length === 0 && topicCandidates.length === 0) {
+    // 본문 추출은 안 되었으나 메타데이터(제목, 키워드)는 출제 후보군으로 제공할 수 있는 나머지 전체 토픽 리스트
+    const remainingTopics = shuffledTopics.slice(textExtractionLimit).map(t => ({
+      id: t.id,
+      title: t.title,
+      keywords: t.keywords || '',
+      textContent: '(생략 - 제목 및 키워드 기반으로 문제 출제 가능)'
+    }));
+
+    const finalTopicCandidates = [...textExtractedCandidates, ...remainingTopics];
+
+    if (formulaCandidates.length === 0 && finalTopicCandidates.length === 0) {
       return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
     }
 
     // 3. Generate quiz using both formula and topic candidates
-    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics. (Duplicate prevention count: ${recentQuestions.length})`);
+    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${finalTopicCandidates.length} topics. (Duplicate prevention count: ${recentQuestions.length})`);
     const callLLM = getCallLLM(req);
     const generatedQuestions = await generateDailyLockscreenQuestions(
       formulaCandidates, 
-      topicCandidates, 
+      finalTopicCandidates, 
       callLLM, 
       count, 
       LOCKSCREEN_STANDARDS,
