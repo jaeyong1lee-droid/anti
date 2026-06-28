@@ -2824,7 +2824,7 @@ export default function App() {
     
     return (
       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
-        <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 빈칸별 상세 피드백:</span>
+        <span className="font-extrabold text-amber-400 text-[16px]">💡 빈칸별 상세 피드백:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {inputIds.map((inputId) => {
             const value = activeAnswers[`${idx}_${inputId}`] || '';
@@ -2860,10 +2860,10 @@ export default function App() {
             }
             
             return (
-              <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
+              <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[16px] space-y-1.5 w-full text-left">
                 {(rowHeader || colHeader) && (
-                  <div className="text-[14px] sm:text-[16px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
-                    <span className="text-slate-100 font-bold text-[14px] sm:text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
+                  <div className="text-[16px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
+                    <span className="text-slate-100 font-bold text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
                     {rowHeader && (
                       <span className="text-slate-300 font-semibold">
                         <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
@@ -14955,13 +14955,13 @@ export default function App() {
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                  <div className={`text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
                                     <span>{getTableBannerStatusText(idx, q)}</span>
                                   </div>
                                   {q.explanation && (
-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                       <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                       </div>
                                     </div>
@@ -15014,14 +15014,14 @@ export default function App() {
                                   </div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
-                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
-                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
+                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[16px]">
+                                    <div className="text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer 
                                           text={
                                             (() => {
@@ -15045,17 +15045,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
@@ -18110,13 +18110,13 @@ export default function App() {
                               ) : (
                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
                                   {/* 테이블 주관식 개별 피드백 */}
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                  <div className={`text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
                                     <span>{getTableBannerStatusText(idx, q)}</span>
                                   </div>
                                   {q.explanation && (
-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                       <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                       </div>
                                     </div>
@@ -18168,14 +18168,14 @@ export default function App() {
                                   </div>
                                 </div>
                                 {examRevealed[idx] && examTableGradingResults[`${idx}_INPUT`] && (
-                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
-                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
+                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[16px]">
+                                    <div className="text-[16px] font-black flex justify-between items-center mb-0.5">
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[16px] select-text">
                                       <span className="font-extrabold">💡 모범 답안:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer 
                                           text={
                                             (() => {
@@ -18199,17 +18199,17 @@ export default function App() {
                                       </div>
                                     </div>
                                     {idx !== 0 && q.concept && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                         <span className="font-extrabold text-indigo-400">💡 핵심 개념:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
                                     )}
                                     {idx !== 0 && q.explanation && (
-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
                                         <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
                                         </div>
                                       </div>
