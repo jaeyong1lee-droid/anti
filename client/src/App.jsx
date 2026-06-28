@@ -3180,6 +3180,7 @@ export default function App() {
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
   const [showAiProgress, setShowAiProgress] = useState(false);
   const progressIntervalRef = useRef(null);
+  const loadingTopicLockRef = useRef(false);
 
   // Real-Time Global AI Tutor States
   const [isRealTimeTutorOpen, setIsRealTimeTutorOpen] = useState(() => {
@@ -6983,132 +6984,132 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null, isRestore = false) => {
+    // 1) 동시 호출 방지 락 체킹
+    if (loadingTopicLockRef.current) {
+      console.log('[handleOpenAIQuestions] Denied: Concurrency lock active.');
+      return;
+    }
+    loadingTopicLockRef.current = true;
+
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
-    if (!isPractice && !finalScheduleId) {
+    
+    try {
+      if (!isPractice && !finalScheduleId) {
+        const topicObj = allTopics.find(t => t.id === topicId);
+        if (topicObj && topicObj.schedules) {
+          const pendingSched = topicObj.schedules.find(s => s.status === 'pending');
+          if (pendingSched) {
+            finalScheduleId = pendingSched.id;
+            finalReviewRound = pendingSched.review_round;
+          }
+        }
+      }
+
       const topicObj = allTopics.find(t => t.id === topicId);
-      if (topicObj && topicObj.schedules) {
-        const pendingSched = topicObj.schedules.find(s => s.status === 'pending');
-        if (pendingSched) {
-          finalScheduleId = pendingSched.id;
-          finalReviewRound = pendingSched.review_round;
+      const topicCategory = topicObj ? topicObj.category : (passedCategory || '일반');
+
+      const activeInfo = {
+        topicId,
+        title,
+        keywords,
+        pdfName,
+        mode,
+        scheduleId: finalScheduleId,
+        reviewRound: finalReviewRound,
+        isBonus,
+        category: topicCategory
+      };
+      localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
+      setLastActiveReview(activeInfo);
+
+      console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}, category=${topicCategory}, isRestore=${isRestore}`);
+      setReviewMobileTab('list');
+      requestAnimationFrame(() => {
+        if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
+      });
+
+      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
+      
+      const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || 'legacy_default';
+      let hasLoadedFromServer = false;
+
+      setSelectedTopic(targetTopic);
+      selectedTopicRef.current = targetTopic;
+      setLoadingAI(true);
+      setAiProgressMessage('1단계: 문제 ID 확인 중 (서버 DB 조회)...');
+      setAiProgressPercent(15);
+      setAiQuestions([]);
+      setRevealedQuestions({});
+      setSelectedAnswers({});
+      setReviewOptionExplanations({});
+      setTableAnswers({});
+      setTableGradingResults({});
+      setShowAnswersState({});
+      setExamShowAnswersState({});
+      setTutorAnswers({});
+      setTutorInputText({});
+      setChatHistory([]);
+      setIsFallback(false);
+      setAiError('');
+
+      try {
+        console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, sessionId=${activeSid}`);
+        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
+            const serverData = checkData.data;
+            console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
+            
+            setReviewSessionId(serverData.sessionId || activeSid);
+            setAiQuestions(serverData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
+            setSelectedAnswers(serverData.selectedAnswers || {});
+            setRevealedQuestions(serverData.revealedQuestions || {});
+            setTableAnswers(serverData.tableAnswers || {});
+            setTableGradingResults(serverData.tableGradingResults || {});
+            setTutorAnswers(serverData.tutorAnswers || {});
+            setTutorInputText(serverData.tutorInputText || {});
+            setChatHistory(serverData.chatHistory || []);
+            
+            setLoadingAI(false);
+            setRestoringReviewSession(false);
+            hasLoadedFromServer = true;
+          }
         }
+      } catch (e) {
+        console.warn('[handleOpenAIQuestions] STEP 1 server session check failed:', e);
       }
-    }
 
-    const topicObj = allTopics.find(t => t.id === topicId);
-    const topicCategory = topicObj ? topicObj.category : (passedCategory || '일반');
-
-    const activeInfo = {
-      topicId,
-      title,
-      keywords,
-      pdfName,
-      mode,
-      scheduleId: finalScheduleId,
-      reviewRound: finalReviewRound,
-      isBonus,
-      category: topicCategory
-    };
-    localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
-    setLastActiveReview(activeInfo);
-
-    console.log(`[handleOpenAIQuestions] Initiating review: topicId=${topicId}, title="${title}", keywords="${keywords}", pdfName="${pdfName}", mode=${mode}, scheduleId=${finalScheduleId}, reviewRound=${finalReviewRound}, isBonus=${isBonus}, category=${topicCategory}, isRestore=${isRestore}`);
-    setReviewMobileTab('list');
-    requestAnimationFrame(() => {
-      if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
-    });
-
-    const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
-    
-    // ──────────────────────────────────────────────────────────
-    // 1단계 [최우선]: 서버에 이 토픽 ID/스케줄 ID 기준의 활성 세션 및 문제 정보가 이미 존재하는지 먼저 확인(GET)합니다!
-    // ──────────────────────────────────────────────────────────
-    const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || 'legacy_default';
-    let hasLoadedFromServer = false;
-
-    // 모달 상태 초기화 및 로딩바 우선 렌더링
-    setSelectedTopic(targetTopic);
-    selectedTopicRef.current = targetTopic;
-    setLoadingAI(true);
-    setAiProgressMessage('1단계: 문제 ID 확인 중 (서버 DB 조회)...');
-    setAiProgressPercent(15);
-    setAiQuestions([]);
-    setRevealedQuestions({});
-    setSelectedAnswers({});
-    setReviewOptionExplanations({});
-    setTableAnswers({});
-    setTableGradingResults({});
-    setShowAnswersState({});
-    setExamShowAnswersState({});
-    setTutorAnswers({});
-    setTutorInputText({});
-    setChatHistory([]);
-    setIsFallback(false);
-    setAiError('');
-
-    try {
-      console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, sessionId=${activeSid}`);
-      const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
-          const serverData = checkData.data;
-          console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
-          
-          setReviewSessionId(serverData.sessionId || activeSid);
-          setAiQuestions(serverData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
-          setSelectedAnswers(serverData.selectedAnswers || {});
-          setRevealedQuestions(serverData.revealedQuestions || {});
-          setTableAnswers(serverData.tableAnswers || {});
-          setTableGradingResults(serverData.tableGradingResults || {});
-          setTutorAnswers(serverData.tutorAnswers || {});
-          setTutorInputText(serverData.tutorInputText || {});
-          setChatHistory(serverData.chatHistory || []);
-          
-          setLoadingAI(false);
-          setRestoringReviewSession(false);
-          hasLoadedFromServer = true;
-        }
+      if (hasLoadedFromServer) {
+        loadingTopicLockRef.current = false; // 락 해제
+        return;
       }
-    } catch (e) {
-      console.warn('[handleOpenAIQuestions] STEP 1 server session check failed:', e);
-    }
 
-    // 서버에 이미 저장된 활성 퀴즈 세션 정보가 존재한다면 즉시 실행 중단(종료)하여 아래의 재생성/POST 통신 차단!
-    if (hasLoadedFromServer) {
-      return;
-    }
+      setAiProgressMessage('2단계: 문제 출제 지침(Standards) 확인 및 적용 중...');
+      setAiProgressPercent(45);
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-    // ──────────────────────────────────────────────────────────
-    // 2단계: 서버/로컬 어디에도 기존 세션 및 문제 정보가 없다면 비로소 예상 문제를 새로 생성(POST)합니다!
-    // ──────────────────────────────────────────────────────────
-    setAiProgressMessage('2단계: 문제 출제 지침(Standards) 확인 및 적용 중...');
-    setAiProgressPercent(45);
-    await new Promise(resolve => setTimeout(resolve, 800)); // 지침 확인 시각 인지용 딜레이
+      console.log('[handleOpenAIQuestions] STEP 2: No active session found. Initiating question generation...');
+      setAiProgressMessage('3단계: 지침 기반 신규 예상 문제 생성 중 (Gemini AI)...');
+      setAiProgressPercent(60);
+      
+      let newSid;
+      const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
+      const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
+      if (isRestore || isAbsoluteSid) {
+        newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
+        localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
+      } else {
+        newSid = renewSessionId(topicId, finalScheduleId, finalReviewRound);
+        localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
+      }
+      setReviewSessionId(newSid);
 
-    console.log('[handleOpenAIQuestions] STEP 2: No active session found. Initiating question generation...');
-    setAiProgressMessage('3단계: 지침 기반 신규 예상 문제 생성 중 (Gemini AI)...');
-    setAiProgressPercent(60);
-    
-    // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
-    let newSid;
-    const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
-    const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
-    if (isRestore || isAbsoluteSid) {
-      newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
-      localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
-    } else {
-      newSid = renewSessionId(topicId, finalScheduleId, finalReviewRound);
-      localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
-    }
-    setReviewSessionId(newSid);
+      const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
+      startProgressPolling(progressId);
 
-    const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
-    startProgressPolling(progressId);
-
-    try {
       let url = `${API_BASE}/api/topics/${topicId}/ai-questions`;
       const queryParams = [`progressId=${progressId}`];
       if (mode === 'local') queryParams.push('local=true');
@@ -7119,13 +7120,12 @@ export default function App() {
       
       console.log(`[handleOpenAIQuestions] Fetching questions: URL=${url}`);
       const res = await fetch(url, { method: 'POST' });
-      console.log(`[handleOpenAIQuestions] Response status: ${res.status} (${res.statusText})`);
       const data = await res.json();
-      console.log(`[handleOpenAIQuestions] Parsed response data:`, data);
 
       if (selectedTopicRef.current?.id !== topicId) {
         console.log(`[handleOpenAIQuestions] Topic changed. Ignoring loaded data for topicId=${topicId}`);
         stopProgressPolling();
+        loadingTopicLockRef.current = false; // 락 해제
         return;
       }
 
@@ -7134,8 +7134,8 @@ export default function App() {
         setAiQuestions(data.questions || []);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
-        lastQuizTopicId.current = topicId; // 로드 완료 후 기록
-        lastQuizScheduleId.current = finalScheduleId; // 스케줄 ID 기록
+        lastQuizTopicId.current = topicId;
+        lastQuizScheduleId.current = finalScheduleId;
 
         const activeSid = data.sessionId || newSid;
         if (activeSid) {
@@ -7145,7 +7145,7 @@ export default function App() {
 
         if (data.scheduleId) {
           finalScheduleId = data.scheduleId;
-          lastQuizScheduleId.current = data.scheduleId; // 업데이트된 스케줄 ID 반영
+          lastQuizScheduleId.current = data.scheduleId;
           if (activeSid) {
             localStorage.setItem(`anti_session_id_${topicId}_${data.scheduleId}`, activeSid);
           }
@@ -7157,20 +7157,8 @@ export default function App() {
             }
             return prev;
           });
-          setLastActiveReview(prev => {
-            if (prev && prev.topicId === topicId) {
-              const updated = { ...prev, scheduleId: data.scheduleId };
-              localStorage.setItem('anti_last_active_review', JSON.stringify(updated));
-              return updated;
-            }
-            return prev;
-          });
         }
         
-        // ──────────────────────────────────────────────────────────
-        // 오직 서버가 돌려준 데이터(data)만을 100% 신뢰하여 상태에 바인딩합니다.
-        // 로컬스토리지 데이터와의 정합성 비교 및 복원은 일체 제거합니다.
-        // ──────────────────────────────────────────────────────────
         setSelectedAnswers(data.selectedAnswers || {});
         setRevealedQuestions(data.revealedQuestions || {});
         setTableAnswers(data.tableAnswers || {});
@@ -7198,13 +7186,13 @@ export default function App() {
       }
     } catch (err) {
       stopProgressPolling('문제 생성 중 오류가 발생했습니다.', 100, false);
-      if (selectedTopicRef.current?.id !== topicId) {
-        return;
+      if (selectedTopicRef.current?.id === topicId) {
+        console.error('AI call error:', err);
+        showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
+        setAiError(err.message || '서버 통신 오류');
       }
-      console.error('AI call error:', err);
-      showNotification('서버 통신 오류로 AI 예상문제를 로드하지 못했습니다.', 'error');
-      setAiError(err.message || '서버 통신 오류');
     } finally {
+      loadingTopicLockRef.current = false; // 락 최종 해제
       if (selectedTopicRef.current?.id === topicId) {
         setLoadingAI(false);
       }
@@ -11783,10 +11771,27 @@ export default function App() {
             const topicId = s.selectedTopic.id;
             const scheduleId = s.selectedTopic.schedule_id || '';
             
-            // Try to fetch the cached review session from the server first
-            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
-            
+            // [🚨 로컬 캐시 즉시 동기 복원 우선 보장 🚨]
+            // 새로고침 시 화면 지연이나 재생성 방지를 위해 로컬스토리지에 있는 문제 세트와 답변 진행 상황을 최우선으로 즉시 주입합니다.
             let restoreSuccess = false;
+            if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
+              console.log('[Mount Restore] Instantly restored from LocalStorage cache. Question count:', s.aiQuestions.length);
+              setSelectedTopic(s.selectedTopic);
+              setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+              setSelectedAnswers(s.selectedAnswers || {});
+              setRevealedQuestions(s.revealedQuestions || {});
+              setTableAnswers(s.tableAnswers || {});
+              setTableGradingResults(s.tableGradingResults || {});
+              setTutorAnswers(s.tutorAnswers || {});
+              setTutorInputText(s.tutorInputText || {});
+              setChatHistory(s.chatHistory || []);
+              
+              setLoadingAI(false);
+              setRestoringReviewSession(false);
+              restoreSuccess = true; // 로컬 캐시로 성공 마크하여 신규 생성 handleOpenAIQuestions 트리거 방지
+            }
+
+            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
             let resData = null;
             
             try {
@@ -11795,15 +11800,19 @@ export default function App() {
                 resData = await res.json();
               }
             } catch (e) {
-              console.warn('[Mount Restore] Server review session query failed (Network/500), trying fallback:', e);
+              console.warn('[Mount Restore] Server review session query failed (Network/500), relying on local cache:', e);
             }
 
             if (resData && resData.success && resData.data) {
               const server = resData.data;
-              console.log('[Mount Restore] Server review session found. Syncing...');
+              console.log('[Mount Restore] Server review session found. Syncing latest state...');
               updateSyncTime(new Date());
               updateNeonSyncTime(new Date());
+              
+              // 1) 토픽 상태 덮어쓰기
               setSelectedTopic(s.selectedTopic);
+              
+              // 2) 세션 ID 및 로컬스토리지 동기화
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
               if (isServerSidAbsolute) {
                 setReviewSessionId(server.sessionId);
@@ -11814,22 +11823,26 @@ export default function App() {
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
               }
 
-              if (server.questions && Array.isArray(server.questions)) {
+              // 3) 최신 문제 및 진행 상태 동기화 (서버 값이 존재할 때)
+              if (server.questions && Array.isArray(server.questions) && server.questions.length > 0) {
                 setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               }
-              setSelectedAnswers(server.selectedAnswers || {});
-              setRevealedQuestions(server.revealedQuestions || {});
-              setTableAnswers(server.tableAnswers || {});
-              setTableGradingResults(server.tableGradingResults || {});
-              setTutorAnswers(server.tutorAnswers || {});
-              setTutorInputText(server.tutorInputText || {});
+              setSelectedAnswers(prev => ({ ...prev, ...(server.selectedAnswers || {}) }));
+              setRevealedQuestions(prev => ({ ...prev, ...(server.revealedQuestions || {}) }));
+              setTableAnswers(prev => ({ ...prev, ...(server.tableAnswers || {}) }));
+              setTableGradingResults(prev => ({ ...prev, ...(server.tableGradingResults || {}) }));
+              setTutorAnswers(prev => ({ ...prev, ...(server.tutorAnswers || {}) }));
+              setTutorInputText(prev => ({ ...prev, ...(server.tutorInputText || {}) }));
               setChatHistory(server.chatHistory || []);
+              
+              setLoadingAI(false);
               setRestoringReviewSession(false);
               restoreSuccess = true;
             }
 
+            // 로컬 캐시도 없고 서버 조회도 실패한 진짜 완전한 최초 진입일 때만 문제 재생성 API 호출
             if (!restoreSuccess) {
-              console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
+              console.log('[Mount Restore] No local cache and no server review session found. Generating via handleOpenAIQuestions...');
               await handleOpenAIQuestions(
                 s.selectedTopic.id, 
                 s.selectedTopic.title, 
