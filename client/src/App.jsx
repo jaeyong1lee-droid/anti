@@ -5712,7 +5712,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly && !restoringReviewSession) {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !restoringReviewSession) {
       // 1) 즉시 동기화 대상(객관식, 정답 열람, 채점 완료, 대화 내역) 변경 감지
       const hasImmediateChange = 
         JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
@@ -5795,7 +5795,7 @@ export default function App() {
     const promises = [];
 
     // 1) Save active review session immediately to localStorage (synchronously)
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
       const activeSid = reviewSessionId || 'default';
       const key = selectedTopic.schedule_id 
@@ -5912,32 +5912,7 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-      const delayDebounceFn = setTimeout(() => {
-        fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: selectedTopic.id,
-            scheduleId: selectedTopic.schedule_id,
-            sessionId: reviewSessionId,
-            questions: aiQuestions,
-            selectedAnswers,
-            revealedQuestions,
-            tableAnswers,
-            tableGradingResults,
-            tutorAnswers,
-            tutorInputText,
-            chatHistory,
-            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-          })
-        }).catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
-      }, 1000); // 1.0-second debounce
 
-      return () => clearTimeout(delayDebounceFn);
-    }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
 
   const handlePullToRefreshReload = async (mode) => {
     if (mode === 'review' && selectedTopic) {

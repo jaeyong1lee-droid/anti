@@ -6881,29 +6881,30 @@ app.get('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
 
+    let isCompletedOrFailed = false;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
       const scheduleIdInt = parseInt(scheduleId, 10);
       if (!isNaN(scheduleIdInt)) {
         const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
         if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-          const keyStale = `review_questions_schedule_${scheduleIdInt}`;
-          await dbQuery.run('DELETE FROM app_session WHERE key = ?', [keyStale]);
-          return res.json({ success: false, error: '이미 완료된 복습 일정입니다.' });
+          isCompletedOrFailed = true;
         }
       }
     }
 
     const sId = req.query.sessionId || 'legacy_default';
-    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}_sess_${sId}`
-      : `review_questions_topic_${topicId}_sess_${sId}`;
+    const key = isCompletedOrFailed
+      ? `completed_review_schedule_${scheduleId}`
+      : (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+          ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+          : `review_questions_topic_${topicId}_sess_${sId}`);
     
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     
     // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
     // 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면,
     // DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
-    if (!row && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
+    if (!row && !isCompletedOrFailed && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
       const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
       const newestSessionRow = await dbQuery.get(
         'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
@@ -7001,20 +7002,23 @@ app.post('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
 
+    let isCompletedOrFailed = false;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
       const scheduleIdInt = parseInt(scheduleId, 10);
       if (!isNaN(scheduleIdInt)) {
         const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
         if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-          return res.status(400).json({ error: '이미 완료된 복습 일정입니다. 저장할 수 없습니다.' });
+          isCompletedOrFailed = true;
         }
       }
     }
 
     const sId = sessionId || 'legacy_default';
-    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}_sess_${sId}`
-      : `review_questions_topic_${topicId}_sess_${sId}`;
+    const key = isCompletedOrFailed
+      ? `completed_review_schedule_${scheduleId}`
+      : (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
+          ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+          : `review_questions_topic_${topicId}_sess_${sId}`);
 
 
 
