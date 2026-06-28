@@ -9511,7 +9511,7 @@ async function applyResetPatchForTopics3To24() {
       return;
     }
 
-    const baseDateStr = '2026-06-29';
+    const baseDateStr = '2026-06-29 00:00:00';
     const roundDates = {
       2: '2026-07-03',
       3: '2026-07-10',
