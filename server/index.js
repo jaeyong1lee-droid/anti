@@ -6982,7 +6982,7 @@ app.get('/api/session/review', async (req, res) => {
     if (!row && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
       const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
       const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
         [pattern]
       );
       if (newestSessionRow) {
@@ -7006,7 +7006,7 @@ app.get('/api/session/review', async (req, res) => {
     if (!row && (!scheduleId || scheduleId === '9999' || scheduleId === 'null' || scheduleId === 'undefined')) {
       const pattern = `review_questions_topic_${topicId}_sess_%`;
       const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
         [pattern]
       );
       if (newestSessionRow) {
