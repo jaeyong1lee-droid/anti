@@ -6320,9 +6320,25 @@ export default function App() {
     }
   };
 
+  // 읽기 전용 복습 닫기 처리
+  const handleCloseReadOnlyQuiz = () => {
+    setSelectedTopic(null);
+    setAiQuestions([]);
+    setRevealedQuestions({});
+    setSelectedAnswers({});
+    setOpenSections({});
+    setReviewOptionExplanations({});
+    lastQuizTopicId.current = null;
+    lastQuizScheduleId.current = null;
+  };
+
   // AI 복습 완료 버튼 클릭 시 처리
   const handleQuizCompleteClick = async () => {
     if (!selectedTopic) return;
+    if (selectedTopic.isReadOnly) {
+      handleCloseReadOnlyQuiz();
+      return;
+    }
 
     // Check for unsolved questions
     let unsolvedCount = 0;
@@ -15192,23 +15208,13 @@ export default function App() {
                     <div className="quiz-card-item text-center py-6">
                       <div className="flex justify-center gap-3 flex-wrap">
                         {selectedTopic?.isReadOnly ? (
-                          <>
-                            <button
-                              onClick={handleQuizCompleteClick}
-                              className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                              title="현재 복습 풀이 점수 및 진행 상황을 저장하고 닫습니다."
-                            >
-                              <span>저장 후 닫기</span>
-                            </button>
-                            <button
-                              onClick={handleQuizCompleteClick}
-                              className="inline-flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 hover:border-emerald-400 rounded-2xl px-6 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                              title="다시 풀이한 내용과 성적으로 DB 기록을 업데이트합니다."
-                            >
-                              <Award size={20} className="text-emerald-200" />
-                              <span>다시 푼 성적으로 업데이트</span>
-                            </button>
-                          </>
+                          <button
+                            onClick={handleCloseReadOnlyQuiz}
+                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                            title="복습 화면을 닫습니다."
+                          >
+                            <span>닫기</span>
+                          </button>
                         ) : (
                           <button
                             onClick={handleQuizCompleteClick}
