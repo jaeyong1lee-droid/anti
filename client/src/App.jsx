@@ -7011,34 +7011,7 @@ export default function App() {
       return;
     }
 
-    // [🚨 로컬 캐시 폴백 🚨]
-    // 만약 서버 통신 실패/오프라인인데 로컬스토리지 백업(anti_app_state)에 해당 토픽의 문제가 고스란히 남아 있다면 즉시 복원
-    try {
-      const saved = localStorage.getItem('anti_app_state');
-      if (saved) {
-        const s = JSON.parse(saved);
-        const isSameTopic = s.selectedTopic && s.selectedTopic.id === topicId;
-        const isSameSchedule = s.selectedTopic && (String(s.selectedTopic.schedule_id) === String(finalScheduleId || '') || !finalScheduleId);
-        if (isSameTopic && isSameSchedule && s.aiQuestions && s.aiQuestions.length > 0) {
-          console.log('[handleOpenAIQuestions] Offline Fallback: Local App State Hit! Restoring active session instantly.');
-          setSelectedTopic(s.selectedTopic);
-          setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-          setSelectedAnswers(s.selectedAnswers || {});
-          setRevealedQuestions(s.revealedQuestions || {});
-          setTableAnswers(s.tableAnswers || {});
-          setTableGradingResults(s.tableGradingResults || {});
-          setTutorAnswers(s.tutorAnswers || {});
-          setTutorInputText(s.tutorInputText || {});
-          setChatHistory(s.chatHistory || []);
-          setReviewSessionId(activeSid);
-          setLoadingAI(false);
-          setRestoringReviewSession(false);
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('[handleOpenAIQuestions] Offline fallback query failed:', e);
-    }
+
 
     // ──────────────────────────────────────────────────────────
     // 2단계: 서버/로컬 어디에도 기존 세션 및 문제 정보가 없다면 비로소 예상 문제를 새로 생성(POST)합니다!
@@ -7120,258 +7093,31 @@ export default function App() {
           });
         }
         
-        // 특정 토픽의 복습 진행 상황(답안확인 표시 여부, 객관식 마크)을 복원
-        let finalData = data;
-        const localKey = finalScheduleId 
-          ? `anti_review_progress_sched_${finalScheduleId}_${newSid || 'default'}`
-          : `anti_review_progress_${topicId}_${newSid || 'default'}`;
-        const localSaved = localStorage.getItem(localKey);
-        
-        if (localSaved) {
-          try {
-            const localData = JSON.parse(localSaved);
-            const countSolved = (d) => {
-              if (!d) return 0;
-              let count = 0;
-              if (d.selectedAnswers) count += Object.keys(d.selectedAnswers).length;
-              if (d.tableAnswers) {
-                Object.values(d.tableAnswers).forEach(val => {
-                  if (val && String(val).trim() !== '') count++;
-                });
-              }
-              if (d.tutorInputText) {
-                Object.values(d.tutorInputText).forEach(val => {
-                  if (val && String(val).trim() !== '') count++;
-                });
-              }
-              if (d.tutorAnswers) {
-                count += Object.keys(d.tutorAnswers).length;
-              }
-              return count;
-            };
-            const localSolved = countSolved(localData);
-            const serverSolved = countSolved(data);
-            if (localSolved > serverSolved) {
-              console.log(`[handleOpenAIQuestions] Local progress has more solved questions (${localSolved}) than server (${serverSolved}). Using local progress.`);
-              finalData = {
-                questions: data.questions,
-                selectedAnswers: localData.selectedAnswers || {},
-                revealedQuestions: localData.revealedQuestions || {},
-                tableAnswers: localData.tableAnswers || {},
-                tableGradingResults: localData.tableGradingResults || {},
-                tutorAnswers: localData.tutorAnswers || {},
-                tutorInputText: localData.tutorInputText || {},
-                chatHistory: localData.chatHistory || [],
-                savedQuizScroll: localData.savedQuizScroll || 0,
-                isCached: true
-              };
-
-              // [🚨 실시간 양방향 동기화 🚨]
-              // 로컬 진도가 더 많이 나간 경우, 이를 서버 세션 데이터에 즉시 강제 전송(POST)하여 최신화
-              const targetSid = data.sessionId || newSid;
-              fetch(`${API_BASE}/api/session/review`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  topicId: topicId,
-                  scheduleId: finalScheduleId,
-                  sessionId: targetSid,
-                  questions: data.questions,
-                  selectedAnswers: localData.selectedAnswers || {},
-                  revealedQuestions: localData.revealedQuestions || {},
-                  tableAnswers: localData.tableAnswers || {},
-                  tableGradingResults: localData.tableGradingResults || {},
-                  tutorAnswers: localData.tutorAnswers || {},
-                  tutorInputText: localData.tutorInputText || {},
-                  chatHistory: localData.chatHistory || [],
-                  savedQuizScroll: localData.savedQuizScroll || 0
-                })
-              }).catch(e => console.warn('로컬 진행도 서버 동기화 실패:', e));
-
-            } else if (serverSolved > localSolved) {
-              console.log(`[handleOpenAIQuestions] Server progress has more solved questions (${serverSolved}) than local (${localSolved}). Updating local storage.`);
-              // [🚨 실시간 양방향 동기화 🚨]
-              // 서버 진도가 더 많이 나간 경우, 기기 로컬스토리지를 즉시 최신화
-              try {
-                localStorage.setItem(localKey, JSON.stringify({
-                  revealedQuestions: data.revealedQuestions || {},
-                  selectedAnswers: data.selectedAnswers || {},
-                  tableAnswers: data.tableAnswers || {},
-                  tableGradingResults: data.tableGradingResults || {},
-                  tutorAnswers: data.tutorAnswers || {},
-                  tutorInputText: data.tutorInputText || {},
-                  chatHistory: data.chatHistory || [],
-                  savedQuizScroll: data.savedQuizScroll || 0
-                }));
-              } catch(e) {
-                console.warn('Failed to update local storage with server progress:', e);
-              }
-            }
-          } catch(e) {
-            console.warn('Failed to parse local review progress during handleOpenAIQuestions:', e);
-          }
-        }
-
-        const hasProgress = finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText;
-        if (hasProgress) {
-          updateSyncTime(new Date());
-          updateNeonSyncTime(new Date());
-          setSelectedAnswers(finalData.selectedAnswers || {});
-          setRevealedQuestions(finalData.revealedQuestions || {});
-          setTableAnswers(finalData.tableAnswers || {});
-          setTableGradingResults(finalData.tableGradingResults || {});
-          setTutorInputText(prev => {
-            const copy = { ...prev };
-            Object.keys(copy).forEach(k => {
-              if (k.startsWith('r_')) delete copy[k];
-            });
-            return { ...copy, ...(finalData.tutorInputText || {}) };
+        // ──────────────────────────────────────────────────────────
+        // 오직 서버가 돌려준 데이터(data)만을 100% 신뢰하여 상태에 바인딩합니다.
+        // 로컬스토리지 데이터와의 정합성 비교 및 복원은 일체 제거합니다.
+        // ──────────────────────────────────────────────────────────
+        setSelectedAnswers(data.selectedAnswers || {});
+        setRevealedQuestions(data.revealedQuestions || {});
+        setTableAnswers(data.tableAnswers || {});
+        setTableGradingResults(data.tableGradingResults || {});
+        setTutorInputText(prev => {
+          const copy = { ...prev };
+          Object.keys(copy).forEach(k => {
+            if (k.startsWith('r_')) delete copy[k];
           });
-          setTutorAnswers(prev => {
-            const copy = { ...prev };
-            Object.keys(copy).forEach(k => {
-              if (k.startsWith('r_')) delete copy[k];
-            });
-            return { ...copy, ...(finalData.tutorAnswers || {}) };
+          return { ...copy, ...(data.tutorInputText || {}) };
+        });
+        setTutorAnswers(prev => {
+          const copy = { ...prev };
+          Object.keys(copy).forEach(k => {
+            if (k.startsWith('r_')) delete copy[k];
           });
-          setChatHistory(finalData.chatHistory || []);
-        } else {
-          let initialSelectedAnswers = {};
-          let initialRevealedQuestions = {};
-          let initialTableAnswers = {};
-          let initialTableGradingResults = {};
-          let initialTutorInputText = {};
-          let initialTutorAnswers = {};
-          let initialChatHistory = [];
-          try {
-            const key = finalScheduleId 
-              ? `anti_review_progress_sched_${finalScheduleId}`
-              : `anti_review_progress_${topicId}`;
-            const savedProgress = localStorage.getItem(key);
-            if (savedProgress) {
-              const parsed = JSON.parse(savedProgress);
-              if (parsed.revealedQuestions) initialRevealedQuestions = parsed.revealedQuestions;
-              if (parsed.selectedAnswers) initialSelectedAnswers = parsed.selectedAnswers;
-              if (parsed.tableAnswers) initialTableAnswers = parsed.tableAnswers;
-              if (parsed.tableGradingResults) initialTableGradingResults = parsed.tableGradingResults;
-              if (parsed.tutorInputText) initialTutorInputText = parsed.tutorInputText;
-              if (parsed.tutorAnswers) initialTutorAnswers = parsed.tutorAnswers;
-              if (parsed.chatHistory) initialChatHistory = parsed.chatHistory;
-              
-              setTableAnswers(initialTableAnswers);
-              setTableGradingResults(initialTableGradingResults);
-              setRevealedQuestions(initialRevealedQuestions);
-              setSelectedAnswers(initialSelectedAnswers);
-              setChatHistory(initialChatHistory);
-              setTutorInputText(prev => {
-                const copy = { ...prev };
-                Object.keys(copy).forEach(k => {
-                  if (k.startsWith('r_')) delete copy[k];
-                });
-                return { ...copy, ...initialTutorInputText };
-              });
-              setTutorAnswers(prev => {
-                const copy = { ...prev };
-                Object.keys(copy).forEach(k => {
-                  if (k.startsWith('r_')) delete copy[k];
-                });
-                return { ...copy, ...initialTutorAnswers };
-              });
-              setShowAnswersState({});
-              setExamShowAnswersState({});
-              if (parsed.savedQuizScroll) {
-                savedQuizScroll.current = parsed.savedQuizScroll;
-                requestAnimationFrame(() => {
-                  if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
-                });
-              }
-            } else {
-              setRevealedQuestions({});
-              setSelectedAnswers({});
-              setTableAnswers({});
-              setTableGradingResults({});
-              setTutorInputText(prev => {
-                const copy = { ...prev };
-                Object.keys(copy).forEach(k => {
-                  if (k.startsWith('r_')) delete copy[k];
-                });
-                return copy;
-              });
-              setTutorAnswers(prev => {
-                const copy = { ...prev };
-                Object.keys(copy).forEach(k => {
-                  if (k.startsWith('r_')) delete copy[k];
-                });
-                return copy;
-              });
-              setShowAnswersState({});
-              setExamShowAnswersState({});
-            }
-          } catch (e) {
-            console.warn('복습 진행률 복원 실패:', e);
-            setRevealedQuestions({});
-            setSelectedAnswers({});
-            setTableAnswers({});
-            setTableGradingResults({});
-            setTutorInputText(prev => {
-              const copy = { ...prev };
-              Object.keys(copy).forEach(k => {
-                if (k.startsWith('r_')) delete copy[k];
-              });
-              return copy;
-            });
-            setTutorAnswers(prev => {
-              const copy = { ...prev };
-              Object.keys(copy).forEach(k => {
-                if (k.startsWith('r_')) delete copy[k];
-              });
-              return copy;
-            });
-            setShowAnswersState({});
-            setExamShowAnswersState({});
-          }
-
-          // 즉시 DB 저장
-          fetch(`${API_BASE}/api/session/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              topicId: topicId,
-              scheduleId: finalScheduleId,
-              questions: data.questions || [],
-              selectedAnswers: initialSelectedAnswers,
-              revealedQuestions: initialRevealedQuestions,
-              tableAnswers: initialTableAnswers,
-              tableGradingResults: initialTableGradingResults,
-              tutorInputText: initialTutorInputText,
-              tutorAnswers: initialTutorAnswers,
-              savedQuizScroll: 0
-            })
-          })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                updateSyncTime(new Date());
-                updateNeonSyncTime(new Date());
-              }
-            })
-            .catch(e => console.warn('신규 생성 복습 세션 즉시 저장 실패:', e));
-        }
-
-        let localScroll = undefined;
-        if (localSaved) {
-          try {
-            const parsed = JSON.parse(localSaved);
-            if (parsed.savedQuizScroll !== undefined) localScroll = parsed.savedQuizScroll;
-          } catch(e){}
-        }
-        const targetScroll = localScroll !== undefined ? localScroll : (finalData.savedQuizScroll || 0);
-        if (targetScroll) {
-          savedQuizScroll.current = targetScroll;
-          requestAnimationFrame(() => {
-            if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
-          });
-        }
+          return { ...copy, ...(data.tutorAnswers || {}) };
+        });
+        setChatHistory(data.chatHistory || []);
+        updateSyncTime(new Date());
+        updateNeonSyncTime(new Date());
       } else {
         stopProgressPolling('문제 생성에 실패했습니다.', 100, false);
         showNotification(data.error || 'AI 기출문제를 생성하지 못했습니다.', 'error');
@@ -11994,126 +11740,36 @@ export default function App() {
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
               }
 
-              // Load the one with the most solved questions!
-              const finalSid = server.sessionId || activeSid || 'default';
-              const localKey = s.selectedTopic.schedule_id 
-                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${finalSid}`
-                : `anti_review_progress_${s.selectedTopic.id}_${finalSid}`;
-              const localSaved = localStorage.getItem(localKey);
-              let finalData = server;
-              
-              if (localSaved) {
-                try {
-                  const localData = JSON.parse(localSaved);
-                  const countSolved = (d) => {
-                    if (!d) return 0;
-                    let count = 0;
-                    if (d.selectedAnswers) count += Object.keys(d.selectedAnswers).length;
-                    if (d.tableAnswers) {
-                      Object.values(d.tableAnswers).forEach(val => {
-                        if (val && String(val).trim() !== '') count++;
-                      });
-                    }
-                    if (d.tutorInputText) {
-                      Object.values(d.tutorInputText).forEach(val => {
-                        if (val && String(val).trim() !== '') count++;
-                      });
-                    }
-                    if (d.tutorAnswers) {
-                      count += Object.keys(d.tutorAnswers).length;
-                    }
-                    return count;
-                  };
-                  const localSolved = countSolved(localData);
-                  const serverSolved = countSolved(server);
-                  if (localSolved > serverSolved) {
-                    console.log(`[Mount Restore] Local storage review progress has more solved questions (${localSolved}) than server (${serverSolved}). Using local progress.`);
-                    finalData = {
-                      questions: server.questions, // keep server's questions
-                      ...localData
-                    };
-                  }
-                } catch(e) {
-                  console.warn('Failed to parse local review progress during mount restore:', e);
-                }
+              if (server.questions && Array.isArray(server.questions)) {
+                setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               }
-
-              if (finalData.questions && Array.isArray(finalData.questions)) {
-                setAiQuestions(finalData.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-              }
-              setSelectedAnswers(finalData.selectedAnswers || {});
-              setRevealedQuestions(finalData.revealedQuestions || {});
-              setTableAnswers(finalData.tableAnswers || {});
-              setTableGradingResults(finalData.tableGradingResults || {});
-              setTutorAnswers(finalData.tutorAnswers || {});
-              setTutorInputText(finalData.tutorInputText || {});
-              setChatHistory(finalData.chatHistory || []);
+              setSelectedAnswers(server.selectedAnswers || {});
+              setRevealedQuestions(server.revealedQuestions || {});
+              setTableAnswers(server.tableAnswers || {});
+              setTableGradingResults(server.tableGradingResults || {});
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
+              setChatHistory(server.chatHistory || []);
               setRestoringReviewSession(false);
               restoreSuccess = true;
-            } else {
-              // [🚨 로컬 캐시 폴백 복원 🚨]
-              // 서버 세션 데이터가 아직 없을 때, 로컬 스토리지에 해당 세션 캐시가 존재하는지 우선 검사하여 복원
-              const localKey = s.selectedTopic.schedule_id 
-                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${activeSid}`
-                : `anti_review_progress_${s.selectedTopic.id}_${activeSid}`;
-              const localSaved = localStorage.getItem(localKey);
-              if (localSaved) {
-                try {
-                  const localData = JSON.parse(localSaved);
-                  if (localData && localData.questions && Array.isArray(localData.questions)) {
-                    console.log('[Mount Restore] Server session query failed, but local progress cache found. Restoring from LocalStorage.');
-                    setSelectedTopic(s.selectedTopic);
-                    setReviewSessionId(activeSid);
-                    setAiQuestions(localData.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-                    setSelectedAnswers(localData.selectedAnswers || {});
-                    setRevealedQuestions(localData.revealedQuestions || {});
-                    setTableAnswers(localData.tableAnswers || {});
-                    setTableGradingResults(localData.tableGradingResults || {});
-                    setTutorAnswers(localData.tutorAnswers || {});
-                    setTutorInputText(localData.tutorInputText || {});
-                    setChatHistory(localData.chatHistory || []);
-                    setRestoringReviewSession(false);
-                    restoreSuccess = true;
-                  }
-                } catch (e) {
-                  console.warn('Failed to restore from local progress cache:', e);
-                }
-              }
             }
 
-            // 서버 및 세션 캐시 복원 둘 다 실패했을 때의 최후 2단계 방어막 (튕김 절대 방지)
             if (!restoreSuccess) {
-              if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
-                // anti_app_state 백업 데이터를 100% 신뢰하여 복원
-                console.log('[Mount Restore Fallback] Warding off crash. Restoring directly from anti_app_state backup.');
-                setSelectedTopic(s.selectedTopic);
-                setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-                setSelectedAnswers(s.selectedAnswers || {});
-                setRevealedQuestions(s.revealedQuestions || {});
-                setTableAnswers(s.tableAnswers || {});
-                setTableGradingResults(s.tableGradingResults || {});
-                setTutorAnswers(s.tutorAnswers || {});
-                setTutorInputText(s.tutorInputText || {});
-                setChatHistory(s.chatHistory || []);
-                setRestoringReviewSession(false);
-              } else {
-                // 로컬 백업에도 문제가 아예 없을 때만 OpenAI를 통해 새로 생성
-                console.log('[Mount Restore] No server review session & no backup found. Opening via handleOpenAIQuestions...');
-                await handleOpenAIQuestions(
-                  s.selectedTopic.id, 
-                  s.selectedTopic.title, 
-                  s.selectedTopic.keywords, 
-                  s.selectedTopic.pdf_name, 
-                  s.selectedTopic.mode || 'ai', 
-                  s.selectedTopic.schedule_id, 
-                  s.selectedTopic.review_round, 
-                  s.selectedTopic.isBonus,
-                  false,
-                  s.selectedTopic.category,
-                  true // isRestore = true
-                );
-                setRestoringReviewSession(false);
-              }
+              console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
+              await handleOpenAIQuestions(
+                s.selectedTopic.id, 
+                s.selectedTopic.title, 
+                s.selectedTopic.keywords, 
+                s.selectedTopic.pdf_name, 
+                s.selectedTopic.mode || 'ai', 
+                s.selectedTopic.schedule_id, 
+                s.selectedTopic.review_round, 
+                s.selectedTopic.isBonus,
+                false,
+                s.selectedTopic.category,
+                true // isRestore = true
+              );
+              setRestoringReviewSession(false);
             }
           } else {
             setRestoringReviewSession(false);
