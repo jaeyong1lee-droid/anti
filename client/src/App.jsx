@@ -483,6 +483,12 @@ const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/&gt;/g, '>')
                    .replace(/&amp;/g, '&');
   
+  // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
+  // 이렇게 해야 "application/x − tex" → "application/x-tex" 으로 복원되어 annotation 추출 가능
+  cleaned = cleaned.replace(/[–—−]/g, '-');
+  // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
+  cleaned = cleaned.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+
   const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
   cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
     const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
@@ -510,15 +516,31 @@ const cleanAndSanitizeMathText = (rawText) => {
     return '';
   });
 
+  // [🚨 최후의 핵 방어선 🚨] 위 모든 필터를 통과한 잔존 KaTeX HTML 잔해 일괄 제거
+  // annotation 태그가 포함된 대규모 HTML 덩어리를 통째로 잡아 수식을 추출합니다.
+  // 패턴: <...annotation...encoding...application/x-tex...>수식</annotation...> 을 포함하는 블록
+  cleaned = cleaned.replace(/<[^>]*?(?:katex|formula-scroll|katex-display)[^>]*>[\s\S]*?<\/\s*(?:div|span)\s*>/gi, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<\s*annotation[^>]*?encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  // [🚨 태그 완전 붕괴 대응] 이미 공백 정규화 후에도 잡히지 않는 잔해 HTML 태그 일괄 제거
+  // 예: < span class="mord" >, < /span >, < span class="vlist-r" > 등의 단편
+  cleaned = cleaned.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
+  
   cleaned = healLatexFormulas(cleaned);
 
   cleaned = cleaned.replace(/_따라서/g, '따라서');
 
-  cleaned = cleaned.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => {
+  cleaned = cleaned.replace(/\\\[(\s*[\s\S]*?\s*)\\\]/g, (match, math) => {
     return `$$${math}$$`;
   });
 
-  cleaned = cleaned.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => {
+  cleaned = cleaned.replace(/\\\((\s*[\s\S]*?\s*)\\\)/g, (match, math) => {
     if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
     return `$${math}$`;
   });
@@ -537,6 +559,11 @@ const stripHtmlTagsFromRawData = (text) => {
                .replace(/&gt;/g, '>')
                .replace(/&amp;/g, '&');
 
+  // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
+  clean = clean.replace(/[–—−]/g, '-');
+  // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
+  clean = clean.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+
   const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
   clean = clean.replace(katexHtmlRegex, (htmlBlock) => {
     const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
@@ -551,6 +578,19 @@ const stripHtmlTagsFromRawData = (text) => {
     }
     return '';
   });
+
+  // [🚨 최후 방어선] annotation 포함된 잔존 KaTeX HTML 잔해 일괄 수식 추출
+  clean = clean.replace(/<[^>]*?(?:katex|formula-scroll|katex-display)[^>]*>[\s\S]*?<\/\s*(?:div|span)\s*>/gi, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<\s*annotation[^>]*?encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  // [🚨 태그 완전 붕괴 대응] 잔해 KaTeX/MathML 태그 단편 일괄 제거
+  clean = clean.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
 
   clean = healLatexFormulas(clean);
 
