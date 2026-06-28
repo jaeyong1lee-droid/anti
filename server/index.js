@@ -9502,6 +9502,59 @@ async function applyScorePatch() {
   }
 }
 
+async function applyResetPatchForTopics3To24() {
+  console.log('[DB Patch] Running reset patch for topics 3 to 24...');
+  try {
+    const baseDateStr = '2026-06-29';
+    const roundDates = {
+      2: '2026-07-03',
+      3: '2026-07-10',
+      4: '2026-07-24',
+      5: '2026-08-28',
+      6: '2026-10-27',
+    };
+
+    const schedules = await dbQuery.all(
+      "SELECT id, topic_id, review_round, status, score FROM schedules WHERE topic_id >= 3 AND topic_id <= 24 AND review_round < 99"
+    );
+
+    let patchCount1 = 0;
+    let patchCount2 = 0;
+    let deletedSessions = 0;
+
+    for (const s of schedules) {
+      if (s.review_round === 1) {
+        const finalScore = (s.score && s.score > 0) ? s.score : 100;
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'completed', completed_at = ?, score = ? WHERE id = ?",
+          [baseDateStr, finalScore, s.id]
+        );
+        patchCount1++;
+      } else if (s.review_round >= 2 && s.review_round <= 6) {
+        const correctPlannedDate = roundDates[s.review_round];
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'pending', completed_at = NULL, score = NULL, correct_count = NULL, total_count = NULL, planned_date = ? WHERE id = ?",
+          [correctPlannedDate, s.id]
+        );
+        
+        const keysToDelete = [
+          `completed_review_schedule_${s.id}`,
+          `review_questions_schedule_${s.id}`
+        ];
+        for (const k of keysToDelete) {
+          const delRes = await dbQuery.run("DELETE FROM app_session WHERE key = ?", [k]);
+          deletedSessions += delRes.changes || 0;
+        }
+        patchCount2++;
+      }
+    }
+
+    console.log(`[DB Patch] Reset Patch completed: round1 completed=${patchCount1}, round2+ pending=${patchCount2}, deletedSessions=${deletedSessions}`);
+  } catch (err) {
+    console.error('[DB Patch] Error in reset patch for topics 3 to 24:', err.message);
+  }
+}
+
 // [DB Session Policy] 전체 토픽에 대해 최근 2회차를 제외한 과거 복습 세션 데이터 일괄 삭제
 async function cleanupOldReviewSessions() {
   console.log('[DB Session Policy] Cleaning up old review session data globally...');
@@ -9559,6 +9612,7 @@ async function startServer() {
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
     await applyScorePatch();
+    await applyResetPatchForTopics3To24();
     await cleanupOldReviewSessions();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
@@ -9620,6 +9674,7 @@ if (!process.env.VERCEL) {
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
     await applyScorePatch();
+    await applyResetPatchForTopics3To24();
     await cleanupOldReviewSessions();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
