@@ -5221,21 +5221,31 @@ export default function App() {
         ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
         : `anti_review_progress_${selectedTopic.id}`;
       const localProgress = localStorage.getItem(key);
+      let targetScroll = 0;
+      let hasProgress = false;
+
       if (localProgress) {
         try {
           const parsed = JSON.parse(localProgress);
           if (parsed.savedQuizScroll !== undefined) {
-            savedQuizScroll.current = parsed.savedQuizScroll;
-            requestAnimationFrame(() => {
-              if (quizBodyRef.current) quizBodyRef.current.scrollTop = parsed.savedQuizScroll;
-            });
-            // DOM이 완전히 로드되고 그려지기까지 약간의 텀이 있을 수 있으므로 2중 처리
-            setTimeout(() => {
-              if (quizBodyRef.current) quizBodyRef.current.scrollTop = parsed.savedQuizScroll;
-            }, 100);
+            targetScroll = parsed.savedQuizScroll;
+            hasProgress = true;
           }
         } catch (e) {}
       }
+
+      if (!hasProgress) {
+        targetScroll = savedQuizScroll.current || 0;
+      } else {
+        savedQuizScroll.current = targetScroll;
+      }
+
+      requestAnimationFrame(() => {
+        if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
+      });
+      setTimeout(() => {
+        if (quizBodyRef.current) quizBodyRef.current.scrollTop = targetScroll;
+      }, 100);
     }
   }, [selectedTopic, aiQuestions]);
 
@@ -6626,6 +6636,10 @@ export default function App() {
     };
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
+    savedQuizScroll.current = 0;
+    if (quizBodyRef.current) {
+      quizBodyRef.current.scrollTop = 0;
+    }
     setAiQuestions([]);
     setRevealedQuestions({});
     setSelectedAnswers({});
@@ -7054,6 +7068,10 @@ export default function App() {
             console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
             
             setReviewSessionId(serverData.sessionId || activeSid);
+            savedQuizScroll.current = serverData.savedQuizScroll || 0;
+            if (quizBodyRef.current) {
+              quizBodyRef.current.scrollTop = serverData.savedQuizScroll || 0;
+            }
             setAiQuestions(serverData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
             setSelectedAnswers(serverData.selectedAnswers || {});
             setRevealedQuestions(serverData.revealedQuestions || {});
@@ -11863,6 +11881,7 @@ export default function App() {
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
               }
 
+              savedQuizScroll.current = server.savedQuizScroll || 0;
               setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               setSelectedAnswers(server.selectedAnswers || {});
               setRevealedQuestions(server.revealedQuestions || {});
@@ -14185,8 +14204,8 @@ export default function App() {
                   const scrollTop = e.currentTarget.scrollTop;
                   savedQuizScroll.current = scrollTop;
                   if (selectedTopic) {
-                    const key = selectedTopic.finalScheduleId 
-                      ? `anti_review_progress_sched_${selectedTopic.finalScheduleId}`
+                    const key = selectedTopic.schedule_id 
+                      ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
                       : `anti_review_progress_${selectedTopic.id}`;
                     const savedProgress = localStorage.getItem(key);
                     if (savedProgress) {
