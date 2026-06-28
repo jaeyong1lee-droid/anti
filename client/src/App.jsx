@@ -5563,10 +5563,6 @@ export default function App() {
       const newX = Math.max(16, Math.min(window.innerWidth - 340, startPopupX + dx));
       const newY = Math.max(16, Math.min(window.innerHeight - 200, startPopupY + dy));
 
-      basePosRef.current = { x: newX, y: newY };
-      targetPosRef.current = { x: newX, y: newY };
-      currPosRef.current = { x: newX, y: newY };
-
       setSelectionPopup(prev => ({
         ...prev,
         x: newX,

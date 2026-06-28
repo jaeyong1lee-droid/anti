@@ -343,7 +343,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
   // 일반 Markdown 수식($...$)으로 즉시 변환하여 토큰화 오작동 및 텍스트 쪼개짐을 완벽히 방지합니다.
   try {
-    const rawKatexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+    const rawKatexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
     processed = processed.replace(rawKatexHtmlRegex, (htmlBlock) => {
       const match = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
       if (match && match[1]) {
@@ -359,7 +359,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     });
 
     // 만약 이미 태그 사이에 이상한 띄어쓰기가 삽입되어 망가진 HTML 블록이 있다면 이것도 함께 복원
-    const spaceCorruptedKatexRegex = /<\s*(div|span)\b[\s\S]*?class\s*=\s*["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+    const spaceCorruptedKatexRegex = /<\s*(div|span)\b[\s\S]*?class\s*=\s*["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
     processed = processed.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
       const match = htmlBlock.match(/<\s*annotation[^>]*encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
       if (match && match[1]) {
