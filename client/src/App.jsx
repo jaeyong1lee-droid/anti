@@ -13626,15 +13626,32 @@ export default function App() {
                                 : [];
                               const lastFinishedRound = finishedRounds.length > 0 ? Math.max(...finishedRounds) : 0;
                               const nextRoundToReview = lastFinishedRound + 1;
+
+                              // 완료/실패된 일반 복습 목록 중 최근 2개 회차만 clickable로 활성화
+                              const finishedSchedules = topic.schedules
+                                ? topic.schedules
+                                    .filter(s => (s.status === 'completed' || s.status === 'failed') && s.review_round < 99)
+                                    .sort((a, b) => b.review_round - a.review_round)
+                                : [];
+                              const isClickable = sched ? finishedSchedules.slice(0, 2).some(s => s.id === sched.id) : false;
+
                               return (
                                 <td key={round} className="py-2.5 px-2 text-center">
                                   {(() => {
                                     if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+                                      const badgeHandlers = isClickable
+                                        ? createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)
+                                        : {};
                                       return (
                                         <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                           <button
-                                            {...createRoundBadgeHandlers(sched.id, topic.id, topic.title, round, topic.keywords, topic.pdf_name)}
-                                            className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm focus:outline-none whitespace-nowrap ${
+                                            {...badgeHandlers}
+                                            disabled={!isClickable}
+                                            className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold shadow-sm focus:outline-none whitespace-nowrap ${
+                                              isClickable
+                                                ? 'cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95'
+                                                : 'cursor-not-allowed opacity-65'
+                                            } ${
                                               sched.status === 'completed'
                                                 ? (sched.score === 100
                                                     ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 hover:text-emerald-200 border-emerald-500/30'
@@ -13644,7 +13661,10 @@ export default function App() {
                                                   )
                                                 : 'text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 hover:text-rose-200 border-rose-500/30'
                                             }`}
-                                            title={`클릭 시 복습 내용 보기 / 길게 누르면 복습 취소 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`}
+                                            title={isClickable
+                                              ? `클릭 시 복습 내용 보기 / 길게 누르면 복습 취소 (예정일: ${sched.planned_date}) ${sched.score !== null && sched.score !== undefined ? `(성적: ${sched.score}점)` : ''}`
+                                              : `보존 정책에 따라 상세 기록이 만료된 회차입니다. (성적: ${sched.score !== null && sched.score !== undefined ? `${sched.score}점` : '없음'})`
+                                            }
                                           >
                                             {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                           </button>
