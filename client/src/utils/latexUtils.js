@@ -337,6 +337,41 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   let processed = text.replace(/[–—−]/g, '-');
+
+  // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
+  // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
+  // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,
+  // 일반 Markdown 수식($...$)으로 즉시 변환하여 토큰화 오작동 및 텍스트 쪼개짐을 완벽히 방지합니다.
+  try {
+    const rawKatexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+    processed = processed.replace(rawKatexHtmlRegex, (htmlBlock) => {
+      const match = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+      if (errMatch && errMatch[1]) {
+        const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    });
+
+    // 만약 이미 태그 사이에 이상한 띄어쓰기가 삽입되어 망가진 HTML 블록이 있다면 이것도 함께 복원
+    const spaceCorruptedKatexRegex = /<\s*(div|span)\b[\s\S]*?class\s*=\s*["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+    processed = processed.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotation[^>]*encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\');
+        return ` $${formula}$ `;
+      }
+      return '';
+    });
+  } catch (e) {
+    console.warn('[healLatexFormulas] Failed to pre-process KaTeX HTML block:', e);
+  }
+
   processed = healInvertedDelimiters(processed);
 
   // Convert Greek letters with numbers (e.g. sigma1, sigma_1 -> \sigma_1)
