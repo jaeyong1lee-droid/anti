@@ -90,7 +90,9 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "question": "문제 질문 내용 (맞는 것을 고르거나 특정 정량적 수치를 묻도록 구성)",
     "options": ["보기 1", "보기 2", "보기 3"],
     "answer": "정답 보기의 텍스트와 토씨 하나 틀리지 않는 정답 텍스트",
-    "explanation": "이 공식, 개념 또는 기준 수치에 대한 핵심 메커니즘 및 근거 위주의 해설"
+    "explanation": "이 공식, 개념 또는 기준 수치에 대한 핵심 메커니즘 및 근거 위주의 해설",
+    "source_type": "formula 또는 topic",
+    "source_title": "제시된 공식명(Title) 또는 토픽명(Title)과 정확히 일치하는 이름"
   },
   ... (총 ${count}개 생성)
 ]

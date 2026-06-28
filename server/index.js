@@ -7465,6 +7465,100 @@ app.post('/api/options/:key', async (req, res) => {
   }
 });
 
+async function getLockscreenCandidates() {
+  let usageHistory = {};
+  const historyRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_usage_history'");
+  if (historyRow && historyRow.value) {
+    try {
+      usageHistory = JSON.parse(historyRow.value) || {};
+    } catch (e) {
+      console.warn('Failed to parse lockscreen usage history:', e);
+    }
+  }
+
+  const formulaRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+  let formulaQuestions = [];
+  if (formulaRow && formulaRow.value) {
+    try {
+      const parsed = JSON.parse(formulaRow.value);
+      formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
+    } catch (e) {
+      console.warn('Failed to parse formula questions:', e);
+    }
+  }
+
+  // Sort formulas based on last used time (oldest or never used first)
+  const sortedFormulas = [...formulaQuestions].sort((a, b) => {
+    const timeA = usageHistory[a.title] ? new Date(usageHistory[a.title]).getTime() : 0;
+    const timeB = usageHistory[b.title] ? new Date(usageHistory[b.title]).getTime() : 0;
+    if (timeA !== timeB) return timeA - timeB;
+    return 0.5 - Math.random();
+  });
+  const formulaCandidates = sortedFormulas.slice(0, 12);
+
+  const allTopics = await dbQuery.all('SELECT id, title, keywords FROM topics');
+  
+  // Sort topics based on last used time (oldest or never used first)
+  const sortedTopics = [...allTopics].sort((a, b) => {
+    const timeA = usageHistory[a.title] ? new Date(usageHistory[a.title]).getTime() : 0;
+    const timeB = usageHistory[b.title] ? new Date(usageHistory[b.title]).getTime() : 0;
+    if (timeA !== timeB) return timeA - timeB;
+    return 0.5 - Math.random();
+  });
+
+  const textExtractionLimit = 12;
+  const pickedForText = sortedTopics.slice(0, textExtractionLimit);
+  
+  const textExtractedCandidates = await Promise.all(
+    pickedForText.map(async (t) => {
+      try {
+        const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
+        const textContent = fullTopic ? await getTopicText(fullTopic) : '';
+        const truncatedText = textContent ? textContent.substring(0, 2000) : '';
+        return {
+          id: t.id,
+          title: t.title,
+          keywords: t.keywords || '',
+          textContent: truncatedText
+        };
+      } catch (err) {
+        return {
+          id: t.id,
+          title: t.title,
+          keywords: t.keywords || '',
+          textContent: ''
+        };
+      }
+    })
+  );
+
+  const remainingTopics = sortedTopics.slice(textExtractionLimit).map(t => ({
+    id: t.id,
+    title: t.title,
+    keywords: t.keywords || '',
+    textContent: '(생략 - 제목 및 키워드 기반으로 문제 출제 가능)'
+  }));
+
+  const finalTopicCandidates = [...textExtractedCandidates, ...remainingTopics];
+
+  return { formulaCandidates, finalTopicCandidates, usageHistory };
+}
+
+async function updateLockscreenUsageHistory(generatedQuestions, usageHistory) {
+  if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
+    let changed = false;
+    for (const q of generatedQuestions) {
+      if (q.source_title) {
+        usageHistory[q.source_title] = new Date().toISOString();
+        changed = true;
+      }
+    }
+    if (changed) {
+      await saveSessionValue('lockscreen_usage_history', JSON.stringify(usageHistory));
+    }
+  }
+}
+
 let isLockscreenPoolReplenishing = false;
 
 async function replenishLockscreenPool(req) {
@@ -7500,7 +7594,15 @@ async function replenishLockscreenPool(req) {
     const needCount = targetSize - pool.length;
     console.log(`[Lockscreen Pool] Current pool size: ${pool.length}. Generating ${needCount} new questions to replenish pool...`);
     
-    // Load candidates (same logic as sync endpoint)
+    // Load candidates via helper function with LRU sorting
+    const { formulaCandidates, finalTopicCandidates, usageHistory } = await getLockscreenCandidates();
+
+    if (formulaCandidates.length === 0 && finalTopicCandidates.length === 0) {
+      console.warn('[Lockscreen Pool] No candidates available to generate new questions.');
+      isLockscreenPoolReplenishing = false;
+      return;
+    }
+
     let recentQuestions = [];
     const recentRows = await dbQuery.all("SELECT value FROM app_session WHERE key = 'recent_lockscreen_questions'");
     if (recentRows.length > 0 && recentRows[0].value) {
@@ -7510,69 +7612,8 @@ async function replenishLockscreenPool(req) {
         console.warn('Failed to parse recent lockscreen questions:', e);
       }
     }
-
-    // Combine recent questions with questions currently in the pool to prevent duplicates
     const currentPoolQuestionTexts = pool.map(q => q.question);
     const combinedRecent = [...new Set([...currentPoolQuestionTexts, ...recentQuestions])];
-
-    const rows = await dbQuery.all("SELECT value FROM app_session WHERE key = 'formula_questions'");
-    let formulaQuestions = [];
-    if (rows.length > 0 && rows[0].value) {
-      try {
-        const parsed = JSON.parse(rows[0].value);
-        formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
-      } catch (e) {
-        console.warn('Failed to parse formula questions:', e);
-      }
-    }
-
-    const formulaLimit = needCount === 1 ? 6 : 12;
-    const formulaCandidates = [...formulaQuestions]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, formulaLimit);
-
-    const allTopics = await dbQuery.all('SELECT id, title, keywords FROM topics');
-    const textExtractionLimit = 12;
-    const shuffledTopics = [...allTopics].sort(() => 0.5 - Math.random());
-    const pickedForText = shuffledTopics.slice(0, textExtractionLimit);
-    
-    const textExtractedCandidates = await Promise.all(
-      pickedForText.map(async (t) => {
-        try {
-          const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
-          const textContent = fullTopic ? await getTopicText(fullTopic) : '';
-          const truncatedText = textContent ? textContent.substring(0, 2000) : '';
-          return {
-            id: t.id,
-            title: t.title,
-            keywords: t.keywords || '',
-            textContent: truncatedText
-          };
-        } catch (err) {
-          return {
-            id: t.id,
-            title: t.title,
-            keywords: t.keywords || '',
-            textContent: ''
-          };
-        }
-      })
-    );
-
-    const remainingTopics = shuffledTopics.slice(textExtractionLimit).map(t => ({
-      id: t.id,
-      title: t.title,
-      keywords: t.keywords || '',
-      textContent: '(생략 - 제목 및 키워드 기반으로 문제 출제 가능)'
-    }));
-
-    const finalTopicCandidates = [...textExtractedCandidates, ...remainingTopics];
-
-    if (formulaCandidates.length === 0 && finalTopicCandidates.length === 0) {
-      console.warn('[Lockscreen Pool] No candidates available to generate new questions.');
-      isLockscreenPoolReplenishing = false;
-      return;
-    }
 
     const callLLM = getCallLLM(req || { query: {}, body: {} });
     const generatedQuestions = await generateDailyLockscreenQuestions(
@@ -7591,6 +7632,7 @@ async function replenishLockscreenPool(req) {
       }));
       
       await saveSessionValue('lockscreen_pregenerated_pool', JSON.stringify(updatedPool));
+      await updateLockscreenUsageHistory(generatedQuestions, usageHistory);
       console.log(`[Lockscreen Pool] Successfully generated and added ${generatedQuestions.length} questions to pregenerated pool. Pool size: ${updatedPool.length}`);
     }
   } catch (err) {
@@ -7755,78 +7797,15 @@ app.get('/api/lockscreen/sync', async (req, res) => {
     // Fallback: Synchronous generation if pool is empty/insufficient
     console.log(`[Lockscreen Sync] Pregenerated pool is insufficient (${pool.length}/${count}). Generating synchronously...`);
     
-    // 1. Fetch formula questions
-    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
-    let formulaQuestions = [];
-    if (rows.length > 0 && rows[0].value) {
-      try {
-        const parsed = JSON.parse(rows[0].value);
-        formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
-      } catch (e) {
-        console.warn('Failed to parse formula questions:', e);
-      }
-    }
-
-    // 대폭 늘어난 후보군 수 (다양성 확보)
-    const formulaLimit = count === 1 ? 6 : 12;
-
-    // Pick random formula candidates
-    const formulaCandidates = [...formulaQuestions]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, formulaLimit);
-
-    // 2. Fetch all topics (meta info) from DB to maximize scope and prevent timeouts
-    const allTopics = await dbQuery.all('SELECT id, title, keywords FROM topics');
-    
-    // 이 중 본문 내용까지 추출할 토픽 후보군을 랜덤하게 12개 정도로 제한하여 Vercel CPU 타임아웃 방지
-    const textExtractionLimit = 12;
-    const shuffledTopics = [...allTopics].sort(() => 0.5 - Math.random());
-    const pickedForText = shuffledTopics.slice(0, textExtractionLimit);
-    
-    // 본문 내용 추출 대상 토픽들에 대해 병렬 처리
-    const textExtractedCandidates = await Promise.all(
-      pickedForText.map(async (t) => {
-        try {
-          const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
-          const textContent = fullTopic ? await getTopicText(fullTopic) : '';
-          const truncatedText = textContent ? textContent.substring(0, 2000) : '';
-          return {
-            id: t.id,
-            title: t.title,
-            keywords: t.keywords || '',
-            textContent: truncatedText
-          };
-        } catch (err) {
-          console.warn(`Failed to extract text for topic ID ${t.id} inside lockscreen sync:`, err);
-          return {
-            id: t.id,
-            title: t.title,
-            keywords: t.keywords || '',
-            textContent: ''
-          };
-        }
-      })
-    );
-
-    // 본문 추출은 안 되었으나 메타데이터(제목, 키워드)는 출제 후보군으로 제공할 수 있는 나머지 전체 토픽 리스트
-    const remainingTopics = shuffledTopics.slice(textExtractionLimit).map(t => ({
-      id: t.id,
-      title: t.title,
-      keywords: t.keywords || '',
-      textContent: '(생략 - 제목 및 키워드 기반으로 문제 출제 가능)'
-    }));
-
-    const finalTopicCandidates = [...textExtractedCandidates, ...remainingTopics];
+    const { formulaCandidates, finalTopicCandidates, usageHistory } = await getLockscreenCandidates();
 
     if (formulaCandidates.length === 0 && finalTopicCandidates.length === 0) {
       return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
     }
 
-    // Combine recent questions with questions currently in the pool to prevent duplicates
     const currentPoolQuestionTexts = pool.map(q => q.question);
     const combinedRecent = [...new Set([...currentPoolQuestionTexts, ...recentQuestions])];
 
-    // 3. Generate quiz using both formula and topic candidates
     console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${finalTopicCandidates.length} topics. (Duplicate prevention count: ${combinedRecent.length})`);
     const callLLM = getCallLLM(req);
     const generatedQuestions = await generateDailyLockscreenQuestions(
@@ -7838,7 +7817,6 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       combinedRecent
     );
 
-    // 4. Update recent lockscreen questions in DB (keep last 30 questions)
     if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
       const newQTexts = generatedQuestions.map(q => q.question);
       let updatedRecent = [...newQTexts, ...recentQuestions];
@@ -7846,6 +7824,7 @@ app.get('/api/lockscreen/sync', async (req, res) => {
         updatedRecent = updatedRecent.slice(0, 30);
       }
       await saveSessionValue('recent_lockscreen_questions', JSON.stringify(updatedRecent));
+      await updateLockscreenUsageHistory(generatedQuestions, usageHistory);
     }
 
     // Trigger pool replenishment to fill up the pool in background
