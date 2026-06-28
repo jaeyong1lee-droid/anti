@@ -6740,7 +6740,9 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
       const data = await res.json();
-      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
+      const currentTopicId = selectedTopicRef.current ? String(selectedTopicRef.current.id) : '';
+      const currentSchedId = selectedTopicRef.current ? String(selectedTopicRef.current.schedule_id) : '';
+      if (currentTopicId !== String(topicId) || currentSchedId !== String(scheduleId)) {
         console.log(`[handleOpenCompletedReview] Topic changed. Ignoring loaded data for topicId=${topicId}`);
         return;
       }
@@ -6759,13 +6761,17 @@ export default function App() {
         setAiQuestions([]);
       }
     } catch (err) {
-      if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
+      const currentTopicId = selectedTopicRef.current ? String(selectedTopicRef.current.id) : '';
+      const currentSchedId = selectedTopicRef.current ? String(selectedTopicRef.current.schedule_id) : '';
+      if (currentTopicId !== String(topicId) || currentSchedId !== String(scheduleId)) {
         return;
       }
       console.error('Load completed review error:', err);
       showNotification('통신 오류로 복습 풀이 기록을 가져오지 못했습니다.', 'error');
     } finally {
-      if (selectedTopicRef.current?.id === topicId && selectedTopicRef.current?.schedule_id === scheduleId) {
+      const currentTopicId = selectedTopicRef.current ? String(selectedTopicRef.current.id) : '';
+      const currentSchedId = selectedTopicRef.current ? String(selectedTopicRef.current.schedule_id) : '';
+      if (currentTopicId === String(topicId) && currentSchedId === String(scheduleId)) {
         setLoadingAI(false);
       }
     }
@@ -13716,11 +13722,10 @@ export default function App() {
                                         <div className="flex flex-col items-center justify-center" title={`복습 예정일: ${sched.planned_date}`}>
                                           <button
                                             {...badgeHandlers}
-                                            disabled={!isClickable}
                                             className={`inline-flex items-center gap-0.5 text-[11px] md:text-[13px] border px-2 py-0.5 rounded-full font-semibold shadow-sm focus:outline-none whitespace-nowrap ${
                                               isClickable
                                                 ? 'cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95'
-                                                : 'cursor-not-allowed opacity-65'
+                                                : 'cursor-default opacity-65'
                                             } ${
                                               sched.status === 'completed'
                                                 ? (sched.score === 100
@@ -15284,7 +15289,7 @@ export default function App() {
                     );
                   })}
 
-                  {aiQuestions.length > 0 && (
+                  {(aiQuestions.length > 0 || selectedTopic?.isReadOnly) && (
                     <div className="quiz-card-item text-center py-6">
                       <div className="flex justify-center gap-3 flex-wrap">
                         {selectedTopic?.isReadOnly ? (
@@ -15296,14 +15301,16 @@ export default function App() {
                             <span>닫기</span>
                           </button>
                         ) : (
-                          <button
-                            onClick={handleQuizCompleteClick}
-                            className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
-                            title="복습 완료 처리 및 점수 저장"
-                          >
-                            <Award size={20} className="text-emerald-400" />
-                            <span>확인 및 완료</span>
-                          </button>
+                          aiQuestions.length > 0 && (
+                            <button
+                              onClick={handleQuizCompleteClick}
+                              className="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-650 rounded-2xl px-8 py-4 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg group font-bold text-white text-xs"
+                              title="복습 완료 처리 및 점수 저장"
+                            >
+                              <Award size={20} className="text-emerald-400" />
+                              <span>확인 및 완료</span>
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
