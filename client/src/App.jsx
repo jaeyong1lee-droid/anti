@@ -5712,7 +5712,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !restoringReviewSession) {
+    if (selectedTopic && selectedTopic.id && (aiQuestions.length > 0 || chatHistory.length > 0) && !restoringReviewSession) {
       // 1) 즉시 동기화 대상(객관식, 정답 열람, 채점 완료, 대화 내역) 변경 감지
       const hasImmediateChange = 
         JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
