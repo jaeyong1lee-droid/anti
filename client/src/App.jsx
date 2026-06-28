@@ -1388,6 +1388,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
     if (!processedText.includes('\n')) {
       processedText = processedText.replace(/([가-힣a-zA-Z0-9])다\.\s+/g, '$1다.\n\n');
+      // 번호 항목(2., 3., ...) 앞에 줄바꿈이 없으면 자동 삽입 (1.은 문장 시작이므로 제외)
+      processedText = processedText.replace(/([.,:;)]\s+)(\d+\.\s)/g, '$1\n\n$2');
     }
   }
 
