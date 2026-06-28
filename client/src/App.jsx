@@ -487,7 +487,10 @@ const cleanAndSanitizeMathText = (rawText) => {
   // 이렇게 해야 "application/x − tex" → "application/x-tex" 으로 복원되어 annotation 추출 가능
   cleaned = cleaned.replace(/[–—−]/g, '-');
   // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
-  cleaned = cleaned.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+  // HTML 태그 내부의 속성값에서만 적용 (수식 텍스트의 "1.65 - 1.2" 공백 보존)
+  cleaned = cleaned.replace(/<[^>]+>/g, (tag) => {
+    return tag.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+  });
 
   const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
   cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
@@ -562,7 +565,10 @@ const stripHtmlTagsFromRawData = (text) => {
   // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
   clean = clean.replace(/[–—−]/g, '-');
   // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
-  clean = clean.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+  // HTML 태그 내부의 속성값에서만 적용 (수식 텍스트의 "1.65 - 1.2" 공백 보존)
+  clean = clean.replace(/<[^>]+>/g, (tag) => {
+    return tag.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+  });
 
   const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
   clean = clean.replace(katexHtmlRegex, (htmlBlock) => {

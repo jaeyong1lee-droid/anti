@@ -588,14 +588,23 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
           if (isGroupBalanced) {
             if (group.length > 1) {
-              group.forEach(gIdx => {
-                elevateToDisplay[gIdx] = true;
-              });
+              // 그룹 내 모든 수식이 단순 산술식이면 블록 승격 방지
+              const allSimple = group.every(gIdx => !/\\[a-zA-Z]/.test(parts[gIdx]));
+              if (!allSimple) {
+                group.forEach(gIdx => {
+                  elevateToDisplay[gIdx] = true;
+                });
+              }
             } else {
               const textBefore = parts[idx - 1] || '';
               const textAfter = parts[idx + 1] || '';
               const isSelfBalanced = hasBalancedParentheses(parts[idx]);
-              if (isSelfBalanced && isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter)) {
+              // 단순 산술식(LaTeX 명령어 없는 숫자/연산자만)은 인라인 유지 (블록 승격 방지)
+              // 예: "1.65 - 1.2 = 0.45", "0.45/1.5 = 0.3" 등
+              const isSimpleArithmetic = !/\\[a-zA-Z]/.test(parts[idx]);
+              // 앞 텍스트가 여는 괄호로 끝나면 괄호 내부 수식이므로 블록 승격 방지
+              const isInsideParens = /[(\[]\s*$/.test(textBefore.trim());
+              if (isSelfBalanced && isSentenceEnded(textBefore) && !startsWithKoreanParticle(textAfter) && !isSimpleArithmetic && !isInsideParens) {
                 elevateToDisplay[idx] = true;
               }
             }
