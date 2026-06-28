@@ -11958,8 +11958,8 @@ export default function App() {
               setRevealedQuestions(mergedRevealedQuestions);
               setTableAnswers(prev => ({ ...prev, ...(server.tableAnswers || {}) }));
               setTableGradingResults(mergedTableGradingResults);
-              setTutorAnswers(prev => ({ ...prev, ...(server.tutorAnswers || {}) }));
-              setTutorInputText(prev => ({ ...prev, ...(server.tutorInputText || {}) }));
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
               setChatHistory(mergedChatHistory);
 
               // 4) 동기화 레프 동조화하여 덮어쓰기 오작동 방지
@@ -15401,6 +15401,18 @@ export default function App() {
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
                           }
+                          try {
+                            const saved = localStorage.getItem('anti_app_state');
+                            if (saved) {
+                              const parsed = JSON.parse(saved);
+                              parsed.chatHistory = [];
+                              parsed.tutorAnswers = {};
+                              parsed.tutorInputText = {};
+                              localStorage.setItem('anti_app_state', JSON.stringify(parsed));
+                            }
+                          } catch (e) {
+                            console.warn('Failed to clean anti_app_state:', e);
+                          }
                           forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
@@ -17346,6 +17358,18 @@ export default function App() {
                     if (typeof setCurrentAttachedImage === 'function') {
                       setCurrentAttachedImage(null);
                     }
+                    try {
+                      const saved = localStorage.getItem('anti_app_state');
+                      if (saved) {
+                        const parsed = JSON.parse(saved);
+                        parsed.chatHistory = [];
+                        parsed.tutorAnswers = {};
+                        parsed.tutorInputText = {};
+                        localStorage.setItem('anti_app_state', JSON.stringify(parsed));
+                      }
+                    } catch (e) {
+                      console.warn('Failed to clean anti_app_state:', e);
+                    }
                     forceSaveActiveSessions(false, true, {
                       chatHistory: [],
                       tutorAnswers: {},
@@ -18487,6 +18511,18 @@ export default function App() {
                           setTutorInputText({});
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
+                          }
+                          try {
+                            const saved = localStorage.getItem('anti_app_state');
+                            if (saved) {
+                              const parsed = JSON.parse(saved);
+                              parsed.chatHistory = [];
+                              parsed.tutorAnswers = {};
+                              parsed.tutorInputText = {};
+                              localStorage.setItem('anti_app_state', JSON.stringify(parsed));
+                            }
+                          } catch (e) {
+                            console.warn('Failed to clean anti_app_state:', e);
                           }
                           forceSaveActiveSessions(false, true, {
                             chatHistory: [],
