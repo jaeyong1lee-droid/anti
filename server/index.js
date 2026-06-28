@@ -6870,11 +6870,23 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
+global.globalDebugLogs = global.globalDebugLogs || [];
+if (!global.addDebugLog) {
+  global.addDebugLog = function(msg) {
+    const timestamp = new Date().toISOString();
+    global.globalDebugLogs.push(`[${timestamp}] ${msg}`);
+    if (global.globalDebugLogs.length > 200) {
+      global.globalDebugLogs.shift();
+    }
+    console.log(`[DEBUG LOG] ${msg}`);
+  };
+}
+
 app.get('/api/debug-db', async (req, res) => {
   try {
     const rows = await dbQuery.all("SELECT key, LENGTH(value) as len, updated_at FROM app_session ORDER BY updated_at DESC LIMIT 50");
     const topics = await dbQuery.all("SELECT id, title FROM topics ORDER BY id DESC LIMIT 50");
-    res.json({ success: true, rows, topics });
+    res.json({ success: true, rows, topics, debugLogs: global.globalDebugLogs });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -6921,6 +6933,9 @@ app.get('/api/session/review', async (req, res) => {
           : `review_questions_topic_${topicId}_sess_${sId}`);
     
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (global.addDebugLog) {
+      global.addDebugLog(`GET review: topicId=${topicId}, scheduleId=${scheduleId}, sessionId=${sId}, resolvedKey=${key}, foundRow=${!!row}`);
+    }
     
     // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
     // 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면,
@@ -7067,6 +7082,10 @@ app.post('/api/session/review', async (req, res) => {
       savedQuizScroll: savedQuizScroll || 0
     });
     
+    if (global.addDebugLog) {
+      global.addDebugLog(`POST review: topicId=${topicId}, scheduleId=${scheduleId}, sessionId=${sessionId}, resolvedKey=${key}, chatHistoryLength=${chatHistory?.length || 0}`);
+    }
+
     // Safe UPSERT (prevents concurrent unique key violations)
     await saveSessionValue(key, value);
     res.json({ ok: true });
