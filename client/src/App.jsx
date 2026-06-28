@@ -12209,7 +12209,7 @@ export default function App() {
                   {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
                 </span>
                 {isDesktop && (
-                  <div className="flex flex-col gap-0.5 select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
+                  <div className="flex flex-col gap-1 select-none text-[13px] font-semibold leading-tight ml-3">
                     <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30 w-fit" : "text-slate-500"}>
                       build : {buildTimeStr}
                     </span>
