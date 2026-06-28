@@ -12152,9 +12152,14 @@ export default function App() {
                   {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
                 </span>
                 {isDesktop && (
-                  <div className="flex flex-col select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
-                    <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30" : "text-slate-500"}>
+                  <div className="flex flex-col gap-0.5 select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
+                    <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30 w-fit" : "text-slate-500"}>
                       build : {buildTimeStr}
+                    </span>
+                    <span className="text-cyan-400/90">
+                      neon : {lastNeonSyncTime 
+                        ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
+                        : '대기 중'}
                     </span>
                   </div>
                 )}
