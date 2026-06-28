@@ -5713,14 +5713,14 @@ export default function App() {
 
   useEffect(() => {
     if (selectedTopic && selectedTopic.id && (aiQuestions.length > 0 || chatHistory.length > 0) && !restoringReviewSession) {
-      // 1) 즉시 동기화 대상(객관식, 정답 열람, 채점 완료, 대화 내역) 변경 감지
       const hasImmediateChange = 
         JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
         JSON.stringify(revealedQuestions) !== JSON.stringify(lastSyncStateRef.current.revealedQuestions) ||
         JSON.stringify(tableGradingResults) !== JSON.stringify(lastSyncStateRef.current.tableGradingResults) ||
         JSON.stringify(chatHistory) !== JSON.stringify(lastSyncStateRef.current.chatHistory);
 
-      // 캐시 동기화
+      console.log(`[Auto-Sync] Triggered. hasImmediateChange=${hasImmediateChange}, topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}, chatHistoryLength=${chatHistory.length}`);
+
       lastSyncStateRef.current = {
         selectedAnswers,
         revealedQuestions,
@@ -5728,9 +5728,10 @@ export default function App() {
         chatHistory
       };
 
-      const delay = hasImmediateChange ? 0 : 1000; // 터치는 즉시, 타이핑은 1.0초 디바운스
+      const delay = hasImmediateChange ? 0 : 1000;
 
       const delayDebounceFn = setTimeout(() => {
+        console.log(`[Auto-Sync] Sending POST request to server... key fields: topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}`);
         fetch(`${API_BASE}/api/session/review`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -5751,15 +5752,18 @@ export default function App() {
         })
           .then(res => res.json())
           .then(data => {
-            if (data.success) {
+            console.log('[Auto-Sync] Server response:', data);
+            if (data.success || data.ok) {
               updateSyncTime(new Date());
               updateNeonSyncTime(new Date());
             }
           })
-          .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
+          .catch(e => console.warn('[Auto-Sync] Failed to sync session:', e));
       }, delay);
 
       return () => clearTimeout(delayDebounceFn);
+    } else {
+      console.log(`[Auto-Sync] Ignored. selectedTopic=${!!selectedTopic}, aiQuestions=${aiQuestions?.length}, chatHistory=${chatHistory?.length}, restoring=${restoringReviewSession}`);
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, restoringReviewSession, reviewSessionId]);
 
