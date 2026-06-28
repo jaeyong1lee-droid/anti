@@ -9534,32 +9534,6 @@ async function cleanupOldReviewSessions() {
   }
 }
 
-async function debugSessionDump() {
-  console.log('[DB Debug] Starting session dump for topic 10...');
-  try {
-    const topic = await dbQuery.get("SELECT id, title FROM topics WHERE id = 10");
-    if (topic) {
-      console.log(`[DB Debug] Topic 10 title: ${topic.title}`);
-      const schedules = await dbQuery.all("SELECT id, review_round, status, score FROM schedules WHERE topic_id = 10");
-      console.log(`[DB Debug] Schedules for topic 10:`, JSON.stringify(schedules));
-      
-      for (const s of schedules) {
-        const key = `completed_review_schedule_${s.id}`;
-        const row = await dbQuery.get("SELECT key, value FROM app_session WHERE key = ?", [key]);
-        if (row) {
-          console.log(`[DB Debug] Session for schedule ${s.id} (round ${s.review_round}):`, row.value.substring(0, 1500));
-        } else {
-          console.log(`[DB Debug] No session for schedule ${s.id} (round ${s.review_round})`);
-        }
-      }
-    } else {
-      console.log('[DB Debug] Topic 10 not found');
-    }
-  } catch (err) {
-    console.error('[DB Debug] Dump error:', err.message);
-  }
-}
-
 async function startServer() {
   try {
     await initDatabase();
@@ -9586,7 +9560,6 @@ async function startServer() {
     await migrateLegacySessionKeys();
     await applyScorePatch();
     await cleanupOldReviewSessions();
-    await debugSessionDump();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -9619,35 +9592,7 @@ app.get('/api/debug-keys', (req, res) => {
   });
 });
 
-app.get('/api/debug-session-data', async (req, res) => {
-  try {
-    const topic = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%터널 굴착 여굴%'");
-    if (!topic) {
-      return res.json({ error: "Topic not found" });
-    }
-    const schedule = await dbQuery.get(
-      "SELECT id FROM schedules WHERE topic_id = ? AND review_round = 4",
-      [topic.id]
-    );
-    if (!schedule) {
-      return res.json({ error: "Schedule not found", topicId: topic.id });
-    }
-    const sessionKey = `completed_review_schedule_${schedule.id}`;
-    const row = await dbQuery.get(
-      'SELECT key, value FROM app_session WHERE key = ?',
-      [sessionKey]
-    );
-    res.json({
-      topic,
-      schedule,
-      sessionKey,
-      hasSession: !!row,
-      sessionValue: row ? JSON.parse(row.value) : null
-    });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
+
 
 // Express global error handler to prevent raw HTML gateway errors and enforce JSON responses
 app.use((err, req, res, next) => {
@@ -9676,7 +9621,6 @@ if (!process.env.VERCEL) {
     await migrateLegacySessionKeys();
     await applyScorePatch();
     await cleanupOldReviewSessions();
-    await debugSessionDump();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;

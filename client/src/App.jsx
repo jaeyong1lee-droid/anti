@@ -3671,6 +3671,7 @@ export default function App() {
       }
 
       stopProgressPolling('채점 완료!', 100);
+      return nextGrading;
     } catch (e) {
       stopProgressPolling('채점 실패', 100, false);
     } finally {
@@ -3876,6 +3877,7 @@ export default function App() {
     }
 
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    return newResult;
   };
 
   const [isFallback, setIsFallback] = useState(false);
@@ -5738,7 +5740,10 @@ export default function App() {
       const hasImmediateChange = 
         JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
         JSON.stringify(revealedQuestions) !== JSON.stringify(lastSyncStateRef.current.revealedQuestions) ||
+        JSON.stringify(tableAnswers) !== JSON.stringify(lastSyncStateRef.current.tableAnswers) ||
         JSON.stringify(tableGradingResults) !== JSON.stringify(lastSyncStateRef.current.tableGradingResults) ||
+        JSON.stringify(tutorAnswers) !== JSON.stringify(lastSyncStateRef.current.tutorAnswers) ||
+        JSON.stringify(tutorInputText) !== JSON.stringify(lastSyncStateRef.current.tutorInputText) ||
         JSON.stringify(chatHistory) !== JSON.stringify(lastSyncStateRef.current.chatHistory);
 
       console.log(`[Auto-Sync] Triggered. hasImmediateChange=${hasImmediateChange}, topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}, chatHistoryLength=${chatHistory.length}`);
@@ -5746,7 +5751,10 @@ export default function App() {
       lastSyncStateRef.current = {
         selectedAnswers,
         revealedQuestions,
+        tableAnswers,
         tableGradingResults,
+        tutorAnswers,
+        tutorInputText,
         chatHistory
       };
 
@@ -6340,6 +6348,65 @@ export default function App() {
       return;
     }
 
+    // ── [자동 채점] 입력은 하였으나 채점하지 않은 주관식/표채우기 문제 자동 일괄 채점 진행
+    const gradingPromises = [];
+    const localGradingResults = { ...tableGradingResults };
+
+    aiQuestions.forEach((q, idx) => {
+      const isMC = q.options && q.options.length > 0;
+      if (!isMC && !q.tableData) {
+        const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
+        if (!isEssay) {
+          const val = tableAnswers[`${idx}_INPUT`];
+          const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
+          const hasGraded = tableGradingResults[`${idx}_INPUT`] !== undefined;
+          if (hasVal && !hasGraded) {
+            console.log(`[Auto-Grading] Grading subjective question index=${idx} before completion...`);
+            const p = gradeSubjectiveQuestion(idx, q).then(res => {
+              if (res) {
+                localGradingResults[`${idx}_INPUT`] = res;
+              }
+              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+            });
+            gradingPromises.push(p);
+          }
+        }
+      } else if (!isMC && q.tableData) {
+        const inputIds = Object.keys(q.answers || {});
+        let needsGrading = false;
+        inputIds.forEach(inputId => {
+          const val = tableAnswers[`${idx}_${inputId}`];
+          const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
+          const hasGraded = tableGradingResults[`${idx}_${inputId}`] !== undefined;
+          if (hasVal && !hasGraded) {
+            needsGrading = true;
+          }
+        });
+        if (needsGrading) {
+          console.log(`[Auto-Grading] Grading table question index=${idx} before completion...`);
+          const p = gradeTableQuestion(idx, q).then(res => {
+            if (res) {
+              Object.assign(localGradingResults, res);
+            }
+            setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+          });
+          gradingPromises.push(p);
+        }
+      }
+    });
+
+    if (gradingPromises.length > 0) {
+      setLoadingAI(true);
+      try {
+        await Promise.all(gradingPromises);
+        console.log('[Auto-Grading] All pending subjective questions graded.');
+      } catch (err) {
+        console.warn('[Auto-Grading] Error during automatic grading:', err);
+      } finally {
+        setLoadingAI(false);
+      }
+    }
+
     // Check for unsolved questions
     let unsolvedCount = 0;
     aiQuestions.forEach((q, idx) => {
@@ -6427,7 +6494,7 @@ export default function App() {
         let sumVal = 0;
         let countVal = inputIds.length;
         inputIds.forEach(inputId => {
-          const grading = tableGradingResults[`${idx}_${inputId}`];
+          const grading = localGradingResults[`${idx}_${inputId}`];
           if (grading && grading.score !== undefined) {
             sumVal += grading.score;
           }
@@ -6440,7 +6507,7 @@ export default function App() {
           }
         }
       } else {
-        const grading = tableGradingResults[`${idx}_INPUT`];
+        const grading = localGradingResults[`${idx}_INPUT`];
         if (grading && grading.score !== undefined) {
           const questionScore = (grading.score / 10) * W;
           totalScoreObtained += questionScore;
@@ -6486,7 +6553,7 @@ export default function App() {
           selectedAnswers: selectedAnswers,
           revealedQuestions: revealedQuestions,
           tableAnswers: tableAnswers,
-          tableGradingResults: tableGradingResults,
+          tableGradingResults: localGradingResults,
           referenceDate: referenceDate,
           tutorAnswers: tutorAnswers,
           tutorInputText: tutorInputText,
@@ -7091,7 +7158,10 @@ export default function App() {
             lastSyncStateRef.current = {
               selectedAnswers: serverData.selectedAnswers || {},
               revealedQuestions: serverData.revealedQuestions || {},
+              tableAnswers: serverData.tableAnswers || {},
               tableGradingResults: serverData.tableGradingResults || {},
+              tutorAnswers: serverData.tutorAnswers || {},
+              tutorInputText: serverData.tutorInputText || {},
               chatHistory: serverData.chatHistory || []
             };
 
