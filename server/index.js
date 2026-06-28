@@ -7406,6 +7406,9 @@ app.get('/api/options/:key', async (req, res) => {
     await ensureSessionTable();
     const key = `option_${req.params.key}`;
     const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    if (req.params.key === 'lockscreen_quiz_enabled') {
+      replenishLockscreenPool(req).catch(err => console.error('[Background Pool Fill] Error:', err));
+    }
     res.json({ value: row ? row.value : null });
   } catch (err) {
     console.error(`GET /api/options/${req.params.key} error:`, err);
@@ -7566,8 +7569,10 @@ async function replenishLockscreenPool(req) {
 app.get('/api/lockscreen/pool', async (req, res) => {
   try {
     await ensureSessionTable();
-    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+    
+    // Load current pool
     let pool = [];
+    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
     if (poolRow && poolRow.value) {
       try {
         pool = JSON.parse(poolRow.value) || [];
@@ -7575,6 +7580,23 @@ app.get('/api/lockscreen/pool', async (req, res) => {
         console.warn('Failed to parse lockscreen pool:', e);
       }
     }
+    
+    // Synchronously replenish if pool size is less than 5
+    if (pool.length < 5) {
+      console.log(`[Lockscreen Pool API] Pool has only ${pool.length} questions. Replenishing synchronously...`);
+      await replenishLockscreenPool(req);
+      
+      // Reload pool after replenishment
+      const updatedPoolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+      if (updatedPoolRow && updatedPoolRow.value) {
+        try {
+          pool = JSON.parse(updatedPoolRow.value) || [];
+        } catch (e) {
+          console.warn('Failed to parse updated lockscreen pool:', e);
+        }
+      }
+    }
+    
     res.json({ success: true, pool });
   } catch (err) {
     console.error('GET /api/lockscreen/pool error:', err);

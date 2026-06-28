@@ -11827,22 +11827,17 @@ export default function App() {
   };
 
   const getCategoryBadgeText = (category, pdfName, title, keywords) => {
-    let aa = '';
-    const pattern = /([a-zA-Z0-9_]+)\s*-\s*([a-zA-Z0-9_]+)/;
-    
-    if (pdfName) {
-      const match = pdfName.match(pattern);
-      if (match) aa = match[1];
-    }
-    if (!aa && keywords) {
-      const match = keywords.match(pattern);
-      if (match) aa = match[1];
-    }
-    if (!aa && title) {
-      const match = title.match(pattern);
-      if (match) aa = match[1];
-    }
-    
+    const extractTopicNumber = (str) => {
+      if (!str) return '';
+      // Check if it matches a pattern like "1-1 - Text" or "01-02 - Text"
+      const match = str.match(/([a-zA-Z0-9_-]+)\s*-\s*(.+)/);
+      if (match) return match[1];
+      // Check if it is a plain topic number like "1-1", "01-02", "1"
+      if (/^[a-zA-Z0-9_-]+$/.test(str.trim())) return str.trim();
+      return '';
+    };
+
+    let aa = extractTopicNumber(pdfName) || extractTopicNumber(keywords) || extractTopicNumber(title);
     if (aa) {
       return `${category} (${aa})`;
     }
@@ -20138,11 +20133,11 @@ export default function App() {
                                 <div className="flex items-center gap-2 w-full min-w-0">
                                   {q.category === '계산' ? (
                                     <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
-                                      계산
+                                      {getCategoryBadgeText('계산', q.pdf_name, q.title, q.keywords)}
                                     </span>
                                   ) : (
                                     <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none shrink-0">
-                                      일반
+                                      {getCategoryBadgeText('일반', q.pdf_name, q.title, q.keywords)}
                                     </span>
                                   )}
                                   <span 
