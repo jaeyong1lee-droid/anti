@@ -6608,6 +6608,18 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       } else {
         htmlContent = `${viewportMeta}\n${htmlContent}`;
       }
+
+      // Wrap the content inside body with a scroll wrapper to prevent page-level dragging/scrolling while allowing content-level scrolling
+      if (htmlContent.includes('<body')) {
+        const bodyTagMatch = htmlContent.match(/<body\b[^>]*>/i);
+        if (bodyTagMatch) {
+          const bodyTag = bodyTagMatch[0];
+          htmlContent = htmlContent.replace(bodyTag, `${bodyTag}\n<div class="antigravity-scroll-wrapper">`);
+          htmlContent = htmlContent.replace('</body>', '</div>\n</body>');
+        }
+      } else {
+        htmlContent = `<div class="antigravity-scroll-wrapper">\n${htmlContent}\n</div>`;
+      }
       
       // If client requests only the screenshot part, parse and return it
       if (req.query.part === 'screenshot') {
@@ -6633,9 +6645,22 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
   line-height: 1.6 !important;
   margin: 0 !important;
-  padding: 24px !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  height: 100% !important;
+  overflow: hidden !important; /* Disable all page-level drag/scroll */
   box-sizing: border-box !important;
-  overflow-x: hidden !important; /* Prevent horizontal dragging/scrolling */
+}
+
+.antigravity-scroll-wrapper {
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 24px !important; /* Default desktop padding */
+  box-sizing: border-box !important;
 }
 
 /* Ensure all nested text is readable and correctly colored */
@@ -6697,38 +6722,27 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 
 @media (max-width: 768px) {
   html, body {
-    width: 100% !important;
-    max-width: 100vw !important;
-    padding: 0px 4px !important; /* Minimize left/right padding to the absolute minimum */
-    overflow-x: hidden !important;
-    position: relative !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    width: 100vw !important;
+    height: 100vh !important;
   }
-  
-  /* Force all standard elements to stay within viewport */
-  body * {
-    max-width: 100% !important;
+  .antigravity-scroll-wrapper {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0px 4px !important; /* Minimize left/right padding */
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+  }
+  *, *:before, *:after {
     box-sizing: border-box !important;
   }
-  
-  /* Prevent word overflow */
   p, span, td, li, div, section, article, h1, h2, h3, h4, h5, h6 {
     word-break: break-all !important;
     word-wrap: break-word !important;
     white-space: normal !important;
   }
-  
-  /* Allow tables and math formula blocks to scroll internally instead of overflowing the page */
-  table, pre, code, .katex-display, .katex {
-    max-width: none !important;
-  }
-  table, pre, code, .katex-display {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  
   div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content {
     position: static !important;
     width: 100% !important;
@@ -6741,7 +6755,6 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     box-shadow: none !important;
     background: transparent !important;
     height: auto !important;
-    overflow-x: hidden !important; /* Contain any overflowing descendants */
   }
   img, svg {
     max-width: 100% !important;
