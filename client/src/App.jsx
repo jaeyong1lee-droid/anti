@@ -5676,7 +5676,6 @@ export default function App() {
   // ── Save state to localStorage whenever key state changes (debounced for performance)
   useEffect(() => {
     if (!selectedTopic) {
-      // 닫기를 누르거나 다른 메뉴로 이탈하더라도, 로컬스토리지 백업 데이터(anti_app_state)를 지우지 않고 그대로 보존합니다!
       return;
     }
 
@@ -5685,55 +5684,18 @@ export default function App() {
         localStorage.setItem('anti_app_state', JSON.stringify({
           viewMode,
           selectedTopic,
-          aiQuestions,
-          revealedQuestions,
-          selectedAnswers,
           openSections,
           isFallback,
           showExam,
-          examTopic,
-          examQuestions,
-          examRevealed,
-          examAnswers,
-          tableAnswers,
-          tableGradingResults,
-          examTableAnswers,
-          examTableGradingResults,
-          chatHistory,
-          tutorAnswers,
-          tutorInputText,
         }));
       } catch (e) {
         console.warn('localStorage 저장 실패:', e);
       }
     }, 500);
     return () => clearTimeout(debounceTimer);
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults, chatHistory, tutorAnswers, tutorInputText, restoringReviewSession]);
+  }, [viewMode, selectedTopic, openSections, isFallback, showExam]);
 
-  // ── Sync current topic's review progress to topic-specific localStorage (debounced for performance)
-  useEffect(() => {
-    if (selectedTopic && selectedTopic.id) {
-      const debounceTimer = setTimeout(() => {
-        try {
-          const key = selectedTopic.schedule_id 
-            ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${reviewSessionId || 'default'}`
-            : `anti_review_progress_${selectedTopic.id}_${reviewSessionId || 'default'}`;
-          localStorage.setItem(key, JSON.stringify({
-            revealedQuestions,
-            selectedAnswers,
-            tableAnswers,
-            tableGradingResults,
-            tutorAnswers,
-            tutorInputText,
-            chatHistory
-          }));
-        } catch (e) {
-          console.warn('localStorage 복습 진행률 저장 실패:', e);
-        }
-      }, 500);
-      return () => clearTimeout(debounceTimer);
-    }
-  }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
+
 
   // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
   const lastSyncStateRef = React.useRef({
@@ -5851,20 +5813,7 @@ export default function App() {
       const finalTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswers;
       const finalTutorInputText = (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputText;
 
-      try {
-        localStorage.setItem(key, JSON.stringify({
-          revealedQuestions,
-          selectedAnswers,
-          tableAnswers: latestTableAnswers,
-          tableGradingResults,
-          tutorAnswers: finalTutorAnswers,
-          tutorInputText: finalTutorInputText,
-          chatHistory: finalChatHistory,
-          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-        }));
-      } catch (e) {
-        console.warn('Unload localStorage save failed:', e);
-      }
+      // Local storage saving disabled per user instructions
 
       const fetchOpts = {
         method: 'POST',
@@ -5897,22 +5846,7 @@ export default function App() {
     // 2) Save active exam session immediately to localStorage (synchronously)
     if (examQuestions.length > 0 && !loadingExam) {
       console.log('[forceSaveActiveSessions] Immediately saving active exam session');
-      try {
-        localStorage.setItem('anti_exam_progress', JSON.stringify({
-          examQuestions,
-          examRevealed,
-          examAnswers,
-          examTopic,
-          examTableAnswers,
-          examTableGradingResults,
-          tutorAnswers,
-          tutorInputText,
-          chatHistory,
-          savedExamScroll: examBodyRef.current?.scrollTop || 0
-        }));
-      } catch (e) {
-        console.warn('Unload exam localStorage save failed:', e);
-      }
+      // Exam local storage saving disabled per user instructions
 
       const fetchOpts = {
         method: 'POST',
@@ -5948,23 +5882,9 @@ export default function App() {
       localStorage.setItem('anti_app_state', JSON.stringify({
         viewMode,
         selectedTopic,
-        aiQuestions,
-        revealedQuestions,
-        selectedAnswers,
         openSections,
         isFallback,
         showExam,
-        examTopic,
-        examQuestions,
-        examRevealed,
-        examAnswers,
-        tableAnswers,
-        tableGradingResults,
-        examTableAnswers,
-        examTableGradingResults,
-        chatHistory,
-        tutorAnswers,
-        tutorInputText,
       }));
     } catch (e) {
       console.warn('Unload anti_app_state localStorage save failed:', e);
