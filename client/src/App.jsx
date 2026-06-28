@@ -11787,6 +11787,29 @@ export default function App() {
     }
   };
 
+  const getCategoryBadgeText = (category, pdfName, title, keywords) => {
+    let aa = '';
+    const pattern = /([a-zA-Z0-9_]+)\s*-\s*([a-zA-Z0-9_]+)/;
+    
+    if (pdfName) {
+      const match = pdfName.match(pattern);
+      if (match) aa = match[1];
+    }
+    if (!aa && keywords) {
+      const match = keywords.match(pattern);
+      if (match) aa = match[1];
+    }
+    if (!aa && title) {
+      const match = title.match(pattern);
+      if (match) aa = match[1];
+    }
+    
+    if (aa) {
+      return `${category} (${aa})`;
+    }
+    return category;
+  };
+
   // Helper colors for spaced repetition rounds
   const getRoundBadgeStyle = (round) => {
     switch (round) {
@@ -12822,11 +12845,11 @@ export default function App() {
                           >
                             {item.category === '계산' ? (
                               <span className="inline-flex items-center bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[10px] font-black select-none mr-2 align-middle">
-                                계산
+                                {getCategoryBadgeText('계산', item.pdf_name, item.title, item.keywords)}
                               </span>
                             ) : (
                               <span className="inline-flex items-center bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] font-black select-none mr-2 align-middle">
-                                일반
+                                {getCategoryBadgeText('일반', item.pdf_name, item.title, item.keywords)}
                               </span>
                             )}
                             <span className="align-middle break-all">{item.title}</span>
@@ -13306,11 +13329,11 @@ export default function App() {
                                     <div className="flex items-center gap-3 w-full min-w-0">
                                       {topic.category === '계산' ? (
                                         <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-lg text-[11px] font-black select-none shrink-0">
-                                          계산
+                                          {getCategoryBadgeText('계산', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       ) : (
                                         <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-2 py-0.5 rounded-lg text-[11px] font-black select-none shrink-0">
-                                          일반
+                                          {getCategoryBadgeText('일반', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       )}
                                       <h4 
@@ -13346,11 +13369,11 @@ export default function App() {
                                     <div className="flex items-center gap-2 w-full min-w-0">
                                       {topic.category === '계산' ? (
                                         <span className="bg-violet-950/40 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded text-[9px] font-black select-none shrink-0">
-                                          계산
+                                          {getCategoryBadgeText('계산', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       ) : (
                                         <span className="bg-slate-950/40 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[9px] font-black select-none shrink-0">
-                                          일반
+                                          {getCategoryBadgeText('일반', topic.pdf_name, topic.title, topic.keywords)}
                                         </span>
                                       )}
                                       <h4 
