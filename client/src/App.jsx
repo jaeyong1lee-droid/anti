@@ -11831,9 +11831,15 @@ export default function App() {
       if (!str) return '';
       // Check if it matches a pattern like "1-1 - Text" or "01-02 - Text"
       const match = str.match(/([a-zA-Z0-9_-]+)\s*-\s*(.+)/);
-      if (match) return match[1];
+      if (match) {
+        const val = match[1].trim();
+        if (/^[A-Z]?\d+([-\.]\d+)*[a-z]?$/i.test(val)) return val;
+      }
       // Check if it is a plain topic number like "1-1", "01-02", "1"
-      if (/^[a-zA-Z0-9_-]+$/.test(str.trim())) return str.trim();
+      const trimmed = str.trim();
+      if (/^[A-Z]?\d+([-\.]\d+)*[a-z]?$/i.test(trimmed)) {
+        return trimmed;
+      }
       return '';
     };
 
