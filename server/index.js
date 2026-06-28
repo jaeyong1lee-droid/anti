@@ -6599,6 +6599,15 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
       let htmlContent = decodeHtmlBuffer(topic.pdf_data);
       // Remove any script tag containing polyfill.io to prevent malicious loads and credential prompts
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
+
+      // Inject or replace viewport meta tag to disable user scaling and lock to device width
+      const viewportMeta = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">';
+      if (htmlContent.includes('<head>')) {
+        htmlContent = htmlContent.replace(/<meta\b[^>]*?name=["']viewport["'][^>]*?>/gi, '');
+        htmlContent = htmlContent.replace('<head>', `<head>\n${viewportMeta}`);
+      } else {
+        htmlContent = `${viewportMeta}\n${htmlContent}`;
+      }
       
       // If client requests only the screenshot part, parse and return it
       if (req.query.part === 'screenshot') {
@@ -6688,17 +6697,38 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 
 @media (max-width: 768px) {
   html, body {
-    padding: 8px !important; /* Minimize left/right padding */
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 0px 4px !important; /* Minimize left/right padding to the absolute minimum */
     overflow-x: hidden !important;
+    position: relative !important;
   }
-  *, *:before, *:after {
+  
+  /* Force all standard elements to stay within viewport */
+  body * {
+    max-width: 100% !important;
     box-sizing: border-box !important;
   }
+  
+  /* Prevent word overflow */
   p, span, td, li, div, section, article, h1, h2, h3, h4, h5, h6 {
     word-break: break-all !important;
     word-wrap: break-word !important;
     white-space: normal !important;
   }
+  
+  /* Allow tables and math formula blocks to scroll internally instead of overflowing the page */
+  table, pre, code, .katex-display, .katex {
+    max-width: none !important;
+  }
+  table, pre, code, .katex-display {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
   div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content {
     position: static !important;
     width: 100% !important;
@@ -6711,15 +6741,11 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     box-shadow: none !important;
     background: transparent !important;
     height: auto !important;
+    overflow-x: hidden !important; /* Contain any overflowing descendants */
   }
-  img, svg, table, pre, code {
+  img, svg {
     max-width: 100% !important;
     height: auto !important;
-  }
-  .katex-display, table, pre, code {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    box-sizing: border-box !important;
   }
   .katex-display {
     padding: 0.5em 8px !important;
