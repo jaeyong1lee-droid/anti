@@ -12070,10 +12070,18 @@ export default function App() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-800 flex justify-end">
+            <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={fetchLockscreenPool}
+                disabled={isLoadingPool}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-0 shadow-lg flex items-center gap-1.5 active:scale-95 duration-150"
+              >
+                <RefreshCw size={12} className={isLoadingPool ? "animate-spin" : ""} />
+                <span>{isLoadingPool ? '새로고침 중...' : '새로고침'}</span>
+              </button>
               <button
                 onClick={() => setIsLockscreenPoolModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700"
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700 active:scale-95 duration-150"
               >
                 닫기
               </button>
