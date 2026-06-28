@@ -4,8 +4,8 @@ process.env.DISABLE_BACKUP_ON_STARTUP = 'true';
 
 console.log('Importing index.js and starting server on port 5001...');
 import('./index.js').then(async () => {
-  console.log('Waiting 5 seconds for server and DB initialization...');
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  console.log('Waiting 25 seconds for server and DB initialization...');
+  await new Promise(resolve => setTimeout(resolve, 25000));
   
   try {
     console.log('Sending request to http://localhost:5001/api/lockscreen/sync?count=1 ...');
