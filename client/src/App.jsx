@@ -3090,6 +3090,41 @@ export default function App() {
     }
   };
 
+  const [isLockscreenPoolModalOpen, setIsLockscreenPoolModalOpen] = useState(false);
+  const [lockscreenPool, setLockscreenPool] = useState([]);
+  const [isLoadingPool, setIsLoadingPool] = useState(false);
+  const [selectedPoolQuestion, setSelectedPoolQuestion] = useState(null);
+  const [previewSelectedOption, setPreviewSelectedOption] = useState(null);
+  const [previewAnswerResult, setPreviewAnswerResult] = useState(null);
+
+  const fetchLockscreenPool = async () => {
+    setIsLoadingPool(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/lockscreen/pool`);
+      const data = await res.json();
+      if (data.success) {
+        setLockscreenPool(data.pool || []);
+      } else {
+        console.error('Failed to load lockscreen pool:', data.error);
+      }
+    } catch (err) {
+      console.error('Failed to fetch lockscreen pool:', err);
+    } finally {
+      setIsLoadingPool(false);
+    }
+  };
+
+  const handleOpenLockscreenPoolModal = () => {
+    setIsLockscreenPoolModalOpen(true);
+    fetchLockscreenPool();
+  };
+
+  const handleOpenQuestionPreview = (question) => {
+    setPreviewSelectedOption(null);
+    setPreviewAnswerResult(null);
+    setSelectedPoolQuestion(question);
+  };
+
   const [showLockscreenQuiz, setShowLockscreenQuiz] = useState(false);
   const [lockscreenQuestions, setLockscreenQuestions] = useState([]);
   const [currentLockscreenIndex, setCurrentLockscreenIndex] = useState(0);
@@ -12049,6 +12084,190 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
+      {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
+      {isLockscreenPoolModalOpen && (
+        <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">대기 중인 잠금퀴즈 풀 (Pool)</h3>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">평상시 자동 생성된 락스크린 문제 목록입니다. (총 {lockscreenPool.length}개)</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsLockscreenPoolModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-all bg-transparent border-none cursor-pointer p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {isLoadingPool ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm font-semibold text-slate-400">문제 풀을 불러오는 중입니다...</p>
+                </div>
+              ) : lockscreenPool.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                  <Info className="text-slate-500" size={32} />
+                  <p className="text-sm font-semibold text-slate-400">현재 생성된 문제가 없습니다.</p>
+                  <p className="text-xs text-slate-500 max-w-sm">백그라운드에서 AI가 새로운 문제를 생성하고 있습니다. 잠시 후 다시 열어주세요.</p>
+                  <button 
+                    onClick={fetchLockscreenPool}
+                    className="mt-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700"
+                  >
+                    새로고침
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {lockscreenPool.map((q, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleOpenQuestionPreview(q)}
+                      className="w-full text-left p-4 bg-slate-950/40 hover:bg-slate-800/40 border border-slate-800 rounded-2xl transition-all cursor-pointer group flex items-start gap-4"
+                    >
+                      <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-lg bg-slate-800 text-xs font-black text-slate-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-400 transition-all">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0 text-sm font-bold text-slate-200 group-hover:text-white transition-all leading-relaxed">
+                        <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setIsLockscreenPoolModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 풀 문제 상세 팝업 (PC 전용) ===== */}
+      {selectedPoolQuestion && (() => {
+        const q = selectedPoolQuestion;
+        return (
+          <div className="fixed inset-0 z-[999999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 select-none">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                    <HelpCircle size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white">락스크린 문제 미리보기</h3>
+                    <p className="text-xs text-slate-400 font-semibold mt-0.5">실제 잠금화면에 표출되는 퀴즈 형태 그대로 보여집니다.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedPoolQuestion(null)}
+                  className="text-slate-400 hover:text-white transition-all bg-transparent border-none cursor-pointer p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Question */}
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-5 min-h-[100px] flex items-center justify-center text-center text-sm font-bold text-slate-100 leading-relaxed">
+                  <div className="w-full">
+                    <LatexRenderer text={q.question} katexLoaded={katexLoaded} />
+                  </div>
+                </div>
+
+                {/* Options */}
+                <div className="grid grid-cols-1 gap-3">
+                  {q.options && q.options.map((option, idx) => {
+                    const isSelected = previewSelectedOption === option;
+                    const isCorrect = option === q.answer;
+                    
+                    let optionClass = 'bg-slate-950/50 border-slate-800 hover:bg-slate-800/60 text-slate-300';
+                    if (previewSelectedOption) {
+                      if (isCorrect) {
+                        optionClass = 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-black';
+                      } else if (isSelected) {
+                        optionClass = 'bg-rose-950/80 border-rose-500 text-rose-200 font-black';
+                      } else {
+                        optionClass = 'bg-slate-950/20 border-slate-800/40 text-slate-600 opacity-60';
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        disabled={previewSelectedOption !== null}
+                        onClick={() => {
+                          setPreviewSelectedOption(option);
+                          if (isCorrect) {
+                            setPreviewAnswerResult('correct');
+                          } else {
+                            setPreviewAnswerResult('incorrect');
+                          }
+                        }}
+                        className={`w-full py-3 px-4 rounded-xl border text-sm font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <LatexRenderer text={option} katexLoaded={katexLoaded} />
+                        </div>
+                        {previewSelectedOption && (
+                          <span className="shrink-0 text-xs">
+                            {isCorrect ? '⭕ 정답' : isSelected ? '❌ 오답' : ''}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Explanation */}
+                {previewAnswerResult && (
+                  <div className={`rounded-xl p-4 border text-xs leading-relaxed animate-fade-in ${
+                    previewAnswerResult === 'correct'
+                      ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
+                  }`}>
+                    <p className="font-extrabold flex items-center gap-1.5 mb-1">
+                      {previewAnswerResult === 'correct' ? '🎉 정답입니다!' : '😢 오답입니다.'}
+                    </p>
+                    <p className="text-slate-400 font-medium">
+                      <strong>해설:</strong> <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} />
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-800 flex justify-end gap-2">
+                <button
+                  onClick={() => setSelectedPoolQuestion(null)}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-solid border-slate-700"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ===== 잠금화면 퀴즈 오버레이 ===== */}
       {showLockscreenQuiz && (() => {
         if (lockscreenLoading) {
@@ -12333,18 +12552,6 @@ export default function App() {
           {/* AI Tutor Button on Mobile */}
           {(!isDesktop && !isMobileLandscape) && (viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={toggleLockscreenQuiz}
-                className={`flex items-center gap-1 px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-sm cursor-pointer select-none border border-solid ${
-                  isLockscreenQuizEnabled
-                    ? 'bg-emerald-600/90 border-emerald-500 text-white'
-                    : 'bg-slate-800/80 border-slate-700 text-slate-400'
-                }`}
-                title="잠금화면 퀴즈 ON/OFF"
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isLockscreenQuizEnabled ? 'bg-emerald-300' : 'bg-slate-500'}`} />
-                <span>잠금퀴즈 {isLockscreenQuizEnabled ? 'ON' : 'OFF'}</span>
-              </button>
               <button 
                 onClick={() => setIsRealTimeTutorOpen(true)}
                 className="flex items-center gap-1.5 bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-md select-none cursor-pointer border-none"
@@ -12364,16 +12571,12 @@ export default function App() {
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={toggleLockscreenQuiz}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer select-none border border-solid ${
-                      isLockscreenQuizEnabled
-                        ? 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                    }`}
-                    title="잠금화면 퀴즈 ON/OFF"
+                    onClick={handleOpenLockscreenPoolModal}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-emerald-600 border border-solid border-emerald-500 text-white hover:bg-emerald-500 transition-all shadow-md cursor-pointer select-none"
+                    title="대기 중인 잠금화면 퀴즈 목록 보기"
                   >
-                    <span className={`w-2 h-2 rounded-full ${isLockscreenQuizEnabled ? 'bg-emerald-300' : 'bg-slate-500'}`} />
-                    <span>잠금퀴즈 {isLockscreenQuizEnabled ? 'ON' : 'OFF'}</span>
+                    <Lock size={14} />
+                    <span>생성된 잠금퀴즈</span>
                   </button>
                   <button 
                     onClick={() => setIsRealTimeTutorOpen(true)}

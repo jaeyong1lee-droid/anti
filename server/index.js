@@ -7562,6 +7562,26 @@ async function replenishLockscreenPool(req) {
   }
 }
 
+// GET /api/lockscreen/pool → Retrieve pregenerated pool without consuming
+app.get('/api/lockscreen/pool', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+    let pool = [];
+    if (poolRow && poolRow.value) {
+      try {
+        pool = JSON.parse(poolRow.value) || [];
+      } catch (e) {
+        console.warn('Failed to parse lockscreen pool:', e);
+      }
+    }
+    res.json({ success: true, pool });
+  } catch (err) {
+    console.error('GET /api/lockscreen/pool error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/lockscreen/sync → Get or generate daily lockscreen quiz questions
 app.get('/api/lockscreen/sync', async (req, res) => {
   try {
