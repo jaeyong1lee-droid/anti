@@ -16877,6 +16877,7 @@ export default function App() {
                   setShowAnswerSheet(false);
                   setShowFormulaExam(true);
                   setViewMode('dashboard');
+                  setIsRealTimeTutorOpen(false);
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
               >
