@@ -12333,7 +12333,8 @@ export default function App() {
                   <div className="flex gap-3">
                     {lockscreenAnswerResult === 'correct' ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          const solvedId = currentQuestion.id;
                           setShowLockscreenQuiz(false);
                           setLockscreenSelectedOption(null);
                           setLockscreenAnswerResult(null);
@@ -12341,6 +12342,18 @@ export default function App() {
                           // Clear cached question and pre-generate the next one immediately
                           localStorage.removeItem('anti_lockscreen_questions');
                           generateNewLockscreenQuestion();
+
+                          if (solvedId) {
+                            try {
+                              await fetch(`${API_BASE}/api/lockscreen/solve`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: solvedId })
+                              });
+                            } catch (e) {
+                              console.warn('Failed to notify server of solved lockscreen question:', e);
+                            }
+                          }
                         }}
                         className="w-full py-3.5 text-white rounded-2xl text-[15px] font-black transition-all cursor-pointer shadow-lg active:scale-95 text-center flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500"
                       >
