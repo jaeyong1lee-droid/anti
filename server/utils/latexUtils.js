@@ -418,9 +418,23 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // Restore legacy KaTeX html block structures if any
   result = result.replace(
-    /<\s*(div|span)\s*class\b[\s\S]*?<\/\s*\1\s*>/gi,
+    /<\s*(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi,
     (htmlBlock) => {
       const match = htmlBlock.match(/<\s*annotation[^>]*encoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i);
+      if (match && match[1]) {
+        const formula = match[1].trim().replace(/\\+/g, '\\').replace(/&#x27;/g, "'");
+        return ` $${formula}$ `;
+      }
+      return '';
+    }
+  );
+
+  // [Self-Healing] 공백이 기괴하게 소멸된 KaTeX HTML 블록(divclass, spanclass 등) 감지 및 원격 복구
+  result = result.replace(
+    /<\s*(div|span)class\b[\s\S]*?<\/\s*\1\s*>/gi,
+    (htmlBlock) => {
+      const match = htmlBlock.match(/<\s*annotationencoding[^>]*>\s*([\s\S]*?)\s*<\/\s*annotation\s*>/i) ||
+                    htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
       if (match && match[1]) {
         const formula = match[1].trim().replace(/\\+/g, '\\').replace(/&#x27;/g, "'");
         return ` $${formula}$ `;

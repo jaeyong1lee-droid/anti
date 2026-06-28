@@ -483,7 +483,7 @@ const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/&gt;/g, '>')
                    .replace(/&amp;/g, '&');
   
-  const katexHtmlRegex = /<(div|span)\s*[^>]*?class=["'](?:formula-scroll-container|katex|inline|katex-display|katex-error)["'][\s\S]*?<\/\s*\1\s*>/gi;
+  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
   cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
     const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
     if (annotMatch && annotMatch[1]) {
@@ -493,6 +493,18 @@ const cleanAndSanitizeMathText = (rawText) => {
     const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
     if (errMatch && errMatch[1]) {
       const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  // [Self-Healing] 공백이 기괴하게 소멸된 KaTeX HTML 블록(divclass, spanclass 등) 감지 및 원격 복구
+  const spaceCorruptedKatexRegex = /<\s*(div|span)class\b[\s\S]*?<\/\s*\1\s*>/gi;
+  cleaned = cleaned.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<\s*annotationencoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i) ||
+                       htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
       return ` $${formula}$ `;
     }
     return '';
