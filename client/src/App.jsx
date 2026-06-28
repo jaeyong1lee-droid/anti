@@ -12217,10 +12217,23 @@ export default function App() {
                       <button
                         key={idx}
                         disabled={previewSelectedOption !== null}
-                        onClick={() => {
+                        onClick={async () => {
                           setPreviewSelectedOption(option);
                           if (isCorrect) {
                             setPreviewAnswerResult('correct');
+                            try {
+                              const res = await fetch(`${API_BASE}/api/lockscreen/solve`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: q.id })
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                setLockscreenPool(data.pool || []);
+                              }
+                            } catch (err) {
+                              console.error('Failed to notify server of solved lockscreen question:', err);
+                            }
                           } else {
                             setPreviewAnswerResult('incorrect');
                           }

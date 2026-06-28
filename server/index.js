@@ -7614,6 +7614,45 @@ app.get('/api/lockscreen/pool', async (req, res) => {
   }
 });
 
+// POST /api/lockscreen/solve → Solve and remove a question from the pregenerated pool, then trigger background replenishment
+app.post('/api/lockscreen/solve', async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'Question ID is required' });
+    }
+
+    await ensureSessionTable();
+
+    let pool = [];
+    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+    if (poolRow && poolRow.value) {
+      try {
+        pool = JSON.parse(poolRow.value) || [];
+      } catch (e) {
+        console.warn('Failed to parse lockscreen pool:', e);
+      }
+    }
+
+    // Filter out the solved question
+    const updatedPool = pool.filter(q => q.id !== id);
+
+    // Save back to DB
+    await saveSessionValue('lockscreen_pregenerated_pool', JSON.stringify(updatedPool));
+    console.log(`[Lockscreen Solve] Solved question ${id}. Remaining pool size: ${updatedPool.length}`);
+
+    // Trigger non-blocking replenishment to top the pool back up to 5 questions in the background
+    replenishLockscreenPool(req).catch(err => {
+      console.error('[Lockscreen Solve] Background replenishment failed:', err);
+    });
+
+    res.json({ success: true, pool: updatedPool });
+  } catch (err) {
+    console.error('POST /api/lockscreen/solve error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/lockscreen/sync → Get or generate daily lockscreen quiz questions
 app.get('/api/lockscreen/sync', async (req, res) => {
   try {
