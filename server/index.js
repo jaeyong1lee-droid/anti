@@ -6626,6 +6626,7 @@ html, body {
   margin: 0 !important;
   padding: 24px !important;
   box-sizing: border-box !important;
+  overflow-x: hidden !important; /* Prevent horizontal dragging/scrolling */
 }
 
 /* Ensure all nested text is readable and correctly colored */
@@ -6687,7 +6688,16 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 
 @media (max-width: 768px) {
   html, body {
-    padding: 12px !important;
+    padding: 8px !important; /* Minimize left/right padding */
+    overflow-x: hidden !important;
+  }
+  *, *:before, *:after {
+    box-sizing: border-box !important;
+  }
+  p, span, td, li, div, section, article, h1, h2, h3, h4, h5, h6 {
+    word-break: break-all !important;
+    word-wrap: break-word !important;
+    white-space: normal !important;
   }
   div, section, article, form, .container, .page, .wrapper, .section, .WordSection1, #page-container, #sidebar, #content {
     position: static !important;

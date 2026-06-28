@@ -2895,9 +2895,7 @@ export default function App() {
                     <LatexRenderer 
                       text={
                         (() => {
-                          const trimmed = (correctAnswer || '').trim().replace(/\$/g, '').trim();
-                          const isPl = !trimmed || /^(?:\[?\s*[A-Za-z]\s*\]?|\(?\s*[A-Za-z]\s*\)?|\[?\s*INPUT_\d+\s*\]?)$/i.test(trimmed);
-                          if (isPl && gradingResult?.suggestedModelAnswer) {
+                          if (gradingResult?.suggestedModelAnswer) {
                             return gradingResult.suggestedModelAnswer;
                           }
                           return correctAnswer;
