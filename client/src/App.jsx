@@ -1965,15 +1965,6 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                     const inputNum = match ? parseInt(match[0], 10) : 1;
                     const inputLetter = String.fromCharCode(64 + inputNum);
 
-                    const hasScore = questionIdx >= 2 && gradingResult && gradingResult.score !== undefined;
-                    let inputClassName = `w-full text-[13px] sm:text-[16px] px-1 py-0.5 rounded-lg bg-slate-900 border text-slate-100 placeholder-slate-600 focus:outline-none transition-all duration-200 ${
-                      hasScore ? 'pr-7 sm:pr-14' : 'pr-1 sm:pr-3'
-                    } ${
-                      revealed
-                        ? getTableInputColorClasses(gradingResult, isCorrect, value)
-                        : 'border-slate-700 focus:border-slate-500 focus:ring-1 focus:ring-slate-500'
-                    }`;
-
                     return (
                       <td 
                         key={cIdx} 
@@ -2029,7 +2020,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               e.target.dataset.lastVal = e.target.value;
                             }}
                             placeholder={`${inputLetter} 입력`}
-                            className="w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
+                            data-answer-key={`${questionIdx}_${inputId}`}
+                            className="table-quiz-input w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
                             rows={1}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
@@ -5669,8 +5661,32 @@ export default function App() {
   }, [selectedTopic, revealedQuestions, selectedAnswers, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
 
   // ── Auto-sync Review state to server on changes (for multi-device real-time link and auto-save)
+  const lastSyncStateRef = React.useRef({
+    selectedAnswers: null,
+    revealedQuestions: null,
+    tableGradingResults: null,
+    chatHistory: null
+  });
+
   useEffect(() => {
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly && !restoringReviewSession) {
+      // 1) 즉시 동기화 대상(객관식, 정답 열람, 채점 완료, 대화 내역) 변경 감지
+      const hasImmediateChange = 
+        JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
+        JSON.stringify(revealedQuestions) !== JSON.stringify(lastSyncStateRef.current.revealedQuestions) ||
+        JSON.stringify(tableGradingResults) !== JSON.stringify(lastSyncStateRef.current.tableGradingResults) ||
+        JSON.stringify(chatHistory) !== JSON.stringify(lastSyncStateRef.current.chatHistory);
+
+      // 캐시 동기화
+      lastSyncStateRef.current = {
+        selectedAnswers,
+        revealedQuestions,
+        tableGradingResults,
+        chatHistory
+      };
+
+      const delay = hasImmediateChange ? 0 : 1000; // 터치는 즉시, 타이핑은 1.0초 디바운스
+
       const delayDebounceFn = setTimeout(() => {
         fetch(`${API_BASE}/api/session/review`, {
           method: 'POST',
@@ -5698,7 +5714,7 @@ export default function App() {
             }
           })
           .catch(e => console.warn('복습 세션 자동 동기화 실패:', e));
-      }, 1500); // 1.5-second debounce for lightweight performance
+      }, delay);
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -5742,11 +5758,25 @@ export default function App() {
       const key = selectedTopic.schedule_id 
         ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
         : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
+
+      // [🚨 닫기 시 즉시 동기화 가드] DOM에서 최신 input/textarea 데이터 직접 수집하여 React state 지연 극복
+      const latestTableAnswers = { ...tableAnswers };
+      try {
+        document.querySelectorAll('.table-quiz-input, .subjective-quiz-textarea').forEach(el => {
+          const answerKey = el.getAttribute('data-answer-key');
+          if (answerKey) {
+            latestTableAnswers[answerKey] = el.value;
+          }
+        });
+      } catch (err) {
+        console.warn('[forceSaveActiveSessions] DOM scrape failed:', err);
+      }
+
       try {
         localStorage.setItem(key, JSON.stringify({
           revealedQuestions,
           selectedAnswers,
-          tableAnswers,
+          tableAnswers: latestTableAnswers,
           tableGradingResults,
           tutorAnswers,
           tutorInputText,
@@ -5767,7 +5797,7 @@ export default function App() {
           questions: aiQuestions,
           selectedAnswers,
           revealedQuestions,
-          tableAnswers,
+          tableAnswers: latestTableAnswers,
           tableGradingResults,
           tutorAnswers,
           tutorInputText,
@@ -14529,6 +14559,7 @@ export default function App() {
                                   <div className="relative">
                                       <textarea
                                         disabled={isRevd}
+                                        data-answer-key={`${idx}_INPUT`}
                                         value={tableAnswers[`${idx}_INPUT`] || ''}
                                         onChange={(e) => {
                                           setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }));
@@ -14552,7 +14583,7 @@ export default function App() {
                                         }}
                                         rows={1}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                        className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
