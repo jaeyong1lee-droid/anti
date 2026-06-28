@@ -6915,39 +6915,6 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null, isRestore = false) => {
-    // [🚨 로컬 캐시 즉시 복원 패스 🚨]
-    // 닫기를 누르거나 탭을 이동했다가 다시 진입할 때, 로컬에 저장되어 있던 활성 복습 정보가 일치한다면
-    // 굳이 서버에 재생성 통신을 보내서 로딩하지 않고, 로컬 캐시를 0초 만에 즉각 띄워줍니다!
-    try {
-      const saved = localStorage.getItem('anti_app_state');
-      if (saved) {
-        const s = JSON.parse(saved);
-        const isSameTopic = s.selectedTopic && s.selectedTopic.id === topicId;
-        const isSameSchedule = s.selectedTopic && (String(s.selectedTopic.schedule_id) === String(scheduleId || '') || !scheduleId);
-        if (isSameTopic && isSameSchedule && s.aiQuestions && s.aiQuestions.length > 0) {
-          console.log('[handleOpenAIQuestions] Local App State Hit! Restoring active session instantly without server load.');
-          setSelectedTopic(s.selectedTopic);
-          setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-          setSelectedAnswers(s.selectedAnswers || {});
-          setRevealedQuestions(s.revealedQuestions || {});
-          setTableAnswers(s.tableAnswers || {});
-          setTableGradingResults(s.tableGradingResults || {});
-          setTutorAnswers(s.tutorAnswers || {});
-          setTutorInputText(s.tutorInputText || {});
-          setChatHistory(s.chatHistory || []);
-          
-          const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${s.selectedTopic.schedule_id || '9999'}`) || 'legacy_default';
-          setReviewSessionId(activeSid);
-          
-          setLoadingAI(false);
-          setRestoringReviewSession(false);
-          return; // 서버 통신 스킵하고 즉시 복귀!
-        }
-      }
-    } catch (e) {
-      console.warn('[handleOpenAIQuestions] Failed to query local app state for instant restore:', e);
-    }
-
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
@@ -6984,13 +6951,101 @@ export default function App() {
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
-    // "다시 들어가면 문제 재생성" 지침에 따라 메모리 캐싱 차단 및 항상 서버 재생성 요청 실행
+
     const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
+    
+    // ──────────────────────────────────────────────────────────
+    // 1단계 [최우선]: 서버에 이 토픽 ID/스케줄 ID 기준의 활성 세션 및 문제 정보가 이미 존재하는지 먼저 확인(GET)합니다!
+    // ──────────────────────────────────────────────────────────
+    const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`) || 'legacy_default';
+    let hasLoadedFromServer = false;
+
+    // 모달 상태 초기화 및 로딩바 우선 렌더링
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
+    setLoadingAI(true);
+    setAiQuestions([]);
+    setRevealedQuestions({});
+    setSelectedAnswers({});
+    setReviewOptionExplanations({});
+    setTableAnswers({});
+    setTableGradingResults({});
+    setShowAnswersState({});
+    setExamShowAnswersState({});
+    setTutorAnswers({});
+    setTutorInputText({});
+    setChatHistory([]);
+    setIsFallback(false);
+    setAiError('');
+
+    try {
+      console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, sessionId=${activeSid}`);
+      const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
+          const serverData = checkData.data;
+          console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
+          
+          setReviewSessionId(serverData.sessionId || activeSid);
+          setAiQuestions(serverData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
+          setSelectedAnswers(serverData.selectedAnswers || {});
+          setRevealedQuestions(serverData.revealedQuestions || {});
+          setTableAnswers(serverData.tableAnswers || {});
+          setTableGradingResults(serverData.tableGradingResults || {});
+          setTutorAnswers(serverData.tutorAnswers || {});
+          setTutorInputText(serverData.tutorInputText || {});
+          setChatHistory(serverData.chatHistory || []);
+          
+          setLoadingAI(false);
+          setRestoringReviewSession(false);
+          hasLoadedFromServer = true;
+        }
+      }
+    } catch (e) {
+      console.warn('[handleOpenAIQuestions] STEP 1 server session check failed:', e);
+    }
+
+    // 서버에 이미 저장된 활성 퀴즈 세션 정보가 존재한다면 즉시 실행 중단(종료)하여 아래의 재생성/POST 통신 차단!
+    if (hasLoadedFromServer) {
+      return;
+    }
+
+    // [🚨 로컬 캐시 폴백 🚨]
+    // 만약 서버 통신 실패/오프라인인데 로컬스토리지 백업(anti_app_state)에 해당 토픽의 문제가 고스란히 남아 있다면 즉시 복원
+    try {
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        const s = JSON.parse(saved);
+        const isSameTopic = s.selectedTopic && s.selectedTopic.id === topicId;
+        const isSameSchedule = s.selectedTopic && (String(s.selectedTopic.schedule_id) === String(finalScheduleId || '') || !finalScheduleId);
+        if (isSameTopic && isSameSchedule && s.aiQuestions && s.aiQuestions.length > 0) {
+          console.log('[handleOpenAIQuestions] Offline Fallback: Local App State Hit! Restoring active session instantly.');
+          setSelectedTopic(s.selectedTopic);
+          setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+          setSelectedAnswers(s.selectedAnswers || {});
+          setRevealedQuestions(s.revealedQuestions || {});
+          setTableAnswers(s.tableAnswers || {});
+          setTableGradingResults(s.tableGradingResults || {});
+          setTutorAnswers(s.tutorAnswers || {});
+          setTutorInputText(s.tutorInputText || {});
+          setChatHistory(s.chatHistory || []);
+          setReviewSessionId(activeSid);
+          setLoadingAI(false);
+          setRestoringReviewSession(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[handleOpenAIQuestions] Offline fallback query failed:', e);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // 2단계: 서버/로컬 어디에도 기존 세션 및 문제 정보가 없다면 비로소 예상 문제를 새로 생성(POST)합니다!
+    // ──────────────────────────────────────────────────────────
+    console.log('[handleOpenAIQuestions] STEP 2: No active session found. Initiating question generation...');
     
     // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
-    // If it's a restore, re-entry, or there's already an active (uncompleted) session ID stored in localStorage, preserve it!
     let newSid;
     const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
     const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
@@ -7002,21 +7057,6 @@ export default function App() {
       localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     }
     setReviewSessionId(newSid);
-
-    setLoadingAI(true);
-    setAiQuestions([]);
-    setRevealedQuestions({}); // Reset revealed answers
-    setSelectedAnswers({}); // Reset MC selected answers
-    setReviewOptionExplanations({}); // Reset Option Explanations
-    setTableAnswers({}); // Reset table cell inputs
-    setTableGradingResults({}); // Reset table cell grading results
-    setShowAnswersState({}); // Reset show answer states
-    setExamShowAnswersState({}); // Reset exam show answer states
-    setIsFallback(false);
-    setAiError('');
-    setShowFullReport(false);
-    setReportText('');
-    setChatHistory([]);
 
     const progressId = 'gen_' + Math.random().toString(36).substring(2, 9);
     startProgressPolling(progressId);
