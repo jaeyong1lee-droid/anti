@@ -7032,6 +7032,8 @@ export default function App() {
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
     setLoadingAI(true);
+    setAiProgressMessage('1단계: 문제 ID 확인 중 (서버 DB 조회)...');
+    setAiProgressPercent(15);
     setAiQuestions([]);
     setRevealedQuestions({});
     setSelectedAnswers({});
@@ -7079,12 +7081,16 @@ export default function App() {
       return;
     }
 
-
-
     // ──────────────────────────────────────────────────────────
     // 2단계: 서버/로컬 어디에도 기존 세션 및 문제 정보가 없다면 비로소 예상 문제를 새로 생성(POST)합니다!
     // ──────────────────────────────────────────────────────────
+    setAiProgressMessage('2단계: 문제 출제 지침(Standards) 확인 및 적용 중...');
+    setAiProgressPercent(45);
+    await new Promise(resolve => setTimeout(resolve, 800)); // 지침 확인 시각 인지용 딜레이
+
     console.log('[handleOpenAIQuestions] STEP 2: No active session found. Initiating question generation...');
+    setAiProgressMessage('3단계: 지침 기반 신규 예상 문제 생성 중 (Gemini AI)...');
+    setAiProgressPercent(60);
     
     // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
     let newSid;
@@ -13976,28 +13982,124 @@ export default function App() {
                   </div>
                 )}
               {loadingAI ? (
-                <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
-                  <div className="relative">
-                    <div className="p-6 bg-violet-950/80 text-violet-400 rounded-full animate-bounce-slow">
-                      <Brain size={40} />
+                <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-lg mx-auto w-full px-4">
+                  <div className="relative mb-2">
+                    <div className="p-6 bg-violet-950/80 text-violet-400 rounded-full animate-pulse shadow-lg shadow-violet-500/10 border border-violet-500/30">
+                      <Brain size={44} className="animate-bounce-slow text-brand-400" />
                     </div>
-                    <div className="absolute inset-0 bg-violet-500 rounded-full animate-ping opacity-20"></div>
+                    <div className="absolute inset-0 bg-brand-500 rounded-full animate-ping opacity-15"></div>
                   </div>
-                  <h4 className="text-xl font-bold text-white mt-2">
-                    {aiProgressMessage || 'Gemini AI가 13문항을 출제하는 중...'}
-                  </h4>
-                  <div className="w-64 bg-slate-800 rounded-full h-2 overflow-hidden mx-auto mt-2">
-                    <div 
-                      className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${aiProgressPercent || 0}%` }}
-                    />
+
+                  {/* 3단계 타임라인 가시화 */}
+                  <div className="w-full bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-5 text-left shadow-2xl backdrop-blur-md">
+                    <h5 className="text-[14px] sm:text-[15px] font-black text-slate-100 border-b border-slate-800 pb-2.5 flex items-center justify-between">
+                      <span>복습 학습 세션 준비 중</span>
+                      <span className="text-xs text-brand-400 font-extrabold animate-pulse">{aiProgressPercent || 0}%</span>
+                    </h5>
+
+                    <div className="space-y-4">
+                      {/* 1단계 */}
+                      {(() => {
+                        const isCompleted = aiProgressPercent > 20 || (!aiProgressMessage.includes('1단계') && aiProgressPercent >= 45);
+                        const isActive = aiProgressMessage.includes('1단계') || aiProgressPercent <= 20;
+                        return (
+                          <div className="flex items-start gap-3 transition-all duration-300">
+                            <div className="mt-0.5">
+                              {isCompleted ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                              ) : isActive ? (
+                                <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">1</div>
+                              )}
+                            </div>
+                            <div>
+                              <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                                1단계 : 문제 ID 확인
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                                {isCompleted ? '서버 데이터베이스에서 문제 이력을 확인 완료했습니다.' : isActive ? '서버의 이전 학습 이력 및 세션 ID 정보를 조회하고 있습니다...' : '대기 중'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 연결선 1 */}
+                      <div className="ml-2.5 w-0.5 h-3 bg-slate-850" />
+
+                      {/* 2단계 */}
+                      {(() => {
+                        const isCompleted = aiProgressPercent > 50 || (!aiProgressMessage.includes('1단계') && !aiProgressMessage.includes('2단계') && aiProgressPercent >= 60);
+                        const isActive = aiProgressMessage.includes('2단계') || (aiProgressPercent > 20 && aiProgressPercent <= 50);
+                        return (
+                          <div className="flex items-start gap-3 transition-all duration-300">
+                            <div className="mt-0.5">
+                              {isCompleted ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                              ) : isActive ? (
+                                <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">2</div>
+                              )}
+                            </div>
+                            <div>
+                              <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                                2단계 : 지침 확인
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                                {isCompleted ? '수식 노출 방지 및 장문 명사형 어미 등 8대 출제 지침을 로드했습니다.' : isActive ? '정량 데이터 표 및 MIT 응력 표현 등 공학 지침 기준을 정렬하고 있습니다...' : '대기 중'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 연결선 2 */}
+                      <div className="ml-2.5 w-0.5 h-3 bg-slate-855" />
+
+                      {/* 3단계 */}
+                      {(() => {
+                        const isCompleted = aiProgressPercent === 100;
+                        const isActive = aiProgressMessage.includes('3단계') || aiProgressPercent > 50;
+                        return (
+                          <div className="flex items-start gap-3 transition-all duration-300">
+                            <div className="mt-0.5">
+                              {isCompleted ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                              ) : isActive ? (
+                                <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">3</div>
+                              )}
+                            </div>
+                            <div>
+                              <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                                3단계 : 문제 생성
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                                {isCompleted ? '예상 문제 출제 및 검증 작업이 성공적으로 끝났습니다!' : isActive ? `Gemini AI 모델이 원보고서 텍스트를 심층 분석하여 맞춤형 예상 문제를 출제하는 중입니다...` : '대기 중'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* 하단 통합 프로그레스바 */}
+                    <div className="pt-2">
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-brand-500 via-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${aiProgressPercent || 0}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center mt-2 text-[10px] text-slate-500 font-medium">
+                        <span>{aiProgressMessage || '준비 중...'}</span>
+                        <span className="font-extrabold text-slate-400">{aiProgressPercent || 0}%</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-violet-400 font-bold">
-                    {aiProgressPercent || 0}% 생성 중...
-                  </p>
-                  <p className="text-xs text-slate-400 max-w-sm leading-relaxed mx-auto">
-                    소스 자료를 분석하여 주관식(개요·공식)과 객관식을 혼용한 복습 문제를 생성하고 있습니다. 약 10~20초 소요됩니다.
-                  </p>
                 </div>
               ) : (
                 <div className="w-full space-y-5 pb-32">
