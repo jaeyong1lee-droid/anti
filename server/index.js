@@ -9505,6 +9505,12 @@ async function applyScorePatch() {
 async function applyResetPatchForTopics3To24() {
   console.log('[DB Patch] Running reset patch for topics 3 to 24...');
   try {
+    const checkLock = await dbQuery.get("SELECT value FROM app_session WHERE key = 'patch_reset_topics_3_24_done'");
+    if (checkLock && checkLock.value === 'true') {
+      console.log('[DB Patch] Reset patch for topics 3 to 24 already applied. Skipping.');
+      return;
+    }
+
     const baseDateStr = '2026-06-29';
     const roundDates = {
       2: '2026-07-03',
@@ -9549,6 +9555,7 @@ async function applyResetPatchForTopics3To24() {
       }
     }
 
+    await saveSessionValue('patch_reset_topics_3_24_done', 'true');
     console.log(`[DB Patch] Reset Patch completed: round1 completed=${patchCount1}, round2+ pending=${patchCount2}, deletedSessions=${deletedSessions}`);
   } catch (err) {
     console.error('[DB Patch] Error in reset patch for topics 3 to 24:', err.message);
