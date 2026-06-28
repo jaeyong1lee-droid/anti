@@ -5583,6 +5583,7 @@ export default function App() {
   // ── Save state to localStorage whenever key state changes (debounced for performance)
   useEffect(() => {
     if (!selectedTopic) {
+      if (restoringReviewSession) return;
       try {
         const saved = localStorage.getItem('anti_app_state');
         if (saved) {
@@ -5625,7 +5626,7 @@ export default function App() {
       }
     }, 500);
     return () => clearTimeout(debounceTimer);
-  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults, chatHistory, tutorAnswers, tutorInputText]);
+  }, [viewMode, selectedTopic, aiQuestions, revealedQuestions, selectedAnswers, openSections, isFallback, showExam, examTopic, examQuestions, examRevealed, examAnswers, tableAnswers, tableGradingResults, examTableAnswers, examTableGradingResults, chatHistory, tutorAnswers, tutorInputText, restoringReviewSession]);
 
   // ── Sync current topic's review progress to topic-specific localStorage (debounced for performance)
   useEffect(() => {
@@ -7195,18 +7196,7 @@ export default function App() {
     requestAnimationFrame(() => {
       if (reviewSplitContainerRef.current) reviewSplitContainerRef.current.scrollLeft = 0;
     });
-    // 같은 토픽의 문제가 이미 있으면 (닫기 후 재열) → 바로 열기
-    if (lastQuizTopicId.current === topicId && aiQuestions.length > 0 && lastQuizScheduleId.current === finalScheduleId) {
-      console.log(`[handleOpenAIQuestions] Memory Hit! Reopening cached questions in memory for topicId=${topicId}`);
-      const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
-      setSelectedTopic(targetTopic);
-      selectedTopicRef.current = targetTopic;
-      // 이전 스크롤 위치 복원
-      requestAnimationFrame(() => {
-        if (quizBodyRef.current) quizBodyRef.current.scrollTop = savedQuizScroll.current;
-      });
-      return;
-    }
+    // "다시 들어가면 문제 재생성" 지침에 따라 메모리 캐싱 차단 및 항상 서버 재생성 요청 실행
     const targetTopic = { id: topicId, title, keywords, pdf_name: pdfName, schedule_id: finalScheduleId, review_round: finalReviewRound, isBonus, isPractice, category: topicCategory };
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
@@ -12146,10 +12136,20 @@ export default function App() {
             
             // Try to fetch the cached review session from the server first
             const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
-            const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
-            const resData = await res.json();
             
-            if (resData.success && resData.data) {
+            let restoreSuccess = false;
+            let resData = null;
+            
+            try {
+              const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
+              if (res.ok) {
+                resData = await res.json();
+              }
+            } catch (e) {
+              console.warn('[Mount Restore] Server review session query failed (Network/500), trying fallback:', e);
+            }
+
+            if (resData && resData.success && resData.data) {
               const server = resData.data;
               console.log('[Mount Restore] Server review session found. Syncing...');
               updateSyncTime(new Date());
@@ -12220,6 +12220,7 @@ export default function App() {
               setTutorInputText(finalData.tutorInputText || {});
               setChatHistory(finalData.chatHistory || []);
               setRestoringReviewSession(false);
+              restoreSuccess = true;
             } else {
               // [🚨 로컬 캐시 폴백 복원 🚨]
               // 서버 세션 데이터가 아직 없을 때, 로컬 스토리지에 해당 세션 캐시가 존재하는지 우선 검사하여 복원
@@ -12243,101 +12244,32 @@ export default function App() {
                     setTutorInputText(localData.tutorInputText || {});
                     setChatHistory(localData.chatHistory || []);
                     setRestoringReviewSession(false);
-                    return; // 복구 완료
+                    restoreSuccess = true;
                   }
                 } catch (e) {
                   console.warn('Failed to restore from local progress cache:', e);
                 }
               }
+            }
 
-              // Try checking if completed on server
-              let isAlreadyCompleted = false;
-              let completedData = null;
-              let completedScheduleId = scheduleId;
-
-              // 1. Try by schedule ID
-              if (scheduleId && scheduleId !== 9999 && String(scheduleId) !== '9999' && String(scheduleId) !== 'null' && String(scheduleId) !== 'undefined') {
-                try {
-                  const compRes = await fetch(`${API_BASE}/api/session/completed-review/${scheduleId}`);
-                  const resJson = await compRes.json();
-                  if (compRes.ok && resJson.success && resJson.data) {
-                    isAlreadyCompleted = true;
-                    completedData = resJson.data;
-                    completedScheduleId = scheduleId;
-                  }
-                } catch (e) {
-                  console.warn('[Mount Restore] Failed to check completed review by scheduleId:', e);
-                }
-              }
-
-              // 2. Fall back to checking by topic ID (ONLY when scheduleId is missing/invalid to prevent loading past rounds like 18-03 on a new 18-04 session)
-              const hasNoSchedule = !scheduleId || scheduleId === 9999 || String(scheduleId) === '9999' || String(scheduleId) === 'null' || String(scheduleId) === 'undefined';
-              if (!isAlreadyCompleted && topicId && hasNoSchedule) {
-                try {
-                  const compRes = await fetch(`${API_BASE}/api/session/completed-review/by-topic/${topicId}`);
-                  const resJson = await compRes.json();
-                  if (compRes.ok && resJson.success && resJson.data) {
-                    isAlreadyCompleted = true;
-                    completedData = resJson.data;
-                    completedScheduleId = resJson.scheduleId || scheduleId;
-                  }
-                } catch (e) {
-                  console.warn('[Mount Restore] Failed to check completed review by topicId:', e);
-                }
-              }
-
-              if (isAlreadyCompleted && completedData) {
-                console.log('[Mount Restore] Review already completed on another device. Loading as read-only completed review.');
-                const targetTopic = {
-                  ...s.selectedTopic,
-                  schedule_id: completedScheduleId,
-                  isReadOnly: true
-                };
-                setSelectedTopic(targetTopic);
-                
-                // Reset UI states for read-only completed view
-                setShowAnswerSheet(false);
-                setReviewMobileTab('list');
-                setShowAnswersState({});
-                setExamShowAnswersState({});
-                setIsFallback(false);
-                setAiError('');
-                setShowFullReport(false);
-                setReportText('');
-
-                if (completedData.questions && Array.isArray(completedData.questions)) {
-                  setAiQuestions(completedData.questions.map(q => healQuizQuestionObject({ ...q, category: targetTopic.category })));
-                }
-                setSelectedAnswers(completedData.selectedAnswers || {});
-                setRevealedQuestions(completedData.revealedQuestions || {});
-                setTableAnswers(completedData.tableAnswers || {});
-                setTableGradingResults(completedData.tableGradingResults || {});
-                if (completedData.tutorAnswers) setTutorAnswers(completedData.tutorAnswers);
-                if (completedData.tutorInputText) setTutorInputText(completedData.tutorInputText);
-                if (completedData.chatHistory) setChatHistory(completedData.chatHistory);
+            // 서버 및 세션 캐시 복원 둘 다 실패했을 때의 최후 2단계 방어막 (튕김 절대 방지)
+            if (!restoreSuccess) {
+              if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
+                // anti_app_state 백업 데이터를 100% 신뢰하여 복원
+                console.log('[Mount Restore Fallback] Warding off crash. Restoring directly from anti_app_state backup.');
+                setSelectedTopic(s.selectedTopic);
+                setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+                setSelectedAnswers(s.selectedAnswers || {});
+                setRevealedQuestions(s.revealedQuestions || {});
+                setTableAnswers(s.tableAnswers || {});
+                setTableGradingResults(s.tableGradingResults || {});
+                setTutorAnswers(s.tutorAnswers || {});
+                setTutorInputText(s.tutorInputText || {});
+                setChatHistory(s.chatHistory || []);
                 setRestoringReviewSession(false);
-
-                // Clean up the local storage's temporary progress for this schedule
-                const progressKey = targetTopic.schedule_id 
-                  ? `anti_review_progress_sched_${targetTopic.schedule_id}`
-                  : `anti_review_progress_${targetTopic.id}`;
-                localStorage.removeItem(progressKey);
-                
-                // Also update last active review
-                const activeInfo = {
-                  topicId: targetTopic.id,
-                  title: targetTopic.title,
-                  keywords: targetTopic.keywords || '',
-                  pdfName: targetTopic.pdf_name || '',
-                  mode: 'completed',
-                  scheduleId: targetTopic.schedule_id,
-                  reviewRound: targetTopic.review_round,
-                  isReadOnly: true
-                };
-                localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
-                setLastActiveReview(activeInfo);
               } else {
-                console.log('[Mount Restore] No server review session found. Opening via handleOpenAIQuestions...');
+                // 로컬 백업에도 문제가 아예 없을 때만 OpenAI를 통해 새로 생성
+                console.log('[Mount Restore] No server review session & no backup found. Opening via handleOpenAIQuestions...');
                 await handleOpenAIQuestions(
                   s.selectedTopic.id, 
                   s.selectedTopic.title, 
