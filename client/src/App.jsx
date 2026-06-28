@@ -5116,24 +5116,36 @@ export default function App() {
           if (data.examTopic) setExamTopic(data.examTopic);
           if (data.tableAnswers) setExamTableAnswers(data.tableAnswers);
           if (data.tableGradingResults) setExamTableGradingResults(data.tableGradingResults);
-          if (data.chatHistory) setChatHistory(data.chatHistory);
-          if (data.tutorAnswers) {
-            setTutorAnswers(prev => {
-              const copy = { ...prev };
-              Object.keys(copy).forEach(k => {
-                if (k.startsWith('e_')) delete copy[k];
+          // Only restore exam tutor states if exam view was active before refresh
+          const savedApp = localStorage.getItem('anti_app_state');
+          let isExamActive = false;
+          try {
+            if (savedApp) {
+              const parsed = JSON.parse(savedApp);
+              isExamActive = !!parsed.showExam;
+            }
+          } catch (e) {}
+
+          if (isExamActive) {
+            if (data.chatHistory) setChatHistory(data.chatHistory);
+            if (data.tutorAnswers) {
+              setTutorAnswers(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('e_')) delete copy[k];
+                });
+                return { ...copy, ...data.tutorAnswers };
               });
-              return { ...copy, ...data.tutorAnswers };
-            });
-          }
-          if (data.tutorInputText) {
-            setTutorInputText(prev => {
-              const copy = { ...prev };
-              Object.keys(copy).forEach(k => {
-                if (k.startsWith('e_')) delete copy[k];
+            }
+            if (data.tutorInputText) {
+              setTutorInputText(prev => {
+                const copy = { ...prev };
+                Object.keys(copy).forEach(k => {
+                  if (k.startsWith('e_')) delete copy[k];
+                });
+                return { ...copy, ...data.tutorInputText };
               });
-              return { ...copy, ...data.tutorInputText };
-            });
+            }
           }
           
           // 로컬 진행상황 병합/보완 (새로고침 시 입력했던 주관식 답안 유실 방지)
@@ -9875,6 +9887,25 @@ export default function App() {
         if (d.savedExamScroll) savedExamScroll.current = d.savedExamScroll;
         if (d.tableAnswers) setExamTableAnswers(d.tableAnswers);
         if (d.tableGradingResults) setExamTableGradingResults(d.tableGradingResults);
+        if (d.chatHistory) setChatHistory(d.chatHistory);
+        if (d.tutorAnswers) {
+          setTutorAnswers(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith('e_')) delete copy[k];
+            });
+            return { ...copy, ...d.tutorAnswers };
+          });
+        }
+        if (d.tutorInputText) {
+          setTutorInputText(prev => {
+            const copy = { ...prev };
+            Object.keys(copy).forEach(k => {
+              if (k.startsWith('e_')) delete copy[k];
+            });
+            return { ...copy, ...d.tutorInputText };
+          });
+        }
         
         setLoadingExam(false);
         requestAnimationFrame(() => {

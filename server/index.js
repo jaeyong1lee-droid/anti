@@ -7088,7 +7088,7 @@ app.post('/api/session/review', async (req, res) => {
 
     // Safe UPSERT (prevents concurrent unique key violations)
     await saveSessionValue(key, value);
-    res.json({ ok: true });
+    res.json({ success: true, ok: true });
   } catch (err) {
     console.error('POST /api/session/review error:', err);
     res.status(500).json({ error: err.message });
@@ -7114,6 +7114,7 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
 
 // GET /api/session/completed-review/:scheduleId → 특정 복습 회차의 저장된 풀이 문제, 객관식 마크 및 주관식 열람 이력 반환
 app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const scheduleId = req.params.scheduleId;
   try {
     await ensureSessionTable();
@@ -7138,6 +7139,7 @@ app.get('/api/session/completed-review/:scheduleId', async (req, res) => {
 
 // GET /api/session/completed-review/by-topic/:topicId → 특정 토픽의 가장 최근 완료된 복습 상세 풀이 기록 반환
 app.get('/api/session/completed-review/by-topic/:topicId', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const topicId = parseInt(req.params.topicId, 10);
   if (isNaN(topicId)) {
     return res.status(400).json({ error: '유효한 topicId가 아닙니다.' });
