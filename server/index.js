@@ -7529,6 +7529,10 @@ async function replenishLockscreenPool(req) {
       }
     }
 
+    // Combine recent questions with questions currently in the pool to prevent duplicates
+    const currentPoolQuestionTexts = pool.map(q => q.question);
+    const combinedRecent = [...new Set([...currentPoolQuestionTexts, ...recentQuestions])];
+
     const rows = await dbQuery.all("SELECT value FROM app_session WHERE key = 'formula_questions'");
     let formulaQuestions = [];
     if (rows.length > 0 && rows[0].value) {
@@ -7595,7 +7599,7 @@ async function replenishLockscreenPool(req) {
       callLLM, 
       needCount, 
       LOCKSCREEN_STANDARDS,
-      recentQuestions
+      combinedRecent
     );
 
     if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
@@ -7673,12 +7677,33 @@ app.post('/api/lockscreen/solve', async (req, res) => {
       }
     }
 
+    // Find the solved question
+    const solvedQuestion = pool.find(q => q.id === id);
     // Filter out the solved question
     const updatedPool = pool.filter(q => q.id !== id);
 
     // Save back to DB
     await saveSessionValue('lockscreen_pregenerated_pool', JSON.stringify(updatedPool));
     console.log(`[Lockscreen Solve] Solved question ${id}. Remaining pool size: ${updatedPool.length}`);
+
+    // Add solved question to recent_lockscreen_questions to prevent duplicate generation
+    if (solvedQuestion && solvedQuestion.question) {
+      let recentQuestions = [];
+      const recentRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['recent_lockscreen_questions']);
+      if (recentRows.length > 0 && recentRows[0].value) {
+        try {
+          recentQuestions = JSON.parse(recentRows[0].value) || [];
+        } catch (e) {
+          console.warn('Failed to parse recent lockscreen questions:', e);
+        }
+      }
+      
+      let updatedRecent = [solvedQuestion.question, ...recentQuestions];
+      if (updatedRecent.length > 30) {
+        updatedRecent = updatedRecent.slice(0, 30);
+      }
+      await saveSessionValue('recent_lockscreen_questions', JSON.stringify(updatedRecent));
+    }
 
     // Trigger non-blocking replenishment to top the pool back up to 5 questions in the background
     replenishLockscreenPool(req).catch(err => {
@@ -7815,8 +7840,12 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
     }
 
+    // Combine recent questions with questions currently in the pool to prevent duplicates
+    const currentPoolQuestionTexts = pool.map(q => q.question);
+    const combinedRecent = [...new Set([...currentPoolQuestionTexts, ...recentQuestions])];
+
     // 3. Generate quiz using both formula and topic candidates
-    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${finalTopicCandidates.length} topics. (Duplicate prevention count: ${recentQuestions.length})`);
+    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${finalTopicCandidates.length} topics. (Duplicate prevention count: ${combinedRecent.length})`);
     const callLLM = getCallLLM(req);
     const generatedQuestions = await generateDailyLockscreenQuestions(
       formulaCandidates, 
@@ -7824,7 +7853,7 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       callLLM, 
       count, 
       LOCKSCREEN_STANDARDS,
-      recentQuestions
+      combinedRecent
     );
 
     // 4. Update recent lockscreen questions in DB (keep last 30 questions)
