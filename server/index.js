@@ -9054,7 +9054,7 @@ async function backfillPastScheduleScores() {
 async function migrateLegacySessionKeys() {
   console.log('[Migration] Starting legacy session keys migration to absolute session ID format...');
   try {
-    const rows = await dbQuery.all(`SELECT id, key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`);
+    const rows = await dbQuery.all(`SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`);
     console.log(`[Migration] Found ${rows.length} total review schedule session records.`);
     
     let migratedCount = 0;

@@ -6594,6 +6594,7 @@ export default function App() {
 
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
   const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
+    await forceSaveActiveSessions();
     const activeInfo = {
       topicId,
       title: topicTitle,
@@ -6972,6 +6973,8 @@ export default function App() {
       console.log('[handleOpenAIQuestions] Denied: Concurrency lock active.');
       return;
     }
+    // Save current active session progress before starting the new one!
+    await forceSaveActiveSessions();
     loadingTopicLockRef.current = true;
 
     setShowAnswerSheet(false);
