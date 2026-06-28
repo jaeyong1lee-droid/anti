@@ -526,6 +526,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
     const startsWithKoreanParticle = (nextText) => {
       if (!nextText) return false;
       const trimmed = nextText.trim();
+      // 닫는 괄호로 시작하면 수식이 괄호 안에 포함된 것이므로 블록 승격 방지
+      if (/^[)\]】」』》]/.test(trimmed)) return true;
       return /^(?:일\s*때|이므로|이고|이며|와\b|과\b|은\b|는\b|이\b|가\b|을\b|를\b|의\b|에\b|로\b|으로\b|라\s*하면|라\s*할\s*때|에\s*대입|을\s*대입|를\s*대입|의\s*값|을\s*구하면|를\s*구하면|에서\b|보다\b|처럼\b|하고\b|하며\b|의\s*형태|으로\s*정의)/.test(trimmed);
     };
 
@@ -561,8 +563,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
           const trimmedSep = separator.trim();
           const isSepSpaceOrComma = trimmedSep === '' || trimmedSep === ',';
           const isSepShortParenthesis = trimmedSep.startsWith('(') && trimmedSep.endsWith(')') && trimmedSep.length <= 20;
+          // 단위+쉼표 구분자 (예: "kPa,", "m,") → 연속 관계식 그룹으로 병합 허용
+          const isSepUnitComma = trimmedSep.length > 0 && trimmedSep.length <= 15 && /,$/.test(trimmedSep) && !/[\uAC00-\uD7A3]/.test(trimmedSep);
           
-          if (isRelation[nextIdx] && (isSepSpaceOrComma || isSepShortParenthesis)) {
+          if (isRelation[nextIdx] && (isSepSpaceOrComma || isSepShortParenthesis || isSepUnitComma)) {
             group.push(nextIdx);
             nextIdx += 2;
           } else {
@@ -620,6 +624,10 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
       }
       
       if (isElevated) {
+        // 블록 수식 앞에 텍스트가 있으면 줄바꿈을 삽입하여 한글 줄 감지와 분리
+        if (rebuilt && rebuilt.length > 0 && !rebuilt.endsWith('\n')) {
+          rebuilt += '\n\n';
+        }
         rebuilt += `$$${formula}$$`;
       } else {
         rebuilt += `$${formula}$`;

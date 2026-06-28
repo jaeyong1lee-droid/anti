@@ -1502,7 +1502,18 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   const rawLines = cleanedText.split('\n');
   const processedLines = rawLines.map(line => {
     if (/[\uAC00-\uD7A3]/.test(line)) {
-      return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, '$$$1$');
+      return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, formula, offset) => {
+        // 복잡한 수식(분수, 시그마, 적분 등)은 블록 디스플레이 유지
+        if (/\\(?:d?frac|sum|int|prod|log|ln|sqrt|begin|end|matrix|array|left|right)/.test(formula)) {
+          return match;
+        }
+        // 문장 종결 부호 뒤의 수식은 블록 유지 (줄바꿈 가운데 정렬 대상)
+        const before = line.substring(0, offset).trim();
+        if (/[.!?]\s*$/.test(before)) {
+          return match;
+        }
+        return `$${formula}$`;
+      });
     }
     return line;
   });
