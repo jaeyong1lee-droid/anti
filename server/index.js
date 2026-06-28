@@ -9456,17 +9456,26 @@ async function syncStandardsFromProduction() {
 async function applyScorePatch() {
   console.log('[DB Patch] Running temporary score patch...');
   try {
-    const topic = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%탄소성보법%'");
-    if (topic) {
-      console.log(`[DB Patch] Found target topic id: ${topic.id}`);
-      // score가 0이거나 null인 completed 스케줄을 70점으로 패치
-      const updateRes = await dbQuery.run(
+    // 1) 탄소성보법 토픽 점수 복원
+    const topic1 = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%탄소성보법%'");
+    if (topic1) {
+      console.log(`[DB Patch] Found topic1 id: ${topic1.id}`);
+      const updateRes1 = await dbQuery.run(
         "UPDATE schedules SET score = 70 WHERE topic_id = ? AND (score = 0 OR score IS NULL) AND status = 'completed'",
-        [topic.id]
+        [topic1.id]
       );
-      console.log(`[DB Patch] Updated ${updateRes.changes} schedules to 70 points.`);
-    } else {
-      console.log("[DB Patch] Target topic '탄소성보법' not found.");
+      console.log(`[DB Patch] Updated ${updateRes1.changes} schedules for topic1.`);
+    }
+
+    // 2) prandtl_s_bearing_capacity_theory_report 토픽 0점 -> 70점 복원
+    const topic2 = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%prandtl_s_bearing_capacity_theory_report%'");
+    if (topic2) {
+      console.log(`[DB Patch] Found topic2 id: ${topic2.id}`);
+      const updateRes2 = await dbQuery.run(
+        "UPDATE schedules SET score = 70 WHERE topic_id = ? AND score >= 0 AND score <= 1.0 AND status = 'completed'",
+        [topic2.id]
+      );
+      console.log(`[DB Patch] Updated ${updateRes2.changes} schedules for topic2.`);
     }
   } catch (err) {
     console.error('[DB Patch] Score patch error:', err.message);
