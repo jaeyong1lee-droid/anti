@@ -5728,7 +5728,7 @@ export default function App() {
         if (isUserTyping) return;
 
         try {
-          const res = await fetch(`${API_BASE}/api/session/review?topicId=${selectedTopic.id}&scheduleId=${selectedTopic.schedule_id || ''}`);
+          const res = await fetch(`${API_BASE}/api/session/review?topicId=${selectedTopic.id}&scheduleId=${selectedTopic.schedule_id || ''}&sessionId=${reviewSessionId || ''}`);
           const resData = await res.json();
           if (resData.success && resData.data) {
             const server = resData.data;
@@ -5765,7 +5765,7 @@ export default function App() {
               const serverSolved = countSolved(server.selectedAnswers, server.tableAnswers, server.tutorInputText);
 
               const isSessionIdMatch = (server.sessionId || '') === reviewSessionId;
-              if (!isSessionIdMatch || serverSolved >= localSolved) {
+              if (isSessionIdMatch && serverSolved >= localSolved) {
                 console.log(`[Realtime Sync] Overwriting local review state (Session ID Match: ${isSessionIdMatch}, ServerSolved: ${serverSolved}, LocalSolved: ${localSolved})`);
                 if (server.sessionId) setReviewSessionId(server.sessionId);
                 if (server.questions && Array.isArray(server.questions)) {
@@ -5779,6 +5779,8 @@ export default function App() {
                 setTutorAnswers(server.tutorAnswers || {});
                 setTutorInputText(server.tutorInputText || {});
                 setChatHistory(server.chatHistory || []);
+              } else if (!isSessionIdMatch) {
+                console.warn(`[Realtime Sync] Session ID mismatch. Server: ${server.sessionId}, Local: ${reviewSessionId}. Bypassing overwrite to protect active state.`);
               } else {
                 console.log(`[Realtime Sync] Local review state has more progress (${localSolved}) than server (${serverSolved}). Skipping overwrite.`);
               }
