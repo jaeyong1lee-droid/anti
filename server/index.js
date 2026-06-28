@@ -163,7 +163,7 @@ function reportValidationProgress(progressId, total) {
 }
 
 function getCallLLM(req) {
-  const progressId = req.query.progressId || req.body.progressId;
+  const progressId = req && (req.query?.progressId || req.body?.progressId);
   return (sys, prompt, img, scenario, opts) => 
     callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
 }
@@ -7431,6 +7431,137 @@ app.post('/api/options/:key', async (req, res) => {
   }
 });
 
+let isLockscreenPoolReplenishing = false;
+
+async function replenishLockscreenPool(req) {
+  if (isLockscreenPoolReplenishing) {
+    console.log('[Lockscreen Pool] Replenishment is already in progress. Skipping.');
+    return;
+  }
+  
+  isLockscreenPoolReplenishing = true;
+  console.log('[Lockscreen Pool] Checking replenishment status...');
+  
+  try {
+    await ensureSessionTable();
+    
+    // Load current pool
+    let pool = [];
+    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+    if (poolRow && poolRow.value) {
+      try {
+        pool = JSON.parse(poolRow.value) || [];
+      } catch (e) {
+        console.warn('Failed to parse lockscreen pool:', e);
+      }
+    }
+    
+    const targetSize = 5;
+    if (pool.length >= targetSize) {
+      console.log(`[Lockscreen Pool] Pool has ${pool.length} questions (target is ${targetSize}). No replenishment needed.`);
+      isLockscreenPoolReplenishing = false;
+      return;
+    }
+    
+    const needCount = targetSize - pool.length;
+    console.log(`[Lockscreen Pool] Current pool size: ${pool.length}. Generating ${needCount} new questions to replenish pool...`);
+    
+    // Load candidates (same logic as sync endpoint)
+    let recentQuestions = [];
+    const recentRows = await dbQuery.all("SELECT value FROM app_session WHERE key = 'recent_lockscreen_questions'");
+    if (recentRows.length > 0 && recentRows[0].value) {
+      try {
+        recentQuestions = JSON.parse(recentRows[0].value) || [];
+      } catch (e) {
+        console.warn('Failed to parse recent lockscreen questions:', e);
+      }
+    }
+
+    const rows = await dbQuery.all("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    let formulaQuestions = [];
+    if (rows.length > 0 && rows[0].value) {
+      try {
+        const parsed = JSON.parse(rows[0].value);
+        formulaQuestions = parsed && Array.isArray(parsed.formulaQuestions) ? parsed.formulaQuestions : [];
+      } catch (e) {
+        console.warn('Failed to parse formula questions:', e);
+      }
+    }
+
+    const formulaLimit = needCount === 1 ? 6 : 12;
+    const formulaCandidates = [...formulaQuestions]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, formulaLimit);
+
+    const allTopics = await dbQuery.all('SELECT id, title, keywords FROM topics');
+    const textExtractionLimit = 12;
+    const shuffledTopics = [...allTopics].sort(() => 0.5 - Math.random());
+    const pickedForText = shuffledTopics.slice(0, textExtractionLimit);
+    
+    const textExtractedCandidates = await Promise.all(
+      pickedForText.map(async (t) => {
+        try {
+          const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
+          const textContent = fullTopic ? await getTopicText(fullTopic) : '';
+          const truncatedText = textContent ? textContent.substring(0, 2000) : '';
+          return {
+            id: t.id,
+            title: t.title,
+            keywords: t.keywords || '',
+            textContent: truncatedText
+          };
+        } catch (err) {
+          return {
+            id: t.id,
+            title: t.title,
+            keywords: t.keywords || '',
+            textContent: ''
+          };
+        }
+      })
+    );
+
+    const remainingTopics = shuffledTopics.slice(textExtractionLimit).map(t => ({
+      id: t.id,
+      title: t.title,
+      keywords: t.keywords || '',
+      textContent: '(생략 - 제목 및 키워드 기반으로 문제 출제 가능)'
+    }));
+
+    const finalTopicCandidates = [...textExtractedCandidates, ...remainingTopics];
+
+    if (formulaCandidates.length === 0 && finalTopicCandidates.length === 0) {
+      console.warn('[Lockscreen Pool] No candidates available to generate new questions.');
+      isLockscreenPoolReplenishing = false;
+      return;
+    }
+
+    const callLLM = getCallLLM(req || { query: {}, body: {} });
+    const generatedQuestions = await generateDailyLockscreenQuestions(
+      formulaCandidates, 
+      finalTopicCandidates, 
+      callLLM, 
+      needCount, 
+      LOCKSCREEN_STANDARDS,
+      recentQuestions
+    );
+
+    if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
+      const updatedPool = [...pool, ...generatedQuestions].map((q, idx) => ({
+        ...q,
+        id: `ls_${idx + 1}`
+      }));
+      
+      await saveSessionValue('lockscreen_pregenerated_pool', JSON.stringify(updatedPool));
+      console.log(`[Lockscreen Pool] Successfully generated and added ${generatedQuestions.length} questions to pregenerated pool. Pool size: ${updatedPool.length}`);
+    }
+  } catch (err) {
+    console.error('[Lockscreen Pool] Replenishment error:', err);
+  } finally {
+    isLockscreenPoolReplenishing = false;
+  }
+}
+
 // GET /api/lockscreen/sync → Get or generate daily lockscreen quiz questions
 app.get('/api/lockscreen/sync', async (req, res) => {
   try {
@@ -7450,6 +7581,43 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       }
     }
 
+    // Try to serve from pre-generated pool
+    const poolRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+    let pool = [];
+    if (poolRow && poolRow.value) {
+      try {
+        pool = JSON.parse(poolRow.value) || [];
+      } catch (e) {
+        console.warn('Failed to parse lockscreen pool:', e);
+      }
+    }
+
+    if (pool.length >= count) {
+      const shuffledPool = [...pool].sort(() => 0.5 - Math.random());
+      const selected = shuffledPool.slice(0, count);
+      const remaining = shuffledPool.slice(count).map((q, idx) => ({ ...q, id: `ls_${idx + 1}` }));
+      
+      await saveSessionValue('lockscreen_pregenerated_pool', JSON.stringify(remaining));
+      
+      if (selected.length > 0) {
+        const newQTexts = selected.map(q => q.question);
+        let updatedRecent = [...newQTexts, ...recentQuestions];
+        if (updatedRecent.length > 30) {
+          updatedRecent = updatedRecent.slice(0, 30);
+        }
+        await saveSessionValue('recent_lockscreen_questions', JSON.stringify(updatedRecent));
+      }
+
+      // Trigger background replenishment (non-blocking)
+      replenishLockscreenPool(req).catch(err => console.error('[Lockscreen Sync] Replenish background error:', err));
+
+      console.log(`[Lockscreen Sync] Served ${count} questions from pre-generated pool. Remaining: ${remaining.length}`);
+      return res.json({ success: true, questions: selected });
+    }
+
+    // Fallback: Synchronous generation if pool is empty/insufficient
+    console.log(`[Lockscreen Sync] Pregenerated pool is insufficient (${pool.length}/${count}). Generating synchronously...`);
+    
     // 1. Fetch formula questions
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
     let formulaQuestions = [];
@@ -7464,7 +7632,6 @@ app.get('/api/lockscreen/sync', async (req, res) => {
 
     // 대폭 늘어난 후보군 수 (다양성 확보)
     const formulaLimit = count === 1 ? 6 : 12;
-    const topicLimit = count === 1 ? 4 : 8;
 
     // Pick random formula candidates
     const formulaCandidates = [...formulaQuestions]
@@ -7539,6 +7706,9 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       }
       await saveSessionValue('recent_lockscreen_questions', JSON.stringify(updatedRecent));
     }
+
+    // Trigger pool replenishment to fill up the pool in background
+    replenishLockscreenPool(req).catch(err => console.error('[Lockscreen Sync] Replenish background error:', err));
 
     return res.json({ success: true, questions: generatedQuestions });
   } catch (err) {
@@ -9190,6 +9360,9 @@ async function startServer() {
       
       // Start automatic 3-day backup scheduler for Neon PostgreSQL
       startBackupScheduler();
+
+      // Pregenerate/replenish lockscreen pool on startup in background
+      replenishLockscreenPool(null).catch(err => console.error('Startup pool replenishment failed:', err));
     });
   } catch (err) {
     console.error('Failed to start application server listener:', err);
