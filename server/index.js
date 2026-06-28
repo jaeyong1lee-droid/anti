@@ -7529,6 +7529,17 @@ app.get('/api/lockscreen/sync', async (req, res) => {
     
     const count = parseInt(req.query.count || '1', 10);
     
+    // 0. Fetch recent lockscreen questions to avoid duplication
+    let recentQuestions = [];
+    const recentRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['recent_lockscreen_questions']);
+    if (recentRows.length > 0 && recentRows[0].value) {
+      try {
+        recentQuestions = JSON.parse(recentRows[0].value) || [];
+      } catch (e) {
+        console.warn('Failed to parse recent lockscreen questions:', e);
+      }
+    }
+
     // 1. Fetch formula questions
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
     let formulaQuestions = [];
@@ -7541,47 +7552,69 @@ app.get('/api/lockscreen/sync', async (req, res) => {
       }
     }
 
-    const formulaLimit = count === 1 ? 2 : 5;
-    const topicLimit = count === 1 ? 1 : 3;
+    // 대폭 늘어난 후보군 수 (다양성 확보)
+    const formulaLimit = count === 1 ? 6 : 12;
+    const topicLimit = count === 1 ? 4 : 8;
 
     // Pick random formula candidates
     const formulaCandidates = [...formulaQuestions]
       .sort(() => 0.5 - Math.random())
       .slice(0, formulaLimit);
 
-    // 2. Fetch topics to extract standard criteria / quantitative values
-    const topicRows = await dbQuery.all('SELECT id, title, keywords FROM topics');
-    const pickedTopics = [...topicRows]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, topicLimit);
+    // 2. Fetch all topics to extract standard criteria / quantitative values without any slice limits
+    const pickedTopics = await dbQuery.all('SELECT * FROM topics');
 
-    const topicCandidates = [];
-    for (const t of pickedTopics) {
-      const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
-      if (fullTopic) {
+    const topicCandidates = await Promise.all(
+      pickedTopics.map(async (t) => {
         try {
-          const textContent = await getTopicText(fullTopic);
+          const textContent = await getTopicText(t);
           const truncatedText = textContent ? textContent.substring(0, 3000) : '';
-          topicCandidates.push({
-            id: fullTopic.id,
-            title: fullTopic.title,
-            keywords: fullTopic.keywords || '',
+          return {
+            id: t.id,
+            title: t.title,
+            keywords: t.keywords || '',
             textContent: truncatedText
-          });
+          };
         } catch (err) {
-          console.warn(`Failed to extract text for topic ID ${fullTopic.id} inside lockscreen sync:`, err);
+          console.warn(`Failed to extract text for topic ID ${t.id} inside lockscreen sync:`, err);
+          return {
+            id: t.id,
+            title: t.title,
+            keywords: t.keywords || '',
+            textContent: ''
+          };
         }
-      }
-    }
+      })
+    );
 
     if (formulaCandidates.length === 0 && topicCandidates.length === 0) {
       return res.status(404).json({ success: false, error: '등록된 필수 공식이나 학습 토픽이 없습니다. 문제를 생성할 후보 데이터가 부족합니다.' });
     }
 
     // 3. Generate quiz using both formula and topic candidates
-    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics...`);
+    console.log(`[Lockscreen Quiz] Generating ${count} questions using ${formulaCandidates.length} formulas and ${topicCandidates.length} topics. (Duplicate prevention count: ${recentQuestions.length})`);
     const callLLM = getCallLLM(req);
-    const generatedQuestions = await generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLM, count, LOCKSCREEN_STANDARDS);
+    const generatedQuestions = await generateDailyLockscreenQuestions(
+      formulaCandidates, 
+      topicCandidates, 
+      callLLM, 
+      count, 
+      LOCKSCREEN_STANDARDS,
+      recentQuestions
+    );
+
+    // 4. Update recent lockscreen questions in DB (keep last 30 questions)
+    if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
+      const newQTexts = generatedQuestions.map(q => q.question);
+      let updatedRecent = [...newQTexts, ...recentQuestions];
+      if (updatedRecent.length > 30) {
+        updatedRecent = updatedRecent.slice(0, 30);
+      }
+      await dbQuery.run(
+        'REPLACE INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        ['recent_lockscreen_questions', JSON.stringify(updatedRecent)]
+      );
+    }
 
     return res.json({ success: true, questions: generatedQuestions });
   } catch (err) {

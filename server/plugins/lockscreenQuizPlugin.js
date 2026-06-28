@@ -7,7 +7,7 @@ import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
  * @param {Function} callLLMWithFailover LLM call utility
  * @returns {Promise<Array>} List of generated multiple-choice questions
  */
-export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover, count = 1, lockscreenInstructionsPrompt = '') {
+export async function generateDailyLockscreenQuestions(formulaCandidates, topicCandidates, callLLMWithFailover, count = 1, lockscreenInstructionsPrompt = '', recentQuestions = []) {
   if ((!Array.isArray(formulaCandidates) || formulaCandidates.length === 0) && (!Array.isArray(topicCandidates) || topicCandidates.length === 0)) {
     throw new Error('No candidate data available to generate quiz');
   }
@@ -35,6 +35,16 @@ ${t.textContent}`;
     }).join('\n\n') + '\n\n';
   }
 
+  // 중복 배제 목록 프롬프트 텍스트 빌드
+  let duplicatePreventionText = '';
+  if (Array.isArray(recentQuestions) && recentQuestions.length > 0) {
+    duplicatePreventionText = `
+[🚨 중복 출제 금지 목록 (Duplicate Prevention List)]:
+아래 나열된 질문들은 최근에 이미 출제된 문제입니다. 이 질문들이나 질문 내 핵심 대상 수치, 공식 명칭과 "유사하거나 동일한 패턴의 질문"은 절대로 새로 출제해서는 안 됩니다. 완전히 다른 공식, 정량적 기준 수치, 또는 개념을 선정하여 새로운 유형의 문제를 만드십시오:
+${recentQuestions.map((qText, idx) => `- (${idx + 1}) ${qText}`).join('\n')}
+`;
+  }
+
   const systemInstruction = `당신은 대한민국 토목공학, 지반공학, 구조공학 등 기술사 시험 출제위원입니다.
 제시된 공식 후보군 및 토픽 본문 텍스트 데이터를 기반으로, 수험생이 화면 잠금을 해제할 때 풀 수 있는 객관식(3지선다형) 퀴즈 ${count}문제를 출제하십시오.
 질문의 유형, 보기의 형태, 수치 질문 대상을 매번 다양하게 변형하여 출제해 주십시오.
@@ -47,6 +57,7 @@ ${t.textContent}`;
   const userPrompt = `
 [대상 후보군]:
 ${candidateText}
+${duplicatePreventionText}
 
 [출제 요구사항]:
 1. **🚨 [최우선 준수 사항: 동적 출제 지침 기준 극대화 반영]**:
@@ -82,7 +93,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ]
 `;
 
-  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+  const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula', { temperature: 0.9 });
   let text = responseText.trim();
   if (text.startsWith('```')) {
     text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
