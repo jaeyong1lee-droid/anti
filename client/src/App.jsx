@@ -19701,17 +19701,29 @@ export default function App() {
                       <span className="text-xs font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
                     </div>
                     {(!isDesktop && !isMobileLandscape) && (
-                      <button
-                        onClick={() => {
-                          handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                          setShowFormulaExam(false);
-                          setViewMode('dashboard');
-                        }}
-                        className="flex items-center gap-1.5 text-[10px] font-black py-1 px-2.5 rounded-lg border border-slate-800 bg-slateCustom-900/60 text-slate-350 hover:text-white transition-all cursor-pointer"
-                      >
-                        <Calendar size={11} className="text-slate-400" />
-                        <span>오늘의 복습</span>
-                      </button>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            if (window.confirm("AI 튜터와의 모든 대화 기록을 지우시겠습니까?")) {
+                              saveFormulaChatHistory([]);
+                            }
+                          }}
+                          className="flex items-center gap-1.5 text-[10px] font-black py-1 px-2.5 rounded-lg border border-rose-950/60 bg-rose-950/40 text-rose-300 hover:text-white transition-all cursor-pointer"
+                        >
+                          <span>클린</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                            setShowFormulaExam(false);
+                            setViewMode('dashboard');
+                          }}
+                          className="flex items-center gap-1.5 text-[10px] font-black py-1 px-2.5 rounded-lg border border-slate-800 bg-slateCustom-900/60 text-slate-350 hover:text-white transition-all cursor-pointer"
+                        >
+                          <Calendar size={11} className="text-slate-400" />
+                          <span>오늘의 복습</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
