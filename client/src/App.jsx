@@ -5583,18 +5583,7 @@ export default function App() {
   // ── Save state to localStorage whenever key state changes (debounced for performance)
   useEffect(() => {
     if (!selectedTopic) {
-      if (restoringReviewSession) return;
-      try {
-        const saved = localStorage.getItem('anti_app_state');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          parsed.selectedTopic = null;
-          parsed.aiQuestions = [];
-          localStorage.setItem('anti_app_state', JSON.stringify(parsed));
-        }
-      } catch (e) {
-        console.warn('anti_app_state selectedTopic 즉시 비우기 실패:', e);
-      }
+      // 닫기를 누르거나 다른 메뉴로 이탈하더라도, 로컬스토리지 백업 데이터(anti_app_state)를 지우지 않고 그대로 보존합니다!
       return;
     }
 
@@ -6926,6 +6915,39 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null, isRestore = false) => {
+    // [🚨 로컬 캐시 즉시 복원 패스 🚨]
+    // 닫기를 누르거나 탭을 이동했다가 다시 진입할 때, 로컬에 저장되어 있던 활성 복습 정보가 일치한다면
+    // 굳이 서버에 재생성 통신을 보내서 로딩하지 않고, 로컬 캐시를 0초 만에 즉각 띄워줍니다!
+    try {
+      const saved = localStorage.getItem('anti_app_state');
+      if (saved) {
+        const s = JSON.parse(saved);
+        const isSameTopic = s.selectedTopic && s.selectedTopic.id === topicId;
+        const isSameSchedule = s.selectedTopic && (String(s.selectedTopic.schedule_id) === String(scheduleId || '') || !scheduleId);
+        if (isSameTopic && isSameSchedule && s.aiQuestions && s.aiQuestions.length > 0) {
+          console.log('[handleOpenAIQuestions] Local App State Hit! Restoring active session instantly without server load.');
+          setSelectedTopic(s.selectedTopic);
+          setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+          setSelectedAnswers(s.selectedAnswers || {});
+          setRevealedQuestions(s.revealedQuestions || {});
+          setTableAnswers(s.tableAnswers || {});
+          setTableGradingResults(s.tableGradingResults || {});
+          setTutorAnswers(s.tutorAnswers || {});
+          setTutorInputText(s.tutorInputText || {});
+          setChatHistory(s.chatHistory || []);
+          
+          const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${s.selectedTopic.schedule_id || '9999'}`) || 'legacy_default';
+          setReviewSessionId(activeSid);
+          
+          setLoadingAI(false);
+          setRestoringReviewSession(false);
+          return; // 서버 통신 스킵하고 즉시 복귀!
+        }
+      }
+    } catch (e) {
+      console.warn('[handleOpenAIQuestions] Failed to query local app state for instant restore:', e);
+    }
+
     setShowAnswerSheet(false);
     let finalScheduleId = scheduleId;
     let finalReviewRound = reviewRound;
