@@ -1929,7 +1929,7 @@ app.post('/api/quiz/submit', async (req, res) => {
         const finishedSchedules = await dbQuery.all(
           `SELECT id FROM schedules 
            WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
-           ORDER BY completed_at DESC, id DESC`,
+           ORDER BY review_round DESC`,
           [topicIdInt]
         );
         if (finishedSchedules.length > 2) {
@@ -2091,10 +2091,11 @@ app.get('/api/topics', async (req, res) => {
     const topicsWithSchedules = [];
     for (const topic of topics) {
       const scheduleSql = `
-        SELECT id, review_round, planned_date, completed_at, status, score, correct_count, total_count
-        FROM schedules
-        WHERE topic_id = ?
-        ORDER BY review_round ASC
+        SELECT s.id, s.review_round, s.planned_date, s.completed_at, s.status, s.score, s.correct_count, s.total_count,
+               CASE WHEN (SELECT 1 FROM app_session WHERE key = 'completed_review_schedule_' || s.id) IS NOT NULL THEN 1 ELSE 0 END AS has_session
+        FROM schedules s
+        WHERE s.topic_id = ?
+        ORDER BY s.review_round ASC
       `;
       const schedules = await dbQuery.all(scheduleSql, [topic.id]);
       topicsWithSchedules.push({
@@ -9573,7 +9574,7 @@ async function cleanupOldReviewSessions() {
       const finished = await dbQuery.all(
         `SELECT id FROM schedules 
          WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
-         ORDER BY completed_at DESC, id DESC`,
+         ORDER BY review_round DESC`,
         [t.id]
       );
       

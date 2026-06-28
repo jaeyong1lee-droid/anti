@@ -13715,7 +13715,7 @@ export default function App() {
                                     .filter(s => (s.status === 'completed' || s.status === 'failed') && s.review_round < 99)
                                     .sort((a, b) => b.review_round - a.review_round)
                                 : [];
-                              const isClickable = sched ? finishedSchedules.slice(0, 2).some(s => s.id === sched.id) : false;
+                              const isClickable = (sched && (sched.has_session === 1 || sched.has_session === true)) ? finishedSchedules.slice(0, 2).some(s => s.id === sched.id) : false;
 
                               return (
                                 <td key={round} className="py-2.5 px-2 text-center">
