@@ -9653,6 +9653,76 @@ app.get('/api/debug-keys', (req, res) => {
   });
 });
 
+app.get('/api/run-patch-3-24', async (req, res) => {
+  console.log('[API Patch] Manual trigger run-patch-3-24 requested.');
+  try {
+    const isForce = req.query.force === 'true';
+    if (!isForce) {
+      const checkLock = await dbQuery.get("SELECT value FROM app_session WHERE key = 'patch_reset_topics_3_24_done'");
+      if (checkLock && checkLock.value === 'true') {
+        return res.json({ success: true, message: 'Reset patch already applied previously. Pass ?force=true to override.' });
+      }
+    }
+
+    const baseDateStr = '2026-06-29 00:00:00';
+    const roundDates = {
+      2: '2026-07-03',
+      3: '2026-07-10',
+      4: '2026-07-24',
+      5: '2026-08-28',
+      6: '2026-10-27',
+    };
+
+    const schedules = await dbQuery.all(
+      "SELECT id, topic_id, review_round, status, score FROM schedules WHERE topic_id >= 3 AND topic_id <= 24 AND review_round < 99"
+    );
+
+    let patchCount1 = 0;
+    let patchCount2 = 0;
+    let deletedSessions = 0;
+
+    for (const s of schedules) {
+      if (s.review_round === 1) {
+        const finalScore = (s.score && s.score > 0) ? s.score : 100;
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'completed', completed_at = ?, score = ? WHERE id = ?",
+          [baseDateStr, finalScore, s.id]
+        );
+        patchCount1++;
+      } else if (s.review_round >= 2 && s.review_round <= 6) {
+        const correctPlannedDate = roundDates[s.review_round];
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'pending', completed_at = NULL, score = NULL, correct_count = NULL, total_count = NULL, planned_date = ? WHERE id = ?",
+          [correctPlannedDate, s.id]
+        );
+        
+        const keysToDelete = [
+          `completed_review_schedule_${s.id}`,
+          `review_questions_schedule_${s.id}`
+        ];
+        for (const k of keysToDelete) {
+          const delRes = await dbQuery.run("DELETE FROM app_session WHERE key = ?", [k]);
+          deletedSessions += delRes.changes || 0;
+        }
+        patchCount2++;
+      }
+    }
+
+    await saveSessionValue('patch_reset_topics_3_24_done', 'true');
+    
+    res.json({
+      success: true,
+      message: 'Successfully patched database.',
+      round1_completed_count: patchCount1,
+      round2_to_6_reset_count: patchCount2,
+      deleted_sessions_count: deletedSessions
+    });
+  } catch (err) {
+    console.error('[API Patch] Manual trigger failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 
 // Express global error handler to prevent raw HTML gateway errors and enforce JSON responses
