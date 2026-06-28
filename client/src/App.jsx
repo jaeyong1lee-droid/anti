@@ -7202,11 +7202,11 @@ export default function App() {
     selectedTopicRef.current = targetTopic;
     
     // Renew session ID for a fresh study round, forcing server to overwrite stale progress.
-    // If it's a restore or there's already an active (uncompleted) session ID stored in localStorage, preserve it!
+    // If it's a restore, re-entry, or there's already an active (uncompleted) session ID stored in localStorage, preserve it!
     let newSid;
     const existingSid = localStorage.getItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`);
-    const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_');
-    if (isRestore || (isAbsoluteSid && existingSid !== 'legacy_default')) {
+    const isAbsoluteSid = existingSid && existingSid.startsWith('sess_topic_') && existingSid.includes('_round_') && existingSid !== 'legacy_default';
+    if (isRestore || isAbsoluteSid) {
       newSid = existingSid || getOrCreateSessionId(topicId, finalScheduleId, finalReviewRound);
       localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, newSid);
     } else {
@@ -7384,7 +7384,8 @@ export default function App() {
           }
         }
 
-        if (finalData.isCached && (finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText)) {
+        const hasProgress = finalData.selectedAnswers || finalData.revealedQuestions || finalData.tableAnswers || finalData.tableGradingResults || finalData.tutorAnswers || finalData.tutorInputText;
+        if (hasProgress) {
           updateSyncTime(new Date());
           updateNeonSyncTime(new Date());
           setSelectedAnswers(finalData.selectedAnswers || {});
