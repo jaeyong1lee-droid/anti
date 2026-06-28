@@ -13766,7 +13766,7 @@ export default function App() {
                                     .filter(s => (s.status === 'completed' || s.status === 'failed') && s.review_round < 99)
                                     .sort((a, b) => b.review_round - a.review_round)
                                 : [];
-                              const isClickable = (sched && (sched.has_session === 1 || sched.has_session === true)) ? finishedSchedules.slice(0, 2).some(s => s.id === sched.id) : false;
+                              const isClickable = sched ? finishedSchedules.slice(0, 2).some(s => s.id === sched.id) : false;
 
                               return (
                                 <td key={round} className="py-2.5 px-2 text-center">
@@ -14583,8 +14583,27 @@ export default function App() {
                     </div>
                   )}
 
-                  {aiQuestions.map((q, idx) => {
-                    const rKey = selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`;
+                  {(selectedTopic?.isReadOnly && aiQuestions.length === 0) ? (
+                    <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800/80 text-center space-y-5 max-w-lg mx-auto shadow-2xl backdrop-blur-md animate-fade-in my-10 w-full select-none">
+                      <div className="mx-auto w-16 h-16 bg-slate-850 text-slate-400 rounded-full flex items-center justify-center border border-slate-800/60 shadow-inner">
+                        <Info size={28} className="text-slate-400" />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-black text-slate-100">복습 상세 기록 만료 안내</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          본 회차는 데이터 보존 정책 또는 일괄 마이그레이션 처리에 의해 상세 풀이 이력(주관식 답변 등)이 저장되지 않았거나 보존 기한이 만료되었습니다.
+                        </p>
+                      </div>
+                      {selectedTopic.score !== undefined && selectedTopic.score !== null && (
+                        <div className="p-4 bg-slate-950/60 border border-slate-900 rounded-xl max-w-xs mx-auto">
+                          <span className="text-[10px] font-black text-slate-500 block uppercase tracking-wider mb-1">최종 획득 성적</span>
+                          <span className="text-xl font-black text-emerald-400 font-mono">{selectedTopic.score}점</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    aiQuestions.map((q, idx) => {
+                      const rKey = selectedTopic ? `r_${selectedTopic.id}_${idx}` : `r_${idx}`;
                     const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
                     const isSubj = !isMC;
                     const answered = selectedAnswers[idx] !== undefined;
@@ -15344,7 +15363,8 @@ export default function App() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                )}
 
                   {(aiQuestions.length > 0 || selectedTopic?.isReadOnly) && (
                     <div className="quiz-card-item text-center py-6">
