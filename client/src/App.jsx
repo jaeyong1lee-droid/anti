@@ -5046,27 +5046,7 @@ export default function App() {
       const saved = localStorage.getItem('anti_app_state');
       if (saved) {
         const s = JSON.parse(saved);
-        if (s.aiQuestions?.length) {
-          const hasCorrupted = s.aiQuestions.some(q => {
-            if (!q) return false;
-            const str = JSON.stringify(q);
-            const containsPrandtl = str.includes("Prandtl") || str.includes("Terzaghi") || str.includes("주면마찰");
-            const isTzQz = q.question && (q.question.includes("t-z") || q.question.includes("t - z") || q.question.includes("q-z") || q.question.includes("q - z"));
-            const isSlimeFriction = q.question && (q.question.includes("슬라임") || q.question.includes("부마찰력"));
-            return containsPrandtl && (isSlimeFriction || !isTzQz);
-          });
-          if (hasCorrupted) {
-            console.log('[Corrupted State Detected] Clearing local storage state and refreshing...');
-            localStorage.removeItem('anti_app_state');
-            if (s.selectedTopic?.schedule_id) {
-              localStorage.removeItem(`anti_review_progress_sched_${s.selectedTopic.schedule_id}`);
-            } else if (s.selectedTopic?.id) {
-              localStorage.removeItem(`anti_review_progress_${s.selectedTopic.id}`);
-            }
-            window.location.reload();
-            return;
-          }
-        }
+
         if (s.viewMode) {
           setViewMode(s.viewMode);
         }
