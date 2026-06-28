@@ -5833,7 +5833,7 @@ export default function App() {
     // 1) Save active review session immediately to localStorage (synchronously)
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
       console.log('[forceSaveActiveSessions] Immediately saving active review session, sessionId:', reviewSessionId);
-      const activeSid = reviewSessionId || 'default';
+      const activeSid = reviewSessionId || 'legacy_default';
       const key = selectedTopic.schedule_id 
         ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
         : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
@@ -14322,7 +14322,7 @@ export default function App() {
                       .catch(e => console.warn('세션 초기화 실패:', e));
 
                     // Remove both schedule-specific and topic-specific progress keys to guarantee complete cleanup
-                    const activeSid = reviewSessionId || 'default';
+                    const activeSid = reviewSessionId || 'legacy_default';
                     if (selectedTopic.schedule_id) {
                       localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`);
                       localStorage.removeItem(`anti_review_progress_sched_${selectedTopic.schedule_id}`);
