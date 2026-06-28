@@ -6687,19 +6687,9 @@ export default function App() {
         if (data.data.tutorInputText) setTutorInputText(data.data.tutorInputText);
         if (data.data.chatHistory) setChatHistory(data.data.chatHistory);
       } else {
-        // [Fallback] 이전 데이터 기록이 존재하지 않는 경우 (업데이트 이전 항목 등), 실시간 API를 통해 가볍게 기출문제만 재조회
-        showNotification(data.error || '이전 풀이 상세 기록이 존재하지 않아 새로 예상문제를 조회합니다.', 'info');
-        const fbRes = await fetch(`${API_BASE}/api/topics/${topicId}/ai-questions`, { method: 'POST' });
-        const fbData = await fbRes.json();
-        if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {
-          console.log(`[handleOpenCompletedReview] Topic changed during fallback. Ignoring loaded data for topicId=${topicId}`);
-          return;
-        }
-        if (fbRes.ok) {
-          setAiQuestions(fbData.questions || []);
-        } else {
-          showNotification('해당 토픽의 예상문제를 로드하지 못했습니다.', 'error');
-        }
+        // [Retention Policy] 최근 2회차 초과 복습 회차이므로 상세 풀이 기록 미표출
+        showNotification('최근 2회차 초과 복습 회차이므로 상세 풀이 기록은 보존 정책에 따라 삭제되었습니다.', 'info');
+        setAiQuestions([]);
       }
     } catch (err) {
       if (selectedTopicRef.current?.id !== topicId || selectedTopicRef.current?.schedule_id !== scheduleId) {

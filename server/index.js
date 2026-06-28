@@ -1923,6 +1923,25 @@ app.post('/api/quiz/submit', async (req, res) => {
         'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
         [solvedSessionKey, solvedSessionValue]
       );
+
+      // [보존정책] 최근 2개 회차를 제외한 이전 오래된 복습 세션 데이터 삭제
+      try {
+        const finishedSchedules = await dbQuery.all(
+          `SELECT id FROM schedules 
+           WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
+           ORDER BY completed_at DESC, id DESC`,
+          [topicIdInt]
+        );
+        if (finishedSchedules.length > 2) {
+          const oldSchedules = finishedSchedules.slice(2);
+          for (const oldSched of oldSchedules) {
+            const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
+          }
+        }
+      } catch (policyErr) {
+        console.warn('[DB Session Policy] Error cleaning up old sessions:', policyErr.message);
+      }
     }
 
     // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
@@ -9471,14 +9490,47 @@ async function applyScorePatch() {
     const topic2 = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%prandtl_s_bearing_capacity_theory_report%'");
     if (topic2) {
       console.log(`[DB Patch] Found topic2 id: ${topic2.id}`);
+      // 5/31 및 6/9 완료 회차의 스케줄 점수를 70점으로 패치
       const updateRes2 = await dbQuery.run(
-        "UPDATE schedules SET score = 70 WHERE topic_id = ? AND score >= 0 AND score <= 1.0 AND status = 'completed'",
+        "UPDATE schedules SET score = 70 WHERE topic_id = ? AND (planned_date = '2026-05-31' OR planned_date = '2026-06-09') AND status = 'completed'",
         [topic2.id]
       );
       console.log(`[DB Patch] Updated ${updateRes2.changes} schedules for topic2.`);
     }
   } catch (err) {
     console.error('[DB Patch] Score patch error:', err.message);
+  }
+}
+
+// [DB Session Policy] 전체 토픽에 대해 최근 2회차를 제외한 과거 복습 세션 데이터 일괄 삭제
+async function cleanupOldReviewSessions() {
+  console.log('[DB Session Policy] Cleaning up old review session data globally...');
+  try {
+    const topics = await dbQuery.all("SELECT id FROM topics");
+    let deletedCount = 0;
+    
+    for (const t of topics) {
+      const finished = await dbQuery.all(
+        `SELECT id FROM schedules 
+         WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
+         ORDER BY completed_at DESC, id DESC`,
+        [t.id]
+      );
+      
+      if (finished.length > 2) {
+        const oldSchedules = finished.slice(2);
+        for (const oldSched of oldSchedules) {
+          const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
+          const res = await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
+          if (res.changes > 0) {
+            deletedCount += res.changes;
+          }
+        }
+      }
+    }
+    console.log(`[DB Session Policy] Globally deleted ${deletedCount} old review session keys.`);
+  } catch (err) {
+    console.error('[DB Session Policy] Global cleanup error:', err.message);
   }
 }
 
@@ -9507,6 +9559,7 @@ async function startServer() {
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
     await applyScorePatch();
+    await cleanupOldReviewSessions();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -9565,6 +9618,7 @@ if (!process.env.VERCEL) {
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
     await applyScorePatch();
+    await cleanupOldReviewSessions();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;
