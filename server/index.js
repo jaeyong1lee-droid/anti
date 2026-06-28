@@ -209,7 +209,7 @@ app.get('/api/preferred-model', async (req, res) => {
 
 app.post('/api/preferred-model', async (req, res) => {
   const { model } = req.body;
-  if (model === 'gemini-3.1-flash-lite' || model === 'gemini-3.5-flash') {
+  if (typeof model === 'string' && model.startsWith('gemini-')) {
     globalPreferredModel = model;
     try {
       await saveSessionValue('preferred_model', model);
@@ -580,7 +580,7 @@ function extractFirstImageFromTopic(topic) {
 }
 
 // Helper: Extract text from topic (supports PDF, HTML, and Images via Gemini OCR with caching)
-async function getTopicText(topic) {
+export async function getTopicText(topic) {
   if (!topic || !topic.pdf_data) {
     return '수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.';
   }
@@ -773,7 +773,7 @@ function extractJsonArray(str) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
+export async function callLLMWithFailover(systemInstruction, userPrompt, image = null, scenario = 'default', options = {}) {
   // [성능 최적화] 매 호출마다 DB를 조회하는 대신, 이미 GET/POST 엔드포인트에서 갱신 및 캐싱되고 있는 globalPreferredModel 값을 바로 사용합니다.
 
   // 1. API 키 취득 및 정규화
@@ -806,10 +806,19 @@ async function callLLMWithFailover(systemInstruction, userPrompt, image = null, 
       executionList.push({ key: k.key, label: k.label, model: 'grok-2', type: 'grok' });
     } else {
       // Gemini models (preferred first, then stable fallbacks, grouped by key)
-      executionList.push({ key: k.key, label: k.label, model: 'gemini-3.1-flash-lite', type: 'gemini' });
-      executionList.push({ key: k.key, label: k.label, model: 'gemini-1.5-flash', type: 'gemini' });
-      executionList.push({ key: k.key, label: k.label, model: 'gemini-2.0-flash', type: 'gemini' });
-      executionList.push({ key: k.key, label: k.label, model: 'gemini-3.5-flash', type: 'gemini' });
+      const geminiFallbacks = [
+        globalPreferredModel,
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
+      ];
+      const uniqueModels = [...new Set(geminiFallbacks.filter(Boolean))];
+      for (const modelName of uniqueModels) {
+        executionList.push({ key: k.key, label: k.label, model: modelName, type: 'gemini' });
+      }
     }
   }
 
