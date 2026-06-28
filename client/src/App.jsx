@@ -15292,7 +15292,7 @@ export default function App() {
                       <span>calc</span>
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                           setChatHistory([]);
                           setTutorAnswers({});
@@ -15312,7 +15312,7 @@ export default function App() {
                           } catch (e) {
                             console.warn('Failed to clean anti_app_state:', e);
                           }
-                          forceSaveActiveSessions(false, true, {
+                          await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
                             tutorInputText: {}
@@ -17249,7 +17249,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                     setChatHistory([]);
                     setTutorAnswers({});
@@ -17269,7 +17269,7 @@ export default function App() {
                     } catch (e) {
                       console.warn('Failed to clean anti_app_state:', e);
                     }
-                    forceSaveActiveSessions(false, true, {
+                    await forceSaveActiveSessions(false, true, {
                       chatHistory: [],
                       tutorAnswers: {},
                       tutorInputText: {}
@@ -18403,7 +18403,7 @@ export default function App() {
                       <span>calc</span>
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (window.confirm("튜터 대화 기록과 저장된 캐시 찌꺼기를 모두 삭제하시겠습니까?")) {
                           setChatHistory([]);
                           setTutorAnswers({});
@@ -18423,7 +18423,7 @@ export default function App() {
                           } catch (e) {
                             console.warn('Failed to clean anti_app_state:', e);
                           }
-                          forceSaveActiveSessions(false, true, {
+                          await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
                             tutorInputText: {}

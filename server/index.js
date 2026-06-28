@@ -6882,21 +6882,32 @@ app.get('/api/session/review', async (req, res) => {
     }
 
     let isCompletedOrFailed = false;
+    let targetScheduleId = null;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      const scheduleIdInt = parseInt(scheduleId, 10);
-      if (!isNaN(scheduleIdInt)) {
-        const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
-        if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-          isCompletedOrFailed = true;
-        }
+      targetScheduleId = parseInt(scheduleId, 10);
+    }
+
+    if (!targetScheduleId && topicId) {
+      const latestSched = await dbQuery.get(
+        `SELECT id, status FROM schedules WHERE topic_id = ? ORDER BY id DESC LIMIT 1`,
+        [topicId]
+      );
+      if (latestSched && (latestSched.status === 'completed' || latestSched.status === 'failed')) {
+        targetScheduleId = latestSched.id;
+        isCompletedOrFailed = true;
+      }
+    } else if (targetScheduleId) {
+      const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [targetScheduleId]);
+      if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+        isCompletedOrFailed = true;
       }
     }
 
     const sId = req.query.sessionId || 'legacy_default';
     const key = isCompletedOrFailed
-      ? `completed_review_schedule_${scheduleId}`
-      : (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-          ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+      ? `completed_review_schedule_${targetScheduleId}`
+      : (targetScheduleId
+          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
           : `review_questions_topic_${topicId}_sess_${sId}`);
     
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
@@ -7003,21 +7014,32 @@ app.post('/api/session/review', async (req, res) => {
     }
 
     let isCompletedOrFailed = false;
+    let targetScheduleId = null;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      const scheduleIdInt = parseInt(scheduleId, 10);
-      if (!isNaN(scheduleIdInt)) {
-        const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [scheduleIdInt]);
-        if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-          isCompletedOrFailed = true;
-        }
+      targetScheduleId = parseInt(scheduleId, 10);
+    }
+
+    if (!targetScheduleId && topicId) {
+      const latestSched = await dbQuery.get(
+        `SELECT id, status FROM schedules WHERE topic_id = ? ORDER BY id DESC LIMIT 1`,
+        [topicId]
+      );
+      if (latestSched && (latestSched.status === 'completed' || latestSched.status === 'failed')) {
+        targetScheduleId = latestSched.id;
+        isCompletedOrFailed = true;
+      }
+    } else if (targetScheduleId) {
+      const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [targetScheduleId]);
+      if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
+        isCompletedOrFailed = true;
       }
     }
 
     const sId = sessionId || 'legacy_default';
     const key = isCompletedOrFailed
-      ? `completed_review_schedule_${scheduleId}`
-      : (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-          ? `review_questions_schedule_${scheduleId}_sess_${sId}`
+      ? `completed_review_schedule_${targetScheduleId}`
+      : (targetScheduleId
+          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
           : `review_questions_topic_${topicId}_sess_${sId}`);
 
 
