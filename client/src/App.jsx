@@ -13610,11 +13610,9 @@ export default function App() {
                                           >
                                             {sched.score !== null && sched.score !== undefined ? `${sched.score}점` : (sched.status === 'completed' ? '완료' : '실패')}
                                           </button>
-                                          {isDesktop && (
-                                            <span className="text-[10px] text-slate-500 mt-1 font-semibold select-none">
-                                              {formatReviewDate(sched.completed_at, sched.planned_date)}
-                                            </span>
-                                          )}
+                                          <span className="text-[10px] text-slate-500 mt-1 font-semibold select-none">
+                                            {formatReviewDate(sched.completed_at, sched.planned_date)}
+                                          </span>
                                         </div>
                                       );
                                     } else {
