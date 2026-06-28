@@ -5832,7 +5832,7 @@ export default function App() {
 
   // 백그라운드 실시간 덮어쓰기 폴링은 제거하고 진입/새로고침 시에만 동기화하도록 간소화
 
-  const forceSaveActiveSessions = async (isUnloading = false, isResetAction = false) => {
+  const forceSaveActiveSessions = async (isUnloading = false, isResetAction = false, overrideData = null) => {
     const promises = [];
 
     // 1) Save active review session immediately to localStorage (synchronously)
@@ -5856,15 +5856,19 @@ export default function App() {
         console.warn('[forceSaveActiveSessions] DOM scrape failed:', err);
       }
 
+      const finalChatHistory = (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistory;
+      const finalTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswers;
+      const finalTutorInputText = (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputText;
+
       try {
         localStorage.setItem(key, JSON.stringify({
           revealedQuestions,
           selectedAnswers,
           tableAnswers: latestTableAnswers,
           tableGradingResults,
-          tutorAnswers,
-          tutorInputText,
-          chatHistory,
+          tutorAnswers: finalTutorAnswers,
+          tutorInputText: finalTutorInputText,
+          chatHistory: finalChatHistory,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         }));
       } catch (e) {
@@ -5883,9 +5887,9 @@ export default function App() {
           revealedQuestions,
           tableAnswers: latestTableAnswers,
           tableGradingResults,
-          tutorAnswers,
-          tutorInputText,
-          chatHistory,
+          tutorAnswers: finalTutorAnswers,
+          tutorInputText: finalTutorInputText,
+          chatHistory: finalChatHistory,
           isResetAction,
           savedQuizScroll: quizBodyRef.current?.scrollTop || 0
         })
@@ -15402,9 +15406,11 @@ export default function App() {
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
                           }
-                          setTimeout(() => {
-                            forceSaveActiveSessions(false, true);
-                          }, 50);
+                          forceSaveActiveSessions(false, true, {
+                            chatHistory: [],
+                            tutorAnswers: {},
+                            tutorInputText: {}
+                          });
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
                       }}
@@ -17345,9 +17351,11 @@ export default function App() {
                     if (typeof setCurrentAttachedImage === 'function') {
                       setCurrentAttachedImage(null);
                     }
-                    setTimeout(() => {
-                      forceSaveActiveSessions(false, true);
-                    }, 50);
+                    forceSaveActiveSessions(false, true, {
+                      chatHistory: [],
+                      tutorAnswers: {},
+                      tutorInputText: {}
+                    });
                     alert("튜터 데이터가 초기화되었습니다.");
                   }
                 }}
@@ -18485,9 +18493,11 @@ export default function App() {
                           if (typeof setCurrentAttachedImage === 'function') {
                             setCurrentAttachedImage(null);
                           }
-                          setTimeout(() => {
-                            forceSaveActiveSessions(false, true);
-                          }, 50);
+                          forceSaveActiveSessions(false, true, {
+                            chatHistory: [],
+                            tutorAnswers: {},
+                            tutorInputText: {}
+                          });
                           alert("튜터 데이터가 초기화되었습니다.");
                         }
                       }}
