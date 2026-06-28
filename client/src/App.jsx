@@ -20768,9 +20768,9 @@ export default function App() {
           style={(!isDesktop && !isMobileLandscape) ? {
             position: 'fixed',
             left: 0,
+            right: 0,
             top: 0,
-            width: '100vw',
-            height: '100dvh',
+            bottom: 0,
             zIndex: 99999,
             display: 'flex',
             flexDirection: 'column',
