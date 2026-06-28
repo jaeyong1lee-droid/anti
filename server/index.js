@@ -8036,7 +8036,8 @@ app.post('/api/lockscreen-standards', async (req, res) => {
 
     try {
       await saveSessionValue('lockscreen_standards', JSON.stringify(stamped));
-      console.log('Successfully saved lockscreen standards to database.');
+      await dbQuery.run("DELETE FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+      console.log('Successfully saved lockscreen standards to database and cleared pregenerated pool.');
     } catch (dbErr) {
       console.error('Failed to save lockscreen standards to database:', dbErr.message);
     }
@@ -9141,6 +9142,16 @@ async function initializeLockscreenStandards() {
     }
     updateLiveLockscreenStandards(finalList);
     await writeStandardToFile('lockscreen_standards', finalList);
+
+    // One-time pool migration: clear pool when version increments to trigger fresh correct question generation
+    const versionKey = 'lockscreen_pool_version';
+    const currentVersion = '4'; // Increment to version 4 to clear previous stale Terzaghi/options questions
+    const verRow = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [versionKey]);
+    if (!verRow || verRow.value !== currentVersion) {
+      await dbQuery.run("DELETE FROM app_session WHERE key = 'lockscreen_pregenerated_pool'");
+      await saveSessionValue(versionKey, currentVersion);
+      console.log('[Migration] Lockscreen pool cleared due to pool version update to:', currentVersion);
+    }
   } catch (err) {
     console.error('Failed to initialize lockscreen standards:', err.message);
   }
