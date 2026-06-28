@@ -1,5 +1,5 @@
 import express from 'express';
-import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from './utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, healTheoryQuestionObject, healFormulaQuestionObject, healAnswersheetQuestionObject, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS, parseLlmJson } from './utils/latexUtils.js';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
@@ -675,84 +675,7 @@ export async function getTopicText(topic) {
 }
 
 
-// Safe LaTeX-preserving backslash escaper for LLM JSON responses
-function escapeJsonBackslashes(str) {
-  if (!str) return str;
-  let result = '';
-  let inString = false;
-  let i = 0;
-  
-  const latexCommands = [
-    // n
-    'newline', 'nabla', 'nu', 'neq', 'neg', 'ni', 'notin', 'ngeq', 'nleq', 'nsim', 'ncong', 'nparallel', 'noindent',
-    // t
-    'theta', 'tau', 'tan', 'times', 'tilde', 'text', 'tfrac', 'triangle', 'top', 'to', 'tiny', 'today',
-    // r
-    'rho', 'right', 'rule', 'rangle', 'rightarrow', 'rightleftharpoons', 'rightharpoonup', 'rightharpoondown', 'real', 'ref', 'raise',
-    // b
-    'beta', 'bar', 'begin', 'bmod', 'boldsymbol', 'bullet', 'box', 'bigcap', 'bigcup', 'backslash',
-    // f
-    'frac', 'forall', 'flat', 'frown', 'footnotesize', 'fbox',
-    // other greek/common commands
-    'phi', 'varphi', 'mathrm'
-  ];
 
-  while (i < str.length) {
-    const char = str[i];
-    if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
-      inString = !inString;
-      result += char;
-      i++;
-    } else if (inString && char === '\\') {
-      const next = str[i + 1];
-      
-      if (next === '"' || next === '/' || next === '\\') {
-        result += char + next;
-        i += 2;
-      } else if (next === 'n' || next === 't' || next === 'r' || next === 'b' || next === 'f') {
-        let tempIndex = i + 1;
-        let commandWord = '';
-        while (tempIndex < str.length && /[a-zA-Z]/.test(str[tempIndex])) {
-          commandWord += str[tempIndex];
-          tempIndex++;
-        }
-        
-        const isLatex = latexCommands.some(cmd => commandWord.startsWith(cmd));
-        if (isLatex) {
-          result += '\\\\';
-          i++;
-        } else {
-          result += char + next;
-          i += 2;
-        }
-      } else if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(str.substring(i + 2, i + 6))) {
-        // Safe unicode sequence bypass
-        result += char + next + str.substring(i + 2, i + 6);
-        i += 6;
-      } else {
-        result += '\\\\';
-        i++;
-      }
-    } else {
-      result += char;
-      i++;
-    }
-  }
-  return result;
-}
-
-function parseLlmJson(text) {
-  if (!text) return null;
-  let cleaned = text.trim();
-  
-  // 마크다운 코드 블록 제거 복원
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  }
-
-  const escaped = escapeJsonBackslashes(cleaned);
-  return JSON.parse(escaped);
-}
 
 // Helper: Extract JSON array from string robustly
 function extractJsonArray(str) {

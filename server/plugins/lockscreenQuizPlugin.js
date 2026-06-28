@@ -1,4 +1,4 @@
-import { LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { LATEX_PROMPT_INSTRUCTIONS, parseLlmJson } from '../utils/latexUtils.js';
 
 /**
  * Generates 5 formula/criteria-based multiple-choice questions for the daily lockscreen quiz.
@@ -97,13 +97,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
   const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula', { temperature: 0.9 });
-  let text = responseText.trim();
-  if (text.startsWith('```')) {
-    text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  }
-
   try {
-    const parsed = JSON.parse(text);
+    const parsed = parseLlmJson(responseText);
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.map((q, idx) => {
         let options = Array.isArray(q.options) ? [...q.options] : [];
