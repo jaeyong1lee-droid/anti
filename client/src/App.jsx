@@ -7024,6 +7024,10 @@ export default function App() {
       setSelectedTopic(targetTopic);
       selectedTopicRef.current = targetTopic;
       setLoadingAI(true);
+      savedQuizScroll.current = 0;
+      if (quizBodyRef.current) {
+        quizBodyRef.current.scrollTop = 0;
+      }
       setAiProgressMessage('1단계: 문제 ID 확인 중 (서버 DB 조회)...');
       setAiProgressPercent(15);
       setAiQuestions([]);
@@ -7390,6 +7394,10 @@ export default function App() {
     setSelectedAnswers({});
     setReviewOptionExplanations({});
     setTableAnswers({});
+    savedQuizScroll.current = 0;
+    if (quizBodyRef.current) {
+      quizBodyRef.current.scrollTop = 0;
+    }
     setTableGradingResults({});
     setShowAnswersState({});
     setExamShowAnswersState({});
@@ -7449,6 +7457,11 @@ export default function App() {
         setAiQuestions(newQuestions);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
+        setTimeout(() => {
+          if (quizBodyRef.current) {
+            quizBodyRef.current.scrollTop = 0;
+          }
+        }, 100);
         lastQuizTopicId.current = selectedTopic.id;
         lastQuizScheduleId.current = selectedTopic.schedule_id;
         setSelectedTopic(prev => prev ? { ...prev, isReadOnly: false } : null);
@@ -15369,6 +15382,9 @@ export default function App() {
                           } catch (e) {
                             console.warn('Failed to clean anti_app_state:', e);
                           }
+                          setChatHistory([]);
+                          setTutorAnswers({});
+                          setTutorInputText({});
                           await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
@@ -17326,6 +17342,9 @@ export default function App() {
                     } catch (e) {
                       console.warn('Failed to clean anti_app_state:', e);
                     }
+                    setChatHistory([]);
+                    setTutorAnswers({});
+                    setTutorInputText({});
                     await forceSaveActiveSessions(false, true, {
                       chatHistory: [],
                       tutorAnswers: {},
@@ -18480,6 +18499,9 @@ export default function App() {
                           } catch (e) {
                             console.warn('Failed to clean anti_app_state:', e);
                           }
+                          setChatHistory([]);
+                          setTutorAnswers({});
+                          setTutorInputText({});
                           await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
