@@ -5083,19 +5083,12 @@ export default function App() {
         if (s.viewMode) {
           setViewMode(s.viewMode);
         }
-        if (s.selectedTopic) setSelectedTopic(s.selectedTopic);
-        if (s.aiQuestions?.length) setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject(q)));
-        if (s.revealedQuestions) setRevealedQuestions(s.revealedQuestions);
-        if (s.selectedAnswers) setSelectedAnswers(s.selectedAnswers);
+        // [🚨 동기 로컬 복원 잠금 🚨]
+        // selectedTopic 및 세션 데이터들의 즉각 복원은 아래의 비동기 restoreActiveSession에서 서버 데이터 조회를 우선으로 수행합니다.
+        // 마운트 시 동기적으로 진행상태를 밀어넣으면, 레프 동기화 전에 자동저장 useEffect가 실행되어 DB의 새 데이터를 날려버리게 됩니다.
         if (s.openSections) setOpenSections(s.openSections);
         if (s.isFallback !== undefined) setIsFallback(s.isFallback);
-        if (s.chatHistory) setChatHistory(s.chatHistory);
-        if (s.tableAnswers) setTableAnswers(s.tableAnswers);
-        if (s.tableGradingResults) setTableGradingResults(s.tableGradingResults);
-        if (s.examTableAnswers) setExamTableAnswers(s.examTableAnswers);
-        if (s.examTableGradingResults) setExamTableGradingResults(s.examTableGradingResults);
-        if (s.tutorAnswers) setTutorAnswers(s.tutorAnswers);
-        if (s.tutorInputText) setTutorInputText(s.tutorInputText);
+        
         // 종합평가 상태는 서버에서 덮어씀 (아래)
         if (s.examTopic) setExamTopic(s.examTopic);
         if (s.examQuestions?.length) setExamQuestions(s.examQuestions.map(q => healQuizQuestionObject(q)));
@@ -11877,19 +11870,70 @@ export default function App() {
   useEffect(() => {
     const restoreActiveSession = async () => {
       try {
+        setRestoringReviewSession(true); // Ensure sync is locked during restoration
         const saved = localStorage.getItem('anti_app_state');
         if (saved) {
           const s = JSON.parse(saved);
           if (s.selectedTopic) {
-            console.log('[Mount Restore] Restoring active review session from server:', s.selectedTopic);
+            console.log('[Mount Restore] Querying active review session from server for topic:', s.selectedTopic.title);
             const topicId = s.selectedTopic.id;
             const scheduleId = s.selectedTopic.schedule_id || '';
+            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
             
-            // [🚨 로컬 캐시 즉시 동기 복원 우선 보장 🚨]
-            // 새로고침 시 화면 지연이나 재생성 방지를 위해 로컬스토리지에 있는 문제 세트와 답변 진행 상황을 최우선으로 즉시 주입합니다.
+            let resData = null;
+            try {
+              const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
+              if (res.ok) {
+                resData = await res.json();
+              }
+            } catch (e) {
+              console.warn('[Mount Restore] Server review session query failed (Network/500), relying on local cache fallback:', e);
+            }
+
             let restoreSuccess = false;
-            if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
-              console.log('[Mount Restore] Instantly restored from LocalStorage cache. Question count:', s.aiQuestions.length);
+
+            // 1. If server session exists, restore from server (database takes absolute priority)
+            if (resData && resData.success && resData.data && resData.data.questions && resData.data.questions.length > 0) {
+              const server = resData.data;
+              console.log('[Mount Restore] Server review session found. Syncing latest state from DB.');
+              updateSyncTime(new Date());
+              updateNeonSyncTime(new Date());
+              
+              setSelectedTopic(s.selectedTopic);
+              
+              const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
+              if (isServerSidAbsolute) {
+                setReviewSessionId(server.sessionId);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
+              } else {
+                const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
+                setReviewSessionId(localSid);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
+              }
+
+              setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+              setSelectedAnswers(server.selectedAnswers || {});
+              setRevealedQuestions(server.revealedQuestions || {});
+              setTableAnswers(server.tableAnswers || {});
+              setTableGradingResults(server.tableGradingResults || {});
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
+              setChatHistory(server.chatHistory || []);
+
+              lastSyncStateRef.current = {
+                selectedAnswers: server.selectedAnswers || {},
+                revealedQuestions: server.revealedQuestions || {},
+                tableGradingResults: server.tableGradingResults || {},
+                chatHistory: server.chatHistory || []
+              };
+              
+              setLoadingAI(false);
+              setRestoringReviewSession(false);
+              restoreSuccess = true;
+            } 
+            // 2. Fallback: If server session does not exist, restore from local storage cache
+            else if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
+              console.log('[Mount Restore] No server session found. Restoring from LocalStorage cache fallback. Question count:', s.aiQuestions.length);
               setSelectedTopic(s.selectedTopic);
               setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               setSelectedAnswers(s.selectedAnswers || {});
@@ -11900,7 +11944,10 @@ export default function App() {
               setTutorInputText(s.tutorInputText || {});
               setChatHistory(s.chatHistory || []);
               
-              // lastSyncStateRef 레프 초기 동기화하여 자동저장 충돌 방지
+              const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
+              setReviewSessionId(localSid);
+              localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
+
               lastSyncStateRef.current = {
                 selectedAnswers: s.selectedAnswers || {},
                 revealedQuestions: s.revealedQuestions || {},
@@ -11910,76 +11957,10 @@ export default function App() {
 
               setLoadingAI(false);
               setRestoringReviewSession(false);
-              restoreSuccess = true; // 로컬 캐시로 성공 마크하여 신규 생성 handleOpenAIQuestions 트리거 방지
-            }
-
-            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
-            let resData = null;
-            
-            try {
-              const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${scheduleId}&sessionId=${activeSid}`);
-              if (res.ok) {
-                resData = await res.json();
-              }
-            } catch (e) {
-              console.warn('[Mount Restore] Server review session query failed (Network/500), relying on local cache:', e);
-            }
-
-            if (resData && resData.success && resData.data) {
-              const server = resData.data;
-              console.log('[Mount Restore] Server review session found. Syncing latest state...');
-              updateSyncTime(new Date());
-              updateNeonSyncTime(new Date());
-              
-              // 1) 토픽 상태 덮어쓰기
-              setSelectedTopic(s.selectedTopic);
-              
-              // 2) 세션 ID 및 로컬스토리지 동기화
-              const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
-              let finalSid = activeSid;
-              if (isServerSidAbsolute) {
-                setReviewSessionId(server.sessionId);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
-                finalSid = server.sessionId;
-              } else {
-                const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
-                setReviewSessionId(localSid);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
-                finalSid = localSid;
-              }
-
-              // 3) 최신 문제 및 진행 상태 동기화 (서버 값이 존재할 때)
-              if (server.questions && Array.isArray(server.questions) && server.questions.length > 0) {
-                setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-              }
-
-              const mergedSelectedAnswers = { ...(s.selectedAnswers || {}), ...(server.selectedAnswers || {}) };
-              const mergedRevealedQuestions = { ...(s.revealedQuestions || {}), ...(server.revealedQuestions || {}) };
-              const mergedTableGradingResults = { ...(s.tableGradingResults || {}), ...(server.tableGradingResults || {}) };
-              const mergedChatHistory = server.chatHistory || [];
-
-              setSelectedAnswers(mergedSelectedAnswers);
-              setRevealedQuestions(mergedRevealedQuestions);
-              setTableAnswers(prev => ({ ...prev, ...(server.tableAnswers || {}) }));
-              setTableGradingResults(mergedTableGradingResults);
-              setTutorAnswers(server.tutorAnswers || {});
-              setTutorInputText(server.tutorInputText || {});
-              setChatHistory(mergedChatHistory);
-
-              // 4) 동기화 레프 동조화하여 덮어쓰기 오작동 방지
-              lastSyncStateRef.current = {
-                selectedAnswers: mergedSelectedAnswers,
-                revealedQuestions: mergedRevealedQuestions,
-                tableGradingResults: mergedTableGradingResults,
-                chatHistory: mergedChatHistory
-              };
-              
-              setLoadingAI(false);
-              setRestoringReviewSession(false);
               restoreSuccess = true;
             }
 
-            // 로컬 캐시도 없고 서버 조회도 실패한 진짜 완전한 최초 진입일 때만 문제 재생성 API 호출
+            // 3. Fallback: If no server session and no local cache, generate new session
             if (!restoreSuccess) {
               console.log('[Mount Restore] No local cache and no server review session found. Generating via handleOpenAIQuestions...');
               await handleOpenAIQuestions(
@@ -11993,7 +11974,7 @@ export default function App() {
                 s.selectedTopic.isBonus,
                 false,
                 s.selectedTopic.category,
-                true // isRestore = true
+                true
               );
               setRestoringReviewSession(false);
             }
@@ -12003,8 +11984,8 @@ export default function App() {
         } else {
           setRestoringReviewSession(false);
         }
-      } catch (e) {
-        console.warn('[Mount Restore] Failed to parse saved state or fetch:', e);
+      } catch (err) {
+        console.error('[Mount Restore] Critical error during session restoration:', err);
         setRestoringReviewSession(false);
       }
     };
