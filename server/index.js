@@ -9453,6 +9453,26 @@ async function syncStandardsFromProduction() {
   }
 }
 
+async function applyScorePatch() {
+  console.log('[DB Patch] Running temporary score patch...');
+  try {
+    const topic = await dbQuery.get("SELECT id FROM topics WHERE title LIKE '%탄소성보법%'");
+    if (topic) {
+      console.log(`[DB Patch] Found target topic id: ${topic.id}`);
+      // score가 0이거나 null인 completed 스케줄을 70점으로 패치
+      const updateRes = await dbQuery.run(
+        "UPDATE schedules SET score = 70 WHERE topic_id = ? AND (score = 0 OR score IS NULL) AND status = 'completed'",
+        [topic.id]
+      );
+      console.log(`[DB Patch] Updated ${updateRes.changes} schedules to 70 points.`);
+    } else {
+      console.log("[DB Patch] Target topic '탄소성보법' not found.");
+    }
+  } catch (err) {
+    console.error('[DB Patch] Score patch error:', err.message);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
@@ -9477,6 +9497,7 @@ async function startServer() {
     await healPendingSchedules();
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
+    await applyScorePatch();
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -9534,6 +9555,7 @@ if (!process.env.VERCEL) {
     await healPendingSchedules();
     await backfillPastScheduleScores();
     await migrateLegacySessionKeys();
+    await applyScorePatch();
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;
