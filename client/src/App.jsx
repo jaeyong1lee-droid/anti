@@ -5898,9 +5898,9 @@ export default function App() {
           examTopic,
           tableAnswers: examTableAnswers,
           tableGradingResults: examTableGradingResults,
-          tutorAnswers,
-          tutorInputText,
-          chatHistory,
+          tutorAnswers: (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswers,
+          tutorInputText: (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputText,
+          chatHistory: (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistory,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
       };
