@@ -15585,6 +15585,8 @@ export default function App() {
                           setChatHistory([]);
                           setTutorAnswers({});
                           setTutorInputText({});
+                          setRealTimeChatHistory([]);
+                          localStorage.removeItem('anti_realtime_chat_history');
                           await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
@@ -17546,6 +17548,8 @@ export default function App() {
                     setChatHistory([]);
                     setTutorAnswers({});
                     setTutorInputText({});
+                    setRealTimeChatHistory([]);
+                    localStorage.removeItem('anti_realtime_chat_history');
                     await forceSaveActiveSessions(false, true, {
                       chatHistory: [],
                       tutorAnswers: {},
@@ -18703,6 +18707,8 @@ export default function App() {
                           setChatHistory([]);
                           setTutorAnswers({});
                           setTutorInputText({});
+                          setRealTimeChatHistory([]);
+                          localStorage.removeItem('anti_realtime_chat_history');
                           await forceSaveActiveSessions(false, true, {
                             chatHistory: [],
                             tutorAnswers: {},
@@ -21067,6 +21073,7 @@ export default function App() {
                   onClick={() => {
                     if (window.confirm('대화 기록을 모두 초기화하시겠습니까?')) {
                       setRealTimeChatHistory([]);
+                      localStorage.removeItem('anti_realtime_chat_history');
                     }
                   }}
                   className="p-1 hover:bg-slate-700/60 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
