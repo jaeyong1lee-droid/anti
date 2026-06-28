@@ -6886,7 +6886,19 @@ app.get('/api/debug-db', async (req, res) => {
   try {
     const rows = await dbQuery.all("SELECT key, LENGTH(value) as len, updated_at FROM app_session ORDER BY updated_at DESC LIMIT 50");
     const topics = await dbQuery.all("SELECT id, title FROM topics ORDER BY id DESC LIMIT 50");
-    res.json({ success: true, rows, topics, debugLogs: global.globalDebugLogs });
+    const formulaRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    const recentLS = await dbQuery.get("SELECT value FROM app_session WHERE key = 'recent_lockscreen_questions'");
+    const formulaParsed = formulaRow && formulaRow.value ? JSON.parse(formulaRow.value) : null;
+    const recentLSParsed = recentLS && recentLS.value ? JSON.parse(recentLS.value) : null;
+    res.json({ 
+      success: true, 
+      rows, 
+      topics, 
+      debugLogs: global.globalDebugLogs,
+      recentLockscreen: recentLSParsed,
+      formulasCount: formulaParsed?.formulaQuestions?.length || 0,
+      firstFormulas: formulaParsed?.formulaQuestions?.slice(0, 3)
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
