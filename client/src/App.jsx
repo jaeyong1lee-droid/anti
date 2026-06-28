@@ -12123,8 +12123,11 @@ export default function App() {
                 </span>
                 {isDesktop && (
                   <div className="flex flex-col gap-0.5 select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
+                    <span className="text-pink-400/90 font-semibold">
+                      build : {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : 'local_dev'}
+                    </span>
                     <span className="text-emerald-400/90">
-                      vercel : {lastSyncTime 
+                      sync : {lastSyncTime 
                         ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
                         : '대기 중'}
                     </span>
