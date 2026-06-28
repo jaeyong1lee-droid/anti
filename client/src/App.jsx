@@ -3790,14 +3790,30 @@ export default function App() {
             body: JSON.stringify({
               topicId: selectedTopic.id,
               scheduleId: selectedTopic.schedule_id,
+              sessionId: reviewSessionId,
               questions: aiQuestions,
               selectedAnswers,
               revealedQuestions,
               tableAnswers,
               tableGradingResults: nextResults,
+              tutorAnswers,
+              tutorInputText,
+              chatHistory,
               savedQuizScroll: quizBodyRef.current?.scrollTop || 0
             })
-          }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                lastSyncStateRef.current = {
+                  selectedAnswers,
+                  revealedQuestions,
+                  tableGradingResults: nextResults,
+                  chatHistory
+                };
+              }
+            })
+            .catch(e => console.warn('복습 세션 동기화 실패:', e));
         }
 
         if (showExam && examQuestions.length > 0 && !loadingExam) {
@@ -7113,6 +7129,14 @@ export default function App() {
             setTutorInputText(serverData.tutorInputText || {});
             setChatHistory(serverData.chatHistory || []);
             
+            // lastSyncStateRef 동조화하여 덮어쓰기 오작동 방지
+            lastSyncStateRef.current = {
+              selectedAnswers: serverData.selectedAnswers || {},
+              revealedQuestions: serverData.revealedQuestions || {},
+              tableGradingResults: serverData.tableGradingResults || {},
+              chatHistory: serverData.chatHistory || []
+            };
+
             setLoadingAI(false);
             setRestoringReviewSession(false);
             hasLoadedFromServer = true;
@@ -7218,6 +7242,15 @@ export default function App() {
           return { ...copy, ...(data.tutorAnswers || {}) };
         });
         setChatHistory(data.chatHistory || []);
+
+        // lastSyncStateRef 동조화하여 덮어쓰기 오작동 방지
+        lastSyncStateRef.current = {
+          selectedAnswers: data.selectedAnswers || {},
+          revealedQuestions: data.revealedQuestions || {},
+          tableGradingResults: data.tableGradingResults || {},
+          chatHistory: data.chatHistory || []
+        };
+
         updateSyncTime(new Date());
         updateNeonSyncTime(new Date());
       } else {
@@ -11826,6 +11859,14 @@ export default function App() {
               setTutorInputText(s.tutorInputText || {});
               setChatHistory(s.chatHistory || []);
               
+              // lastSyncStateRef 레프 초기 동기화하여 자동저장 충돌 방지
+              lastSyncStateRef.current = {
+                selectedAnswers: s.selectedAnswers || {},
+                revealedQuestions: s.revealedQuestions || {},
+                tableGradingResults: s.tableGradingResults || {},
+                chatHistory: s.chatHistory || []
+              };
+
               setLoadingAI(false);
               setRestoringReviewSession(false);
               restoreSuccess = true; // 로컬 캐시로 성공 마크하여 신규 생성 handleOpenAIQuestions 트리거 방지
@@ -11854,26 +11895,43 @@ export default function App() {
               
               // 2) 세션 ID 및 로컬스토리지 동기화
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
+              let finalSid = activeSid;
               if (isServerSidAbsolute) {
                 setReviewSessionId(server.sessionId);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
+                finalSid = server.sessionId;
               } else {
                 const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
                 setReviewSessionId(localSid);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
+                finalSid = localSid;
               }
 
               // 3) 최신 문제 및 진행 상태 동기화 (서버 값이 존재할 때)
               if (server.questions && Array.isArray(server.questions) && server.questions.length > 0) {
                 setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               }
-              setSelectedAnswers(prev => ({ ...prev, ...(server.selectedAnswers || {}) }));
-              setRevealedQuestions(prev => ({ ...prev, ...(server.revealedQuestions || {}) }));
+
+              const mergedSelectedAnswers = { ...(s.selectedAnswers || {}), ...(server.selectedAnswers || {}) };
+              const mergedRevealedQuestions = { ...(s.revealedQuestions || {}), ...(server.revealedQuestions || {}) };
+              const mergedTableGradingResults = { ...(s.tableGradingResults || {}), ...(server.tableGradingResults || {}) };
+              const mergedChatHistory = server.chatHistory || [];
+
+              setSelectedAnswers(mergedSelectedAnswers);
+              setRevealedQuestions(mergedRevealedQuestions);
               setTableAnswers(prev => ({ ...prev, ...(server.tableAnswers || {}) }));
-              setTableGradingResults(prev => ({ ...prev, ...(server.tableGradingResults || {}) }));
+              setTableGradingResults(mergedTableGradingResults);
               setTutorAnswers(prev => ({ ...prev, ...(server.tutorAnswers || {}) }));
               setTutorInputText(prev => ({ ...prev, ...(server.tutorInputText || {}) }));
-              setChatHistory(server.chatHistory || []);
+              setChatHistory(mergedChatHistory);
+
+              // 4) 동기화 레프 동조화하여 덮어쓰기 오작동 방지
+              lastSyncStateRef.current = {
+                selectedAnswers: mergedSelectedAnswers,
+                revealedQuestions: mergedRevealedQuestions,
+                tableGradingResults: mergedTableGradingResults,
+                chatHistory: mergedChatHistory
+              };
               
               setLoadingAI(false);
               setRestoringReviewSession(false);
@@ -14437,21 +14495,53 @@ export default function App() {
                                   key={oIdx}
                                   onClick={() => {
                                     if (answered) return;
-                                    setSelectedAnswers(prev => {
-                                      const updated = { ...prev, [idx]: opt };
-                                      const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
-                                      if (isDesktop || isMobileLandscape) {
-                                        if (normalizeAns(opt) === normalizeAns(q.answer)) {
-                                          setTimeout(() => {
-                                            const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
-                                            if (cards && cards[idx]) {
-                                              quizBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
-                                            }
-                                          }, 600);
-                                        }
+
+                                    const nextAnswers = { ...selectedAnswers, [idx]: opt };
+                                    setSelectedAnswers(nextAnswers);
+
+                                    // 즉시 서버 세션 동기화 (Force Sync)
+                                    if (selectedTopic && selectedTopic.id && !selectedTopic.isReadOnly) {
+                                      fetch(`${API_BASE}/api/session/review`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          topicId: selectedTopic.id,
+                                          scheduleId: selectedTopic.schedule_id,
+                                          sessionId: reviewSessionId,
+                                          questions: aiQuestions,
+                                          selectedAnswers: nextAnswers,
+                                          revealedQuestions,
+                                          tableAnswers,
+                                          tableGradingResults,
+                                          tutorAnswers,
+                                          tutorInputText,
+                                          chatHistory,
+                                          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+                                        })
+                                      })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                          if (data.success) {
+                                            updateSyncTime(new Date());
+                                            updateNeonSyncTime(new Date());
+                                            // 동기화 레프 업데이트하여 useEffect 이중 호출 방지
+                                            lastSyncStateRef.current.selectedAnswers = nextAnswers;
+                                          }
+                                        })
+                                        .catch(e => console.warn('[MC click] 복습 세션 동기화 실패:', e));
+                                    }
+
+                                    const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                                    if (isDesktop || isMobileLandscape) {
+                                      if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                        setTimeout(() => {
+                                          const cards = quizBodyRef.current?.querySelectorAll('.quiz-card-item');
+                                          if (cards && cards[idx]) {
+                                            quizBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
+                                          }
+                                        }, 600);
                                       }
-                                      return updated;
-                                    });
+                                    }
                                   }}
                                   className={cls}
                                 >
