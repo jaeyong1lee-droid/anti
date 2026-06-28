@@ -16850,7 +16850,7 @@ export default function App() {
 
       {/* 공식 추가 완료 및 이동 확인 모달 (Formula Added Modal) */}
       {formulaAddedTarget && (
-        <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
+        <div className="fixed inset-0 z-[200100] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
           <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
