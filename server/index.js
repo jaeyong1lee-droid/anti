@@ -6870,6 +6870,16 @@ app.delete('/api/session/exam', async (req, res) => {
   }
 });
 
+app.get('/api/debug-db', async (req, res) => {
+  try {
+    const rows = await dbQuery.all("SELECT key, LENGTH(value) as len, updated_at FROM app_session ORDER BY updated_at DESC LIMIT 50");
+    const topics = await dbQuery.all("SELECT id, title FROM topics ORDER BY id DESC LIMIT 50");
+    res.json({ success: true, rows, topics });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/session/review → 복습 문제 세트 및 진행 상태 반환
 app.get('/api/session/review', async (req, res) => {
   try {
