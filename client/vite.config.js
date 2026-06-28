@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    __BUILD_TIME__: JSON.stringify(
+    __BUILD_TIME_MS__: Date.now(),
+    __BUILD_TIME_STR__: JSON.stringify(
       new Date().toLocaleString('ko-KR', {
         timeZone: 'Asia/Seoul',
         month: '2-digit',

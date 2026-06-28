@@ -2578,6 +2578,25 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function App() {
+  const buildTimeMs = typeof __BUILD_TIME_MS__ !== 'undefined' ? __BUILD_TIME_MS__ : Date.now();
+  const buildTimeStr = typeof __BUILD_TIME_STR__ !== 'undefined' ? __BUILD_TIME_STR__ : 'local_dev';
+  const [isRecentBuild, setIsRecentBuild] = useState(() => {
+    const diff = Date.now() - buildTimeMs;
+    return diff >= 0 && diff < 60000;
+  });
+
+  useEffect(() => {
+    const diff = Date.now() - buildTimeMs;
+    setIsRecentBuild(diff >= 0 && diff < 60000);
+
+    if (diff >= 0 && diff < 60000) {
+      const remaining = 60000 - diff;
+      const timer = setTimeout(() => {
+        setIsRecentBuild(false);
+      }, remaining);
+      return () => clearTimeout(timer);
+    }
+  }, [buildTimeMs]);
 
   const getSubjectiveColorClasses = (idx, isRevd) => {
     if (!isRevd) return 'border-slate-750 text-white';
@@ -12122,19 +12141,9 @@ export default function App() {
                   {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
                 </span>
                 {isDesktop && (
-                  <div className="flex flex-col gap-0.5 select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
-                    <span className="text-pink-400/90 font-semibold">
-                      build : {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : 'local_dev'}
-                    </span>
-                    <span className="text-emerald-400/90">
-                      sync : {lastSyncTime 
-                        ? `${String(lastSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastSyncTime.getDate()).padStart(2, '0')} ${String(lastSyncTime.getHours()).padStart(2, '0')}:${String(lastSyncTime.getMinutes()).padStart(2, '0')}`
-                        : '대기 중'}
-                    </span>
-                    <span className="text-cyan-400/90">
-                      neon : {lastNeonSyncTime 
-                        ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
-                        : '대기 중'}
+                  <div className="flex flex-col select-none text-[9px] md:text-[10px] font-medium leading-none ml-1">
+                    <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30" : "text-slate-500"}>
+                      build : {buildTimeStr}
                     </span>
                   </div>
                 )}
