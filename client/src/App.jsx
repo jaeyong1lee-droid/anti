@@ -19250,6 +19250,32 @@ export default function App() {
                   (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'list') ? 'hidden' : ''
                 }`}
               >
+              {/* Sub-tabs for Memorization Modal */}
+              <div className="w-full px-3 sm:px-6 md:px-5 pt-4 pb-2 bg-slateCustom-950/20 flex gap-2 justify-start border-b border-slate-800/40 select-none">
+                <button
+                  onClick={() => setFormulaSubTab('formula')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                    formulaSubTab === 'formula'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
+                      : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Sigma size={12} />
+                  <span>공식</span>
+                </button>
+                <button
+                  onClick={() => setFormulaSubTab('table')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                    formulaSubTab === 'table'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
+                      : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="inline-block"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+                  <span>표</span>
+                </button>
+              </div>
+
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
               <div 
                 ref={formulaBodyRef} 
@@ -19264,22 +19290,20 @@ export default function App() {
                     const currentY = e.touches[0].clientY;
                     const deltaY = currentY - formulaTouchStartY.current;
                     if (deltaY > 0) {
-                      const dist = Math.min(deltaY * 0.4, 80);
-                      setFormulaPull(dist);
-                      if (dist > 10 && e.cancelable) {
-                        e.preventDefault();
-                      }
+                      e.preventDefault();
+                      setFormulaPull(Math.min(deltaY * 0.4, 80));
                     }
                   }
                 }}
                 onTouchEnd={async () => {
-                  if (!isDesktop && !isMobileLandscape && !formulaRefreshing) {
+                  if (!isDesktop && !isMobileLandscape && formulaBodyRef.current && formulaBodyRef.current.scrollTop === 0 && formulaPull > 0) {
                     if (formulaPull >= 60) {
                       setFormulaRefreshing(true);
                       setFormulaPull(40);
                       try {
                         await loadFormulaQuestions();
-                        showNotification('필수공식이 성공적으로 새로고침되었습니다.', 'success');
+                        await loadFormulaTables();
+                        showNotification('데이터가 성공적으로 새로고침되었습니다.', 'success');
                       } catch (err) {
                         console.error(err);
                       } finally {
@@ -19335,7 +19359,7 @@ export default function App() {
                     }).length === 0 ? (
                       <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
                         <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
                         </div>
                         <div>
                           <h4 className="text-lg font-bold text-white">저장된 표가 없습니다</h4>
@@ -19381,341 +19405,329 @@ export default function App() {
                           })}
                       </div>
                     )
-                  ) : (
-                    // Formula View
-                    formulaQuestions.filter(q => {
-                      const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                      const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                      return titleMatch || questionMatch;
-                    }).length === 0 ? (
-                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
-                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
-                          <Search size={32} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
-                          <p className="text-xs text-slate-400 mt-1">다른 공식 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
-                        </div>
-                        <button
-                          onClick={() => setFormulaSearchQuery('')}
-                          className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
-                        >
-                          검색 필터 초기화
-                        </button>
+                  ) : formulaQuestions.filter(q => {
+                    const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    return titleMatch || questionMatch;
+                  }).length === 0 ? (
+                    <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                      <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                        <Search size={32} />
                       </div>
-                    ) : (
-                      <div className="w-full space-y-5">
-                        {formulaQuestions
-                          .map((q, originalIdx) => ({ ...q, originalIdx }))
-                          .filter(q => {
-                            const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                            const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                            return titleMatch || questionMatch;
-                          })
-                    .map((q) => {
-                      const idx = q.originalIdx;
-                      const isNewEmptyCard = !q.title && !q.formula;
-                      const isInputVisible = isNewEmptyCard || !!formulaInputRevealed[idx];
-                      const isOutputVisible = isNewEmptyCard || (!!formulaRevealed[idx] && !isInputVisible);
+                      <div>
+                        <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                        <p className="text-xs text-slate-400 mt-1">다른 공식 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
+                      </div>
+                      <button
+                        onClick={() => setFormulaSearchQuery('')}
+                        className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                      >
+                        검색 필터 초기화
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-full space-y-5">
+                      {formulaQuestions
+                        .map((q, originalIdx) => ({ ...q, originalIdx }))
+                        .filter(q => {
+                          const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                          const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                          return titleMatch || questionMatch;
+                        })
+                        .map((q) => {
+                          const idx = q.originalIdx;
+                          const isNewEmptyCard = !q.title && !q.formula;
+                          const isInputVisible = isNewEmptyCard || !!formulaInputRevealed[idx];
+                          const isOutputVisible = isNewEmptyCard || (!!formulaRevealed[idx] && !isInputVisible);
 
-                      return (
-                      <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
-                        {/* Title Row */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                          {/* Row 1: Q badge & Title */}
-                          <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
-                            {/* Q 번호 배지 */}
-                            <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
-                              Q{idx + 1}
-                            </span>
-                            
-                            {/* Title & Editor */}
-                            <div className="flex-grow min-w-0">
-                              {editingFormulaIdx === idx ? (
-                                <div className="flex items-center gap-2 w-full">
-                                  <input
-                                    type="text"
-                                    value={editingFormulaText}
-                                    onChange={(e) => setEditingFormulaText(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const trimmed = editingFormulaText.trim();
-                                        if (trimmed) {
-                                          setFormulaQuestions(prev => {
-                                            const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
+                          return (
+                            <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                              {/* Title Row */}
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                {/* Row 1: Q badge & Title */}
+                                <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
+                                  {/* Q 번호 배지 */}
+                                  <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
+                                    Q${idx + 1}
+                                  </span>
+                                  
+                                  {/* Title & Editor */}
+                                  <div className="flex-grow min-w-0">
+                                    {editingFormulaIdx === idx ? (
+                                      <div className="flex items-center gap-2 w-full">
+                                        <input
+                                          type="text"
+                                          value={editingFormulaText}
+                                          onChange={(e) => setEditingFormulaText(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              const trimmed = editingFormulaText.trim();
+                                              if (trimmed) {
+                                                setFormulaQuestions(prev => {
+                                                  const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
+                                                  handleSaveFormulaQuestions(updated, false);
+                                                  return updated;
+                                                });
+                                                setEditingFormulaIdx(null);
+                                                showNotification('공식 제목이 저장되었습니다.', 'success');
+                                              }
+                                            } else if (e.key === 'Escape') {
+                                              setEditingFormulaIdx(null);
+                                            }
+                                          }}
+                                          className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
+                                          autoFocus
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const trimmed = editingFormulaText.trim();
+                                            if (trimmed) {
+                                              setFormulaQuestions(prev => {
+                                                const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
+                                                handleSaveFormulaQuestions(updated, false);
+                                                return updated;
+                                              });
+                                              setEditingFormulaIdx(null);
+                                              showNotification('공식 제목이 저장되었습니다.', 'success');
+                                            }
+                                          }}
+                                          className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                        >
+                                          저장
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingFormulaIdx(null)}
+                                          className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                        >
+                                          취소
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                        <span 
+                                          onDoubleClick={() => {
+                                            setEditingFormulaIdx(idx);
+                                            setEditingFormulaText(q.title || q.question || '');
+                                          }}
+                                          className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                          title="더블클릭하여 공식 제목 수정"
+                                        >
+                                          <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
+                                        </span>
+                                        <button
+                                          onClick={() => {
+                                            setEditingFormulaIdx(idx);
+                                            setEditingFormulaText(q.title || q.question || '');
+                                          }}
+                                          className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
+                                          title="공식 제목 수정"
+                                        >
+                                          <Edit2 size={12} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Row 2: Action Buttons */}
+                                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
+                                  {!isNewEmptyCard && (
+                                    (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (formulaInputRevealed[idx]) {
+                                            handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                                            setFormulaInputRevealed(prev => ({ ...prev, [idx]: false }));
+                                          }
+                                          if (isMobileLandscape || isHeavyHtml(q.formula)) {
+                                            handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
+                                          } else {
+                                            setFormulaRevealed({ [idx]: true });
+                                            scrollToFormulaCard(idx);
+                                          }
+                                        }}
+                                        className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 border border-rose-500/20 flex items-center justify-center gap-1"
+                                        title="정답 확인하기"
+                                      >
+                                        <span>정답확인</span>
+                                      </button>
+                                    ) : null
+                                  )}
+
+                                  {!q.isDirectlyAdded && (
+                                    <button
+                                      onClick={() => handleRefreshFormula(idx)}
+                                      disabled={refreshingFormulaIdx === idx}
+                                      className={`p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 hover:border-brand-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
+                                        refreshingFormulaIdx === idx ? 'opacity-50 cursor-not-allowed' : ''
+                                      }`}
+                                      title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
+                                    >
+                                      <RefreshCw 
+                                        size={12} 
+                                        className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
+                                      />
+                                      <span>새로고침</span>
+                                    </button>
+                                  )}
+
+                                  {!isNewEmptyCard && (
+                                    <button
+                                      onClick={() => handleDeriveFormula(idx)}
+                                      className="p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40"
+                                      title="이 공식의 상세한 유도과정을 실시간 AI 튜터에게 질문하기"
+                                    >
+                                      <Sigma size={12} />
+                                      <span>공식유도</span>
+                                    </button>
+                                  )}
+
+                                  {!isNewEmptyCard && (
+                                    <button
+                                      onClick={() => {
+                                        handleFormulaSelect(idx);
+                                        setFormulaMobileTab('tutor');
+                                      }}
+                                      className={`p-1.5 rounded-lg border text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
+                                        selectedFormulaIdx === idx 
+                                          ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' 
+                                          : 'border-slate-700/50'
+                                      }`}
+                                      title="AI 튜터와 이 공식에 대해 질문하고 토론하기"
+                                    >
+                                      <MessageSquare size={12} />
+                                      <span>AI 토론</span>
+                                    </button>
+                                  )}
+
+                                  {q.isDirectlyAdded && (
+                                    <button
+                                      onClick={() => {
+                                        if (isMobileLandscape) {
+                                          const val = window.prompt("LaTeX 공식을 입력하세요:", q.formula || "");
+                                          if (val !== null) {
+                                            const updated = [...formulaQuestions];
+                                            updated[idx] = { ...updated[idx], formula: val };
+                                            latestFormulaQuestionsRef.current = updated;
+                                            setFormulaQuestions(updated);
+                                            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
                                             handleSaveFormulaQuestions(updated, false);
-                                            return updated;
-                                          });
-                                          setEditingFormulaIdx(null);
-                                          showNotification('공식 제목이 저장되었습니다.', 'success');
+                                          }
+                                        } else {
+                                          setFormulaInputRevealed(prev => ({
+                                            ...prev,
+                                            [idx]: !prev[idx]
+                                          }));
                                         }
-                                      } else if (e.key === 'Escape') {
-                                        setEditingFormulaIdx(null);
-                                      }
-                                    }}
-                                    className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
-                                    autoFocus
-                                  />
+                                      }}
+                                      className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
+                                        !isMobileLandscape && isInputVisible 
+                                          ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
+                                          : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border-slate-700/50 bg-slate-800/40'
+                                      }`}
+                                      title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
+                                    >
+                                      <Edit2 size={12} />
+                                      <span>수정하기</span>
+                                    </button>
+                                  )}
+
                                   <button
                                     onClick={() => {
-                                      const trimmed = editingFormulaText.trim();
-                                      if (trimmed) {
-                                        setFormulaQuestions(prev => {
-                                          const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
-                                          handleSaveFormulaQuestions(updated, false);
-                                          return updated;
+                                      if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
+                                        const updated = formulaQuestions.filter((_, i) => i !== idx);
+                                        latestFormulaQuestionsRef.current = updated;
+                                        setFormulaQuestions(updated);
+                                        handleSaveFormulaQuestions(updated, false);
+                                        setFormulaRevealed(prev => {
+                                          const next = { ...prev };
+                                          delete next[idx];
+                                          return next;
                                         });
-                                        setEditingFormulaIdx(null);
-                                        showNotification('공식 제목이 저장되었습니다.', 'success');
+                                        setFormulaInputRevealed(prev => {
+                                          const next = { ...prev };
+                                          delete next[idx];
+                                          return next;
+                                        });
+                                        showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
                                       }
                                     }}
-                                    className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
+                                    title="공식 삭제"
                                   >
-                                    저장
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingFormulaIdx(null)}
-                                    className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
-                                  >
-                                    취소
+                                    <Trash2 size={12} />
+                                    <span>삭제</span>
                                   </button>
                                 </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
-                                  <span 
-                                    onDoubleClick={() => {
-                                      setEditingFormulaIdx(idx);
-                                      setEditingFormulaText(q.title || q.question || '');
-                                    }}
-                                    className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
-                                    title="더블클릭하여 공식 제목 수정"
-                                  >
-                                    <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingFormulaIdx(idx);
-                                      setEditingFormulaText(q.title || q.question || '');
-                                    }}
-                                    className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
-                                    title="공식 제목 수정"
-                                  >
-                                    <Edit2 size={12} />
-                                  </button>
+                              </div>
+
+                              {!isMobileLandscape && isOutputVisible && (
+                                <div className="space-y-3 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
+                                    {!isNewEmptyCard && (
+                                      <button
+                                        onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: false }))}
+                                        className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
+                                      >
+                                        접기 ✕
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {q.concept && (
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 핵심 개념"} />
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {q.formula ? (
+                                    <div className="space-y-1 pt-2 border-t border-slate-800/80">
+                                      <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
+                                      <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
+                                        <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
+                                      </div>
+                                    </div>
+                                  ) : !q.concept && (
+                                    <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
+                                  )}
                                 </div>
                               )}
-                            </div>
-                          </div>
 
-                          {/* Row 2: Action Buttons (정답확인, 리프레쉬, 삭제) */}
-                          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto mt-1.5 md:mt-0 select-none md:justify-end shrink-0">
-                            {/* 정답확인 button */}
-                            {!isNewEmptyCard && (
-                              (isMobileLandscape || isHeavyHtml(q.formula) || !isOutputVisible) ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (formulaInputRevealed[idx]) {
-                                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                                      setFormulaInputRevealed(prev => ({ ...prev, [idx]: false }));
-                                    }
-                                    if (isMobileLandscape || isHeavyHtml(q.formula)) {
-                                      handleOpenHtmlAnswerPopup(q.title || `Q${idx + 1}`, q.formula);
-                                    } else {
-                                      setFormulaRevealed({ [idx]: true });
-                                      scrollToFormulaCard(idx);
-                                    }
-                                  }}
-                                  className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md shadow-rose-600/10 hover:shadow-rose-600/20 border border-rose-500/20 flex items-center justify-center gap-1"
-                                  title="정답 확인하기"
-                                >
-                                  <span>정답확인</span>
-                                </button>
-                              ) : null
-                            )}
-
-                            {/* AI Refresh Button */}
-                            {!q.isDirectlyAdded && (
-                              <button
-                                onClick={() => handleRefreshFormula(idx)}
-                                disabled={refreshingFormulaIdx === idx}
-                                className={`p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 hover:border-brand-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
-                                  refreshingFormulaIdx === idx ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                                title="AI를 통해 공식 제목, 핵심개념, 기호정의를 다시 분석하여 재생성"
-                              >
-                                <RefreshCw 
-                                  size={12} 
-                                  className={refreshingFormulaIdx === idx ? 'animate-spin text-brand-400' : ''} 
-                                />
-                                <span>새로고침</span>
-                              </button>
-                            )}
-
-                            {/* AI Derive Formula Button */}
-                            {!isNewEmptyCard && (
-                              <button
-                                onClick={() => handleDeriveFormula(idx)}
-                                className="p-1.5 rounded-lg border border-slate-700/50 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40"
-                                title="이 공식의 상세한 유도과정을 실시간 AI 튜터에게 질문하기"
-                              >
-                                <Sigma size={12} />
-                                <span>공식유도</span>
-                              </button>
-                            )}
-
-                            {/* AI Tutor Discussion Button */}
-                            {!isNewEmptyCard && (
-                              <button
-                                onClick={() => {
-                                  handleFormulaSelect(idx);
-                                  setFormulaMobileTab('tutor');
-                                }}
-                                className={`p-1.5 rounded-lg border text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-[11px] font-bold bg-slate-800/40 ${
-                                  selectedFormulaIdx === idx 
-                                    ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' 
-                                    : 'border-slate-700/50'
-                                }`}
-                                title="AI 튜터와 이 공식에 대해 질문하고 토론하기"
-                              >
-                                <MessageSquare size={12} />
-                                <span>AI 토론</span>
-                              </button>
-                            )}
-
-
-                            {/* Toggle Input Editor */}
-                            {q.isDirectlyAdded && (
-                              <button
-                                onClick={() => {
-                                  if (isMobileLandscape) {
-                                    const val = window.prompt("LaTeX 공식을 입력하세요:", q.formula || "");
-                                    if (val !== null) {
+                              {!isMobileLandscape && isInputVisible && (
+                                <div className="space-y-1 pt-1 animate-fade-in">
+                                  <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
+                                  <textarea
+                                    value={q.formula || ''}
+                                    onChange={(e) => {
                                       const updated = [...formulaQuestions];
-                                      updated[idx] = { ...updated[idx], formula: val };
+                                      updated[idx] = { ...updated[idx], formula: e.target.value };
                                       latestFormulaQuestionsRef.current = updated;
                                       setFormulaQuestions(updated);
                                       localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                                      handleSaveFormulaQuestions(updated, false);
-                                    }
-                                  } else {
-                                    setFormulaInputRevealed(prev => ({
-                                      ...prev,
-                                      [idx]: !prev[idx]
-                                    }));
-                                  }
-                                }}
-                                className={`p-1.5 rounded-lg border transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5 ${
-                                  !isMobileLandscape && isInputVisible 
-                                    ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' 
-                                    : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border-slate-700/50 bg-slate-800/40'
-                                }`}
-                                title={isInputVisible ? "입력창 닫기" : "입력창 열기"}
-                              >
-                                <Edit2 size={12} />
-                                <span>수정하기</span>
-                              </button>
-                            )}
-
-                            {/* Delete/Trash Button */}
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`[${q.title || `Q${idx + 1}`}] 공식을 필수공식 퀴즈 리스트에서 삭제하시겠습니까?`)) {
-                                  const updated = formulaQuestions.filter((_, i) => i !== idx);
-                                  latestFormulaQuestionsRef.current = updated;
-                                  setFormulaQuestions(updated);
-                                  handleSaveFormulaQuestions(updated, false);
-                                  setFormulaRevealed(prev => {
-                                    const next = { ...prev };
-                                    delete next[idx];
-                                    return next;
-                                  });
-                                  setFormulaInputRevealed(prev => {
-                                    const next = { ...prev };
-                                    delete next[idx];
-                                    return next;
-                                  });
-                                  showNotification(`[${q.title || `Q${idx + 1}`}] 공식이 삭제되었습니다.`, 'info');
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
-                              title="공식 삭제"
-                            >
-                              <Trash2 size={12} />
-                              <span>삭제</span>
-                            </button>
-                          </div>
-                        </div>
-
-
-                        {/* Real-time LaTeX rendered Output Display Window */}
-                        {!isMobileLandscape && isOutputVisible && (
-                          <div className="space-y-3 md:p-4 md:bg-slateCustom-950/40 md:rounded-xl md:border md:border-slate-800/80 p-0 bg-transparent border-0 min-h-0 relative">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-rose-400 block select-none">🖥️ 출력창 (실시간 LaTeX 렌더링)</span>
-                              {!isNewEmptyCard && (
-                                <button
-                                  onClick={() => setFormulaRevealed(prev => ({ ...prev, [idx]: false }))}
-                                  className="text-[10px] font-bold text-slate-500 hover:text-white px-2 py-0.5 bg-slate-800/80 hover:bg-slate-700 rounded-md transition-all cursor-pointer active:scale-95 select-none"
-                                >
-                                  접기 ✕
-                                </button>
+                                    }}
+                                    onBlur={() => {
+                                      handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
+                                    }}
+                                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-80 md:h-[450px]"
+                                    placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
+                                  />
+                                </div>
                               )}
                             </div>
-
-                                                        {q.concept && (
-                              <div className="space-y-1">
-                                <span className="text-[10px] font-black text-indigo-400">💡 핵심 개념: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed">
-                                  <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 핵심 개념"} />
-                                </div>
-                              </div>
-                            )}
-
-                            {q.formula ? (
-                              <div className="space-y-1 pt-2 border-t border-slate-800/80">
-                                <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
-                                  <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
-                                </div>
-                              </div>
-                            ) : !q.concept && (
-                              <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Input Textarea Area for Paste / Typing LaTeX */}
-                        {!isMobileLandscape && isInputVisible && (
-                          <div className="space-y-1 pt-1 animate-fade-in">
-                            <span className="text-[10px] font-black text-slate-400 block select-none">✍️ 입력창 (여기에 텍스트 및 LaTeX 수식 복사-붙여넣기)</span>
-                            <textarea
-                              value={q.formula || ''}
-                              onChange={(e) => {
-                                const updated = [...formulaQuestions];
-                                updated[idx] = { ...updated[idx], formula: e.target.value };
-                                latestFormulaQuestionsRef.current = updated;
-                                setFormulaQuestions(updated);
-                                localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
-                              }}
-                              onBlur={() => {
-                                handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
-                              }}
-                              className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-rose-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-80 md:h-[450px]"
-                              placeholder="여기에 LaTeX 블록($$ ... $$)이나 인라인 수식($ ... $)이 포함된 내용을 입력하거나 복사-붙여넣기(Ctrl+V) 하세요."
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          );
+                        })}
+                    </div>
+                  )}
                   </div>
-                )
-              )}
+                )}
               </div>
             </div>
-
-            {/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
+{/* Middle: Gutter (Takes exactly 50px width on Desktop) */}
             <div 
               onMouseDown={startResize}
               onTouchStart={startResize}
