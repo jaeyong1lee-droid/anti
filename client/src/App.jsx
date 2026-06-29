@@ -4150,6 +4150,10 @@ export default function App() {
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
+  const [formulaSubTab, setFormulaSubTab] = useState('formula');
+  const [formulaTables, setFormulaTables] = useState([]);
+  const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
+  const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_formula_revealed');
@@ -10310,6 +10314,109 @@ export default function App() {
     }
   };
 
+  const loadFormulaTables = async () => {
+    setLoadingFormulaTables(true);
+    let loadedData = null;
+    let fallbackToLocal = false;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.formulaTables)) {
+          loadedData = body.data.formulaTables;
+          console.log('[Sync] Loaded formula tables from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database formula tables loading failed:', err);
+    }
+
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_tables');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) {
+            loadedData = parsed;
+            fallbackToLocal = true;
+            console.log('[Fallback] Loaded formula tables from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 필수암기 표 복원 실패:', err);
+      }
+    }
+
+    if (!loadedData) {
+      loadedData = [];
+    }
+
+    setFormulaTables(loadedData);
+    localStorage.setItem('anti_formula_tables', JSON.stringify(loadedData));
+
+    if (fallbackToLocal && loadedData.length > 0) {
+      console.log('[Sync] Auto syncing local tables to database...');
+      fetch(`${API_BASE}/api/session/tables`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaTables: loadedData })
+      }).catch(err => console.warn('[Sync] Auto sync tables failed:', err));
+    }
+
+    setLoadingFormulaTables(false);
+    return loadedData;
+  };
+
+  const handleSaveFormulaTables = async (tables = formulaTables, showToast = true) => {
+    try {
+      setFormulaTables(tables);
+      localStorage.setItem('anti_formula_tables', JSON.stringify(tables));
+      
+      const res = await fetch(`${API_BASE}/api/session/tables`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaTables: tables })
+      });
+
+      if (!res.ok) {
+        throw new Error('Database sync returned non-OK status');
+      }
+
+      if (showToast) {
+        showNotification('필수암기 표 리스트가 저장되었습니다!', 'success');
+      }
+    } catch (err) {
+      console.warn('필수암기 표 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.__handleTableConfirmRequest = (html, title) => {
+      setTableConfirmTarget({ html, title });
+    };
+    return () => {
+      delete window.__handleTableConfirmRequest;
+    };
+  }, []);
+
+  const handleConfirmTableExport = () => {
+    if (!tableConfirmTarget) return;
+    const finalTitle = tableConfirmTarget.title.trim() || '새 비교표';
+    const newTable = {
+      id: 'table-' + Date.now(),
+      title: finalTitle,
+      html: tableConfirmTarget.html,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newTable, ...formulaTables];
+    handleSaveFormulaTables(updated, true);
+    setTableConfirmTarget(null);
+  };
+
   const initializeFormulaQuiz = useCallback(() => {
     if (!formulaQuestions || formulaQuestions.length < 1) return;
     
@@ -11100,6 +11207,7 @@ export default function App() {
 // ── 마운트 시 필수공식 및 이론유도 최우선 서버 동기화 로딩
   useEffect(() => {
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
+    loadFormulaTables().catch(e => console.warn('서버 필수암기 표 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
 
@@ -21326,6 +21434,48 @@ export default function App() {
               </svg>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Table Export Confirmation Modal */}
+      {tableConfirmTarget && (
+        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+            <div className="flex items-center gap-3 text-rose-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+              <h3 className="text-lg font-black text-white">필수암기 표로 내보내기</h3>
+            </div>
+            
+            <p className="text-xs text-slate-400 leading-relaxed">
+              이 비교표를 필수암기(구 필수공식) '표' 서브 탭으로 저장하여 언제든 간편하게 복습하실 수 있습니다. 저장할 표의 제목을 지정해 주세요.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400">표 제목</label>
+              <input
+                type="text"
+                value={tableConfirmTarget.title}
+                onChange={(e) => setTableConfirmTarget(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-700/60 focus:border-rose-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all font-bold"
+                placeholder="비교표 제목을 입력하세요"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setTableConfirmTarget(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-xl text-xs transition-all border border-slate-700/60 cursor-pointer active:scale-95"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmTableExport}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-rose-600/20 border border-rose-500/30"
+              >
+                내보내기
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
