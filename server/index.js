@@ -7409,6 +7409,42 @@ app.post('/api/session/formula', async (req, res) => {
   }
 });
 
+// GET /api/session/tables → 저장된 필수암기 표 상태 반환
+app.get('/api/session/tables', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['formula_tables']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/tables error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/tables → 필수암기 표 상태 저장
+app.post('/api/session/tables', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaTables } = req.body;
+    const value = JSON.stringify({ formulaTables });
+    await saveSessionValue('formula_tables', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/tables error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // GET /api/session/answersheet → 저장된 답안지 상태 반환
 app.get('/api/session/answersheet', async (req, res) => {
   try {

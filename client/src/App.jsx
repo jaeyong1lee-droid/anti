@@ -19322,37 +19322,96 @@ export default function App() {
                   <h4 className="text-xl font-bold text-white mt-2">필수 공식 데이터를 로드하는 중...</h4>
                 </div>
               ) : (
-                <div className="w-full space-y-5 pb-32">
+                <div className="w-full pb-32">
 
-                  {formulaQuestions.filter(q => {
-                    const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                    const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                    return titleMatch || questionMatch;
-                  }).length === 0 && (
-                    <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
-                      <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
-                        <Search size={32} />
+                  {formulaSubTab === 'table' ? (
+                    loadingFormulaTables ? (
+                      <div className="py-32 flex flex-col items-center justify-center gap-4 text-center animate-fade-in">
+                        <RefreshCw className="animate-spin text-rose-500" size={32} />
+                        <span className="text-sm font-bold text-white">표 데이터를 로드하는 중...</span>
                       </div>
-                      <div>
-                        <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
-                        <p className="text-xs text-slate-400 mt-1">다른 공식 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
+                    ) : formulaTables.filter(t => {
+                      return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    }).length === 0 ? (
+                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">저장된 표가 없습니다</h4>
+                          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                            AI 튜터의 답변 중 유용한 비교표를 마크다운 표 우측 상단의 <strong>[표 내보내기]</strong> 버튼을 눌러 여기에 보관할 수 있습니다.
+                          </p>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setFormulaSearchQuery('')}
-                        className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
-                      >
-                        검색 필터 초기화
-                      </button>
-                    </div>
-                  )}
-
-                  {formulaQuestions
-                    .map((q, originalIdx) => ({ ...q, originalIdx }))
-                    .filter(q => {
+                    ) : (
+                      <div className="w-full space-y-6 animate-fade-in">
+                        {formulaTables
+                          .filter(t => {
+                            return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                          })
+                          .map((t, filteredIdx, arr) => {
+                            return (
+                              <div key={t.id} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                                <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                  <span className="text-[15px] font-extrabold text-white">
+                                    📊 {t.title}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`[${t.title}] 표를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+                                        const updated = formulaTables.filter(x => x.id !== t.id);
+                                        setFormulaTables(updated);
+                                        handleSaveFormulaTables(updated, false);
+                                        showNotification(`[${t.title}] 표가 삭제되었습니다.`, 'info');
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
+                                    title="표 삭제"
+                                  >
+                                    <Trash2 size={12} />
+                                    <span>삭제</span>
+                                  </button>
+                                </div>
+                                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 select-text">
+                                  <div className="markdown-body" dangerouslySetInnerHTML={{ __html: t.html }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )
+                  ) : (
+                    // Formula View
+                    formulaQuestions.filter(q => {
                       const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                      const questionMatch = (q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                      const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                       return titleMatch || questionMatch;
-                    })
+                    }).length === 0 ? (
+                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                          <Search size={32} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                          <p className="text-xs text-slate-400 mt-1">다른 공식 명칭으로 검색하시거나 검색어를 확인해 보세요.</p>
+                        </div>
+                        <button
+                          onClick={() => setFormulaSearchQuery('')}
+                          className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                        >
+                          검색 필터 초기화
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-full space-y-5">
+                        {formulaQuestions
+                          .map((q, originalIdx) => ({ ...q, originalIdx }))
+                          .filter(q => {
+                            const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                            const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                            return titleMatch || questionMatch;
+                          })
                     .map((q) => {
                       const idx = q.originalIdx;
                       const isNewEmptyCard = !q.title && !q.formula;
@@ -19650,7 +19709,8 @@ export default function App() {
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                )
               )}
               </div>
             </div>

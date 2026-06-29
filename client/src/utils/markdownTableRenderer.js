@@ -14,7 +14,7 @@ function parseRow(rowText) {
   return cells.map(cell => cell.trim());
 }
 
-function renderTableToHtml(tableLines) {
+function renderTableToHtml(tableLines, precedingTitle = "") {
   if (tableLines.length < 2) return tableLines.join('\n');
 
   let headers = parseRow(tableLines[0]);
@@ -39,10 +39,25 @@ function renderTableToHtml(tableLines) {
       const level = match[1].length;
       const text = match[2].trim();
       html += `<h${level} class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${text}</h${level}>`;
+      if (!precedingTitle) {
+        precedingTitle = text;
+      }
     }
   }
 
-  html += `<div class="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
+  const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '추출된 표';
+
+  html += `<div class="relative w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 group">`;
+  html += `<button 
+    onclick="if(window.__handleTableConfirmRequest) { window.__handleTableConfirmRequest(this.closest('.relative').querySelector('table').outerHTML, '${cleanTitle}') }"
+    class="absolute top-2 right-2 p-1.5 bg-slate-900/90 hover:bg-rose-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1 select-none z-10 shadow-md shadow-black/40 hover:scale-105 active:scale-95"
+    title="필수암기 표창으로 보내기"
+    style="outline: none;"
+  >`;
+  html += `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
+  html += `<span class="text-[10px] font-black ml-1">표 내보내기</span>`;
+  html += `</button>`;
+
   html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
     colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
   }">`;
@@ -111,7 +126,19 @@ export function convertMarkdownTablesToHtml(text) {
         
         // Parse the collected lines
         if (tableLines.length >= 2) {
-          const htmlTable = renderTableToHtml(tableLines);
+          let precedingTitle = "";
+          if (i > 0) {
+            let searchIdx = i - 1;
+            while (searchIdx >= 0) {
+              const pLine = lines[searchIdx].trim();
+              if (pLine && !pLine.includes('|') && !pLine.startsWith('```')) {
+                precedingTitle = pLine.replace(/^(#+\s*|\*+\s*|-\s*)/, '').replace(/\*+$/, '').trim();
+                break;
+              }
+              searchIdx--;
+            }
+          }
+          const htmlTable = renderTableToHtml(tableLines, precedingTitle);
           processedLines.push(htmlTable);
           i = j; // Advance past the table block
           continue;
@@ -125,3 +152,4 @@ export function convertMarkdownTablesToHtml(text) {
   
   return processedLines.join('\n');
 }
+
