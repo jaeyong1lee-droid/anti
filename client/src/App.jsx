@@ -52,7 +52,8 @@ import {
   Image,
   Lock,
   Unlock,
-  Cpu
+  Cpu,
+  Type
 } from 'lucide-react';
 import { FloatingCalculator } from './components/ScientificCalculator';
 
@@ -4157,6 +4158,8 @@ export default function App() {
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
+  const [formulaAcronyms, setFormulaAcronyms] = useState([]);
+  const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_formula_revealed');
@@ -19385,6 +19388,17 @@ export default function App() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="inline-block"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
                   <span>표</span>
                 </button>
+                <button
+                  onClick={() => setFormulaSubTab('acronym')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                    formulaSubTab === 'acronym'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
+                      : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <Type size={12} />
+                  <span>앞글자</span>
+                </button>
               </div>
 
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
@@ -19551,7 +19565,7 @@ export default function App() {
                                               setEditingTableIdx(idx);
                                               setEditingTableText(t.title || '');
                                             }}
-                                            className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-violet-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                            className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-violet-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
                                           >
                                             {t.title}
                                           </span>
@@ -19611,6 +19625,55 @@ export default function App() {
                                     <div className="markdown-body" dangerouslySetInnerHTML={{ __html: t.html }} />
                                   </div>
                                 )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )
+                  ) : formulaSubTab === 'acronym' ? (
+                    loadingFormulaAcronyms ? (
+                      <div className="py-32 flex flex-col items-center justify-center gap-4 text-center animate-fade-in">
+                        <RefreshCw className="animate-spin text-rose-500" size={32} />
+                        <span className="text-sm font-bold text-white">앞글자 데이터를 로드하는 중...</span>
+                      </div>
+                    ) : formulaAcronyms.filter(ac => {
+                      return (ac.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                             (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    }).length === 0 ? (
+                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                          <Type size={32} className="text-slate-500" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">저장된 앞글자 암기법이 없습니다</h4>
+                          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                            중요한 핵심 개념을 앞글자(두문자) 키워드를 사용해 쉽게 암기할 수 있는 공간입니다.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full space-y-6 animate-fade-in">
+                        {formulaAcronyms
+                          .filter(ac => {
+                            return (ac.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                                   (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                          })
+                          .map((ac, idx) => {
+                            return (
+                              <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                  <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
+                                    <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
+                                      A{idx + 1}
+                                    </span>
+                                    <span className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer whitespace-normal break-words max-w-full inline-block">
+                                      {ac.title}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap select-text">
+                                  {ac.content}
+                                </div>
                               </div>
                             );
                           })}
@@ -19720,7 +19783,7 @@ export default function App() {
                                             setEditingFormulaIdx(idx);
                                             setEditingFormulaText(q.title || q.question || '');
                                           }}
-                                          className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                          className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
                                           title="더블클릭하여 공식 제목 수정"
                                         >
                                           <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
