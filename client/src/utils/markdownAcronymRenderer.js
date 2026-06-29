@@ -3,6 +3,43 @@
  * with an export button for saving to the Memorization Modal's acronym tab.
  */
 
+function renderContentAsHtmlTable(content) {
+  if (!content) return "";
+  if (content.includes('|')) {
+    const lines = content.split('\n');
+    let html = '<div class="overflow-x-auto w-full mt-2"><table class="w-full text-left border-collapse text-xs select-text">';
+    html += '<thead>';
+    html += '<tr class="border-b border-slate-800 bg-slateCustom-950/40">';
+    html += '<th class="p-2.5 font-black text-slate-300 text-center w-16">두문자</th>';
+    html += '<th class="p-2.5 font-black text-slate-300 text-center w-28">암기단어</th>';
+    html += '<th class="p-2.5 font-black text-slate-300">설명</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+    
+    let hasRows = false;
+    for (const line of lines) {
+      if (!line.includes('|')) continue;
+      const parts = line.split('|').map(p => p.trim());
+      if (parts.length < 5) continue;
+      const col1 = parts[1];
+      const col2 = parts[2];
+      const col3 = parts[3];
+      if (col1 === '두문자' || col1.includes('---')) continue;
+      hasRows = true;
+      html += `<tr class="border-b border-slate-900/60 hover:bg-slate-900/10">`;
+      html += `<td class="p-2.5 font-extrabold text-emerald-400 text-center">${col1}</td>`;
+      html += `<td class="p-2.5 font-bold text-slate-100 text-center">${col2}</td>`;
+      html += `<td class="p-2.5 text-slate-350 leading-relaxed">${col3}</td>`;
+      html += `</tr>`;
+    }
+    html += '</tbody></table></div>';
+    if (hasRows) return html;
+  }
+
+  return `<div class="whitespace-pre-wrap leading-relaxed">${content}</div>`;
+}
+
 export function convertMarkdownAcronymsToHtml(text) {
   if (!text) return text;
 
@@ -26,13 +63,11 @@ export function convertMarkdownAcronymsToHtml(text) {
         if (remaining) {
           contentLines.push(remaining);
         }
+      } else if (line.trim().startsWith('두문자:')) {
+        // If content contains "두문자:" inside acronym block, also treat as content lines
+        contentLines.push(line);
       } else {
-        if (inContent) {
-          contentLines.push(line);
-        } else {
-          // If content didn't start with "내용:" yet, accumulate lines as content
-          contentLines.push(line);
-        }
+        contentLines.push(line);
       }
     }
 
@@ -60,8 +95,8 @@ export function convertMarkdownAcronymsToHtml(text) {
     html += `</button>`;
     html += `</div>`;
 
-    html += `<div class="w-full p-4 rounded-xl border border-slate-800 bg-slate-950/40 text-slate-300 text-sm whitespace-pre-wrap select-text leading-relaxed">`;
-    html += content;
+    html += `<div class="w-full p-4 rounded-xl border border-slate-800 bg-slate-950/40 text-slate-300 text-sm select-text">`;
+    html += renderContentAsHtmlTable(content);
     html += `</div>`;
     html += `</div>`;
 

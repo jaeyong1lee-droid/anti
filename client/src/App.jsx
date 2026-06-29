@@ -8924,7 +8924,7 @@ export default function App() {
     setRealTimeAttachedImage(null);
   };
 
-  const handleSendRealTimeMessage = async (e, customMessage) => {
+  const handleSendRealTimeMessage = async (e, customMessage, overrideAcronymMode = false) => {
     if (e) e.preventDefault();
     const userMessage = (typeof customMessage === 'string' ? customMessage : realTimeTutorInput).trim();
     if (!userMessage && !realTimeAttachedImage) return;
@@ -8951,7 +8951,7 @@ export default function App() {
           history: realTimeChatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
-          acronymMode: acronymModeActive,
+          acronymMode: overrideAcronymMode || acronymModeActive,
           progressId
         })
       });
@@ -9862,7 +9862,7 @@ export default function App() {
   };
 
   // ── Gemini Sidebar Chat Handler ───────────────────────────────
-  const handleSendChat = async (customMessage) => {
+  const handleSendChat = async (customMessage, overrideAcronymMode = false) => {
     const userMessage = (typeof customMessage === 'string' ? customMessage : chatInput).trim();
     if ((!userMessage && !attachedImage) || isChatLoading) return;
     
@@ -9903,7 +9903,7 @@ export default function App() {
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
-          acronymMode: acronymModeActive,
+          acronymMode: overrideAcronymMode || acronymModeActive,
           progressId
         })
       });
@@ -9928,6 +9928,17 @@ export default function App() {
           parent.scrollTop = parent.scrollHeight;
         }
       });
+    }
+  };
+
+  const handleAcronymPromptRequest = async (chatType = 'sidebar') => {
+    const topic = window.prompt("앞글자(두문자) 암기법을 생성할 토픽의 제목을 입력하세요:");
+    if (!topic || !topic.trim()) return;
+    const query = `${topic.trim()}에 대한 앞글자(두문자) 암기법을 생성해줘.`;
+    if (chatType === 'realtime') {
+      await handleSendRealTimeMessage(null, query, true);
+    } else {
+      await handleSendChat(query, true);
     }
   };
 
@@ -10487,6 +10498,88 @@ export default function App() {
         showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
       }
     }
+  };
+
+  const getAcronymRows = (content) => {
+    if (!content) return [];
+    if (content.includes('|')) {
+      const lines = content.split('\n');
+      const rows = [];
+      for (const line of lines) {
+        if (!line.includes('|')) continue;
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length < 5) continue;
+        const col1 = parts[1];
+        const col2 = parts[2];
+        const col3 = parts[3];
+        if (col1 === '두문자' || col1.includes('---')) continue;
+        rows.push({
+          acronym: col1,
+          word: col2,
+          description: col3
+        });
+      }
+      if (rows.length > 0) return rows;
+    }
+
+    // Fallback parser for old bullet points
+    const rows = [];
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+        const match = trimmed.match(/^[•\-*]\s*([^(:\s]+)\s*\(([^)]+)\)\s*:\s*(.+)$/);
+        if (match) {
+          rows.push({
+            acronym: match[1].trim(),
+            word: match[2].trim(),
+            description: match[3].trim()
+          });
+        } else {
+          const colonIndex = trimmed.indexOf(':');
+          if (colonIndex !== -1) {
+            const left = trimmed.substring(1, colonIndex).trim();
+            const right = trimmed.substring(colonIndex + 1).trim();
+            rows.push({
+              acronym: left[0] || '',
+              word: left,
+              description: right
+            });
+          }
+        }
+      }
+    }
+    return rows;
+  };
+
+  const handleMoveAcronymRow = async (acronymIdx, rowIdx, direction) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length === 0) return;
+
+    const targetIdx = direction === 'up' ? rowIdx - 1 : rowIdx + 1;
+    if (targetIdx < 0 || targetIdx >= rows.length) return;
+
+    // Swap rows
+    const temp = rows[rowIdx];
+    rows[rowIdx] = rows[targetIdx];
+    rows[targetIdx] = temp;
+
+    // Rebuild the combined acronym string
+    const newAcronymLetters = rows.map(r => r.acronym).join('');
+
+    // Serialize rows back to markdown table
+    let newContent = `두문자: ${newAcronymLetters}\n`;
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
   };
 
   useEffect(() => {
@@ -15772,6 +15865,13 @@ export default function App() {
                       </div>
                     )}
                     <button
+                      onClick={() => handleAcronymPromptRequest('sidebar')}
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800/80 hover:bg-slate-800/50"
+                      title="앞글자(두문자) 암기법 생성 팝업 열기"
+                    >
+                      <span>두</span>
+                    </button>
+                    <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
@@ -18894,6 +18994,13 @@ export default function App() {
                       </div>
                     )}
                     <button
+                      onClick={() => handleAcronymPromptRequest('sidebar')}
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800/80 hover:bg-slate-800/50"
+                      title="앞글자(두문자) 암기법 생성 팝업 열기"
+                    >
+                      <span>두</span>
+                    </button>
+                    <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
@@ -19331,6 +19438,13 @@ export default function App() {
                         </button>
                       </div>
                     )}
+                <button
+                  onClick={() => handleAcronymPromptRequest('realtime')}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800 hover:bg-slate-800/50"
+                  title="앞글자(두문자) 암기법 생성 팝업 열기"
+                >
+                  <span>두</span>
+                </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
@@ -19859,11 +19973,67 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                {isExpanded && (
-                                  <div className="text-slate-350 text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in">
-                                    {ac.content}
-                                  </div>
-                                )}
+                                {isExpanded && (() => {
+                                  const rows = getAcronymRows(ac.content);
+                                  if (rows.length === 0) {
+                                    return (
+                                      <div className="text-slate-350 text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in">
+                                        {ac.content}
+                                      </div>
+                                    );
+                                  }
+                                  const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
+                                  const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
+
+                                  return (
+                                    <div className="space-y-3 animate-fade-in">
+                                      <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 inline-block">
+                                        두문자 조합: {acronymHeaderText}
+                                      </div>
+                                      <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl p-2.5">
+                                        <table className="w-full text-left border-collapse text-xs select-text">
+                                          <thead>
+                                            <tr className="border-b border-slate-800/80 bg-slateCustom-950/60">
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-16 select-none">두문자</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-28 select-none">암기단어</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">설명</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-20 select-none">순서 변경</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {rows.map((row, rIdx) => (
+                                              <tr key={rIdx} className="border-b border-slate-900/40 hover:bg-slate-900/20 transition-colors">
+                                                <td className="p-2 md:p-2.5 font-black text-emerald-400 text-center text-sm">{row.acronym}</td>
+                                                <td className="p-2 md:p-2.5 font-bold text-slate-100 text-center">{row.word}</td>
+                                                <td className="p-2 md:p-2.5 text-slate-300 leading-relaxed whitespace-normal break-all">{row.description}</td>
+                                                <td className="p-2 md:p-2.5 text-center select-none">
+                                                  <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                      onClick={() => handleMoveAcronymRow(idx, rIdx, 'up')}
+                                                      disabled={rIdx === 0}
+                                                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
+                                                      title="위로 이동"
+                                                    >
+                                                      ▲
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleMoveAcronymRow(idx, rIdx, 'down')}
+                                                      disabled={rIdx === rows.length - 1}
+                                                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
+                                                      title="아래로 이동"
+                                                    >
+                                                      ▼
+                                                    </button>
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })}
@@ -20562,6 +20732,13 @@ export default function App() {
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={() => handleAcronymPromptRequest('realtime')}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800 hover:bg-slate-800/50"
+                  title="앞글자(두문자) 암기법 생성 팝업 열기"
+                >
+                  <span>두</span>
+                </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
