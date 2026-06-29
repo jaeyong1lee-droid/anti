@@ -10778,22 +10778,25 @@ export default function App() {
     }));
 
     try {
-      const itemsStr = rows.map(r => `- 두문자: "${r.acronym}", 암기단어: "${r.word}", 설명: "${r.description}"`).join('\n');
+      const itemsStr = rows.map(r => `- 기존두문자키워드: "${r.acronym}", 암기단어: "${r.word}", 설명: "${r.description}"`).join('\n');
       
-      const query = `다음 앞글자 암기 항목들을 수험생이 암기하기 가장 수월한 최적의 단어/조합(말이 되는 두문자 글자 조합)으로 항목 순서를 다시 정렬 및 재조합해주고, 이를 쉽게 암기할 수 있는 기발하고 재미있는 연상 문장(한 줄 문장 아이디어)도 함께 만들어줘.
-기존 항목들의 누락 없이, 순서만 외우기 편하게 바꾸어서 출력해줘.
+      const query = `다음 앞글자 암기 항목들을 수험생이 암기하기 가장 수월한 최적의 단어/조합(말이 되는 두문자 글자 조합)이 되도록 항목 순서(행 순서)를 다시 정렬 및 재조합해주고, 이를 쉽게 암기할 수 있는 기발하고 재미있는 연상 문장(한 줄 문장 아이디어)도 함께 만들어줘.
+
+[매우 중요한 지침]:
+1. 기존 항목들의 누락 없이, 행들의 아래위 순서를 자유롭게 조정하여 가장 외우기 쉬운 단어 또는 문장이 되도록 정렬하십시오. (단순히 문장만 수정하지 말고, 표 안의 행들 순서를 문맥에 맞게 재배치해야 합니다.)
+2. 각 항목의 암기단어 또는 핵심어에서 **오직 한 글자가 아닌, 반드시 최소 2글자 이상의 연속된 문자(예: "안전", "설계", "설변", "시공" 등)**를 두문자 키워드로 추출하여 표의 '두문자' 열과 상단의 '두문자' 필드를 채우십시오. 한 글자로 쪼개는 것은 외우기 어렵고 의미가 없습니다.
 
 대상 항목들:
 ${itemsStr}
 
-반드시 다음 형식 포맷을 100% 준수하여 출력하십시오:
+반드시 다음 형식 포맷을 100% 준수하여 출력하십시오 (설명글이나 꼬리말은 절대 금지):
 제목: ${ac.title}
-두문자: [재조합된 두문자 조합]
+두문자: [재조합된 2글자 이상 키워드들의 연달아 구성된 조합]
 연상문장: [외우기 쉬운 재미있는 연상문장 문장 아이디어]
 
 | 두문자 | 암기단어 | 설명 |
 | :---: | :---: | :--- |
-[정렬된 항목들을 마크다운 표로 작성]`;
+[정렬 및 재조합된 항목들을 마크다운 표로 작성]`;
 
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -10847,6 +10850,46 @@ ${itemsStr}
       }));
       showNotification(`재조합 실패: ${err.message}`, 'error');
     }
+  };
+
+  const handleUpdateAcronymCombinedCell = async (acronymIdx, rowIdx, value) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length === 0) return;
+
+    // Parse word and description
+    const colonIdx = value.indexOf(':');
+    let word = '';
+    let description = '';
+    if (colonIdx !== -1) {
+      word = value.substring(0, colonIdx).trim();
+      description = value.substring(colonIdx + 1).trim();
+    } else {
+      word = value.trim();
+      description = '';
+    }
+
+    rows[rowIdx].word = word;
+    rows[rowIdx].description = description;
+
+    const newAcronymLetters = rows.map(r => r.acronym).join('');
+    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
+
+    let newContent = `두문자: ${newAcronymLetters}\n`;
+    if (existingSentence) {
+      newContent += `연상문장: ${existingSentence}\n`;
+    }
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym || ' '} | ${r.word || ' '} | ${r.description || ' '} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
   };
 
   useEffect(() => {
@@ -20334,23 +20377,13 @@ ${itemsStr}
                                                   />
                                                 </td>
                                                 <td className="p-1.5">
-                                                  <div className="flex items-center gap-2">
-                                                    <input
-                                                      type="text"
-                                                      value={row.word}
-                                                      onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'word', e.target.value)}
-                                                      className="w-28 md:w-36 bg-slate-950/45 focus:bg-slate-950 border border-slate-800/85 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-2.5 py-1 text-slate-100 font-bold text-center focus:outline-none transition-all"
-                                                      placeholder="암기단어"
-                                                    />
-                                                    <span className="text-slate-500 font-black shrink-0">:</span>
-                                                    <input
-                                                      type="text"
-                                                      value={row.description}
-                                                      onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'description', e.target.value)}
-                                                      className="flex-1 bg-slate-950/45 focus:bg-slate-950 border border-slate-800/85 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1 text-slate-300 focus:outline-none transition-all"
-                                                      placeholder="설명"
-                                                    />
-                                                  </div>
+                                                  <input
+                                                    type="text"
+                                                    value={row.word || row.description ? `${row.word || ''} : ${row.description || ''}` : ''}
+                                                    onChange={(e) => handleUpdateAcronymCombinedCell(idx, rIdx, e.target.value)}
+                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs"
+                                                    placeholder="암기단어 : 설명"
+                                                  />
                                                 </td>
                                                 <td className="p-2 md:p-2.5 text-center select-none">
                                                   <div className="flex items-center justify-center gap-1">
