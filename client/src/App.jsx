@@ -10625,7 +10625,9 @@ export default function App() {
     return rows;
   };
 
-  const handleMoveAcronymRow = async (acronymIdx, rowIdx, direction) => {
+  const handleMoveAcronymRow = async (acronymId, rowIdx, direction) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10658,7 +10660,9 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
-  const handleAddAcronymRow = async (acronymIdx) => {
+  const handleAddAcronymRow = async (acronymId) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10684,7 +10688,9 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
-  const handleDeleteAcronymRow = async (acronymIdx, rowIdx) => {
+  const handleDeleteAcronymRow = async (acronymId, rowIdx) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10714,7 +10720,9 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
-  const handleUpdateAcronymRowCell = async (acronymIdx, rowIdx, field, value) => {
+  const handleUpdateAcronymRowCell = async (acronymId, rowIdx, field, value) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10741,7 +10749,9 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
-  const handleUpdateAcronymSentence = async (acronymIdx, newSentence) => {
+  const handleUpdateAcronymSentence = async (acronymId, newSentence) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10763,7 +10773,9 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
-  const handleOptimizeAcronym = async (acronymIdx) => {
+  const handleOptimizeAcronym = async (acronymId) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
@@ -10856,7 +10868,9 @@ ${itemsStr}
     }
   };
 
-  const handleUpdateAcronymCombinedCell = async (acronymIdx, rowIdx, value) => {
+  const handleUpdateAcronymCombinedCell = async (acronymId, rowIdx, value) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
