@@ -16293,6 +16293,24 @@ ${itemsStr}
                             )}
                           </div>
                           <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
+                            {/* 문자 버튼 (두문자 문제 전용) */}
+                            {q.type === '주관식 (앞글자)' && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('두문자를 입력할까요?')) {
+                                    setTableAnswers(prev => ({
+                                      ...prev,
+                                      [`${idx}_ACRONYM_COMB`]: q.acronym || ''
+                                    }));
+                                  }
+                                }}
+                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-violet-500/20 bg-violet-950/40 text-violet-300 hover:bg-violet-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                                title="두문자 정답 자동 입력"
+                              >
+                                📝 문자
+                              </button>
+                            )}
+
                             {/* 힌트 버튼 */}
                             <button
                               onClick={() => handleRequestHint(q.question)}
@@ -19526,6 +19544,24 @@ ${itemsStr}
                         </div>
                         
                         <div className="w-full sm:w-auto flex items-center gap-1 sm:gap-2 flex-wrap">
+                          {/* 문자 버튼 (두문자 문제 전용) */}
+                          {q.type === '주관식 (앞글자)' && (
+                            <button
+                              onClick={() => {
+                                  if (window.confirm('두문자를 입력할까요?')) {
+                                    setTableAnswers(prev => ({
+                                      ...prev,
+                                      [`${idx}_ACRONYM_COMB`]: q.acronym || ''
+                                    }));
+                                  }
+                              }}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-violet-500/20 bg-violet-950/40 text-violet-300 hover:bg-violet-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
+                              title="두문자 정답 자동 입력"
+                            >
+                              📝 문자
+                            </button>
+                          )}
+
                           {/* 힌트 버튼 */}
                           <button
                             onClick={() => handleRequestHint(q.question)}
