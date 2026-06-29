@@ -4167,7 +4167,7 @@ export default function App() {
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [acronymModeActive, setAcronymModeActive] = useState(false);
-  const [editingAcronymIdx, setEditingAcronymIdx] = useState(null);
+  const [editingAcronymId, setEditingAcronymId] = useState(null);
   const [editingAcronymText, setEditingAcronymText] = useState('');
   const [expandedAcronymIds, setExpandedAcronymIds] = useState({});
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
@@ -20210,7 +20210,7 @@ ${itemsStr}
                               );
                             }
                             const isExpanded = !!expandedAcronymIds[ac.id];
-                            const isEditing = editingAcronymIdx === idx;
+                            const isEditing = editingAcronymId === ac.id;
                             return (
                               <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
@@ -20229,30 +20229,28 @@ ${itemsStr}
                                             autoFocus
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter') {
-                                                const updated = [...formulaAcronyms];
-                                                updated[idx] = { ...updated[idx], title: editingAcronymText };
+                                                const updated = formulaAcronyms.map(item => item.id === ac.id ? { ...item, title: editingAcronymText } : item);
                                                 setFormulaAcronyms(updated);
                                                 handleSaveFormulaAcronyms(updated, false);
-                                                setEditingAcronymIdx(null);
+                                                setEditingAcronymId(null);
                                               } else if (e.key === 'Escape') {
-                                                setEditingAcronymIdx(null);
+                                                setEditingAcronymId(null);
                                               }
                                             }}
                                           />
                                           <button
                                             onClick={() => {
-                                              const updated = [...formulaAcronyms];
-                                              updated[idx] = { ...updated[idx], title: editingAcronymText };
+                                              const updated = formulaAcronyms.map(item => item.id === ac.id ? { ...item, title: editingAcronymText } : item);
                                               setFormulaAcronyms(updated);
                                               handleSaveFormulaAcronyms(updated, false);
-                                              setEditingAcronymIdx(null);
+                                              setEditingAcronymId(null);
                                             }}
                                             className="px-2 py-1 bg-emerald-600 text-white text-xs font-bold rounded hover:bg-emerald-500 transition-colors shrink-0 cursor-pointer"
                                           >
                                             저장
                                           </button>
                                           <button
-                                            onClick={() => setEditingAcronymIdx(null)}
+                                            onClick={() => setEditingAcronymId(null)}
                                             className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
                                           >
                                             취소
@@ -20262,7 +20260,7 @@ ${itemsStr}
                                         <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
                                           <span
                                             onDoubleClick={() => {
-                                              setEditingAcronymIdx(idx);
+                                              setEditingAcronymId(ac.id);
                                               setEditingAcronymText(ac.title || '');
                                             }}
                                             className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
@@ -20279,7 +20277,7 @@ ${itemsStr}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
                                     {/* 새로고침(재조합) 버튼 */}
                                     <button
-                                      onClick={() => handleOptimizeAcronym(idx)}
+                                      onClick={() => handleOptimizeAcronym(ac.id)}
                                       disabled={ac.isOptimizing}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                       title="외우기 쉬운 최적의 조합으로 재구성"
@@ -20347,7 +20345,7 @@ ${itemsStr}
                                           <input
                                             type="text"
                                             value={sentenceText}
-                                            onChange={(e) => handleUpdateAcronymSentence(idx, e.target.value)}
+                                            onChange={(e) => handleUpdateAcronymSentence(ac.id, e.target.value)}
                                             placeholder="예: 동해를 '차단'하기 위해 '배치'했다"
                                             className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0"
                                           />
@@ -20362,7 +20360,7 @@ ${itemsStr}
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
-                                                    onClick={() => handleAddAcronymRow(idx)}
+                                                    onClick={() => handleAddAcronymRow(ac.id)}
                                                     className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
                                                     title="새 암기 행 추가"
                                                   >
@@ -20380,7 +20378,7 @@ ${itemsStr}
                                                   <input
                                                     type="text"
                                                     value={row.acronym}
-                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'acronym', e.target.value)}
+                                                    onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
                                                     className="w-full text-center bg-transparent border-0 text-emerald-400 font-black focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
                                                   />
                                                 </td>
@@ -20388,7 +20386,7 @@ ${itemsStr}
                                                   <input
                                                     type="text"
                                                     value={row.word || row.description ? `${row.word || ''} : ${row.description || ''}` : ''}
-                                                    onChange={(e) => handleUpdateAcronymCombinedCell(idx, rIdx, e.target.value)}
+                                                    onChange={(e) => handleUpdateAcronymCombinedCell(ac.id, rIdx, e.target.value)}
                                                     className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs"
                                                     placeholder="암기단어 : 설명"
                                                   />
@@ -20396,7 +20394,7 @@ ${itemsStr}
                                                 <td className="p-2 md:p-2.5 text-center select-none">
                                                   <div className="flex items-center justify-center gap-1">
                                                     <button
-                                                      onClick={() => handleMoveAcronymRow(idx, rIdx, 'up')}
+                                                      onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'up')}
                                                       disabled={rIdx === 0}
                                                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
                                                       title="위로 이동"
@@ -20404,7 +20402,7 @@ ${itemsStr}
                                                       ▲
                                                     </button>
                                                     <button
-                                                      onClick={() => handleMoveAcronymRow(idx, rIdx, 'down')}
+                                                      onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'down')}
                                                       disabled={rIdx === rows.length - 1}
                                                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
                                                       title="아래로 이동"
@@ -20412,7 +20410,7 @@ ${itemsStr}
                                                       ▼
                                                     </button>
                                                     <button
-                                                      onClick={() => handleDeleteAcronymRow(idx, rIdx)}
+                                                      onClick={() => handleDeleteAcronymRow(ac.id, rIdx)}
                                                       className="p-1 rounded bg-slate-800 hover:bg-rose-950/80 text-slate-400 hover:text-rose-450 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20"
                                                       title="행 삭제"
                                                     >
