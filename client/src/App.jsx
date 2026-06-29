@@ -15837,7 +15837,7 @@ ${itemsStr}
               {selectedTopic.pdf_name && (
                 <button
                   onClick={handleOpenOriginalReport}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                  className="hidden md:flex flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 items-center justify-center whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
                   <span className="whitespace-nowrap">보고서</span>
@@ -21393,7 +21393,8 @@ ${itemsStr}
                                           <thead>
                                             <tr className="border-b border-slate-800/80 bg-slateCustom-950/60">
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-16 select-none">두문자</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">암기내용 (단어 : 설명)</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none w-1/4">암기단어</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">설명</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
@@ -21420,12 +21421,41 @@ ${itemsStr}
                                                   />
                                                 </td>
                                                 <td className="p-1.5">
-                                                  <input
-                                                    type="text"
-                                                    value={row.word || row.description ? `${row.word || ''} : ${row.description || ''}` : ''}
-                                                    onChange={(e) => handleUpdateAcronymCombinedCell(ac.id, rIdx, e.target.value)}
-                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs"
-                                                    placeholder="암기단어 : 설명"
+                                                  <textarea
+                                                    value={row.word || ''}
+                                                    onChange={(e) => {
+                                                      handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value);
+                                                      e.target.style.height = 'auto';
+                                                      e.target.style.height = `${e.target.scrollHeight}px`;
+                                                    }}
+                                                    ref={(el) => {
+                                                      if (el) {
+                                                        el.style.height = 'auto';
+                                                        el.style.height = `${el.scrollHeight}px`;
+                                                      }
+                                                    }}
+                                                    rows={1}
+                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs resize-none overflow-hidden block"
+                                                    placeholder="암기단어"
+                                                  />
+                                                </td>
+                                                <td className="p-1.5">
+                                                  <textarea
+                                                    value={row.description || ''}
+                                                    onChange={(e) => {
+                                                      handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value);
+                                                      e.target.style.height = 'auto';
+                                                      e.target.style.height = `${e.target.scrollHeight}px`;
+                                                    }}
+                                                    ref={(el) => {
+                                                      if (el) {
+                                                        el.style.height = 'auto';
+                                                        el.style.height = `${el.scrollHeight}px`;
+                                                      }
+                                                    }}
+                                                    rows={1}
+                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs resize-none overflow-hidden block"
+                                                    placeholder="설명"
                                                   />
                                                 </td>
                                                 <td className="p-2 md:p-2.5 text-center select-none">
@@ -22555,7 +22585,7 @@ ${itemsStr}
                                     handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
                                   }
                                 }}
-                                className="py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 flex items-center justify-center gap-0.5 sm:gap-1"
+                                className="hidden md:flex py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 items-center justify-center gap-0.5 sm:gap-1"
                                 title="원본 보고서 파일(HTML/PDF/LaTeX) 팝업 열기"
                               >
                                 <FileText size={10} />
