@@ -4158,6 +4158,9 @@ export default function App() {
   const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
   const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
   const [acronymConfirmTarget, setAcronymConfirmTarget] = useState(null);
+  const [showAcronymPromptModal, setShowAcronymPromptModal] = useState(false);
+  const [acronymPromptTopic, setAcronymPromptTopic] = useState('');
+  const [acronymPromptCount, setAcronymPromptCount] = useState('4');
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
@@ -9931,14 +9934,84 @@ export default function App() {
     }
   };
 
-  const handleAcronymPromptRequest = async (chatType = 'sidebar') => {
-    const topic = window.prompt("앞글자(두문자) 암기법을 생성할 토픽의 제목을 입력하세요:");
-    if (!topic || !topic.trim()) return;
-    const query = `${topic.trim()}에 대한 앞글자(두문자) 암기법을 생성해줘.`;
-    if (chatType === 'realtime') {
-      await handleSendRealTimeMessage(null, query, true);
-    } else {
-      await handleSendChat(query, true);
+  const handleAcronymPromptRequest = (chatType = 'sidebar') => {
+    setAcronymPromptTopic('');
+    setAcronymPromptCount('4');
+    setShowAcronymPromptModal(true);
+  };
+
+  const handleGenerateAcronymSubmit = async () => {
+    const topic = acronymPromptTopic.trim();
+    const count = parseInt(acronymPromptCount, 10) || 4;
+    if (!topic) return;
+
+    setShowAcronymPromptModal(false);
+
+    // Open Memorization Modal and switch to acronyms tab
+    setShowFormulaExam(true);
+    setFormulaSubTab('acronym');
+
+    // Create a temporary loading card in the acronyms list
+    const tempId = 'acronym-loading-' + Date.now();
+    const newLoadingAcronym = {
+      id: tempId,
+      title: topic,
+      content: '', // empty content represents loading state
+      isLoading: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    setFormulaAcronyms(prev => [newLoadingAcronym, ...prev]);
+
+    try {
+      const query = `${topic}에 대한 앞글자(두문자) 암기법을 생성해줘. 총 ${count}개 항목으로 구성해줘.`;
+      
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: query,
+          image: null,
+          acronymMode: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '앞글자 생성 실패');
+
+      let aiText = data.text || '';
+      
+      let parsedTitle = topic;
+      const titleMatch = aiText.match(/^제목:\s*([^\n]+)/m);
+      if (titleMatch) {
+        parsedTitle = titleMatch[1].trim();
+        aiText = aiText.replace(/^제목:[^\n]*\n?/m, '');
+      }
+
+      const finalContent = aiText.trim();
+
+      setFormulaAcronyms(prev => {
+        const updated = prev.map(ac => {
+          if (ac.id === tempId) {
+            return {
+              id: 'acronym-' + Date.now(),
+              title: parsedTitle,
+              content: finalContent,
+              createdAt: new Date().toISOString()
+            };
+          }
+          return ac;
+        });
+        handleSaveFormulaAcronyms(updated, false);
+        return updated;
+      });
+
+      showNotification(`[${parsedTitle}] 앞글자 암기법이 생성되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Failed to generate acronym:', err);
+      setFormulaAcronyms(prev => prev.filter(ac => ac.id !== tempId));
+      showNotification(`생성 실패: ${err.message}`, 'error');
     }
   };
 
@@ -10575,6 +10648,75 @@ export default function App() {
     newContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
       newContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
+  };
+
+  const handleAddAcronymRow = async (acronymIdx) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+
+    // Add a new empty row
+    rows.push({ acronym: '새', word: '새 암기단어', description: '새 설명' });
+
+    const newAcronymLetters = rows.map(r => r.acronym).join('');
+
+    let newContent = `두문자: ${newAcronymLetters}\n`;
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
+  };
+
+  const handleDeleteAcronymRow = async (acronymIdx, rowIdx) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length <= 1) {
+      showNotification('최소 한 개의 행은 유지되어야 합니다.', 'warning');
+      return;
+    }
+
+    rows.splice(rowIdx, 1);
+
+    const newAcronymLetters = rows.map(r => r.acronym).join('');
+
+    let newContent = `두문자: ${newAcronymLetters}\n`;
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
+  };
+
+  const handleUpdateAcronymRowCell = async (acronymIdx, rowIdx, field, value) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length === 0) return;
+
+    rows[rowIdx][field] = value;
+
+    const newAcronymLetters = rows.map(r => r.acronym).join('');
+
+    let newContent = `두문자: ${newAcronymLetters}\n`;
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym || ' '} | ${r.word || ' '} | ${r.description || ' '} |\n`;
     }
 
     updated[acronymIdx] = { ...ac, content: newContent.trim() };
@@ -19871,6 +20013,26 @@ export default function App() {
                                    (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                           })
                           .map((ac, idx) => {
+                            if (ac.isLoading) {
+                              return (
+                                <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg animate-pulse select-none">
+                                  <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                                    <span className="text-[11px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                                      AI
+                                    </span>
+                                    <h4 className="text-sm font-black text-white flex items-center gap-2">
+                                      [{ac.title}] 앞글자 암기법을 생성하는 중...
+                                    </h4>
+                                  </div>
+                                  <div className="flex flex-col items-center justify-center py-6 gap-3">
+                                    <RefreshCw className="animate-spin text-emerald-400" size={24} />
+                                    <p className="text-[11px] text-slate-400 text-center">
+                                      AI 튜터가 최적의 앞글자 단어 조합과 마크다운 비교표를 구성하고 있습니다. 잠시만 기다려 주세요.
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
                             const isExpanded = !!expandedAcronymIds[ac.id];
                             const isEditing = editingAcronymIdx === idx;
                             return (
@@ -19997,15 +20159,47 @@ export default function App() {
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-16 select-none">두문자</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-28 select-none">암기단어</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">설명</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-20 select-none">순서 변경</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
+                                                <div className="flex items-center justify-center gap-2">
+                                                  <button
+                                                    onClick={() => handleAddAcronymRow(idx)}
+                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
+                                                    title="새 암기 행 추가"
+                                                  >
+                                                    + 행추가
+                                                  </button>
+                                                  <span>순서 변경</span>
+                                                </div>
+                                              </th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {rows.map((row, rIdx) => (
                                               <tr key={rIdx} className="border-b border-slate-900/40 hover:bg-slate-900/20 transition-colors">
-                                                <td className="p-2 md:p-2.5 font-black text-emerald-400 text-center text-sm">{row.acronym}</td>
-                                                <td className="p-2 md:p-2.5 font-bold text-slate-100 text-center">{row.word}</td>
-                                                <td className="p-2 md:p-2.5 text-slate-300 leading-relaxed whitespace-normal break-all">{row.description}</td>
+                                                <td className="p-1 md:p-1.5 text-center">
+                                                  <input
+                                                    type="text"
+                                                    value={row.acronym}
+                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'acronym', e.target.value)}
+                                                    className="w-full text-center bg-transparent border-0 text-emerald-400 font-black focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
+                                                  />
+                                                </td>
+                                                <td className="p-1 md:p-1.5 text-center">
+                                                  <input
+                                                    type="text"
+                                                    value={row.word}
+                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'word', e.target.value)}
+                                                    className="w-full text-center bg-transparent border-0 text-slate-100 font-bold focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
+                                                  />
+                                                </td>
+                                                <td className="p-1 md:p-1.5">
+                                                  <input
+                                                    type="text"
+                                                    value={row.description}
+                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'description', e.target.value)}
+                                                    className="w-full bg-transparent border-0 text-slate-300 focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
+                                                  />
+                                                </td>
                                                 <td className="p-2 md:p-2.5 text-center select-none">
                                                   <div className="flex items-center justify-center gap-1">
                                                     <button
@@ -20023,6 +20217,13 @@ export default function App() {
                                                       title="아래로 이동"
                                                     >
                                                       ▼
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleDeleteAcronymRow(idx, rIdx)}
+                                                      className="p-1 rounded bg-slate-800 hover:bg-rose-950/80 text-slate-400 hover:text-rose-450 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20"
+                                                      title="행 삭제"
+                                                    >
+                                                      <Trash2 size={11} />
                                                     </button>
                                                   </div>
                                                 </td>
@@ -22038,6 +22239,69 @@ export default function App() {
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/20 border border-emerald-500/30"
               >
                 내보내기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Acronym Prompt Modal */}
+      {showAcronymPromptModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
+          <div className="w-full max-w-sm bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2">
+                <span className="px-1.5 py-0.5 bg-emerald-500/10 rounded text-[10px] font-black">AI</span>
+                앞글자(두문자) 암기법 생성기
+              </h3>
+              <button 
+                onClick={() => setShowAcronymPromptModal(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">암기 토픽 제목</label>
+                <input
+                  type="text"
+                  placeholder="예: 흙의 동해 방지대책, 지반조사 단계 등"
+                  value={acronymPromptTopic}
+                  onChange={(e) => setAcronymPromptTopic(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">만들어야 되는 문장 수 (암기 항목 수)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="15"
+                  placeholder="예: 4"
+                  value={acronymPromptCount}
+                  onChange={(e) => setAcronymPromptCount(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setShowAcronymPromptModal(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 rounded-xl text-xs font-black text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all text-center"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleGenerateAcronymSubmit}
+                disabled={!acronymPromptTopic.trim()}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all text-center shadow-lg shadow-emerald-900/20"
+              >
+                생성하기
               </button>
             </div>
           </div>
