@@ -1563,7 +1563,7 @@ app.get('/api/dashboard', async (req, res) => {
 });
 
 // Helper: Generate exactly 1 weak-point review schedule (round = 99) for the specified date
-async function generateWeakPointRecommendation(queryDate) {
+async function generateWeakPointRecommendation(queryDate, isManual = false) {
   const hasAnyAiKey = !!(
     process.env.GEMINI_API_KEY ||
     process.env.GEMINI_API_KEY_SECONDARY ||
@@ -1577,24 +1577,26 @@ async function generateWeakPointRecommendation(queryDate) {
     return null;
   }
 
-  // 오늘의 복습 토픽 수(중복 제거)가 10개를 초과하는지 체크하여 보류 처리
-  const totalPendingTopics = await dbQuery.get(
-    `SELECT COUNT(DISTINCT topic_id) as count FROM schedules 
-     WHERE planned_date <= ? AND status = 'pending'`,
-    [queryDate]
-  );
-  if (totalPendingTopics.count > 10) {
-    return null;
-  }
+  if (!isManual) {
+    // 오늘의 복습 토픽 수(중복 제거)가 10개를 초과하는지 체크하여 보류 처리
+    const totalPendingTopics = await dbQuery.get(
+      `SELECT COUNT(DISTINCT topic_id) as count FROM schedules 
+       WHERE planned_date <= ? AND status = 'pending'`,
+      [queryDate]
+    );
+    if (totalPendingTopics.count > 10) {
+      return null;
+    }
 
-  // 오늘의 복습 목록에 떠있는 약점복습토픽이 3개 이상이면 신규 추천하지 않음
-  const activeWeaknessCount = await dbQuery.get(
-    `SELECT COUNT(*) as count FROM schedules 
-     WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
-    [queryDate]
-  );
-  if (activeWeaknessCount.count >= 3) {
-    return null;
+    // 오늘의 복습 목록에 떠있는 약점복습토픽이 3개 이상이면 신규 추천하지 않음
+    const activeWeaknessCount = await dbQuery.get(
+      `SELECT COUNT(*) as count FROM schedules 
+       WHERE review_round = 99 AND planned_date <= ? AND status = 'pending'`,
+      [queryDate]
+    );
+    if (activeWeaknessCount.count >= 3) {
+      return null;
+    }
   }
 
   // 1. 제외 대상 추출: 오늘 pending 상태로 대기 중이거나, 오늘 이미 보너스(round = 99)로 추천받아 완료한 토픽 목록
