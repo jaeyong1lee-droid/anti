@@ -161,13 +161,23 @@ const getSeededRandom = (seedStr) => {
 const parseHtmlTable = (htmlStr) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlStr || '', 'text/html');
-  const ths = Array.from(doc.querySelectorAll('thead th, tr:first-child th, tr:first-child td')).map(el => el.textContent.trim());
+  
+  let ths = [];
+  const thead = doc.querySelector('thead');
+  if (thead) {
+    ths = Array.from(thead.querySelectorAll('th, td')).map(el => el.textContent.trim());
+  } else {
+    const firstTr = doc.querySelector('tr');
+    if (firstTr) {
+      ths = Array.from(firstTr.querySelectorAll('th, td')).map(el => el.textContent.trim());
+    }
+  }
+  
   const rows = [];
   const allTrs = Array.from(doc.querySelectorAll('tr'));
-  const hasThead = doc.querySelector('thead') !== null;
-  const dataTrs = hasThead ? allTrs.filter(tr => !tr.closest('thead')) : allTrs.slice(1);
-  
-  const headers = ths.length > 0 ? ths : Array.from(allTrs[0]?.querySelectorAll('td, th') || []).map(el => el.textContent.trim());
+  const dataTrs = thead 
+    ? allTrs.filter(tr => !tr.closest('thead')) 
+    : allTrs.slice(1);
 
   for (const tr of dataTrs) {
     const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
@@ -176,7 +186,7 @@ const parseHtmlTable = (htmlStr) => {
     }
   }
 
-  return { headers, rows };
+  return { headers: ths, rows };
 };
 
 const parseAcronymContent = (content) => {
@@ -2223,7 +2233,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
             type="text"
             value={combValue}
             onChange={(e) => handleInputChange('ACRONYM_COMB', e.target.value)}
-            placeholder="예: 차단배치"
+            placeholder="두문자 조합을 입력하세요"
             className="w-full text-[14px] sm:text-[16px] bg-slate-900 border border-slate-800 focus:border-slate-650 rounded-lg px-3 py-2 text-white outline-none focus:outline-none focus:ring-0"
           />
         )}
@@ -7370,6 +7380,11 @@ export default function App() {
 
   // 표글 믹스 복습 수동 요청 핸들러
   const handleRequestMixedReview = async () => {
+    const alreadyExists = todayReviews.some(r => r.topic_id === 'mixed_acronym_table');
+    if (alreadyExists) {
+      showNotification('이미 오늘의 필수 믹스 복습이 복습 목록에 존재합니다.', 'info');
+      return;
+    }
     localStorage.removeItem(`anti_mixed_completed_${referenceDate}`);
     try {
       await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' });
@@ -14652,7 +14667,7 @@ ${itemsStr}
                               {item.review_round}회차 복습
                             </span>
                           )}
-                          {!item.isBonus && item.planned_date < referenceDate && (() => {
+                          {!item.isBonus && item.topic_id !== 'mixed_acronym_table' && item.planned_date < referenceDate && (() => {
                             const p = new Date(item.planned_date);
                             const r = new Date(referenceDate);
                             const diffDays = Math.round((r.getTime() - p.getTime()) / (1000 * 60 * 60 * 24));
