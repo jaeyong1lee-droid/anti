@@ -2211,33 +2211,8 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
     }));
   };
 
-  const combValue = tableAnswers[`${questionIdx}_ACRONYM_COMB`] || '';
-  const combGrading = tableGradingResults[`${questionIdx}_ACRONYM_COMB`];
-
   return (
     <div className="w-full my-3 space-y-4">
-      {/* 두문자 조합 입력란 */}
-      <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-4 space-y-2">
-        <label className="block text-xs font-bold text-slate-400">두문자 조합 입력 (순서 무관)</label>
-        {revealed ? (
-          <div className={`p-2.5 rounded-lg flex justify-between items-center ${
-            combGrading?.isCorrect ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-500/20' : 'bg-rose-950/30 text-rose-400 border border-rose-500/20'
-          }`}>
-            <span className="font-extrabold text-[15px] sm:text-[17px]">{combValue || '(미입력)'}</span>
-            <div className="text-[11px] sm:text-[13px] font-black">
-              {combGrading?.reason || (combGrading?.isCorrect ? '맞음' : '틀림')}
-            </div>
-          </div>
-        ) : (
-          <input
-            type="text"
-            value={combValue}
-            onChange={(e) => handleInputChange('ACRONYM_COMB', e.target.value)}
-            placeholder="두문자 조합을 입력하세요"
-            className="w-full text-[14px] sm:text-[16px] bg-slate-900 border border-slate-800 focus:border-slate-650 rounded-lg px-3 py-2 text-white outline-none focus:outline-none focus:ring-0"
-          />
-        )}
-      </div>
 
       {/* 테이블 입력란 */}
       <div className="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
@@ -3180,7 +3155,10 @@ export default function App() {
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 항목별 상세 피드백:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {(() => {
-            const val = activeAnswers[`${idx}_ACRONYM_COMB`] || '';
+            const rowCount = q.tableData?.rows?.length || 0;
+            const val = activeAnswers[`${idx}_ACRONYM_COMB`] || Array.from({ length: rowCount })
+              .map((_, rIdx) => (activeAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+              .join('');
             const grading = activeGradingResults[`${idx}_ACRONYM_COMB`];
             const isCorrect = grading ? grading.isCorrect : false;
             
@@ -3259,7 +3237,10 @@ export default function App() {
   const gradeAcronymQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     
-    const userAcronym = (tableAnswers[`${qIdx}_ACRONYM_COMB`] || '').trim();
+    const rowCount = q.tableData?.rows?.length || 0;
+    const userAcronym = Array.from({ length: rowCount })
+      .map((_, rIdx) => (tableAnswers[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+      .join('');
     const correctAcronym = (q.acronym || '').trim();
     
     const clean = (s) => [...(s || '')].map(c => c.trim()).filter(Boolean).sort().join('');
@@ -3272,7 +3253,6 @@ export default function App() {
       reason: isAcronymCorrect ? '두문자 조합이 올바릅니다.' : `두문자 조합이 올바르지 않습니다. (모범답안: ${correctAcronym})`
     };
     
-    const rowCount = q.tableData?.rows?.length || 0;
     const userRows = Array.from({ length: rowCount }).map((_, rIdx) => {
       return {
         acronym: (tableAnswers[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
@@ -6945,7 +6925,14 @@ export default function App() {
 
       aiQuestions.forEach((q, idx) => {
         if (q.type === '주관식 (앞글자)') {
-          const hasVal = tableAnswers[`${idx}_ACRONYM_COMB`] !== undefined && String(tableAnswers[`${idx}_ACRONYM_COMB`]).trim() !== '';
+          const rowCount = q.tableData?.rows?.length || 0;
+          let hasVal = false;
+          for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+            if (tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || tableAnswers[`${idx}_ROW_${rIdx}_COMB`]) {
+              hasVal = true;
+              break;
+            }
+          }
           const hasGraded = tableGradingResults[`${idx}_ACRONYM_COMB`] !== undefined;
           if (hasVal && !hasGraded) {
             const p = gradeAcronymQuestion(idx, q).then(res => {
@@ -6986,10 +6973,12 @@ export default function App() {
       let unsolvedCount = 0;
       aiQuestions.forEach((q, idx) => {
         if (q.type === '주관식 (앞글자)') {
-          const val = tableAnswers[`${idx}_ACRONYM_COMB`];
-          const hasAcronym = val !== undefined && val !== null && String(val).trim() !== '';
-          let hasEmptyRow = false;
           const rowCount = q.tableData?.rows?.length || 0;
+          const val = Array.from({ length: rowCount })
+            .map((_, rIdx) => (tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+            .join('');
+          const hasAcronym = val.length > 0;
+          let hasEmptyRow = false;
           for (let rIdx = 0; rIdx < rowCount; rIdx++) {
             const rowVal = tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`];
             const combVal = tableAnswers[`${idx}_ROW_${rIdx}_COMB`];
@@ -7095,7 +7084,14 @@ export default function App() {
     aiQuestions.forEach((q, idx) => {
       const isMC = q.options && q.options.length > 0;
       if (q.type === '주관식 (앞글자)') {
-        const hasVal = tableAnswers[`${idx}_ACRONYM_COMB`] !== undefined && String(tableAnswers[`${idx}_ACRONYM_COMB`]).trim() !== '';
+        const rowCount = q.tableData?.rows?.length || 0;
+        let hasVal = false;
+        for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+          if (tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || tableAnswers[`${idx}_ROW_${rIdx}_COMB`]) {
+            hasVal = true;
+            break;
+          }
+        }
         const hasGraded = tableGradingResults[`${idx}_ACRONYM_COMB`] !== undefined;
         if (hasVal && !hasGraded) {
           console.log(`[Auto-Grading] Grading acronym question index=${idx} before completion...`);
@@ -7169,10 +7165,12 @@ export default function App() {
           unsolvedCount++;
         }
       } else if (q.type === '주관식 (앞글자)') {
-        const val = tableAnswers[`${idx}_ACRONYM_COMB`];
-        const hasAcronym = val !== undefined && val !== null && String(val).trim() !== '';
-        let hasEmptyRow = false;
         const rowCount = q.tableData?.rows?.length || 0;
+        const val = Array.from({ length: rowCount })
+          .map((_, rIdx) => (tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+          .join('');
+        const hasAcronym = val.length > 0;
+        let hasEmptyRow = false;
         for (let rIdx = 0; rIdx < rowCount; rIdx++) {
           const rowVal = tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`];
           const combVal = tableAnswers[`${idx}_ROW_${rIdx}_COMB`];
@@ -16299,10 +16297,14 @@ ${itemsStr}
                               <button
                                 onClick={() => {
                                   if (window.confirm('두문자를 입력할까요?')) {
-                                    setTableAnswers(prev => ({
-                                      ...prev,
-                                      [`${idx}_ACRONYM_COMB`]: q.acronym || ''
-                                    }));
+                                    const letters = [...(q.acronym || '')];
+                                    setTableAnswers(prev => {
+                                      const next = { ...prev };
+                                      letters.forEach((letter, lIdx) => {
+                                        next[`${idx}_ROW_${lIdx}_ACRONYM`] = letter;
+                                      });
+                                      return next;
+                                    });
                                   }
                                 }}
                                 className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-violet-500/20 bg-violet-950/40 text-violet-300 hover:bg-violet-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
@@ -19550,10 +19552,14 @@ ${itemsStr}
                             <button
                               onClick={() => {
                                   if (window.confirm('두문자를 입력할까요?')) {
-                                    setTableAnswers(prev => ({
-                                      ...prev,
-                                      [`${idx}_ACRONYM_COMB`]: q.acronym || ''
-                                    }));
+                                    const letters = [...(q.acronym || '')];
+                                    setTableAnswers(prev => {
+                                      const next = { ...prev };
+                                      letters.forEach((letter, lIdx) => {
+                                        next[`${idx}_ROW_${lIdx}_ACRONYM`] = letter;
+                                      });
+                                      return next;
+                                    });
                                   }
                               }}
                               className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border border-violet-500/20 bg-violet-950/40 text-violet-300 hover:bg-violet-900/40 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
