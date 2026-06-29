@@ -10639,11 +10639,14 @@ export default function App() {
     rows[rowIdx] = rows[targetIdx];
     rows[targetIdx] = temp;
 
-    // Rebuild the combined acronym string
     const newAcronymLetters = rows.map(r => r.acronym).join('');
+    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
 
-    // Serialize rows back to markdown table
     let newContent = `두문자: ${newAcronymLetters}\n`;
+    if (existingSentence) {
+      newContent += `연상문장: ${existingSentence}\n`;
+    }
     newContent += `| 두문자 | 암기단어 | 설명 |\n`;
     newContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
@@ -10660,12 +10663,16 @@ export default function App() {
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
 
-    // Add a new empty row
     rows.push({ acronym: '새', word: '새 암기단어', description: '새 설명' });
 
     const newAcronymLetters = rows.map(r => r.acronym).join('');
+    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
 
     let newContent = `두문자: ${newAcronymLetters}\n`;
+    if (existingSentence) {
+      newContent += `연상문장: ${existingSentence}\n`;
+    }
     newContent += `| 두문자 | 암기단어 | 설명 |\n`;
     newContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
@@ -10689,8 +10696,13 @@ export default function App() {
     rows.splice(rowIdx, 1);
 
     const newAcronymLetters = rows.map(r => r.acronym).join('');
+    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
 
     let newContent = `두문자: ${newAcronymLetters}\n`;
+    if (existingSentence) {
+      newContent += `연상문장: ${existingSentence}\n`;
+    }
     newContent += `| 두문자 | 암기단어 | 설명 |\n`;
     newContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
@@ -10711,8 +10723,13 @@ export default function App() {
     rows[rowIdx][field] = value;
 
     const newAcronymLetters = rows.map(r => r.acronym).join('');
+    const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+    const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
 
     let newContent = `두문자: ${newAcronymLetters}\n`;
+    if (existingSentence) {
+      newContent += `연상문장: ${existingSentence}\n`;
+    }
     newContent += `| 두문자 | 암기단어 | 설명 |\n`;
     newContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
@@ -10722,6 +10739,114 @@ export default function App() {
     updated[acronymIdx] = { ...ac, content: newContent.trim() };
     setFormulaAcronyms(updated);
     await handleSaveFormulaAcronyms(updated, false);
+  };
+
+  const handleUpdateAcronymSentence = async (acronymIdx, newSentence) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length === 0) return;
+
+    const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
+    const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
+
+    let newContent = `두문자: ${acronymHeaderText}\n`;
+    newContent += `연상문장: ${newSentence}\n`;
+    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    newContent += `| :---: | :---: | :--- |\n`;
+    for (const r of rows) {
+      newContent += `| ${r.acronym || ' '} | ${r.word || ' '} | ${r.description || ' '} |\n`;
+    }
+
+    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    setFormulaAcronyms(updated);
+    await handleSaveFormulaAcronyms(updated, false);
+  };
+
+  const handleOptimizeAcronym = async (acronymIdx) => {
+    const updated = [...formulaAcronyms];
+    const ac = updated[acronymIdx];
+    const rows = getAcronymRows(ac.content);
+    if (rows.length === 0) return;
+
+    // Show inline optimizing loading status on card
+    setFormulaAcronyms(prev => prev.map((item, i) => {
+      if (i === acronymIdx) {
+        return { ...item, isOptimizing: true };
+      }
+      return item;
+    }));
+
+    try {
+      const itemsStr = rows.map(r => `- 두문자: "${r.acronym}", 암기단어: "${r.word}", 설명: "${r.description}"`).join('\n');
+      
+      const query = `다음 앞글자 암기 항목들을 수험생이 암기하기 가장 수월한 최적의 단어/조합(말이 되는 두문자 글자 조합)으로 항목 순서를 다시 정렬 및 재조합해주고, 이를 쉽게 암기할 수 있는 기발하고 재미있는 연상 문장(한 줄 문장 아이디어)도 함께 만들어줘.
+기존 항목들의 누락 없이, 순서만 외우기 편하게 바꾸어서 출력해줘.
+
+대상 항목들:
+${itemsStr}
+
+반드시 다음 형식 포맷을 100% 준수하여 출력하십시오:
+제목: ${ac.title}
+두문자: [재조합된 두문자 조합]
+연상문장: [외우기 쉬운 재미있는 연상문장 문장 아이디어]
+
+| 두문자 | 암기단어 | 설명 |
+| :---: | :---: | :--- |
+[정렬된 항목들을 마크다운 표로 작성]`;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: query,
+          image: null,
+          acronymMode: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '앞글자 재조합 실패');
+
+      let aiText = data.text || '';
+      
+      let parsedTitle = ac.title;
+      const titleMatch = aiText.match(/^제목:\s*([^\n]+)/m);
+      if (titleMatch) {
+        parsedTitle = titleMatch[1].trim();
+        aiText = aiText.replace(/^제목:[^\n]*\n?/m, '');
+      }
+
+      const finalContent = aiText.trim();
+
+      setFormulaAcronyms(prev => {
+        const nextList = prev.map((item, i) => {
+          if (i === acronymIdx) {
+            return {
+              ...item,
+              title: parsedTitle,
+              content: finalContent,
+              isOptimizing: false
+            };
+          }
+          return item;
+        });
+        handleSaveFormulaAcronyms(nextList, false);
+        return nextList;
+      });
+
+      showNotification(`[${parsedTitle}] 앞글자 암기법이 최적의 조합으로 재구성되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Failed to optimize acronym:', err);
+      setFormulaAcronyms(prev => prev.map((item, i) => {
+        if (i === acronymIdx) {
+          return { ...item, isOptimizing: false };
+        }
+        return item;
+      }));
+      showNotification(`재조합 실패: ${err.message}`, 'error');
+    }
   };
 
   useEffect(() => {
@@ -20101,6 +20226,17 @@ export default function App() {
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 새로고침(재조합) 버튼 */}
+                                    <button
+                                      onClick={() => handleOptimizeAcronym(idx)}
+                                      disabled={ac.isOptimizing}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                      title="외우기 쉬운 최적의 조합으로 재구성"
+                                    >
+                                      <RefreshCw size={12} className={ac.isOptimizing ? "animate-spin text-cyan-400" : ""} />
+                                      <span>재조합</span>
+                                    </button>
+
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
@@ -20146,19 +20282,32 @@ export default function App() {
                                   }
                                   const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
                                   const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
+                                  const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
+                                  const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
 
                                   return (
                                     <div className="space-y-3 animate-fade-in">
-                                      <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 inline-block">
-                                        두문자 조합: {acronymHeaderText}
+                                      <div className="flex flex-col md:flex-row md:items-center gap-2.5 w-full">
+                                        <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 shrink-0">
+                                          두문자 조합: {acronymHeaderText}
+                                        </div>
+                                        <div className="flex-1 flex items-center gap-2 bg-slate-950/45 border border-slate-800/80 rounded-xl px-3 py-1.5 focus-within:border-emerald-500/40 transition-all">
+                                          <span className="text-[11px] font-black text-emerald-400 shrink-0 select-none">💡 연상문장:</span>
+                                          <input
+                                            type="text"
+                                            value={sentenceText}
+                                            onChange={(e) => handleUpdateAcronymSentence(idx, e.target.value)}
+                                            placeholder="예: 동해를 '차단'하기 위해 '배치'했다"
+                                            className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0"
+                                          />
+                                        </div>
                                       </div>
                                       <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl p-2.5">
                                         <table className="w-full text-left border-collapse text-xs select-text">
                                           <thead>
                                             <tr className="border-b border-slate-800/80 bg-slateCustom-950/60">
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-16 select-none">두문자</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-28 select-none">암기단어</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">설명</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">암기내용 (단어 : 설명)</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
@@ -20184,21 +20333,24 @@ export default function App() {
                                                     className="w-full text-center bg-transparent border-0 text-emerald-400 font-black focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
                                                   />
                                                 </td>
-                                                <td className="p-1 md:p-1.5 text-center">
-                                                  <input
-                                                    type="text"
-                                                    value={row.word}
-                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'word', e.target.value)}
-                                                    className="w-full text-center bg-transparent border-0 text-slate-100 font-bold focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
-                                                  />
-                                                </td>
-                                                <td className="p-1 md:p-1.5">
-                                                  <input
-                                                    type="text"
-                                                    value={row.description}
-                                                    onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'description', e.target.value)}
-                                                    className="w-full bg-transparent border-0 text-slate-300 focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
-                                                  />
+                                                <td className="p-1.5">
+                                                  <div className="flex items-center gap-2">
+                                                    <input
+                                                      type="text"
+                                                      value={row.word}
+                                                      onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'word', e.target.value)}
+                                                      className="w-28 md:w-36 bg-slate-950/45 focus:bg-slate-950 border border-slate-800/85 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-2.5 py-1 text-slate-100 font-bold text-center focus:outline-none transition-all"
+                                                      placeholder="암기단어"
+                                                    />
+                                                    <span className="text-slate-500 font-black shrink-0">:</span>
+                                                    <input
+                                                      type="text"
+                                                      value={row.description}
+                                                      onChange={(e) => handleUpdateAcronymRowCell(idx, rIdx, 'description', e.target.value)}
+                                                      className="flex-1 bg-slate-950/45 focus:bg-slate-950 border border-slate-800/85 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1 text-slate-300 focus:outline-none transition-all"
+                                                      placeholder="설명"
+                                                    />
+                                                  </div>
                                                 </td>
                                                 <td className="p-2 md:p-2.5 text-center select-none">
                                                   <div className="flex items-center justify-center gap-1">
