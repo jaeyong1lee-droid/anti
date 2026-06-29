@@ -4153,7 +4153,7 @@ export default function App() {
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [loadingFormula, setLoadingFormula] = useState(false);
-  const [formulaSubTab, setFormulaSubTab] = useState('formula');
+  const [formulaSubTab, setFormulaSubTab] = useState(() => localStorage.getItem('anti_formula_subtab') || 'formula');
   const [formulaTables, setFormulaTables] = useState([]);
   const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
   const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
@@ -10788,6 +10788,7 @@ export default function App() {
 3. 연상문장은 각 두문자 한 글자 한 글자가 직관적으로 눈에 띄도록 엮은, 아주 짧고 간결한 한 줄 문장이어야 합니다. 문장이 길어지면 무엇이 두문자인지 알 수 없으므로 절대로 길게 쓰지 마십시오.
 4. 연상문장 내부에서 두문자 글자가 들어가는 부분에 따옴표(예: "광", "예", "본", "보")를 입혀서 무엇이 두문자인지 한눈에 알아볼 수 있도록 표시하십시오.
 5. **단어 교체 및 창작 자유도**: 재조합 시 기존의 암기 단어/두문자를 단순히 재배치하는 것에 그치지 않고, 암기를 극대화하기 위해 암기 단어를 다른 유사의미의 동의어나 연상이 쉬운 적절한 단어로 교체(대체)하여 아예 새로운 참신한 두문자 조합과 짧은 연상문장을 창작해도 좋습니다. 특히 여러 항목 중 대부분(예: 4개 중 3개)은 매끄럽게 연결되는데 특정 한 항목이 애매하여 연상문장이 어색해질 경우, 그 애매한 항목의 암기 단어를 유연하게 동의어나 연상하기 쉬운 다른 단어로 적극 교체하여 전체가 깔끔하게 엮이도록 설계하십시오.
+6. **단어 형성식 두문자 조합 우선 수칙 (매우 중요)**: 추출한 1글자 두문자들의 조합(예: "안", "설", "시", "설" 등)을 연달아 이어 붙였을 때, 최대한 뜻이 통하거나 발음이 익숙한 실재 단어, 역사적 고유 명사, 또는 재미있는 말장난(예: "안시설" -> "안시성의 설(說)")이 되도록 행의 아래위 순서를 적극적으로 정렬하십시오. 다소 억지스럽거나 인위적인 조합일지라도 수험생의 기억에 강렬하게 남을 수 있는 단어 지향적 조합과 말장난을 만드는 것이 최우선 순위입니다.
 
 대상 항목들:
 ${itemsStr}
@@ -11758,6 +11759,10 @@ ${itemsStr}
   useEffect(() => {
     localStorage.setItem('anti_answersheet_revealed', JSON.stringify(answersheetRevealed));
   }, [answersheetRevealed]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_formula_subtab', formulaSubTab);
+  }, [formulaSubTab]);
 
   const handleOpenTheoryExam = async () => {};
   const _handleOpenTheoryExam_unused = async () => {
