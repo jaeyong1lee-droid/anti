@@ -10580,11 +10580,14 @@ export default function App() {
       const rows = [];
       for (const line of lines) {
         if (!line.includes('|')) continue;
-        const parts = line.split('|').map(p => p.trim());
-        if (parts.length < 5) continue;
-        const col1 = parts[1];
-        const col2 = parts[2];
-        const col3 = parts[3];
+        let cleanLine = line.trim();
+        if (cleanLine.startsWith('|')) cleanLine = cleanLine.substring(1);
+        if (cleanLine.endsWith('|')) cleanLine = cleanLine.substring(0, cleanLine.length - 1);
+        const parts = cleanLine.split('|').map(p => p.trim());
+        if (parts.length < 3) continue;
+        const col1 = parts[0];
+        const col2 = parts[1];
+        const col3 = parts[2];
         if (col1 === '두문자' || col1.includes('---')) continue;
         rows.push({
           acronym: col1,
@@ -10631,7 +10634,10 @@ export default function App() {
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      showNotification('앞글자 표 파싱 실패: 마크다운 표 형태가 잘못되었습니다.', 'warning');
+      return;
+    }
 
     const targetIdx = direction === 'up' ? rowIdx - 1 : rowIdx + 1;
     if (targetIdx < 0 || targetIdx >= rows.length) return;
@@ -10726,7 +10732,10 @@ export default function App() {
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      showNotification('앞글자 표 파싱 실패: 마크다운 표 형태가 잘못되었습니다.', 'warning');
+      return;
+    }
 
     rows[rowIdx][field] = value;
 
@@ -10755,7 +10764,10 @@ export default function App() {
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      showNotification('앞글자 표 파싱 실패: 마크다운 표 형태가 잘못되었습니다.', 'warning');
+      return;
+    }
 
     const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
     const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
@@ -10779,7 +10791,10 @@ export default function App() {
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      showNotification('재조합을 실행할 수 없습니다: 테이블 형식 또는 행이 존재하지 않습니다.', 'warning');
+      return;
+    }
 
     // Show inline optimizing loading status on card
     setFormulaAcronyms(prev => prev.map((item, i) => {
@@ -10874,7 +10889,10 @@ ${itemsStr}
     const updated = [...formulaAcronyms];
     const ac = updated[acronymIdx];
     const rows = getAcronymRows(ac.content);
-    if (rows.length === 0) return;
+    if (rows.length === 0) {
+      showNotification('앞글자 표 파싱 실패: 마크다운 표 형태가 잘못되었습니다.', 'warning');
+      return;
+    }
 
     // Parse word and description
     const colonIdx = value.indexOf(':');
