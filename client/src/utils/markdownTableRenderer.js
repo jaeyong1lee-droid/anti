@@ -33,31 +33,24 @@ function renderTableToHtml(tableLines, precedingTitle = "") {
   });
   
   let html = '';
-  if (titleHeader) {
-    const match = titleHeader.match(/^(#+)\s*(.*)/);
-    if (match) {
-      const level = match[1].length;
-      const text = match[2].trim();
-      html += `<h${level} class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${text}</h${level}>`;
-      if (!precedingTitle) {
-        precedingTitle = text;
-      }
-    }
-  }
+  const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '비교표';
 
-  const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '추출된 표';
-
-  html += `<div class="relative w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 group">`;
+  html += `<div class="w-full my-4 space-y-2 table-export-wrapper relative">`;
+  html += `<div class="flex items-center justify-between gap-4 border-b border-slate-800/60 pb-2">`;
+  html += `<span class="text-xs sm:text-sm font-extrabold text-slate-350 select-none flex items-center gap-1.5">`;
+  html += `📊 ${cleanTitle}`;
+  html += `</span>`;
   html += `<button 
-    onclick="if(window.__handleTableConfirmRequest) { window.__handleTableConfirmRequest(this.closest('.relative').querySelector('table').outerHTML, '${cleanTitle}') }"
-    class="absolute top-2 right-2 p-1.5 bg-slate-900/90 hover:bg-rose-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1 select-none z-10 shadow-md shadow-black/40 hover:scale-105 active:scale-95"
-    title="필수암기 표창으로 보내기"
+    onclick="if(window.__handleTableConfirmRequest) { window.__handleTableConfirmRequest(this.closest('.table-export-wrapper').querySelector('table').outerHTML, '${cleanTitle}') }"
+    class="p-1.5 bg-slate-900 hover:bg-rose-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-md select-none hover:scale-105 active:scale-95"
+    title="필수암기 표로 내보내기"
     style="outline: none;"
   >`;
-  html += `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
-  html += `<span class="text-[10px] font-black ml-1">표 내보내기</span>`;
+  html += `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`;
   html += `</button>`;
+  html += `</div>`;
 
+  html += `<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
   html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
     colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
   }">`;
@@ -85,7 +78,8 @@ function renderTableToHtml(tableLines, precedingTitle = "") {
   });
   html += `</tbody>`;
   html += `</table>`;
-  html += `</div>`;
+  html += `</div>`; // closes overflow-x-auto
+  html += `</div>`; // closes table-export-wrapper
   
   return html;
 }
