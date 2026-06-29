@@ -3882,6 +3882,135 @@ app.post('/api/question/regenerate', async (req, res) => {
   }
 
   try {
+    if (topicId === 'mixed_acronym_table' || currentQuestion?.mixedType) {
+      const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
+      const content = currentQuestion.explanation || ''; // original table HTML or acronym content
+      
+      let systemPrompt = "당신은 지반공학 기술사 시험 전문 출제위원 및 튜터입니다.";
+      let userPrompt = "";
+      
+      if (mixedType === 'table') {
+        systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
+제공된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
+
+[출제 규칙]:
+1. 제공된 비교 표의 행과 열 구조를 파악하고, 각 셀(Cell) 중 중요 개념이 들어간 위치를 무작위로 선택하여 빈칸 \`[INPUT_행번호_열번호]\` (예: \`[INPUT_1_2]\`) 형태로 치환하십시오.
+2. 모든 셀을 빈칸으로 만들지 말고, 각 행당 최소 1개, 최대 2개 정도의 대표적인 핵심 키워드 셀들만 선택적으로 빈칸으로 만드십시오. 첫 번째 열(구분 항목)은 빈칸으로 만들지 마십시오.
+3. \`answers\` 객체에는 각 빈칸 ID에 들어갈 정확한 정답 텍스트를 매핑하십시오. (예: {"INPUT_1_2": "능동적 보강"})
+4. 지문(\`question\`)에는 표의 제목과 빈칸에 알맞은 답안을 서술하라는 안내 문장을 명확하게 적으십시오.
+
+출력은 반드시 마크다운 블록이나 설명 없이 오직 순수한 JSON 객체 하나만 반환하십시오.
+`;
+
+        userPrompt = `
+[원본 비교 표 HTML]:
+${content}
+
+[기존 문제 질문]:
+${currentQuestion.question || ''}
+
+위 원본 표 데이터를 바탕으로, 기존 문제와 다르게 빈칸의 위치(INPUT 대상을 다르게 선택)를 바꾸어 새로운 주관식 표채우기 문항을 구성하여 아래 JSON 포맷으로 출력해 주십시오.
+
+[출력 포맷 예시]:
+{
+  "type": "주관식 (표채우기)",
+  "question": "다음 어스앵커와 소일내일링 공법의 특징 비교표 빈칸 (A), (B), (C)에 들어갈 개념을 서술하시오.",
+  "tableData": {
+    "headers": ["구분", "비교대상A", "비교대상B"],
+    "rows": [
+      ["평가기준1", "[INPUT_0_1]", "수동적 보강"],
+      ["평가기준2", "Prestress 도입", "[INPUT_1_2]"]
+    ]
+  },
+  "answers": {
+    "INPUT_0_1": "능동적 보강",
+    "INPUT_1_2": "마찰 저항"
+  },
+  "explanation": "여기에 원본 표 HTML 내용을 그대로 똑같이 넣어주십시오."
+}
+`;
+      } else {
+        // mixedType === 'acronym'
+        systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
+제시된 앞글자(두문자) 암기법 데이터를 기반으로, 더 나은 암기 편의를 위해 두문자의 조합 순서를 바꾸거나, 새로운 유사의미 단어로 대체하여 더 외우기 쉬운 새로운 두문자 조합과 짧은 연상문장을 창작(재출제)하여 반환해 주십시오.
+
+[출제 규칙]:
+1. 각 항목에서 반드시 오직 한 글자(1글자)만 두문자로 추출하십시오.
+2. 두문자 조합을 연달아 이었을 때 발음이 부드럽고 기억하기 쉬운 참신한 단어 지향적인 조합으로 구성하고, 이에 어울리는 아주 짧고 직관적인 연상문장을 창작하십시오.
+3. 출력 형식은 아래 JSON 포맷을 100% 준수해야 합니다.
+
+출력은 반드시 마크다운 블록이나 설명 없이 오직 순수한 JSON 객체 하나만 반환하십시오.
+`;
+
+        userPrompt = `
+[원본 두문자 암기법 정보]:
+${content}
+
+위 원본 두문자 데이터를 바탕으로, 더 외우기 쉬운 새로운 두문자 조합과 짧은 연상문장 및 각 행(두문자, 암기단어, 설명)을 재창작하여 아래 JSON 포맷으로 출력해 주십시오.
+
+[출력 포맷 예시]:
+{
+  "type": "주관식 (앞글자)",
+  "question": "제목 예시 (예: 지반조사 단계)",
+  "acronym": "새로운 두문자 조합 (예: 광예본보)",
+  "sentence": "새로운 연상문장 (예: 지반조사는 광적으로 예비하고 본조사로 보완하자)",
+  "correctRows": [
+    ["광", "광역조사/자료조사: 설명내용..."],
+    ["예", "예비조사: 설명내용..."]
+  ],
+  "tableData": {
+    "headers": ["두문자", "내용 (암기단어 : 설명)"],
+    "rows": [
+      ["", ""],
+      ["", ""]
+    ]
+  },
+  "explanation": "여기에 원래의 암기법 텍스트를 상세히 기록해 주십시오."
+}
+`;
+      }
+      
+      const response = await localCallLLM(systemPrompt, userPrompt, null, mixedType === 'table' ? 'mixed_table_regen' : 'mixed_acronym_regen');
+      
+      // JSON 파싱 및 보정
+      let parsed = {};
+      try {
+        const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(cleanJson);
+      } catch (err) {
+        console.error('Failed to parse mixed regen JSON:', err, response);
+        throw new Error('AI 응답 파싱 실패');
+      }
+      
+      // Ensure properties are healed
+      if (mixedType === 'table') {
+        parsed.type = '주관식 (표채우기)';
+        parsed.subtype = '표채우기';
+        parsed.explanation = content; // Keep original HTML
+        parsed.mixedType = 'table';
+      } else {
+        parsed.type = '주관식 (앞글자)';
+        parsed.explanation = content; // Keep original acronym markdown
+        parsed.mixedType = 'acronym';
+        if (parsed.correctRows) {
+          parsed.tableData = {
+            headers: ['두문자', '내용 (암기단어 : 설명)'],
+            rows: parsed.correctRows.map(() => ['', ''])
+          };
+        }
+      }
+      
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
+      }
+      
+      return res.json({
+        question: parsed,
+        isFallback: false
+      });
+    }
+
     let duplicatePreventionPrompt = '';
     if (Array.isArray(allQuestions) && allQuestions.length > 0) {
       const otherQs = allQuestions.filter((_, i) => i !== questionIdx);

@@ -2847,13 +2847,13 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
         </div>
       )}
       {renderImageElement()}
-      {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
+      {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
         <div className="my-3 overflow-x-auto w-full">
           <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
           <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
         </div>
       )}
-      {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && (
+      {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
         <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
       )}
     </>
@@ -8030,6 +8030,7 @@ export default function App() {
                 headers: ['두문자', '내용 (암기단어 : 설명)'],
                 rows: blankRows
               },
+              explanation: item.content,
               mixedType: 'acronym',
               originalId: item.id
             };
