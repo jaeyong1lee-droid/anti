@@ -19494,7 +19494,7 @@ export default function App() {
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     {/* T 번호 배지 */}
                                     <span className="text-[11px] font-black bg-violet-950/80 text-violet-400 px-2.5 py-1 rounded-lg border border-violet-500/20 shrink-0 select-none">
-                                      T${idx + 1}
+                                      T{idx + 1}
                                     </span>
 
                                     {/* Title & Editor */}
@@ -19659,7 +19659,7 @@ export default function App() {
                                 <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                   {/* Q 번호 배지 */}
                                   <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
-                                    Q${idx + 1}
+                                    Q{idx + 1}
                                   </span>
                                   
                                   {/* Title & Editor */}
