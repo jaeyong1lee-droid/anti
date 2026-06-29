@@ -7,6 +7,7 @@ import {
   healAnswersheetQuestionObject 
 } from './utils/latexUtils';
 import { convertMarkdownTablesToHtml } from './utils/markdownTableRenderer';
+import { convertMarkdownAcronymsToHtml } from './utils/markdownAcronymRenderer';
 import { 
   Brain, 
   UploadCloud, 
@@ -1416,6 +1417,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   if (typeof cleanedText === 'string') {
     cleanedText = convertMarkdownTablesToHtml(cleanedText);
+    cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
   }
 
   // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
@@ -4155,11 +4157,16 @@ export default function App() {
   const [formulaTables, setFormulaTables] = useState([]);
   const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
   const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
+  const [acronymConfirmTarget, setAcronymConfirmTarget] = useState(null);
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
+  const [acronymModeActive, setAcronymModeActive] = useState(false);
+  const [editingAcronymIdx, setEditingAcronymIdx] = useState(null);
+  const [editingAcronymText, setEditingAcronymText] = useState('');
+  const [expandedAcronymIds, setExpandedAcronymIds] = useState({});
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_formula_revealed');
@@ -10400,12 +10407,96 @@ export default function App() {
     }
   };
 
+  const loadFormulaAcronyms = async () => {
+    setLoadingFormulaAcronyms(true);
+    let loadedData = null;
+    let fallbackToLocal = false;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.formulaAcronyms)) {
+          loadedData = body.data.formulaAcronyms;
+          console.log('[Sync] Loaded formula acronyms from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database formula acronyms loading failed:', err);
+    }
+
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_acronyms');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) {
+            loadedData = parsed;
+            fallbackToLocal = true;
+            console.log('[Fallback] Loaded formula acronyms from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 필수암기 앞글자 복원 실패:', err);
+      }
+    }
+
+    if (!loadedData) {
+      loadedData = [];
+    }
+
+    setFormulaAcronyms(loadedData);
+    localStorage.setItem('anti_formula_acronyms', JSON.stringify(loadedData));
+
+    if (fallbackToLocal && loadedData.length > 0) {
+      console.log('[Sync] Auto syncing local acronyms to database...');
+      fetch(`${API_BASE}/api/session/acronyms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaAcronyms: loadedData })
+      }).catch(err => console.warn('[Sync] Auto sync acronyms failed:', err));
+    }
+
+    setLoadingFormulaAcronyms(false);
+    return loadedData;
+  };
+
+  const handleSaveFormulaAcronyms = async (acronyms = formulaAcronyms, showToast = true) => {
+    try {
+      setFormulaAcronyms(acronyms);
+      localStorage.setItem('anti_formula_acronyms', JSON.stringify(acronyms));
+      
+      const res = await fetch(`${API_BASE}/api/session/acronyms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaAcronyms: acronyms })
+      });
+
+      if (!res.ok) {
+        throw new Error('Database sync returned non-OK status');
+      }
+
+      if (showToast) {
+        showNotification('필수암기 앞글자 리스트가 저장되었습니다!', 'success');
+      }
+    } catch (err) {
+      console.warn('필수암기 앞글자 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
+    }
+  };
+
   useEffect(() => {
     window.__handleTableConfirmRequest = (html, title) => {
       setTableConfirmTarget({ html, title });
     };
+    window.__handleAcronymConfirmRequest = (title, content) => {
+      setAcronymConfirmTarget({ title, content });
+    };
     return () => {
       delete window.__handleTableConfirmRequest;
+      delete window.__handleAcronymConfirmRequest;
     };
   }, []);
 
@@ -10421,6 +10512,20 @@ export default function App() {
     const updated = [newTable, ...formulaTables];
     handleSaveFormulaTables(updated, true);
     setTableConfirmTarget(null);
+  };
+
+  const handleConfirmAcronymExport = () => {
+    if (!acronymConfirmTarget) return;
+    const finalTitle = acronymConfirmTarget.title.trim() || '새 앞글자 암기법';
+    const newAcronym = {
+      id: 'acronym-' + Date.now(),
+      title: finalTitle,
+      content: acronymConfirmTarget.content,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newAcronym, ...formulaAcronyms];
+    handleSaveFormulaAcronyms(updated, true);
+    setAcronymConfirmTarget(null);
   };
 
   const initializeFormulaQuiz = useCallback(() => {
@@ -11210,10 +11315,10 @@ export default function App() {
     });
   };
 
-// ── 마운트 시 필수공식 및 이론유도 최우선 서버 동기화 로딩
   useEffect(() => {
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
     loadFormulaTables().catch(e => console.warn('서버 필수암기 표 사전로딩 실패:', e));
+    loadFormulaAcronyms().catch(e => console.warn('서버 필수암기 앞글자 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
 
@@ -19428,6 +19533,7 @@ export default function App() {
                       try {
                         await loadFormulaQuestions();
                         await loadFormulaTables();
+                        await loadFormulaAcronyms();
                         showNotification('데이터가 성공적으로 새로고침되었습니다.', 'success');
                       } catch (err) {
                         console.error(err);
@@ -19569,16 +19675,6 @@ export default function App() {
                                           >
                                             {t.title}
                                           </span>
-                                          <button
-                                            onClick={() => {
-                                              setEditingTableIdx(idx);
-                                              setEditingTableText(t.title || '');
-                                            }}
-                                            className="p-1 text-slate-500 hover:text-slate-350 hover:bg-slate-800/40 rounded transition-all cursor-pointer border-none bg-transparent"
-                                            title="제목 수정"
-                                          >
-                                            <Edit2 size={12} />
-                                          </button>
                                         </div>
                                       )}
                                     </div>
@@ -19659,6 +19755,8 @@ export default function App() {
                                    (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                           })
                           .map((ac, idx) => {
+                            const isExpanded = !!expandedAcronymIds[ac.id];
+                            const isEditing = editingAcronymIdx === idx;
                             return (
                               <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
@@ -19666,14 +19764,104 @@ export default function App() {
                                     <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
                                       A{idx + 1}
                                     </span>
-                                    <span className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer whitespace-normal break-words max-w-full inline-block">
-                                      {ac.title}
-                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      {isEditing ? (
+                                        <div className="flex items-center gap-2 w-full">
+                                          <input
+                                            type="text"
+                                            value={editingAcronymText}
+                                            onChange={(e) => setEditingAcronymText(e.target.value)}
+                                            className="flex-1 bg-slate-950 border border-slate-700 text-white rounded px-2 py-1 text-sm font-bold focus:outline-none focus:border-violet-500"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const updated = [...formulaAcronyms];
+                                                updated[idx] = { ...updated[idx], title: editingAcronymText };
+                                                setFormulaAcronyms(updated);
+                                                handleSaveFormulaAcronyms(updated, false);
+                                                setEditingAcronymIdx(null);
+                                              } else if (e.key === 'Escape') {
+                                                setEditingAcronymIdx(null);
+                                              }
+                                            }}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const updated = [...formulaAcronyms];
+                                              updated[idx] = { ...updated[idx], title: editingAcronymText };
+                                              setFormulaAcronyms(updated);
+                                              handleSaveFormulaAcronyms(updated, false);
+                                              setEditingAcronymIdx(null);
+                                            }}
+                                            className="px-2 py-1 bg-emerald-600 text-white text-xs font-bold rounded hover:bg-emerald-500 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            저장
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingAcronymIdx(null)}
+                                            className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                          <span
+                                            onDoubleClick={() => {
+                                              setEditingAcronymIdx(idx);
+                                              setEditingAcronymText(ac.title || '');
+                                            }}
+                                            className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                            title="더블클릭하여 제목 수정"
+                                          >
+                                            {ac.title}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Buttons Group */}
+                                  <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 열기/접기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setExpandedAcronymIds(prev => ({
+                                          ...prev,
+                                          [ac.id]: !prev[ac.id]
+                                        }));
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title={isExpanded ? "접기" : "열기"}
+                                    >
+                                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                      <span>{isExpanded ? "접기" : "열기"}</span>
+                                    </button>
+
+                                    {/* 삭제 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`[${ac.title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+                                          const updated = formulaAcronyms.filter(x => x.id !== ac.id);
+                                          setFormulaAcronyms(updated);
+                                          handleSaveFormulaAcronyms(updated, false);
+                                          showNotification(`[${ac.title}] 앞글자가 삭제되었습니다.`, 'info');
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title="앞글자 삭제"
+                                    >
+                                      <Trash2 size={12} />
+                                      <span>삭제</span>
+                                    </button>
                                   </div>
                                 </div>
-                                <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap select-text">
-                                  {ac.content}
-                                </div>
+
+                                {isExpanded && (
+                                  <div className="text-slate-350 text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in">
+                                    {ac.content}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -19788,16 +19976,6 @@ export default function App() {
                                         >
                                           <LatexRenderer text={q.question || q.title} katexLoaded={katexLoaded} />
                                         </span>
-                                        <button
-                                          onClick={() => {
-                                            setEditingFormulaIdx(idx);
-                                            setEditingFormulaText(q.title || q.question || '');
-                                          }}
-                                          className="p-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg text-yellow-400 transition-all duration-150 cursor-pointer shrink-0 inline-flex items-center justify-center hover:scale-105 active:scale-95 shadow-[0_2px_8px_rgba(234,179,8,0.1)] landscape-hide mobile-portrait-hide"
-                                          title="공식 제목 수정"
-                                        >
-                                          <Edit2 size={12} />
-                                        </button>
                                       </div>
                                     )}
                                   </div>
@@ -21637,6 +21815,48 @@ export default function App() {
               <button
                 onClick={handleConfirmTableExport}
                 className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-rose-600/20 border border-rose-500/30"
+              >
+                내보내기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Acronym Export Confirmation Modal */}
+      {acronymConfirmTarget && (
+        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+            <div className="flex items-center gap-3 text-emerald-400">
+              <Type size={24} />
+              <h3 className="text-lg font-black text-white">앞글자 암기법 내보내기</h3>
+            </div>
+            
+            <p className="text-xs text-slate-400 leading-relaxed">
+              이 앞글자 암기법을 필수암기 '앞글자' 서브 탭으로 저장하여 언제든 복습하실 수 있습니다. 저장할 앞글자의 제목을 지정해 주세요.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400">암기법 제목</label>
+              <input
+                type="text"
+                value={acronymConfirmTarget.title}
+                onChange={(e) => setAcronymConfirmTarget(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full bg-slate-950 border border-slate-700/60 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all font-bold"
+                placeholder="암기법 제목을 입력하세요"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setAcronymConfirmTarget(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-xl text-xs transition-all border border-slate-700/60 cursor-pointer active:scale-95"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmAcronymExport}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/20 border border-emerald-500/30"
               >
                 내보내기
               </button>
