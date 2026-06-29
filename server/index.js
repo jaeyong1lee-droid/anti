@@ -6953,6 +6953,16 @@ app.get('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
 
+    if (topicId === 'mixed_acronym_table') {
+      const sId = req.query.sessionId || 'legacy_default';
+      const key = `review_questions_topic_mixed_acronym_table_sess_${sId}`;
+      let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+      if (row && row.value) {
+        return res.json({ success: true, data: JSON.parse(row.value) });
+      }
+      return res.json({ success: true, data: null });
+    }
+
     let isCompletedOrFailed = false;
     let targetScheduleId = null;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
@@ -7088,6 +7098,29 @@ app.post('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
 
+    if (topicId === 'mixed_acronym_table') {
+      const sId = sessionId || 'legacy_default';
+      const key = `review_questions_topic_mixed_acronym_table_sess_${sId}`;
+      const value = JSON.stringify({
+        sessionId: sessionId || '',
+        questions,
+        selectedAnswers: selectedAnswers || {},
+        revealedQuestions: revealedQuestions || {},
+        tableAnswers: tableAnswers || {},
+        tableGradingResults: tableGradingResults || {},
+        tutorAnswers: tutorAnswers || {},
+        tutorInputText: tutorInputText || {},
+        chatHistory: chatHistory || [],
+        savedQuizScroll: savedQuizScroll || 0
+      });
+      await dbQuery.run(
+        `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
+        [key, value]
+      );
+      return res.json({ success: true, message: 'Mixed session stored.' });
+    }
+
     let isCompletedOrFailed = false;
     let targetScheduleId = null;
     if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
@@ -7150,6 +7183,11 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
   try {
     await ensureSessionTable();
     const topicId = req.params.id;
+
+    if (topicId === 'mixed_acronym_table') {
+      await dbQuery.run("DELETE FROM app_session WHERE key LIKE 'review_questions_topic_mixed_acronym_table%'");
+      return res.json({ ok: true });
+    }
     const scheduleId = req.query.scheduleId;
     const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
       ? `review_questions_schedule_${scheduleId}`

@@ -147,6 +147,63 @@ const formatReviewDate = (completedAt, plannedDate) => {
   return '';
 };
 
+const getSeededRandom = (seedStr) => {
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return () => {
+    const x = Math.sin(hash++) * 10000;
+    return x - Math.floor(x);
+  };
+};
+
+const parseHtmlTable = (htmlStr) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlStr || '', 'text/html');
+  const ths = Array.from(doc.querySelectorAll('thead th, tr:first-child th, tr:first-child td')).map(el => el.textContent.trim());
+  const rows = [];
+  const allTrs = Array.from(doc.querySelectorAll('tr'));
+  const hasThead = doc.querySelector('thead') !== null;
+  const dataTrs = hasThead ? allTrs.filter(tr => !tr.closest('thead')) : allTrs.slice(1);
+  
+  const headers = ths.length > 0 ? ths : Array.from(allTrs[0]?.querySelectorAll('td, th') || []).map(el => el.textContent.trim());
+
+  for (const tr of dataTrs) {
+    const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
+    if (tds.length > 0) {
+      rows.push(tds);
+    }
+  }
+
+  return { headers, rows };
+};
+
+const parseAcronymContent = (content) => {
+  const lines = (content || '').split('\n');
+  const rows = [];
+  let acronym = '';
+  let sentence = '';
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('두문자:')) {
+      acronym = trimmed.replace('두문자:', '').trim();
+    } else if (trimmed.startsWith('연상문장:')) {
+      sentence = trimmed.replace('연상문장:', '').trim();
+    } else if (trimmed.includes('|')) {
+      const parts = trimmed.split('|').map(p => p.trim());
+      if (parts.length >= 4) {
+        const col1 = parts[1]; // 두문자
+        const col2 = parts[2]; // 암기단어
+        const col3 = parts[3]; // 설명
+        if (!col1 || col1 === '두문자' || col1.includes('---')) continue;
+        rows.push({ acronym: col1, word: col2, description: col3 });
+      }
+    }
+  }
+  return { acronym, sentence, rows };
+};
+
 // Pure browser-side PDF-to-Image renderer using PDF.js CDN
 function PdfImageRenderer({ pdfUrl, pdfjsLoaded }) {
   const containerRef = useRef(null);
@@ -2130,6 +2187,159 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   );
 });
 
+const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
+  if (!q.tableData || !q.tableData.rows) {
+    return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
+  }
+
+  const { rows } = q.tableData;
+
+  const handleInputChange = (key, val) => {
+    setTableAnswers(prev => ({
+      ...prev,
+      [`${questionIdx}_${key}`]: val
+    }));
+  };
+
+  const combValue = tableAnswers[`${questionIdx}_ACRONYM_COMB`] || '';
+  const combGrading = tableGradingResults[`${questionIdx}_ACRONYM_COMB`];
+
+  return (
+    <div className="w-full my-3 space-y-4">
+      {/* 두문자 조합 입력란 */}
+      <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-4 space-y-2">
+        <label className="block text-xs font-bold text-slate-400">두문자 조합 입력 (순서 무관)</label>
+        {revealed ? (
+          <div className={`p-2.5 rounded-lg flex justify-between items-center ${
+            combGrading?.isCorrect ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-500/20' : 'bg-rose-950/30 text-rose-400 border border-rose-500/20'
+          }`}>
+            <span className="font-extrabold text-[15px] sm:text-[17px]">{combValue || '(미입력)'}</span>
+            <div className="text-[11px] sm:text-[13px] font-black">
+              {combGrading?.reason || (combGrading?.isCorrect ? '맞음' : '틀림')}
+            </div>
+          </div>
+        ) : (
+          <input
+            type="text"
+            value={combValue}
+            onChange={(e) => handleInputChange('ACRONYM_COMB', e.target.value)}
+            placeholder="예: 차단배치"
+            className="w-full text-[14px] sm:text-[16px] bg-slate-900 border border-slate-800 focus:border-slate-650 rounded-lg px-3 py-2 text-white outline-none focus:outline-none focus:ring-0"
+          />
+        )}
+      </div>
+
+      {/* 테이블 입력란 */}
+      <div className="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+        <table className="w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-[320px] sm:min-w-[600px]">
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '80%' }} />
+          </colgroup>
+          <thead>
+            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+              <th className="p-2 font-extrabold border-r border-slate-800 select-none">두문자</th>
+              <th className="p-2 font-extrabold select-none">내용 (암기단어 : 설명)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rIdx) => {
+              const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
+              const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
+              
+              const rowAcronymGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_ACRONYM`];
+              const rowCombGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_COMB`];
+
+              return (
+                <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                  {/* 두문자 글자 입력 cell */}
+                  <td className="p-1 border-r border-slate-800 align-middle">
+                    {revealed ? (
+                      <div className={`w-full p-2 font-black ${
+                        rowAcronymGrading?.isCorrect ? 'text-emerald-400 bg-emerald-950/10' : 'text-rose-400 bg-rose-950/10'
+                      }`}>
+                        {rowAcronymVal || '(미입력)'}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        maxLength={1}
+                        value={rowAcronymVal}
+                        onChange={(e) => handleInputChange(`ROW_${rIdx}_ACRONYM`, e.target.value)}
+                        placeholder="글자"
+                        className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1"
+                      />
+                    )}
+                  </td>
+                  
+                  {/* 내용(암기단어 : 설명) 입력 cell */}
+                  <td className="p-0 align-middle">
+                    {revealed ? (
+                      <div className={`w-full flex flex-col p-2 text-left text-[13px] sm:text-[15px] ${
+                        rowCombGrading?.isCorrect ? 'bg-emerald-950/20 text-emerald-300' : 'bg-rose-950/20 text-rose-300'
+                      }`}>
+                        <div className="font-bold">입력: {rowCombVal || '(미입력)'}</div>
+                        {rowCombGrading && (
+                          <div className="text-[11px] opacity-80 mt-1 leading-relaxed">
+                            {rowCombGrading.reason}
+                          </div>
+                        )}
+                        {q.correctRows?.find(r => r.acronym === rowAcronymVal) ? (
+                          <div className="text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-800">
+                            💡 모범답안: {(() => {
+                              const matching = q.correctRows.find(r => r.acronym === rowAcronymVal);
+                              return `${matching.word} : ${matching.description}`;
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-800">
+                            💡 모범답안 매칭 실패 (올바른 두문자 글자가 아닙니다)
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <textarea
+                        ref={(el) => {
+                          if (el && el.dataset.lastVal !== rowCombVal) {
+                            el.style.height = 'auto';
+                            el.style.height = `${el.scrollHeight}px`;
+                            el.dataset.lastVal = rowCombVal;
+                          }
+                        }}
+                        value={rowCombVal}
+                        onChange={(e) => {
+                          handleInputChange(`ROW_${rIdx}_COMB`, e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = `${e.target.scrollHeight}px`;
+                          e.target.dataset.lastVal = e.target.value;
+                        }}
+                        placeholder="암기단어 : 설명"
+                        className="w-full text-left text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-2 resize-none min-h-[30px] block"
+                        rows={1}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            e.target.blur();
+                          }
+                        }}
+                      />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {revealed && q.sentence && (
+        <div className="p-3 bg-violet-950/20 border border-violet-500/20 text-violet-300 rounded-xl text-xs sm:text-sm font-medium">
+          💡 <strong>연상문장</strong>: <LatexRenderer text={q.sentence} katexLoaded={katexLoaded} className="inline" />
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ── 객관식 표 렌더러 ──────────────────
 const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded }) {
   if (!tableData || !tableData.headers || !tableData.rows) return null;
@@ -2775,6 +2985,29 @@ export default function App() {
   };
 
   const getTableAverageScore = (idx, q) => {
+    if (q.type === '주관식 (앞글자)') {
+      let sumScore = 0;
+      let count = 0;
+      const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+      
+      const comb = activeGradingResults[`${idx}_ACRONYM_COMB`];
+      if (comb && comb.score !== undefined) {
+        sumScore += comb.score;
+        count++;
+      }
+      
+      const rowCount = q.tableData?.rows?.length || 0;
+      for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+        const rowG = activeGradingResults[`${idx}_ROW_${rIdx}_COMB`];
+        if (rowG && rowG.score !== undefined) {
+          sumScore += rowG.score;
+          count++;
+        }
+      }
+      if (count === 0) return undefined;
+      return sumScore / count;
+    }
+
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return 10;
     
@@ -2925,6 +3158,203 @@ export default function App() {
         </div>
       </div>
     );
+  };
+
+  const renderDetailedAcronymFeedback = (idx, q, weight = 10) => {
+    const rowCount = q.tableData?.rows?.length || 0;
+    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeGradingResults = showExam ? examTableGradingResults : tableGradingResults;
+    
+    return (
+      <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
+        <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 항목별 상세 피드백:</span>
+        <div className="divide-y divide-slate-800/80 mt-1">
+          {(() => {
+            const val = activeAnswers[`${idx}_ACRONYM_COMB`] || '';
+            const grading = activeGradingResults[`${idx}_ACRONYM_COMB`];
+            const isCorrect = grading ? grading.isCorrect : false;
+            
+            const itemWeight = weight / (1 + rowCount);
+            const scoreObtained = grading && grading.score !== undefined ? (grading.score / 10) * itemWeight : 0;
+            const displayScore = Math.round(scoreObtained * 10) / 10;
+            
+            return (
+              <div key="acronym_comb" className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
+                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-100 font-bold">두문자 조합 입력</span>
+                  </div>
+                  <span className={isCorrect ? 'text-emerald-400' : 'text-rose-400'}>
+                    {displayScore} / {Math.round(itemWeight * 10) / 10}점
+                  </span>
+                </div>
+                <div className="text-slate-300">내 답변: <span className="font-semibold">{val || '(미입력)'}</span></div>
+                <div className="text-slate-300">모범답안: <span className="font-semibold text-emerald-400">{q.acronym}</span></div>
+                {grading?.reason && (
+                  <div className="mt-1 text-slate-400">
+                    <span className="font-bold text-slate-300">피드백:</span> {grading.reason}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          
+          {Array.from({ length: rowCount }).map((_, rIdx) => {
+            const userLetter = activeAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '';
+            const userContent = activeAnswers[`${idx}_ROW_${rIdx}_COMB`] || '';
+            
+            const acronymGrading = activeGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
+            const combGrading = activeGradingResults[`${idx}_ROW_${rIdx}_COMB`];
+            
+            const isLetterCorrect = acronymGrading ? acronymGrading.isCorrect : false;
+            const isContentCorrect = combGrading ? combGrading.isCorrect : false;
+            
+            const itemWeight = weight / (1 + rowCount);
+            const scoreObtained = combGrading && combGrading.score !== undefined ? (combGrading.score / 10) * itemWeight : 0;
+            const displayScore = Math.round(scoreObtained * 10) / 10;
+            
+            const correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+            
+            return (
+              <div key={rIdx} className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
+                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-100 font-bold">행 {rIdx + 1} ({userLetter || '미입력'})</span>
+                  </div>
+                  <span className={isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}>
+                    {displayScore} / {Math.round(itemWeight * 10) / 10}점
+                  </span>
+                </div>
+                <div className="text-slate-300">입력내용: <span className="font-semibold">{userContent || '(미입력)'}</span></div>
+                <div className="text-slate-300">
+                  모범답안: {correctRow ? (
+                    <span className="font-semibold text-emerald-400">{correctRow.word} : {correctRow.description}</span>
+                  ) : (
+                    <span className="font-semibold text-rose-400">(올바른 두문자 매칭 필요)</span>
+                  )}
+                </div>
+                {combGrading?.reason && (
+                  <div className="mt-1 text-slate-400">
+                    <span className="font-bold text-slate-300 font-bold text-slate-300">피드백:</span> {combGrading.reason}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const gradeAcronymQuestion = async (qIdx, q) => {
+    setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
+    
+    const userAcronym = (tableAnswers[`${qIdx}_ACRONYM_COMB`] || '').trim();
+    const correctAcronym = (q.acronym || '').trim();
+    
+    const clean = (s) => [...(s || '')].map(c => c.trim()).filter(Boolean).sort().join('');
+    const isAcronymCorrect = clean(userAcronym) === clean(correctAcronym);
+    
+    const results = {};
+    results[`${qIdx}_ACRONYM_COMB`] = {
+      isCorrect: isAcronymCorrect,
+      score: isAcronymCorrect ? 10 : 0,
+      reason: isAcronymCorrect ? '두문자 조합이 올바릅니다.' : `두문자 조합이 올바르지 않습니다. (모범답안: ${correctAcronym})`
+    };
+    
+    const rowCount = q.tableData?.rows?.length || 0;
+    const userRows = Array.from({ length: rowCount }).map((_, rIdx) => {
+      return {
+        acronym: (tableAnswers[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
+        combined: (tableAnswers[`${qIdx}_ROW_${rIdx}_COMB`] || '').trim()
+      };
+    });
+    
+    const progressId = 'grade_acronym_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+    
+    const promises = userRows.map(async (userRow, rIdx) => {
+      const userLetter = userRow.acronym;
+      const userContent = userRow.combined;
+      
+      const correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+      
+      if (!userLetter) {
+        results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
+        results[`${qIdx}_ROW_${rIdx}_COMB`] = { isCorrect: false, score: 0, reason: '내용 미입력' };
+        return;
+      }
+      
+      if (!correctRow) {
+        results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: `존재하지 않는 두문자 글자 (${userLetter})` };
+        results[`${qIdx}_ROW_${rIdx}_COMB`] = { isCorrect: false, score: 0, reason: `매칭 실패` };
+        return;
+      }
+      
+      results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: true, score: 10, reason: `두문자 매칭 성공` };
+      
+      const correctAnswer = `${correctRow.word} : ${correctRow.description}`;
+      
+      try {
+        const res = await fetch(`${API_BASE}/api/grade-subjective`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: `${q.question} (두문자: ${userLetter})`,
+            correctAnswer,
+            userAnswer: userContent,
+            rowHeader: userLetter,
+            colHeader: '암기단어 및 설명',
+            explanation: correctAnswer,
+            category: '앞글자',
+            progressId
+          })
+        });
+        const data = await res.json();
+        results[`${qIdx}_ROW_${rIdx}_COMB`] = {
+          isCorrect: data.isCorrect,
+          score: data.score,
+          reason: data.reason,
+          suggestedModelAnswer: data.suggestedModelAnswer
+        };
+      } catch (err) {
+        console.error('Acronym grading error:', err);
+        const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+        const isCorrect = normalize(userContent) === normalize(correctAnswer);
+        results[`${qIdx}_ROW_${rIdx}_COMB`] = {
+          isCorrect,
+          score: isCorrect ? 10 : 0,
+          reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+        };
+      }
+    });
+    
+    await Promise.all(promises);
+    stopProgressPolling();
+    setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    
+    const updatedGrading = { ...tableGradingResults, ...results };
+    setTableGradingResults(updatedGrading);
+    
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      await fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          scheduleId: selectedTopic.schedule_id,
+          sessionId: reviewSessionId,
+          questions: aiQuestions,
+          selectedAnswers,
+          revealedQuestions: { ...revealedQuestions, [qIdx]: true },
+          tableAnswers,
+          tableGradingResults: updatedGrading,
+          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+        })
+      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+    }
+    
+    return results;
   };
 
   const scrollToLastSolvedQuestion = (isExam = false) => {
@@ -3705,6 +4135,27 @@ export default function App() {
         const isCorrect = userAnswer !== undefined && userAnswer === q.answer;
         if (isCorrect) {
           total += W;
+        }
+      } else if (q.type === '주관식 (앞글자)') {
+        let sumVal = 0;
+        let countVal = 0;
+        
+        const combGrading = tableGradingResults[`${idx}_ACRONYM_COMB`];
+        if (combGrading && combGrading.score !== undefined) {
+          sumVal += combGrading.score;
+        }
+        countVal++;
+        
+        const rowCount = q.tableData?.rows?.length || 0;
+        for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+          const rowGrading = tableGradingResults[`${idx}_ROW_${rIdx}_COMB`];
+          if (rowGrading && rowGrading.score !== undefined) {
+            sumVal += rowGrading.score;
+          }
+          countVal++;
+        }
+        if (countVal > 0) {
+          total += (sumVal / (countVal * 10)) * W;
         }
       } else if (q.tableData) {
         const inputIds = Object.keys(q.answers || {});
@@ -4945,6 +5396,33 @@ export default function App() {
   const fetchTodayReviews = async (dateStr) => {
     setLoadingReviews(true);
     try {
+      let tables = formulaTables;
+      let acronyms = formulaAcronyms;
+      
+      if (tables.length === 0 || acronyms.length === 0) {
+        try {
+          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
+          if (tRes.ok) {
+            const tBody = await tRes.json();
+            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
+              tables = tBody.data.formulaTables;
+            }
+          }
+          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
+          if (aRes.ok) {
+            const aBody = await aRes.json();
+            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
+              acronyms = aBody.data.formulaAcronyms;
+            }
+          }
+        } catch (err) {
+          console.warn('Sync tables/acronyms inside fetchTodayReviews failed:', err);
+        }
+      }
+
+      if (tables.length > 0 && formulaTables.length === 0) setFormulaTables(tables);
+      if (acronyms.length > 0 && formulaAcronyms.length === 0) setFormulaAcronyms(acronyms);
+
       const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
       if (res.ok && data && Array.isArray(data.reviews)) {
@@ -4957,7 +5435,30 @@ export default function App() {
           }
         }
         const uniqueList = Array.from(uniqueMap.values());
+        
+        const hasItems = tables.length > 0 || acronyms.length > 0;
+        const isMixedCompleted = localStorage.getItem(`anti_mixed_completed_${dateStr}`) === 'true';
+        
+        if (hasItems && !isMixedCompleted) {
+          const mixedItem = {
+            schedule_id: 'mixed_acronym_table_schedule',
+            topic_id: 'mixed_acronym_table',
+            title: '오늘의 필수 표/앞글자 믹스 복습 (5제 1세트)',
+            planned_date: '1970-01-01',
+            review_round: 'MIX',
+            category: '믹스',
+            pdf_name: 'mixed.html',
+            isBonus: false
+          };
+          uniqueList.push(mixedItem);
+        }
+
         uniqueList.sort((a, b) => {
+          const isAMixed = a.topic_id === 'mixed_acronym_table';
+          const isBMixed = b.topic_id === 'mixed_acronym_table';
+          if (isAMixed && !isBMixed) return -1;
+          if (!isAMixed && isBMixed) return 1;
+          
           const dateA = a.planned_date || '';
           const dateB = b.planned_date || '';
           if (dateA !== dateB) return dateA.localeCompare(dateB);
@@ -6307,6 +6808,13 @@ export default function App() {
 
   // Mark specific schedule round as complete
   const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
+    if (topicId === 'mixed_acronym_table') {
+      localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
+      showNotification('오늘의 필수 표/앞글자 믹스 복습 완료!');
+      fetchTodayReviews(referenceDate);
+      return;
+    }
+
     if (isBonus && topicId) {
       try {
         const res = await fetch(`${API_BASE}/api/schedules/bonus/complete`, {
@@ -6421,13 +6929,175 @@ export default function App() {
       return;
     }
 
+    if (selectedTopic.id === 'mixed_acronym_table') {
+      const gradingPromises = [];
+      const localGradingResults = { ...tableGradingResults };
+
+      aiQuestions.forEach((q, idx) => {
+        if (q.type === '주관식 (앞글자)') {
+          const hasVal = tableAnswers[`${idx}_ACRONYM_COMB`] !== undefined && String(tableAnswers[`${idx}_ACRONYM_COMB`]).trim() !== '';
+          const hasGraded = tableGradingResults[`${idx}_ACRONYM_COMB`] !== undefined;
+          if (hasVal && !hasGraded) {
+            const p = gradeAcronymQuestion(idx, q).then(res => {
+              if (res) Object.assign(localGradingResults, res);
+              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+            });
+            gradingPromises.push(p);
+          }
+        } else if (q.tableData) {
+          const inputIds = Object.keys(q.answers || {});
+          let needsGrading = false;
+          inputIds.forEach(inputId => {
+            const val = tableAnswers[`${idx}_${inputId}`];
+            const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
+            const hasGraded = tableGradingResults[`${idx}_${inputId}`] !== undefined;
+            if (hasVal && !hasGraded) {
+              needsGrading = true;
+            }
+          });
+          if (needsGrading) {
+            const p = gradeTableQuestion(idx, q).then(res => {
+              if (res) Object.assign(localGradingResults, res);
+              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+            });
+            gradingPromises.push(p);
+          }
+        }
+      });
+
+      if (gradingPromises.length > 0) {
+        setLoadingAI(true);
+        try {
+          await Promise.all(gradingPromises);
+        } catch (e) {}
+        setLoadingAI(false);
+      }
+
+      let unsolvedCount = 0;
+      aiQuestions.forEach((q, idx) => {
+        if (q.type === '주관식 (앞글자)') {
+          const val = tableAnswers[`${idx}_ACRONYM_COMB`];
+          const hasAcronym = val !== undefined && val !== null && String(val).trim() !== '';
+          let hasEmptyRow = false;
+          const rowCount = q.tableData?.rows?.length || 0;
+          for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+            const rowVal = tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`];
+            const combVal = tableAnswers[`${idx}_ROW_${rIdx}_COMB`];
+            if (!rowVal || !combVal || String(rowVal).trim() === '' || String(combVal).trim() === '') {
+              hasEmptyRow = true;
+            }
+          }
+          if (!hasAcronym || hasEmptyRow) {
+            unsolvedCount++;
+          }
+        } else if (q.tableData) {
+          const inputIds = Object.keys(q.answers || {});
+          let hasEmpty = false;
+          inputIds.forEach(inputId => {
+            const val = tableAnswers[`${idx}_${inputId}`];
+            if (val === undefined || val === null || String(val).trim() === '') {
+              hasEmpty = true;
+            }
+          });
+          if (hasEmpty) {
+            unsolvedCount++;
+          }
+        }
+      });
+
+      if (unsolvedCount > 0) {
+        const confirmComplete = window.confirm("풀지 않은 문제가 있습니다. 완료할까요?");
+        if (!confirmComplete) return;
+      }
+
+      let totalScoreObtained = 0;
+      const scoredIndices = aiQuestions.map((_, i) => i);
+      const M = scoredIndices.length;
+      const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+      const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+
+      aiQuestions.forEach((q, idx) => {
+        const sIdx = scoredIndices.indexOf(idx);
+        const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+        let sumVal = 0;
+        let countVal = 0;
+
+        if (q.type === '주관식 (앞글자)') {
+          const combGrading = localGradingResults[`${idx}_ACRONYM_COMB`];
+          if (combGrading && combGrading.score !== undefined) {
+            sumVal += combGrading.score;
+          }
+          countVal++;
+
+          const rowCount = q.tableData?.rows?.length || 0;
+          for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+            const rowGrading = localGradingResults[`${idx}_ROW_${rIdx}_COMB`];
+            if (rowGrading && rowGrading.score !== undefined) {
+              sumVal += rowGrading.score;
+            }
+            countVal++;
+          }
+          if (countVal > 0) {
+            totalScoreObtained += (sumVal / (countVal * 10)) * W;
+          }
+        } else if (q.tableData) {
+          const inputIds = Object.keys(q.answers || {});
+          inputIds.forEach(inputId => {
+            const grading = localGradingResults[`${idx}_${inputId}`];
+            if (grading && grading.score !== undefined) {
+              sumVal += grading.score;
+            }
+          });
+          if (inputIds.length > 0) {
+            totalScoreObtained += (sumVal / (inputIds.length * 10)) * W;
+          }
+        }
+      });
+
+      const scoreMC = Math.round(totalScoreObtained * 10) / 10;
+
+      await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' })
+        .catch(e => console.warn('Sync delete mixed session failed:', e));
+
+      localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
+      showNotification(`오늘의 필수 표/앞글자 믹스 복습 완료! (성적: ${scoreMC}점)`, 'success');
+
+      setSelectedTopic(null);
+      setAiQuestions([]);
+      setRevealedQuestions({});
+      setSelectedAnswers({});
+      setOpenSections({});
+      setReviewOptionExplanations({});
+      setTableAnswers({});
+      setTableGradingResults({});
+      setTutorAnswers({});
+      setTutorInputText({});
+      setChatHistory([]);
+
+      fetchTodayReviews(referenceDate);
+      return;
+    }
+
     // ── [자동 채점] 입력은 하였으나 채점하지 않은 주관식/표채우기 문제 자동 일괄 채점 진행
     const gradingPromises = [];
     const localGradingResults = { ...tableGradingResults };
 
     aiQuestions.forEach((q, idx) => {
       const isMC = q.options && q.options.length > 0;
-      if (!isMC && !q.tableData) {
+      if (q.type === '주관식 (앞글자)') {
+        const hasVal = tableAnswers[`${idx}_ACRONYM_COMB`] !== undefined && String(tableAnswers[`${idx}_ACRONYM_COMB`]).trim() !== '';
+        const hasGraded = tableGradingResults[`${idx}_ACRONYM_COMB`] !== undefined;
+        if (hasVal && !hasGraded) {
+          console.log(`[Auto-Grading] Grading acronym question index=${idx} before completion...`);
+          const p = gradeAcronymQuestion(idx, q).then(res => {
+            if (res) {
+              Object.assign(localGradingResults, res);
+            }
+            setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+          });
+          gradingPromises.push(p);
+        }
+      } else if (!isMC && !q.tableData) {
         const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
         if (!isEssay) {
           const val = tableAnswers[`${idx}_INPUT`];
@@ -6486,6 +7156,21 @@ export default function App() {
       const isMC = q.options && q.options.length > 0;
       if (isMC) {
         if (selectedAnswers[idx] === undefined || selectedAnswers[idx] === '') {
+          unsolvedCount++;
+        }
+      } else if (q.type === '주관식 (앞글자)') {
+        const val = tableAnswers[`${idx}_ACRONYM_COMB`];
+        const hasAcronym = val !== undefined && val !== null && String(val).trim() !== '';
+        let hasEmptyRow = false;
+        const rowCount = q.tableData?.rows?.length || 0;
+        for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+          const rowVal = tableAnswers[`${idx}_ROW_${rIdx}_ACRONYM`];
+          const combVal = tableAnswers[`${idx}_ROW_${rIdx}_COMB`];
+          if (!rowVal || !combVal || String(rowVal).trim() === '' || String(combVal).trim() === '') {
+            hasEmptyRow = true;
+          }
+        }
+        if (!hasAcronym || hasEmptyRow) {
           unsolvedCount++;
         }
       } else if (q.tableData) {
@@ -6681,6 +7366,29 @@ export default function App() {
       lastQuizTopicId.current = null;
       lastQuizScheduleId.current = null;
     }
+  };
+
+  // 표글 믹스 복습 수동 요청 핸들러
+  const handleRequestMixedReview = async () => {
+    localStorage.removeItem(`anti_mixed_completed_${referenceDate}`);
+    try {
+      await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn('Failed to clear mixed review session on server:', e);
+    }
+    await fetchTodayReviews(referenceDate);
+    handleOpenAIQuestions(
+      'mixed_acronym_table',
+      '오늘의 필수 표/앞글자 믹스 복습 (5제 1세트)',
+      '',
+      'mixed.html',
+      'ai',
+      'mixed_acronym_table_schedule',
+      'MIX',
+      false,
+      false,
+      '믹스'
+    );
   };
 
   // 약점 보완 추천 토픽 수동 추가 요청 핸들러
@@ -7209,6 +7917,193 @@ export default function App() {
       setChatHistory([]);
       setIsFallback(false);
       setAiError('');
+
+      if (topicId === 'mixed_acronym_table') {
+        let tables = [];
+        let acronyms = [];
+        
+        try {
+          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
+          if (tRes.ok) {
+            const tBody = await tRes.json();
+            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
+              tables = tBody.data.formulaTables;
+            }
+          }
+          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
+          if (aRes.ok) {
+            const aBody = await aRes.json();
+            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
+              acronyms = aBody.data.formulaAcronyms;
+            }
+          }
+        } catch (err) {
+          console.warn('Sync tables/acronyms inside handleOpenAIQuestions failed:', err);
+        }
+
+        setFormulaTables(tables);
+        setFormulaAcronyms(acronyms);
+        
+        const combinedItems = [
+          ...tables.map(t => ({ ...t, mixedType: 'table' })),
+          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' }))
+        ];
+        
+        const todayItems = combinedItems.filter(item => {
+          if (!item.createdAt) return false;
+          return item.createdAt.startsWith(referenceDate);
+        });
+        
+        const otherItems = combinedItems.filter(item => {
+          if (!item.createdAt) return true;
+          return !item.createdAt.startsWith(referenceDate);
+        });
+        
+        const rng = getSeededRandom(referenceDate);
+        
+        const shuffledToday = [...todayItems];
+        for (let i = shuffledToday.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [shuffledToday[i], shuffledToday[j]] = [shuffledToday[j], shuffledToday[i]];
+        }
+        
+        const shuffledOthers = [...otherItems];
+        for (let i = shuffledOthers.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [shuffledOthers[i], shuffledOthers[j]] = [shuffledOthers[j], shuffledOthers[i]];
+        }
+        
+        const finalPool = [...shuffledToday, ...shuffledOthers];
+        const selectedItems = finalPool.slice(0, 5);
+        
+        const questions = selectedItems.map((item, qIdx) => {
+          if (item.mixedType === 'table') {
+            const parsed = parseHtmlTable(item.html);
+            const answers = {};
+            const rows = parsed.rows.map((row, rIdx) => {
+              return row.map((cell, cIdx) => {
+                if (cIdx === 0) return cell;
+                const inputId = `INPUT_${rIdx}_${cIdx}`;
+                answers[inputId] = cell;
+                return `[${inputId}]`;
+              });
+            });
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (표채우기)',
+              subtype: '표채우기',
+              question: item.title,
+              tableData: {
+                headers: parsed.headers,
+                rows: rows
+              },
+              answers: answers,
+              explanation: item.html,
+              mixedType: 'table',
+              originalId: item.id
+            };
+          } else {
+            const parsed = parseAcronymContent(item.content);
+            const blankRows = parsed.rows.map(() => {
+              return ['', ''];
+            });
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (앞글자)',
+              question: item.title,
+              acronym: parsed.acronym,
+              sentence: parsed.sentence,
+              correctRows: parsed.rows,
+              tableData: {
+                headers: ['두문자', '내용 (암기단어 : 설명)'],
+                rows: blankRows
+              },
+              mixedType: 'acronym',
+              originalId: item.id
+            };
+          }
+        });
+        
+        const activeSid = `sess_mixed_${referenceDate}`;
+        let restoredData = null;
+        try {
+          const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
+              restoredData = checkData.data;
+            }
+          }
+        } catch (e) {
+          console.warn('Restoring mixed review failed:', e);
+        }
+        
+        setSelectedTopic(targetTopic);
+        selectedTopicRef.current = targetTopic;
+        setReviewSessionId(activeSid);
+        
+        if (restoredData) {
+          setAiQuestions(restoredData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
+          setSelectedAnswers(restoredData.selectedAnswers || {});
+          setRevealedQuestions(restoredData.revealedQuestions || {});
+          setTableAnswers(restoredData.tableAnswers || {});
+          setTableGradingResults(restoredData.tableGradingResults || {});
+          setTutorAnswers(restoredData.tutorAnswers || {});
+          setTutorInputText(restoredData.tutorInputText || {});
+          setChatHistory(restoredData.chatHistory || []);
+          
+          lastSyncStateRef.current = {
+            selectedAnswers: restoredData.selectedAnswers || {},
+            revealedQuestions: restoredData.revealedQuestions || {},
+            tableAnswers: restoredData.tableAnswers || {},
+            tableGradingResults: restoredData.tableGradingResults || {},
+            tutorAnswers: restoredData.tutorAnswers || {},
+            tutorInputText: restoredData.tutorInputText || {},
+            chatHistory: restoredData.chatHistory || []
+          };
+        } else {
+          setAiQuestions(questions);
+          setSelectedAnswers({});
+          setRevealedQuestions({});
+          setTableAnswers({});
+          setTableGradingResults({});
+          setTutorAnswers({});
+          setTutorInputText({});
+          setChatHistory([]);
+          
+          lastSyncStateRef.current = {
+            selectedAnswers: {},
+            revealedQuestions: {},
+            tableAnswers: {},
+            tableGradingResults: {},
+            tutorAnswers: {},
+            tutorInputText: {},
+            chatHistory: []
+          };
+          
+          await fetch(`${API_BASE}/api/session/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicId: topicId,
+              scheduleId: finalScheduleId,
+              sessionId: activeSid,
+              questions: questions,
+              selectedAnswers: {},
+              revealedQuestions: {},
+              tableAnswers: {},
+              tableGradingResults: {},
+              savedQuizScroll: 0
+            })
+          }).catch(e => console.warn('Saving initial mixed review failed:', e));
+        }
+        
+        setLoadingAI(false);
+        loadingTopicLockRef.current = false;
+        return;
+      }
 
       try {
         console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, sessionId=${activeSid}`);
@@ -13711,6 +14606,20 @@ ${itemsStr}
                       </button>
                     );
                   })()}
+                  
+                  {(() => {
+                    const hasItems = formulaTables.length > 0 || formulaAcronyms.length > 0;
+                    return (
+                      <button
+                        onClick={handleRequestMixedReview}
+                        disabled={!hasItems}
+                        className={`text-[10px] px-2.5 py-1.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/30 glow-purple-hover`}
+                        title="금회(오늘) 추가 및 저장한 표와 앞글자 암기 리스트를 조합하여 5개 복습 문제를 출제합니다."
+                      >
+                        📝 표글추천
+                      </button>
+                    );
+                  })()}
                 </div>
                 {(!(!isDesktop && !isMobileLandscape)) && (
                   <span className="text-xs font-bold text-slate-400 bg-slateCustom-900 border border-slate-800 rounded-lg px-2.5 py-1">
@@ -15782,7 +16691,60 @@ ${itemsStr}
 
                         {/* Subjective Reveal */}
                         {isSubj && (
-                          (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
+                          (q.type === '주관식 (앞글자)') ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              {(() => {
+                                const scoredIndices = [];
+                                aiQuestions.forEach((_, i) => {
+                                  scoredIndices.push(i);
+                                });
+                                const M = scoredIndices.length;
+                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                                const sIdx = scoredIndices.indexOf(idx);
+                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                return (
+                                  <AcronymQuiz 
+                                    questionIdx={idx} 
+                                    q={q} 
+                                    tableAnswers={tableAnswers} 
+                                    setTableAnswers={setTableAnswers} 
+                                    revealed={isRevd} 
+                                    katexLoaded={katexLoaded} 
+                                    tableGradingResults={tableGradingResults}
+                                    weight={W}
+                                    onSubmit={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeAcronymQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                  />
+                                );
+                              })()}
+                              {!isRevd ? (
+                                <button
+                                  onClick={async () => {
+                                    if (gradingLoading[idx]) return;
+                                    await gradeAcronymQuestion(idx, q);
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
+                                >
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                </button>
+                              ) : (
+                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                    <span>{getTableBannerStatusText(idx, q)}</span>
+                                  </div>
+                                  {renderDetailedAcronymFeedback(idx, q, W)}
+                                  {renderCardTutorChat(rKey, q)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
                             <div className="space-y-3 w-full">
                               {(() => {
                                 const scoredIndices = [];
