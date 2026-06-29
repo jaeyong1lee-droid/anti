@@ -4154,6 +4154,9 @@ export default function App() {
   const [formulaTables, setFormulaTables] = useState([]);
   const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
   const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
+  const [editingTableIdx, setEditingTableIdx] = useState(null);
+  const [editingTableText, setEditingTableText] = useState('');
+  const [expandedTableIds, setExpandedTableIds] = useState({});
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
     try {
       const saved = localStorage.getItem('anti_formula_revealed');
@@ -19482,32 +19485,132 @@ export default function App() {
                           .filter(t => {
                             return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                           })
-                          .map((t, filteredIdx, arr) => {
+                          .map((t) => {
+                            const idx = formulaTables.indexOf(t);
+                            const isExpanded = !!expandedTableIds[t.id];
                             return (
                               <div key={t.id} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
-                                <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                                  <span className="text-[15px] font-extrabold text-white">
-                                    📊 {t.title}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`[${t.title}] 표를 필수암기 리스트에서 삭제하시겠습니까?`)) {
-                                        const updated = formulaTables.filter(x => x.id !== t.id);
-                                        setFormulaTables(updated);
-                                        handleSaveFormulaTables(updated, false);
-                                        showNotification(`[${t.title}] 표가 삭제되었습니다.`, 'info');
-                                      }
-                                    }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1.5"
-                                    title="표 삭제"
-                                  >
-                                    <Trash2 size={12} />
-                                    <span>삭제</span>
-                                  </button>
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                  <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
+                                    {/* T 번호 배지 */}
+                                    <span className="text-[11px] font-black bg-violet-950/80 text-violet-400 px-2.5 py-1 rounded-lg border border-violet-500/20 shrink-0 select-none">
+                                      T${idx + 1}
+                                    </span>
+
+                                    {/* Title & Editor */}
+                                    <div className="flex-grow min-w-0">
+                                      {editingTableIdx === idx ? (
+                                        <div className="flex items-center gap-2 w-full">
+                                          <input
+                                            type="text"
+                                            value={editingTableText}
+                                            onChange={(e) => setEditingTableText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const trimmed = editingTableText.trim();
+                                                if (trimmed) {
+                                                  const updated = formulaTables.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                                  setFormulaTables(updated);
+                                                  handleSaveFormulaTables(updated, false);
+                                                  setEditingTableIdx(null);
+                                                  showNotification('표 제목이 저장되었습니다.', 'success');
+                                                }
+                                              } else if (e.key === 'Escape') {
+                                                setEditingTableIdx(null);
+                                              }
+                                            }}
+                                            className="bg-slateCustom-950 border border-slate-700 text-white text-[16px] font-bold rounded-lg px-2.5 py-1 focus:outline-none focus:border-rose-500 w-full max-w-[360px]"
+                                            autoFocus
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const trimmed = editingTableText.trim();
+                                              if (trimmed) {
+                                                const updated = formulaTables.map((item, i) => i === idx ? { ...item, title: trimmed } : item);
+                                                setFormulaTables(updated);
+                                                handleSaveFormulaTables(updated, false);
+                                                setEditingTableIdx(null);
+                                                showNotification('표 제목이 저장되었습니다.', 'success');
+                                              }
+                                            }}
+                                            className="px-2 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            저장
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingTableIdx(null)}
+                                            className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                          <span
+                                            onDoubleClick={() => {
+                                              setEditingTableIdx(idx);
+                                              setEditingTableText(t.title || '');
+                                            }}
+                                            className="text-[17px] font-extrabold text-white leading-snug cursor-pointer hover:text-violet-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                          >
+                                            {t.title}
+                                          </span>
+                                          <button
+                                            onClick={() => {
+                                              setEditingTableIdx(idx);
+                                              setEditingTableText(t.title || '');
+                                            }}
+                                            className="p-1 text-slate-500 hover:text-slate-350 hover:bg-slate-800/40 rounded transition-all cursor-pointer border-none bg-transparent"
+                                            title="제목 수정"
+                                          >
+                                            <Edit2 size={12} />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Buttons Group */}
+                                  <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 열기/접기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setExpandedTableIds(prev => ({
+                                          ...prev,
+                                          [t.id]: !prev[t.id]
+                                        }));
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title={isExpanded ? "접기" : "열기"}
+                                    >
+                                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                      <span>{isExpanded ? "접기" : "열기"}</span>
+                                    </button>
+
+                                    {/* 삭제 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`[${t.title}] 표를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+                                          const updated = formulaTables.filter(x => x.id !== t.id);
+                                          setFormulaTables(updated);
+                                          handleSaveFormulaTables(updated, false);
+                                          showNotification(`[${t.title}] 표가 삭제되었습니다.`, 'info');
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title="표 삭제"
+                                    >
+                                      <Trash2 size={12} />
+                                      <span>삭제</span>
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 select-text">
-                                  <div className="markdown-body" dangerouslySetInnerHTML={{ __html: t.html }} />
-                                </div>
+
+                                {isExpanded && (
+                                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 select-text animate-fade-in">
+                                    <div className="markdown-body" dangerouslySetInnerHTML={{ __html: t.html }} />
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
