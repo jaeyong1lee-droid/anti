@@ -8951,6 +8951,7 @@ export default function App() {
           history: realTimeChatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          acronymMode: acronymModeActive,
           progressId
         })
       });
@@ -9902,6 +9903,7 @@ export default function App() {
           history: chatHistory.map(h => ({ role: h.role, text: h.text })), 
           message: apiMessage,
           image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
+          acronymMode: acronymModeActive,
           progressId
         })
       });
@@ -15770,6 +15772,17 @@ export default function App() {
                       </div>
                     )}
                     <button
+                      onClick={() => setAcronymModeActive(prev => !prev)}
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
+                        acronymModeActive 
+                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40' 
+                          : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                      }`}
+                      title="두문자(앞글자) 암기모드 토글"
+                    >
+                      <span>두</span>
+                    </button>
+                    <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
@@ -18892,6 +18905,17 @@ export default function App() {
                       </div>
                     )}
                     <button
+                      onClick={() => setAcronymModeActive(prev => !prev)}
+                      className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
+                        acronymModeActive 
+                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40' 
+                          : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800/80 hover:bg-slate-800/50'
+                      }`}
+                      title="두문자(앞글자) 암기모드 토글"
+                    >
+                      <span>두</span>
+                    </button>
+                    <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
@@ -19329,6 +19353,17 @@ export default function App() {
                         </button>
                       </div>
                     )}
+                <button
+                  onClick={() => setAcronymModeActive(prev => !prev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
+                    acronymModeActive 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
+                  }`}
+                  title="두문자(앞글자) 암기모드 토글"
+                >
+                  <span>두</span>
+                </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
@@ -20560,6 +20595,17 @@ export default function App() {
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={() => setAcronymModeActive(prev => !prev)}
+                  className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
+                    acronymModeActive 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50'
+                  }`}
+                  title="두문자(앞글자) 암기모드 토글"
+                >
+                  <span>두</span>
+                </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
