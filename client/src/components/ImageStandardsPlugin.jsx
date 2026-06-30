@@ -11,6 +11,11 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
   // Handle Ctrl+V Paste inside the document/panel
   useEffect(() => {
     const handlePaste = (e) => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'textarea' || activeTag === 'input') {
+        return;
+      }
+
       const items = e.clipboardData?.items;
       if (!items) return;
       
@@ -28,14 +33,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       }
     };
 
-    const pasteArea = pasteAreaRef.current;
-    if (pasteArea) {
-      pasteArea.addEventListener('paste', handlePaste);
-    }
+    window.addEventListener('paste', handlePaste);
     return () => {
-      if (pasteArea) {
-        pasteArea.removeEventListener('paste', handlePaste);
-      }
+      window.removeEventListener('paste', handlePaste);
     };
   }, [showNotification]);
 
@@ -106,6 +106,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       {/* Paste Dropzone */}
       <div
         ref={pasteAreaRef}
+        tabIndex={0}
         className={`relative border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-all duration-200 focus:outline-none min-h-[160px] cursor-pointer select-none ${
           imageSrc 
             ? 'border-indigo-500/50 bg-indigo-950/10' 
