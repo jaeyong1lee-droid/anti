@@ -14826,9 +14826,32 @@ ${itemsStr}
             </div>
             <div>
               <h1 className="text-lg md:text-2xl font-extrabold tracking-tight flex items-center gap-3">
-                <span className="bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
-                  {(!isDesktop && !isMobileLandscape) ? '집중, 노력, 끈기' : '기술사 Spaced Repetition 복습 시스템'}
-                </span>
+                {(!isDesktop && !isMobileLandscape) ? (
+                  <div className="flex items-center gap-1.5 select-none">
+                    <button
+                      onClick={() => {
+                        setShowFormulaExam(true);
+                        setFormulaSubTab('acronym');
+                      }}
+                      className="flex items-center justify-center bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
+                    >
+                      두
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowFormulaExam(true);
+                        setFormulaSubTab('overview');
+                      }}
+                      className="flex items-center justify-center bg-rose-955/80 text-rose-455 border border-rose-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
+                    >
+                      개
+                    </button>
+                  </div>
+                ) : (
+                  <span className="bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
+                    기술사 Spaced Repetition 복습 시스템
+                  </span>
+                )}
                 {isDesktop && (
                   <div className="flex flex-col gap-1 select-none text-[13px] font-semibold leading-tight ml-3">
                     <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30 w-fit" : "text-slate-500"}>
@@ -16435,13 +16458,28 @@ ${itemsStr}
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
               {selectedTopic && (
-                <button
-                  onClick={handleOpenManageTopicInstructionsModal}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                  title="토픽 전용 문제 출제 지침을 관리합니다."
-                >
-                  <span className="whitespace-nowrap">지침</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setShowFormulaExam(true);
+                      setFormulaSubTab('acronym');
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                    title="앞글자(두문자) 필수암기 탭 열기"
+                  >
+                    <span className="whitespace-nowrap">두</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowFormulaExam(true);
+                      setFormulaSubTab('overview');
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-955/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                    title="개요 필수암기 탭 열기"
+                  >
+                    <span className="whitespace-nowrap">개</span>
+                  </button>
+                </>
               )}
               {selectedTopic.pdf_name && (
                 <button
