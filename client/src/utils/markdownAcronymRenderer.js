@@ -7,7 +7,7 @@ function renderContentAsHtmlTable(content) {
   if (!content) return "";
   if (content.includes('|')) {
     const lines = content.split('\n');
-    let html = '<div class="overflow-x-auto w-full mt-2"><table class="w-full text-left border-collapse text-xs select-text">';
+    let html = '<div class="overflow-x-auto w-full mt-2"><table class="w-full text-left border-collapse text-[14px] select-text">';
     html += '<thead>';
     html += '<tr class="border-b border-slate-800 bg-slateCustom-950/40">';
     html += '<th class="p-2.5 font-black text-slate-300 text-center w-16">두</th>';

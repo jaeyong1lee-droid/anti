@@ -37,7 +37,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
     html += `<div class="w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
-    html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
+    html += `<table class="w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] ${
       colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
     }">`;
     html += `<thead>`;
@@ -87,7 +87,7 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
   html += `</div>`;
 
   html += `<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
+  html += `<table class="w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] ${
     colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
   }">`;
   html += `<thead>`;

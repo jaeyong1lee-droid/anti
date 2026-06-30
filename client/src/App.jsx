@@ -21718,7 +21718,7 @@ ${itemsStr}
                             const idx = formulaTables.indexOf(t);
                             const isExpanded = !!expandedTableIds[t.id];
                             return (
-                              <div key={t.id} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                              <div key={t.id} className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     {/* T 번호 배지 */}
@@ -21830,7 +21830,7 @@ ${itemsStr}
                                     {(() => {
                                       const parsed = parseHtmlTable(t.html);
                                       return (
-                                        <table className="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] min-w-full">
+                                        <table className="w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
                                           <thead>
                                             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                               {parsed.headers.map((h, hIdx) => (
@@ -21847,7 +21847,7 @@ ${itemsStr}
                                                     onBlur={() => {
                                                       handleSaveFormulaTables(formulaTables, false);
                                                     }}
-                                                    className="w-full text-center bg-transparent border-0 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-xs md:text-sm"
+                                                    className="w-full text-center bg-transparent border-0 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm"
                                                   />
                                                 </th>
                                               ))}
@@ -21894,7 +21894,7 @@ ${itemsStr}
                                                       onBlur={() => {
                                                         handleSaveFormulaTables(formulaTables, false);
                                                       }}
-                                                      className="w-full text-center bg-transparent border-0 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-xs md:text-sm"
+                                                      className="w-full text-center bg-transparent border-0 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm"
                                                     />
                                                   </td>
                                                 ))}
@@ -22121,7 +22121,7 @@ ${itemsStr}
                                         </div>
                                       </div>
                                       <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl">
-                                        <table className="w-full text-left border-collapse text-xs select-text table-fixed min-w-[548px]">
+                                        <table className="w-full text-left border-collapse text-[14px] select-text table-fixed min-w-[548px]">
                                           <colgroup>
                                             <col style={{ width: '48px' }} />
                                             <col style={{ width: '380px' }} />
@@ -22157,7 +22157,7 @@ ${itemsStr}
                                                       type="text"
                                                       value={row.acronym}
                                                       onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
-                                                      className="w-full text-center bg-transparent border-0 text-emerald-400 font-extrabold focus:outline-none focus:ring-0 p-1"
+                                                      className="w-full text-center bg-transparent border-0 text-emerald-400 font-extrabold focus:outline-none focus:ring-0 p-1 text-[14px]"
                                                     />
                                                   </td>
                                                   <td className="p-1 md:p-1.5 border-r border-slate-800/60 align-middle">
@@ -22175,7 +22175,7 @@ ${itemsStr}
                                                         }
                                                       }}
                                                       rows={1}
-                                                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-200 font-medium text-xs resize-none overflow-hidden block py-1.5 px-2"
+                                                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-200 font-medium text-[14px] resize-none overflow-hidden block py-1.5 px-2"
                                                       placeholder="암기단어 : 설명"
                                                     />
                                                   </td>
@@ -22309,7 +22309,7 @@ ${itemsStr}
                             const isExpanded = !!expandedOverviewIds[ov.id];
                             const isEditing = editingOverviewId === ov.id;
                             return (
-                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-md transition-all duration-200 w-full max-w-full overflow-hidden">
+                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4 shadow-md transition-all duration-200 w-full max-w-full overflow-hidden">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
@@ -22429,7 +22429,7 @@ ${itemsStr}
                                       <div className="space-y-4 animate-fade-in w-full">
                                         {/* 1. 개요 */}
                                         {parsed.definition && (
-                                          <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
+                                          <div className="bg-slate-900/40 border border-slate-800/60 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
                                             <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
                                             <p className="font-bold text-white leading-relaxed">{parsed.definition}</p>
                                           </div>
@@ -22442,7 +22442,7 @@ ${itemsStr}
                                             <div className="flex flex-col gap-1 w-full">
                                               {steps.map((step, sIdx) => (
                                                 <React.Fragment key={sIdx}>
-                                                  <div className="bg-slate-900/60 border border-slate-800/80 p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                                                  <div className="bg-slate-900/60 border border-slate-800/80 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
                                                     <div className="flex gap-2.5 items-start">
                                                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
                                                         {sIdx + 1}
@@ -22463,7 +22463,7 @@ ${itemsStr}
 
                                         {/* 3. 직관적 의미 */}
                                         {parsed.intuitive && (
-                                          <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
+                                          <div className="bg-violet-950/15 border border-violet-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
                                             <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                                             <p className="text-slate-300 leading-relaxed">{parsed.intuitive}</p>
                                           </div>
