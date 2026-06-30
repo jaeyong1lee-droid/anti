@@ -11641,7 +11641,18 @@ export default function App() {
       return;
     }
 
-    rows[rowIdx][field] = value;
+    if (field === 'combined') {
+      const colonIndex = value.indexOf(':');
+      if (colonIndex !== -1) {
+        rows[rowIdx].word = value.substring(0, colonIndex).trim();
+        rows[rowIdx].description = value.substring(colonIndex + 1).trim();
+      } else {
+        rows[rowIdx].word = value.trim();
+        rows[rowIdx].description = '';
+      }
+    } else {
+      rows[rowIdx][field] = value;
+    }
 
     const newAcronymLetters = rows.map(r => r.acronym).join('');
     const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
@@ -21388,13 +21399,12 @@ ${itemsStr}
                                           />
                                         </div>
                                       </div>
-                                      <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl p-2.5">
+                                      <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl">
                                         <table className="w-full text-left border-collapse text-xs select-text">
                                           <thead>
                                             <tr className="border-b border-slate-800/80 bg-slateCustom-950/60">
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-16 select-none">두문자</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none w-1/4">암기단어</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none">설명</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-20 select-none border-r border-slate-800/80">두문자</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 select-none border-r border-slate-800/80">내용 (암기단어 : 설명)</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
@@ -21410,83 +21420,69 @@ ${itemsStr}
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {rows.map((row, rIdx) => (
-                                              <tr key={rIdx} className="border-b border-slate-900/40 hover:bg-slate-900/20 transition-colors">
-                                                <td className="p-1 md:p-1.5 text-center">
-                                                  <input
-                                                    type="text"
-                                                    value={row.acronym}
-                                                    onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
-                                                    className="w-full text-center bg-transparent border-0 text-emerald-400 font-black focus:ring-1 focus:ring-emerald-500 rounded p-1 focus:outline-none"
-                                                  />
-                                                </td>
-                                                <td className="p-1.5">
-                                                  <textarea
-                                                    value={row.word || ''}
-                                                    onChange={(e) => {
-                                                      handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value);
-                                                      e.target.style.height = 'auto';
-                                                      e.target.style.height = `${e.target.scrollHeight}px`;
-                                                    }}
-                                                    ref={(el) => {
-                                                      if (el) {
-                                                        el.style.height = 'auto';
-                                                        el.style.height = `${el.scrollHeight}px`;
-                                                      }
-                                                    }}
-                                                    rows={1}
-                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs resize-none overflow-hidden block"
-                                                    placeholder="암기단어"
-                                                  />
-                                                </td>
-                                                <td className="p-1.5">
-                                                  <textarea
-                                                    value={row.description || ''}
-                                                    onChange={(e) => {
-                                                      handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value);
-                                                      e.target.style.height = 'auto';
-                                                      e.target.style.height = `${e.target.scrollHeight}px`;
-                                                    }}
-                                                    ref={(el) => {
-                                                      if (el) {
-                                                        el.style.height = 'auto';
-                                                        el.style.height = `${el.scrollHeight}px`;
-                                                      }
-                                                    }}
-                                                    rows={1}
-                                                    className="w-full bg-slate-950/45 focus:bg-slate-950 border border-slate-800/80 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none transition-all font-medium text-xs resize-none overflow-hidden block"
-                                                    placeholder="설명"
-                                                  />
-                                                </td>
-                                                <td className="p-2 md:p-2.5 text-center select-none">
-                                                  <div className="flex items-center justify-center gap-1">
-                                                    <button
-                                                      onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'up')}
-                                                      disabled={rIdx === 0}
-                                                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
-                                                      title="위로 이동"
-                                                    >
-                                                      ▲
-                                                    </button>
-                                                    <button
-                                                      onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'down')}
-                                                      disabled={rIdx === rows.length - 1}
-                                                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
-                                                      title="아래로 이동"
-                                                    >
-                                                      ▼
-                                                    </button>
-                                                    <button
-                                                      onClick={() => handleDeleteAcronymRow(ac.id, rIdx)}
-                                                      className="p-1 rounded bg-slate-800 hover:bg-rose-950/80 text-slate-400 hover:text-rose-450 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20"
-                                                      title="행 삭제"
-                                                    >
-                                                      <Trash2 size={11} />
-                                                    </button>
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            ))}
+                                            {rows.map((row, rIdx) => {
+                                              const combinedValue = row.word && row.description 
+                                                ? `${row.word} : ${row.description}` 
+                                                : (row.word || row.description || '');
+                                              return (
+                                                <tr key={rIdx} className="border-b border-slate-800/80 hover:bg-slate-900/10 transition-colors">
+                                                  <td className="p-1 md:p-1.5 text-center border-r border-slate-800/60 align-middle">
+                                                    <input
+                                                      type="text"
+                                                      value={row.acronym}
+                                                      onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
+                                                      className="w-full text-center bg-transparent border-0 text-emerald-400 font-extrabold focus:outline-none focus:ring-0 p-1"
+                                                    />
+                                                  </td>
+                                                  <td className="p-1 md:p-1.5 border-r border-slate-800/60 align-middle">
+                                                    <textarea
+                                                      value={combinedValue}
+                                                      onChange={(e) => {
+                                                        handleUpdateAcronymRowCell(ac.id, rIdx, 'combined', e.target.value);
+                                                        e.target.style.height = 'auto';
+                                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                                      }}
+                                                      ref={(el) => {
+                                                        if (el) {
+                                                          el.style.height = 'auto';
+                                                          el.style.height = `${el.scrollHeight}px`;
+                                                        }
+                                                      }}
+                                                      rows={1}
+                                                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-200 font-medium text-xs resize-none overflow-hidden block py-1.5 px-2"
+                                                      placeholder="암기단어 : 설명"
+                                                    />
+                                                  </td>
+                                                  <td className="p-2 md:p-2.5 text-center select-none align-middle">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                      <button
+                                                        onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'up')}
+                                                        disabled={rIdx === 0}
+                                                        className="p-1 rounded bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 hover:text-emerald-400 disabled:opacity-20 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
+                                                        title="위로 이동"
+                                                      >
+                                                        ▲
+                                                      </button>
+                                                      <button
+                                                        onClick={() => handleMoveAcronymRow(ac.id, rIdx, 'down')}
+                                                        disabled={rIdx === rows.length - 1}
+                                                        className="p-1 rounded bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 hover:text-emerald-400 disabled:opacity-20 disabled:hover:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-all border border-slate-700/50"
+                                                        title="아래로 이동"
+                                                      >
+                                                        ▼
+                                                      </button>
+                                                      <button
+                                                        onClick={() => handleDeleteAcronymRow(ac.id, rIdx)}
+                                                        className="p-1 rounded bg-slate-800/60 hover:bg-rose-950/75 text-slate-400 hover:text-rose-450 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20"
+                                                        title="행 삭제"
+                                                      >
+                                                        <Trash2 size={11} />
+                                                      </button>
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
                                           </tbody>
                                         </table>
                                       </div>
