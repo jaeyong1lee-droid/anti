@@ -12019,6 +12019,27 @@ export default function App() {
     }
   };
 
+  const handleUpdateOverviewCell = async (overviewId, field, value) => {
+    const idx = formulaOverviews.findIndex(item => item.id === overviewId);
+    if (idx === -1) return;
+    const updated = [...formulaOverviews];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setFormulaOverviews(updated);
+    await handleSaveFormulaOverviews(updated, false);
+  };
+
+  const handleMoveOverview = async (idx, direction) => {
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === formulaOverviews.length - 1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const updated = [...formulaOverviews];
+    const temp = updated[idx];
+    updated[idx] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setFormulaOverviews(updated);
+    await handleSaveFormulaOverviews(updated, false);
+  };
+
   const loadFormulaImages = async () => {
     setLoadingFormulaImages(true);
     let loadedData = null;
@@ -12094,27 +12115,6 @@ export default function App() {
         showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
       }
     }
-  };
-
-  const handleUpdateOverviewCell = async (overviewId, field, value) => {
-    const idx = formulaOverviews.findIndex(item => item.id === overviewId);
-    if (idx === -1) return;
-    const updated = [...formulaOverviews];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setFormulaOverviews(updated);
-    await handleSaveFormulaOverviews(updated, false);
-  };
-
-  const handleMoveOverview = async (idx, direction) => {
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === formulaOverviews.length - 1) return;
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const updated = [...formulaOverviews];
-    const temp = updated[idx];
-    updated[idx] = updated[targetIdx];
-    updated[targetIdx] = temp;
-    setFormulaOverviews(updated);
-    await handleSaveFormulaOverviews(updated, false);
   };
 
   const handleDeleteOverview = async (overviewId) => {
@@ -17326,21 +17326,272 @@ ${itemsStr}
                                       </div>
                                     )}
 
-                                    {/* AI 튜터 입력 및 답변 보�          {/* Right: PDF/HTML upload section / image upload plugin panel (PC Only) */}
-          {isDesktop && (
-            <div 
-              style={{ width: `${rightSidebarWidth}px` }}
-              className="w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col p-4 overflow-y-auto space-y-4"
-            >
-              <ImageUploadPanel
-                formulaImages={formulaImages}
-                setFormulaImages={setFormulaImages}
-                handleSaveFormulaImages={handleSaveFormulaImages}
-                API_BASE={API_BASE}
-                showNotification={showNotification}
-              />
-            </div>
-          )}eGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
+                                    {/* AI 튜터 입력 및 답변 보드 */}
+                                    {activeTutorInputKey === rKey && (() => {
+                                      const key = rKey;
+                                      const isCollapsed = !!tutorCollapsed[key];
+                                      const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
+                                      return (
+                                        <div className="mt-2 w-full">
+                                          <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-[10px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
+                                            {hasPanel && (
+                                              <button
+                                                onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
+                                                className="text-[9px] sm:text-[10px] text-slate-500 hover:text-slate-300 transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 bg-transparent border-0 p-0 hover:underline"
+                                              >
+                                                {isCollapsed ? '[열기]' : '[접기]'}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <textarea
+                                            rows={3}
+                                            value={tutorInputText[key] || ''}
+                                            onChange={(e) => {
+                                              const text = e.target.value;
+                                              setTutorInputText(prev => ({ ...prev, [key]: text }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                const isPending = tutorAnswers[key]?.loading;
+                                                const hasText = (tutorInputText[key] || '').trim();
+                                                if (!isPending && hasText) {
+                                                  handleAskCardTutor(key, q);
+                                                }
+                                              }
+                                            }}
+                                            placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
+                                            className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-2 resize-none"
+                                          />
+                                          <div className="flex gap-2 justify-end">
+                                            <button
+                                              onClick={() => setActiveTutorInputKey(null)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
+                                            >
+                                              취소
+                                            </button>
+                                            <button
+                                              disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+                                              onClick={() => handleAskCardTutor(key, q)}
+                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-300 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 font-bold transition-all cursor-pointer active:scale-95 duration-200"
+                                            >
+                                              {tutorAnswers[key]?.loading ? '답변 작성 중...' : '질문하기'}
+                                            </button>
+                                          </div>
+
+                                          {/* AI Tutor In-Card Answer Panel */}
+                                          {!isCollapsed && (
+                                            <>
+                                              {tutorAnswers[key]?.loading && (
+                                                <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
+                                                  <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                                    <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
+                                                  </div>
+                                                  <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                                  <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                                </div>
+                                              )}
+                                              {tutorAnswers[key]?.error && (
+                                                <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
+                                              )}
+                                              {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+                                                <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
+                                                  <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
+                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                                    <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+
+                                   {/* 보기별 정밀 분석 결과 */}
+                                   {reviewOptionExplanations[idx]?.loading && (
+                                     <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
+                                       <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
+                                         <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                                         <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
+                                       </div>
+                                       <div className="h-4 bg-slate-800 rounded w-5/6"></div>
+                                       <div className="h-4 bg-slate-800 rounded w-4/6"></div>
+                                     </div>
+                                   )}
+                                   {reviewOptionExplanations[idx]?.error && (
+                                     <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {reviewOptionExplanations[idx].error}</div>
+                                   )}
+                                   {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
+                                      <div className="mt-2 select-text w-full">
+                                       <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
+                                       <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                         <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                       </div>
+                                     </div>
+                                   )}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         )}
+
+                        {/* Subjective Reveal */}
+                        {isSubj && (
+                          (q.type === '주관식 (앞글자)') ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              {(() => {
+                                const scoredIndices = [];
+                                aiQuestions.forEach((_, i) => {
+                                  scoredIndices.push(i);
+                                });
+                                const M = scoredIndices.length;
+                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                                const sIdx = scoredIndices.indexOf(idx);
+                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                return (
+                                  <AcronymQuiz 
+                                    questionIdx={idx} 
+                                    q={q} 
+                                    tableAnswers={tableAnswers} 
+                                    setTableAnswers={setTableAnswers} 
+                                    revealed={isRevd} 
+                                    katexLoaded={katexLoaded} 
+                                    tableGradingResults={tableGradingResults}
+                                    weight={W}
+                                    onSubmit={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeAcronymQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                  />
+                                );
+                              })()}
+                              {!isRevd ? (
+                                <button
+                                  onClick={async () => {
+                                    if (gradingLoading[idx]) return;
+                                    await gradeAcronymQuestion(idx, q);
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
+                                >
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                </button>
+                              ) : (
+                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                    <span>{getTableBannerStatusText(idx, q)}</span>
+                                  </div>
+                                  {renderDetailedAcronymFeedback(idx, q, W)}
+                                  {renderCardTutorChat(rKey, q)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
+                            <div className="space-y-3 w-full">
+                              {(() => {
+                                const scoredIndices = [];
+                                aiQuestions.forEach((_, i) => {
+                                  scoredIndices.push(i);
+                                });
+                                const M = scoredIndices.length;
+                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
+                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
+                                const sIdx = scoredIndices.indexOf(idx);
+                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
+                                return (
+                                  <TableQuiz 
+                                    questionIdx={idx} 
+                                    q={q} 
+                                    tableAnswers={tableAnswers} 
+                                    setTableAnswers={setTableAnswers} 
+                                    revealed={isRevd} 
+                                    katexLoaded={katexLoaded} 
+                                    tableGradingResults={tableGradingResults}
+                                    weight={W}
+                                    onSubmit={async () => {
+                                      if (gradingLoading[idx]) return;
+                                      await gradeTableQuestion(idx, q);
+                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                    }}
+                                  />
+                                );
+                              })()}
+                              {!isRevd ? (
+                                <button
+                                  onClick={async () => {
+                                    if (gradingLoading[idx]) return;
+                                    await gradeTableQuestion(idx, q);
+                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                  }}
+                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
+                                  }`}
+                                >
+                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
+                                </button>
+                              ) : (
+                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                  {/* 테이블 주관식 개별 피드백 */}
+                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                    <span>{getTableBannerStatusText(idx, q)}</span>
+                                  </div>
+                                  {q.explanation && (
+                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {renderDetailedTableFeedback(idx, q, W)}
+                                  {renderCardTutorChat(rKey, q)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                            <div className="space-y-3 w-full animate-fade-in">
+                              <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
+                                <div className="space-y-1">
+                                  <div className="relative">
+                                      <textarea
+                                        disabled={isRevd}
+                                        data-answer-key={`${idx}_INPUT`}
+                                        value={tableAnswers[`${idx}_INPUT`] || ''}
+                                        onChange={(e) => {
+                                          setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }));
+                                          e.target.style.height = 'auto';
+                                          e.target.style.height = `${e.target.scrollHeight}px`;
+                                        }}
+                                        onKeyDown={async (e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (!gradingLoading[idx]) {
+                                              await gradeSubjectiveQuestion(idx, q);
+                                              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                            }
+                                          }
+                                        }}
+                                        ref={(el) => {
+                                          if (el) {
+                                            el.style.height = 'auto';
+                                            el.style.height = `${el.scrollHeight}px`;
+                                          }
+                                        }}
+                                        rows={1}
+                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
+                                        className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                      />
+                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
+                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
+                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                         </span>
                                       </div>
                                     )}
@@ -21741,11 +21992,12 @@ ${itemsStr}
                                                       handleSaveFormulaTables(updatedTables, false);
                                                       showNotification('새 행이 추가되었습니다.', 'success');
                                                     }}
-                                                    className="px-1.5 py-0.5 rounded bg-transparent hover:bg-emerald-500/10 text-emerald-400 text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30"
+                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
                                                     title="새 행 추가"
                                                   >
                                                     + 행추가
                                                   </button>
+                                                  <span>삭제</span>
                                                 </div>
                                               </th>
                                             </tr>
@@ -22012,7 +22264,7 @@ ${itemsStr}
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
                                                     onClick={() => handleAddAcronymRow(ac.id)}
-                                                    className="px-1.5 py-0.5 rounded bg-transparent hover:bg-emerald-500/10 text-emerald-400 text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30"
+                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
                                                     title="새 암기 행 추가"
                                                   >
                                                     + 행추가
@@ -22723,6 +22975,18 @@ ${itemsStr}
                   (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
                 }`}
               >
+              {formulaSubTab === 'image' ? (
+                <div className="p-4 overflow-y-auto h-full w-full">
+                  <ImageUploadPanel
+                    formulaImages={formulaImages}
+                    setFormulaImages={setFormulaImages}
+                    handleSaveFormulaImages={handleSaveFormulaImages}
+                    API_BASE={API_BASE}
+                    showNotification={showNotification}
+                  />
+                </div>
+              ) : (
+                <>
                 {/* Header with Formula Selector */}
                 <div className="p-3.5 border-b border-slate-800 flex flex-col gap-2.5 bg-slateCustom-950 flex-shrink-0">
                   <div className="flex items-center justify-between">
@@ -22896,6 +23160,8 @@ ${itemsStr}
                     </button>
                   </form>
                 </div>
+                </>
+              )}
               </div>
 
           </div>
@@ -23870,22 +24136,21 @@ ${itemsStr}
               <Award size={20} />
               <span className="text-[10px] font-bold tracking-tight">종합평가</span>
             </button>
-            {/* 필수공식 버튼 5개 조합 (공식, 표, 앞글자, 개요, 그림) */}
+            {/* 필수공식 버튼 4개 조합 */}
             <div 
-              className={`grid grid-cols-2 gap-1 w-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
+              className={`grid grid-cols-2 grid-rows-2 gap-1 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
                 showFormulaExam 
                   ? 'bg-rose-955/40 border border-rose-500/30 shadow-lg glow-rose' 
                   : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
               }`}
-              title="필수공식 (공식, 표, 앞글자, 개요, 그림)"
+              title="필수공식 (공식, 표, 앞글자, 개요)"
             >
               {[
                 { label: '공식', tab: 'formula' },
                 { label: '표', tab: 'table' },
                 { label: '앞글자', tab: 'acronym' },
-                { label: '개요', tab: 'overview' },
-                { label: '그림', tab: 'image' }
-              ].map((b, idx) => (
+                { label: '개요', tab: 'overview' }
+              ].map((b) => (
                 <button
                   key={b.tab}
                   onClick={async () => {
@@ -23898,9 +24163,7 @@ ${itemsStr}
                     handleOpenFormulaExam();
                     if (isTabletScreen) showTabletNavBriefly();
                   }}
-                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none py-2 ${
-                    idx === 4 ? 'col-span-2' : ''
-                  } ${
+                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none ${
                     showFormulaExam && formulaSubTab === b.tab
                       ? 'bg-rose-600 text-white shadow-sm border border-rose-500/20'
                       : 'bg-slateCustom-950/40 text-slate-400 hover:text-slate-200 border border-slate-850 hover:bg-slate-900/40'
@@ -23910,6 +24173,29 @@ ${itemsStr}
                 </button>
               ))}
             </div>
+
+            {/* 그림 단독 버튼 */}
+            <button
+              onClick={async () => {
+                await forceSaveActiveSessions();
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                setFormulaSubTab('image');
+                handleOpenFormulaExam();
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showFormulaExam && formulaSubTab === 'image'
+                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                  : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+              title="필수 암기 그림 자료"
+            >
+              <Image size={20} />
+              <span className="text-[10px] font-bold tracking-tight">그림</span>
+            </button>
 
             {/* 답안지 버튼 */}
             <button
