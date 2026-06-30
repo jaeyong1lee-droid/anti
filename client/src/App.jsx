@@ -12150,7 +12150,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
       if (res.ok) {
         const body = await res.json();
-        if (body && body.data && Array.isArray(body.data.formulaImages)) {
+        if (body && body.data && Array.isArray(body.data.formulaImages) && body.data.formulaImages.length > 0) {
           loadedData = body.data.formulaImages;
           console.log('[Sync] Loaded formula images from database.');
         }
