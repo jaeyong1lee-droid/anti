@@ -7922,6 +7922,40 @@ JSON 포맷 규격:
   }
 });
 
+// POST /api/image-standards/generate-question → 그림의 세부 구성 요소(예: C영역 등)를 물어보는 구체적인 주관식 질문 생성
+app.post('/api/image-standards/generate-question', async (req, res) => {
+  try {
+    const { title, analysis, intuitive } = req.body;
+    
+    const systemInstruction = `당신은 지반공학, 토석역학 및 토목 전공 기술사 자격시험 전문 채점위원이자 튜터입니다.
+제시된 그림의 대주제(title)와 그림의 공학적 분석 내용(analysis)을 면밀히 분석하십시오.
+그림 속에 명시적으로 존재하는 특정 영역(예: A영역, B영역, C영역, A, B, C 등)이나 핵심 공학적 세부 구성요소 중 하나를 특정하여 질문을 생성하십시오.
+질문은 사용자가 해당 세부 요소의 명칭, 정의, 역할, 물리적 의의 또는 메커니즘을 구체적으로 설명하도록 요구해야 합니다.
+질문 방식 예시:
+- "아래 그림에서 C영역은 어떤 영역이며 공학적 의미는 무엇인가?"
+- "아래 도해의 B영역(직접 영향권)에서 지반 변위가 크게 나타나는 물리적 이유는 무엇인가?"
+- "그림의 A영역은 어떤 영향권을 나타내는가?"
+
+질문 규칙:
+1. 반드시 단 한 문장으로 질문하십시오.
+2. 불필요한 서두나 잡설 없이 질문 자체만 바로 텍스트로 응답하십시오 (예: "아래 그림에서 C영역은 어떤 영역인가?").
+3. 질문은 반드시 한글로 작성되어야 합니다.`;
+
+    const userPrompt = `그림 주제: ${title}\n그림 분석 내용:\n${analysis}\n\n위 분석 정보에 존재하는 구성 요소 중 하나를 짚어서 짧고 명확한 세부 질문 한 문장을 생성하십시오.`;
+
+    const responseText = await callLLMWithFailover(
+      systemInstruction,
+      userPrompt,
+      null,
+      'formula'
+    );
+    res.json({ success: true, question: responseText.trim() });
+  } catch (err) {
+    console.error('POST /api/image-standards/generate-question error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 
 // GET /api/session/answersheet → 저장된 답안지 상태 반환
