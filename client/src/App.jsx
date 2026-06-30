@@ -9014,6 +9014,52 @@ export default function App() {
               mixedType: 'overview',
               originalId: item.id
             };
+          } else if (item.mixedType === 'image') {
+            let specificQuestion = '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)와 공학적 의미(또는 설명)를 서술하시오.';
+            try {
+              const qRes = await fetch(`${API_BASE}/api/image-standards/generate-question`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: item.title,
+                  analysis: item.analysis || '',
+                  intuitive: item.intuitive || ''
+                })
+              });
+              if (qRes.ok) {
+                const qBody = await qRes.json();
+                if (qBody && qBody.success && qBody.question) {
+                  specificQuestion = qBody.question;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to generate specific question, using fallback:', e);
+            }
+
+            const explanationHtml = `
+              <div class="space-y-3 text-left">
+                <div class="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200">
+                  <span class="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">📊 그림/그래프 공학적 분석</span>
+                  <p class="font-bold text-white leading-relaxed select-text">${item.analysis || ''}</p>
+                </div>
+                <div class="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355">
+                  <span class="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">💡 직관적 본질 (비유)</span>
+                  <p class="text-slate-300 leading-relaxed select-text">${item.intuitive || ''}</p>
+                </div>
+              </div>
+            `;
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (그림)',
+              subtype: '그림',
+              question: specificQuestion,
+              imageSrc: item.base64Image,
+              answer: item.title,
+              concept: item.title,
+              explanation: explanationHtml,
+              mixedType: 'image',
+              originalId: item.id
+            };
           } else {
             const parsed = parseAcronymContent(item.content);
             const blankRows = parsed.rows.map(() => {
