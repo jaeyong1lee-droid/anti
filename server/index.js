@@ -21,6 +21,7 @@ import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStan
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from './plugins/acronymsPlugin.js';
+import { defaultOverviews, generateOverviewTutorResponse } from './plugins/overviewsPlugin.js';
 
 const execAsync = promisify(exec);
 
@@ -6205,7 +6206,7 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const { history, message, image, acronymMode } = req.body;
+    const { history, message, image, acronymMode, overviewMode } = req.body;
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -6218,6 +6219,22 @@ app.post('/api/chat', async (req, res) => {
     if (!hasAnyAiKey) {
       if (progressTimer) clearInterval(progressTimer);
       return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    if (overviewMode) {
+      try {
+        const responseText = await generateOverviewTutorResponse(message, image, localCallLLM);
+        if (progressId) {
+          updateProgress(progressId, 1, '1단계: 개요 답변 생성 완료!', 100);
+        }
+        return res.json({ text: responseText });
+      } catch (err) {
+        console.error('Overview tutor generation error:', err);
+        if (progressId) {
+          updateProgress(progressId, 1, '오류 발생으로 개요 대화 실패', 100);
+        }
+        return res.status(500).json({ error: err.message || '개요 답변 생성 실패.' });
+      }
     }
 
     if (acronymMode) {
@@ -7662,6 +7679,41 @@ app.post('/api/session/acronyms', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/session/acronyms error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/overviews → 저장된 필수암기 개요 목록 반환
+app.get('/api/session/overviews', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['formula_overviews']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { formulaOverviews: defaultOverviews } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/overviews error:', err);
+    res.json({ data: { formulaOverviews: defaultOverviews } });
+  }
+});
+
+// POST /api/session/overviews → 필수암기 개요 상태 저장
+app.post('/api/session/overviews', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaOverviews } = req.body;
+    const value = JSON.stringify({ formulaOverviews });
+    await saveSessionValue('formula_overviews', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/overviews error:', err);
     res.status(500).json({ error: err.message });
   }
 });

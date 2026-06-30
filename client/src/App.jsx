@@ -4602,6 +4602,12 @@ export default function App() {
   const [showAcronymPromptModal, setShowAcronymPromptModal] = useState(false);
   const [acronymPromptTopic, setAcronymPromptTopic] = useState('');
   const [acronymPromptCount, setAcronymPromptCount] = useState('4');
+  const [showOverviewPromptModal, setShowOverviewPromptModal] = useState(false);
+  const [overviewPromptTopic, setOverviewPromptTopic] = useState('');
+  const [formulaOverviews, setFormulaOverviews] = useState([]);
+  const [loadingFormulaOverviews, setLoadingFormulaOverviews] = useState(false);
+  const [editingOverviewId, setEditingOverviewId] = useState(null);
+  const [editingOverviewText, setEditingOverviewText] = useState('');
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
@@ -10919,6 +10925,74 @@ export default function App() {
     }
   };
 
+  const handleOverviewPromptRequest = () => {
+    setOverviewPromptTopic('');
+    setShowOverviewPromptModal(true);
+  };
+
+  const handleGenerateOverviewSubmit = async () => {
+    const topic = overviewPromptTopic.trim();
+    if (!topic) return;
+
+    setShowOverviewPromptModal(false);
+
+    // Open Memorization Modal and switch to overview tab
+    setShowFormulaExam(true);
+    setFormulaSubTab('overview');
+
+    // Create a temporary loading card in the overviews list
+    const tempId = 'overview-loading-' + Date.now();
+    const newLoadingOverview = {
+      id: tempId,
+      title: topic,
+      content: '', // empty content represents loading state
+      isLoading: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    setFormulaOverviews(prev => [newLoadingOverview, ...prev]);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: topic,
+          image: null,
+          overviewMode: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '개요 생성 실패');
+
+      const aiText = (data.text || '').trim();
+
+      setFormulaOverviews(prev => {
+        const updated = prev.map(ov => {
+          if (ov.id === tempId) {
+            return {
+              id: 'overview-' + Date.now(),
+              title: topic,
+              content: aiText,
+              createdAt: new Date().toISOString()
+            };
+          }
+          return ov;
+        });
+        handleSaveFormulaOverviews(updated, false);
+        return updated;
+      });
+
+      showNotification(`[${topic}] 개요가 생성되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Failed to generate overview:', err);
+      setFormulaOverviews(prev => prev.filter(ov => ov.id !== tempId));
+      showNotification(`생성 실패: ${err.message}`, 'error');
+    }
+  };
+
   const handleDragAiSubmit = () => {
     const qText = selectionPopup.question.trim();
     if (!qText) return;
@@ -11474,6 +11548,113 @@ export default function App() {
       if (showToast) {
         showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
       }
+    }
+  };
+
+  const loadFormulaOverviews = async () => {
+    setLoadingFormulaOverviews(true);
+    let loadedData = null;
+    let fallbackToLocal = false;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.formulaOverviews)) {
+          loadedData = body.data.formulaOverviews;
+          console.log('[Sync] Loaded formula overviews from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database formula overviews loading failed:', err);
+    }
+
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_overviews');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) {
+            loadedData = parsed;
+            fallbackToLocal = true;
+            console.log('[Fallback] Loaded formula overviews from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 필수암기 개요 복원 실패:', err);
+      }
+    }
+
+    if (!loadedData) {
+      loadedData = [];
+    }
+
+    setFormulaOverviews(loadedData);
+    localStorage.setItem('anti_formula_overviews', JSON.stringify(loadedData));
+
+    if (fallbackToLocal && loadedData.length > 0) {
+      console.log('[Sync] Auto syncing local overviews to database...');
+      fetch(`${API_BASE}/api/session/overviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaOverviews: loadedData })
+      }).catch(err => console.warn('[Sync] Auto sync overviews failed:', err));
+    }
+
+    setLoadingFormulaOverviews(false);
+    return loadedData;
+  };
+
+  const handleSaveFormulaOverviews = async (overviews = formulaOverviews, showToast = true) => {
+    try {
+      setFormulaOverviews(overviews);
+      localStorage.setItem('anti_formula_overviews', JSON.stringify(overviews));
+      
+      const res = await fetch(`${API_BASE}/api/session/overviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaOverviews: overviews })
+      });
+      if (res.ok) {
+        if (showToast) {
+          showNotification('필수암기 개요 리스트가 저장되었습니다!', 'success');
+        }
+      }
+    } catch (err) {
+      console.warn('필수암기 개요 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
+    }
+  };
+
+  const handleUpdateOverviewCell = async (overviewId, field, value) => {
+    const idx = formulaOverviews.findIndex(item => item.id === overviewId);
+    if (idx === -1) return;
+    const updated = [...formulaOverviews];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setFormulaOverviews(updated);
+    await handleSaveFormulaOverviews(updated, false);
+  };
+
+  const handleMoveOverview = async (idx, direction) => {
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === formulaOverviews.length - 1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const updated = [...formulaOverviews];
+    const temp = updated[idx];
+    updated[idx] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setFormulaOverviews(updated);
+    await handleSaveFormulaOverviews(updated, false);
+  };
+
+  const handleDeleteOverview = async (overviewId) => {
+    if (window.confirm('이 토픽 개요를 삭제하시겠습니까?')) {
+      const updated = formulaOverviews.filter(item => item.id !== overviewId);
+      setFormulaOverviews(updated);
+      await handleSaveFormulaOverviews(updated, false);
+      showNotification('개요가 삭제되었습니다.', 'info');
     }
   };
 
@@ -12675,6 +12856,7 @@ ${itemsStr}
     loadFormulaQuestions().catch(e => console.warn('서버 필수공식 사전로딩 실패:', e));
     loadFormulaTables().catch(e => console.warn('서버 필수암기 표 사전로딩 실패:', e));
     loadFormulaAcronyms().catch(e => console.warn('서버 필수암기 앞글자 사전로딩 실패:', e));
+    loadFormulaOverviews().catch(e => console.warn('서버 필수암기 개요 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
 
@@ -17209,6 +17391,13 @@ ${itemsStr}
                       </div>
                     )}
                     <button
+                      onClick={() => handleOverviewPromptRequest()}
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800/80 hover:bg-slate-800/50 mr-1"
+                      title="주제 개요 생성 팝업 열기"
+                    >
+                      <span>개</span>
+                    </button>
+                    <button
                       onClick={() => handleAcronymPromptRequest('sidebar')}
                       className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800/80 hover:bg-slate-800/50"
                       title="앞글자(두문자) 암기법 생성 팝업 열기"
@@ -20360,6 +20549,13 @@ ${itemsStr}
                       </div>
                     )}
                     <button
+                      onClick={() => handleOverviewPromptRequest()}
+                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800/80 hover:bg-slate-800/50 mr-1"
+                      title="주제 개요 생성 팝업 열기"
+                    >
+                      <span>개</span>
+                    </button>
+                    <button
                       onClick={() => handleAcronymPromptRequest('sidebar')}
                       className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800/80 hover:bg-slate-800/50"
                       title="앞글자(두문자) 암기법 생성 팝업 열기"
@@ -20805,6 +21001,13 @@ ${itemsStr}
                       </div>
                     )}
                 <button
+                  onClick={() => handleOverviewPromptRequest()}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800 hover:bg-slate-800/50 mr-1.5"
+                  title="주제 개요 생성 팝업 열기"
+                >
+                  <span>개</span>
+                </button>
+                <button
                   onClick={() => handleAcronymPromptRequest('realtime')}
                   className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800 hover:bg-slate-800/50"
                   title="앞글자(두문자) 암기법 생성 팝업 열기"
@@ -21023,6 +21226,7 @@ ${itemsStr}
                         await loadFormulaQuestions();
                         await loadFormulaTables();
                         await loadFormulaAcronyms();
+                        await loadFormulaOverviews();
                         showNotification('데이터가 성공적으로 새로고침되었습니다.', 'success');
                       } catch (err) {
                         console.error(err);
@@ -21557,6 +21761,144 @@ ${itemsStr}
                             <li><strong>앞글자 탭</strong>에서 <strong>[재조합]</strong>을 누르면 AI가 기상천외하고 재미있는 연상 문장을 생성하여 암기를 극대화해 줍니다.</li>
                           </ul>
                         </div>
+                      </div>
+
+                      {/* AI Generated Overviews List */}
+                      <div className="w-full space-y-6">
+                        {formulaOverviews
+                          .filter(ov => {
+                            return (ov.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                                   (ov.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                          })
+                          .map((ov, idx) => {
+                            if (ov.isLoading) {
+                              return (
+                                <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg animate-pulse select-none">
+                                  <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                                    <span className="text-[11px] font-black bg-rose-500/10 text-rose-455 px-2 py-0.5 rounded border border-rose-500/20 shrink-0">
+                                      AI
+                                    </span>
+                                    <h4 className="text-sm font-black text-white flex items-center gap-2">
+                                      [{ov.title}] 개요를 생성하는 중...
+                                    </h4>
+                                  </div>
+                                  <div className="flex flex-col items-center justify-center py-6 gap-3">
+                                    <RefreshCw className="animate-spin text-rose-450" size={24} />
+                                    <p className="text-[11px] text-slate-400 text-center font-bold">
+                                      AI 튜터가 최적의 주제 개요 및 학습 가이드를 구성하고 있습니다. 잠시만 기다려 주세요.
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            const isExpanded = !!expandedOverviewIds[ov.id];
+                            const isEditing = editingOverviewId === ov.id;
+                            return (
+                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-md transition-all duration-200">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                  <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
+                                    <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
+                                      O{idx + 1}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      {isEditing ? (
+                                        <div className="flex items-center gap-2 w-full">
+                                          <input
+                                            type="text"
+                                            value={editingOverviewText}
+                                            onChange={(e) => setEditingOverviewText(e.target.value)}
+                                            className="flex-1 bg-slate-950 border border-slate-700 text-white rounded px-2 py-1 text-sm font-bold focus:outline-none focus:border-rose-500"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, title: editingOverviewText } : item);
+                                                setFormulaOverviews(updated);
+                                                handleSaveFormulaOverviews(updated, false);
+                                                setEditingOverviewId(null);
+                                              } else if (e.key === 'Escape') {
+                                                setEditingOverviewId(null);
+                                              }
+                                            }}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, title: editingOverviewText } : item);
+                                              setFormulaOverviews(updated);
+                                              handleSaveFormulaOverviews(updated, false);
+                                              setEditingOverviewId(null);
+                                            }}
+                                            className="px-2 py-1 bg-rose-600 text-white text-xs font-bold rounded hover:bg-rose-500 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            저장
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingOverviewId(null)}
+                                            className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                          >
+                                            취소
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                                          <span
+                                            onDoubleClick={() => {
+                                              setEditingOverviewId(ov.id);
+                                              setEditingOverviewText(ov.title || '');
+                                            }}
+                                            className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-rose-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
+                                            title="더블클릭하여 제목 수정"
+                                          >
+                                            {ov.title}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Action Buttons Group */}
+                                  <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 열기/접기 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        setExpandedOverviewIds(prev => ({
+                                          ...prev,
+                                          [ov.id]: !prev[ov.id]
+                                        }));
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title={isExpanded ? "접기" : "열기"}
+                                    >
+                                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                      <span>{isExpanded ? "접기" : "열기"}</span>
+                                    </button>
+
+                                    {/* 삭제 버튼 */}
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`[${ov.title}] 개요를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+                                          const updated = formulaOverviews.filter(x => x.id !== ov.id);
+                                          setFormulaOverviews(updated);
+                                          handleSaveFormulaOverviews(updated, false);
+                                          showNotification(`[${ov.title}] 개요가 삭제되었습니다.`, 'info');
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      title="개요 삭제"
+                                    >
+                                      <Trash2 size={12} />
+                                      <span>삭제</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {isExpanded && (
+                                  <div className="text-slate-300 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body">
+                                    <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   ) : formulaQuestions.filter(q => {
@@ -22252,6 +22594,13 @@ ${itemsStr}
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={() => handleOverviewPromptRequest()}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800 hover:bg-slate-800/50 mr-1.5"
+                  title="주제 개요 생성 팝업 열기"
+                >
+                  <span>개</span>
+                </button>
                 <button
                   onClick={() => handleAcronymPromptRequest('realtime')}
                   className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800 hover:bg-slate-800/50"
@@ -23635,6 +23984,61 @@ ${itemsStr}
                 onClick={handleGenerateAcronymSubmit}
                 disabled={!acronymPromptTopic.trim()}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all text-center shadow-lg shadow-emerald-900/20"
+              >
+                생성하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Overview Prompt Modal */}
+      {showOverviewPromptModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
+          <div className="w-full max-w-sm bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-black text-rose-450 flex items-center gap-2">
+                <span className="px-1.5 py-0.5 bg-rose-500/10 rounded text-[10px] font-black">AI</span>
+                주제 개요 생성기
+              </h3>
+              <button 
+                onClick={() => setShowOverviewPromptModal(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400">주제 (토픽) 제목</label>
+                <input
+                  type="text"
+                  placeholder="예: 지반조사, 흙의 동해 등"
+                  value={overviewPromptTopic}
+                  onChange={(e) => setOverviewPromptTopic(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30 transition-all font-bold"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && overviewPromptTopic.trim()) {
+                      handleGenerateOverviewSubmit();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setShowOverviewPromptModal(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 rounded-xl text-xs font-black text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all text-center"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleGenerateOverviewSubmit}
+                disabled={!overviewPromptTopic.trim()}
+                className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all text-center shadow-lg shadow-rose-900/20"
               >
                 생성하기
               </button>
