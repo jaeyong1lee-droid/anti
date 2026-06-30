@@ -14910,20 +14910,16 @@ ${itemsStr}
                 {(!isDesktop && !isMobileLandscape) ? (
                   <div className="flex items-center gap-1.5 select-none">
                     <button
-                      onClick={() => {
-                        setShowFormulaExam(true);
-                        setFormulaSubTab('acronym');
-                      }}
+                      onClick={() => handleAcronymPromptRequest()}
                       className="flex items-center justify-center bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
+                      title="앞글자(두문자) 생성 입력 팝업 띄우기"
                     >
                       두
                     </button>
                     <button
-                      onClick={() => {
-                        setShowFormulaExam(true);
-                        setFormulaSubTab('overview');
-                      }}
+                      onClick={() => handleOverviewPromptRequest()}
                       className="flex items-center justify-center bg-rose-955/80 text-rose-455 border border-rose-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
+                      title="개요 생성 입력 팝업 띄우기"
                     >
                       개
                     </button>
@@ -16541,22 +16537,16 @@ ${itemsStr}
               {selectedTopic && (
                 <>
                   <button
-                    onClick={() => {
-                      setShowFormulaExam(true);
-                      setFormulaSubTab('acronym');
-                    }}
+                    onClick={() => handleAcronymPromptRequest()}
                     className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                    title="앞글자(두문자) 필수암기 탭 열기"
+                    title="앞글자(두문자) 생성 입력 팝업 띄우기"
                   >
                     <span className="whitespace-nowrap">두</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setShowFormulaExam(true);
-                      setFormulaSubTab('overview');
-                    }}
+                    onClick={() => handleOverviewPromptRequest()}
                     className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-955/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                    title="개요 필수암기 탭 열기"
+                    title="개요 생성 입력 팝업 띄우기"
                   >
                     <span className="whitespace-nowrap">개</span>
                   </button>
