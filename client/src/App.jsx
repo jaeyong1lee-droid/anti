@@ -2801,6 +2801,19 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   const isImageTopic = resolvedCategory === '계산';
 
   const renderImageElement = () => {
+    if (q.imageSrc) {
+      return (
+        <div className="mt-3 flex flex-col items-center w-full">
+          <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
+            <span>🖼️ 첨부된 문제 그래프/그림</span>
+          </div>
+          <div className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
+            <img src={q.imageSrc} className="max-h-[320px] object-contain rounded-lg max-w-full" alt="첨부 그림" />
+          </div>
+        </div>
+      );
+    }
+
     if (resolvedCategory !== '계산' || !resolvedTopicId || !showImage) {
       return null;
     }
@@ -8081,10 +8094,40 @@ export default function App() {
         setFormulaAcronyms(acronyms);
         setFormulaOverviews(overviews);
         
+        let images = [];
+        try {
+          const iRes = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
+          if (iRes.ok) {
+            const iBody = await iRes.json();
+            if (iBody && iBody.data && Array.isArray(iBody.data.formulaImages)) {
+              images = iBody.data.formulaImages;
+            }
+          }
+        } catch (e) {
+          console.warn('Sync images inside handleOpenAIQuestions failed:', e);
+        }
+        setFormulaImages(images);
+
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
           ...acronyms.map(a => ({ ...a, mixedType: 'acronym' })),
-          ...overviews.map(o => ({ ...o, mixedType: 'overview' }))
+          ...overviews.map(o => ({ ...o, mixedType: 'overview' })),
+          ...images.map(img => {
+            let itemDate = '';
+            if (img.id && img.id.startsWith('img_')) {
+              try {
+                const ts = parseInt(img.id.replace('img_', ''), 10);
+                if (!isNaN(ts)) {
+                  itemDate = new Date(ts).toISOString();
+                }
+              } catch (e) {}
+            }
+            return {
+              ...img,
+              mixedType: 'image',
+              createdAt: img.createdAt || itemDate || new Date().toISOString()
+            };
+          })
         ];
         
         const todayItems = combinedItems.filter(item => {
@@ -8139,6 +8182,42 @@ export default function App() {
               answers: answers,
               explanation: item.html,
               mixedType: 'table',
+              originalId: item.id
+            };
+          } else if (item.mixedType === 'image') {
+            const answers = {
+              'INPUT_0_1': item.title
+            };
+            const rows = [
+              ['그림 핵심 주제', '[INPUT_0_1]']
+            ];
+            
+            const explanationHtml = `
+              <div class="space-y-3 text-left">
+                <div class="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200">
+                  <span class="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">📊 그림/그래프 공학적 분석</span>
+                  <p class="font-bold text-white leading-relaxed select-text">${item.analysis || ''}</p>
+                </div>
+                <div class="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355">
+                  <span class="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">💡 직관적 본질 (비유)</span>
+                  <p class="text-slate-300 leading-relaxed select-text">${item.intuitive || ''}</p>
+                </div>
+              </div>
+            `;
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (표채우기)',
+              subtype: '표채우기',
+              question: '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)를 빈칸에 알맞게 기입하시오.',
+              imageSrc: item.base64Image,
+              tableData: {
+                headers: ['구분', '내용'],
+                rows: rows
+              },
+              answers: answers,
+              explanation: explanationHtml,
+              mixedType: 'image',
               originalId: item.id
             };
           } else if (item.mixedType === 'overview') {
@@ -24126,66 +24205,69 @@ ${itemsStr}
               <Award size={20} />
               <span className="text-[10px] font-bold tracking-tight">종합평가</span>
             </button>
-            {/* 필수공식 버튼 4개 조합 */}
-            <div 
-              className={`grid grid-cols-2 grid-rows-2 gap-1 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
-                showFormulaExam 
-                  ? 'bg-rose-955/40 border border-rose-500/30 shadow-lg glow-rose' 
-                  : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
-              }`}
-              title="필수공식 (공식, 표, 앞글자, 개요)"
-            >
-              {[
-                { label: '공식', tab: 'formula' },
-                { label: '표', tab: 'table' },
-                { label: '앞글자', tab: 'acronym' },
-                { label: '개요', tab: 'overview' }
-              ].map((b) => (
-                <button
-                  key={b.tab}
-                  onClick={async () => {
-                    await forceSaveActiveSessions();
-                    setSelectedTopic(null);
-                    setShowExam(false);
-                    setShowTheoryExam(false);
-                    setShowAnswerSheet(false);
-                    setFormulaSubTab(b.tab);
-                    handleOpenFormulaExam();
-                    if (isTabletScreen) showTabletNavBriefly();
-                  }}
-                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none ${
-                    showFormulaExam && formulaSubTab === b.tab
-                      ? 'bg-rose-600 text-white shadow-sm border border-rose-500/20'
-                      : 'bg-slateCustom-950/40 text-slate-400 hover:text-slate-200 border border-slate-850 hover:bg-slate-900/40'
-                  }`}
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
+            {/* 필수공식 4개 버튼 + 그림 단독 버튼 세트 */}
+            <div className="flex flex-col gap-1 w-20">
+              {/* 필수공식 버튼 4개 조합 */}
+              <div 
+                className={`grid grid-cols-2 grid-rows-2 gap-1 w-full h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
+                  showFormulaExam && formulaSubTab !== 'image'
+                    ? 'bg-rose-955/40 border border-rose-500/30 shadow-lg glow-rose' 
+                    : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
+                }`}
+                title="필수공식 (공식, 표, 앞글자, 개요)"
+              >
+                {[
+                  { label: '공식', tab: 'formula' },
+                  { label: '표', tab: 'table' },
+                  { label: '앞글자', tab: 'acronym' },
+                  { label: '개요', tab: 'overview' }
+                ].map((b) => (
+                  <button
+                    key={b.tab}
+                    onClick={async () => {
+                      await forceSaveActiveSessions();
+                      setSelectedTopic(null);
+                      setShowExam(false);
+                      setShowTheoryExam(false);
+                      setShowAnswerSheet(false);
+                      setFormulaSubTab(b.tab);
+                      handleOpenFormulaExam();
+                      if (isTabletScreen) showTabletNavBriefly();
+                    }}
+                    className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none ${
+                      showFormulaExam && formulaSubTab === b.tab
+                        ? 'bg-rose-600 text-white shadow-sm border border-rose-500/20'
+                        : 'bg-slateCustom-950/40 text-slate-400 hover:text-slate-200 border border-slate-850 hover:bg-slate-900/40'
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
 
-            {/* 그림 단독 버튼 */}
-            <button
-              onClick={async () => {
-                await forceSaveActiveSessions();
-                setSelectedTopic(null);
-                setShowExam(false);
-                setShowTheoryExam(false);
-                setShowAnswerSheet(false);
-                setFormulaSubTab('image');
-                handleOpenFormulaExam();
-                if (isTabletScreen) showTabletNavBriefly();
-              }}
-              className={`flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-                showFormulaExam && formulaSubTab === 'image'
-                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-                  : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
-              }`}
-              title="필수 암기 그림 자료"
-            >
-              <Image size={20} />
-              <span className="text-[10px] font-bold tracking-tight">그림</span>
-            </button>
+              {/* 그림 단독 버튼 */}
+              <button
+                onClick={async () => {
+                  await forceSaveActiveSessions();
+                  setSelectedTopic(null);
+                  setShowExam(false);
+                  setShowTheoryExam(false);
+                  setShowAnswerSheet(false);
+                  setFormulaSubTab('image');
+                  handleOpenFormulaExam();
+                  if (isTabletScreen) showTabletNavBriefly();
+                }}
+                className={`flex items-center justify-center gap-1.5 w-full h-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                  showFormulaExam && formulaSubTab === 'image'
+                    ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                    : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+                }`}
+                title="필수 암기 그림 자료"
+              >
+                <Image size={13} />
+                <span className="text-[10px] font-bold tracking-tight select-none">그림</span>
+              </button>
+            </div>
 
             {/* 답안지 버튼 */}
             <button

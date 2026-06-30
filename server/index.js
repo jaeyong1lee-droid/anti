@@ -3885,6 +3885,15 @@ app.post('/api/question/regenerate', async (req, res) => {
   try {
     if (topicId === 'mixed_acronym_table' || currentQuestion?.mixedType) {
       const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
+      
+      if (mixedType === 'image') {
+        if (progressTimer) {
+          clearInterval(progressTimer);
+          stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
+        }
+        return res.json({ question: currentQuestion });
+      }
+      
       const content = currentQuestion.explanation || ''; // original table HTML or acronym content
       
       let systemPrompt = "당신은 지반공학 기술사 시험 전문 출제위원 및 튜터입니다.";
