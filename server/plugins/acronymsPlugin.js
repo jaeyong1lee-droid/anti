@@ -41,7 +41,8 @@ export async function generateAcronymTutorResponse(message, image, localCallLLM)
 
   let systemInstruction = '';
   if (isReorderRequest) {
-    systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 전문 튜터입니다.
+    systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목시공기술사, 토목구조기술사, 도로및공항기술사 등 토목공학 및 지반공학 분야) 전문 튜터입니다.
+모든 토픽은 조선공학, 화학공학 등 타 분야가 아닌 **토목공학 및 지반공학(Geotechnical / Civil Engineering)**의 표준 학술 이론과 실무 기준을 바탕으로 분석되어야 합니다.
 제시된 기존 앞글자(두문자) 암기 항목들을 분석하여, 수험생이 암기하기 가장 수월하고 직관적인 두문자 단어 및 짧은 연상문장이 되도록 항목들을 재구성(재조합 및 최적화)하는 작업을 수행하십시오.
 
 [재조합 예시]:
@@ -87,7 +88,8 @@ export async function generateAcronymTutorResponse(message, image, localCallLLM)
 
 경고: 절대로 다른 일반 소개글이나 꼬리말을 덧붙이지 말고, 딱 위의 포맷 형태의 결과물만 출력하십시오.`;
   } else {
-    systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 전문 튜터입니다.
+    systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목시공기술사, 토목구조기술사, 도로및공항기술사 등 토목공학 및 지반공학 분야) 전문 튜터입니다.
+모든 토픽은 조선공학, 화학공학 등 타 분야가 아닌 **토목공학 및 지반공학(Geotechnical / Civil Engineering)**의 표준 학술 이론과 실무 기준을 바탕으로 다루어야 합니다. (예: '군항효과'는 조선공학의 선박 추진기/선미 유동 간섭이 아니라, 토질및기초공학의 **말뚝기초 군항효과(Group Pile Effect)**로 해석하여 설명해야 합니다.)
 사용자의 질문이나 개념에 대해 오직 **가장 핵심적인 두문자(앞글자) 암기법**을 마크다운 표 형태로만 답변을 구성하십시오.
 다른 상세한 서론이나 일반적인 긴 설명글은 절대로 덧붙이지 말고, 오직 다음 규격 포맷을 100% 준수하여 출력하십시오.
 

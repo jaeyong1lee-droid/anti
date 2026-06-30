@@ -57,6 +57,7 @@ import {
   Type
 } from 'lucide-react';
 import { FloatingCalculator } from './components/ScientificCalculator';
+import { ImageUploadPanel, ImageTabList } from './components/ImageStandardsPlugin';
 
 // ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
 const safeLocalStorage = (() => {
@@ -4707,6 +4708,8 @@ export default function App() {
   const [overviewPromptTopic, setOverviewPromptTopic] = useState('');
   const [formulaOverviews, setFormulaOverviews] = useState([]);
   const [loadingFormulaOverviews, setLoadingFormulaOverviews] = useState(false);
+  const [formulaImages, setFormulaImages] = useState([]);
+  const [loadingFormulaImages, setLoadingFormulaImages] = useState(false);
   const [editingOverviewId, setEditingOverviewId] = useState(null);
   const [editingOverviewText, setEditingOverviewText] = useState('');
   const [expandedOverviewIds, setExpandedOverviewIds] = useState({});
@@ -12016,6 +12019,83 @@ export default function App() {
     }
   };
 
+  const loadFormulaImages = async () => {
+    setLoadingFormulaImages(true);
+    let loadedData = null;
+    let fallbackToLocal = false;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.data && Array.isArray(body.data.formulaImages)) {
+          loadedData = body.data.formulaImages;
+          console.log('[Sync] Loaded formula images from database.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Sync] Database formula images loading failed:', err);
+    }
+
+    if (!loadedData) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_images');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) {
+            loadedData = parsed;
+            fallbackToLocal = true;
+            console.log('[Fallback] Loaded formula images from LocalStorage.');
+          }
+        }
+      } catch (err) {
+        console.warn('localStorage 필수암기 그림 복원 실패:', err);
+      }
+    }
+
+    if (!loadedData) {
+      loadedData = [];
+    }
+
+    setFormulaImages(loadedData);
+    localStorage.setItem('anti_formula_images', JSON.stringify(loadedData));
+
+    if (fallbackToLocal && loadedData.length > 0) {
+      console.log('[Sync] Auto syncing local images to database...');
+      fetch(`${API_BASE}/api/session/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaImages: loadedData })
+      }).catch(err => console.warn('[Sync] Auto sync images failed:', err));
+    }
+
+    setLoadingFormulaImages(false);
+    return loadedData;
+  };
+
+  const handleSaveFormulaImages = async (images = formulaImages, showToast = true) => {
+    try {
+      setFormulaImages(images);
+      localStorage.setItem('anti_formula_images', JSON.stringify(images));
+      
+      const res = await fetch(`${API_BASE}/api/session/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formulaImages: images })
+      });
+      if (res.ok) {
+        if (showToast) {
+          showNotification('필수암기 그림 리스트가 저장되었습니다!', 'success');
+        }
+      }
+    } catch (err) {
+      console.warn('필수암기 그림 저장 실패:', err);
+      if (showToast) {
+        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+      }
+    }
+  };
+
   const handleUpdateOverviewCell = async (overviewId, field, value) => {
     const idx = formulaOverviews.findIndex(item => item.id === overviewId);
     if (idx === -1) return;
@@ -13273,6 +13353,7 @@ ${itemsStr}
     loadFormulaTables().catch(e => console.warn('서버 필수암기 표 사전로딩 실패:', e));
     loadFormulaAcronyms().catch(e => console.warn('서버 필수암기 앞글자 사전로딩 실패:', e));
     loadFormulaOverviews().catch(e => console.warn('서버 필수암기 개요 사전로딩 실패:', e));
+    loadFormulaImages().catch(e => console.warn('서버 필수암기 그림 사전로딩 실패:', e));
     loadTheoryQuestions().catch(e => console.warn('서버 이론유도 사전로딩 실패:', e));
   }, []);
 
@@ -17245,272 +17326,21 @@ ${itemsStr}
                                       </div>
                                     )}
 
-                                    {/* AI 튜터 입력 및 답변 보드 */}
-                                    {activeTutorInputKey === rKey && (() => {
-                                      const key = rKey;
-                                      const isCollapsed = !!tutorCollapsed[key];
-                                      const hasPanel = !!(tutorAnswers[key]?.text || tutorAnswers[key]?.loading || tutorAnswers[key]?.error);
-                                      return (
-                                        <div className="mt-2 w-full">
-                                          <div className="flex justify-between items-center mb-1">
-                                            <label className="block text-[10px] font-black text-violet-400">💬 AI 튜터 질문하기 (이 문제에 대해 물어보세요):</label>
-                                            {hasPanel && (
-                                              <button
-                                                onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
-                                                className="text-[9px] sm:text-[10px] text-slate-500 hover:text-slate-300 transition-all cursor-pointer font-bold select-none active:scale-95 duration-150 bg-transparent border-0 p-0 hover:underline"
-                                              >
-                                                {isCollapsed ? '[열기]' : '[접기]'}
-                                              </button>
-                                            )}
-                                          </div>
-                                          <textarea
-                                            rows={3}
-                                            value={tutorInputText[key] || ''}
-                                            onChange={(e) => {
-                                              const text = e.target.value;
-                                              setTutorInputText(prev => ({ ...prev, [key]: text }));
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                const isPending = tutorAnswers[key]?.loading;
-                                                const hasText = (tutorInputText[key] || '').trim();
-                                                if (!isPending && hasText) {
-                                                  handleAskCardTutor(key, q);
-                                                }
-                                              }
-                                            }}
-                                            placeholder="예: 이 공식이 유도되는 세부적인 역학적 기작을 설명해줘, 이 보기에서 마찰 저항이 왜 감쇄하는지 자세히 알려줘 등..."
-                                            className="w-full text-xs p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-2 resize-none"
-                                          />
-                                          <div className="flex gap-2 justify-end">
-                                            <button
-                                              onClick={() => setActiveTutorInputKey(null)}
-                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors font-bold cursor-pointer"
-                                            >
-                                              취소
-                                            </button>
-                                            <button
-                                              disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
-                                              onClick={() => handleAskCardTutor(key, q)}
-                                              className="text-[10px] px-2.5 py-1 rounded bg-slate-300 hover:bg-slate-200 disabled:bg-slate-800 disabled:text-slate-500 text-slate-900 font-bold transition-all cursor-pointer active:scale-95 duration-200"
-                                            >
-                                              {tutorAnswers[key]?.loading ? '답변 작성 중...' : '질문하기'}
-                                            </button>
-                                          </div>
-
-                                          {/* AI Tutor In-Card Answer Panel */}
-                                          {!isCollapsed && (
-                                            <>
-                                              {tutorAnswers[key]?.loading && (
-                                                <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-t border-violet-500/10">
-                                                  <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-                                                    <span>⏳ AI 튜터가 답변을 구성하는 중...</span>
-                                                  </div>
-                                                  <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                                  <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                                </div>
-                                              )}
-                                              {tutorAnswers[key]?.error && (
-                                                <div className="text-[10px] text-rose-400 font-bold select-text mt-2 border-t border-violet-500/10 pt-2">❌ 답변 오류: {tutorAnswers[key].error}</div>
-                                              )}
-                                              {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
-                                                <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
-                                                  <div className="text-[11px] font-black text-violet-400 mb-1.5">💬 AI 튜터 답변</div>
-                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
-                                                    <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-
-                                   {/* 보기별 정밀 분석 결과 */}
-                                   {reviewOptionExplanations[idx]?.loading && (
-                                     <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text">
-                                       <div className="text-[10px] text-violet-400 font-bold flex items-center gap-1.5">
-                                         <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
-                                         <span>⏳ AI가 각 보기의 정/오답 메커니즘을 정밀 분석 중...</span>
-                                       </div>
-                                       <div className="h-4 bg-slate-800 rounded w-5/6"></div>
-                                       <div className="h-4 bg-slate-800 rounded w-4/6"></div>
-                                     </div>
-                                   )}
-                                   {reviewOptionExplanations[idx]?.error && (
-                                     <div className="text-[10px] text-rose-400 font-bold select-text">❌ 보기 해설 실패: {reviewOptionExplanations[idx].error}</div>
-                                   )}
-                                   {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
-                                      <div className="mt-2 select-text w-full">
-                                       <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-2">🔍 보기별 정밀 분석 해설 (오답 및 정답 사유)</div>
-                                       <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
-                                         <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
-                                       </div>
-                                     </div>
-                                   )}
-                                 </div>
-                               </div>
-                             )}
-                           </div>
-                         )}
-
-                        {/* Subjective Reveal */}
-                        {isSubj && (
-                          (q.type === '주관식 (앞글자)') ? (
-                            <div className="space-y-3 w-full animate-fade-in">
-                              {(() => {
-                                const scoredIndices = [];
-                                aiQuestions.forEach((_, i) => {
-                                  scoredIndices.push(i);
-                                });
-                                const M = scoredIndices.length;
-                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
-                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                                const sIdx = scoredIndices.indexOf(idx);
-                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
-                                return (
-                                  <AcronymQuiz 
-                                    questionIdx={idx} 
-                                    q={q} 
-                                    tableAnswers={tableAnswers} 
-                                    setTableAnswers={setTableAnswers} 
-                                    revealed={isRevd} 
-                                    katexLoaded={katexLoaded} 
-                                    tableGradingResults={tableGradingResults}
-                                    weight={W}
-                                    onSubmit={async () => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeAcronymQuestion(idx, q);
-                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                    }}
-                                  />
-                                );
-                              })()}
-                              {!isRevd ? (
-                                <button
-                                  onClick={async () => {
-                                    if (gradingLoading[idx]) return;
-                                    await gradeAcronymQuestion(idx, q);
-                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                  }}
-                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
-                                  }`}
-                                >
-                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
-                                </button>
-                              ) : (
-                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
-                                    <span>{getTableBannerStatusText(idx, q)}</span>
-                                  </div>
-                                  {renderDetailedAcronymFeedback(idx, q, W)}
-                                  {renderCardTutorChat(rKey, q)}
-                                </div>
-                              )}
-                            </div>
-                          ) : (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') ? (
-                            <div className="space-y-3 w-full">
-                              {(() => {
-                                const scoredIndices = [];
-                                aiQuestions.forEach((_, i) => {
-                                  scoredIndices.push(i);
-                                });
-                                const M = scoredIndices.length;
-                                const baseWeight = M > 0 ? Math.floor(100 / M) : 10;
-                                const remainder = M > 0 ? (100 - (baseWeight * M)) : 0;
-                                const sIdx = scoredIndices.indexOf(idx);
-                                const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
-                                return (
-                                  <TableQuiz 
-                                    questionIdx={idx} 
-                                    q={q} 
-                                    tableAnswers={tableAnswers} 
-                                    setTableAnswers={setTableAnswers} 
-                                    revealed={isRevd} 
-                                    katexLoaded={katexLoaded} 
-                                    tableGradingResults={tableGradingResults}
-                                    weight={W}
-                                    onSubmit={async () => {
-                                      if (gradingLoading[idx]) return;
-                                      await gradeTableQuestion(idx, q);
-                                      setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                    }}
-                                  />
-                                );
-                              })()}
-                              {!isRevd ? (
-                                <button
-                                  onClick={async () => {
-                                    if (gradingLoading[idx]) return;
-                                    await gradeTableQuestion(idx, q);
-                                    setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                  }}
-                                  className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-                                    gradingLoading[idx] ? 'opacity-50 pointer-events-none' : ''
-                                  }`}
-                                >
-                                  {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
-                                </button>
-                              ) : (
-                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
-                                  {/* 테이블 주관식 개별 피드백 */}
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
-                                    <span>{getTableBannerStatusText(idx, q)}</span>
-                                  </div>
-                                  {q.explanation && (
-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
-                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
-                                      </div>
-                                    </div>
-                                  )}
-                                  {renderDetailedTableFeedback(idx, q, W)}
-                                  {renderCardTutorChat(rKey, q)}
-                                </div>
-                              )}
-                            </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
-                            <div className="space-y-3 w-full animate-fade-in">
-                              <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
-                                <div className="space-y-1">
-                                  <div className="relative">
-                                      <textarea
-                                        disabled={isRevd}
-                                        data-answer-key={`${idx}_INPUT`}
-                                        value={tableAnswers[`${idx}_INPUT`] || ''}
-                                        onChange={(e) => {
-                                          setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }));
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = `${e.target.scrollHeight}px`;
-                                        }}
-                                        onKeyDown={async (e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            if (!gradingLoading[idx]) {
-                                              await gradeSubjectiveQuestion(idx, q);
-                                              setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
-                                            }
-                                          }
-                                        }}
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.height = 'auto';
-                                            el.style.height = `${el.scrollHeight}px`;
-                                          }
-                                        }}
-                                        rows={1}
-                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
-                                        className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
-                                      />
-                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
-                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
-                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
+                                    {/* AI 튜터 입력 및 답변 보�          {/* Right: PDF/HTML upload section / image upload plugin panel (PC Only) */}
+          {isDesktop && (
+            <div 
+              style={{ width: `${rightSidebarWidth}px` }}
+              className="w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col p-4 overflow-y-auto space-y-4"
+            >
+              <ImageUploadPanel
+                formulaImages={formulaImages}
+                setFormulaImages={setFormulaImages}
+                handleSaveFormulaImages={handleSaveFormulaImages}
+                API_BASE={API_BASE}
+                showNotification={showNotification}
+              />
+            </div>
+          )}eGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
                                         </span>
                                       </div>
                                     )}
@@ -21911,12 +21741,11 @@ ${itemsStr}
                                                       handleSaveFormulaTables(updatedTables, false);
                                                       showNotification('새 행이 추가되었습니다.', 'success');
                                                     }}
-                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
+                                                    className="px-1.5 py-0.5 rounded bg-transparent hover:bg-emerald-500/10 text-emerald-400 text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30"
                                                     title="새 행 추가"
                                                   >
                                                     + 행추가
                                                   </button>
-                                                  <span>삭제</span>
                                                 </div>
                                               </th>
                                             </tr>
@@ -22183,7 +22012,7 @@ ${itemsStr}
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
                                                     onClick={() => handleAddAcronymRow(ac.id)}
-                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
+                                                    className="px-1.5 py-0.5 rounded bg-transparent hover:bg-emerald-500/10 text-emerald-400 text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/30"
                                                     title="새 암기 행 추가"
                                                   >
                                                     + 행추가
@@ -22533,26 +22362,13 @@ ${itemsStr}
                       </div>
                     </div>
                   ) : formulaSubTab === 'image' ? (
-                    <div className="w-full space-y-6 animate-fade-in pb-20 select-text">
-                      <div className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4">
-                        <div className="border-b border-slate-800/80 pb-3">
-                          <h2 className="text-base md:text-lg font-black text-white">필수 암기 그림</h2>
-                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                            암기 및 이해를 돕기 위한 필수 공학 그림 자료입니다.
-                          </p>
-                        </div>
-                        <div className="py-12 flex flex-col items-center justify-center gap-4 text-center">
-                          <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-bold text-white">보관된 그림이 없습니다</h4>
-                            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-                              비교나 도해에 필요한 공학 그림들이 준비되는 대로 여기에 보관될 예정입니다.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="w-full pb-20 select-text">
+                      <ImageTabList
+                        formulaImages={formulaImages}
+                        setFormulaImages={setFormulaImages}
+                        handleSaveFormulaImages={handleSaveFormulaImages}
+                        showNotification={showNotification}
+                      />
                     </div>
                   ) : formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -24051,21 +23867,22 @@ ${itemsStr}
               <Award size={20} />
               <span className="text-[10px] font-bold tracking-tight">종합평가</span>
             </button>
-            {/* 필수공식 버튼 4개 조합 */}
+            {/* 필수공식 버튼 5개 조합 (공식, 표, 앞글자, 개요, 그림) */}
             <div 
-              className={`grid grid-cols-2 grid-rows-2 gap-1 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
+              className={`grid grid-cols-2 gap-1 w-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
                 showFormulaExam 
                   ? 'bg-rose-955/40 border border-rose-500/30 shadow-lg glow-rose' 
                   : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
               }`}
-              title="필수공식 (공식, 표, 앞글자, 개요)"
+              title="필수공식 (공식, 표, 앞글자, 개요, 그림)"
             >
               {[
                 { label: '공식', tab: 'formula' },
                 { label: '표', tab: 'table' },
                 { label: '앞글자', tab: 'acronym' },
-                { label: '개요', tab: 'overview' }
-              ].map((b) => (
+                { label: '개요', tab: 'overview' },
+                { label: '그림', tab: 'image' }
+              ].map((b, idx) => (
                 <button
                   key={b.tab}
                   onClick={async () => {
@@ -24078,7 +23895,9 @@ ${itemsStr}
                     handleOpenFormulaExam();
                     if (isTabletScreen) showTabletNavBriefly();
                   }}
-                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none ${
+                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none py-2 ${
+                    idx === 4 ? 'col-span-2' : ''
+                  } ${
                     showFormulaExam && formulaSubTab === b.tab
                       ? 'bg-rose-600 text-white shadow-sm border border-rose-500/20'
                       : 'bg-slateCustom-950/40 text-slate-400 hover:text-slate-200 border border-slate-850 hover:bg-slate-900/40'
@@ -24088,29 +23907,6 @@ ${itemsStr}
                 </button>
               ))}
             </div>
-
-            {/* 그림 단독 버튼 */}
-            <button
-              onClick={async () => {
-                await forceSaveActiveSessions();
-                setSelectedTopic(null);
-                setShowExam(false);
-                setShowTheoryExam(false);
-                setShowAnswerSheet(false);
-                setFormulaSubTab('image');
-                handleOpenFormulaExam();
-                if (isTabletScreen) showTabletNavBriefly();
-              }}
-              className={`flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-                showFormulaExam && formulaSubTab === 'image'
-                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
-                  : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
-              }`}
-              title="필수 암기 그림 자료"
-            >
-              <Image size={20} />
-              <span className="text-[10px] font-bold tracking-tight">그림</span>
-            </button>
 
             {/* 답안지 버튼 */}
             <button

@@ -1,0 +1,426 @@
+﻿diff --git a/client/src/App.jsx b/client/src/App.jsx
+index c2ddc2b..f4f245e 100644
+--- a/client/src/App.jsx
++++ b/client/src/App.jsx
+@@ -998,7 +998,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
+   // 4. Render headings to styled HTML
+   tempText = tempText.replace(/^(###+)\s+(.*?)$/gm, (match, hashes, title) => {
+     if (isTutor) {
+-      return `<h3 class="text-[14px] sm:text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${title}</h3>`;
++      return `<h3 class="text-[16px]" style="margin-top: 1.8rem; margin-bottom: 0.6rem; font-weight: normal; color: #f1f5f9; border-bottom: 1px solid rgba(51, 65, 85, 0.2); padding-bottom: 0.15rem;">${title}</h3>`;
+     }
+     if (isMarkdown) {
+       return `<h3 style="margin-top: 1.8rem; margin-bottom: 0.8rem; font-weight: 800; color: #f1f5f9; font-size: 1.05rem; border-bottom: 1px solid #334155; padding-bottom: 0.3rem;">${title}</h3>`;
+@@ -1008,7 +1008,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
+   });
+   tempText = tempText.replace(/^(##)\s+(.*?)$/gm, (match, hashes, title) => {
+     if (isTutor) {
+-      return `<h2 class="text-[14px] sm:text-[16px]" style="margin-top: 2.2rem; margin-bottom: 0.8rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${title}</h2>`;
++      return `<h2 class="text-[16px]" style="margin-top: 2.2rem; margin-bottom: 0.8rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.2); padding-bottom: 0.2rem;">${title}</h2>`;
+     }
+     if (isMarkdown) {
+       return `<h2 style="margin-top: 2rem; margin-bottom: 1rem; font-weight: 900; color: #f8fafc; font-size: 1.2rem; border-bottom: 1px solid #475569; padding-bottom: 0.4rem;">${title}</h2>`;
+@@ -1018,7 +1018,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
+   });
+   tempText = tempText.replace(/^(#)\s+(.*?)$/gm, (match, hashes, title) => {
+     if (isTutor) {
+-      return `<h1 class="text-[14px] sm:text-[16px]" style="margin-top: 2.6rem; margin-bottom: 1rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${title}</h1>`;
++      return `<h1 class="text-[16px]" style="margin-top: 2.6rem; margin-bottom: 1rem; font-weight: normal; color: #f8fafc; border-bottom: 1px solid rgba(71, 85, 105, 0.25); padding-bottom: 0.25rem;">${title}</h1>`;
+     }
+     if (isMarkdown) {
+       return `<h1 style="margin-top: 2.4rem; margin-bottom: 1.2rem; font-weight: 950; color: #f8fafc; font-size: 1.35rem; border-bottom: 1px solid #475569; padding-bottom: 0.5rem;">${title}</h1>`;
+@@ -1745,7 +1745,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
+           return (
+             <div 
+               key={idx}
+-              className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
++              className="py-0.5 text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
+               dangerouslySetInnerHTML={{ __html: htmlContent }}
+             />
+           );
+@@ -1963,7 +1963,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers,
+ 
+   return (
+     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+-      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[13px] sm:text-[15px] ${
++      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[16px] ${
+         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+       }`}>
+         <colgroup>
+@@ -2027,7 +2027,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers,
+                       <td 
+                         key={cIdx} 
+                         colSpan={cellColSpan}
+-                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[13px] sm:text-[15px] whitespace-normal break-words text-center align-middle ${
++                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[16px] whitespace-normal break-words text-center align-middle ${
+                           !revealed ? 'cursor-text' : ''
+                         }`}
+                         onClick={!revealed ? (e) => {
+@@ -2038,7 +2038,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers,
+                         {revealed ? (() => {
+                           const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
+                           return (
+-                            <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[13px] sm:text-[15px] ${theme.cellBg}`}>
++                            <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[16px] ${theme.cellBg}`}>
+                               <div className="text-left font-medium">
+                                 {value ? (
+                                   <span className="font-bold">
+@@ -2079,7 +2079,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers,
+                             }}
+                             placeholder={`${inputLetter} ?낅젰`}
+                             data-answer-key={`${questionIdx}_${inputId}`}
+-                            className="table-quiz-input w-full text-center text-[13px] sm:text-[15px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
++                            className="table-quiz-input w-full text-center text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
+                             rows={1}
+                             onKeyDown={(e) => {
+                               if (e.key === 'Enter' && !e.shiftKey) {
+@@ -2107,7 +2107,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers,
+                       <td 
+                         key={cIdx} 
+                         colSpan={cellColSpan}
+-                        className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[13px] sm:text-[15px] select-text whitespace-normal break-words ${
++                        className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[16px] select-text whitespace-normal break-words ${
+                           isFirstCol ? 'text-left break-all' : 'text-center'
+                         }`}
+                       >
+@@ -2188,7 +2188,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
+ 
+   return (
+     <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+-      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[13px] sm:text-[15px] ${
++      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[16px] ${
+         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+       }`}>
+         <colgroup>
+@@ -2234,7 +2234,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
+                     <td 
+                       key={cIdx} 
+                       colSpan={cellColSpan}
+-                      className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[13px] sm:text-[15px] select-text ${
++                      className={`p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[16px] select-text ${
+                         isFirstCol ? 'text-left break-all' : 'text-center'
+                       }`}
+                     >
+@@ -2574,7 +2574,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
+     return (
+       <div className="space-y-3 w-full">
+         {!(resolvedCategory === '怨꾩궛' && showImage) && (
+-          <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
++          <div className="text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
+             <LatexRenderer text={mainText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+           </div>
+         )}
+@@ -2617,7 +2617,7 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
+   return (
+     <>
+       {!(resolvedCategory === '怨꾩궛' && showImage) && (
+-        <div className="text-[14px] sm:text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
++        <div className="text-[16px] font-bold text-white leading-relaxed text-left w-full whitespace-pre-line">
+           <LatexRenderer text={cleanQuestionText} katexLoaded={katexLoaded} enableAddFormula={true} questionKey={questionKey} />
+         </div>
+       )}
+@@ -2824,7 +2824,7 @@ export default function App() {
+     
+     return (
+       <div className="mt-4 pt-3 border-t border-current/10 space-y-3">
+-        <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">?뮕 鍮덉뭏蹂??곸꽭 ?쇰뱶諛?</span>
++        <span className="font-extrabold text-amber-400 text-[16px]">?뮕 鍮덉뭏蹂??곸꽭 ?쇰뱶諛?</span>
+         <div className="divide-y divide-slate-800/80 mt-1">
+           {inputIds.map((inputId) => {
+             const value = activeAnswers[`${idx}_${inputId}`] || '';
+@@ -2860,10 +2860,10 @@ export default function App() {
+             }
+             
+             return (
+-              <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[13px] sm:text-[15px] space-y-1.5 w-full text-left">
++              <div key={inputId} className="py-3.5 first:pt-1 last:pb-1 text-[16px] space-y-1.5 w-full text-left">
+                 {(rowHeader || colHeader) && (
+-                  <div className="text-[14px] sm:text-[16px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
+-                    <span className="text-slate-100 font-bold text-[14px] sm:text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
++                  <div className="text-[16px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1.5 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
++                    <span className="text-slate-100 font-bold text-[16px] bg-slate-800/60 px-1.5 py-0.5 rounded mr-1">({inputLetter})</span>
+                     {rowHeader && (
+                       <span className="text-slate-300 font-semibold">
+                         <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
+@@ -8420,7 +8420,7 @@ export default function App() {
+     return (
+       <div className="mt-2.5 w-full text-left">
+         <div className="flex justify-between items-center mb-1">
+-          <label className="block text-[14px] sm:text-[16px] font-black text-violet-400">?뮠 AI ?쒗꽣 吏덈Ц?섍린 (??臾몄젣?????臾쇱뼱蹂댁꽭??:</label>
++          <label className="block text-[16px] font-black text-violet-400">?뮠 AI ?쒗꽣 吏덈Ц?섍린 (??臾몄젣?????臾쇱뼱蹂댁꽭??:</label>
+           {hasPanel && (
+             <button
+               onClick={() => setTutorCollapsed(prev => ({ ...prev, [key]: !prev[key] }))}
+@@ -8449,7 +8449,7 @@ export default function App() {
+               }
+             }}
+             placeholder=""
+-            className="flex-1 text-[14px] sm:text-[16px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
++            className="flex-1 text-[16px] p-2 rounded-xl bg-slate-900 border border-slate-750 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
+           />
+           <button
+             disabled={tutorAnswers[key]?.loading || !(tutorInputText[key] || '').trim()}
+@@ -8465,7 +8465,7 @@ export default function App() {
+           <>
+             {tutorAnswers[key]?.loading && (
+               <div className="py-2.5 flex flex-col gap-1.5 animate-pulse select-text mt-2 border-0 sm:border-t sm:border-violet-500/10">
+-                <div className="text-[14px] sm:text-[16px] text-violet-400 font-bold flex items-center gap-1.5">
++                <div className="text-[16px] text-violet-400 font-bold flex items-center gap-1.5">
+                   <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-ping"></div>
+                   <span>??AI ?쒗꽣媛 ?듬???援ъ꽦?섎뒗 以?..</span>
+                 </div>
+@@ -8474,12 +8474,12 @@ export default function App() {
+               </div>
+             )}
+             {tutorAnswers[key]?.error && (
+-              <div className="text-[14px] sm:text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">???듬? ?ㅻ쪟: {tutorAnswers[key].error}</div>
++              <div className="text-[16px] text-rose-400 font-bold select-text mt-2 border-0 sm:border-t sm:border-violet-500/10 pt-2">???듬? ?ㅻ쪟: {tutorAnswers[key].error}</div>
+             )}
+             {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+               <div className="mt-2.5 pt-2.5 border-0 sm:border-t sm:border-violet-500/20 select-text">
+-                <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-1.5">?뮠 AI ?쒗꽣 ?듬?</div>
+-                <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
++                <div className="text-[16px] font-black text-violet-400 mb-1.5">?뮠 AI ?쒗꽣 ?듬?</div>
++                <div className="tutor-response-content text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full mt-1">
+                   <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                 </div>
+               </div>
+@@ -14642,7 +14642,7 @@ export default function App() {
+                         {isMC && (
+                           <div className="space-y-2">
+                             {q.options?.map((opt, oIdx) => {
+-                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
++                              let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[16px] font-semibold transition-all duration-200 ";
+                               if (!answered) {
+                                 cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
+                               } else if (opt === q.answer) {
+@@ -14715,7 +14715,7 @@ export default function App() {
+                               );
+                             })}
+                             {answered && (
+-                              <div className={`mt-2 text-[14px] sm:text-[16px] leading-relaxed ${
++                              <div className={`mt-2 text-[16px] leading-relaxed ${
+                                 (!isDesktop && !isMobileLandscape)
+                                   ? `p-0 bg-transparent border-0 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`
+                                   : `p-3 rounded-xl ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`
+@@ -14726,7 +14726,7 @@ export default function App() {
+                                     ?뺣떟: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
+                                   </span>
+                                 )}
+-                                {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
++                                {q.explanation && <div className="mt-1.5 text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+ 
+                                  {/* AI ?댁꽕 諛?蹂닿린遺꾩꽍 踰꾪듉 ?⑤꼸 */}
+                                  <div className="mt-3 pt-3 border-t border-slate-700/50">
+@@ -14868,7 +14868,7 @@ export default function App() {
+                                               {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+                                                 <div className="mt-2 pt-2 border-t border-violet-500/20 select-text">
+                                                   <div className="text-[11px] font-black text-violet-400 mb-1.5">?뮠 AI ?쒗꽣 ?듬?</div>
+-                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
++                                                  <div className="tutor-response-content text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                                     <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                                                   </div>
+                                                 </div>
+@@ -14895,8 +14895,8 @@ export default function App() {
+                                    )}
+                                    {reviewOptionExplanations[idx]?.text && !reviewOptionExplanations[idx]?.loading && (
+                                       <div className="mt-2 select-text w-full">
+-                                       <div className="text-[14px] sm:text-[16px] font-black text-violet-400 mb-2">?뵇 蹂닿린蹂??뺣? 遺꾩꽍 ?댁꽕 (?ㅻ떟 諛??뺣떟 ?ъ쑀)</div>
+-                                       <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
++                                       <div className="text-[16px] font-black text-violet-400 mb-2">?뵇 蹂닿린蹂??뺣? 遺꾩꽍 ?댁꽕 (?ㅻ떟 諛??뺣떟 ?ъ쑀)</div>
++                                       <div className="text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                          <LatexRenderer text={reviewOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                        </div>
+                                      </div>
+@@ -14955,13 +14955,13 @@ export default function App() {
+                               ) : (
+                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                   {/* ?뚯씠釉?二쇨???媛쒕퀎 ?쇰뱶諛?*/}
+-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
++                                  <div className={`text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                     <span>{getTableBannerStatusText(idx, q)}</span>
+                                   </div>
+                                   {q.explanation && (
+-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                    <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                       <span className="font-extrabold text-amber-400">?뱷 ?댁꽕:</span>
+-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                         <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                       </div>
+                                     </div>
+@@ -15002,7 +15002,7 @@ export default function App() {
+                                         }}
+                                         rows={1}
+                                         placeholder={q.type === '二쇨???(媛쒖슂)' ? "?듭떖 ?ㅼ썙?쒕뱾???쇳몴(,)濡?援щ텇?섏뿬 ?낅젰?섏꽭??(?? ?ㅼ썙??, ?ㅼ썙??, ?ㅼ썙??)" : "?듭븞???낅젰?섏꽭??(?쒓? 10~15???댁쇅)"}
+-                                        className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
++                                        className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
+                                       />
+                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
+@@ -15014,14 +15014,14 @@ export default function App() {
+                                   </div>
+                                 </div>
+                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
+-                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
+-                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
++                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[16px]">
++                                    <div className="text-[16px] font-black flex justify-between items-center mb-0.5">
+                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
+                                     </div>
+-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                    <div className="text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
++                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[16px] select-text">
+                                       <span className="font-extrabold">?뮕 紐⑤쾾 ?듭븞:</span>
+-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                         <LatexRenderer 
+                                           text={
+                                             (() => {
+@@ -15045,17 +15045,17 @@ export default function App() {
+                                       </div>
+                                     </div>
+                                     {idx !== 0 && q.concept && (
+-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                         <span className="font-extrabold text-indigo-400">?뮕 ?듭떖 媛쒕뀗:</span>
+-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                         </div>
+                                       </div>
+                                     )}
+                                     {idx !== 0 && q.explanation && (
+-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                         <span className="font-extrabold text-amber-400">?뱷 ?댁꽕:</span>
+-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                         </div>
+                                       </div>
+@@ -17829,7 +17829,7 @@ export default function App() {
+                       {isMC && (
+                         <div className="space-y-2">
+                           {q.options?.map((opt, oIdx) => {
+-                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[14px] sm:text-[16px] font-semibold transition-all duration-200 ";
++                            let cls = "w-full text-left px-3 py-2.5 rounded-xl border text-[16px] font-semibold transition-all duration-200 ";
+                             if (!answered) {
+                               cls += "bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-700/70 hover:border-slate-600 cursor-pointer select-none";
+                             } else if (normalizeAns(opt) === normalizeAns(q.answer)) {
+@@ -17870,7 +17870,7 @@ export default function App() {
+                             );
+                           })}
+                           {answered && (
+-                            <div className={`mt-2 text-[14px] sm:text-[16px] leading-relaxed ${
++                            <div className={`mt-2 text-[16px] leading-relaxed ${
+                               (!isDesktop && !isMobileLandscape)
+                                 ? `p-0 bg-transparent border-0 ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`
+                                 : `p-3 rounded-xl ${isCorrect ? 'bg-emerald-950/50 border border-emerald-500/30 text-emerald-200' : 'bg-rose-950/50 border border-rose-500/30 text-rose-200'}`
+@@ -17881,7 +17881,7 @@ export default function App() {
+                                   ?뺣떟: <strong className="inline-block"><LatexRenderer text={q.answer} katexLoaded={katexLoaded} className="inline" enableAddFormula={true} /></strong>
+                                 </span>
+                               )}
+-                              {q.explanation && <div className="mt-1.5 text-[14px] sm:text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
++                              {q.explanation && <div className="mt-1.5 text-[16px] text-slate-300"><LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>}
+                               
+                               {/* AI ?댁꽕 諛?蹂닿린遺꾩꽍 踰꾪듉 ?⑤꼸 */}
+                               <div className="mt-2 pt-2 border-t border-slate-700/40">
+@@ -18023,7 +18023,7 @@ export default function App() {
+                                               {tutorAnswers[key]?.text && !tutorAnswers[key]?.loading && (
+                                                 <div className="mt-2 pt-2 border-t border-amber-500/20 select-text">
+                                                   <div className="text-[11px] font-black text-amber-400 mb-1.5">?뮠 AI ?쒗꽣 ?듬?</div>
+-                                                  <div className="tutor-response-content text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
++                                                  <div className="tutor-response-content text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text text-left w-full">
+                                                     <LatexRenderer text={tutorAnswers[key].text} katexLoaded={katexLoaded} enableAddFormula={true} formulaSource="tutor" isMarkdown={true} />
+                                                   </div>
+                                                 </div>
+@@ -18050,8 +18050,8 @@ export default function App() {
+                                 )}
+                                 {examOptionExplanations[idx]?.text && !examOptionExplanations[idx]?.loading && (
+                                     <div className="mt-2 select-text w-full">
+-                                    <div className="text-[14px] sm:text-[16px] font-black text-amber-400 mb-2">?뵇 蹂닿린蹂??뺣? 遺꾩꽍 ?댁꽕 (?ㅻ떟 諛??뺣떟 ?ъ쑀)</div>
+-                                    <div className="text-[14px] sm:text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
++                                    <div className="text-[16px] font-black text-amber-400 mb-2">?뵇 蹂닿린蹂??뺣? 遺꾩꽍 ?댁꽕 (?ㅻ떟 諛??뺣떟 ?ъ쑀)</div>
++                                    <div className="text-[16px] text-slate-200 leading-relaxed whitespace-pre-wrap select-text">
+                                       <LatexRenderer text={examOptionExplanations[idx].text} katexLoaded={katexLoaded} enableAddFormula={true} />
+                                     </div>
+                                   </div>
+@@ -18110,13 +18110,13 @@ export default function App() {
+                               ) : (
+                                 <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
+                                   {/* ?뚯씠釉?二쇨???媛쒕퀎 ?쇰뱶諛?*/}
+-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
++                                  <div className={`text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                     <span>{getTableBannerStatusText(idx, q)}</span>
+                                   </div>
+                                   {q.explanation && (
+-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                    <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                       <span className="font-extrabold text-amber-400">?뱷 ?댁꽕:</span>
+-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                         <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                       </div>
+                                     </div>
+@@ -18156,7 +18156,7 @@ export default function App() {
+                                         }}
+                                         rows={1}
+                                         placeholder={q.type === '二쇨???(媛쒖슂)' ? "?듭떖 ?ㅼ썙?쒕뱾???쇳몴(,)濡?援щ텇?섏뿬 ?낅젰?섏꽭??(?? ?ㅼ썙??, ?ㅼ썙??, ?ㅼ썙??)" : "?듭븞???낅젰?섏꽭??(?쒓? 10~15???댁쇅)"}
+-                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
++                                        className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
+                                       />
+                                     {examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
+                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
+@@ -18168,14 +18168,14 @@ export default function App() {
+                                   </div>
+                                 </div>
+                                 {examRevealed[idx] && examTableGradingResults[`${idx}_INPUT`] && (
+-                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100">
+-                                    <div className="text-[14px] sm:text-[16px] font-black flex justify-between items-center mb-0.5">
++                                  <div className="mt-2 p-0 sm:p-2.5 select-text text-left animate-fade-in text-slate-100 text-[16px]">
++                                    <div className="text-[16px] font-black flex justify-between items-center mb-0.5">
+                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
+                                     </div>
+-                                    <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
+-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                    <div className="text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
++                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[16px] select-text">
+                                       <span className="font-extrabold">?뮕 紐⑤쾾 ?듭븞:</span>
+-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                      <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                         <LatexRenderer 
+                                           text={
+                                             (() => {
+@@ -18199,17 +18199,17 @@ export default function App() {
+                                       </div>
+                                     </div>
+                                     {idx !== 0 && q.concept && (
+-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                         <span className="font-extrabold text-indigo-400">?뮕 ?듭떖 媛쒕뀗:</span>
+-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                           <LatexRenderer text={q.concept} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                         </div>
+                                       </div>
+                                     )}
+                                     {idx !== 0 && q.explanation && (
+-                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
++                                      <div className="mt-2 pt-2 border-t border-current/10 text-[16px] select-text">
+                                         <span className="font-extrabold text-amber-400">?뱷 ?댁꽕:</span>
+-                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
++                                        <div className="mt-1 text-[16px] text-slate-200 leading-relaxed">
+                                           <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                         </div>
+                                       </div>
+@@ -19580,7 +19580,7 @@ export default function App() {
+                             <span className="text-[10px] text-slate-400 font-bold px-1">
+                               {isUser ? '?섑뿕?? : 'AI ?쒗꽣'}
+                             </span>
+-                            <div className={`${isUser ? 'max-w-[92%] text-xs' : 'max-w-[97%] tutor-response-content text-[14px] sm:text-[16px]'} rounded-2xl px-3.5 py-2.5 leading-relaxed select-text break-words ${
++                            <div className={`${isUser ? 'max-w-[92%] text-xs' : 'max-w-[97%] tutor-response-content text-[16px]'} rounded-2xl px-3.5 py-2.5 leading-relaxed select-text break-words ${
+                               isUser 
+                                 ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
+                                 : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'

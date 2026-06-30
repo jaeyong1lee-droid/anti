@@ -6682,7 +6682,7 @@ app.post('/api/table/suggest-title-and-refine', async (req, res) => {
       return res.status(400).json({ error: '표 내용이 존재하지 않습니다.' });
     }
 
-    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 전문 튜터입니다.
+    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목시공기술사, 토목구조기술사 등 토목공학 및 지반공학 분야) 전문 튜터입니다.
 사용자가 공부하던 중 실시간 튜터 창에서 내보내고자 하는 마크다운 표가 입력됩니다.
 해당 표의 원본 HTML 내용과 실시간 튜터 대화 맥락을 분석하여:
 1. 해당 표에 가장 걸맞은 전문적이고 깔끔한 핵심 제목(Title)을 한글로 한 줄(공백 포함 25자 이내)로 도출하십시오. (학자명/공법명 등을 적절히 반영하여 '~~ 비교표' 또는 '~~ 분석표' 등 형식으로 작성)
@@ -7784,6 +7784,117 @@ app.post('/api/session/overviews', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /api/session/images → 저장된 필수암기 그림 목록 반환
+app.get('/api/session/images', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['formula_images']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { formulaImages: [] } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/images error:', err);
+    res.json({ data: { formulaImages: [] } });
+  }
+});
+
+// POST /api/session/images → 필수암기 그림 상태 저장
+app.post('/api/session/images', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaImages } = req.body;
+    const value = JSON.stringify({ formulaImages });
+    await saveSessionValue('formula_images', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/images error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/image-standards/analyze → 붙여넣은 그림/그래프 멀티모달 분석
+app.post('/api/image-standards/analyze', async (req, res) => {
+  try {
+    const { base64Image, description } = req.body;
+    if (!base64Image) {
+      return res.status(400).json({ error: '이미지 데이터가 존재하지 않습니다.' });
+    }
+
+    let mimeType = 'image/png';
+    let rawBase64 = base64Image;
+    const match = base64Image.match(/^data:(image\/[^;]+);base64,(.+)$/);
+    if (match) {
+      mimeType = match[1];
+      rawBase64 = match[2];
+    }
+
+    const systemInstruction = `당신은 지반공학, 토질역학 및 토목 전공 기술사 자격시험 전문 채점위원이자 튜터입니다.
+사용자가 붙여넣은 공학 그림/그래프/도해 이미지와 관련 텍스트 설명을 바탕으로 정밀 분석을 수행하십시오.
+반드시 아래 지정된 JSON 형식으로만 응답해야 합니다. 다른 설명 텍스트나 마크다운 코드블록 기호(예: \`\`\`json)는 절대 포함하지 마십시오.
+
+JSON 포맷 규격:
+{
+  "title": "이 그림/그래프가 무엇을 뜻하는지 가장 정밀하고 간결한 핵심 전공 주제명으로 한글(공백 포함 25자 이내)로 자동 제안하십시오. (조사, 서술어 일체 배제)",
+  "analysis": "해당 그림/그래프/도해에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 작동 메커니즘을 상세히 설명하십시오. 중요 기호나 핵심 개념을 명확하게 짚어주어야 하며, 텍스트가 줄바꿈이 많이 필요한 경우 적절히 구성하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오. (한글로 작성)",
+  "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (한글 2~3문장)"
+}`;
+
+    const userPrompt = description 
+      ? `사용자가 덧붙인 한글 설명:\n${description}\n\n위 한글 설명과 함께 첨부된 공학 그림/그래프의 형태와 수식적 변수 배치를 면밀히 판독하여 분석 내용을 완성하십시오.`
+      : `첨부된 공학 그림/그래프의 상세 구조와 기호들의 상호작용을 면밀히 판독하여 분석 내용을 완성하십시오.`;
+
+    try {
+      const responseText = await callLLMWithFailover(
+        systemInstruction,
+        userPrompt,
+        { data: rawBase64, mimeType },
+        'formula'
+      );
+
+      let cleanJsonText = responseText.trim();
+      const startIdx = cleanJsonText.indexOf('{');
+      const endIdx = cleanJsonText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+      } else if (cleanJsonText.startsWith('```')) {
+        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+
+      try {
+        const result = parseLlmJson(cleanJsonText);
+        res.json({
+          ok: true,
+          title: result.title || '자동 분석 그림',
+          analysis: result.analysis || '분석 정보를 가져올 수 없습니다.',
+          intuitive: result.intuitive || '직관적 의미를 추출할 수 없습니다.'
+        });
+      } catch (parseErr) {
+        console.error('Gemini image analyze parse error:', parseErr, 'Raw response:', responseText);
+        res.json({
+          ok: true,
+          title: '자동 분석 그림',
+          analysis: responseText,
+          intuitive: '텍스트 파싱 오류로 직관적 의미를 가져오지 못했습니다.'
+        });
+      }
+    } catch (llmErr) {
+      console.error('callLLMWithFailover error in image analyze:', llmErr);
+      res.status(500).json({ error: `AI 이미지 분석 실패: ${llmErr.message}` });
+    }
+  } catch (err) {
+    console.error('POST /api/image-standards/analyze error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 
 
 // GET /api/session/answersheet → 저장된 답안지 상태 반환
