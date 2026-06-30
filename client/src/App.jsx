@@ -22426,7 +22426,7 @@ ${itemsStr}
                                       ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean)
                                       : [];
                                     return (
-                                      <div className="space-y-4 animate-fade-in border border-slate-800/80 bg-slateCustom-950/25 p-4 rounded-2xl">
+                                      <div className="space-y-4 animate-fade-in w-full">
                                         {/* 1. 개요 */}
                                         {parsed.definition && (
                                           <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
