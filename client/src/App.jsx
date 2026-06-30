@@ -8155,8 +8155,8 @@ export default function App() {
             
             const explanationHtml = `
               <div class="space-y-3 text-left">
-                \${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">\${parsed.definition}</p></div>` : ''}
-                \${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">\${parsed.mechanism}</p></div>` : ''}
+                ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
+                ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
               </div>
             `;
             
@@ -8164,7 +8164,7 @@ export default function App() {
               id: `mixed_q_${qIdx}`,
               type: '주관식 (표채우기)',
               subtype: '표채우기',
-              question: `[개요 복습] \${item.title}`,
+              question: '[개요 복습] ' + item.title,
               tableData: {
                 headers: ['구분', '내용'],
                 rows: rows
@@ -8749,8 +8749,8 @@ export default function App() {
             
             const explanationHtml = `
               <div class="space-y-3 text-left">
-                \${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">\${parsed.definition}</p></div>` : ''}
-                \${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">\${parsed.mechanism}</p></div>` : ''}
+                ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
+                ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
               </div>
             `;
             
@@ -8758,7 +8758,7 @@ export default function App() {
               id: `mixed_q_${qIdx}`,
               type: '주관식 (표채우기)',
               subtype: '표채우기',
-              question: `[개요 복습] \${item.title}`,
+              question: '[개요 복습] ' + item.title,
               tableData: {
                 headers: ['구분', '내용'],
                 rows: rows
