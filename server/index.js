@@ -7555,7 +7555,7 @@ app.get('/api/session/last-active-review', async (req, res) => {
       }
     } else if (key.startsWith('review_questions_topic_')) {
       const topicIdRaw = key.replace('review_questions_topic_', '');
-      if (topicIdRaw === 'mixed_acronym_table') {
+      if (topicIdRaw.startsWith('mixed_acronym_table')) {
         return res.json({
           success: true,
           lastActive: {
