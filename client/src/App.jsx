@@ -2356,65 +2356,6 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
     </div>
     {revealed && (
       <div className="mt-4 space-y-3">
-        {/* AI 채점 피드백 및 모범답안 상세 카드 */}
-        <div className="bg-slateCustom-950/40 border border-slate-800/80 rounded-2xl p-4 space-y-4 select-text text-left">
-          <h4 className="text-xs font-black text-rose-455 tracking-wider uppercase flex items-center gap-1.5 border-b border-slate-800/60 pb-2">
-            <span>🔍 AI 채점 분석 및 모범답안 상세</span>
-          </h4>
-          
-          <div className="space-y-3">
-            {rows.map((row, rIdx) => {
-              const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
-              const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
-              const rowAcronymGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_ACRONYM`];
-              const rowCombGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_COMB`];
-              const correctRow = q.correctRows?.[rIdx];
-              
-              return (
-                <div key={rIdx} className="bg-slate-900/30 border border-slate-800/40 rounded-xl p-3 space-y-2">
-                  {/* Row Header */}
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
-                      rowCombGrading?.isCorrect 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    }`}>
-                      행 {rIdx + 1} ({correctRow?.acronym || '?'})
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-bold">
-                      {rowCombGrading?.isCorrect ? '정답' : '오답/부정확'}
-                    </span>
-                  </div>
-
-                  {/* Compare Block */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-extrabold block">내가 입력한 답</span>
-                      <p className={`font-bold mt-0.5 ${rowCombGrading?.isCorrect ? 'text-emerald-300' : 'text-rose-300'}`}>
-                        {rowCombVal || '(미입력)'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-extrabold block">모범 답안</span>
-                      <p className="text-slate-350 font-bold mt-0.5">
-                        {correctRow ? `${correctRow.word} : ${correctRow.description}` : '정의 없음'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* AI Feedback */}
-                  {rowCombGrading?.reason && (
-                    <div className="text-[11px] text-slate-400 bg-slate-950/40 rounded-lg p-2 leading-relaxed border border-slate-800/30">
-                      <strong className="text-[10px] text-rose-400 block mb-0.5">💡 AI 채점 피드백:</strong>
-                      {rowCombGrading.reason}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* 연상문장 */}
         {q.sentence && (
           <div className="p-3 bg-violet-950/20 border border-violet-500/20 text-violet-300 rounded-xl text-xs sm:text-sm font-medium select-text text-left">
