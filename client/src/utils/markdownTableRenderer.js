@@ -126,7 +126,23 @@ export function convertMarkdownTablesToHtml(text) {
             while (searchIdx >= 0) {
               const pLine = lines[searchIdx].trim();
               if (pLine && !pLine.includes('|') && !pLine.startsWith('```')) {
-                precedingTitle = pLine.replace(/^(#+\s*|\*+\s*|-\s*)/, '').replace(/\*+$/, '').trim();
+                let candidate = pLine.replace(/^(#+\s*|\*+\s*|-\s*)/, '').replace(/\*+$/, '').trim();
+                
+                // If it contains a colon, check if the prefix is a good title candidate
+                if (candidate.includes(':') || candidate.includes('：')) {
+                  const colonIdx = candidate.indexOf(':') !== -1 ? candidate.indexOf(':') : candidate.indexOf('：');
+                  const prefix = candidate.substring(0, colonIdx).replace(/\*+/g, '').trim();
+                  if (prefix.length > 1 && prefix.length <= 40) {
+                    candidate = prefix;
+                  }
+                }
+                
+                // Limit title length to 40 characters maximum to avoid long description lines
+                if (candidate.length > 40) {
+                  candidate = candidate.substring(0, 40) + '...';
+                }
+                
+                precedingTitle = candidate;
                 break;
               }
               searchIdx--;

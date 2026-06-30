@@ -189,6 +189,37 @@ const parseHtmlTable = (htmlStr) => {
   return { headers: ths, rows };
 };
 
+const rebuildTableHtml = (headers, rows) => {
+  let html = '<div class="w-full my-4 space-y-2 table-export-wrapper relative">';
+  html += '<div class="flex items-center justify-between gap-4 border-b border-slate-800/60 pb-2">';
+  html += '<span class="text-xs sm:text-sm font-extrabold text-slate-350 select-none flex items-center gap-1.5">';
+  html += '📊 비교표';
+  html += '</span>';
+  html += '</div>';
+  html += '<div class="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">';
+  html += '<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] min-w-full">';
+  html += '<thead>';
+  html += '<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">';
+  headers.forEach(h => {
+    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${h}</th>`;
+  });
+  html += '</tr>';
+  html += '</thead>';
+  html += '<tbody>';
+  rows.forEach(row => {
+    html += '<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">';
+    row.forEach(cell => {
+      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  html += '</table>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+};
+
 const parseAcronymContent = (content) => {
   const lines = (content || '').split('\n');
   const rows = [];
@@ -4608,6 +4639,7 @@ export default function App() {
   const [loadingFormulaOverviews, setLoadingFormulaOverviews] = useState(false);
   const [editingOverviewId, setEditingOverviewId] = useState(null);
   const [editingOverviewText, setEditingOverviewText] = useState('');
+  const [expandedOverviewIds, setExpandedOverviewIds] = useState({});
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
@@ -21551,8 +21583,49 @@ ${itemsStr}
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-4 select-text animate-fade-in">
-                                    <div className="markdown-body" dangerouslySetInnerHTML={{ __html: t.html }} />
+                                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in">
+                                    {(() => {
+                                      const parsed = parseHtmlTable(t.html);
+                                      return (
+                                        <table className="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] min-w-full">
+                                          <thead>
+                                            <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+                                              {parsed.headers.map((h, hIdx) => (
+                                                <th key={hIdx} className="p-2 md:p-2.5 font-black text-slate-200 border-r border-slate-800/80 last:border-r-0 select-none">{h}</th>
+                                              ))}
+                                              <th className="p-2 md:p-2.5 font-black text-rose-400 w-16 select-none">삭제</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {parsed.rows.map((row, rIdx) => (
+                                              <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10 transition-colors">
+                                                {row.map((cell, cIdx) => (
+                                                  <td key={cIdx} className="p-2 md:p-2.5 border-r border-slate-800/60 last:border-r-0 text-slate-200 font-medium text-xs md:text-sm">{cell}</td>
+                                                ))}
+                                                <td className="p-2 md:p-2.5 text-center align-middle">
+                                                  <button
+                                                    onClick={() => {
+                                                      if (window.confirm('이 행을 삭제하시겠습니까?')) {
+                                                        const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
+                                                        const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                        setFormulaTables(updatedTables);
+                                                        handleSaveFormulaTables(updatedTables, false);
+                                                        showNotification('행이 삭제되었습니다.', 'info');
+                                                      }
+                                                    }}
+                                                    className="p-1 rounded bg-slate-850 hover:bg-rose-950/75 text-slate-400 hover:text-rose-455 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20 flex items-center justify-center mx-auto"
+                                                    title="행 삭제"
+                                                  >
+                                                    <Trash2 size={11} />
+                                                  </button>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </div>
