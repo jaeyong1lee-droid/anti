@@ -20955,36 +20955,43 @@ ${itemsStr}
               <div className="w-full px-3 sm:px-6 md:px-5 pt-4 pb-2 bg-slateCustom-950/20 flex gap-2 justify-start border-b border-slate-800/40 select-none">
                 <button
                   onClick={() => setFormulaSubTab('formula')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
                     formulaSubTab === 'formula'
                       ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
                       : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
                   }`}
                 >
-                  <Sigma size={12} />
                   <span>공식</span>
                 </button>
                 <button
                   onClick={() => setFormulaSubTab('table')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
                     formulaSubTab === 'table'
                       ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
                       : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
                   }`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="inline-block"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
                   <span>표</span>
                 </button>
                 <button
                   onClick={() => setFormulaSubTab('acronym')}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
                     formulaSubTab === 'acronym'
                       ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
                       : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
                   }`}
                 >
-                  <Type size={12} />
                   <span>앞글자</span>
+                </button>
+                <button
+                  onClick={() => setFormulaSubTab('overview')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                    formulaSubTab === 'overview'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
+                      : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <span>개요</span>
                 </button>
               </div>
 
@@ -21494,6 +21501,64 @@ ${itemsStr}
                           })}
                       </div>
                     )
+                  ) : formulaSubTab === 'overview' ? (
+                    <div className="w-full space-y-6 animate-fade-in pb-20 select-text">
+                      {/* Overview Header Card */}
+                      <div className="bg-slateCustom-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                        <div className="border-b border-slate-800/80 pb-3">
+                          <h2 className="text-base md:text-lg font-black text-white">필수공식 학습 개요</h2>
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                            시험 합격을 위해 반드시 완벽히 숙지하고 있어야 하는 전공 필수 공식, 핵심 비교 표, 그리고 연상 두문자(앞글자) 자료를 제공합니다.
+                          </p>
+                        </div>
+
+                        {/* Status Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div 
+                            className="bg-slate-950/45 border border-slate-850 p-4 rounded-xl flex items-center justify-between hover:border-rose-500/30 hover:bg-slate-950/70 transition-all cursor-pointer group" 
+                            onClick={() => setFormulaSubTab('formula')}
+                          >
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-400 group-hover:text-rose-400 transition-colors">총 필수 공식</span>
+                              <h3 className="text-lg font-black text-rose-450 mt-0.5">{formulaQuestions.length}개</h3>
+                            </div>
+                            <span className="text-xl font-black text-rose-400">Σ</span>
+                          </div>
+
+                          <div 
+                            className="bg-slate-950/45 border border-slate-850 p-4 rounded-xl flex items-center justify-between hover:border-violet-500/30 hover:bg-slate-950/70 transition-all cursor-pointer group" 
+                            onClick={() => setFormulaSubTab('table')}
+                          >
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-400 group-hover:text-violet-400 transition-colors">학습용 비교 표</span>
+                              <h3 className="text-lg font-black text-violet-455 mt-0.5">{formulaTables.length}개</h3>
+                            </div>
+                            <span className="text-xl font-black text-violet-400">田</span>
+                          </div>
+
+                          <div 
+                            className="bg-slate-950/45 border border-slate-850 p-4 rounded-xl flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-950/70 transition-all cursor-pointer group" 
+                            onClick={() => setFormulaSubTab('acronym')}
+                          >
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-400 group-hover:text-emerald-400 transition-colors">두문자 암기법</span>
+                              <h3 className="text-lg font-black text-emerald-405 mt-0.5">{formulaAcronyms.length}개</h3>
+                            </div>
+                            <span className="text-xl font-black text-emerald-400">A</span>
+                          </div>
+                        </div>
+
+                        {/* Action Description */}
+                        <div className="bg-rose-950/15 border border-rose-500/10 rounded-xl p-4 text-xs leading-relaxed text-slate-350">
+                          <p className="font-bold text-rose-400 mb-1">💡 효과적인 학습 팁:</p>
+                          <ul className="list-disc pl-4 space-y-1.5">
+                            <li><strong>공식 탭</strong>에서 각 공식을 클릭해 주관식 정답을 확인하고, <strong>[공식유도]</strong> 버튼을 통해 AI 튜터에게 상세한 도출 과정을 물어보세요.</li>
+                            <li><strong>표 탭</strong>은 모범 답안에 포함된 복잡한 비교 자료를 한눈에 볼 수 있도록 모아둔 테이블입니다.</li>
+                            <li><strong>앞글자 탭</strong>에서 <strong>[재조합]</strong>을 누르면 AI가 기상천외하고 재미있는 연상 문장을 생성하여 암기를 극대화해 줍니다.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   ) : formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                     const questionMatch = (q.concept || q.question || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -22984,27 +23049,43 @@ ${itemsStr}
               <Award size={20} />
               <span className="text-[10px] font-bold tracking-tight">종합평가</span>
             </button>
-            {/* 필수공식 버튼 */}
-            <button
-              onClick={async () => {
-                await forceSaveActiveSessions();
-                setSelectedTopic(null);
-                setShowExam(false);
-                setShowTheoryExam(false);
-                setShowAnswerSheet(false);
-                handleOpenFormulaExam();
-                if (isTabletScreen) showTabletNavBriefly();
-              }}
-              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-                showFormulaExam
-                  ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg glow-rose'
-                  : 'text-rose-400 hover:text-rose-200 hover:bg-rose-950/40'
+            {/* 필수공식 버튼 4개 조합 */}
+            <div 
+              className={`grid grid-cols-2 grid-rows-2 gap-1 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
+                showFormulaExam 
+                  ? 'bg-rose-950/40 border border-rose-500/30 shadow-lg glow-rose' 
+                  : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
               }`}
-              title="전공 필수 공식 집중 평가 (주관식 인출)"
+              title="필수공식 (공식, 표, 앞글자, 개요)"
             >
-              <Sigma size={20} />
-              <span className="text-[10px] font-bold tracking-tight">필수공식</span>
-            </button>
+              {[
+                { label: '공식', tab: 'formula' },
+                { label: '표', tab: 'table' },
+                { label: '앞글자', tab: 'acronym' },
+                { label: '개요', tab: 'overview' }
+              ].map((b) => (
+                <button
+                  key={b.tab}
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                    setFormulaSubTab(b.tab);
+                    handleOpenFormulaExam();
+                    if (isTabletScreen) showTabletNavBriefly();
+                  }}
+                  className={`rounded-lg flex items-center justify-center text-[10px] font-extrabold cursor-pointer transition-all duration-150 active:scale-95 select-none ${
+                    showFormulaExam && formulaSubTab === b.tab
+                      ? 'bg-rose-600 text-white shadow-sm border border-rose-500/20'
+                      : 'bg-slateCustom-950/40 text-slate-400 hover:text-slate-200 border border-slate-850 hover:bg-slate-900/40'
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
 
             {/* 답안지 버튼 */}
             <button
