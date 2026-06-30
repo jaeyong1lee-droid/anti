@@ -12152,7 +12152,7 @@ export default function App() {
         const body = await res.json();
         if (body && body.data && Array.isArray(body.data.formulaImages) && body.data.formulaImages.length > 0) {
           loadedData = body.data.formulaImages;
-          console.log('[Sync] Loaded formula images from database.');
+          console.log(`[Sync] Loaded ${loadedData.length} formula images from database.`);
         }
       }
     } catch (err) {
@@ -12167,7 +12167,7 @@ export default function App() {
           if (Array.isArray(parsed)) {
             loadedData = parsed;
             fallbackToLocal = true;
-            console.log('[Fallback] Loaded formula images from LocalStorage.');
+            console.log(`[Fallback] Loaded ${loadedData.length} formula images from LocalStorage.`);
           }
         }
       } catch (err) {
