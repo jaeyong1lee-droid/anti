@@ -21709,7 +21709,7 @@ ${itemsStr}
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full space-y-6 animate-fade-in">
+                      <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden animate-fade-in">
                         {formulaTables
                           .filter(t => {
                             return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -21718,7 +21718,7 @@ ${itemsStr}
                             const idx = formulaTables.indexOf(t);
                             const isExpanded = !!expandedTableIds[t.id];
                             return (
-                              <div key={t.id} className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4">
+                              <div key={t.id} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 w-full">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     {/* T 번호 배지 */}
@@ -21951,7 +21951,7 @@ ${itemsStr}
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full space-y-6 animate-fade-in">
+                      <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden animate-fade-in">
                         {formulaAcronyms
                           .filter(ac => {
                             return (ac.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
@@ -21960,7 +21960,7 @@ ${itemsStr}
                           .map((ac, idx) => {
                             if (ac.isLoading) {
                               return (
-                                <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg animate-pulse select-none">
+                                <div key={ac.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 animate-pulse select-none w-full">
                                   <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
                                     <span className="text-[11px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
                                       AI
@@ -22279,7 +22279,7 @@ ${itemsStr}
                       </div>
 
                       {/* AI Generated Overviews List */}
-                      <div className="w-full space-y-6">
+                      <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden shadow-md">
                         {formulaOverviews
                           .filter(ov => {
                             return (ov.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
@@ -22288,7 +22288,7 @@ ${itemsStr}
                           .map((ov, idx) => {
                             if (ov.isLoading) {
                               return (
-                                <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg animate-pulse select-none">
+                                <div key={ov.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 animate-pulse select-none w-full">
                                   <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
                                     <span className="text-[11px] font-black bg-rose-500/10 text-rose-455 px-2 py-0.5 rounded border border-rose-500/20 shrink-0">
                                       AI
@@ -22309,7 +22309,7 @@ ${itemsStr}
                             const isExpanded = !!expandedOverviewIds[ov.id];
                             const isEditing = editingOverviewId === ov.id;
                             return (
-                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4 shadow-md transition-all duration-200 w-full max-w-full overflow-hidden">
+                              <div key={ov.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
@@ -22505,7 +22505,7 @@ ${itemsStr}
                       </button>
                     </div>
                   ) : (
-                    <div className="w-full space-y-5">
+                    <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden">
                       {formulaQuestions
                         .map((q, originalIdx) => ({ ...q, originalIdx }))
                         .filter(q => {
@@ -22520,7 +22520,7 @@ ${itemsStr}
                           const isOutputVisible = isNewEmptyCard || (!!formulaRevealed[idx] && !isInputVisible);
 
                           return (
-                            <div key={idx} id={`formula-card-${idx}`} className="formula-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                            <div key={idx} id={`formula-card-${idx}`} className="formula-card-item px-2.5 py-4 sm:p-5 space-y-4 scroll-mt-2 transition-all duration-300 w-full">
                               {/* Title Row */}
                               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                 {/* Row 1: Q badge & Title */}
