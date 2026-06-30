@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 // 1. PC Right-side Upload Panel
 export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFormulaImages, API_BASE, showNotification }) {
@@ -189,6 +189,14 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [refreshingId, setRefreshingId] = useState(null);
+  const [collapsedIds, setCollapsedIds] = useState({});
+
+  const toggleCollapse = (id) => {
+    setCollapsedIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const handleDeleteImageCard = async (id, title) => {
     if (window.confirm(`[${title}] 그림 카드를 필수암기 리스트에서 삭제하시겠습니까?`)) {
@@ -340,6 +348,15 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
               {/* Actions */}
               <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
                 <button
+                  onClick={() => toggleCollapse(img.id)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                  title={collapsedIds[img.id] ? "상세 정보 펼치기" : "상세 정보 접기"}
+                >
+                  {collapsedIds[img.id] ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                  <span>{collapsedIds[img.id] ? '열기' : '접기'}</span>
+                </button>
+
+                <button
                   onClick={() => handleRefreshImageCard(img.id, img.base64Image, img.description, img.title)}
                   disabled={refreshingId === img.id}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
@@ -361,43 +378,45 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
             </div>
 
             {/* 2-Column Comparison Layout (Left: Image, Right: AI Analysis & Metaphor) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full">
-              {/* Left Column: Image */}
-              <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
-                <img
-                  src={img.base64Image}
-                  className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
-                  alt={img.title}
-                />
-              </div>
-
-              {/* Right Column: AI Analysis */}
-              <div className="flex flex-col gap-3">
-                {/* 1. AI Analysis details */}
-                <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-[14px] leading-relaxed text-left">
-                  <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
-                  {LatexRenderer ? (
-                    <div className="text-white leading-relaxed select-text font-semibold">
-                      <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
-                    </div>
-                  ) : (
-                    <p className="font-bold text-white leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
-                  )}
+            {!collapsedIds[img.id] && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full animate-fade-in">
+                {/* Left Column: Image */}
+                <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
+                  <img
+                    src={img.base64Image}
+                    className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
+                    alt={img.title}
+                  />
                 </div>
 
-                {/* 2. Intuitive metaphors */}
-                <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-[14px] font-medium leading-relaxed text-left">
-                  <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
-                  {LatexRenderer ? (
-                    <div className="text-slate-300 leading-relaxed select-text">
-                      <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
-                    </div>
-                  ) : (
-                    <p className="text-slate-300 leading-relaxed select-text">{img.intuitive}</p>
-                  )}
+                {/* Right Column: AI Analysis */}
+                <div className="flex flex-col gap-3">
+                  {/* 1. AI Analysis details */}
+                  <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-[14px] leading-relaxed text-left">
+                    <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
+                    {LatexRenderer ? (
+                      <div className="text-white leading-relaxed select-text font-semibold">
+                        <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                      </div>
+                    ) : (
+                      <p className="font-bold text-white leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
+                    )}
+                  </div>
+
+                  {/* 2. Intuitive metaphors */}
+                  <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-[14px] font-medium leading-relaxed text-left">
+                    <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                    {LatexRenderer ? (
+                      <div className="text-slate-300 leading-relaxed select-text">
+                        <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                      </div>
+                    ) : (
+                      <p className="text-slate-300 leading-relaxed select-text">{img.intuitive}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
           </div>
         );
