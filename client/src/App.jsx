@@ -21650,6 +21650,16 @@ ${itemsStr}
                 >
                   <span>개요</span>
                 </button>
+                <button
+                  onClick={() => setFormulaSubTab('image')}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                    formulaSubTab === 'image'
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 scale-[1.02] border border-rose-500/35'
+                      : 'bg-slateCustom-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <span>그림</span>
+                </button>
               </div>
 
               {/* Left: Formula Body (Expanded to take full wrapper width with moved scrollbar) */}
@@ -22520,6 +22530,28 @@ ${itemsStr}
                               </div>
                             );
                           })}
+                      </div>
+                    </div>
+                  ) : formulaSubTab === 'image' ? (
+                    <div className="w-full space-y-6 animate-fade-in pb-20 select-text">
+                      <div className="bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 md:p-6 space-y-4">
+                        <div className="border-b border-slate-800/80 pb-3">
+                          <h2 className="text-base md:text-lg font-black text-white">필수 암기 그림</h2>
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                            암기 및 이해를 돕기 위한 필수 공학 그림 자료입니다.
+                          </p>
+                        </div>
+                        <div className="py-12 flex flex-col items-center justify-center gap-4 text-center">
+                          <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-white">보관된 그림이 없습니다</h4>
+                            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                              비교나 도해에 필요한 공학 그림들이 준비되는 대로 여기에 보관될 예정입니다.
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : formulaQuestions.filter(q => {
@@ -24023,7 +24055,7 @@ ${itemsStr}
             <div 
               className={`grid grid-cols-2 grid-rows-2 gap-1 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 p-1 ${
                 showFormulaExam 
-                  ? 'bg-rose-950/40 border border-rose-500/30 shadow-lg glow-rose' 
+                  ? 'bg-rose-955/40 border border-rose-500/30 shadow-lg glow-rose' 
                   : 'bg-slate-900/60 border border-slate-800 hover:bg-slate-800/20'
               }`}
               title="필수공식 (공식, 표, 앞글자, 개요)"
@@ -24056,6 +24088,29 @@ ${itemsStr}
                 </button>
               ))}
             </div>
+
+            {/* 그림 단독 버튼 */}
+            <button
+              onClick={async () => {
+                await forceSaveActiveSessions();
+                setSelectedTopic(null);
+                setShowExam(false);
+                setShowTheoryExam(false);
+                setShowAnswerSheet(false);
+                setFormulaSubTab('image');
+                handleOpenFormulaExam();
+                if (isTabletScreen) showTabletNavBriefly();
+              }}
+              className={`flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showFormulaExam && formulaSubTab === 'image'
+                  ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-lg glow-purple'
+                  : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+              title="필수 암기 그림 자료"
+            >
+              <Image size={20} />
+              <span className="text-[10px] font-bold tracking-tight">그림</span>
+            </button>
 
             {/* 답안지 버튼 */}
             <button
