@@ -4804,9 +4804,10 @@ export default function App() {
     
     return questionsList.map(q => {
       if (q && q.originalId && (q.subtype === '그림' || q.type === '주관식 (그림)' || q.mixedType === 'image')) {
-        const origImg = currentFormulaImages.find(img => img.id === q.originalId);
+        const cleanId = String(q.originalId).replace(/\$/g, '').trim();
+        const origImg = currentFormulaImages.find(img => img.id === cleanId);
         if (origImg && origImg.base64Image) {
-          return { ...q, imageSrc: origImg.base64Image };
+          return { ...q, originalId: cleanId, imageSrc: origImg.base64Image };
         }
       }
       return q;

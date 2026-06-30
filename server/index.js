@@ -7296,8 +7296,10 @@ app.get('/api/session/review', async (req, res) => {
           data.questions = data.questions.map(q => {
             const healed = healQuizQuestionObject(q);
             if (healed && healed.originalId && (healed.subtype === '그림' || healed.type === '주관식 (그림)' || healed.mixedType === 'image')) {
-              const origImg = formulaImages.find(img => img.id === healed.originalId);
+              const cleanId = String(healed.originalId).replace(/\$/g, '').trim();
+              const origImg = formulaImages.find(img => img.id === cleanId);
               if (origImg && origImg.base64Image) {
+                healed.originalId = cleanId;
                 healed.imageSrc = origImg.base64Image;
               }
             }

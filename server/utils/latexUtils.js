@@ -478,7 +478,8 @@ export function healDeep(obj, parentKey = null, context = null) {
     const skipKeys = [
       'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
       'answersheet_report_id', 'type', 'subtype', 'keywords',
-      'imageSrc', 'image_src', 'base64Image', 'base64_image'
+      'imageSrc', 'image_src', 'base64Image', 'base64_image',
+      'originalId', 'original_id'
     ];
     if (parentKey && skipKeys.includes(parentKey)) {
       let cleanVal = obj.trim();
