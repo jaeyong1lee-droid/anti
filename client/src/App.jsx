@@ -8299,6 +8299,52 @@ export default function App() {
               mixedType: 'overview',
               originalId: item.id
             };
+          } else if (item.mixedType === 'image') {
+            let specificQuestion = '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)와 공학적 의미(또는 설명)를 서술하시오.';
+            try {
+              const qRes = await fetch(`${API_BASE}/api/image-standards/generate-question`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: item.title,
+                  analysis: item.analysis || '',
+                  intuitive: item.intuitive || ''
+                })
+              });
+              if (qRes.ok) {
+                const qBody = await qRes.json();
+                if (qBody && qBody.success && qBody.question) {
+                  specificQuestion = qBody.question;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to generate specific question, using fallback:', e);
+            }
+
+            const explanationHtml = `
+              <div class="space-y-3 text-left">
+                <div class="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200">
+                  <span class="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">📊 그림/그래프 공학적 분석</span>
+                  <p class="font-bold text-white leading-relaxed select-text">${item.analysis || ''}</p>
+                </div>
+                <div class="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355">
+                  <span class="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">💡 직관적 본질 (비유)</span>
+                  <p class="text-slate-300 leading-relaxed select-text">${item.intuitive || ''}</p>
+                </div>
+              </div>
+            `;
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (그림)',
+              subtype: '그림',
+              question: specificQuestion,
+              imageSrc: item.base64Image,
+              answer: item.title,
+              concept: item.title,
+              explanation: explanationHtml,
+              mixedType: 'image',
+              originalId: item.id
+            };
           } else {
             const parsed = parseAcronymContent(item.content);
             const blankRows = parsed.rows.map(() => {
@@ -8784,6 +8830,7 @@ export default function App() {
         let tables = [];
         let acronyms = [];
         let overviews = [];
+        let images = [];
         
         try {
           const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
@@ -8807,8 +8854,15 @@ export default function App() {
               overviews = oBody.data.formulaOverviews;
             }
           }
+          const iRes = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
+          if (iRes.ok) {
+            const iBody = await iRes.json();
+            if (iBody && iBody.data && Array.isArray(iBody.data.formulaImages)) {
+              images = iBody.data.formulaImages;
+            }
+          }
         } catch (err) {
-          console.warn('Sync tables/acronyms/overviews inside handleRefreshReviewQuestions failed:', err);
+          console.warn('Sync tables/acronyms/overviews/images inside handleRefreshReviewQuestions failed:', err);
         }
 
         setFormulaTables(tables);
@@ -8818,19 +8872,86 @@ export default function App() {
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
           ...acronyms.map(a => ({ ...a, mixedType: 'acronym' })),
-          ...overviews.map(o => ({ ...o, mixedType: 'overview' }))
+          ...overviews.map(o => ({ ...o, mixedType: 'overview' })),
+          ...images.map(img => {
+            let itemDate = '';
+            if (img.id && img.id.startsWith('img_')) {
+              try {
+                const ts = parseInt(img.id.replace('img_', ''), 10);
+                if (!isNaN(ts)) {
+                  itemDate = new Date(ts).toISOString();
+                }
+              } catch (e) {}
+            }
+            return {
+              ...img,
+              mixedType: 'image',
+              createdAt: img.createdAt || itemDate || new Date().toISOString()
+            };
+          })
         ];
+
+        // Filter and sort items dynamically (today first, then others)
+        const todayItems = combinedItems.filter(item => {
+          if (!item.createdAt) return false;
+          return item.createdAt.startsWith(referenceDate);
+        });
         
+        const otherItems = combinedItems.filter(item => {
+          if (!item.createdAt) return true;
+          return !item.createdAt.startsWith(referenceDate);
+        });
+
         // Use a new random seed so that we get a fresh shuffle when the user clicks 'AI 재출제'
         const rng = getSeededRandom(Math.random().toString());
-        const shuffled = [...combinedItems];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(rng() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
+        const shuffleWithRng = (arr) => {
+          const res = [...arr];
+          for (let i = res.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [res[i], res[j]] = [res[j], res[i]];
+          }
+          return res;
+        };
+
+        const shuffledToday = shuffleWithRng(todayItems);
+        const shuffledOthers = shuffleWithRng(otherItems);
+        const finalPool = [...shuffledToday, ...shuffledOthers];
+
+        // --- 100% Robust Category Selection Algorithm ---
+        const tablesPool = finalPool.filter(x => x.mixedType === 'table');
+        const acronymsPool = finalPool.filter(x => x.mixedType === 'acronym');
+        const overviewsPool = finalPool.filter(x => x.mixedType === 'overview');
+        const imagesPool = finalPool.filter(x => x.mixedType === 'image');
         
-        const selectedItems = shuffled.slice(0, 7);
-        const questions = selectedItems.map((item, qIdx) => {
+        const selectedItems = [];
+        
+        // 1. Pick 1 image if available (ensures at least 1 image is always shown!)
+        if (imagesPool.length > 0) selectedItems.push(imagesPool.shift());
+        // 2. Pick 1 overview if available
+        if (overviewsPool.length > 0) selectedItems.push(overviewsPool.shift());
+        // 3. Pick 1 acronym if available
+        if (acronymsPool.length > 0) selectedItems.push(acronymsPool.shift());
+        // 4. Pick 1 table if available
+        if (tablesPool.length > 0) selectedItems.push(tablesPool.shift());
+        
+        // 5. Keep picking from remaining pools round-robin until we have 7 items
+        const pools = [imagesPool, overviewsPool, acronymsPool, tablesPool];
+        let poolIdx = 0;
+        let poolAttempts = 0;
+        while (selectedItems.length < 7 && poolAttempts < 100) {
+          poolAttempts++;
+          const activePool = pools[poolIdx];
+          if (activePool && activePool.length > 0) {
+            selectedItems.push(activePool.shift());
+          }
+          poolIdx = (poolIdx + 1) % pools.length;
+          
+          if (pools.every(p => p.length === 0)) {
+            break;
+          }
+        }
+
+        const questions = await Promise.all(selectedItems.map(async (item, qIdx) => {
           if (item.mixedType === 'table') {
             const parsed = parseHtmlTable(item.html);
             const answers = {};
@@ -8915,7 +9036,7 @@ export default function App() {
               originalId: item.id
             };
           }
-        });
+        }));
         
         const activeSid = `sess_mixed_${referenceDate}`;
         setReviewSessionId(activeSid);
