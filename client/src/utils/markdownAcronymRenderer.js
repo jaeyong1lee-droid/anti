@@ -10,7 +10,7 @@ function renderContentAsHtmlTable(content) {
     let html = '<div class="overflow-x-auto w-full mt-2"><table class="w-full text-left border-collapse text-xs select-text">';
     html += '<thead>';
     html += '<tr class="border-b border-slate-800 bg-slateCustom-950/40">';
-    html += '<th class="p-2.5 font-black text-slate-300 text-center w-16">두문자</th>';
+    html += '<th class="p-2.5 font-black text-slate-300 text-center w-16">두</th>';
     html += '<th class="p-2.5 font-black text-slate-300 text-center w-28">암기단어</th>';
     html += '<th class="p-2.5 font-black text-slate-300">설명</th>';
     html += '</tr>';
@@ -25,7 +25,7 @@ function renderContentAsHtmlTable(content) {
       const col1 = parts[1];
       const col2 = parts[2];
       const col3 = parts[3];
-      if (col1 === '두문자' || col1.includes('---')) continue;
+      if (col1 === '두문자' || col1 === '두' || col1.includes('---')) continue;
       hasRows = true;
       html += `<tr class="border-b border-slate-900/60 hover:bg-slate-900/10">`;
       html += `<td class="p-2.5 font-extrabold text-emerald-400 text-center">${col1}</td>`;

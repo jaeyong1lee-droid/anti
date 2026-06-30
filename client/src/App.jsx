@@ -220,6 +220,29 @@ const rebuildTableHtml = (headers, rows) => {
   return html;
 };
 
+const parseOverviewContent = (content) => {
+  const result = { definition: '', mechanism: '', intuitive: '' };
+  if (!content) return result;
+
+  const lines = content.split('\n');
+  for (const line of lines) {
+    if (!line.includes('|')) continue;
+    const parts = line.split('|').map(p => p.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const key = parts[0];
+    const val = parts[1];
+    
+    if (key.includes('개요')) {
+      result.definition = val;
+    } else if (key.includes('메커니즘')) {
+      result.mechanism = val;
+    } else if (key.includes('직관적의미') || key.includes('직관적')) {
+      result.intuitive = val;
+    }
+  }
+  return result;
+};
+
 const parseAcronymContent = (content) => {
   const lines = (content || '').split('\n');
   const rows = [];
@@ -237,7 +260,7 @@ const parseAcronymContent = (content) => {
         const col1 = parts[1]; // 두문자
         const col2 = parts[2]; // 암기단어
         const col3 = parts[3]; // 설명
-        if (!col1 || col1 === '두문자' || col1.includes('---')) continue;
+        if (!col1 || col1 === '두문자' || col1 === '두' || col1.includes('---')) continue;
         rows.push({ acronym: col1, word: col2, description: col3 });
       }
     }
@@ -1287,7 +1310,7 @@ const getSelectionTextWithLatex = (selection) => {
 };
 
 // Dynamic KaTeX loader & Math text renderer
-const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false, questionKey = "", isRealTimeTutor = false }) {
+const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, className = "", enableAddFormula = false, formulaSource = "main", placeholderIfHeavy = false, popupTitle = "", isMarkdown = false, highlightBold = false, questionKey = "", isRealTimeTutor = false, hideTableWrapper = false }) {
   if (!text) return null;
 
   const longPressTimer = useRef(null);
@@ -1514,7 +1537,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   if (typeof cleanedText === 'string') {
-    cleanedText = convertMarkdownTablesToHtml(cleanedText);
+    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
   }
 
@@ -2254,7 +2277,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
           </colgroup>
           <thead>
             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-              <th className="p-2 font-extrabold border-r border-slate-800 select-none">두문자</th>
+              <th className="p-2 font-extrabold border-r border-slate-800 select-none">두</th>
               <th className="p-2 font-extrabold select-none">내용 (암기단어 : 설명)</th>
             </tr>
           </thead>
@@ -8110,7 +8133,7 @@ export default function App() {
               sentence: parsed.sentence,
               correctRows: parsed.rows,
               tableData: {
-                headers: ['두문자', '내용 (암기단어 : 설명)'],
+                headers: ['두', '내용 (암기단어 : 설명)'],
                 rows: blankRows
               },
               explanation: item.content,
@@ -8658,7 +8681,7 @@ export default function App() {
               sentence: parsed.sentence,
               correctRows: parsed.rows,
               tableData: {
-                headers: ['두문자', '내용 (암기단어 : 설명)'],
+                headers: ['두', '내용 (암기단어 : 설명)'],
                 rows: blankRows
               },
               explanation: item.content,
@@ -11825,6 +11848,50 @@ export default function App() {
     return loadedData;
   };
 
+  const handleRefreshOverview = async (ov) => {
+    setFormulaOverviews(prev => prev.map(item => item.id === ov.id ? { ...item, isLoading: true } : item));
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: ov.title,
+          image: null,
+          overviewMode: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '개요 생성 실패');
+
+      const aiText = (data.text || '').trim();
+
+      setFormulaOverviews(prev => {
+        const updated = prev.map(item => {
+          if (item.id === ov.id) {
+            return {
+              ...item,
+              content: aiText,
+              isLoading: false,
+              createdAt: new Date().toISOString()
+            };
+          }
+          return item;
+        });
+        handleSaveFormulaOverviews(updated, false);
+        return updated;
+      });
+
+      showNotification(`[${ov.title}] 개요가 재생성되었습니다!`, 'success');
+    } catch (err) {
+      console.error('Failed to regenerate overview:', err);
+      setFormulaOverviews(prev => prev.map(item => item.id === ov.id ? { ...item, isLoading: false } : item));
+      showNotification(`재생성 실패: ${err.message}`, 'error');
+    }
+  };
+
   const handleSaveFormulaOverviews = async (overviews = formulaOverviews, showToast = true) => {
     try {
       setFormulaOverviews(overviews);
@@ -11893,7 +11960,7 @@ export default function App() {
         const col1 = parts[0];
         const col2 = parts[1];
         const col3 = parts[2];
-        if (col1 === '두문자' || col1.includes('---')) continue;
+        if (col1 === '두문자' || col1 === '두' || col1.includes('---')) continue;
         rows.push({
           acronym: col1,
           word: col2,
@@ -21664,18 +21731,71 @@ ${itemsStr}
                                       return (
                                         <table className="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] min-w-full">
                                           <thead>
-                                            <tr className="bg-slate-900/80 text-slate-350 border-b border-slate-800">
+                                            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                               {parsed.headers.map((h, hIdx) => (
-                                                <th key={hIdx} className="p-2 md:p-2.5 font-black text-slate-200 border-r border-slate-800/80 last:border-r-0 select-none">{h}</th>
+                                                <th key={hIdx} className="p-1 border-r border-slate-800/80 last:border-r-0 select-none align-middle">
+                                                  <input
+                                                    type="text"
+                                                    value={h}
+                                                    onChange={(e) => {
+                                                      const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? e.target.value : hdr);
+                                                      const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                      setFormulaTables(updatedTables);
+                                                    }}
+                                                    onBlur={() => {
+                                                      handleSaveFormulaTables(formulaTables, false);
+                                                    }}
+                                                    className="w-full text-center bg-transparent border-0 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-xs md:text-sm"
+                                                  />
+                                                </th>
                                               ))}
-                                              <th className="p-2 md:p-2.5 font-black text-rose-400 w-16 select-none">삭제</th>
+                                              <th className="p-2 md:p-2.5 font-black text-rose-400 w-24 select-none align-middle">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                  <button
+                                                    onClick={() => {
+                                                      const emptyRow = Array(parsed.headers.length).fill('');
+                                                      const updatedRows = [...parsed.rows, emptyRow];
+                                                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                      setFormulaTables(updatedTables);
+                                                      handleSaveFormulaTables(updatedTables, false);
+                                                      showNotification('새 행이 추가되었습니다.', 'success');
+                                                    }}
+                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
+                                                    title="새 행 추가"
+                                                  >
+                                                    + 행추가
+                                                  </button>
+                                                  <span>삭제</span>
+                                                </div>
+                                              </th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {parsed.rows.map((row, rIdx) => (
                                               <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10 transition-colors">
                                                 {row.map((cell, cIdx) => (
-                                                  <td key={cIdx} className="p-2 md:p-2.5 border-r border-slate-800/60 last:border-r-0 text-slate-200 font-medium text-xs md:text-sm">{cell}</td>
+                                                  <td key={cIdx} className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle">
+                                                    <input
+                                                      type="text"
+                                                      value={cell}
+                                                      onChange={(e) => {
+                                                        const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
+                                                          rIdx2 === rIdx 
+                                                            ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? e.target.value : cellVal)
+                                                            : rowVal
+                                                        );
+                                                        const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                        setFormulaTables(updatedTables);
+                                                      }}
+                                                      onBlur={() => {
+                                                        handleSaveFormulaTables(formulaTables, false);
+                                                      }}
+                                                      className="w-full text-center bg-transparent border-0 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-xs md:text-sm"
+                                                    />
+                                                  </td>
                                                 ))}
                                                 <td className="p-2 md:p-2.5 text-center align-middle">
                                                   <button
@@ -21900,12 +22020,17 @@ ${itemsStr}
                                         </div>
                                       </div>
                                       <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl">
-                                        <table className="w-full text-left border-collapse text-xs select-text">
+                                        <table className="w-full text-left border-collapse text-xs select-text table-fixed min-w-[548px]">
+                                          <colgroup>
+                                            <col style={{ width: '48px' }} />
+                                            <col style={{ width: '380px' }} />
+                                            <col style={{ width: '120px' }} />
+                                          </colgroup>
                                           <thead>
                                             <tr className="border-b border-slate-800/80 bg-slateCustom-950/60">
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-20 select-none border-r border-slate-800/80">두문자</th>
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center select-none border-r border-slate-800/80">두</th>
                                               <th className="p-2 md:p-2.5 font-black text-slate-200 select-none border-r border-slate-800/80">내용 (암기단어 : 설명)</th>
-                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center w-36 select-none">
+                                              <th className="p-2 md:p-2.5 font-black text-slate-200 text-center select-none">
                                                 <div className="flex items-center justify-center gap-2">
                                                   <button
                                                     onClick={() => handleAddAcronymRow(ac.id)}
@@ -22083,13 +22208,13 @@ ${itemsStr}
                             const isExpanded = !!expandedOverviewIds[ov.id];
                             const isEditing = editingOverviewId === ov.id;
                             return (
-                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-md transition-all duration-200">
+                              <div key={ov.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-md transition-all duration-200 w-full max-w-full overflow-hidden">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
                                       O{idx + 1}
                                     </span>
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-grow min-w-0">
                                       {isEditing ? (
                                         <div className="flex items-center gap-2 w-full">
                                           <input
@@ -22122,7 +22247,7 @@ ${itemsStr}
                                           </button>
                                           <button
                                             onClick={() => setEditingOverviewId(null)}
-                                            className="px-2 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                            className="px-2 py-1 bg-slate-800 text-slate-355 border border-slate-700 text-xs font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
                                           >
                                             취소
                                           </button>
@@ -22146,6 +22271,17 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 새로고침 버튼 */}
+                                    <button
+                                      onClick={() => handleRefreshOverview(ov)}
+                                      disabled={ov.isLoading}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
+                                      title="AI 개요 재생성"
+                                    >
+                                      <RefreshCw size={12} className={ov.isLoading ? "animate-spin text-rose-500" : ""} />
+                                      <span>새로고침</span>
+                                    </button>
+
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
@@ -22154,7 +22290,7 @@ ${itemsStr}
                                           [ov.id]: !prev[ov.id]
                                         }));
                                       }}
-                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                                       title={isExpanded ? "접기" : "열기"}
                                     >
                                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -22180,11 +22316,68 @@ ${itemsStr}
                                   </div>
                                 </div>
 
-                                {isExpanded && (
-                                  <div className="text-slate-300 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body">
-                                    <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" />
-                                  </div>
-                                )}
+                                {isExpanded && (() => {
+                                  const parsed = parseOverviewContent(ov.content);
+                                  const hasParsedData = parsed.definition || parsed.mechanism || parsed.intuitive;
+                                  
+                                  if (hasParsedData) {
+                                    const steps = parsed.mechanism
+                                      ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean)
+                                      : [];
+                                    return (
+                                      <div className="space-y-4 animate-fade-in border border-slate-800/80 bg-slateCustom-950/25 p-4 rounded-2xl">
+                                        {/* 1. 개요 */}
+                                        {parsed.definition && (
+                                          <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
+                                            <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
+                                            <p className="font-bold text-white leading-relaxed">{parsed.definition}</p>
+                                          </div>
+                                        )}
+
+                                        {/* 2. 메커니즘 (세로 단계별 카드) */}
+                                        {steps.length > 0 && (
+                                          <div className="space-y-2 text-left">
+                                            <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
+                                            <div className="flex flex-col gap-1 w-full">
+                                              {steps.map((step, sIdx) => (
+                                                <React.Fragment key={sIdx}>
+                                                  <div className="bg-slate-900/60 border border-slate-800/80 p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                                                    <div className="flex gap-2.5 items-start">
+                                                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                                        {sIdx + 1}
+                                                      </span>
+                                                      <p className="flex-1 text-slate-250 leading-relaxed">{step}</p>
+                                                    </div>
+                                                  </div>
+                                                  {sIdx < steps.length - 1 && (
+                                                    <div className="flex justify-center my-1 select-none">
+                                                      <span className="text-rose-500/40 text-[11px] font-black">↓</span>
+                                                    </div>
+                                                  )}
+                                                </React.Fragment>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* 3. 직관적 의미 */}
+                                        {parsed.intuitive && (
+                                          <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
+                                            <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                                            <p className="text-slate-300 leading-relaxed">{parsed.intuitive}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+
+                                  // Fallback for old overview text content
+                                  return (
+                                    <div className="text-slate-300 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
+                                      <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })}

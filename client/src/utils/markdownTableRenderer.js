@@ -14,7 +14,7 @@ function parseRow(rowText) {
   return cells.map(cell => cell.trim());
 }
 
-function renderTableToHtml(tableLines, precedingTitle = "") {
+function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false) {
   if (tableLines.length < 2) return tableLines.join('\n');
 
   let headers = parseRow(tableLines[0]);
@@ -33,6 +33,42 @@ function renderTableToHtml(tableLines, precedingTitle = "") {
   });
   
   let html = '';
+
+  if (hideWrapper) {
+    // Render clean table container without Comparison Table card, buttons, or extra headers
+    html += `<div class="w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
+    html += `<table class="w-full table-auto text-center border-collapse text-[13px] sm:text-[15px] ${
+      colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
+    }">`;
+    html += `<thead>`;
+    html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
+    headers.forEach(h => {
+      html += `<th class="p-2 sm:p-2.5 font-black border-r border-slate-800 last:border-r-0">${h}</th>`;
+    });
+    html += `</tr>`;
+    html += `</thead>`;
+    html += `<tbody>`;
+    bodyRows.forEach(row => {
+      if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
+      
+      html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
+      row.forEach(cell => {
+        html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${cell}</td>`;
+      });
+      if (row.length < colCount) {
+        for (let k = row.length; k < colCount; k++) {
+          html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold"></td>`;
+        }
+      }
+      html += `</tr>`;
+    });
+    html += `</tbody>`;
+    html += `</table>`;
+    html += `</div>`;
+    
+    return html;
+  }
+
   const cleanTitle = precedingTitle ? precedingTitle.replace(/["']/g, '&quot;') : '비교표';
 
   html += `<div class="w-full my-4 space-y-2 table-export-wrapper relative">`;
@@ -89,9 +125,10 @@ function renderTableToHtml(tableLines, precedingTitle = "") {
  * Extremely robust against spacing variations in the separator line (e.g. |:---| or | : - - - |).
  * 
  * @param {string} text 
+ * @param {boolean} hideWrapper
  * @returns {string} Converted HTML string
  */
-export function convertMarkdownTablesToHtml(text) {
+export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
   if (!text) return text;
   
   const lines = text.split('\n');
@@ -148,7 +185,7 @@ export function convertMarkdownTablesToHtml(text) {
               searchIdx--;
             }
           }
-          const htmlTable = renderTableToHtml(tableLines, precedingTitle);
+          const htmlTable = renderTableToHtml(tableLines, precedingTitle, hideWrapper);
           processedLines.push(htmlTable);
           i = j; // Advance past the table block
           continue;
@@ -162,4 +199,3 @@ export function convertMarkdownTablesToHtml(text) {
   
   return processedLines.join('\n');
 }
-
