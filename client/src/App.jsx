@@ -24881,3 +24881,5 @@ function DraggableFloatingButton({ currentTab, onToggle, theme = 'violet', onPul
     </div>
   );
 }
+
+// Vercel build trigger comment - fresh push
