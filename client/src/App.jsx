@@ -8491,6 +8491,147 @@ export default function App() {
     const currentRefreshScheduleId = selectedTopic.schedule_id;
 
     try {
+      if (currentRefreshTopicId === 'mixed_acronym_table') {
+        const deleteUrl = `${API_BASE}/api/session/review/topic/mixed_acronym_table`;
+        await fetch(deleteUrl, { method: 'DELETE' })
+          .catch(e => console.warn('복습 세션 초기화 실패:', e));
+        
+        const progressKey = `anti_review_progress_${currentRefreshTopicId}`;
+        localStorage.removeItem(progressKey);
+
+        let tables = [];
+        let acronyms = [];
+        
+        try {
+          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
+          if (tRes.ok) {
+            const tBody = await tRes.json();
+            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
+              tables = tBody.data.formulaTables;
+            }
+          }
+          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
+          if (aRes.ok) {
+            const aBody = await aRes.json();
+            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
+              acronyms = aBody.data.formulaAcronyms;
+            }
+          }
+        } catch (err) {
+          console.warn('Sync tables/acronyms inside handleRefreshReviewQuestions failed:', err);
+        }
+
+        setFormulaTables(tables);
+        setFormulaAcronyms(acronyms);
+        
+        const combinedItems = [
+          ...tables.map(t => ({ ...t, mixedType: 'table' })),
+          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' }))
+        ];
+        
+        // Use a new random seed so that we get a fresh shuffle when the user clicks 'AI 재출제'
+        const rng = getSeededRandom(Math.random().toString());
+        const shuffled = [...combinedItems];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        const selectedItems = shuffled.slice(0, 5);
+        const questions = selectedItems.map((item, qIdx) => {
+          if (item.mixedType === 'table') {
+            const parsed = parseHtmlTable(item.html);
+            const answers = {};
+            const rows = parsed.rows.map((row, rIdx) => {
+              return row.map((cell, cIdx) => {
+                if (cIdx === 0) return cell;
+                const inputId = `INPUT_${rIdx}_${cIdx}`;
+                answers[inputId] = cell;
+                return `[${inputId}]`;
+              });
+            });
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (표채우기)',
+              subtype: '표채우기',
+              question: item.title,
+              tableData: {
+                headers: parsed.headers,
+                rows: rows
+              },
+              answers: answers,
+              explanation: item.html,
+              mixedType: 'table',
+              originalId: item.id
+            };
+          } else {
+            const parsed = parseAcronymContent(item.content);
+            const blankRows = parsed.rows.map(() => {
+              return ['', ''];
+            });
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (앞글자)',
+              question: item.title,
+              acronym: parsed.acronym,
+              sentence: parsed.sentence,
+              correctRows: parsed.rows,
+              tableData: {
+                headers: ['두문자', '내용 (암기단어 : 설명)'],
+                rows: blankRows
+              },
+              explanation: item.content,
+              mixedType: 'acronym',
+              originalId: item.id
+            };
+          }
+        });
+        
+        const activeSid = `sess_mixed_${referenceDate}`;
+        setReviewSessionId(activeSid);
+        
+        const topicCategory = selectedTopic.category || '믹스';
+        setAiQuestions(questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
+        setSelectedAnswers({});
+        setRevealedQuestions({});
+        setTableAnswers({});
+        setTableGradingResults({});
+        setTutorAnswers({});
+        setTutorInputText({});
+        setChatHistory([]);
+        
+        lastSyncStateRef.current = {
+          selectedAnswers: {},
+          revealedQuestions: {},
+          tableAnswers: {},
+          tableGradingResults: {},
+          tutorAnswers: {},
+          tutorInputText: {},
+          chatHistory: []
+        };
+        
+        await fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: currentRefreshTopicId,
+            scheduleId: currentRefreshScheduleId,
+            sessionId: activeSid,
+            questions: questions,
+            selectedAnswers: {},
+            revealedQuestions: {},
+            tableAnswers: {},
+            tableGradingResults: {},
+            savedQuizScroll: 0
+          })
+        }).catch(e => console.warn('Saving refreshed mixed review failed:', e));
+        
+        setLoadingAI(false);
+        return;
+      }
+
       if (isReadOnly && currentRefreshScheduleId && currentRefreshScheduleId !== 9999) {
         const resetRes = await fetch(`${API_BASE}/api/schedules/${currentRefreshScheduleId}/reset`, {
           method: 'POST',
