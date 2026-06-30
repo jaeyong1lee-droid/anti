@@ -861,9 +861,13 @@ export function healDeep(obj, parentKey = null, context = null) {
     if (/\[INPUT_\d+\]/i.test(obj)) {
       return obj;
     }
+    if (/^(data:image\/|https?:\/\/)/i.test(obj)) {
+      return obj;
+    }
     const skipKeys = [
       'title', 'pdf_name', 'pdf_url', 'id', 'topic_id', 'schedule_id', 
-      'answersheet_report_id', 'type', 'subtype', 'keywords'
+      'answersheet_report_id', 'type', 'subtype', 'keywords',
+      'imageSrc', 'image_src', 'base64Image', 'base64_image'
     ];
     if (parentKey && skipKeys.includes(parentKey)) {
       let cleanVal = obj.trim();
