@@ -7554,7 +7554,25 @@ app.get('/api/session/last-active-review', async (req, res) => {
         });
       }
     } else if (key.startsWith('review_questions_topic_')) {
-      const topicId = parseInt(key.replace('review_questions_topic_', ''), 10);
+      const topicIdRaw = key.replace('review_questions_topic_', '');
+      if (topicIdRaw === 'mixed_acronym_table') {
+        return res.json({
+          success: true,
+          lastActive: {
+            topicId: 'mixed_acronym_table',
+            title: '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
+            keywords: '',
+            pdfName: 'mixed.html',
+            mode: 'ai',
+            scheduleId: 'mixed_acronym_table_schedule',
+            reviewRound: 'MIX',
+            isReadOnly: false,
+            isBonus: false,
+            category: '믹스'
+          }
+        });
+      }
+      const topicId = parseInt(topicIdRaw, 10);
       const topicObj = await dbQuery.get(`SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?`, [topicId]);
       if (topicObj) {
         // Find any pending schedule

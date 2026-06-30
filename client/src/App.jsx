@@ -8155,7 +8155,40 @@ export default function App() {
         }
         
         const finalPool = [...shuffledToday, ...shuffledOthers];
-        const selectedItems = finalPool.slice(0, 7);
+        
+        // --- 100% Robust Category Selection Algorithm ---
+        const tablesPool = finalPool.filter(x => x.mixedType === 'table');
+        const acronymsPool = finalPool.filter(x => x.mixedType === 'acronym');
+        const overviewsPool = finalPool.filter(x => x.mixedType === 'overview');
+        const imagesPool = finalPool.filter(x => x.mixedType === 'image');
+        
+        const selectedItems = [];
+        
+        // 1. Pick 1 image if available (ensures at least 1 image is always shown!)
+        if (imagesPool.length > 0) selectedItems.push(imagesPool.shift());
+        // 2. Pick 1 overview if available
+        if (overviewsPool.length > 0) selectedItems.push(overviewsPool.shift());
+        // 3. Pick 1 acronym if available
+        if (acronymsPool.length > 0) selectedItems.push(acronymsPool.shift());
+        // 4. Pick 1 table if available
+        if (tablesPool.length > 0) selectedItems.push(tablesPool.shift());
+        
+        // 5. Keep picking from remaining pools round-robin until we have 7 items
+        const pools = [imagesPool, overviewsPool, acronymsPool, tablesPool];
+        let poolIdx = 0;
+        let attempts = 0;
+        while (selectedItems.length < 7 && attempts < 100) {
+          attempts++;
+          const activePool = pools[poolIdx];
+          if (activePool && activePool.length > 0) {
+            selectedItems.push(activePool.shift());
+          }
+          poolIdx = (poolIdx + 1) % pools.length;
+          
+          if (pools.every(p => p.length === 0)) {
+            break;
+          }
+        }
         
         const questions = selectedItems.map((item, qIdx) => {
           if (item.mixedType === 'table') {
