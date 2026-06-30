@@ -12197,9 +12197,37 @@ ${itemsStr}
     await handleSaveFormulaAcronyms(updated, false);
   };
 
+  const latestChatHistoryRef = useRef([]);
+  latestChatHistoryRef.current = (formulaChatHistory && formulaChatHistory.length > 0)
+    ? formulaChatHistory
+    : ((realTimeChatHistory && realTimeChatHistory.length > 0) ? realTimeChatHistory : chatHistory);
+
   useEffect(() => {
     window.__handleTableConfirmRequest = (html, title) => {
-      setTableConfirmTarget({ html, title });
+      setTableConfirmTarget({ html, title, isLoading: true });
+      
+      const activeChatHistory = latestChatHistoryRef.current || [];
+      
+      fetch('/api/table/suggest-title-and-refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tableHtml: html,
+          chatHistory: activeChatHistory.map(h => ({ role: h.role, text: h.text }))
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        setTableConfirmTarget({
+          html: data.html || html,
+          title: data.title || title,
+          isLoading: false
+        });
+      })
+      .catch(err => {
+        console.warn('AI table refinement error:', err);
+        setTableConfirmTarget({ html, title, isLoading: false });
+      });
     };
     window.__handleAcronymConfirmRequest = (title, content) => {
       setAcronymConfirmTarget({ title, content });
@@ -21922,7 +21950,7 @@ ${itemsStr}
                   ) : formulaSubTab === 'overview' ? (
                     <div className="w-full space-y-6 animate-fade-in pb-20 select-text">
                       {/* Overview Header Card */}
-                      <div className="bg-slateCustom-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                      <div className="hidden bg-slateCustom-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
                         <div className="border-b border-slate-800/80 pb-3">
                           <h2 className="text-base md:text-lg font-black text-white">필수공식 학습 개요</h2>
                           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -24072,31 +24100,49 @@ ${itemsStr}
               이 비교표를 필수암기(구 필수공식) '표' 서브 탭으로 저장하여 언제든 간편하게 복습하실 수 있습니다. 저장할 표의 제목을 지정해 주세요.
             </p>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400">표 제목</label>
-              <input
-                type="text"
-                value={tableConfirmTarget.title}
-                onChange={(e) => setTableConfirmTarget(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-700/60 focus:border-rose-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all font-bold"
-                placeholder="비교표 제목을 입력하세요"
-              />
-            </div>
+            {tableConfirmTarget.isLoading ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4 animate-pulse">
+                <RefreshCw className="animate-spin text-rose-500" size={28} />
+                <div className="space-y-1 text-center">
+                  <p className="text-sm font-black text-white">AI가 표 제목과 내용을 정제하는 중...</p>
+                  <p className="text-[10px] text-slate-400 font-bold leading-relaxed">
+                    실시간 AI 튜터창의 대화 맥락과 주제를 분석하여<br />
+                    표의 명칭을 명확히 하고, 내용을 최적화하고 있습니다.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400">표 제목</label>
+                  <input
+                    type="text"
+                    value={tableConfirmTarget.title}
+                    onChange={(e) => setTableConfirmTarget(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full bg-slate-950 border border-slate-700/60 focus:border-rose-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all font-bold"
+                    placeholder="비교표 제목을 입력하세요"
+                  />
+                  <p className="text-[9px] text-emerald-450 font-bold flex items-center gap-1 select-none">
+                    ✨ AI가 실시간 튜터 대화 맥락에 기반해 표 제목과 내용을 최적화했습니다.
+                  </p>
+                </div>
 
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setTableConfirmTarget(null)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-xl text-xs transition-all border border-slate-700/60 cursor-pointer active:scale-95"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleConfirmTableExport}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-rose-600/20 border border-rose-500/30"
-              >
-                내보내기
-              </button>
-            </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setTableConfirmTarget(null)}
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 font-black rounded-xl text-xs transition-all border border-slate-700/60 cursor-pointer active:scale-95"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleConfirmTableExport}
+                    className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-md shadow-rose-600/20 border border-rose-500/30"
+                  >
+                    내보내기
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

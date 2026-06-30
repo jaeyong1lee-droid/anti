@@ -6674,6 +6674,73 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 });
 
 
+// 6-5. Table Auto-Refinement and Title Generation
+app.post('/api/table/suggest-title-and-refine', async (req, res) => {
+  try {
+    const { tableHtml, chatHistory } = req.body;
+    if (!tableHtml) {
+      return res.status(400).json({ error: '표 내용이 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험 전문 튜터입니다.
+사용자가 공부하던 중 실시간 튜터 창에서 내보내고자 하는 마크다운 표가 입력됩니다.
+해당 표의 원본 HTML 내용과 실시간 튜터 대화 맥락을 분석하여:
+1. 해당 표에 가장 걸맞은 전문적이고 깔끔한 핵심 제목(Title)을 한글로 한 줄(공백 포함 25자 이내)로 도출하십시오. (학자명/공법명 등을 적절히 반영하여 '~~ 비교표' 또는 '~~ 분석표' 등 형식으로 작성)
+2. 표의 전체 내용을 지반공학/토질역학 표준 용어 및 기술사 시험 서술 양식에 맞게 다듬은 정제된 HTML table 마크업을 반환하십시오. 원본 표의 행과 열 구조를 그대로 유지하되, 오탈자가 있거나 부자연스러운 서술이 있다면 깔끔하게 다듬으십시오. (별도의 css 스타일이나 wrapper div는 포함하지 말고 오직 <table>...</table> 형태만 출력해야 합니다.)
+
+반드시 다음 JSON 형식 규격으로만 정확하게 응답하십시오. (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+{
+  "title": "여기에 최적화된 표 제목 기입",
+  "html": "여기에 정제된 <table>...</table> HTML 마크업 기입"
+}`;
+
+    const chatContext = Array.isArray(chatHistory)
+      ? chatHistory.map(h => `${h.role === 'user' ? '사용자' : 'AI 튜터'}: ${h.text}`).join('\n')
+      : '(대화 없음)';
+
+    const userPrompt = `[원본 표 HTML]:\n${tableHtml}\n\n[실시간 튜터 대화 맥락]:\n${chatContext}`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
+    
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const result = parseLlmJson(cleanJsonText);
+      res.json({
+        title: (result.title || '새 비교표').replace(/^[📊\s\t\n]+/, '').trim(),
+        html: result.html || tableHtml
+      });
+    } catch (parseErr) {
+      console.warn('Refined table JSON parsing failed, using fallback regex:', parseErr);
+      let fallbackTitle = '새 비교표';
+      const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
+      if (titleMatch && titleMatch[1]) {
+        fallbackTitle = titleMatch[1].replace(/^[📊\s\t\n]+/, '').trim();
+      }
+      let fallbackHtml = tableHtml;
+      const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"\s*}/);
+      if (htmlMatch && htmlMatch[1]) {
+        fallbackHtml = htmlMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim();
+      }
+      res.json({
+        title: fallbackTitle,
+        html: fallbackHtml
+      });
+    }
+  } catch (err) {
+    console.error('Refine table route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;
