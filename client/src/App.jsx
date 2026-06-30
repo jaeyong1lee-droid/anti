@@ -21794,10 +21794,10 @@ ${itemsStr}
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setExpandedTableIds(prev => ({
-                                          ...prev,
-                                          [t.id]: !prev[t.id]
-                                        }));
+                                        setExpandedTableIds(prev => {
+                                          const nextVal = !prev[t.id];
+                                          return nextVal ? { [t.id]: true } : {};
+                                        });
                                       }}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                                       title={isExpanded ? "접기" : "열기"}
@@ -22058,10 +22058,10 @@ ${itemsStr}
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setExpandedAcronymIds(prev => ({
-                                          ...prev,
-                                          [ac.id]: !prev[ac.id]
-                                        }));
+                                        setExpandedAcronymIds(prev => {
+                                          const nextVal = !prev[ac.id];
+                                          return nextVal ? { [ac.id]: true } : {};
+                                        });
                                       }}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                                       title={isExpanded ? "접기" : "열기"}
@@ -22386,10 +22386,10 @@ ${itemsStr}
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
-                                        setExpandedOverviewIds(prev => ({
-                                          ...prev,
-                                          [ov.id]: !prev[ov.id]
-                                        }));
+                                        setExpandedOverviewIds(prev => {
+                                          const nextVal = !prev[ov.id];
+                                          return nextVal ? { [ov.id]: true } : {};
+                                        });
                                       }}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                                       title={isExpanded ? "접기" : "열기"}
