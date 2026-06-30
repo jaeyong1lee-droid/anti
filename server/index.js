@@ -7281,8 +7281,28 @@ app.get('/api/session/review', async (req, res) => {
     if (row && row.value) {
       const data = JSON.parse(row.value);
       if (data) {
+        let formulaImages = [];
+        try {
+          const imageRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_images'");
+          if (imageRow && imageRow.value) {
+            const parsed = JSON.parse(imageRow.value);
+            formulaImages = parsed.formulaImages || [];
+          }
+        } catch (e) {
+          console.warn('Failed to load formula_images for session repair:', e.message);
+        }
+
         if (Array.isArray(data.questions)) {
-          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+          data.questions = data.questions.map(q => {
+            const healed = healQuizQuestionObject(q);
+            if (healed && healed.originalId && (healed.subtype === '그림' || healed.type === '주관식 (그림)' || healed.mixedType === 'image')) {
+              const origImg = formulaImages.find(img => img.id === healed.originalId);
+              if (origImg && origImg.base64Image) {
+                healed.imageSrc = origImg.base64Image;
+              }
+            }
+            return healed;
+          });
         }
         // [🚨 실시간 서버단 백엔드 세탁 가드 🚨]
         // Vercel 프론트엔드 한도 초과 상황에서도 깨끗한 렌더링을 보장하기 위해

@@ -3775,7 +3775,7 @@ export default function App() {
   // AI Modal States
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
-  const [aiQuestions, setAiQuestions] = useState([]);
+  const [aiQuestions, _setAiQuestions] = useState([]);
   const [reviewSessionId, setReviewSessionId] = useState('');
   const [restoringReviewSession, setRestoringReviewSession] = useState(true);
   const [selectionPopup, setSelectionPopup] = useState({
@@ -4786,6 +4786,43 @@ export default function App() {
   const savedAnswersheetScroll = useRef(0);
 
   // Close floating calculator auto-toggle is now handled via visibility hiding rather than unmounting
+
+  const restoreQuestionImages = (questionsList) => {
+    if (!Array.isArray(questionsList)) return [];
+    let currentFormulaImages = formulaImages;
+    if (!currentFormulaImages || currentFormulaImages.length === 0) {
+      try {
+        const savedStr = localStorage.getItem('anti_formula_images');
+        if (savedStr) {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) {
+            currentFormulaImages = parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    
+    return questionsList.map(q => {
+      if (q && q.originalId && (q.subtype === '그림' || q.type === '주관식 (그림)' || q.mixedType === 'image')) {
+        const origImg = currentFormulaImages.find(img => img.id === q.originalId);
+        if (origImg && origImg.base64Image) {
+          return { ...q, imageSrc: origImg.base64Image };
+        }
+      }
+      return q;
+    });
+  };
+
+  const setAiQuestions = (val) => {
+    if (typeof val === 'function') {
+      _setAiQuestions(prev => {
+        const computed = val(prev);
+        return restoreQuestionImages(computed);
+      });
+    } else {
+      _setAiQuestions(restoreQuestionImages(val));
+    }
+  };
 
   // 1) Load Selected Formula Index and Mobile Tab when selectedTopic changes
   useEffect(() => {
