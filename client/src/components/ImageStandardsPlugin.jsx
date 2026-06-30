@@ -184,9 +184,10 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
 }
 
 // 2. Memorization Modal -> "그림" Subtab list
-export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormulaImages, showNotification }) {
+export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormulaImages, showNotification, API_BASE, LatexRenderer, katexLoaded }) {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState('');
+  const [refreshingId, setRefreshingId] = useState(null);
 
   const handleDeleteImageCard = async (id, title) => {
     if (window.confirm(`[${title}] 그림 카드를 필수암기 리스트에서 삭제하시겠습니까?`)) {
@@ -205,6 +206,48 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
       await handleSaveFormulaImages(updated, false);
       setEditingId(null);
       showNotification('그림 카드 제목이 수정되었습니다.', 'success');
+    }
+  };
+
+  const handleRefreshImageCard = async (id, base64Image, description, title) => {
+    setRefreshingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/api/image-standards/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base64Image,
+          description: (description || '').trim()
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'AI 이미지 재분석에 실패했습니다.');
+      }
+
+      const result = await res.json();
+      if (result.ok) {
+        const updated = formulaImages.map(item => {
+          if (item.id === id) {
+            return {
+              ...item,
+              title: result.title,
+              analysis: result.analysis,
+              intuitive: result.intuitive
+            };
+          }
+          return item;
+        });
+        setFormulaImages(updated);
+        await handleSaveFormulaImages(updated, false);
+        showNotification(`[${result.title}] 그림 카드가 성공적으로 재분석되었습니다.`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification(err.message, 'error');
+    } finally {
+      setRefreshingId(null);
     }
   };
 
@@ -296,6 +339,16 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
               {/* Actions */}
               <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
                 <button
+                  onClick={() => handleRefreshImageCard(img.id, img.base64Image, img.description, img.title)}
+                  disabled={refreshingId === img.id}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
+                  title="AI 재분석 (새로고침)"
+                >
+                  <RefreshCw size={12} className={refreshingId === img.id ? "animate-spin text-rose-500" : ""} />
+                  <span>새로고침</span>
+                </button>
+
+                <button
                   onClick={() => handleDeleteImageCard(img.id, img.title)}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                   title="그림 삭제"
@@ -322,13 +375,25 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                 {/* 1. AI Analysis details */}
                 <div className="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200 text-[14px] leading-relaxed text-left">
                   <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📊 그림/그래프 공학적 분석</span>
-                  <p className="font-bold text-white leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
+                  {LatexRenderer ? (
+                    <div className="text-white leading-relaxed select-text font-semibold">
+                      <LatexRenderer text={img.analysis} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                    </div>
+                  ) : (
+                    <p className="font-bold text-white leading-relaxed whitespace-pre-line select-text">{img.analysis}</p>
+                  )}
                 </div>
 
                 {/* 2. Intuitive metaphors */}
                 <div className="bg-violet-950/15 border border-violet-500/10 p-3.5 rounded-xl text-slate-355 text-[14px] font-medium leading-relaxed text-left">
                   <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
-                  <p className="text-slate-300 leading-relaxed select-text">{img.intuitive}</p>
+                  {LatexRenderer ? (
+                    <div className="text-slate-300 leading-relaxed select-text">
+                      <LatexRenderer text={img.intuitive} katexLoaded={katexLoaded} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                    </div>
+                  ) : (
+                    <p className="text-slate-300 leading-relaxed select-text">{img.intuitive}</p>
+                  )}
                 </div>
               </div>
             </div>

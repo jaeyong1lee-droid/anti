@@ -17326,7 +17326,7 @@ ${itemsStr}
                                       </div>
                                     )}
 
-                                    {/* AI 튜터 입력 및 답변 보�          {/* Right: PDF/HTML upload section / image upload plugin panel (PC Only) */}
+                                    {/* AI 튜터 입력 및 답변 보�          {/* Right: PDF/HTML upload section / image upload plugin panel (PC Only) */}
           {isDesktop && (
             <div 
               style={{ width: `${rightSidebarWidth}px` }}
@@ -22368,6 +22368,9 @@ ${itemsStr}
                         setFormulaImages={setFormulaImages}
                         handleSaveFormulaImages={handleSaveFormulaImages}
                         showNotification={showNotification}
+                        API_BASE={API_BASE}
+                        LatexRenderer={LatexRenderer}
+                        katexLoaded={katexLoaded}
                       />
                     </div>
                   ) : formulaQuestions.filter(q => {
