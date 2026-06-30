@@ -5496,8 +5496,9 @@ export default function App() {
     try {
       let tables = formulaTables;
       let acronyms = formulaAcronyms;
+      let overviews = formulaOverviews;
       
-      if (tables.length === 0 || acronyms.length === 0) {
+      if (tables.length === 0 || acronyms.length === 0 || overviews.length === 0) {
         try {
           const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
           if (tRes.ok) {
@@ -5513,13 +5514,21 @@ export default function App() {
               acronyms = aBody.data.formulaAcronyms;
             }
           }
+          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
+          if (oRes.ok) {
+            const oBody = await oRes.json();
+            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
+              overviews = oBody.data.formulaOverviews;
+            }
+          }
         } catch (err) {
-          console.warn('Sync tables/acronyms inside fetchTodayReviews failed:', err);
+          console.warn('Sync tables/acronyms/overviews inside fetchTodayReviews failed:', err);
         }
       }
 
       if (tables.length > 0 && formulaTables.length === 0) setFormulaTables(tables);
       if (acronyms.length > 0 && formulaAcronyms.length === 0) setFormulaAcronyms(acronyms);
+      if (overviews.length > 0 && formulaOverviews.length === 0) setFormulaOverviews(overviews);
 
       const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
@@ -5534,14 +5543,14 @@ export default function App() {
         }
         const uniqueList = Array.from(uniqueMap.values());
         
-        const hasItems = tables.length > 0 || acronyms.length > 0;
+        const hasItems = tables.length > 0 || acronyms.length > 0 || overviews.length > 0;
         const isMixedCompleted = localStorage.getItem(`anti_mixed_completed_${dateStr}`) === 'true';
         
         if (hasItems && !isMixedCompleted) {
           const mixedItem = {
             schedule_id: 'mixed_acronym_table_schedule',
             topic_id: 'mixed_acronym_table',
-            title: '오늘의 필수 표/앞글자 믹스 복습 (5제 1세트)',
+            title: '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
             planned_date: '1970-01-01',
             review_round: 'MIX',
             category: '믹스',
@@ -7500,7 +7509,7 @@ export default function App() {
     await fetchTodayReviews(referenceDate);
     handleOpenAIQuestions(
       'mixed_acronym_table',
-      '오늘의 필수 표/앞글자 믹스 복습 (5제 1세트)',
+      '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
       '',
       'mixed.html',
       'ai',
@@ -8037,6 +8046,7 @@ export default function App() {
       if (topicId === 'mixed_acronym_table') {
         let tables = [];
         let acronyms = [];
+        let overviews = [];
         
         try {
           const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
@@ -8053,16 +8063,25 @@ export default function App() {
               acronyms = aBody.data.formulaAcronyms;
             }
           }
+          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
+          if (oRes.ok) {
+            const oBody = await oRes.json();
+            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
+              overviews = oBody.data.formulaOverviews;
+            }
+          }
         } catch (err) {
-          console.warn('Sync tables/acronyms inside handleOpenAIQuestions failed:', err);
+          console.warn('Sync tables/acronyms/overviews inside handleOpenAIQuestions failed:', err);
         }
 
         setFormulaTables(tables);
         setFormulaAcronyms(acronyms);
+        setFormulaOverviews(overviews);
         
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
-          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' }))
+          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' })),
+          ...overviews.map(o => ({ ...o, mixedType: 'overview' }))
         ];
         
         const todayItems = combinedItems.filter(item => {
@@ -8090,7 +8109,7 @@ export default function App() {
         }
         
         const finalPool = [...shuffledToday, ...shuffledOthers];
-        const selectedItems = finalPool.slice(0, 5);
+        const selectedItems = finalPool.slice(0, 7);
         
         const questions = selectedItems.map((item, qIdx) => {
           if (item.mixedType === 'table') {
@@ -8117,6 +8136,42 @@ export default function App() {
               answers: answers,
               explanation: item.html,
               mixedType: 'table',
+              originalId: item.id
+            };
+          } else if (item.mixedType === 'overview') {
+            const parsed = parseOverviewContent(item.content);
+            const answers = {};
+            const rows = [];
+            
+            if (parsed.definition) {
+              answers['INPUT_0_1'] = parsed.definition;
+              rows.push(['학술적 정의', '[INPUT_0_1]']);
+            }
+            if (parsed.mechanism) {
+              const rowIdx = rows.length;
+              answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+              rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+            }
+            
+            const explanationHtml = `
+              <div class="space-y-3 text-left">
+                \${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">\${parsed.definition}</p></div>` : ''}
+                \${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">\${parsed.mechanism}</p></div>` : ''}
+              </div>
+            `;
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (표채우기)',
+              subtype: '표채우기',
+              question: `[개요 복습] \${item.title}`,
+              tableData: {
+                headers: ['구분', '내용'],
+                rows: rows
+              },
+              answers: answers,
+              explanation: explanationHtml,
+              mixedType: 'overview',
               originalId: item.id
             };
           } else {
@@ -8603,6 +8658,7 @@ export default function App() {
 
         let tables = [];
         let acronyms = [];
+        let overviews = [];
         
         try {
           const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
@@ -8619,16 +8675,25 @@ export default function App() {
               acronyms = aBody.data.formulaAcronyms;
             }
           }
+          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
+          if (oRes.ok) {
+            const oBody = await oRes.json();
+            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
+              overviews = oBody.data.formulaOverviews;
+            }
+          }
         } catch (err) {
-          console.warn('Sync tables/acronyms inside handleRefreshReviewQuestions failed:', err);
+          console.warn('Sync tables/acronyms/overviews inside handleRefreshReviewQuestions failed:', err);
         }
 
         setFormulaTables(tables);
         setFormulaAcronyms(acronyms);
+        setFormulaOverviews(overviews);
         
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
-          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' }))
+          ...acronyms.map(a => ({ ...a, mixedType: 'acronym' })),
+          ...overviews.map(o => ({ ...o, mixedType: 'overview' }))
         ];
         
         // Use a new random seed so that we get a fresh shuffle when the user clicks 'AI 재출제'
@@ -8639,7 +8704,7 @@ export default function App() {
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         
-        const selectedItems = shuffled.slice(0, 5);
+        const selectedItems = shuffled.slice(0, 7);
         const questions = selectedItems.map((item, qIdx) => {
           if (item.mixedType === 'table') {
             const parsed = parseHtmlTable(item.html);
@@ -8665,6 +8730,42 @@ export default function App() {
               answers: answers,
               explanation: item.html,
               mixedType: 'table',
+              originalId: item.id
+            };
+          } else if (item.mixedType === 'overview') {
+            const parsed = parseOverviewContent(item.content);
+            const answers = {};
+            const rows = [];
+            
+            if (parsed.definition) {
+              answers['INPUT_0_1'] = parsed.definition;
+              rows.push(['학술적 정의', '[INPUT_0_1]']);
+            }
+            if (parsed.mechanism) {
+              const rowIdx = rows.length;
+              answers[`INPUT_${rowIdx}_1`] = parsed.mechanism;
+              rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
+            }
+            
+            const explanationHtml = `
+              <div class="space-y-3 text-left">
+                \${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">\${parsed.definition}</p></div>` : ''}
+                \${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">\${parsed.mechanism}</p></div>` : ''}
+              </div>
+            `;
+            
+            return {
+              id: `mixed_q_${qIdx}`,
+              type: '주관식 (표채우기)',
+              subtype: '표채우기',
+              question: `[개요 복습] \${item.title}`,
+              tableData: {
+                headers: ['구분', '내용'],
+                rows: rows
+              },
+              answers: answers,
+              explanation: explanationHtml,
+              mixedType: 'overview',
               originalId: item.id
             };
           } else {
