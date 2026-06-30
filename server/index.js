@@ -7941,7 +7941,16 @@ app.post('/api/image-standards/generate-question', async (req, res) => {
 2. 불필요한 서두나 잡설 없이 질문 자체만 바로 텍스트로 응답하십시오 (예: "아래 그림에서 C영역은 어떤 영역인가?").
 3. 질문은 반드시 한글로 작성되어야 합니다.`;
 
-    const userPrompt = `그림 주제: ${title}\n그림 분석 내용:\n${analysis}\n\n위 분석 정보에 존재하는 구성 요소 중 하나를 짚어서 짧고 명확한 세부 질문 한 문장을 생성하십시오.`;
+    const focusOptions = [
+      'A영역(간접 영향권)의 공학적 의미/역할',
+      'B영역(직접 영향권)의 공학적 의미/역할',
+      'C영역(지표 침하 영향권)의 공학적 의미/역할',
+      '도해 속 기호(D, 2D, 4~6m, 각도 등)의 물리적 정의',
+      '이 터널 영향권 분류 모델의 한계점이나 적용 기준',
+      '이 모델이 궁극적으로 나타내고자 하는 본질적 원리'
+    ];
+    const randomFocus = focusOptions[Math.floor(Math.random() * focusOptions.length)];
+    const userPrompt = `그림 주제: ${title}\n그림 분석 내용:\n${analysis}\n\n위 분석 정보 중 반드시 [${randomFocus}]에 초점을 맞춰 짧고 명확한 세부 주관식 질문 한 문장을 생성하십시오. (매번 다양하게 출제되도록 무작위 시드값 ${Math.random()}을 반영하여 질문의 주제나 각도를 새롭게 설정하십시오.)`;
 
     const responseText = await callLLMWithFailover(
       systemInstruction,
