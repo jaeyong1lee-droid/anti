@@ -8185,13 +8185,6 @@ export default function App() {
               originalId: item.id
             };
           } else if (item.mixedType === 'image') {
-            const answers = {
-              'INPUT_0_1': item.title
-            };
-            const rows = [
-              ['그림 핵심 주제', '[INPUT_0_1]']
-            ];
-            
             const explanationHtml = `
               <div class="space-y-3 text-left">
                 <div class="bg-slate-900/40 border border-slate-800/60 p-3.5 rounded-xl text-slate-200">
@@ -8204,18 +8197,14 @@ export default function App() {
                 </div>
               </div>
             `;
-            
             return {
               id: `mixed_q_${qIdx}`,
-              type: '주관식 (표채우기)',
-              subtype: '표채우기',
-              question: '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)를 빈칸에 알맞게 기입하시오.',
+              type: '주관식 (그림)',
+              subtype: '그림',
+              question: '[그림 암기 복습] 아래 제시된 공학 그림/그래프 자료가 나타내는 핵심 공학 주제(개념명)와 공학적 의미(또는 설명)를 서술하시오.',
               imageSrc: item.base64Image,
-              tableData: {
-                headers: ['구분', '내용'],
-                rows: rows
-              },
-              answers: answers,
+              answer: item.title,
+              concept: item.title,
               explanation: explanationHtml,
               mixedType: 'image',
               originalId: item.id
