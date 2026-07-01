@@ -974,6 +974,43 @@ function parseQuestionTableText(questionText) {
   return { questionText, tableData };
 }
 
+const localParseOverviewContent = (content) => {
+  const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
+  if (!content) return result;
+  const lines = content.split('\n');
+  for (const line of lines) {
+    if (!line.includes('|')) continue;
+    const parts = line.split('|').map(p => p.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const key = parts[0];
+    const val = parts[1];
+    
+    if (key.includes('개요')) {
+      result.definition = val;
+    } else if (key.includes('메커니즘')) {
+      result.mechanism = val;
+    }
+  }
+  return result;
+};
+
+const localParseHtmlTable = (htmlStr) => {
+  if (typeof DOMParser === 'undefined') return { headers: [], rows: [] };
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlStr || '', 'text/html');
+  const thead = doc.querySelector('thead');
+  const allTrs = Array.from(doc.querySelectorAll('tr'));
+  const dataTrs = thead ? allTrs.filter(tr => !tr.closest('thead')) : allTrs.slice(1);
+  const rows = [];
+  for (const tr of dataTrs) {
+    const tds = Array.from(tr.querySelectorAll('td, th')).map(el => el.textContent.trim());
+    if (tds.length > 0) {
+      rows.push(tds);
+    }
+  }
+  return { rows };
+};
+
 export function healQuizQuestionObject(q) {
   if (q && typeof q === 'object') {
     if (q.question && (!q.tableData || !q.tableData.headers || !q.tableData.rows)) {
@@ -1046,7 +1083,7 @@ export function healQuizQuestionObject(q) {
       const newAnswers = {};
       let inputCount = 1;
 
-      const newRows = q.tableData.rows.map((row) => {
+      const newRows = q.tableData.rows.map((row, rIdx) => {
         if (!Array.isArray(row)) return [];
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
@@ -1106,6 +1143,37 @@ export function healQuizQuestionObject(q) {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
             const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
+          }
+
+          // Recover placeholder answers from window.currentStudyData if available
+          const isPlh = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?|\[?\s*[A-Z]_\d+\s*\]?)$/i.test(correctAnswer);
+          if ((!correctAnswer || isPlh) && typeof window !== 'undefined' && window.currentStudyData) {
+            const studyData = window.currentStudyData;
+            const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
+            const topicId = q.originalId || q.topic_id;
+            const rowLabel = row[0] || '';
+            
+            if (q.mixedType === 'overview' || q.subtype === '개요' || q.question.includes('[개요 복습]')) {
+              const matchedOverview = (studyData.overviews || []).find(ov => ov.id === topicId || ov.title === cleanTitle)
+                || (studyData.overviews || []).find(ov => ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
+              if (matchedOverview && matchedOverview.content) {
+                const parsed = localParseOverviewContent(matchedOverview.content);
+                if (rowLabel && rowLabel.includes('정의') && parsed.definition) {
+                  correctAnswer = parsed.definition;
+                } else if (rowLabel && rowLabel.includes('메커니즘') && parsed.mechanism) {
+                  correctAnswer = parsed.mechanism;
+                }
+              }
+            } else if (q.mixedType === 'table' || q.subtype === '표채우기' || q.question.includes('[표 복습]')) {
+              const matchedTable = (studyData.tables || []).find(t => t.id === topicId || t.title === cleanTitle)
+                || (studyData.tables || []).find(t => t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
+              if (matchedTable && matchedTable.html) {
+                const parsed = localParseHtmlTable(matchedTable.html);
+                if (parsed.rows && parsed.rows[rIdx] && parsed.rows[rIdx][cIdx] !== undefined) {
+                  correctAnswer = parsed.rows[rIdx][cIdx];
+                }
+              }
+            }
           }
 
           newAnswers[inputId] = correctAnswer;

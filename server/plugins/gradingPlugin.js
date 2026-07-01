@@ -173,7 +173,7 @@ export function isNumericAnswer(str) {
 
 export async function gradeSubjective({ question, correctAnswer, userAnswer, rowHeader, colHeader, explanation, category, callLLMWithFailover, gradingStandards, engineeringStandards }) {
   if (!userAnswer) {
-    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.' };
+    return { isCorrect: false, score: 0, reason: '답안이 비어 있습니다.', suggestedModelAnswer: correctAnswer };
   }
 
   if (!correctAnswer && !explanation) {

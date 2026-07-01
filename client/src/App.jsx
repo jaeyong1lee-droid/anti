@@ -2993,6 +2993,15 @@ export default function App() {
     }
   }, [buildTimeMs]);
 
+  useEffect(() => {
+    window.currentStudyData = {
+      overviews: formulaOverviews,
+      tables: formulaTables,
+      acronyms: formulaAcronyms,
+      questions: formulaQuestions
+    };
+  }, [formulaOverviews, formulaTables, formulaAcronyms, formulaQuestions]);
+
   const getSubjectiveColorClasses = (idx, isRevd) => {
     if (!isRevd) return 'border-slate-750 text-white';
     
