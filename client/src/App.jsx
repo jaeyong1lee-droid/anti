@@ -21960,25 +21960,9 @@ ${itemsStr}
               </div>
             ) : null
           ) : (
-             /* Desktop/Landscape Header for Formulas Modal */
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 bg-slateCustom-950 border-b border-rose-500/20 flex-shrink-0 gap-4 landscape-hide">
               <div className="flex items-start gap-3 min-w-0 w-full sm:w-auto">
-                <div className="p-2 bg-rose-950/80 text-rose-400 rounded-xl flex-shrink-0 mt-0.5">
-                  <Sigma size={20} />
-                </div>
                 <div className="min-w-0 flex-grow">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider whitespace-nowrap">필수공식 집중 복습</span>
-                    {!loadingFormula && formulaQuestions.length > 0 && (
-                      <span className="text-[10px] bg-rose-950/60 text-rose-300 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
-                        {formulaQuestions.length}개 공식
-                      </span>
-                    )}
-                    {/* Mobile Swipe Hint */}
-                    <span className="inline-flex md:hidden text-[9px] bg-rose-950/60 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">
-                      ← 좌우 쓸어 넘겨 공식 퀴즈 보기
-                    </span>
-                  </div>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     <h3 className="font-bold text-white text-xs sm:text-sm truncate sm:whitespace-normal">
                       전공 필수 공식 집중 평가 (주관식 인출)
