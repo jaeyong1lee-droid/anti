@@ -9075,11 +9075,11 @@ export default function App() {
         // 4. Pick 1 table if available
         if (tablesPool.length > 0) selectedItems.push(tablesPool.shift());
         
-        // 5. Keep picking from remaining pools round-robin until we have 7 items
+        // 5. Keep picking from remaining pools round-robin until we have 10 items
         const pools = [imagesPool, overviewsPool, acronymsPool, tablesPool];
         let poolIdx = 0;
         let poolAttempts = 0;
-        while (selectedItems.length < 7 && poolAttempts < 100) {
+        while (selectedItems.length < 10 && poolAttempts < 100) {
           poolAttempts++;
           const activePool = pools[poolIdx];
           if (activePool && activePool.length > 0) {
