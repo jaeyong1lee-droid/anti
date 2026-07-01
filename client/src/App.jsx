@@ -4674,6 +4674,7 @@ export default function App() {
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
+  const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [acronymModeActive, setAcronymModeActive] = useState(false);
@@ -22351,24 +22352,47 @@ ${itemsStr}
                                         <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
                                           <thead>
                                             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-                                              {parsed.headers.map((h, hIdx) => (
-                                                <th key={hIdx} className="p-1 border-r border-slate-800/80 last:border-r-0 select-none align-middle">
-                                                  <input
-                                                    type="text"
-                                                    value={h}
-                                                    onChange={(e) => {
-                                                      const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? e.target.value : hdr);
-                                                      const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
-                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                      setFormulaTables(updatedTables);
+                                              {parsed.headers.map((h, hIdx) => {
+                                                const isEditing = activeEditCell && activeEditCell.tableId === t.id && activeEditCell.type === 'header' && activeEditCell.colIdx === hIdx;
+                                                return (
+                                                  <th 
+                                                    key={hIdx} 
+                                                    className="p-1 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[80px]"
+                                                    onDoubleClick={() => {
+                                                      setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
                                                     }}
-                                                    onBlur={() => {
-                                                      handleSaveFormulaTables(formulaTables, false);
-                                                    }}
-                                                    className="w-full text-center bg-transparent border-0 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm"
-                                                  />
-                                                </th>
-                                              ))}
+                                                  >
+                                                    {isEditing ? (
+                                                      <input
+                                                        type="text"
+                                                        value={h}
+                                                        onChange={(e) => {
+                                                          const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? e.target.value : hdr);
+                                                          const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                                                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                          setFormulaTables(updatedTables);
+                                                        }}
+                                                        onBlur={() => {
+                                                          handleSaveFormulaTables(formulaTables, false);
+                                                          setActiveEditCell(null);
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                          if (e.key === 'Enter') {
+                                                            handleSaveFormulaTables(formulaTables, false);
+                                                            setActiveEditCell(null);
+                                                          }
+                                                        }}
+                                                        className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
+                                                        autoFocus
+                                                      />
+                                                    ) : (
+                                                      <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-black select-text">
+                                                        <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                                                      </div>
+                                                    )}
+                                                  </th>
+                                                );
+                                              })}
                                               <th className="p-2 md:p-2.5 font-black text-rose-400 w-24 select-none align-middle">
                                                 <div className="flex items-center justify-center gap-1.5">
                                                   <button
@@ -22394,28 +22418,51 @@ ${itemsStr}
                                           <tbody>
                                             {parsed.rows.map((row, rIdx) => (
                                               <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10 transition-colors">
-                                                {row.map((cell, cIdx) => (
-                                                  <td key={cIdx} className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle">
-                                                    <input
-                                                      type="text"
-                                                      value={cell}
-                                                      onChange={(e) => {
-                                                        const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
-                                                          rIdx2 === rIdx 
-                                                            ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? e.target.value : cellVal)
-                                                            : rowVal
-                                                        );
-                                                        const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                        setFormulaTables(updatedTables);
+                                                {row.map((cell, cIdx) => {
+                                                  const isEditing = activeEditCell && activeEditCell.tableId === t.id && activeEditCell.type === 'cell' && activeEditCell.rIdx === rIdx && activeEditCell.colIdx === cIdx;
+                                                  return (
+                                                    <td 
+                                                      key={cIdx} 
+                                                      className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle cursor-pointer min-w-[100px]"
+                                                      onDoubleClick={() => {
+                                                        setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
                                                       }}
-                                                      onBlur={() => {
-                                                        handleSaveFormulaTables(formulaTables, false);
-                                                      }}
-                                                      className="w-full text-center bg-transparent border-0 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm"
-                                                    />
-                                                  </td>
-                                                ))}
+                                                    >
+                                                      {isEditing ? (
+                                                        <input
+                                                          type="text"
+                                                          value={cell}
+                                                          onChange={(e) => {
+                                                            const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
+                                                              rIdx2 === rIdx 
+                                                                ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? e.target.value : cellVal)
+                                                                : rowVal
+                                                            );
+                                                            const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                            const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                            setFormulaTables(updatedTables);
+                                                          }}
+                                                          onBlur={() => {
+                                                            handleSaveFormulaTables(formulaTables, false);
+                                                            setActiveEditCell(null);
+                                                          }}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                              handleSaveFormulaTables(formulaTables, false);
+                                                              setActiveEditCell(null);
+                                                            }
+                                                          }}
+                                                          className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
+                                                          autoFocus
+                                                        />
+                                                      ) : (
+                                                        <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-semibold select-text">
+                                                          <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                                                        </div>
+                                                      )}
+                                                    </td>
+                                                  );
+                                                })}
                                                 <td className="p-2 md:p-2.5 text-center align-middle">
                                                   <button
                                                     onClick={() => {
