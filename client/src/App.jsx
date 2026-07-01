@@ -11497,16 +11497,20 @@ export default function App() {
     await handleGenerateAcronymSubmitWithTopic(acronymPromptTopic);
   };
 
-  const handleGenerateAcronymSubmitWithTopic = async (topicVal) => {
+  const handleGenerateAcronymSubmitWithTopic = async (topicVal, isRecommendation = false) => {
     const topic = topicVal.trim();
     const count = parseInt(acronymPromptCount, 10) || 4;
     if (!topic) return;
 
-    setShowAcronymPromptModal(false);
+    if (!isRecommendation) {
+      setShowAcronymPromptModal(false);
 
-    // Open Memorization Modal and switch to acronyms tab
-    setShowFormulaExam(true);
-    setFormulaSubTab('acronym');
+      // Open Memorization Modal and switch to acronyms tab
+      setShowFormulaExam(true);
+      setFormulaSubTab('acronym');
+    } else {
+      showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
+    }
 
     // Create a temporary loading card in the acronyms list
     const tempId = 'acronym-loading-' + Date.now();
@@ -11583,15 +11587,19 @@ export default function App() {
     await handleGenerateOverviewSubmitWithTopic(overviewPromptTopic);
   };
 
-  const handleGenerateOverviewSubmitWithTopic = async (topicVal) => {
+  const handleGenerateOverviewSubmitWithTopic = async (topicVal, isRecommendation = false) => {
     const topic = topicVal.trim();
     if (!topic) return;
 
-    setShowOverviewPromptModal(false);
+    if (!isRecommendation) {
+      setShowOverviewPromptModal(false);
 
-    // Open Memorization Modal and switch to overview tab
-    setShowFormulaExam(true);
-    setFormulaSubTab('overview');
+      // Open Memorization Modal and switch to overview tab
+      setShowFormulaExam(true);
+      setFormulaSubTab('overview');
+    } else {
+      showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
+    }
 
     // Create a temporary loading card in the overviews list
     const tempId = 'overview-loading-' + Date.now();
@@ -14548,6 +14556,7 @@ ${itemsStr}
             const topicId = s.selectedTopic.id;
             const scheduleId = s.selectedTopic.schedule_id || '';
             const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
+            const resolvedSid = activeSid !== 'legacy_default' ? activeSid : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
             
             let resData = null;
             try {
@@ -14571,21 +14580,19 @@ ${itemsStr}
               setSelectedTopic(s.selectedTopic);
               
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
-              const resolvedSid = isServerSidAbsolute 
-                ? server.sessionId 
-                : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
+              const finalSid = isServerSidAbsolute ? server.sessionId : resolvedSid;
 
               if (isServerSidAbsolute) {
                 setReviewSessionId(server.sessionId);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
               } else {
-                setReviewSessionId(resolvedSid);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, resolvedSid);
+                setReviewSessionId(finalSid);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, finalSid);
               }
 
               const localKey = s.selectedTopic.schedule_id 
-                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${resolvedSid}`
-                : `anti_review_progress_${s.selectedTopic.id}_${resolvedSid}`;
+                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${finalSid}`
+                : `anti_review_progress_${s.selectedTopic.id}_${finalSid}`;
               const localBackupStr = localStorage.getItem(localKey);
               let localBackup = {};
               if (localBackupStr) {
@@ -14641,7 +14648,10 @@ ${itemsStr}
               lastSyncStateRef.current = {
                 selectedAnswers: server.selectedAnswers || {},
                 revealedQuestions: server.revealedQuestions || {},
+                tableAnswers: server.tableAnswers || {},
                 tableGradingResults: server.tableGradingResults || {},
+                tutorAnswers: server.tutorAnswers || {},
+                tutorInputText: server.tutorInputText || {},
                 chatHistory: server.chatHistory || []
               };
               
@@ -14649,33 +14659,78 @@ ${itemsStr}
               setRestoringReviewSession(false);
               restoreSuccess = true;
             } 
-            // 2. Fallback: If server session does not exist, restore from local storage cache
-            else if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
-              console.log('[Mount Restore] No server session found. Restoring from LocalStorage cache fallback. Question count:', s.aiQuestions.length);
-              setSelectedTopic(s.selectedTopic);
-              setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-              setSelectedAnswers(s.selectedAnswers || {});
-              setRevealedQuestions(s.revealedQuestions || {});
-              setTableAnswers(s.tableAnswers || {});
-              setTableGradingResults(s.tableGradingResults || {});
-              setTutorAnswers(s.tutorAnswers || {});
-              setTutorInputText(s.tutorInputText || {});
-              setChatHistory(s.chatHistory || []);
-              
-              const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
-              setReviewSessionId(localSid);
-              localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
+            // 2. Fallback: If server session does not exist, restore from local storage progress backup
+            else {
+              let localBackup = null;
+              try {
+                const localKey = s.selectedTopic.schedule_id 
+                  ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${resolvedSid}`
+                  : `anti_review_progress_${s.selectedTopic.id}_${resolvedSid}`;
+                const localBackupStr = localStorage.getItem(localKey);
+                if (localBackupStr) {
+                  localBackup = JSON.parse(localBackupStr);
+                }
+              } catch(e){}
 
-              lastSyncStateRef.current = {
-                selectedAnswers: s.selectedAnswers || {},
-                revealedQuestions: s.revealedQuestions || {},
-                tableGradingResults: s.tableGradingResults || {},
-                chatHistory: s.chatHistory || []
-              };
+              if (localBackup && localBackup.questions && Array.isArray(localBackup.questions) && localBackup.questions.length > 0) {
+                console.log('[Mount Restore] Server session empty. Restoring from LocalStorage progress backup.');
+                setSelectedTopic(s.selectedTopic);
+                setReviewSessionId(resolvedSid);
+                
+                setAiQuestions(localBackup.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+                setSelectedAnswers(localBackup.selectedAnswers || {});
+                setRevealedQuestions(localBackup.revealedQuestions || {});
+                setTableAnswers(localBackup.tableAnswers || {});
+                setTableGradingResults(localBackup.tableGradingResults || {});
+                setTutorAnswers(localBackup.tutorAnswers || {});
+                setTutorInputText(localBackup.tutorInputText || {});
+                setChatHistory(localBackup.chatHistory || []);
+                savedQuizScroll.current = localBackup.savedQuizScroll || 0;
+                
+                lastSyncStateRef.current = {
+                  selectedAnswers: localBackup.selectedAnswers || {},
+                  revealedQuestions: localBackup.revealedQuestions || {},
+                  tableAnswers: localBackup.tableAnswers || {},
+                  tableGradingResults: localBackup.tableGradingResults || {},
+                  tutorAnswers: localBackup.tutorAnswers || {},
+                  tutorInputText: localBackup.tutorInputText || {},
+                  chatHistory: localBackup.chatHistory || []
+                };
+                
+                setLoadingAI(false);
+                setRestoringReviewSession(false);
+                restoreSuccess = true;
+              }
+              // 2.2 Legacy Fallback (from s.aiQuestions if it exists)
+              else if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
+                console.log('[Mount Restore] No server session or detailed local backup. Restoring from legacy app state.');
+                setSelectedTopic(s.selectedTopic);
+                setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
+                setSelectedAnswers(s.selectedAnswers || {});
+                setRevealedQuestions(s.revealedQuestions || {});
+                setTableAnswers(s.tableAnswers || {});
+                setTableGradingResults(s.tableGradingResults || {});
+                setTutorAnswers(s.tutorAnswers || {});
+                setTutorInputText(s.tutorInputText || {});
+                setChatHistory(s.chatHistory || []);
+                
+                setReviewSessionId(resolvedSid);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, resolvedSid);
 
-              setLoadingAI(false);
-              setRestoringReviewSession(false);
-              restoreSuccess = true;
+                lastSyncStateRef.current = {
+                  selectedAnswers: s.selectedAnswers || {},
+                  revealedQuestions: s.revealedQuestions || {},
+                  tableAnswers: s.tableAnswers || {},
+                  tableGradingResults: s.tableGradingResults || {},
+                  tutorAnswers: s.tutorAnswers || {},
+                  tutorInputText: s.tutorInputText || {},
+                  chatHistory: s.chatHistory || []
+                };
+
+                setLoadingAI(false);
+                setRestoringReviewSession(false);
+                restoreSuccess = true;
+              }
             }
 
             // 3. Fallback: If no server session and no local cache, generate new session
@@ -25140,7 +25195,7 @@ ${itemsStr}
                         type="button"
                         onClick={() => {
                           setAcronymPromptTopic(rec);
-                          handleGenerateAcronymSubmitWithTopic(rec);
+                          handleGenerateAcronymSubmitWithTopic(rec, true);
                         }}
                         className="px-2 py-1 bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 rounded-lg text-[10px] font-bold hover:bg-emerald-900/40 active:scale-95 transition-all cursor-pointer"
                       >
@@ -25250,7 +25305,7 @@ ${itemsStr}
                         type="button"
                         onClick={() => {
                           setOverviewPromptTopic(rec);
-                          handleGenerateOverviewSubmitWithTopic(rec);
+                          handleGenerateOverviewSubmitWithTopic(rec, true);
                         }}
                         className="px-2 py-1 bg-rose-950/40 border border-rose-500/20 text-rose-300 rounded-lg text-[10px] font-bold hover:bg-rose-900/40 active:scale-95 transition-all cursor-pointer"
                       >

@@ -1933,7 +1933,7 @@ app.post('/api/quiz/submit', async (req, res) => {
         const finishedSchedules = await dbQuery.all(
           `SELECT id FROM schedules 
            WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
-           ORDER BY review_round DESC`,
+           ORDER BY completed_at DESC, id DESC`,
           [topicIdInt]
         );
         if (finishedSchedules.length > 2) {
@@ -2702,7 +2702,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     for (const pattern of patterns) {
       const row = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY id DESC LIMIT 1',
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
         [pattern]
       );
       if (row) {
