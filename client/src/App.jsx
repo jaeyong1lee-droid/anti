@@ -4697,6 +4697,7 @@ export default function App() {
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
+  const [activeEditAcronymCell, setActiveEditAcronymCell] = useState(null); // { acronymId, rIdx, type: 'acronym'|'combined' }
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [acronymModeActive, setAcronymModeActive] = useState(false);
@@ -22711,24 +22712,56 @@ ${itemsStr}
                                                       className="w-full text-center bg-transparent border-0 text-emerald-400 font-extrabold focus:outline-none focus:ring-0 p-1 text-[14px]"
                                                     />
                                                   </td>
-                                                  <td className="p-1 md:p-1.5 border-r border-slate-800/60 align-middle">
-                                                    <textarea
-                                                      value={combinedValue}
-                                                      onChange={(e) => {
-                                                        handleUpdateAcronymRowCell(ac.id, rIdx, 'combined', e.target.value);
-                                                        e.target.style.height = 'auto';
-                                                        e.target.style.height = `${e.target.scrollHeight}px`;
-                                                      }}
-                                                      ref={(el) => {
-                                                        if (el) {
-                                                          el.style.height = 'auto';
-                                                          el.style.height = `${el.scrollHeight}px`;
-                                                        }
-                                                      }}
-                                                      rows={1}
-                                                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-200 font-medium text-[14px] resize-none overflow-hidden block py-1.5 px-2"
-                                                      placeholder="암기단어 : 설명"
-                                                    />
+                                                  <td 
+                                                    className="p-1 md:p-1.5 border-r border-slate-800/60 align-middle cursor-pointer min-h-[38px]"
+                                                    onClick={() => {
+                                                      const isEditingCombined = activeEditAcronymCell && activeEditAcronymCell.acronymId === ac.id && activeEditAcronymCell.rIdx === rIdx && activeEditAcronymCell.type === 'combined';
+                                                      if (!isEditingCombined) {
+                                                        setActiveEditAcronymCell({ acronymId: ac.id, rIdx, type: 'combined' });
+                                                      }
+                                                    }}
+                                                  >
+                                                    {(() => {
+                                                      const isEditingCombined = activeEditAcronymCell && activeEditAcronymCell.acronymId === ac.id && activeEditAcronymCell.rIdx === rIdx && activeEditAcronymCell.type === 'combined';
+                                                      return isEditingCombined ? (
+                                                        <textarea
+                                                          value={combinedValue}
+                                                          onChange={(e) => {
+                                                            handleUpdateAcronymRowCell(ac.id, rIdx, 'combined', e.target.value);
+                                                            e.target.style.height = 'auto';
+                                                            e.target.style.height = `${e.target.scrollHeight}px`;
+                                                          }}
+                                                          onBlur={() => {
+                                                            handleSaveFormulaAcronyms(formulaAcronyms, false);
+                                                            setActiveEditAcronymCell(null);
+                                                          }}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Escape') {
+                                                              handleSaveFormulaAcronyms(formulaAcronyms, false);
+                                                              setActiveEditAcronymCell(null);
+                                                            }
+                                                          }}
+                                                          ref={(el) => {
+                                                            if (el) {
+                                                              el.focus();
+                                                              el.style.height = 'auto';
+                                                              el.style.height = `${el.scrollHeight}px`;
+                                                            }
+                                                          }}
+                                                          rows={1}
+                                                          className="w-full bg-slateCustom-950 border border-slate-700 focus:outline-none focus:ring-0 text-slate-200 font-medium text-[14px] resize-none overflow-hidden block py-1.5 px-2 rounded-lg"
+                                                          placeholder="암기단어 : 설명"
+                                                        />
+                                                      ) : (
+                                                        <div className="w-full py-1.5 px-2 text-slate-200 font-medium text-[14px] text-left hover:bg-slate-800/40 rounded transition-colors">
+                                                          {combinedValue ? (
+                                                            <LatexRenderer text={combinedValue} katexLoaded={katexLoaded} isMarkdown={true} />
+                                                          ) : (
+                                                            <span className="text-slate-500 italic">암기단어 : 설명</span>
+                                                          )}
+                                                        </div>
+                                                      );
+                                                    })()}
                                                   </td>
                                                   <td className="p-2 md:p-2.5 text-center select-none align-middle">
                                                     <div className="flex items-center justify-center gap-1">
@@ -22968,68 +23001,87 @@ ${itemsStr}
                                   </div>
                                 </div>
 
-                                {isExpanded && (() => {
-                                  const parsed = parseOverviewContent(ov.content);
-                                  const hasParsedData = parsed.definition || parsed.mechanism || parsed.intuitive;
-                                  
-                                  if (hasParsedData) {
-                                    const steps = parsed.mechanism
-                                      ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean)
-                                      : [];
-                                    return (
-                                      <div className="space-y-4 animate-fade-in w-full">
-                                        {/* 1. 개요 */}
-                                        {parsed.definition && (
-                                          <div className="bg-slate-900/40 border border-slate-800/60 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
-                                            <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
-                                            <p className="font-bold text-white leading-relaxed">{parsed.definition}</p>
-                                          </div>
-                                        )}
+                                                                 {isExpanded && (() => {
+                                   const parsed = parseOverviewContent(ov.content);
+                                   const hasParsedData = parsed.definition || parsed.mechanism || parsed.comparison || parsed.significance || parsed.intuitive;
+                                   
+                                   if (hasParsedData) {
+                                     const steps = parsed.mechanism
+                                       ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean)
+                                       : [];
+                                     return (
+                                       <div className="space-y-4 animate-fade-in w-full">
+                                         {/* 1. 개요 */}
+                                         {parsed.definition && (
+                                           <div className="bg-slate-900/40 border border-slate-800/60 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
+                                             <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
+                                             <div className="font-bold text-white leading-relaxed">
+                                               <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
+                                             </div>
+                                           </div>
+                                         )}
 
-                                        {/* 2. 메커니즘 (세로 단계별 카드) */}
-                                        {steps.length > 0 && (
-                                          <div className="space-y-2 text-left">
-                                            <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
-                                            <div className="flex flex-col gap-1 w-full">
-                                              {steps.map((step, sIdx) => (
-                                                <React.Fragment key={sIdx}>
-                                                  <div className="bg-slate-900/60 border border-slate-800/80 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
-                                                    <div className="flex gap-2.5 items-start">
-                                                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
-                                                        {sIdx + 1}
-                                                      </span>
-                                                      <p className="flex-1 text-slate-250 leading-relaxed">{step}</p>
-                                                    </div>
-                                                  </div>
-                                                  {sIdx < steps.length - 1 && (
-                                                    <div className="flex justify-center my-1 select-none">
-                                                      <span className="text-rose-500/40 text-[11px] font-black">↓</span>
-                                                    </div>
-                                                  )}
-                                                </React.Fragment>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
+                                         {/* 2. 메커니즘 (세로 단계별 카드) */}
+                                         {steps.length > 0 && (
+                                           <div className="space-y-2 text-left">
+                                             <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
+                                             <div className="flex flex-col gap-1 w-full">
+                                               {steps.map((step, sIdx) => (
+                                                 <React.Fragment key={sIdx}>
+                                                   <div className="bg-slate-900/60 border border-slate-800/80 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                                                     <div className="flex gap-2.5 items-start">
+                                                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                                         {sIdx + 1}
+                                                       </span>
+                                                       <div className="flex-1 text-slate-250 leading-relaxed">
+                                                         <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
+                                                       </div>
+                                                     </div>
+                                                   </div>
+                                                   {sIdx < steps.length - 1 && (
+                                                     <div className="flex justify-center my-1 select-none">
+                                                       <span className="text-rose-500/40 text-[11px] font-black">↓</span>
+                                                     </div>
+                                                   )}
+                                                 </React.Fragment>
+                                               ))}
+                                             </div>
+                                           </div>
+                                         )}
 
-                                        {/* 3. 직관적 의미 */}
-                                        {parsed.intuitive && (
-                                          <div className="bg-violet-950/15 border border-violet-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
-                                            <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
-                                            <p className="text-slate-300 leading-relaxed">{parsed.intuitive}</p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  }
+                                         {/* 비교표 */}
+                                         {parsed.comparison && (
+                                           <div className="bg-emerald-950/15 border border-emerald-500/15 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in">
+                                             <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
+                                             <div className="text-slate-250 leading-relaxed font-semibold">
+                                               <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                                             </div>
+                                           </div>
+                                         )}
 
-                                  // Fallback for old overview text content
-                                  return (
-                                    <div className="text-slate-300 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
-                                      <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
-                                    </div>
-                                  );
-                                })()}
+                                         {/* 공학적 의미/한계성 */}
+                                         {parsed.significance && (
+                                           <div className="bg-rose-950/10 border border-rose-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in">
+                                             <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
+                                             <div className="text-slate-250 leading-relaxed font-semibold">
+                                               <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                                             </div>
+                                           </div>
+                                         )}
+
+                                         {/* 3. 직관적 의미 */}
+                                         {parsed.intuitive && (
+                                           <div className="bg-violet-950/15 border border-violet-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
+                                             <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                                             <div className="text-slate-300 leading-relaxed">
+                                               <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
+                                             </div>
+                                           </div>
+                                         )}
+                                       </div>
+                                     );
+                                   }
+
                               </div>
                             );
                           })}
