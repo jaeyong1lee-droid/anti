@@ -12532,19 +12532,85 @@ export default function App() {
     const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
     const existingSentence = sentenceMatch ? sentenceMatch[1].trim() : '';
 
-    let newContent = `두문자: ${newAcronymLetters}\n`;
-    if (existingSentence) {
-      newContent += `연상문장: ${existingSentence}\n`;
-    }
-    newContent += `| 두문자 | 암기단어 | 설명 |\n`;
-    newContent += `| :---: | :---: | :--- |\n`;
+    // First update: swap rows instantly with a loading message on the sentence
+    let tempContent = `두문자: ${newAcronymLetters}\n`;
+    tempContent += `연상문장: (연상문장 생성 중...)\n`;
+    tempContent += `| 두문자 | 암기단어 | 설명 |\n`;
+    tempContent += `| :---: | :---: | :--- |\n`;
     for (const r of rows) {
-      newContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+      tempContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
     }
 
-    updated[acronymIdx] = { ...ac, content: newContent.trim() };
+    updated[acronymIdx] = { ...ac, content: tempContent.trim() };
     setFormulaAcronyms(updated);
-    await handleSaveFormulaAcronyms(updated, false);
+
+    // Call LLM in background to generate new sentence containing the topic title/keyword
+    try {
+      const itemsText = rows.map((r, i) => `${i+1}. 두문자: ${r.acronym}, 암기단어: ${r.word}, 설명: ${r.description}`).join('\n');
+      const prompt = `토픽 제목: "${ac.title}"\n` +
+        `새로운 두문자 조합: "${newAcronymLetters}"\n` +
+        `각 항목 정보:\n${itemsText}\n\n` +
+        `요청: 위의 두문자 조합과 항목 정보, 그리고 토픽 제목을 바탕으로 암기하기 가장 쉬운 짧고 직관적인 연상문장(한 줄)을 한국어로 창작해줘.\n` +
+        `필수 조건:\n` +
+        `1. 문장 내에 반드시 토픽 제목(또는 토픽 제목을 상징하는 핵심 키워드/단어. 예: '부등침하'의 경우 '부등' 혹은 '부등침하')을 자연스럽게 포함해야 함.\n` +
+        `2. 두문자 키워드들의 각 글자들이 연상문장 단어들에 자연스럽게 녹아들거나 따옴표로 표현되어야 함.\n` +
+        `3. 오직 생성된 연상문장 1줄만 반환하고, 양쪽 끝의 따옴표나 '연상문장:' 접두사, 다른 불필요한 설명은 일절 덧붙이지 마십시오.`;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: prompt,
+          image: null
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.text) {
+        let cleanSentence = data.text.trim();
+        // Clean any leading/trailing quotes or prefix
+        cleanSentence = cleanSentence.replace(/^연상문장:\s*/, '').replace(/^"|"$/g, '').trim();
+
+        let finalContent = `두문자: ${newAcronymLetters}\n`;
+        finalContent += `연상문장: ${cleanSentence}\n`;
+        finalContent += `| 두문자 | 암기단어 | 설명 |\n`;
+        finalContent += `| :---: | :---: | :--- |\n`;
+        for (const r of rows) {
+          finalContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+        }
+
+        const freshAcronyms = [...formulaAcronyms];
+        const freshIdx = freshAcronyms.findIndex(item => item.id === acronymId);
+        if (freshIdx !== -1) {
+          freshAcronyms[freshIdx] = { ...freshAcronyms[freshIdx], content: finalContent.trim() };
+          setFormulaAcronyms(freshAcronyms);
+          await handleSaveFormulaAcronyms(freshAcronyms, false);
+          showNotification('순서 변경 및 연상문장 자동 재구성이 완료되었습니다.', 'success');
+        }
+      } else {
+        throw new Error('LLM response error');
+      }
+    } catch (err) {
+      console.warn('Failed to auto-regenerate sentence:', err);
+      // Restore previous sentence if generation fails
+      let restoreContent = `두문자: ${newAcronymLetters}\n`;
+      if (existingSentence) {
+        restoreContent += `연상문장: ${existingSentence}\n`;
+      }
+      restoreContent += `| 두문자 | 암기단어 | 설명 |\n`;
+      restoreContent += `| :---: | :---: | :--- |\n`;
+      for (const r of rows) {
+        restoreContent += `| ${r.acronym} | ${r.word} | ${r.description} |\n`;
+      }
+      const freshAcronyms = [...formulaAcronyms];
+      const freshIdx = freshAcronyms.findIndex(item => item.id === acronymId);
+      if (freshIdx !== -1) {
+        freshAcronyms[freshIdx] = { ...freshAcronyms[freshIdx], content: restoreContent.trim() };
+        setFormulaAcronyms(freshAcronyms);
+        await handleSaveFormulaAcronyms(freshAcronyms, false);
+      }
+    }
   };
 
   const handleAddAcronymRow = async (acronymId) => {
