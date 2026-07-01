@@ -2993,15 +2993,6 @@ export default function App() {
     }
   }, [buildTimeMs]);
 
-  useEffect(() => {
-    window.currentStudyData = {
-      overviews: formulaOverviews,
-      tables: formulaTables,
-      acronyms: formulaAcronyms,
-      questions: formulaQuestions
-    };
-  }, [formulaOverviews, formulaTables, formulaAcronyms, formulaQuestions]);
-
   const getSubjectiveColorClasses = (idx, isRevd) => {
     if (!isRevd) return 'border-slate-750 text-white';
     
@@ -4842,6 +4833,15 @@ export default function App() {
   const savedAnswersheetScroll = useRef(0);
 
   // Close floating calculator auto-toggle is now handled via visibility hiding rather than unmounting
+
+  useEffect(() => {
+    window.currentStudyData = {
+      overviews: formulaOverviews,
+      tables: formulaTables,
+      acronyms: formulaAcronyms,
+      questions: formulaQuestions
+    };
+  }, [formulaOverviews, formulaTables, formulaAcronyms, formulaQuestions]);
 
   const restoreQuestionImages = (questionsList) => {
     if (!Array.isArray(questionsList)) return [];
