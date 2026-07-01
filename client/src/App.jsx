@@ -17505,26 +17505,7 @@ ${itemsStr}
                               </button>
                             )}
 
-                            {/* 답안 접기/열기 버튼 (채점 완료 후 활성화) */}
-                            {!isMC && Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`)) && (
-                              <button
-                                onClick={() => {
-                                  setRevealedQuestions(prev => ({ ...prev, [idx]: !prev[idx] }));
-                                }}
-                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                                title="답안 접기 및 열기"
-                              >
-                                {isRevd ? (
-                                  <>
-                                    <span className="hidden sm:inline">🙈 </span>답안 접기
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="hidden sm:inline">👁️ </span>답안 열기
-                                  </>
-                                )}
-                              </button>
-                            )}
+
 
                             {/* 추천/비추천 피드백 버튼 */}
                             <button
@@ -18133,13 +18114,6 @@ ${itemsStr}
                               <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                 <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                   <span>📝 모범 답안</span>
-                                  <button
-                                    onClick={() => setRevealedQuestions(prev => ({ ...prev, [idx]: false }))}
-                                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                    title="답안 접기"
-                                  >
-                                    접기 ✕
-                                  </button>
                                 </div>
                                 {q.concept && (
                                   <div className="space-y-1">
@@ -20767,26 +20741,7 @@ ${itemsStr}
                             </button>
                           )}
 
-                          {/* 답안 접기/열기 버튼 (채점 완료 후 활성화) */}
-                          {!isMC && Object.keys(tableGradingResults).some(k => k.startsWith(`${idx}_`)) && (
-                            <button
-                              onClick={() => {
-                                setExamRevealed(prev => ({ ...prev, [idx]: !prev[idx] }));
-                              }}
-                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-700/50 hover:text-white transition-all duration-300 active:scale-95 cursor-pointer select-none whitespace-nowrap"
-                              title="답안 접기 및 열기"
-                            >
-                              {examRevealed[idx] ? (
-                                <>
-                                  <span className="hidden sm:inline">🙈 </span>답안 접기
-                                </>
-                              ) : (
-                                <>
-                                  <span className="hidden sm:inline">👁️ </span>답안 열기
-                                </>
-                              )}
-                            </button>
-                          )}
+
 
                           {/* 추천/비추천 피드백 버튼 */}
                           <button
@@ -21336,13 +21291,6 @@ ${itemsStr}
                               <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
                                 <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                   <span>📝 모범 답안</span>
-                                  <button
-                                    onClick={() => setExamRevealed(prev => ({ ...prev, [idx]: false }))}
-                                    className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded transition-colors cursor-pointer font-bold"
-                                    title="답안 접기"
-                                  >
-                                    접기 ✕
-                                  </button>
                                 </div>
                                 <div className="text-sm text-slate-200 leading-relaxed">
                                   <LatexRenderer text={q.answer || '답안 없음'} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
