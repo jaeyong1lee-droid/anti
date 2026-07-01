@@ -7666,7 +7666,7 @@ app.get('/api/session/last-active-review', async (req, res) => {
           success: true,
           lastActive: {
             topicId: 'mixed_acronym_table',
-            title: '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
+            title: '오늘의 필수 믹스복습 (10제 1세트)',
             keywords: '',
             pdfName: 'mixed.html',
             mode: 'ai',

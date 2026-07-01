@@ -5660,7 +5660,7 @@ export default function App() {
           const mixedItem = {
             schedule_id: 'mixed_acronym_table_schedule',
             topic_id: 'mixed_acronym_table',
-            title: '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
+            title: '오늘의 필수 믹스복습 (10제 1세트)',
             planned_date: '1970-01-01',
             review_round: 'MIX',
             category: '믹스',
@@ -7074,7 +7074,7 @@ export default function App() {
   const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
     if (topicId === 'mixed_acronym_table') {
       localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
-      showNotification('오늘의 필수 표/앞글자 믹스 복습 완료!');
+      showNotification('오늘의 필수 믹스복습 완료!');
       fetchTodayReviews(referenceDate);
       return;
     }
@@ -7333,7 +7333,7 @@ export default function App() {
         .catch(e => console.warn('Sync delete mixed session failed:', e));
 
       localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
-      showNotification(`오늘의 필수 표/앞글자 믹스 복습 완료! (성적: ${scoreMC}점)`, 'success');
+      showNotification(`오늘의 필수 믹스복습 완료! (성적: ${scoreMC}점)`, 'success');
 
       setSelectedTopic(null);
       setAiQuestions([]);
@@ -7654,7 +7654,7 @@ export default function App() {
   const handleRequestMixedReview = async () => {
     const alreadyExists = todayReviews.some(r => r.topic_id === 'mixed_acronym_table');
     if (alreadyExists) {
-      showNotification('이미 오늘의 필수 믹스 복습이 복습 목록에 존재합니다.', 'info');
+      showNotification('이미 오늘의 필수 믹스복습이 복습 목록에 존재합니다.', 'info');
       return;
     }
     localStorage.removeItem(`anti_mixed_completed_${referenceDate}`);
@@ -7666,7 +7666,7 @@ export default function App() {
     await fetchTodayReviews(referenceDate);
     handleOpenAIQuestions(
       'mixed_acronym_table',
-      '오늘의 필수 표/앞글자 믹스 복습 (7제 1세트)',
+      '오늘의 필수 믹스복습 (10제 1세트)',
       '',
       'mixed.html',
       'ai',
@@ -8314,11 +8314,11 @@ export default function App() {
         // 4. Pick 1 table if available
         if (tablesPool.length > 0) selectedItems.push(tablesPool.shift());
         
-        // 5. Keep picking from remaining pools round-robin until we have 7 items
+        // 5. Keep picking from remaining pools round-robin until we have 10 items
         const pools = [imagesPool, overviewsPool, acronymsPool, tablesPool];
         let poolIdx = 0;
         let attempts = 0;
-        while (selectedItems.length < 7 && attempts < 100) {
+        while (selectedItems.length < 10 && attempts < 100) {
           attempts++;
           const activePool = pools[poolIdx];
           if (activePool && activePool.length > 0) {
@@ -15925,7 +15925,7 @@ ${itemsStr}
                     className="text-[10px] px-2.5 py-1.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-500/30 glow-amber-hover"
                     title="이전 복습 성적이 낮았던 약점 토픽을 추가 추천받아 복습"
                   >
-                    {loadingWeakPoints ? '⏳ 불러오는 중...' : '💡 약점 추천 받기'}
+                    {loadingWeakPoints ? '⏳ 불러오는 중...' : '💡 약점'}
                   </button>
                   
                   {(() => {
@@ -15935,9 +15935,9 @@ ${itemsStr}
                         onClick={handleRequestMixedReview}
                         disabled={!hasItems}
                         className={`text-[10px] px-2.5 py-1.5 rounded-lg font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-violet-950/60 hover:bg-violet-900/60 text-violet-300 border border-violet-500/30 glow-purple-hover`}
-                        title="금회(오늘) 추가 및 저장한 표와 앞글자 암기 리스트를 조합하여 5개 복습 문제를 출제합니다."
+                        title="금회(오늘) 추가 및 저장한 표, 앞글자, 개요, 그림 리스트를 조합하여 10개 복습 문제를 출제합니다."
                       >
-                        📝 표글추천
+                        📝 믹스
                       </button>
                     );
                   })()}
