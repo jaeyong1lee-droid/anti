@@ -6555,6 +6555,31 @@ export default function App() {
         }));
       } catch (e) {
         console.warn('[Local Backup] Failed to save local progress:', e);
+        if (e.name === 'QuotaExceededError' || e.code === 22 || e.number === 0x8007000E) {
+          try {
+            console.log('[Local Backup] Cleaning up old progress keys to free space...');
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && k !== key && (k.startsWith('anti_review_progress_') || k.startsWith('anti_review_progress_sched_'))) {
+                localStorage.removeItem(k);
+              }
+            }
+            localStorage.setItem(key, JSON.stringify({
+              questions: aiQuestions,
+              selectedAnswers,
+              revealedQuestions,
+              tableAnswers,
+              tableGradingResults,
+              tutorAnswers,
+              tutorInputText,
+              chatHistory,
+              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+            }));
+            console.log('[Local Backup] Retry saved successfully after cleaning old backups!');
+          } catch (retryErr) {
+            console.error('[Local Backup] Retry failed even after cleaning old backups:', retryErr);
+          }
+        }
       }
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
