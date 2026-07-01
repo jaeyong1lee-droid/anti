@@ -24441,7 +24441,7 @@ ${itemsStr}
         </div>
       )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
-      {!(showFormulaExam || showExam || showTheoryExam || showAnswerSheet) && (!isModalOpen || isDesktop) && (
+      {(isDesktop || (!(showFormulaExam || showExam || showTheoryExam || showAnswerSheet) && !isModalOpen)) && (
         <>
           {/* Tablet: invisible left-edge swipe zone (40px wide) shown when nav is hidden */}
           {isTabletScreen && tabletNavHidden && (
