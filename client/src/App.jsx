@@ -2906,6 +2906,80 @@ export default function App() {
     return diff >= 0 && diff < 60000;
   });
 
+  const [activeAnswerPopupData, setActiveAnswerPopupData] = useState(null);
+
+  const handleOpenAnswerPopup = (q) => {
+    const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
+    const lowerQuestion = q.question.toLowerCase();
+    
+    let matchedType = '';
+    if (q.question.startsWith('[개요 복습]') || q.mixedType === 'overview' || q.subtype === '개요') {
+      matchedType = 'overview';
+    } else if (q.question.startsWith('[표 복습]') || q.mixedType === 'table' || q.subtype === '표채우기') {
+      matchedType = 'table';
+    } else if (q.question.startsWith('[앞글자 복습]') || q.mixedType === 'acronym' || q.subtype === '앞글자') {
+      matchedType = 'acronym';
+    } else if (q.question.startsWith('[공식 복습]') || q.type === '주관식 (공식)' || q.type === '계산' || q.subtype === '공식') {
+      matchedType = 'formula';
+    } else {
+      if (lowerQuestion.includes('개요')) matchedType = 'overview';
+      else if (lowerQuestion.includes('표')) matchedType = 'table';
+      else if (lowerQuestion.includes('두문자') || lowerQuestion.includes('앞글자')) matchedType = 'acronym';
+      else matchedType = 'formula';
+    }
+
+    const topicId = q.topic_id || q.originalId || selectedTopic?.id || examTopic?.id;
+    
+    let matchedContent = null;
+    if (matchedType === 'overview') {
+      matchedContent = formulaOverviews.find(ov => ov.id === topicId || ov.title === cleanTitle) 
+        || formulaOverviews.find(ov => ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
+    } else if (matchedType === 'table') {
+      matchedContent = formulaTables.find(t => t.id === topicId || t.title === cleanTitle)
+        || formulaTables.find(t => t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
+    } else if (matchedType === 'acronym') {
+      matchedContent = formulaAcronyms.find(ac => ac.id === topicId || ac.title === cleanTitle)
+        || formulaAcronyms.find(ac => ac.title.includes(cleanTitle) || cleanTitle.includes(ac.title));
+    } else {
+      matchedContent = formulaQuestions.find(f => f.id === topicId || f.title === cleanTitle)
+        || formulaQuestions.find(f => f.title.includes(cleanTitle) || cleanTitle.includes(f.title));
+    }
+    
+    if (matchedContent) {
+      setActiveAnswerPopupData({
+        type: matchedType,
+        title: matchedContent.title,
+        content: matchedContent
+      });
+    } else {
+      const anyOverview = formulaOverviews.find(ov => ov.title === cleanTitle || ov.title.includes(cleanTitle) || cleanTitle.includes(ov.title));
+      const anyTable = formulaTables.find(t => t.title === cleanTitle || t.title.includes(cleanTitle) || cleanTitle.includes(t.title));
+      const anyAcronym = formulaAcronyms.find(ac => ac.title === cleanTitle || ac.title.includes(cleanTitle) || cleanTitle.includes(ac.title));
+      const anyFormula = formulaQuestions.find(f => f.title === cleanTitle || f.title.includes(cleanTitle) || cleanTitle.includes(f.title));
+      
+      if (matchedType === 'overview' && anyOverview) {
+        setActiveAnswerPopupData({ type: 'overview', title: anyOverview.title, content: anyOverview });
+      } else if (matchedType === 'table' && anyTable) {
+        setActiveAnswerPopupData({ type: 'table', title: anyTable.title, content: anyTable });
+      } else if (matchedType === 'acronym' && anyAcronym) {
+        setActiveAnswerPopupData({ type: 'acronym', title: anyAcronym.title, content: anyAcronym });
+      } else if (anyFormula) {
+        setActiveAnswerPopupData({ type: 'formula', title: anyFormula.title, content: anyFormula });
+      } else {
+        const firstMatch = anyOverview || anyTable || anyAcronym || anyFormula;
+        if (firstMatch) {
+          let type = 'formula';
+          if (anyOverview && firstMatch === anyOverview) type = 'overview';
+          else if (anyTable && firstMatch === anyTable) type = 'table';
+          else if (anyAcronym && firstMatch === anyAcronym) type = 'acronym';
+          setActiveAnswerPopupData({ type, title: firstMatch.title, content: firstMatch });
+        } else {
+          showNotification('해당 토픽의 학습 자료를 찾을 수 없습니다.', 'error');
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     const diff = Date.now() - buildTimeMs;
     setIsRecentBuild(diff >= 0 && diff < 60000);
@@ -17588,16 +17662,11 @@ ${itemsStr}
                               <span>추천</span>
                             </button>
                             <button
-                              onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
-                              className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
-                                questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
-                                  ? 'bg-rose-950/60 border-rose-500 text-rose-400 font-black' 
-                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
-                              }`}
-                              title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
+                              onClick={() => handleOpenAnswerPopup(q)}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
+                              title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
                             >
-                              <ThumbsDown size={12} className="hidden sm:inline-block" />
-                              <span>비추천</span>
+                              <span>📄 답안</span>
                             </button>
 
                             {isMC && (
@@ -20824,16 +20893,11 @@ ${itemsStr}
                             <span>추천</span>
                           </button>
                           <button
-                            onClick={() => handleToggleFeedback(q.topic_id || selectedTopic?.id || examTopic?.id, q.question, 'downvote')}
-                            className={`flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap ${
-                              questionFeedback[`${q.topic_id || selectedTopic?.id || examTopic?.id}_${q.question.trim()}`] === 'downvote'
-                                ? 'bg-rose-950/60 border-rose-500 text-rose-400 font-black' 
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-rose-950/20 hover:border-rose-500/30 hover:text-rose-400'
-                            }`}
-                            title="비추천: 다음에 문제 생성 시 이 문제 유형의 출제 빈도를 낮추거나 제외합니다."
+                            onClick={() => handleOpenAnswerPopup(q)}
+                            className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
+                            title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
                           >
-                            <ThumbsDown size={12} className="hidden sm:inline-block" />
-                            <span>비추천</span>
+                            <span>📄 답안</span>
                           </button>
 
                           {isMC && (
@@ -25369,6 +25433,216 @@ ${itemsStr}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all text-center shadow-lg shadow-emerald-900/20"
               >
                 생성하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Answer Popup Modal */}
+      {activeAnswerPopupData && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in select-text">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden glassmorphism transform scale-100 transition-all">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 select-none">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
+                  {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
+                   activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안' :
+                   activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안' : '🔬 공식 답안'}
+                </span>
+                <h2 className="text-base font-extrabold text-white truncate max-w-[200px] sm:max-w-md">
+                  {activeAnswerPopupData.title}
+                </h2>
+              </div>
+              <button
+                onClick={() => setActiveAnswerPopupData(null)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {activeAnswerPopupData.type === 'overview' && (() => {
+                const parsed = parseOverviewContent(activeAnswerPopupData.content.content);
+                const steps = parsed.mechanism ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean) : [];
+                return (
+                  <div className="space-y-4">
+                    {parsed.definition && (
+                      <div className="bg-slate-955/40 border border-slate-800/60 p-4 rounded-2xl text-left">
+                        <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
+                        <div className="font-bold text-white text-sm leading-relaxed">
+                          <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
+                      </div>
+                    )}
+                    {steps.length > 0 && (
+                      <div className="space-y-2 text-left">
+                        <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
+                        <div className="flex flex-col gap-1.5 w-full">
+                          {steps.map((step, sIdx) => (
+                            <React.Fragment key={sIdx}>
+                              <div className="bg-slate-955/60 border border-slate-800/80 p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                                <div className="flex gap-2.5 items-start">
+                                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                    {sIdx + 1}
+                                  </span>
+                                  <div className="flex-grow text-slate-250 leading-relaxed">
+                                    <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
+                                  </div>
+                                </div>
+                              </div>
+                              {sIdx < steps.length - 1 && (
+                                <div className="flex justify-center my-0.5 select-none">
+                                  <span className="text-rose-500/40 text-[11px] font-black">↓</span>
+                                </div>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {parsed.comparison && (
+                      <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
+                        <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
+                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
+                      </div>
+                    )}
+                    {parsed.significance && (
+                      <div className="bg-rose-955/10 border border-rose-500/10 p-4 rounded-2xl text-left">
+                        <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
+                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                          <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
+                      </div>
+                    )}
+                    {parsed.intuitive && (
+                      <div className="bg-violet-955/15 border border-violet-500/10 p-4 rounded-2xl text-left">
+                        <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
+                        <div className="text-slate-300 text-sm leading-relaxed">
+                          <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {activeAnswerPopupData.type === 'table' && (() => {
+                const parsed = parseHtmlTable(activeAnswerPopupData.content.html);
+                return (
+                  <div className="table-quiz-container overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-0 text-left">
+                    <table className="table-quiz-table w-full table-auto text-center border-collapse text-[13px] sm:text-[14px]">
+                      <thead>
+                        <tr className="bg-slate-955/80 text-slate-355 border-b border-slate-800">
+                          {parsed.headers.map((h, hIdx) => (
+                            <th key={hIdx} className="p-2.5 border-r border-slate-800 last:border-r-0 font-extrabold">
+                              <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsed.rows.map((row, rIdx) => (
+                          <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/10">
+                            {row.map((cell, cIdx) => (
+                              <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-200 align-middle">
+                                <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+
+              {activeAnswerPopupData.type === 'acronym' && (() => {
+                const rows = getAcronymRows(activeAnswerPopupData.content.content);
+                const acronymHeaderMatch = activeAnswerPopupData.content.content.match(/^두문자:\s*([^\n]+)/m);
+                const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
+                const sentenceMatch = activeAnswerPopupData.content.content.match(/^연상문장:\s*([^\n]+)/m);
+                const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2 bg-slate-955/40 border border-slate-800/80 rounded-2xl p-4 text-left">
+                      <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 w-fit">
+                        두문자 조합: {acronymHeaderText}
+                      </div>
+                      {sentenceText && (
+                        <div className="mt-2 text-sm text-slate-255 leading-relaxed font-semibold">
+                          <span className="text-emerald-400">💡 연상문장:</span> {sentenceText}
+                        </div>
+                      )}
+                    </div>
+                    {rows.length > 0 && (
+                      <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-2xl">
+                        <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
+                          <thead>
+                            <tr className="border-b border-slate-800 bg-slate-955/80 text-slate-355">
+                              <th className="p-2.5 font-black text-center border-r border-slate-800 w-16">두문자</th>
+                              <th className="p-2.5 font-black border-r border-slate-800">암기단어</th>
+                              <th className="p-2.5 font-black">설명</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((row, rIdx) => (
+                              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/10">
+                                <td className="p-2.5 text-center font-extrabold text-emerald-400 border-r border-slate-800">{row.acronym}</td>
+                                <td className="p-2.5 font-bold text-white border-r border-slate-800">{row.word}</td>
+                                <td className="p-2.5 text-slate-300">{row.description}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {activeAnswerPopupData.type === 'formula' && (
+                <div className="space-y-4 text-left">
+                  {activeAnswerPopupData.content.concept && (
+                    <div className="bg-slate-955/40 border border-slate-800/60 p-4 rounded-2xl">
+                      <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider">🔬 핵심 개념</span>
+                      <div className="text-sm font-semibold text-white leading-relaxed">
+                        <LatexRenderer text={activeAnswerPopupData.content.concept} katexLoaded={katexLoaded} isMarkdown={true} />
+                      </div>
+                    </div>
+                  )}
+                  {activeAnswerPopupData.content.formula && (
+                    <div className="bg-slate-955/60 border border-slate-800/80 p-4 rounded-2xl">
+                      <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider">📐 관계 공식 및 기호 정의</span>
+                      <div className="text-sm text-slate-200 leading-relaxed overflow-x-auto">
+                        <LatexRenderer text={activeAnswerPopupData.content.formula} katexLoaded={katexLoaded} isMarkdown={true} />
+                      </div>
+                    </div>
+                  )}
+                  {activeAnswerPopupData.content.structure && (
+                    <div className="bg-violet-955/15 border border-violet-500/10 p-4 rounded-2xl">
+                      <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider">⚙️ 공식의 물리적 구성 구조</span>
+                      <div className="text-sm text-slate-300 leading-relaxed">
+                        <LatexRenderer text={activeAnswerPopupData.content.structure} katexLoaded={katexLoaded} isMarkdown={true} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-955/40 flex justify-end select-none">
+              <button
+                onClick={() => setActiveAnswerPopupData(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                닫기
               </button>
             </div>
           </div>

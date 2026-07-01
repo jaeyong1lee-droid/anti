@@ -684,7 +684,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Matches bullet points or numbers followed by a CJK-free math variable/symbol and a colon
   if (typeof processed === 'string') {
     processed = processed.split('\n').map(line => {
-      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
+      const bulletRegex = /^([ \t]*(?:\*|-|•|▪|▫|·|\d+\.|\d+\)|[a-zA-Z가-힣]\.|\b[a-zA-Z가-힣]\)|[①-⑳]|\[INPUT_\d+(?:_\d+)?\])[ \t]*)(?!\$)([a-zA-Z0-9_\\'\^\(\)\{\}\+\-\*\/=]+)(?!\$)([ \t]*:)/;
       return line.replace(bulletRegex, (match, p1, p2, p3) => `${p1}$${p2}$${p3}`);
     }).join('\n');
   }
@@ -823,7 +823,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   result = result.replace(/[ \t]+/g, ' ').trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
-  result = result.replace(/\$?\[\s*INPUT_(\d+)\s*\]\$?/gi, '[INPUT_$1]');
+  result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
 
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
@@ -858,7 +858,7 @@ export function healDeep(obj, parentKey = null, context = null) {
   }
 
   if (typeof obj === 'string') {
-    if (/\[INPUT_\d+\]/i.test(obj)) {
+    if (/\[INPUT_\d+(?:_\d+)?\]/i.test(obj)) {
       return obj;
     }
     if (/^(data:image\/|https?:\/\/)/i.test(obj)) {
@@ -1061,14 +1061,16 @@ export function healQuizQuestionObject(q) {
           
           // Let's find the placeholder identifier (e.g. A, B, C, INPUT_1, 빈칸(1) 등)
           let placeholderId = '';
-          const inputMatch = trimmedCell.match(/INPUT_(\d+)/i);
+          const inputMatch = trimmedCell.match(/INPUT_(\d+(?:_\d+)?)/i);
           const letterMatch = trimmedCell.match(/^[\[\(]?\s*([A-Za-z])\s*[\]\)]?$/);
           const binkanMatch = trimmedCell.match(/빈칸\s*\(?(\d+)\)?/i);
           
           let matchedNum = null;
           if (inputMatch) {
             placeholderId = `INPUT_${inputMatch[1]}`;
-            matchedNum = parseInt(inputMatch[1], 10);
+            if (!inputMatch[1].includes('_')) {
+              matchedNum = parseInt(inputMatch[1], 10);
+            }
           } else if (letterMatch) {
             placeholderId = letterMatch[1].toUpperCase(); // e.g. "A"
             matchedNum = letterMatch[1].toUpperCase().charCodeAt(0) - 64;
@@ -1102,7 +1104,7 @@ export function healQuizQuestionObject(q) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-            const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
+            const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 
