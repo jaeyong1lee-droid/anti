@@ -5609,36 +5609,10 @@ export default function App() {
       let overviews = formulaOverviews;
       
       if (tables.length === 0 || acronyms.length === 0 || overviews.length === 0) {
-        try {
-          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
-          if (tRes.ok) {
-            const tBody = await tRes.json();
-            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
-              tables = tBody.data.formulaTables;
-            }
-          }
-          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
-          if (aRes.ok) {
-            const aBody = await aRes.json();
-            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
-              acronyms = aBody.data.formulaAcronyms;
-            }
-          }
-          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
-          if (oRes.ok) {
-            const oBody = await oRes.json();
-            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
-              overviews = oBody.data.formulaOverviews;
-            }
-          }
-        } catch (err) {
-          console.warn('Sync tables/acronyms/overviews inside fetchTodayReviews failed:', err);
-        }
+        tables = await loadFormulaTables();
+        acronyms = await loadFormulaAcronyms();
+        overviews = await loadFormulaOverviews();
       }
-
-      if (tables.length > 0 && formulaTables.length === 0) setFormulaTables(tables);
-      if (acronyms.length > 0 && formulaAcronyms.length === 0) setFormulaAcronyms(acronyms);
-      if (overviews.length > 0 && formulaOverviews.length === 0) setFormulaOverviews(overviews);
 
       const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
       const data = await res.json();
@@ -8201,53 +8175,10 @@ export default function App() {
       setAiError('');
 
       if (topicId === 'mixed_acronym_table') {
-        let tables = [];
-        let acronyms = [];
-        let overviews = [];
-        
-        try {
-          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
-          if (tRes.ok) {
-            const tBody = await tRes.json();
-            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
-              tables = tBody.data.formulaTables;
-            }
-          }
-          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
-          if (aRes.ok) {
-            const aBody = await aRes.json();
-            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
-              acronyms = aBody.data.formulaAcronyms;
-            }
-          }
-          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
-          if (oRes.ok) {
-            const oBody = await oRes.json();
-            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
-              overviews = oBody.data.formulaOverviews;
-            }
-          }
-        } catch (err) {
-          console.warn('Sync tables/acronyms/overviews inside handleOpenAIQuestions failed:', err);
-        }
-
-        setFormulaTables(tables);
-        setFormulaAcronyms(acronyms);
-        setFormulaOverviews(overviews);
-        
-        let images = [];
-        try {
-          const iRes = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
-          if (iRes.ok) {
-            const iBody = await iRes.json();
-            if (iBody && iBody.data && Array.isArray(iBody.data.formulaImages)) {
-              images = iBody.data.formulaImages;
-            }
-          }
-        } catch (e) {
-          console.warn('Sync images inside handleOpenAIQuestions failed:', e);
-        }
-        setFormulaImages(images);
+        const tables = await loadFormulaTables();
+        const acronyms = await loadFormulaAcronyms();
+        const overviews = await loadFormulaOverviews();
+        const images = await loadFormulaImages();
 
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
@@ -8968,47 +8899,10 @@ export default function App() {
         const progressKey = `anti_review_progress_${currentRefreshTopicId}`;
         localStorage.removeItem(progressKey);
 
-        let tables = [];
-        let acronyms = [];
-        let overviews = [];
-        let images = [];
-        
-        try {
-          const tRes = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
-          if (tRes.ok) {
-            const tBody = await tRes.json();
-            if (tBody && tBody.data && Array.isArray(tBody.data.formulaTables)) {
-              tables = tBody.data.formulaTables;
-            }
-          }
-          const aRes = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
-          if (aRes.ok) {
-            const aBody = await aRes.json();
-            if (aBody && aBody.data && Array.isArray(aBody.data.formulaAcronyms)) {
-              acronyms = aBody.data.formulaAcronyms;
-            }
-          }
-          const oRes = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
-          if (oRes.ok) {
-            const oBody = await oRes.json();
-            if (oBody && oBody.data && Array.isArray(oBody.data.formulaOverviews)) {
-              overviews = oBody.data.formulaOverviews;
-            }
-          }
-          const iRes = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
-          if (iRes.ok) {
-            const iBody = await iRes.json();
-            if (iBody && iBody.data && Array.isArray(iBody.data.formulaImages)) {
-              images = iBody.data.formulaImages;
-            }
-          }
-        } catch (err) {
-          console.warn('Sync tables/acronyms/overviews/images inside handleRefreshReviewQuestions failed:', err);
-        }
-
-        setFormulaTables(tables);
-        setFormulaAcronyms(acronyms);
-        setFormulaOverviews(overviews);
+        const tables = await loadFormulaTables();
+        const acronyms = await loadFormulaAcronyms();
+        const overviews = await loadFormulaOverviews();
+        const images = await loadFormulaImages();
         
         const combinedItems = [
           ...tables.map(t => ({ ...t, mixedType: 'table' })),
