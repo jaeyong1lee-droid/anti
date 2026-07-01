@@ -4658,8 +4658,12 @@ export default function App() {
   const [showAcronymPromptModal, setShowAcronymPromptModal] = useState(false);
   const [acronymPromptTopic, setAcronymPromptTopic] = useState('');
   const [acronymPromptCount, setAcronymPromptCount] = useState('4');
+  const [acronymRecommendations, setAcronymRecommendations] = useState([]);
+  const [isAcronymRecommending, setIsAcronymRecommending] = useState(false);
   const [showOverviewPromptModal, setShowOverviewPromptModal] = useState(false);
   const [overviewPromptTopic, setOverviewPromptTopic] = useState('');
+  const [overviewRecommendations, setOverviewRecommendations] = useState([]);
+  const [isOverviewRecommending, setIsOverviewRecommending] = useState(false);
   const [formulaOverviews, setFormulaOverviews] = useState([]);
   const [loadingFormulaOverviews, setLoadingFormulaOverviews] = useState(false);
   const [formulaImages, setFormulaImages] = useState([]);
@@ -6365,10 +6369,6 @@ export default function App() {
       const hasImmediateChange = 
         JSON.stringify(selectedAnswers) !== JSON.stringify(lastSyncStateRef.current.selectedAnswers) ||
         JSON.stringify(revealedQuestions) !== JSON.stringify(lastSyncStateRef.current.revealedQuestions) ||
-        JSON.stringify(tableAnswers) !== JSON.stringify(lastSyncStateRef.current.tableAnswers) ||
-        JSON.stringify(tableGradingResults) !== JSON.stringify(lastSyncStateRef.current.tableGradingResults) ||
-        JSON.stringify(tutorAnswers) !== JSON.stringify(lastSyncStateRef.current.tutorAnswers) ||
-        JSON.stringify(tutorInputText) !== JSON.stringify(lastSyncStateRef.current.tutorInputText) ||
         JSON.stringify(chatHistory) !== JSON.stringify(lastSyncStateRef.current.chatHistory);
 
       console.log(`[Auto-Sync] Triggered. hasImmediateChange=${hasImmediateChange}, topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}, chatHistoryLength=${chatHistory.length}`);
@@ -6421,6 +6421,32 @@ export default function App() {
       console.log(`[Auto-Sync] Ignored. selectedTopic=${!!selectedTopic}, aiQuestions=${aiQuestions?.length}, chatHistory=${chatHistory?.length}, restoring=${restoringReviewSession}`);
     }
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, restoringReviewSession, reviewSessionId]);
+
+  // ── Save active session progress to localStorage on any state change (fast local write)
+  useEffect(() => {
+    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
+      const activeSid = reviewSessionId || 'legacy_default';
+      const key = selectedTopic.schedule_id 
+        ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
+        : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
+
+      try {
+        localStorage.setItem(key, JSON.stringify({
+          questions: aiQuestions,
+          selectedAnswers,
+          revealedQuestions,
+          tableAnswers,
+          tableGradingResults,
+          tutorAnswers,
+          tutorInputText,
+          chatHistory,
+          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+        }));
+      } catch (e) {
+        console.warn('[Local Backup] Failed to save local progress:', e);
+      }
+    }
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -14533,23 +14559,71 @@ ${itemsStr}
               setSelectedTopic(s.selectedTopic);
               
               const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
+              const resolvedSid = isServerSidAbsolute 
+                ? server.sessionId 
+                : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
+
               if (isServerSidAbsolute) {
                 setReviewSessionId(server.sessionId);
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, server.sessionId);
               } else {
-                const localSid = getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
-                setReviewSessionId(localSid);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, localSid);
+                setReviewSessionId(resolvedSid);
+                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, resolvedSid);
+              }
+
+              const localKey = s.selectedTopic.schedule_id 
+                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${resolvedSid}`
+                : `anti_review_progress_${s.selectedTopic.id}_${resolvedSid}`;
+              const localBackupStr = localStorage.getItem(localKey);
+              let localBackup = {};
+              if (localBackupStr) {
+                try {
+                  localBackup = JSON.parse(localBackupStr);
+                } catch(e){}
+              }
+
+              // Merge input text tables, keeping the longer text if both local and server have inputs
+              const mergedTableAnswers = { ...(server.tableAnswers || {}) };
+              if (localBackup.tableAnswers) {
+                Object.keys(localBackup.tableAnswers).forEach(key => {
+                  const serverVal = server.tableAnswers?.[key] || '';
+                  const localVal = localBackup.tableAnswers[key] || '';
+                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
+                    mergedTableAnswers[key] = localVal;
+                  }
+                });
+              }
+
+              const mergedTutorInputText = { ...(server.tutorInputText || {}) };
+              if (localBackup.tutorInputText) {
+                Object.keys(localBackup.tutorInputText).forEach(key => {
+                  const serverVal = server.tutorInputText?.[key] || '';
+                  const localVal = localBackup.tutorInputText[key] || '';
+                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
+                    mergedTutorInputText[key] = localVal;
+                  }
+                });
+              }
+
+              const mergedTutorAnswers = { ...(server.tutorAnswers || {}) };
+              if (localBackup.tutorAnswers) {
+                Object.keys(localBackup.tutorAnswers).forEach(key => {
+                  const serverVal = server.tutorAnswers?.[key] || '';
+                  const localVal = localBackup.tutorAnswers[key] || '';
+                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
+                    mergedTutorAnswers[key] = localVal;
+                  }
+                });
               }
 
               savedQuizScroll.current = server.savedQuizScroll || 0;
               setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               setSelectedAnswers(server.selectedAnswers || {});
               setRevealedQuestions(server.revealedQuestions || {});
-              setTableAnswers(server.tableAnswers || {});
+              setTableAnswers(mergedTableAnswers);
               setTableGradingResults(server.tableGradingResults || {});
-              setTutorAnswers(server.tutorAnswers || {});
-              setTutorInputText(server.tutorInputText || {});
+              setTutorAnswers(mergedTutorAnswers);
+              setTutorInputText(mergedTutorInputText);
               setChatHistory(server.chatHistory || []);
 
               lastSyncStateRef.current = {
@@ -16802,6 +16876,15 @@ ${itemsStr}
             </div>
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
+              {selectedTopic.pdf_name && (
+                <button
+                  onClick={handleOpenOriginalReport}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                >
+                  <span className="whitespace-nowrap">원보고서</span>
+                </button>
+              )}
               {selectedTopic && (
                 <>
                   <button
@@ -16819,15 +16902,6 @@ ${itemsStr}
                     <span className="whitespace-nowrap">개</span>
                   </button>
                 </>
-              )}
-              {selectedTopic.pdf_name && (
-                <button
-                  onClick={handleOpenOriginalReport}
-                  className="hidden md:flex flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 items-center justify-center whitespace-nowrap min-w-0"
-                  title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                >
-                  <span className="whitespace-nowrap">보고서</span>
-                </button>
               )}
               {selectedTopic && isDesktop && (
                 <button
@@ -21741,18 +21815,18 @@ ${itemsStr}
               </div>
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
+                {selectedTopic && selectedTopic.pdf_name && (
+                  <button
+                    onClick={handleOpenOriginalReport}
+                    className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+                    title="원본 보고서 파일(HTML/PDF) 팝업 열기"
+                  >
+                    <FileText size={12} className="flex-shrink-0" />
+                    <span>원보고서</span>
+                  </button>
+                )}
                 {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
-                        {selectedTopic.pdf_name && (
-                          <button
-                            onClick={handleOpenOriginalReport}
-                            className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
-                            title="원본 보고서 파일(HTML/PDF) 팝업 열기"
-                          >
-                            <FileText size={12} className="flex-shrink-0" />
-                            <span>원보고서</span>
-                          </button>
-                        )}
                         <button
                           onClick={() => setShowAiHistoryModal(true)}
                           className="px-3 py-2 text-xs font-black rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"

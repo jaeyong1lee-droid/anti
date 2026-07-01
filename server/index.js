@@ -6203,6 +6203,49 @@ ${ENGINEERING_STANDARDS}`;
   }
 });
 
+// ── Topic Recommendation Endpoint for Acronyms and Overviews
+app.post('/api/recommend-topics', async (req, res) => {
+  try {
+    const { type, existingTitles } = req.body;
+    const isAcronym = type === 'acronym';
+    
+    const systemInstruction = `당신은 대한민국 토질및기초기술사 자격시험 수험생을 위한 전문 AI 튜터입니다.
+수험생이 필수 암기 리스트에 등록하여 학습할 수 있도록, 지반공학/토질역학 분야의 전문적인 핵심 토픽 단어(개념명)를 딱 3개만 추천해 주십시오.
+
+[추천 기준]:
+1. 분야: 토질및기초기술사 자격시험(지반공학, 토질역학, 기초공학, 사면안정, 터널공학, 흙막이, 지반개량 등)에서 매우 높은 빈출 비중을 차지하는 중요한 공식, 개념, 이론, 현상, 공법, 시험명 등이어야 합니다.
+2. 제외 항목: 제공되는 [기존 암기 리스트]에 이미 포함된 주제는 절대 중복하여 추천하지 마십시오.
+3. 형식: 오직 추천할 단어 3개만을 줄바꿈(\\n)으로 구분하여 깔끔하게 한글로 출력하십시오. 서론, 부연 설명, 숫자 번호(예: 1., 2.), 특수문자, 따옴표 등은 절대 포함하지 마십시오.
+4. 예시 출력 형태:
+과잉간극수압 소산 메커니즘
+사면 쐐기파괴 안정해석
+테르자기 극한지지력`;
+
+    const userPrompt = `[기존 암기 리스트]:
+${Array.isArray(existingTitles) ? existingTitles.join('\n') : '없음'}
+
+위 기존 리스트에 포함되지 않은 새로운 토질및기초기술사 필수 암기 ${isAcronym ? '두문자(앞글자) 암기법' : '개요'} 주제 단어 3개를 추천해 주십시오. (무작위성 무작위 시드 ${Math.random()})`;
+
+    const responseText = await callLLMWithFailover(
+      systemInstruction,
+      userPrompt,
+      null,
+      'formula'
+    );
+    
+    const recommendations = responseText
+      .split('\n')
+      .map(line => line.replace(/^\d+\.\s*/, '').replace(/[\*\"\'`]/g, '').trim())
+      .filter(line => line.length > 0 && line.length < 50)
+      .slice(0, 3);
+      
+    res.json({ success: true, recommendations });
+  } catch (err) {
+    console.error('POST /api/recommend-topics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 6-3. Freeform Chat Search
 app.post('/api/chat', async (req, res) => {
   const progressId = req.body.progressId || req.query.progressId;
