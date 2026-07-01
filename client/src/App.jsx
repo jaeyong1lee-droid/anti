@@ -11504,13 +11504,8 @@ export default function App() {
 
     if (!isRecommendation) {
       setShowAcronymPromptModal(false);
-
-      // Open Memorization Modal and switch to acronyms tab
-      setShowFormulaExam(true);
-      setFormulaSubTab('acronym');
-    } else {
-      showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
     }
+    showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the acronyms list
     const tempId = 'acronym-loading-' + Date.now();
@@ -11593,13 +11588,8 @@ export default function App() {
 
     if (!isRecommendation) {
       setShowOverviewPromptModal(false);
-
-      // Open Memorization Modal and switch to overview tab
-      setShowFormulaExam(true);
-      setFormulaSubTab('overview');
-    } else {
-      showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
     }
+    showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the overviews list
     const tempId = 'overview-loading-' + Date.now();
@@ -24451,7 +24441,7 @@ ${itemsStr}
         </div>
       )}
       {/* Floating Vertical Navigation - Left Center (Desktop Only, Rendered at end for DOM order stacking context safety) */}
-      {(!isModalOpen || isDesktop) && (
+      {!(showFormulaExam || showExam || showTheoryExam || showAnswerSheet) && (!isModalOpen || isDesktop) && (
         <>
           {/* Tablet: invisible left-edge swipe zone (40px wide) shown when nav is hidden */}
           {isTabletScreen && tabletNavHidden && (

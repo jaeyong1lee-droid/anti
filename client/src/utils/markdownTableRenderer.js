@@ -14,6 +14,53 @@ function parseRow(rowText) {
   return cells.map(cell => cell.trim());
 }
 
+function renderCellMath(text) {
+  if (!text) return '';
+  if (typeof text !== 'string') return text;
+  
+  // Replace $$ ... $$ first (block math)
+  let temp = text.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
+    if (window.katex) {
+      try {
+        let cleaned = math.trim();
+        cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
+        cleaned = cleaned.replace(/\\{2,}%/g, '\\%');
+        cleaned = cleaned.replace(/(?<!\\)%/g, '\\%');
+        cleaned = cleaned.replace(/^\$|\$/g, '').trim();
+        return window.katex.renderToString(cleaned, { displayMode: true, throwOnError: false });
+      } catch (e) {
+        console.warn('KaTeX render error in table cell (block):', e);
+        return match;
+      }
+    }
+    return match;
+  });
+
+  // Replace $ ... $ (inline math)
+  temp = temp.replace(/\$([^\$]+?)\$/g, (match, math) => {
+    const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+    if (!isReal) {
+      return match;
+    }
+    if (window.katex) {
+      try {
+        let cleaned = math.trim();
+        cleaned = cleaned.replace(/\\frac\b/g, '\\dfrac');
+        cleaned = cleaned.replace(/\\{2,}%/g, '\\%');
+        cleaned = cleaned.replace(/(?<!\\)%/g, '\\%');
+        cleaned = cleaned.replace(/^\$|\$/g, '').trim();
+        return window.katex.renderToString(cleaned, { displayMode: false, throwOnError: false });
+      } catch (e) {
+        console.warn('KaTeX render error in table cell (inline):', e);
+        return match;
+      }
+    }
+    return match;
+  });
+
+  return temp;
+}
+
 function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false) {
   if (tableLines.length < 2) return tableLines.join('\n');
 
@@ -43,7 +90,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
     headers.forEach(h => {
-      html += `<th class="p-2 sm:p-2.5 font-black border-r border-slate-800 last:border-r-0">${h}</th>`;
+      const renderedH = renderCellMath(h);
+      html += `<th class="p-2 sm:p-2.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
     });
     html += `</tr>`;
     html += `</thead>`;
@@ -53,7 +101,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
       
       html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
       row.forEach(cell => {
-        html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${cell}</td>`;
+        const renderedCell = renderCellMath(cell);
+        html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
         for (let k = row.length; k < colCount; k++) {
@@ -93,7 +142,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach(h => {
-    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${h}</th>`;
+    const renderedH = renderCellMath(h);
+    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
   });
   html += `</tr>`;
   html += `</thead>`;
@@ -103,7 +153,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
     
     html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
     row.forEach(cell => {
-      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${cell}</td>`;
+      const renderedCell = renderCellMath(cell);
+      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${renderedCell}</td>`;
     });
     if (row.length < colCount) {
       for (let k = row.length; k < colCount; k++) {
