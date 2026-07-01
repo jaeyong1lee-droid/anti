@@ -2089,13 +2089,13 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   }, []);
 
   return (
-    <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
+    <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+      <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
       }`}>
         <colgroup>
           {colWidths.map((w, idx) => (
-            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            <col key={idx} className={idx === 0 ? "table-quiz-col-first" : ""} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
           ))}
         </colgroup>
         <thead>
@@ -2430,13 +2430,13 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   }, []);
 
   return (
-    <div className="w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-      <table ref={tableRef} className={`w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
+    <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+      <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
       }`}>
         <colgroup>
           {colWidths.map((w, idx) => (
-            <col key={idx} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            <col key={idx} className={idx === 0 ? "table-quiz-col-first" : ""} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
           ))}
         </colgroup>
         <thead>
@@ -11488,11 +11488,17 @@ export default function App() {
   const handleAcronymPromptRequest = (chatType = 'sidebar') => {
     setAcronymPromptTopic('');
     setAcronymPromptCount('4');
+    setAcronymRecommendations([]);
+    setIsAcronymRecommending(false);
     setShowAcronymPromptModal(true);
   };
 
   const handleGenerateAcronymSubmit = async () => {
-    const topic = acronymPromptTopic.trim();
+    await handleGenerateAcronymSubmitWithTopic(acronymPromptTopic);
+  };
+
+  const handleGenerateAcronymSubmitWithTopic = async (topicVal) => {
+    const topic = topicVal.trim();
     const count = parseInt(acronymPromptCount, 10) || 4;
     if (!topic) return;
 
@@ -11568,11 +11574,17 @@ export default function App() {
 
   const handleOverviewPromptRequest = () => {
     setOverviewPromptTopic('');
+    setOverviewRecommendations([]);
+    setIsOverviewRecommending(false);
     setShowOverviewPromptModal(true);
   };
 
   const handleGenerateOverviewSubmit = async () => {
-    const topic = overviewPromptTopic.trim();
+    await handleGenerateOverviewSubmitWithTopic(overviewPromptTopic);
+  };
+
+  const handleGenerateOverviewSubmitWithTopic = async (topicVal) => {
+    const topic = topicVal.trim();
     if (!topic) return;
 
     setShowOverviewPromptModal(false);
@@ -22287,11 +22299,11 @@ ${itemsStr}
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in">
+                                  <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in">
                                     {(() => {
                                       const parsed = parseHtmlTable(t.html);
                                       return (
-                                        <table className="w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
+                                        <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
                                           <thead>
                                             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                               {parsed.headers.map((h, hIdx) => (
@@ -24065,7 +24077,7 @@ ${itemsStr}
                                     handleOpenHtmlAnswerPopup(q.title || `답안 ${idx + 1}`, q.formula);
                                   }
                                 }}
-                                className="hidden md:flex py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 items-center justify-center gap-0.5 sm:gap-1"
+                                className="flex py-1 px-1.5 sm:px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold rounded-lg transition-all duration-150 active:scale-[0.95] cursor-pointer shrink-0 select-none whitespace-nowrap shadow-md border border-emerald-500/20 items-center justify-center gap-0.5 sm:gap-1"
                                 title="원본 보고서 파일(HTML/PDF/LaTeX) 팝업 열기"
                               >
                                 <FileText size={10} />
@@ -25085,6 +25097,61 @@ ${itemsStr}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
                 />
               </div>
+
+              {/* 추천 단어 영역 */}
+              <div className="space-y-2 pt-1 border-t border-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-slate-400">💡 토질및기초기술사 추천 키워드</span>
+                  <button
+                    type="button"
+                    disabled={isAcronymRecommending}
+                    onClick={async () => {
+                      if (isAcronymRecommending) return;
+                      setIsAcronymRecommending(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/recommend-topics`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: 'acronym',
+                            existingTitles: formulaAcronyms.map(ac => ac.title)
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success && Array.isArray(data.recommendations)) {
+                          setAcronymRecommendations(data.recommendations);
+                        }
+                      } catch (e) {
+                        console.warn('Failed to fetch acronym recommendations:', e);
+                      } finally {
+                        setIsAcronymRecommending(false);
+                      }
+                    }}
+                    className="text-[10px] text-emerald-400 hover:underline cursor-pointer font-bold disabled:opacity-50"
+                  >
+                    {isAcronymRecommending ? '추천 단어 생성 중...' : '토픽 추천 받기'}
+                  </button>
+                </div>
+                {acronymRecommendations.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {acronymRecommendations.map((rec, rIdx) => (
+                      <button
+                        key={rIdx}
+                        type="button"
+                        onClick={() => {
+                          setAcronymPromptTopic(rec);
+                          handleGenerateAcronymSubmitWithTopic(rec);
+                        }}
+                        className="px-2 py-1 bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 rounded-lg text-[10px] font-bold hover:bg-emerald-900/40 active:scale-95 transition-all cursor-pointer"
+                      >
+                        {rec}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500 italic">추천을 눌러 시험 필수 암기 토픽을 확인해 보세요.</p>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-2.5 pt-2">
@@ -25139,6 +25206,61 @@ ${itemsStr}
                     }
                   }}
                 />
+              </div>
+
+              {/* 추천 단어 영역 */}
+              <div className="space-y-2 pt-1 border-t border-slate-800/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-slate-400">💡 토질및기초기술사 추천 키워드</span>
+                  <button
+                    type="button"
+                    disabled={isOverviewRecommending}
+                    onClick={async () => {
+                      if (isOverviewRecommending) return;
+                      setIsOverviewRecommending(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/recommend-topics`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: 'overview',
+                            existingTitles: formulaOverviews.map(ov => ov.title)
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success && Array.isArray(data.recommendations)) {
+                          setOverviewRecommendations(data.recommendations);
+                        }
+                      } catch (e) {
+                        console.warn('Failed to fetch overview recommendations:', e);
+                      } finally {
+                        setIsOverviewRecommending(false);
+                      }
+                    }}
+                    className="text-[10px] text-rose-450 hover:underline cursor-pointer font-bold disabled:opacity-50"
+                  >
+                    {isOverviewRecommending ? '추천 단어 생성 중...' : '토픽 추천 받기'}
+                  </button>
+                </div>
+                {overviewRecommendations.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {overviewRecommendations.map((rec, rIdx) => (
+                      <button
+                        key={rIdx}
+                        type="button"
+                        onClick={() => {
+                          setOverviewPromptTopic(rec);
+                          handleGenerateOverviewSubmitWithTopic(rec);
+                        }}
+                        className="px-2 py-1 bg-rose-950/40 border border-rose-500/20 text-rose-300 rounded-lg text-[10px] font-bold hover:bg-rose-900/40 active:scale-95 transition-all cursor-pointer"
+                      >
+                        {rec}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500 italic">추천을 눌러 시험 필수 암기 토픽을 확인해 보세요.</p>
+                )}
               </div>
             </div>
 

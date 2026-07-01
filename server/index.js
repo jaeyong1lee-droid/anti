@@ -3659,10 +3659,22 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 
         // 세션에 자동 저장
         try {
+          const sessionVal = {
+            sessionId: sId,
+            questions: deduplicatedQuestions,
+            selectedAnswers: {},
+            revealedQuestions: {},
+            tableAnswers: {},
+            tableGradingResults: {},
+            tutorAnswers: {},
+            tutorInputText: {},
+            chatHistory: [],
+            savedQuizScroll: 0
+          };
           await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
           await dbQuery.run(
             'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-            [key, JSON.stringify(deduplicatedQuestions)]
+            [key, JSON.stringify(sessionVal)]
           );
         } catch (e) {
           console.warn('Failed to auto-save generated review questions to app_session:', e);
@@ -3690,10 +3702,22 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 
       // 세션에 자동 저장
       try {
+        const sessionVal = {
+          sessionId: sId,
+          questions: deduplicatedFallback,
+          selectedAnswers: {},
+          revealedQuestions: {},
+          tableAnswers: {},
+          tableGradingResults: {},
+          tutorAnswers: {},
+          tutorInputText: {},
+          chatHistory: [],
+          savedQuizScroll: 0
+        };
         await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
         await dbQuery.run(
           'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-          [key, JSON.stringify(deduplicatedFallback)]
+          [key, JSON.stringify(sessionVal)]
         );
       } catch (e) {
         console.warn('Failed to auto-save fallback review questions to app_session:', e);
@@ -7322,8 +7346,22 @@ app.get('/api/session/review', async (req, res) => {
       row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
     }
     if (row && row.value) {
-      const data = JSON.parse(row.value);
+      let data = JSON.parse(row.value);
       if (data) {
+        if (Array.isArray(data)) {
+          data = {
+            sessionId: sId,
+            questions: data,
+            selectedAnswers: {},
+            revealedQuestions: {},
+            tableAnswers: {},
+            tableGradingResults: {},
+            tutorAnswers: {},
+            tutorInputText: {},
+            chatHistory: [],
+            savedQuizScroll: 0
+          };
+        }
         let formulaImages = [];
         try {
           const imageRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_images'");
