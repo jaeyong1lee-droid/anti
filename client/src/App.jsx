@@ -11526,9 +11526,6 @@ export default function App() {
     const count = parseInt(acronymPromptCount, 10) || 4;
     if (!topic) return;
 
-    if (!isRecommendation) {
-      setShowAcronymPromptModal(false);
-    }
     showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the acronyms list
@@ -11588,6 +11585,7 @@ export default function App() {
       });
 
       showNotification(`[${parsedTitle}] 앞글자 암기법이 생성되었습니다!`, 'success');
+      setAcronymPromptTopic('');
     } catch (err) {
       console.error('Failed to generate acronym:', err);
       setFormulaAcronyms(prev => prev.filter(ac => ac.id !== tempId));
@@ -11610,9 +11608,6 @@ export default function App() {
     const topic = topicVal.trim();
     if (!topic) return;
 
-    if (!isRecommendation) {
-      setShowOverviewPromptModal(false);
-    }
     showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the overviews list
@@ -11661,6 +11656,7 @@ export default function App() {
       });
 
       showNotification(`[${topic}] 개요가 생성되었습니다!`, 'success');
+      setOverviewPromptTopic('');
     } catch (err) {
       console.error('Failed to generate overview:', err);
       setFormulaOverviews(prev => prev.filter(ov => ov.id !== tempId));
