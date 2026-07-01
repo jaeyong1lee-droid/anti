@@ -15394,6 +15394,22 @@ ${itemsStr}
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleAcronymPromptRequest()}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-emerald-955/80 border border-solid border-emerald-500/30 text-emerald-400 hover:bg-emerald-900/60 transition-all shadow-md cursor-pointer select-none"
+                    title="앞글자(두문자) 생성 입력 팝업 띄우기"
+                  >
+                    <Sparkles size={14} />
+                    <span>두문자 생성</span>
+                  </button>
+                  <button
+                    onClick={() => handleOverviewPromptRequest()}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-rose-955/80 border border-solid border-rose-500/30 text-rose-455 hover:bg-rose-900/60 transition-all shadow-md cursor-pointer select-none"
+                    title="개요 생성 입력 팝업 띄우기"
+                  >
+                    <LayoutTemplate size={14} />
+                    <span>개요 생성</span>
+                  </button>
+                  <button
                     onClick={handleOpenLockscreenPoolModal}
                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-emerald-600 border border-solid border-emerald-500 text-white hover:bg-emerald-500 transition-all shadow-md cursor-pointer select-none"
                     title="대기 중인 잠금화면 퀴즈 목록 보기"
