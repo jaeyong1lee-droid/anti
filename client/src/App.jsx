@@ -4226,6 +4226,28 @@ export default function App() {
     return Math.round(total * 10) / 10;
   };
 
+  const getDisplayReviewScore = () => {
+    if (!selectedTopic) return 0;
+    if (selectedTopic.isReadOnly) {
+      const schedId = selectedTopic.schedule_id;
+      if (schedId) {
+        const todaySched = todayReviews.find(r => r.schedule_id === schedId);
+        if (todaySched && todaySched.score !== undefined && todaySched.score !== null) {
+          return todaySched.score;
+        }
+        for (const topic of allTopics) {
+          if (topic.schedules) {
+            const s = topic.schedules.find(x => x.id === schedId);
+            if (s && s.score !== undefined && s.score !== null) {
+              return s.score;
+            }
+          }
+        }
+      }
+    }
+    return getReviewTotalScore();
+  };
+
   const getExamTotalScore = () => {
     let total = 0;
     const scoredIndices = [];
@@ -16928,7 +16950,7 @@ ${itemsStr}
               </div>
               {selectedTopic && (
                 <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                  {getReviewTotalScore()} / 100점
+                  {getDisplayReviewScore()} / 100점
                 </span>
               )}
             </div>
