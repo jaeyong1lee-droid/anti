@@ -25270,7 +25270,6 @@ ${itemsStr}
                         type="button"
                         onClick={() => {
                           setAcronymPromptTopic(rec);
-                          handleGenerateAcronymSubmitWithTopic(rec, true);
                         }}
                         className="px-2 py-1 bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 rounded-lg text-[10px] font-bold hover:bg-emerald-900/40 active:scale-95 transition-all cursor-pointer"
                       >
@@ -25380,7 +25379,6 @@ ${itemsStr}
                         type="button"
                         onClick={() => {
                           setOverviewPromptTopic(rec);
-                          handleGenerateOverviewSubmitWithTopic(rec, true);
                         }}
                         className="px-2 py-1 bg-rose-950/40 border border-rose-500/20 text-rose-300 rounded-lg text-[10px] font-bold hover:bg-rose-900/40 active:scale-95 transition-all cursor-pointer"
                       >
