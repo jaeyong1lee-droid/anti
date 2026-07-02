@@ -3412,8 +3412,8 @@ export default function App() {
                     {displayScore} / {Math.round(itemWeight * 10) / 10}점
                   </span>
                 </div>
-                <div className="text-slate-300">내 답변: <span className="font-semibold">{val || '(미입력)'}</span></div>
-                <div className="text-slate-300">모범답안: <span className="font-semibold text-emerald-400">{q.acronym}</span></div>
+                <div className="text-slate-300">내 답변: <span className={`font-semibold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{val || '(미입력)'}</span></div>
+                <div className="text-slate-300">모범답안: <span className="font-semibold text-slate-100">{q.acronym}</span></div>
                 {grading?.reason && (
                   <div className="mt-1 text-slate-400">
                     <span className="font-bold text-slate-300">피드백:</span> {grading.reason}
@@ -3437,7 +3437,10 @@ export default function App() {
             const scoreObtained = combGrading && combGrading.score !== undefined ? (combGrading.score / 10) * itemWeight : 0;
             const displayScore = Math.round(scoreObtained * 10) / 10;
             
-            const correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+            let correctRow = q.correctRows?.[rIdx];
+            if (correctRow && correctRow.acronym !== userLetter) {
+              correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+            }
             
             return (
               <div key={rIdx} className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
@@ -3449,10 +3452,10 @@ export default function App() {
                     {displayScore} / {Math.round(itemWeight * 10) / 10}점
                   </span>
                 </div>
-                <div className="text-slate-300">입력내용: <span className="font-semibold">{userContent || '(미입력)'}</span></div>
+                <div className="text-slate-300">입력내용: <span className={`font-semibold ${isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{userContent || '(미입력)'}</span></div>
                 <div className="text-slate-300">
                   모범답안: {correctRow ? (
-                    <span className="font-semibold text-emerald-400">{correctRow.word} : {correctRow.description}</span>
+                    <span className="font-semibold text-slate-100">{correctRow.word} : {correctRow.description}</span>
                   ) : (
                     <span className="font-semibold text-rose-400">(올바른 두문자 매칭 필요)</span>
                   )}
@@ -3503,7 +3506,10 @@ export default function App() {
       const userLetter = userRow.acronym;
       const userContent = userRow.combined;
       
-      const correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+      let correctRow = q.correctRows?.[rIdx];
+      if (correctRow && correctRow.acronym !== userLetter) {
+        correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+      }
       
       if (!userLetter) {
         results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
