@@ -7409,31 +7409,7 @@ app.post('/api/session/review', async (req, res) => {
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
-    let isCompletedOrFailed = false;
-    let targetScheduleId = null;
-    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      targetScheduleId = parseInt(scheduleId, 10);
-    }
-
-    if (!targetScheduleId && topicId) {
-      const latestSched = await dbQuery.get(
-        `SELECT id, status FROM schedules WHERE topic_id = ? ORDER BY id DESC LIMIT 1`,
-        [topicId]
-      );
-      if (latestSched && (latestSched.status === 'completed' || latestSched.status === 'failed')) {
-        targetScheduleId = latestSched.id;
-        isCompletedOrFailed = true;
-      }
-    } else if (targetScheduleId) {
-      const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [targetScheduleId]);
-      if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-        isCompletedOrFailed = true;
-      }
-    }
-
-    const key = isCompletedOrFailed
-      ? `completed_review_schedule_${targetScheduleId}`
-      : `review_questions_topic_${topicId}`;
+    const key = `review_questions_topic_${topicId}`;
 
 
 
