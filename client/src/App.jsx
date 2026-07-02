@@ -17236,7 +17236,7 @@ ${itemsStr}
             </div>
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
-              {selectedTopic.pdf_name && (
+              {selectedTopic.pdf_name && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
                 <button
                   onClick={handleOpenOriginalReport}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
@@ -18498,7 +18498,7 @@ ${itemsStr}
                           <BookOpen size={10} className="flex-shrink-0" />
                           <span>지침</span>
                         </button>
-                        {selectedTopic.pdf_name && (
+                        {selectedTopic.pdf_name && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
                           <button
                             onClick={handleOpenOriginalReport}
                             className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
@@ -22158,7 +22158,7 @@ ${itemsStr}
               </div>
               
               <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end border-t border-slate-800/40 sm:border-t-0 pt-3 sm:pt-0">
-                {selectedTopic && selectedTopic.pdf_name && (
+                {selectedTopic && selectedTopic.pdf_name && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
                   <button
                     onClick={handleOpenOriginalReport}
                     className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
