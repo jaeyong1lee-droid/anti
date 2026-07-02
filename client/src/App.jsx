@@ -3902,6 +3902,7 @@ export default function App() {
   // AI Modal States
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [isSavingSession, setIsSavingSession] = useState(false);
   const [aiQuestions, _setAiQuestions] = useState([]);
   const [reviewSessionId, setReviewSessionId] = useState('');
   const [restoringReviewSession, setRestoringReviewSession] = useState(true);
@@ -17027,6 +17028,15 @@ ${itemsStr}
             transition: 'padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
           } : {}}
         >
+          {isSavingSession && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center gap-3">
+              <svg className="animate-spin h-10 w-10 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-sm font-black text-slate-200">풀이 상태 저장 중...</span>
+            </div>
+          )}
           
 
 
@@ -17301,13 +17311,21 @@ ${itemsStr}
                 </button>
               )}
               <button
+                disabled={isSavingSession}
                 onClick={async () => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                   if (selectedTopic?.isReadOnly) {
                     setSelectedTopic(null); 
                   } else {
-                    await forceSaveActiveSessions();
-                    setSelectedTopic(null); 
+                    setIsSavingSession(true);
+                    try {
+                      await forceSaveActiveSessions();
+                    } catch (e) {
+                      console.warn('저장 실패:', e);
+                    } finally {
+                      setIsSavingSession(false);
+                      setSelectedTopic(null); 
+                    }
                   }
                 }}
                 className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
@@ -18591,13 +18609,21 @@ ${itemsStr}
                           종료
                         </button>
                         <button
+                          disabled={isSavingSession}
                           onClick={async () => { 
                             savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
                             if (selectedTopic?.isReadOnly) {
                               setSelectedTopic(null); 
                             } else {
-                              await forceSaveActiveSessions();
-                              setSelectedTopic(null); 
+                              setIsSavingSession(true);
+                              try {
+                                await forceSaveActiveSessions();
+                              } catch (e) {
+                                console.warn('저장 실패:', e);
+                              } finally {
+                                setIsSavingSession(false);
+                                setSelectedTopic(null); 
+                              }
                             }
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md"

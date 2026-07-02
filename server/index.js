@@ -7293,122 +7293,38 @@ app.get('/api/session/review', async (req, res) => {
     const sId = req.query.sessionId || 'legacy_default';
     const key = isCompletedOrFailed
       ? `completed_review_schedule_${targetScheduleId}`
-      : (targetScheduleId
-          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
-          : `review_questions_topic_${topicId}_sess_${sId}`);
+      : `review_questions_topic_${topicId}`;
     
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (global.addDebugLog) {
-      global.addDebugLog(`GET review: topicId=${topicId}, scheduleId=${scheduleId}, sessionId=${sId}, resolvedKey=${key}, foundRow=${!!row}`);
-    }
-    
-    // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
-    // 1. 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면, DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
-    if (!row && !isCompletedOrFailed && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
-      );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device Sync] Auto-bound active session from key: ${newestSessionRow.key}`);
-        row = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_schedule_${scheduleId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse and inject auto-bound sessionId:', e);
-        }
-      }
+      global.addDebugLog(`GET review: topicId=${topicId}, resolvedKey=${key}, foundRow=${!!row}`);
     }
 
-    // 2. 토픽 ID 기준 최신 세션 폴백 (보너스/연습 세션 등 scheduleId가 없는 복습인 경우)
+    // [🚨 단일 세션 모델 마이그레이션 가드 🚨]
+    // 만약 새 단일 키로 레코드를 찾지 못했으나, 기존 레거시 세션 키 패턴(스케줄 기반 등)의 찌꺼기가 남아 있다면
+    // 이를 최신순으로 가져와서 단일 키 세션으로 복원/바인딩합니다.
     if (!row && !isCompletedOrFailed) {
-      const pattern = `review_questions_topic_${topicId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
-      );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device Sync] Auto-bound active session by topic from key: ${newestSessionRow.key}`);
-        row = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_topic_${topicId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse and inject auto-bound sessionId:', e);
-        }
-      }
-    }
-
-    // 3. [🚨 초강력 토픽 ID 통합 세션 복원 가드 🚨]
-    // 직접 조회 및 기본적인 크로스-하이브리드 조회 실패 시, 
-    // 지정된 topicId(챕터 ID)와 관련된 모든 활성 세션(스케줄 또는 토픽 기반) 중 가장 최신 세션을 무조건 복원합니다.
-    if (!row && !isCompletedOrFailed) {
-      console.log(`[Super-Sync Fallback] Scanning all sessions for topicId=${topicId}`);
-      
-      // 3-1. 토픽 패턴 최신 조회
       const topicPattern = `review_questions_topic_${topicId}_sess_%`;
-      const topicSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
+      const newestSessionRow = await dbQuery.get(
+        `SELECT key, value FROM app_session 
+         WHERE (key LIKE ?) OR (key LIKE 'review_questions_schedule_%')
+         ORDER BY updated_at DESC LIMIT 50`,
         [topicPattern]
       );
-      
-      if (topicSessionRow) {
-        console.log(`[Super-Sync] Found recent topic session: ${topicSessionRow.key}`);
-        row = topicSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_topic_${topicId}_sess_`;
-          const extractedSid = topicSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {}
-      } else {
-        // 3-2. 스케줄 패턴 전체 스캔 (최신 100개 세션 중 JSON 내부의 topicId가 일치하는 최신 항목 탐색)
-        const allSchedSessions = await dbQuery.all(
-          `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%' ORDER BY updated_at DESC LIMIT 100`
-        );
-        if (allSchedSessions && allSchedSessions.length > 0) {
-          for (const sRow of allSchedSessions) {
-            try {
-              const parsedVal = JSON.parse(sRow.value);
-              if (parsedVal && parsedVal.topicId === topicId && parsedVal.questions && parsedVal.questions.length > 0) {
-                console.log(`[Super-Sync] Found recent schedule session inside JSON: ${sRow.key}`);
-                row = sRow;
-                
-                const match = sRow.key.match(/^review_questions_schedule_(\d+)_sess_(.+)$/);
-                if (match && parsedVal) {
-                  const extractedSid = match[2];
-                  parsedVal.sessionId = extractedSid;
-                  row.value = JSON.stringify(parsedVal);
-                }
-                break;
-              }
-            } catch (err) {}
-          }
+      if (newestSessionRow) {
+        if (newestSessionRow.key.startsWith(`review_questions_topic_${topicId}`)) {
+          row = newestSessionRow;
+          console.log(`[Migration Sync] Auto-migrated session from legacy topic key: ${newestSessionRow.key}`);
+        } else {
+          try {
+            const parsed = JSON.parse(newestSessionRow.value);
+            if (parsed && parsed.topicId === topicId && parsed.questions && parsed.questions.length > 0) {
+              row = newestSessionRow;
+              console.log(`[Migration Sync] Auto-migrated session from legacy schedule key: ${newestSessionRow.key}`);
+            }
+          } catch (e) {}
         }
       }
-    }
-
-    if (!row) {
-      // Fallback: Check if there is legacy data stored under the old non-session key format
-      const legacyKey = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-        ? `review_questions_schedule_${scheduleId}`
-        : `review_questions_topic_${topicId}`;
-      row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
     }
     if (row && row.value) {
       let data = JSON.parse(row.value);
@@ -7538,9 +7454,7 @@ app.post('/api/session/review', async (req, res) => {
     const sId = sessionId || 'legacy_default';
     const key = isCompletedOrFailed
       ? `completed_review_schedule_${targetScheduleId}`
-      : (targetScheduleId
-          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
-          : `review_questions_topic_${topicId}_sess_${sId}`);
+      : `review_questions_topic_${topicId}`;
 
 
 
