@@ -7253,7 +7253,6 @@ app.get('/api/session/review', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const topicId = req.query.topicId;
-    const scheduleId = req.query.scheduleId;
     if (!topicId) {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
@@ -7268,154 +7267,45 @@ app.get('/api/session/review', async (req, res) => {
       return res.json({ success: true, data: null });
     }
 
-    let isCompletedOrFailed = false;
-    let targetScheduleId = null;
-    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      targetScheduleId = parseInt(scheduleId, 10);
-    }
-
-    if (!targetScheduleId && topicId) {
-      const latestSched = await dbQuery.get(
-        `SELECT id, status FROM schedules WHERE topic_id = ? ORDER BY id DESC LIMIT 1`,
-        [topicId]
-      );
-      if (latestSched && (latestSched.status === 'completed' || latestSched.status === 'failed')) {
-        targetScheduleId = latestSched.id;
-        isCompletedOrFailed = true;
-      }
-    } else if (targetScheduleId) {
-      const sched = await dbQuery.get('SELECT status FROM schedules WHERE id = ?', [targetScheduleId]);
-      if (sched && (sched.status === 'completed' || sched.status === 'failed')) {
-        isCompletedOrFailed = true;
-      }
-    }
-
-    const sId = req.query.sessionId || 'legacy_default';
-    const key = isCompletedOrFailed
-      ? `completed_review_schedule_${targetScheduleId}`
-      : (targetScheduleId
-          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
-          : `review_questions_topic_${topicId}_sess_${sId}`);
-    
+    // 100% 토픽 ID(챕터 ID) 단일 식별자 기준으로만 캐시 키를 설정합니다!
+    const key = `review_questions_topic_${topicId}`;
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (global.addDebugLog) {
-      global.addDebugLog(`GET review: topicId=${topicId}, scheduleId=${scheduleId}, sessionId=${sId}, resolvedKey=${key}, foundRow=${!!row}`);
-    }
-    
-    // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
-    // 1. 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면, DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
-    if (!row && !isCompletedOrFailed && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
-      );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device Sync] Auto-bound active session from key: ${newestSessionRow.key}`);
-        row = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_schedule_${scheduleId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse and inject auto-bound sessionId:', e);
-        }
-      }
+      global.addDebugLog(`GET review: topicId=${topicId}, resolvedKey=${key}, foundRow=${!!row}`);
     }
 
-    // 2. 토픽 ID 기준 최신 세션 폴백 (보너스/연습 세션 등 scheduleId가 없는 복습인 경우)
-    if (!row && !isCompletedOrFailed) {
-      const pattern = `review_questions_topic_${topicId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [pattern]
-      );
-      if (newestSessionRow) {
-        console.log(`[Cross-Device Sync] Auto-bound active session by topic from key: ${newestSessionRow.key}`);
-        row = newestSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_topic_${topicId}_sess_`;
-          const extractedSid = newestSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {
-          console.warn('Failed to parse and inject auto-bound sessionId:', e);
-        }
-      }
-    }
-
-    // 3. [🚨 초강력 토픽 ID 통합 세션 복원 가드 🚨]
-    // 직접 조회 및 기본적인 크로스-하이브리드 조회 실패 시, 
-    // 지정된 topicId(챕터 ID)와 관련된 모든 활성 세션(스케줄 또는 토픽 기반) 중 가장 최신 세션을 무조건 복원합니다.
-    if (!row && !isCompletedOrFailed) {
-      console.log(`[Super-Sync Fallback] Scanning all sessions for topicId=${topicId}`);
-      
-      // 3-1. 토픽 패턴 최신 조회
+    // [🚨 단일 세션 모델 마이그레이션 폴백 🚨]
+    // 만약 단일 키로 세션 조회를 실패한 경우, 어제까지 쌓인 구버전 세션 키 찌꺼기가 있는지 전수 탐색해 복원해 줍니다.
+    if (!row) {
       const topicPattern = `review_questions_topic_${topicId}_sess_%`;
-      const topicSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
+      const newestSessionRow = await dbQuery.get(
+        `SELECT key, value FROM app_session 
+         WHERE (key LIKE ?) OR (key LIKE 'review_questions_schedule_%') OR (key LIKE 'review_questions_topic_${topicId}%')
+         ORDER BY updated_at DESC LIMIT 50`,
         [topicPattern]
       );
-      
-      if (topicSessionRow) {
-        console.log(`[Super-Sync] Found recent topic session: ${topicSessionRow.key}`);
-        row = topicSessionRow;
-        try {
-          const parsedVal = JSON.parse(row.value);
-          const prefix = `review_questions_topic_${topicId}_sess_`;
-          const extractedSid = topicSessionRow.key.replace(prefix, '');
-          if (parsedVal && extractedSid) {
-            parsedVal.sessionId = extractedSid;
-            row.value = JSON.stringify(parsedVal);
-          }
-        } catch (e) {}
-      } else {
-        // 3-2. 스케줄 패턴 전체 스캔 (최신 100개 세션 중 JSON 내부의 topicId가 일치하는 최신 항목 탐색)
-        const allSchedSessions = await dbQuery.all(
-          `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%' ORDER BY updated_at DESC LIMIT 100`
-        );
-        if (allSchedSessions && allSchedSessions.length > 0) {
-          for (const sRow of allSchedSessions) {
-            try {
-              const parsedVal = JSON.parse(sRow.value);
-              if (parsedVal && parsedVal.topicId === topicId && parsedVal.questions && parsedVal.questions.length > 0) {
-                console.log(`[Super-Sync] Found recent schedule session inside JSON: ${sRow.key}`);
-                row = sRow;
-                
-                const match = sRow.key.match(/^review_questions_schedule_(\d+)_sess_(.+)$/);
-                if (match && parsedVal) {
-                  const extractedSid = match[2];
-                  parsedVal.sessionId = extractedSid;
-                  row.value = JSON.stringify(parsedVal);
-                }
-                break;
-              }
-            } catch (err) {}
-          }
+      if (newestSessionRow) {
+        if (newestSessionRow.key.includes(topicId)) {
+          row = newestSessionRow;
+          console.log(`[Migration Fallback] Recovered active session from legacy key: ${newestSessionRow.key}`);
+        } else {
+          try {
+            const parsed = JSON.parse(newestSessionRow.value);
+            if (parsed && parsed.topicId === topicId && parsed.questions && parsed.questions.length > 0) {
+              row = newestSessionRow;
+              console.log(`[Migration Fallback] Recovered from legacy schedule key inside JSON: ${newestSessionRow.key}`);
+            }
+          } catch (e) {}
         }
       }
     }
 
-    if (!row) {
-      // Fallback: Check if there is legacy data stored under the old non-session key format
-      const legacyKey = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-        ? `review_questions_schedule_${scheduleId}`
-        : `review_questions_topic_${topicId}`;
-      row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [legacyKey]);
-    }
     if (row && row.value) {
       let data = JSON.parse(row.value);
       if (data) {
         if (Array.isArray(data)) {
           data = {
-            sessionId: sId,
+            sessionId: 'legacy_default',
             questions: data,
             selectedAnswers: {},
             revealedQuestions: {},
@@ -7442,19 +7332,15 @@ app.get('/api/session/review', async (req, res) => {
           data.questions = data.questions.map(q => {
             const healed = healQuizQuestionObject(q);
             if (healed && healed.originalId && (healed.subtype === '그림' || healed.type === '주관식 (그림)' || healed.mixedType === 'image')) {
-              const cleanId = String(healed.originalId).replace(/\$/g, '').trim();
-              const origImg = formulaImages.find(img => img.id === cleanId);
-              if (origImg && origImg.base64Image) {
-                healed.originalId = cleanId;
-                healed.imageSrc = origImg.base64Image;
+              const matchedImg = formulaImages.find(img => img.id === healed.originalId);
+              if (matchedImg) {
+                healed.imageSrc = matchedImg.base64Image || matchedImg.src;
               }
             }
             return healed;
           });
         }
         // [🚨 실시간 서버단 백엔드 세탁 가드 🚨]
-        // Vercel 프론트엔드 한도 초과 상황에서도 깨끗한 렌더링을 보장하기 위해
-        // 내려보내는 tutorAnswers와 chatHistory 내부의 모든 깨진 수식/HTML 찌꺼기를 실시간 복원
         if (data.tutorAnswers && typeof data.tutorAnswers === 'object') {
           Object.keys(data.tutorAnswers).forEach(k => {
             if (typeof data.tutorAnswers[k] === 'string') {
@@ -7535,12 +7421,9 @@ app.post('/api/session/review', async (req, res) => {
       }
     }
 
-    const sId = sessionId || 'legacy_default';
     const key = isCompletedOrFailed
       ? `completed_review_schedule_${targetScheduleId}`
-      : (targetScheduleId
-          ? `review_questions_schedule_${targetScheduleId}_sess_${sId}`
-          : `review_questions_topic_${topicId}_sess_${sId}`);
+      : `review_questions_topic_${topicId}`;
 
 
 

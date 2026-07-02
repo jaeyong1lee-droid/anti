@@ -8808,8 +8808,8 @@ export default function App() {
       }
 
       try {
-        console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}, sessionId=${activeSid}`);
-        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
+        console.log(`[handleOpenAIQuestions] STEP 1: Checking for existing server review session for topicId=${topicId}`);
+        const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}`);
         if (checkRes.ok) {
           const checkData = await checkRes.json();
           if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
@@ -8902,7 +8902,8 @@ export default function App() {
 
       if (res.ok) {
         stopProgressPolling('성공적으로 예상 문제를 생성했습니다!', 100, true, data);
-        setAiQuestions(data.questions || []);
+        const questionsList = data.questions || [];
+        setAiQuestions(questionsList);
         setIsFallback(!!data.isFallback);
         setAiError(data.error || '');
         lastQuizTopicId.current = topicId;
@@ -8912,6 +8913,25 @@ export default function App() {
         if (activeSid) {
           setReviewSessionId(activeSid);
           localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, activeSid);
+        }
+
+        if (questionsList.length > 0) {
+          console.log('[handleOpenAIQuestions] Questions generated. Saving initial set to server immediately...');
+          fetch(`${API_BASE}/api/session/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topicId: topicId,
+              scheduleId: finalScheduleId,
+              sessionId: activeSid || 'legacy_default',
+              questions: questionsList,
+              selectedAnswers: {},
+              revealedQuestions: {},
+              tableAnswers: {},
+              tableGradingResults: {},
+              savedQuizScroll: 0
+            })
+          }).catch(e => console.warn('Saving initial questions failed:', e));
         }
 
         if (data.scheduleId) {
