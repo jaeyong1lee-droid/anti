@@ -1959,13 +1959,15 @@ app.post('/api/quiz/submit', async (req, res) => {
 
     // 3. 해당 토픽의 임시 캐시(문제집 세션) 초기화 → 다음 복습 시 새 문제 생성 보장
     await ensureSessionTable();
-    const sessionKeyTopic = `review_questions_topic_${topic_id}`;
-    const sessionKeySchedule = targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999'
-      ? `review_questions_schedule_${targetScheduleId}`
-      : null;
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeyTopic]);
-    if (sessionKeySchedule) {
-      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sessionKeySchedule]);
+    await dbQuery.run(
+      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+      [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
+    );
+    if (targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
+      await dbQuery.run(
+        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+        [`review_questions_schedule_${targetScheduleId}`, `review_questions_schedule_${targetScheduleId}_sess_%`]
+      );
     }
 
     // 4. 통과한 경우, 다음 회차 자동 생성
@@ -7528,10 +7530,17 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
       return res.json({ ok: true });
     }
     const scheduleId = req.query.scheduleId;
-    const key = scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined'
-      ? `review_questions_schedule_${scheduleId}`
-      : `review_questions_topic_${topicId}`;
-    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
+      await dbQuery.run(
+        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+        [`review_questions_schedule_${scheduleId}`, `review_questions_schedule_${scheduleId}_sess_%`]
+      );
+    } else {
+      await dbQuery.run(
+        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+        [`review_questions_topic_${topicId}`, `review_questions_topic_${topicId}_sess_%`]
+      );
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/session/review/topic error:', err);
