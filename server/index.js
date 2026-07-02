@@ -7583,18 +7583,40 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
       );
       return res.json({ ok: true });
     }
-    const scheduleId = req.query.scheduleId;
-    if (scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
-      await dbQuery.run(
-        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-        [`review_questions_schedule_${scheduleId}`, `review_questions_schedule_${scheduleId}_sess_%`]
-      );
-    } else {
-      await dbQuery.run(
-        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-        [`review_questions_topic_${topicId}`, `review_questions_topic_${topicId}_sess_%`]
-      );
+
+    // 1. 토픽 기반 세션 키 삭제
+    await dbQuery.run(
+      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+      [`review_questions_topic_${topicId}`, `review_questions_topic_${topicId}_sess_%`]
+    );
+
+    // 2. 이 토픽에 연결된 모든 스케줄의 세션 키 삭제
+    const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [topicId]);
+    if (schedules && schedules.length > 0) {
+      for (const s of schedules) {
+        await dbQuery.run(
+          "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+          [`review_questions_schedule_${s.id}`, `review_questions_schedule_${s.id}_sess_%`]
+        );
+      }
     }
+
+    // 3. JSON 내부의 topicId가 일치하는 스케줄 세션 최종 전수 삭제
+    const allSchedSessions = await dbQuery.all(
+      `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%'`
+    );
+    if (allSchedSessions && allSchedSessions.length > 0) {
+      for (const sRow of allSchedSessions) {
+        try {
+          const parsedVal = JSON.parse(sRow.value);
+          if (parsedVal && parsedVal.topicId === topicId) {
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sRow.key]);
+            console.log(`[Session Purge] Deleted orphan schedule session matching topicId: ${sRow.key}`);
+          }
+        } catch (err) {}
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/session/review/topic error:', err);
