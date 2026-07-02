@@ -5996,43 +5996,7 @@ export default function App() {
             }
           }
           
-          // 로컬 진행상황 병합/보완 (새로고침 시 입력했던 주관식 답안 유실 방지)
-          try {
-            const localProgress = localStorage.getItem('anti_exam_progress');
-            if (localProgress) {
-              const parsed = JSON.parse(localProgress);
-              if (parsed.examTableAnswers) {
-                setExamTableAnswers(prev => ({ ...prev, ...parsed.examTableAnswers }));
-              }
-              if (parsed.examAnswers) {
-                setExamAnswers(prev => ({ ...prev, ...parsed.examAnswers }));
-              }
-              if (parsed.examRevealed) {
-                setExamRevealed(prev => ({ ...prev, ...parsed.examRevealed }));
-              }
-              if (parsed.examTableGradingResults) {
-                setExamTableGradingResults(prev => ({ ...prev, ...parsed.examTableGradingResults }));
-              }
-              if (parsed.tutorAnswers) {
-                setTutorAnswers(prev => ({ ...prev, ...parsed.tutorAnswers }));
-              }
-              if (parsed.tutorInputText) {
-                setTutorInputText(prev => ({ ...prev, ...parsed.tutorInputText }));
-              }
-              if (parsed.chatHistory && parsed.chatHistory.length > 0) {
-                setChatHistory(parsed.chatHistory);
-              }
-            }
-          } catch (e) {}
-          const localProgress = localStorage.getItem('anti_exam_progress');
-          let localScroll = undefined;
-          if (localProgress) {
-            try {
-              const parsed = JSON.parse(localProgress);
-              if (parsed.savedExamScroll !== undefined) localScroll = parsed.savedExamScroll;
-            } catch(e){}
-          }
-          const targetScroll = localScroll !== undefined ? localScroll : (data.savedExamScroll || 0);
+          const targetScroll = data.savedExamScroll || 0;
           if (targetScroll) {
             savedExamScroll.current = targetScroll;
             requestAnimationFrame(() => {
@@ -15002,59 +14966,14 @@ ${itemsStr}
                 localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, finalSid);
               }
 
-              const localKey = s.selectedTopic.schedule_id 
-                ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${finalSid}`
-                : `anti_review_progress_${s.selectedTopic.id}_${finalSid}`;
-              const localBackupStr = localStorage.getItem(localKey);
-              let localBackup = {};
-              if (localBackupStr) {
-                try {
-                  localBackup = JSON.parse(localBackupStr);
-                } catch(e){}
-              }
-
-              // Merge input text tables, keeping the longer text if both local and server have inputs
-              const mergedTableAnswers = { ...(server.tableAnswers || {}) };
-              if (localBackup.tableAnswers) {
-                Object.keys(localBackup.tableAnswers).forEach(key => {
-                  const serverVal = server.tableAnswers?.[key] || '';
-                  const localVal = localBackup.tableAnswers[key] || '';
-                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
-                    mergedTableAnswers[key] = localVal;
-                  }
-                });
-              }
-
-              const mergedTutorInputText = { ...(server.tutorInputText || {}) };
-              if (localBackup.tutorInputText) {
-                Object.keys(localBackup.tutorInputText).forEach(key => {
-                  const serverVal = server.tutorInputText?.[key] || '';
-                  const localVal = localBackup.tutorInputText[key] || '';
-                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
-                    mergedTutorInputText[key] = localVal;
-                  }
-                });
-              }
-
-              const mergedTutorAnswers = { ...(server.tutorAnswers || {}) };
-              if (localBackup.tutorAnswers) {
-                Object.keys(localBackup.tutorAnswers).forEach(key => {
-                  const serverVal = server.tutorAnswers?.[key] || '';
-                  const localVal = localBackup.tutorAnswers[key] || '';
-                  if (localVal && (!serverVal || localVal.length > serverVal.length)) {
-                    mergedTutorAnswers[key] = localVal;
-                  }
-                });
-              }
-
               savedQuizScroll.current = server.savedQuizScroll || 0;
               setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
               setSelectedAnswers(server.selectedAnswers || {});
               setRevealedQuestions(server.revealedQuestions || {});
-              setTableAnswers(mergedTableAnswers);
+              setTableAnswers(server.tableAnswers || {});
               setTableGradingResults(server.tableGradingResults || {});
-              setTutorAnswers(mergedTutorAnswers);
-              setTutorInputText(mergedTutorInputText);
+              setTutorAnswers(server.tutorAnswers || {});
+              setTutorInputText(server.tutorInputText || {});
               setChatHistory(server.chatHistory || []);
 
               lastSyncStateRef.current = {
@@ -15070,79 +14989,6 @@ ${itemsStr}
               setLoadingAI(false);
               setRestoringReviewSession(false);
               restoreSuccess = true;
-            } 
-            // 2. Fallback: If server session does not exist, restore from local storage progress backup
-            else {
-              let localBackup = null;
-              try {
-                const localKey = s.selectedTopic.schedule_id 
-                  ? `anti_review_progress_sched_${s.selectedTopic.schedule_id}_${resolvedSid}`
-                  : `anti_review_progress_${s.selectedTopic.id}_${resolvedSid}`;
-                const localBackupStr = localStorage.getItem(localKey);
-                if (localBackupStr) {
-                  localBackup = JSON.parse(localBackupStr);
-                }
-              } catch(e){}
-
-              if (localBackup && localBackup.questions && Array.isArray(localBackup.questions) && localBackup.questions.length > 0) {
-                console.log('[Mount Restore] Server session empty. Restoring from LocalStorage progress backup.');
-                setSelectedTopic(s.selectedTopic);
-                setReviewSessionId(resolvedSid);
-                
-                setAiQuestions(localBackup.questions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-                setSelectedAnswers(localBackup.selectedAnswers || {});
-                setRevealedQuestions(localBackup.revealedQuestions || {});
-                setTableAnswers(localBackup.tableAnswers || {});
-                setTableGradingResults(localBackup.tableGradingResults || {});
-                setTutorAnswers(localBackup.tutorAnswers || {});
-                setTutorInputText(localBackup.tutorInputText || {});
-                setChatHistory(localBackup.chatHistory || []);
-                savedQuizScroll.current = localBackup.savedQuizScroll || 0;
-                
-                lastSyncStateRef.current = {
-                  selectedAnswers: localBackup.selectedAnswers || {},
-                  revealedQuestions: localBackup.revealedQuestions || {},
-                  tableAnswers: localBackup.tableAnswers || {},
-                  tableGradingResults: localBackup.tableGradingResults || {},
-                  tutorAnswers: localBackup.tutorAnswers || {},
-                  tutorInputText: localBackup.tutorInputText || {},
-                  chatHistory: localBackup.chatHistory || []
-                };
-                
-                setLoadingAI(false);
-                setRestoringReviewSession(false);
-                restoreSuccess = true;
-              }
-              // 2.2 Legacy Fallback (from s.aiQuestions if it exists)
-              else if (s.aiQuestions && Array.isArray(s.aiQuestions) && s.aiQuestions.length > 0) {
-                console.log('[Mount Restore] No server session or detailed local backup. Restoring from legacy app state.');
-                setSelectedTopic(s.selectedTopic);
-                setAiQuestions(s.aiQuestions.map(q => healQuizQuestionObject({ ...q, category: s.selectedTopic.category })));
-                setSelectedAnswers(s.selectedAnswers || {});
-                setRevealedQuestions(s.revealedQuestions || {});
-                setTableAnswers(s.tableAnswers || {});
-                setTableGradingResults(s.tableGradingResults || {});
-                setTutorAnswers(s.tutorAnswers || {});
-                setTutorInputText(s.tutorInputText || {});
-                setChatHistory(s.chatHistory || []);
-                
-                setReviewSessionId(resolvedSid);
-                localStorage.setItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`, resolvedSid);
-
-                lastSyncStateRef.current = {
-                  selectedAnswers: s.selectedAnswers || {},
-                  revealedQuestions: s.revealedQuestions || {},
-                  tableAnswers: s.tableAnswers || {},
-                  tableGradingResults: s.tableGradingResults || {},
-                  tutorAnswers: s.tutorAnswers || {},
-                  tutorInputText: s.tutorInputText || {},
-                  chatHistory: s.chatHistory || []
-                };
-
-                setLoadingAI(false);
-                setRestoringReviewSession(false);
-                restoreSuccess = true;
-              }
             }
 
             // 3. Fallback: If no server session and no local cache, generate new session
