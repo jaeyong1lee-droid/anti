@@ -4857,6 +4857,7 @@ export default function App() {
   const [loadingFormulaTables, setLoadingFormulaTables] = useState(false);
   const [tableConfirmTarget, setTableConfirmTarget] = useState(null);
   const [acronymConfirmTarget, setAcronymConfirmTarget] = useState(null);
+  const [exportAddedTarget, setExportAddedTarget] = useState(null);
   const [showAcronymPromptModal, setShowAcronymPromptModal] = useState(false);
   const [acronymPromptTopic, setAcronymPromptTopic] = useState('');
   const [acronymPromptCount, setAcronymPromptCount] = useState('4');
@@ -11854,6 +11855,7 @@ export default function App() {
 
       showNotification(`[${topic}] 개요가 생성되었습니다!`, 'success');
       setOverviewPromptTopic('');
+      setExportAddedTarget({ type: 'overview', title: topic });
     } catch (err) {
       console.error('Failed to generate overview:', err);
       setFormulaOverviews(prev => prev.filter(ov => ov.id !== tempId));
@@ -13130,8 +13132,9 @@ ${itemsStr}
       createdAt: new Date().toISOString()
     };
     const updated = [newTable, ...formulaTables];
-    handleSaveFormulaTables(updated, true);
+    handleSaveFormulaTables(updated, false);
     setTableConfirmTarget(null);
+    setExportAddedTarget({ type: 'table', title: finalTitle });
   };
 
   const handleConfirmAcronymExport = () => {
@@ -13144,8 +13147,9 @@ ${itemsStr}
       createdAt: new Date().toISOString()
     };
     const updated = [newAcronym, ...formulaAcronyms];
-    handleSaveFormulaAcronyms(updated, true);
+    handleSaveFormulaAcronyms(updated, false);
     setAcronymConfirmTarget(null);
+    setExportAddedTarget({ type: 'acronym', title: finalTitle });
   };
 
   const initializeFormulaQuiz = useCallback(() => {
@@ -20119,6 +20123,63 @@ ${itemsStr}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
               >
                 계속 학습하기
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
+
+      {/* 내보내기 완료 및 이동 확인 모달 (Export Added Modal) */}
+      {exportAddedTarget && (
+        <div className="fixed inset-0 z-[200100] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
+            
+            {/* Modal Icon and Title */}
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-full">
+                <CheckCircle size={22} className="text-emerald-500" />
+              </div>
+              <h3 className="text-base font-extrabold text-white">내보내기 완료!</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                [<span className="text-brand-400">{exportAddedTarget.title}</span>] {
+                  exportAddedTarget.type === 'table' ? '표가 필수암기 표 리스트' :
+                  exportAddedTarget.type === 'acronym' ? '앞글자가 필수암기 앞글자 리스트' :
+                  '개요가 필수암기 개요 리스트'
+                }에 추가되었습니다.
+              </p>
+              <div className="bg-slateCustom-950/60 p-3 border border-slate-800/80 rounded-xl text-[10.5px] text-emerald-300 font-bold leading-normal w-full">
+                지금 {
+                  exportAddedTarget.type === 'table' ? '필수암기 표' : 
+                  exportAddedTarget.type === 'acronym' ? '필수암기 앞글자' : 
+                  '필수암기 개요'
+                } 탭으로 이동하여 확인하시겠습니까?
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2.5 justify-center">
+              <button
+                onClick={() => {
+                  const type = exportAddedTarget.type;
+                  setExportAddedTarget(null);
+                  setSelectedTopic(null);
+                  setShowExam(false);
+                  setShowAnswerSheet(false);
+                  setShowFormulaExam(true); // Must be true to show formula view
+                  setViewMode('dashboard'); // Navigation target
+                  setFormulaSubTab(type); // 'table', 'acronym', 'overview'
+                  setIsRealTimeTutorOpen(false);
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              >
+                이동하기
+              </button>
+              <button
+                onClick={() => setExportAddedTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                현재 화면 대기
               </button>
             </div>
             
