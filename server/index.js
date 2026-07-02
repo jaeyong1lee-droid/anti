@@ -7303,8 +7303,7 @@ app.get('/api/session/review', async (req, res) => {
     }
     
     // [🚨 크로스 디바이스 세션 자동 바인딩 폴백 🚨]
-    // 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면,
-    // DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
+    // 1. 요청받은 특정 세션 ID(예: legacy_default) 캐시가 없고 scheduleId가 유효하다면, DB에서 해당 일정(scheduleId)의 가장 최신 세션을 조회하여 복원합니다.
     if (!row && !isCompletedOrFailed && scheduleId && scheduleId !== '9999' && scheduleId !== 'null' && scheduleId !== 'undefined') {
       const pattern = `review_questions_schedule_${scheduleId}_sess_%`;
       const newestSessionRow = await dbQuery.get(
@@ -7328,8 +7327,8 @@ app.get('/api/session/review', async (req, res) => {
       }
     }
 
-    // 토픽 ID 기준 최신 세션 폴백 (보너스/연습 세션 등 scheduleId가 없는 복습인 경우)
-    if (!row && (!scheduleId || scheduleId === '9999' || scheduleId === 'null' || scheduleId === 'undefined')) {
+    // 2. 토픽 ID 기준 최신 세션 폴백 (보너스/연습 세션 등 scheduleId가 없는 복습인 경우)
+    if (!row && !isCompletedOrFailed) {
       const pattern = `review_questions_topic_${topicId}_sess_%`;
       const newestSessionRow = await dbQuery.get(
         'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
@@ -7348,6 +7347,39 @@ app.get('/api/session/review', async (req, res) => {
           }
         } catch (e) {
           console.warn('Failed to parse and inject auto-bound sessionId:', e);
+        }
+      }
+    }
+
+    // 3. [추가 크로스-하이브리드 폴백]
+    // 여전히 row를 찾지 못했으나, 이 토픽과 매핑된 다른 스케줄의 활성화된 세션이 있는 경우 이를 조회하여 복원
+    if (!row && !isCompletedOrFailed) {
+      const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [topicId]);
+      if (schedules && schedules.length > 0) {
+        const schedIds = schedules.map(s => s.id);
+        const allSchedSessions = await dbQuery.all(
+          `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%' ORDER BY updated_at DESC LIMIT 50`
+        );
+        if (allSchedSessions && allSchedSessions.length > 0) {
+          for (const sRow of allSchedSessions) {
+            const match = sRow.key.match(/^review_questions_schedule_(\d+)_sess_(.+)$/);
+            if (match) {
+              const sIdFromKey = parseInt(match[1], 10);
+              const extractedSid = match[2];
+              if (schedIds.includes(sIdFromKey)) {
+                console.log(`[Cross-Device Sync] Fallback to schedule session of the same topic: ${sRow.key}`);
+                row = sRow;
+                try {
+                  const parsedVal = JSON.parse(row.value);
+                  if (parsedVal && extractedSid) {
+                    parsedVal.sessionId = extractedSid;
+                    row.value = JSON.stringify(parsedVal);
+                  }
+                } catch (e) {}
+                break;
+              }
+            }
+          }
         }
       }
     }

@@ -8815,7 +8815,10 @@ export default function App() {
             const serverData = checkData.data;
             console.log('[handleOpenAIQuestions] STEP 1 Success! Existing server session found. Restoring directly without server fetch.');
             
-            setReviewSessionId(serverData.sessionId || activeSid);
+            const restoredSid = serverData.sessionId || activeSid;
+            setReviewSessionId(restoredSid);
+            localStorage.setItem(`anti_session_id_${topicId}_${finalScheduleId || '9999'}`, restoredSid);
+            
             savedQuizScroll.current = serverData.savedQuizScroll || 0;
             if (quizBodyRef.current) {
               quizBodyRef.current.scrollTop = serverData.savedQuizScroll || 0;
