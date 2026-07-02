@@ -2097,6 +2097,15 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   const colCount = headers.length;
 
   const [colWidths, setColWidths] = React.useState(() => {
+    const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
+
+    if (isMobilePortrait && isMixedTableOrOverview) {
+      if (colCount <= 1) return ['100%'];
+      const remainingPercent = 100 / (colCount - 1);
+      return ['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)];
+    }
+
     if (colCount <= 1) return ['100%'];
     if (colCount === 2) return [60, 40];
     if (colCount === 3) return [40, 30, 30];
@@ -2104,6 +2113,40 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     const others = (100 - first) / (colCount - 1);
     return [first, ...Array(colCount - 1).fill(others)];
   });
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+      const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
+      if (isMixedTableOrOverview) {
+        if (isMobilePortrait) {
+          if (colCount <= 1) {
+            setColWidths(['100%']);
+          } else {
+            const remainingPercent = 100 / (colCount - 1);
+            setColWidths(['85px', ...Array(colCount - 1).fill(`${remainingPercent}%`)]);
+          }
+        } else {
+          if (colCount <= 1) {
+            setColWidths(['100%']);
+          } else if (colCount === 2) {
+            setColWidths([60, 40]);
+          } else if (colCount === 3) {
+            setColWidths([40, 30, 30]);
+          } else {
+            const first = 30;
+            const others = (100 - first) / (colCount - 1);
+            setColWidths([first, ...Array(colCount - 1).fill(others)]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [colCount, q.mixedType]);
 
   const tableRef = React.useRef(null);
   const dragInfo = React.useRef({ startX: 0, startWidths: [], totalWidth: 0, colIdx: -1 });
