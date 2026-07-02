@@ -1851,21 +1851,30 @@ app.post('/api/quiz/submit', async (req, res) => {
         targetScheduleId = existingBonus.id;
       }
     } else {
-      // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때만 안전하게 최근 완료된(또는 존재하는) 일반 일정을 타겟으로 복원
+      // 만약 가상 ID이거나 9999일 경우, 또는 schedule_id가 없을 때:
+      // 활성화 상태인 pending 일정을 최우선 타겟으로 선택하고, 없으면 완료/실패 건을 차선책으로 복원합니다.
       if (scheduleIdInt === 9999 || !scheduleIdInt) {
-        const lastCompleted = await dbQuery.get(
-          `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
+        const pendingSchedule = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? AND status = 'pending' ORDER BY review_round ASC LIMIT 1`,
           [topicIdInt]
         );
-        if (lastCompleted) {
-          targetScheduleId = lastCompleted.id;
+        if (pendingSchedule) {
+          targetScheduleId = pendingSchedule.id;
         } else {
-          const anySchedule = await dbQuery.get(
-            `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+          const lastCompleted = await dbQuery.get(
+            `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
             [topicIdInt]
           );
-          if (anySchedule) {
-            targetScheduleId = anySchedule.id;
+          if (lastCompleted) {
+            targetScheduleId = lastCompleted.id;
+          } else {
+            const anySchedule = await dbQuery.get(
+              `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+              [topicIdInt]
+            );
+            if (anySchedule) {
+              targetScheduleId = anySchedule.id;
+            }
           }
         }
       }
