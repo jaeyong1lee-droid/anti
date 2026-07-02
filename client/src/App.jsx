@@ -5771,8 +5771,8 @@ export default function App() {
         }
 
         uniqueList.sort((a, b) => {
-          const isAMixed = a.topic_id && a.topic_id.startsWith('mixed_');
-          const isBMixed = b.topic_id && b.topic_id.startsWith('mixed_');
+          const isAMixed = typeof a.topic_id === 'string' && a.topic_id.startsWith('mixed_');
+          const isBMixed = typeof b.topic_id === 'string' && b.topic_id.startsWith('mixed_');
           if (isAMixed && !isBMixed) return -1;
           if (!isAMixed && isBMixed) return 1;
           
@@ -7172,7 +7172,7 @@ export default function App() {
 
   // Mark specific schedule round as complete
   const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
-    if (topicId && topicId.startsWith('mixed_')) {
+    if (typeof topicId === 'string' && topicId.startsWith('mixed_')) {
       const datePart = topicId.replace('mixed_', '');
       localStorage.setItem(`anti_mixed_completed_${datePart}`, 'true');
       showNotification('오늘의 필수 믹스복습 완료!');
@@ -7313,7 +7313,7 @@ export default function App() {
       return;
     }
 
-    if (selectedTopic.id && selectedTopic.id.startsWith('mixed_')) {
+    if (selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) {
       const gradingPromises = [];
       const localGradingResults = { ...tableGradingResults };
 
@@ -8357,7 +8357,7 @@ export default function App() {
       setIsFallback(false);
       setAiError('');
 
-      if (topicId && topicId.startsWith('mixed_')) {
+      if (typeof topicId === 'string' && topicId.startsWith('mixed_')) {
         const activeSid = `sess_${topicId}`;
         let restoredData = null;
         try {
@@ -9083,7 +9083,7 @@ export default function App() {
     const currentRefreshScheduleId = selectedTopic.schedule_id;
 
     try {
-      if (currentRefreshTopicId && currentRefreshTopicId.startsWith('mixed_')) {
+      if (currentRefreshTopicId && typeof currentRefreshTopicId === 'string' && currentRefreshTopicId.startsWith('mixed_')) {
         const deleteUrl = `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}`;
         await fetch(deleteUrl, { method: 'DELETE' })
           .catch(e => console.warn('복습 세션 초기화 실패:', e));
@@ -16077,7 +16077,7 @@ ${itemsStr}
                               {item.review_round}회차 복습
                             </span>
                           )}
-                          {!item.isBonus && !(item.topic_id && item.topic_id.startsWith('mixed_')) && item.planned_date < referenceDate && (() => {
+                          {!item.isBonus && !(typeof item.topic_id === 'string' && item.topic_id.startsWith('mixed_')) && item.planned_date < referenceDate && (() => {
                             const p = new Date(item.planned_date);
                             const r = new Date(referenceDate);
                             const diffDays = Math.round((r.getTime() - p.getTime()) / (1000 * 60 * 60 * 24));
@@ -17784,7 +17784,7 @@ ${itemsStr}
                               <ThumbsUp size={12} className="hidden sm:inline-block" />
                               <span>추천</span>
                             </button>
-                            {selectedTopic?.id && selectedTopic.id.startsWith('mixed_') && (
+                            {selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && (
                               <button
                                 onClick={() => handleOpenAnswerPopup(q)}
                                 className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
@@ -21074,7 +21074,7 @@ ${itemsStr}
                             <ThumbsUp size={12} className="hidden sm:inline-block" />
                             <span>추천</span>
                           </button>
-                          {examTopic?.id && examTopic.id.startsWith('mixed_') && (
+                          {examTopic?.id && typeof examTopic.id === 'string' && examTopic.id.startsWith('mixed_') && (
                             <button
                               onClick={() => handleOpenAnswerPopup(q)}
                               className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
