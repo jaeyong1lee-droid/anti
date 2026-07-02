@@ -6958,25 +6958,7 @@ export default function App() {
     examTableGradingResults
   ]);
 
-  // Effect 2: Focus and Visibility Sync (Idea 2)
-  useEffect(() => {
-    const handleSyncVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
-          refreshActiveReviewSession();
-        }
-        if (examQuestions.length > 0) {
-          refreshActiveExamSession();
-        }
-      }
-    };
-    document.addEventListener('visibilitychange', handleSyncVisibility);
-    window.addEventListener('focus', handleSyncVisibility);
-    return () => {
-      document.removeEventListener('visibilitychange', handleSyncVisibility);
-      window.removeEventListener('focus', handleSyncVisibility);
-    };
-  }, [selectedTopic?.id, aiQuestions.length, examQuestions.length]);
+
 
 
 
@@ -17374,9 +17356,23 @@ ${itemsStr}
                 </h3>
               </div>
               {selectedTopic && (
-                <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap select-none shrink-0" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
-                  {getDisplayReviewScore()} / 100점
-                </span>
+                <div className="flex items-center gap-2 select-none shrink-0">
+                  <button
+                    onClick={async () => {
+                      showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
+                      await refreshActiveReviewSession();
+                      showNotification('동기화 완료!', 'success');
+                    }}
+                    className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-350 transition-all duration-200 cursor-pointer active:scale-95 text-[11px] font-black"
+                    title="클라우드 동기화: 다른 기기에서 풀던 진행 상황을 서버에서 불러옵니다."
+                  >
+                    <UploadCloud size={11} className="text-emerald-400" />
+                    <span>불러오기</span>
+                  </button>
+                  <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
+                    {getDisplayReviewScore()} / 100점
+                  </span>
+                </div>
               )}
             </div>
 
@@ -17388,6 +17384,20 @@ ${itemsStr}
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
                   <span className="whitespace-nowrap">원보고서</span>
+                </button>
+              )}
+              {selectedTopic && (
+                <button
+                  onClick={async () => {
+                    showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
+                    await refreshActiveReviewSession();
+                    showNotification('동기화 완료!', 'success');
+                  }}
+                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                  title="클라우드 동기화: 다른 기기에서 풀던 진행 상황을 서버에서 불러옵니다."
+                >
+                  <UploadCloud size={11} className="text-emerald-400 mr-1 shrink-0" />
+                  <span className="whitespace-nowrap">불러오기</span>
                 </button>
               )}
               {selectedTopic && (
