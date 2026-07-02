@@ -4835,6 +4835,7 @@ export default function App() {
   const [expandedTableIds, setExpandedTableIds] = useState({});
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
   const [activeEditAcronymCell, setActiveEditAcronymCell] = useState(null); // { acronymId, rIdx, type: 'acronym'|'combined' }
+  const [editingAcronymValue, setEditingAcronymValue] = useState('');
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [acronymModeActive, setAcronymModeActive] = useState(false);
@@ -22446,8 +22447,10 @@ ${itemsStr}
                                                   <th 
                                                     key={hIdx} 
                                                     className="p-1 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[80px]"
-                                                    onDoubleClick={() => {
-                                                      setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                                                    onClick={() => {
+                                                      if (!isEditing) {
+                                                        setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                                                      }
                                                     }}
                                                   >
                                                     {isEditing ? (
@@ -22512,8 +22515,10 @@ ${itemsStr}
                                                     <td 
                                                       key={cIdx} 
                                                       className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle cursor-pointer min-w-[100px]"
-                                                      onDoubleClick={() => {
-                                                        setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                                                      onClick={() => {
+                                                        if (!isEditing) {
+                                                          setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                                                        }
                                                       }}
                                                     >
                                                       {isEditing ? (
@@ -22681,12 +22686,12 @@ ${itemsStr}
                                       ) : (
                                         <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
                                           <span
-                                            onDoubleClick={() => {
+                                            onClick={() => {
                                               setEditingAcronymId(ac.id);
                                               setEditingAcronymText(ac.title || '');
                                             }}
                                             className="text-[14px] md:text-[16px] font-extrabold text-white leading-snug cursor-pointer hover:text-emerald-400 hover:underline transition-all whitespace-normal break-words max-w-full inline-block"
-                                            title="더블클릭하여 제목 수정"
+                                            title="클릭하여 제목 수정"
                                           >
                                             {ac.title}
                                           </span>
