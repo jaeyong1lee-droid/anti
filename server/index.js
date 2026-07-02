@@ -9197,7 +9197,7 @@ app.get('/api/temp-update-db', async (req, res) => {
       log.push(`Skipped topics scan: ${topicErr.message}`);
     }
 
-    // 3. Force sync generation_standards in DB with the latest 7 standards
+    // 3. Force sync generation_standards in DB with the latest standards
     const latestStandards = [
       {
         "id": "def_gen_1",
@@ -9233,13 +9233,23 @@ app.get('/api/temp-update-db', async (req, res) => {
         "id": "user_generation_long_noun_ending_answers",
         "title": "주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화",
         "content": "🚨 [주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화 - 극도로 중요!]: 주관식(개요, 공식, 단답형, 표채우기 등)의 모든 모범 답안(\"answers\" 내의 각 값 또는 \"answer\")은 절대로 1~2 단어의 단순 명칭이나 짧은 요약형 문장으로 작성해서는 안 되며, 반드시 지반공학적 거동 원리, 인과관계, 시공 및 설계 제어 메커니즘을 명확히 명시하되, 너무 길어지지 않도록 핵심 위주의 명료한 서술형(최소 50자에서 최대 120자 내외)으로 간결하게 작성하십시오. 또한, 모든 정답의 어미는 기술사 답안지 작성 원칙에 부합하도록 \"~다\", \"~입니다\", \"~하겠다\"와 같은 평서문/구어체 종결어미를 절대 금지하며, 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~제어, ~확보, ~감소, ~소산, ~이동, ~상쇄, ~상태, ~형태, ~수준 등)로 명확히 끝맺음하여 서술하십시오. 예시: '...을 방지함', '...을 통한 침투압 감소' (O) / '...을 방지합니다', '...을 통해 침투압이 감소된다' (X)"
+      },
+      {
+        "id": "user_generation_vfp6zqj",
+        "title": "객관식 지침",
+        "content": "지침 내용: \n1.🚨 [계산형 문항의 정확한 계산값 객관식 보기 의무화 - 극도로 중요!]: 계산형 문제(특히 선택형/객관식 문항)를 출제할 때, 문제의 공식과 대입값으로 산출되는 실제 정확한 수학적/공학적 계산값(소수점 1~2자리 포함, 예: 66.67 GPa)은 반드시 객관식 보기의 4개 항목(options) 중 하나(정답 항목)로 정확히 포함되어야 합니다. 계산 결과가 소수점을 가질 경우, 보기 항목을 임의의 정수나 엉뚱한 값(예: 70 GPa)으로 둥글게 처리하여 '가장 근사한 값을 고르라'는 식으로 얼버무려서 출제하는 행위를 엄격히 금지합니다. 반드시 실제 공식에 값을 대입해 나온 정확한 수치를 보기 항목과 모범 답안으로 등록하십시오.\n\n2.객관식문제낼때 소스에 한정하지말고 소스 토픽을 ai튜터와 이야기 나눴을때, 나오는 메커니즘, 정의, 공식 등 전반적인 내용으로 출제하도록 해\n\n3.중요한 개념문제를 난이도 어렵게 내도록 해"
+      },
+      {
+        "id": "user_generation_bu5e5cd",
+        "title": "표 채우기 문제출제 절대 지침",
+        "content": "1. 🚨 [표 채우기 문항의 가로/세로축 독립 차원 설계 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 형태의 문항을 설계 및 출제할 때, 표의 가로 헤더(Column)와 세로 헤더(Row)가 절대로 동일하거나 유사한 성격의 평가 차원(예: 가로축도 '주변 지반 영향', 세로축도 '역학적 영향' 등)으로 중복 구성되지 않도록 엄격히 제약하십시오. 가로축과 세로축은 반드시 서로 완전히 다른 독립적인 성격의 차원을 형성해야 합니다. 예를 들어, 세로축이 비교 대상이 되는 시공/공법 항목(예: '어스앵커', '소일내일링')이라면, 가로축은 그에 대응하는 평가 속성(예: '거동 메커니즘', '활용성')으로 결합되어 각 격자(Cell)가 고유하고 유일한 지식 범주를 검증할 수 있도록 설계하십시오. 동일한 답안이 가로축의 여러 칸에 의미 없이 복사-붙여넣기식으로 겹쳐서 생성되는 형태의 출제를 엄격히 금지합니다.\n\n2.🚨 [표 채우기 문항의 칸별 정답 속성 매핑 무결성 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 문항을 출제할 때, 각 격자(Cell)에 매핑되는 정답(`answers` 객체의 `INPUT_1`, `INPUT_2` 등)은 반드시 해당 셀이 속한 열(Column) 헤더와 행(Row) 헤더의 기하학적/공학적 정의와 **100% 일치**해야 합니다. 등방성(Isotropic) 지반을 나타내는 열의 셀(`[INPUT_1]`)에 이방성(Anisotropic) 관련 개념이나 수식(예: $x' = x\\sqrt{k_v/k_h}$ 등)을 정답으로 배치하는 식의 컬럼 간 정답 혼동 및 오매핑 행위를 엄격히 금지합니다. 표의 각 입력 칸은 해당 지반 조건(예: 등방성 균질 vs 이방성 불균질) 및 공학 분류의 의미적 범주를 절대 벗어나지 않도록 완벽히 교차 검증하여 정답을 설계하십시오.\n\n3.🚨 [표 채우기 문항의 지문 내 빈칸 지칭 일치 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 문항을 출제할 때, 질문(question) 지문 내에 언급하는 빈칸 번호(예: \"빈칸 (A), (B), (C), (D)에 들어갈 내용...\")의 개수와 알파벳 순서는 실제 표(tableData) 내부에 배치된 빈칸 토큰(INPUT_1, INPUT_2, INPUT_3, INPUT_4)의 총 개수 및 순서와 반드시 **100% 일치**해야 합니다. 만약 표 내부에 빈칸이 4개(a, b, c, d) 존재함에도 지문에서 \"빈칸 (A), (B)에 들어갈 내용...\"과 같이 일부만 지칭하여 질문하는 식의 심각한 불일치 오류를 절대 발생시키지 마십시오. 또한, 비교 대상(예: 현장 베인 시험, 피에조콘 시험)을 지칭하는 기호(A), (B)는 질문 본문에서 대괄호/괄호 형태 기호로 직접 지칭하는 것을 금지하며, 명칭 자체로만 언급하십시오. `(A), (B), (C), (D)` 기호는 오직 표의 빈칸 입력 칸들만을 순서대로 지칭하는 용도로만 일관되게 사용하십시오."
       }
     ];
 
     await saveSessionValue('generation_standards', JSON.stringify(latestStandards));
     updateLiveGenerationStandards(latestStandards);
     await writeStandardToFile('generation_standards', latestStandards);
-    log.push("Successfully synchronized all 7 generation standards to database.");
+    log.push("Successfully synchronized all generation standards to database.");
 
     res.json({ success: true, log });
   } catch (err) {

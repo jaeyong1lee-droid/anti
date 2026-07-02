@@ -215,12 +215,36 @@ function healMarkdownTable(tableText, poissonSymbol = null) {
   return healedLines.join('\n');
 }
 
+const healCorruptedKatexHtml = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  let cleaned = text.replace(/\u200b/g, '');
+  
+  // 1. Find any annotation block (normal or space-corrupted) and extract formula
+  const annotationRegex = /<\s*annotation[a-z]*\b[^>]*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
+  cleaned = cleaned.replace(annotationRegex, (match, formula) => {
+    let cleanFormula = formula.trim().replace(/\\+/g, '\\');
+    return ` __MATH_FORMULA_START__${cleanFormula}__MATH_FORMULA_END__ `;
+  });
+  
+  // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
+  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b[^>]*>/gi;
+  cleaned = cleaned.replace(katexTagsRegex, '');
+  
+  // 3. Restore formula markers with standard dollar signs
+  cleaned = cleaned.replace(/__MATH_FORMULA_START__([\s\S]*?)__MATH_FORMULA_END__/g, (match, formula) => {
+    return ` $${formula}$ `;
+  });
+  
+  return cleaned;
+};
+
 // 3. 메인 레이아웃 및 수식 복구 마스터 함수
 export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = null) {
   if (!text || typeof text !== 'string') return text;
 
+  let processed = healCorruptedKatexHtml(text);
   // 1. Convert HTML tables to Markdown tables (only on outer call)
-  let processed = text;
   if (!isNested) {
     processed = htmlTableToMarkdown(processed, passedPoissonSymbol);
     processed = wrapMarkdownTables(processed);

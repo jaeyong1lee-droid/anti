@@ -599,10 +599,34 @@ const cleanCorruptedFormula = (formula) => {
   return cleaned;
 };
 
+const healCorruptedKatexHtml = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  let cleaned = text.replace(/\u200b/g, '');
+  
+  // 1. Find any annotation block (normal or space-corrupted) and extract formula
+  const annotationRegex = /<\s*annotation[a-z]*\b[^>]*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
+  cleaned = cleaned.replace(annotationRegex, (match, formula) => {
+    let cleanFormula = formula.trim().replace(/\\+/g, '\\');
+    return ` __MATH_FORMULA_START__${cleanFormula}__MATH_FORMULA_END__ `;
+  });
+  
+  // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
+  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b[^>]*>/gi;
+  cleaned = cleaned.replace(katexTagsRegex, '');
+  
+  // 3. Restore formula markers with standard dollar signs
+  cleaned = cleaned.replace(/__MATH_FORMULA_START__([\s\S]*?)__MATH_FORMULA_END__/g, (match, formula) => {
+    return ` $${formula}$ `;
+  });
+  
+  return cleaned;
+};
+
 const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
   
-  let cleaned = rawText;
+  let cleaned = healCorruptedKatexHtml(rawText);
   cleaned = cleanCorruptedFormula(cleaned);
 
   cleaned = cleaned.replace(/&#x27;/g, "'")
@@ -682,7 +706,7 @@ const cleanAndSanitizeMathText = (rawText) => {
 const stripHtmlTagsFromRawData = (text) => {
   if (!text || typeof text !== 'string') return text || '';
   
-  let clean = text.replace(/\u200b/g, '');
+  let clean = healCorruptedKatexHtml(text);
 
   clean = clean.replace(/&#x27;/g, "'")
                .replace(/&quot;/g, '"')
