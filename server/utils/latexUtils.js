@@ -694,6 +694,27 @@ export function healQuizQuestionObject(q) {
 
       q.tableData.rows = newRows;
       q.answers = newAnswers;
+
+      // [🚨 주관식 표채우기 지문 빈칸 오표기 보정 로직 🚨]
+      // 실제 생성된 빈칸의 개수(INPUT 개수)와 지문(question) 내의 알파벳 빈칸 표시 (A), (B) 등의 개수를 일치시킵니다.
+      const numInputs = Object.keys(newAnswers).length;
+      if (q.question && numInputs > 0) {
+        const alphabet = [];
+        for (let i = 0; i < numInputs; i++) {
+          alphabet.push(`(${String.fromCharCode(65 + i)})`);
+        }
+        const replacement = alphabet.join(', ');
+
+        const multiPattern = /\([A-Z]\)(?:\s*(?:,|\s+및|\s+또는|와|과)\s*\([A-Z]\))+/g;
+        if (multiPattern.test(q.question)) {
+          q.question = q.question.replace(multiPattern, replacement);
+        } else if (numInputs > 1) {
+          const singlePattern = /\([A-Z]\)/g;
+          if (singlePattern.test(q.question)) {
+            q.question = q.question.replace(singlePattern, replacement);
+          }
+        }
+      }
     }
   }
   return healDeep(q);
