@@ -6843,11 +6843,12 @@ export default function App() {
   const autoSaveTimeoutRef = useRef(null);
 
   const refreshActiveReviewSession = async () => {
-    if (!selectedTopic || !selectedTopic.id || aiQuestions.length === 0) return;
+    if (!selectedTopic || !selectedTopic.id) return;
     console.log('[Auto-Sync] Pulling latest session from server...');
     const topicId = selectedTopic.id;
     const finalScheduleId = selectedTopic.schedule_id;
-    const activeSid = reviewSessionId || 'legacy_default';
+    const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
+    const activeSid = isMixed ? `sess_${topicId}` : (reviewSessionId || 'legacy_default');
     try {
       const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}&t=${Date.now()}`);
       if (res.ok) {
@@ -6855,7 +6856,8 @@ export default function App() {
         if (resData.success && resData.data) {
           const server = resData.data;
           
-          const isSame = JSON.stringify(server.selectedAnswers || {}) === JSON.stringify(selectedAnswers) &&
+          const isSame = aiQuestions.length > 0 &&
+                         JSON.stringify(server.selectedAnswers || {}) === JSON.stringify(selectedAnswers) &&
                          JSON.stringify(server.revealedQuestions || {}) === JSON.stringify(revealedQuestions) &&
                          JSON.stringify(server.tableAnswers || {}) === JSON.stringify(tableAnswers) &&
                          JSON.stringify(server.tableGradingResults || {}) === JSON.stringify(tableGradingResults) &&
@@ -6875,6 +6877,7 @@ export default function App() {
             setTutorAnswers(server.tutorAnswers || {});
             setTutorInputText(server.tutorInputText || {});
             setChatHistory(server.chatHistory || []);
+            setReviewSessionId(activeSid);
           } else {
             console.log('[Auto-Sync] No differences found.');
           }
@@ -14959,8 +14962,13 @@ ${itemsStr}
             console.log('[Mount Restore] Querying active review session from server for topic:', s.selectedTopic.title);
             const topicId = s.selectedTopic.id;
             const scheduleId = s.selectedTopic.schedule_id || '';
-            const activeSid = localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default';
-            const resolvedSid = activeSid !== 'legacy_default' ? activeSid : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round);
+            const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
+            const activeSid = isMixed 
+              ? `sess_${topicId}` 
+              : (localStorage.getItem(`anti_session_id_${topicId}_${scheduleId || '9999'}`) || 'legacy_default');
+            const resolvedSid = isMixed 
+              ? `sess_${topicId}`
+              : (activeSid !== 'legacy_default' ? activeSid : getOrCreateSessionId(topicId, scheduleId, s.selectedTopic.review_round));
             
             let resData = null;
             try {
@@ -14983,7 +14991,7 @@ ${itemsStr}
               
               setSelectedTopic(s.selectedTopic);
               
-              const isServerSidAbsolute = server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_');
+              const isServerSidAbsolute = (server.sessionId && server.sessionId.startsWith('sess_topic_') && server.sessionId.includes('_round_')) || isMixed;
               const finalSid = isServerSidAbsolute ? server.sessionId : resolvedSid;
 
               if (isServerSidAbsolute) {
