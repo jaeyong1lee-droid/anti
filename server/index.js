@@ -3918,7 +3918,7 @@ app.post('/api/question/regenerate', async (req, res) => {
   }
 
   try {
-    if (topicId === 'mixed_acronym_table' || currentQuestion?.mixedType) {
+    if ((topicId && topicId.startsWith('mixed_')) || currentQuestion?.mixedType) {
       const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
       
       if (mixedType === 'image') {
@@ -7258,9 +7258,9 @@ app.get('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
 
-    if (topicId === 'mixed_acronym_table') {
+    if (topicId && topicId.startsWith('mixed_')) {
       const sId = req.query.sessionId || 'legacy_default';
-      const key = `review_questions_topic_mixed_acronym_table_sess_${sId}`;
+      const key = `review_questions_topic_${topicId}_sess_${sId}`;
       let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
       if (row && row.value) {
         return res.json({ success: true, data: JSON.parse(row.value) });
@@ -7439,9 +7439,9 @@ app.post('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
 
-    if (topicId === 'mixed_acronym_table') {
+    if (topicId && topicId.startsWith('mixed_')) {
       const sId = sessionId || 'legacy_default';
-      const key = `review_questions_topic_mixed_acronym_table_sess_${sId}`;
+      const key = `review_questions_topic_${topicId}_sess_${sId}`;
       const value = JSON.stringify({
         sessionId: sessionId || '',
         questions,
@@ -7525,8 +7525,11 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
     await ensureSessionTable();
     const topicId = req.params.id;
 
-    if (topicId === 'mixed_acronym_table') {
-      await dbQuery.run("DELETE FROM app_session WHERE key LIKE 'review_questions_topic_mixed_acronym_table%'");
+    if (topicId && topicId.startsWith('mixed_')) {
+      await dbQuery.run(
+        "DELETE FROM app_session WHERE key LIKE ?",
+        [`review_questions_topic_${topicId}%`]
+      );
       return res.json({ ok: true });
     }
     const scheduleId = req.query.scheduleId;
@@ -7679,16 +7682,16 @@ app.get('/api/session/last-active-review', async (req, res) => {
       }
     } else if (key.startsWith('review_questions_topic_')) {
       const topicIdRaw = key.replace('review_questions_topic_', '');
-      if (topicIdRaw.startsWith('mixed_acronym_table')) {
+      if (topicIdRaw.startsWith('mixed_')) {
         return res.json({
           success: true,
           lastActive: {
-            topicId: 'mixed_acronym_table',
+            topicId: topicIdRaw,
             title: '오늘의 필수 믹스복습 (10제 1세트)',
             keywords: '',
             pdfName: 'mixed.html',
             mode: 'ai',
-            scheduleId: 'mixed_acronym_table_schedule',
+            scheduleId: `mixed_schedule_${topicIdRaw.replace('mixed_', '')}`,
             reviewRound: 'MIX',
             isReadOnly: false,
             isBonus: false,

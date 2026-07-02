@@ -5757,8 +5757,8 @@ export default function App() {
         
         if (hasItems && !isMixedCompleted) {
           const mixedItem = {
-            schedule_id: 'mixed_acronym_table_schedule',
-            topic_id: 'mixed_acronym_table',
+            schedule_id: `mixed_schedule_${dateStr}`,
+            topic_id: `mixed_${dateStr}`,
             title: '오늘의 필수 믹스복습 (10제 1세트)',
             planned_date: '1970-01-01',
             review_round: 'MIX',
@@ -5770,8 +5770,8 @@ export default function App() {
         }
 
         uniqueList.sort((a, b) => {
-          const isAMixed = a.topic_id === 'mixed_acronym_table';
-          const isBMixed = b.topic_id === 'mixed_acronym_table';
+          const isAMixed = a.topic_id && a.topic_id.startsWith('mixed_');
+          const isBMixed = b.topic_id && b.topic_id.startsWith('mixed_');
           if (isAMixed && !isBMixed) return -1;
           if (!isAMixed && isBMixed) return 1;
           
@@ -7171,8 +7171,9 @@ export default function App() {
 
   // Mark specific schedule round as complete
   const handleCompleteReview = async (scheduleId, topicTitle, round, isBonus = false, topicId = null) => {
-    if (topicId === 'mixed_acronym_table') {
-      localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
+    if (topicId && topicId.startsWith('mixed_')) {
+      const datePart = topicId.replace('mixed_', '');
+      localStorage.setItem(`anti_mixed_completed_${datePart}`, 'true');
       showNotification('오늘의 필수 믹스복습 완료!');
       
       try {
@@ -7180,8 +7181,8 @@ export default function App() {
         if (getRes.ok) {
           const getBody = await getRes.json();
           const currentDates = (getBody && getBody.data && getBody.data.completedDates) || [];
-          if (!currentDates.includes(referenceDate)) {
-            currentDates.push(referenceDate);
+          if (!currentDates.includes(datePart)) {
+            currentDates.push(datePart);
             await fetch(`${API_BASE}/api/session/mixed-completed`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -7189,11 +7190,11 @@ export default function App() {
             });
           }
         }
-      } catch (e) {
+      } catch (e) { 
         console.warn('Failed to sync mixed completion date to server:', e);
       }
 
-      fetchTodayReviews(referenceDate);
+      fetchTodayReviews(datePart);
       return;
     }
 
@@ -7311,7 +7312,7 @@ export default function App() {
       return;
     }
 
-    if (selectedTopic.id === 'mixed_acronym_table') {
+    if (selectedTopic.id && selectedTopic.id.startsWith('mixed_')) {
       const gradingPromises = [];
       const localGradingResults = { ...tableGradingResults };
 
@@ -7447,18 +7448,19 @@ export default function App() {
 
       const scoreMC = Math.round(totalScoreObtained * 10) / 10;
 
-      await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/api/session/review/topic/${selectedTopic.id}`, { method: 'DELETE' })
         .catch(e => console.warn('Sync delete mixed session failed:', e));
 
-      localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
+      const datePart = selectedTopic.id.replace('mixed_', '');
+      localStorage.setItem(`anti_mixed_completed_${datePart}`, 'true');
 
       try {
         const getRes = await fetch(`${API_BASE}/api/session/mixed-completed?t=${Date.now()}`);
         if (getRes.ok) {
           const getBody = await getRes.json();
           const currentDates = (getBody && getBody.data && getBody.data.completedDates) || [];
-          if (!currentDates.includes(referenceDate)) {
-            currentDates.push(referenceDate);
+          if (!currentDates.includes(datePart)) {
+            currentDates.push(datePart);
             await fetch(`${API_BASE}/api/session/mixed-completed`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -7789,7 +7791,9 @@ export default function App() {
 
   // 표글 믹스 복습 수동 요청 핸들러
   const handleRequestMixedReview = async () => {
-    const alreadyExists = todayReviews.some(r => r.topic_id === 'mixed_acronym_table');
+    const mixedTopicId = `mixed_${referenceDate}`;
+    const mixedScheduleId = `mixed_schedule_${referenceDate}`;
+    const alreadyExists = todayReviews.some(r => r.topic_id === mixedTopicId);
     if (alreadyExists) {
       showNotification('이미 오늘의 필수 믹스복습이 복습 목록에 존재합니다.', 'info');
       return;
@@ -7811,18 +7815,18 @@ export default function App() {
       console.warn('Failed to sync mixed completion date removal to server:', e);
     }
     try {
-      await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/api/session/review/topic/${mixedTopicId}`, { method: 'DELETE' });
     } catch (e) {
       console.warn('Failed to clear mixed review session on server:', e);
     }
     await fetchTodayReviews(referenceDate);
     handleOpenAIQuestions(
-      'mixed_acronym_table',
+      mixedTopicId,
       '오늘의 필수 믹스복습 (10제 1세트)',
       '',
       'mixed.html',
       'ai',
-      'mixed_acronym_table_schedule',
+      mixedScheduleId,
       'MIX',
       false,
       false,
@@ -8352,8 +8356,8 @@ export default function App() {
       setIsFallback(false);
       setAiError('');
 
-      if (topicId === 'mixed_acronym_table') {
-        const activeSid = `sess_mixed_${referenceDate}`;
+      if (topicId && topicId.startsWith('mixed_')) {
+        const activeSid = `sess_${topicId}`;
         let restoredData = null;
         try {
           const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
@@ -9078,8 +9082,8 @@ export default function App() {
     const currentRefreshScheduleId = selectedTopic.schedule_id;
 
     try {
-      if (currentRefreshTopicId === 'mixed_acronym_table') {
-        const deleteUrl = `${API_BASE}/api/session/review/topic/mixed_acronym_table`;
+      if (currentRefreshTopicId && currentRefreshTopicId.startsWith('mixed_')) {
+        const deleteUrl = `${API_BASE}/api/session/review/topic/${currentRefreshTopicId}`;
         await fetch(deleteUrl, { method: 'DELETE' })
           .catch(e => console.warn('복습 세션 초기화 실패:', e));
         
@@ -16069,7 +16073,7 @@ ${itemsStr}
                               {item.review_round}회차 복습
                             </span>
                           )}
-                          {!item.isBonus && item.topic_id !== 'mixed_acronym_table' && item.planned_date < referenceDate && (() => {
+                          {!item.isBonus && !(item.topic_id && item.topic_id.startsWith('mixed_')) && item.planned_date < referenceDate && (() => {
                             const p = new Date(item.planned_date);
                             const r = new Date(referenceDate);
                             const diffDays = Math.round((r.getTime() - p.getTime()) / (1000 * 60 * 60 * 24));
@@ -17776,7 +17780,7 @@ ${itemsStr}
                               <ThumbsUp size={12} className="hidden sm:inline-block" />
                               <span>추천</span>
                             </button>
-                            {selectedTopic?.id === 'mixed_acronym_table' && (
+                            {selectedTopic?.id && selectedTopic.id.startsWith('mixed_') && (
                               <button
                                 onClick={() => handleOpenAnswerPopup(q)}
                                 className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
@@ -21009,7 +21013,7 @@ ${itemsStr}
                             <ThumbsUp size={12} className="hidden sm:inline-block" />
                             <span>추천</span>
                           </button>
-                          {examTopic?.id === 'mixed_acronym_table' && (
+                          {examTopic?.id && examTopic.id.startsWith('mixed_') && (
                             <button
                               onClick={() => handleOpenAnswerPopup(q)}
                               className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
