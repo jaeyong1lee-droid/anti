@@ -8235,6 +8235,50 @@ export default function App() {
       setAiError('');
 
       if (topicId === 'mixed_acronym_table') {
+        const activeSid = `sess_mixed_${referenceDate}`;
+        let restoredData = null;
+        try {
+          const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
+              restoredData = checkData.data;
+            }
+          }
+        } catch (e) {
+          console.warn('Restoring mixed review failed:', e);
+        }
+
+        if (restoredData) {
+          console.log('[handleOpenAIQuestions] Restoring mixed review from server directly without rebuilding questions.');
+          setSelectedTopic(targetTopic);
+          selectedTopicRef.current = targetTopic;
+          setReviewSessionId(activeSid);
+          
+          setAiQuestions(restoredData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
+          setSelectedAnswers(restoredData.selectedAnswers || {});
+          setRevealedQuestions(restoredData.revealedQuestions || {});
+          setTableAnswers(restoredData.tableAnswers || {});
+          setTableGradingResults(restoredData.tableGradingResults || {});
+          setTutorAnswers(restoredData.tutorAnswers || {});
+          setTutorInputText(restoredData.tutorInputText || {});
+          setChatHistory(restoredData.chatHistory || []);
+          
+          lastSyncStateRef.current = {
+            selectedAnswers: restoredData.selectedAnswers || {},
+            revealedQuestions: restoredData.revealedQuestions || {},
+            tableAnswers: restoredData.tableAnswers || {},
+            tableGradingResults: restoredData.tableGradingResults || {},
+            tutorAnswers: restoredData.tutorAnswers || {},
+            tutorInputText: restoredData.tutorInputText || {},
+            chatHistory: restoredData.chatHistory || []
+          };
+          
+          setLoadingAI(false);
+          loadingTopicLockRef.current = false;
+          return;
+        }
+
         const tables = await loadFormulaTables();
         const acronyms = await loadFormulaAcronyms();
         const overviews = await loadFormulaOverviews();
@@ -8501,79 +8545,44 @@ export default function App() {
           }
         }));
         
-        const activeSid = `sess_mixed_${referenceDate}`;
-        let restoredData = null;
-        try {
-          const checkRes = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}`);
-          if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            if (checkData.success && checkData.data && checkData.data.questions && checkData.data.questions.length > 0) {
-              restoredData = checkData.data;
-            }
-          }
-        } catch (e) {
-          console.warn('Restoring mixed review failed:', e);
-        }
-        
         setSelectedTopic(targetTopic);
         selectedTopicRef.current = targetTopic;
         setReviewSessionId(activeSid);
         
-        if (restoredData) {
-          setAiQuestions(restoredData.questions.map(q => healQuizQuestionObject({ ...q, category: topicCategory })));
-          setSelectedAnswers(restoredData.selectedAnswers || {});
-          setRevealedQuestions(restoredData.revealedQuestions || {});
-          setTableAnswers(restoredData.tableAnswers || {});
-          setTableGradingResults(restoredData.tableGradingResults || {});
-          setTutorAnswers(restoredData.tutorAnswers || {});
-          setTutorInputText(restoredData.tutorInputText || {});
-          setChatHistory(restoredData.chatHistory || []);
-          
-          lastSyncStateRef.current = {
-            selectedAnswers: restoredData.selectedAnswers || {},
-            revealedQuestions: restoredData.revealedQuestions || {},
-            tableAnswers: restoredData.tableAnswers || {},
-            tableGradingResults: restoredData.tableGradingResults || {},
-            tutorAnswers: restoredData.tutorAnswers || {},
-            tutorInputText: restoredData.tutorInputText || {},
-            chatHistory: restoredData.chatHistory || []
-          };
-        } else {
-          setAiQuestions(questions);
-          setSelectedAnswers({});
-          setRevealedQuestions({});
-          setTableAnswers({});
-          setTableGradingResults({});
-          setTutorAnswers({});
-          setTutorInputText({});
-          setChatHistory([]);
-          
-          lastSyncStateRef.current = {
+        setAiQuestions(questions);
+        setSelectedAnswers({});
+        setRevealedQuestions({});
+        setTableAnswers({});
+        setTableGradingResults({});
+        setTutorAnswers({});
+        setTutorInputText({});
+        setChatHistory([]);
+        
+        lastSyncStateRef.current = {
+          selectedAnswers: {},
+          revealedQuestions: {},
+          tableAnswers: {},
+          tableGradingResults: {},
+          tutorAnswers: {},
+          tutorInputText: {},
+          chatHistory: []
+        };
+        
+        await fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: topicId,
+            scheduleId: finalScheduleId,
+            sessionId: activeSid,
+            questions: questions,
             selectedAnswers: {},
             revealedQuestions: {},
             tableAnswers: {},
             tableGradingResults: {},
-            tutorAnswers: {},
-            tutorInputText: {},
-            chatHistory: []
-          };
-          
-          await fetch(`${API_BASE}/api/session/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              topicId: topicId,
-              scheduleId: finalScheduleId,
-              sessionId: activeSid,
-              questions: questions,
-              selectedAnswers: {},
-              revealedQuestions: {},
-              tableAnswers: {},
-              tableGradingResults: {},
-              savedQuizScroll: 0
-            })
-          }).catch(e => console.warn('Saving initial mixed review failed:', e));
-        }
+            savedQuizScroll: 0
+          })
+        }).catch(e => console.warn('Saving initial mixed review failed:', e));
         
         setLoadingAI(false);
         loadingTopicLockRef.current = false;
@@ -17649,13 +17658,15 @@ ${itemsStr}
                               <ThumbsUp size={12} className="hidden sm:inline-block" />
                               <span>추천</span>
                             </button>
-                            <button
-                              onClick={() => handleOpenAnswerPopup(q)}
-                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
-                              title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
-                            >
-                              <span>📄 답안</span>
-                            </button>
+                            {selectedTopic?.id === 'mixed_acronym_table' && (
+                              <button
+                                onClick={() => handleOpenAnswerPopup(q)}
+                                className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
+                                title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
+                              >
+                                <span>📄 답안</span>
+                              </button>
+                            )}
 
                             {isMC && (
                               <button
@@ -20880,13 +20891,15 @@ ${itemsStr}
                             <ThumbsUp size={12} className="hidden sm:inline-block" />
                             <span>추천</span>
                           </button>
-                          <button
-                            onClick={() => handleOpenAnswerPopup(q)}
-                            className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
-                            title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
-                          >
-                            <span>📄 답안</span>
-                          </button>
+                          {examTopic?.id === 'mixed_acronym_table' && (
+                            <button
+                              onClick={() => handleOpenAnswerPopup(q)}
+                              className="flex-1 sm:flex-none justify-center flex items-center gap-0 sm:gap-1.5 text-[9.5px] sm:text-[11px] font-bold px-1.5 py-1 rounded-lg border bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-indigo-950/40 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-300 active:scale-95 cursor-pointer whitespace-nowrap"
+                              title="답안 확인: 이 문제와 관련된 교재/학습 탭의 원본 암기자료 내용을 팝업으로 조회합니다."
+                            >
+                              <span>📄 답안</span>
+                            </button>
+                          )}
 
                           {isMC && (
                             <button
