@@ -4836,6 +4836,7 @@ export default function App() {
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
   const [activeEditAcronymCell, setActiveEditAcronymCell] = useState(null); // { acronymId, rIdx, type: 'acronym'|'combined' }
   const [editingAcronymValue, setEditingAcronymValue] = useState('');
+  const [editingCellValue, setEditingCellValue] = useState('');
   const [formulaAcronyms, setFormulaAcronyms] = useState([]);
   const [loadingFormulaAcronyms, setLoadingFormulaAcronyms] = useState(false);
   const [acronymModeActive, setAcronymModeActive] = useState(false);
@@ -22463,26 +22464,30 @@ ${itemsStr}
                                                     onClick={() => {
                                                       if (!isEditing) {
                                                         setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
+                                                        setEditingCellValue(h);
                                                       }
                                                     }}
                                                   >
                                                     {isEditing ? (
                                                       <input
                                                         type="text"
-                                                        value={h}
-                                                        onChange={(e) => {
-                                                          const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? e.target.value : hdr);
+                                                        value={editingCellValue}
+                                                        onChange={(e) => setEditingCellValue(e.target.value)}
+                                                        onBlur={() => {
+                                                          const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
                                                           const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
                                                           const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
                                                           setFormulaTables(updatedTables);
-                                                        }}
-                                                        onBlur={() => {
-                                                          handleSaveFormulaTables(formulaTables, false);
+                                                          handleSaveFormulaTables(updatedTables, false);
                                                           setActiveEditCell(null);
                                                         }}
                                                         onKeyDown={(e) => {
                                                           if (e.key === 'Enter') {
-                                                            handleSaveFormulaTables(formulaTables, false);
+                                                            const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
+                                                            const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
+                                                            const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                            setFormulaTables(updatedTables);
+                                                            handleSaveFormulaTables(updatedTables, false);
                                                             setActiveEditCell(null);
                                                           }
                                                         }}
@@ -22531,30 +22536,38 @@ ${itemsStr}
                                                       onClick={() => {
                                                         if (!isEditing) {
                                                           setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
+                                                          setEditingCellValue(cell);
                                                         }
                                                       }}
                                                     >
                                                       {isEditing ? (
                                                         <input
                                                           type="text"
-                                                          value={cell}
-                                                          onChange={(e) => {
+                                                          value={editingCellValue}
+                                                          onChange={(e) => setEditingCellValue(e.target.value)}
+                                                          onBlur={() => {
                                                             const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
                                                               rIdx2 === rIdx 
-                                                                ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? e.target.value : cellVal)
+                                                                ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? editingCellValue : cellVal)
                                                                 : rowVal
                                                             );
                                                             const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
                                                             const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
                                                             setFormulaTables(updatedTables);
-                                                          }}
-                                                          onBlur={() => {
-                                                            handleSaveFormulaTables(formulaTables, false);
+                                                            handleSaveFormulaTables(updatedTables, false);
                                                             setActiveEditCell(null);
                                                           }}
                                                           onKeyDown={(e) => {
                                                             if (e.key === 'Enter') {
-                                                              handleSaveFormulaTables(formulaTables, false);
+                                                              const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
+                                                                rIdx2 === rIdx 
+                                                                  ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? editingCellValue : cellVal)
+                                                                  : rowVal
+                                                              );
+                                                              const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                              const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                              setFormulaTables(updatedTables);
+                                                              handleSaveFormulaTables(updatedTables, false);
                                                               setActiveEditCell(null);
                                                             }
                                                           }}
@@ -22837,6 +22850,7 @@ ${itemsStr}
                                                       const isEditingCombined = activeEditAcronymCell && activeEditAcronymCell.acronymId === ac.id && activeEditAcronymCell.rIdx === rIdx && activeEditAcronymCell.type === 'combined';
                                                       if (!isEditingCombined) {
                                                         setActiveEditAcronymCell({ acronymId: ac.id, rIdx, type: 'combined' });
+                                                        setEditingAcronymValue(combinedValue);
                                                       }
                                                     }}
                                                   >
@@ -22844,19 +22858,18 @@ ${itemsStr}
                                                       const isEditingCombined = activeEditAcronymCell && activeEditAcronymCell.acronymId === ac.id && activeEditAcronymCell.rIdx === rIdx && activeEditAcronymCell.type === 'combined';
                                                       return isEditingCombined ? (
                                                         <textarea
-                                                          value={combinedValue}
+                                                          value={editingAcronymValue}
                                                           onChange={(e) => {
-                                                            handleUpdateAcronymRowCell(ac.id, rIdx, 'combined', e.target.value);
+                                                            setEditingAcronymValue(e.target.value);
                                                             e.target.style.height = 'auto';
                                                             e.target.style.height = `${e.target.scrollHeight}px`;
                                                           }}
                                                           onBlur={() => {
-                                                            handleSaveFormulaAcronyms(formulaAcronyms, false);
+                                                            handleUpdateAcronymRowCell(ac.id, rIdx, 'combined', editingAcronymValue);
                                                             setActiveEditAcronymCell(null);
                                                           }}
                                                           onKeyDown={(e) => {
                                                             if (e.key === 'Escape') {
-                                                              handleSaveFormulaAcronyms(formulaAcronyms, false);
                                                               setActiveEditAcronymCell(null);
                                                             }
                                                           }}
