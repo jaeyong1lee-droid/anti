@@ -6833,6 +6833,145 @@ export default function App() {
     };
   }, []);
 
+  // ── Debounced Auto-Save to Server (Idea 1) & Visibility Sync (Idea 2) ──
+  const autoSaveTimeoutRef = useRef(null);
+
+  const refreshActiveReviewSession = async () => {
+    if (!selectedTopic || !selectedTopic.id || aiQuestions.length === 0) return;
+    console.log('[Auto-Sync] Pulling latest session from server...');
+    const topicId = selectedTopic.id;
+    const finalScheduleId = selectedTopic.schedule_id;
+    const activeSid = reviewSessionId || 'legacy_default';
+    try {
+      const res = await fetch(`${API_BASE}/api/session/review?topicId=${topicId}&scheduleId=${finalScheduleId || ''}&sessionId=${activeSid}&t=${Date.now()}`);
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.success && resData.data) {
+          const server = resData.data;
+          
+          const isSame = JSON.stringify(server.selectedAnswers || {}) === JSON.stringify(selectedAnswers) &&
+                         JSON.stringify(server.revealedQuestions || {}) === JSON.stringify(revealedQuestions) &&
+                         JSON.stringify(server.tableAnswers || {}) === JSON.stringify(tableAnswers) &&
+                         JSON.stringify(server.tableGradingResults || {}) === JSON.stringify(tableGradingResults) &&
+                         JSON.stringify(server.tutorAnswers || {}) === JSON.stringify(tutorAnswers) &&
+                         JSON.stringify(server.tutorInputText || {}) === JSON.stringify(tutorInputText) &&
+                         JSON.stringify(server.chatHistory || []) === JSON.stringify(chatHistory);
+
+          if (!isSame) {
+            console.log('[Auto-Sync] Differences found, updating local state...');
+            if (server.questions && Array.isArray(server.questions)) {
+              setAiQuestions(server.questions.map(q => healQuizQuestionObject({ ...q, category: selectedTopic.category })));
+            }
+            setSelectedAnswers(server.selectedAnswers || {});
+            setRevealedQuestions(server.revealedQuestions || {});
+            setTableAnswers(server.tableAnswers || {});
+            setTableGradingResults(server.tableGradingResults || {});
+            setTutorAnswers(server.tutorAnswers || {});
+            setTutorInputText(server.tutorInputText || {});
+            setChatHistory(server.chatHistory || []);
+          } else {
+            console.log('[Auto-Sync] No differences found.');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Auto-Sync] Failed to refresh active review session:', e);
+    }
+  };
+
+  const refreshActiveExamSession = async () => {
+    if (examQuestions.length === 0) return;
+    console.log('[Auto-Sync] Pulling latest exam session from server...');
+    try {
+      const res = await fetch(`${API_BASE}/api/session/exam?t=${Date.now()}`);
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData && resData.data) {
+          const server = resData.data;
+          const isSame = JSON.stringify(server.examAnswers || {}) === JSON.stringify(examAnswers) &&
+                         JSON.stringify(server.examRevealed || {}) === JSON.stringify(examRevealed) &&
+                         JSON.stringify(server.examTableAnswers || {}) === JSON.stringify(examTableAnswers) &&
+                         JSON.stringify(server.examTableGradingResults || {}) === JSON.stringify(examTableGradingResults) &&
+                         JSON.stringify(server.chatHistory || []) === JSON.stringify(chatHistory);
+
+          if (!isSame) {
+            console.log('[Auto-Sync] Differences found, updating local exam state...');
+            if (server.examQuestions && Array.isArray(server.examQuestions)) {
+              setExamQuestions(server.examQuestions.map(q => healQuizQuestionObject(q)));
+            }
+            setExamAnswers(server.examAnswers || {});
+            setExamRevealed(server.examRevealed || {});
+            setExamTableAnswers(server.examTableAnswers || {});
+            setExamTableGradingResults(server.examTableGradingResults || {});
+            if (server.examTopic) setExamTopic(server.examTopic);
+            setChatHistory(server.chatHistory || []);
+          } else {
+            console.log('[Auto-Sync] No differences found.');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Auto-Sync] Failed to refresh active exam session:', e);
+    }
+  };
+
+  // Effect 1: Debounced Auto-Save (Idea 1)
+  useEffect(() => {
+    const hasActiveReview = !!(selectedTopic && selectedTopic.id && aiQuestions.length > 0);
+    const hasActiveExam = !!(examQuestions.length > 0 && !loadingExam);
+    if (!hasActiveReview && !hasActiveExam) return;
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      console.log('[Auto-Save] Triggering debounced auto-save...');
+      forceSaveActiveSessions().catch(err => console.warn('Auto-save failed:', err));
+    }, 1500);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [
+    selectedTopic?.id,
+    aiQuestions,
+    selectedAnswers,
+    revealedQuestions,
+    tableAnswers,
+    tableGradingResults,
+    tutorAnswers,
+    tutorInputText,
+    chatHistory,
+    examQuestions,
+    examRevealed,
+    examAnswers,
+    examTableAnswers,
+    examTableGradingResults
+  ]);
+
+  // Effect 2: Focus and Visibility Sync (Idea 2)
+  useEffect(() => {
+    const handleSyncVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
+          refreshActiveReviewSession();
+        }
+        if (examQuestions.length > 0) {
+          refreshActiveExamSession();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleSyncVisibility);
+    window.addEventListener('focus', handleSyncVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleSyncVisibility);
+      window.removeEventListener('focus', handleSyncVisibility);
+    };
+  }, [selectedTopic?.id, aiQuestions.length, examQuestions.length]);
+
 
 
   const handlePullToRefreshReload = async (mode) => {
