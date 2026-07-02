@@ -5718,8 +5718,29 @@ export default function App() {
         overviews = await loadFormulaOverviews();
       }
 
-      const res = await fetch(`${API_BASE}/api/dashboard?date=${dateStr}`);
+      const [res, mixedRes] = await Promise.all([
+        fetch(`${API_BASE}/api/dashboard?date=${dateStr}`),
+        fetch(`${API_BASE}/api/session/mixed-completed?t=${Date.now()}`).catch(e => null)
+      ]);
       const data = await res.json();
+
+      let serverCompletedDates = [];
+      if (mixedRes && mixedRes.ok) {
+        try {
+          const mixedBody = await mixedRes.json();
+          if (mixedBody && mixedBody.data && Array.isArray(mixedBody.data.completedDates)) {
+            serverCompletedDates = mixedBody.data.completedDates;
+            if (serverCompletedDates.includes(dateStr)) {
+              localStorage.setItem(`anti_mixed_completed_${dateStr}`, 'true');
+            } else {
+              localStorage.removeItem(`anti_mixed_completed_${dateStr}`);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse mixed completed dates from server:', e);
+        }
+      }
+
       if (res.ok && data && Array.isArray(data.reviews)) {
         // 동일 토픽 중복 일정 방어 (중복 시 가장 낮은 review_round 일정 하나만 프론트에서도 유지)
         const uniqueMap = new Map();
@@ -7153,6 +7174,25 @@ export default function App() {
     if (topicId === 'mixed_acronym_table') {
       localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
       showNotification('오늘의 필수 믹스복습 완료!');
+      
+      try {
+        const getRes = await fetch(`${API_BASE}/api/session/mixed-completed?t=${Date.now()}`);
+        if (getRes.ok) {
+          const getBody = await getRes.json();
+          const currentDates = (getBody && getBody.data && getBody.data.completedDates) || [];
+          if (!currentDates.includes(referenceDate)) {
+            currentDates.push(referenceDate);
+            await fetch(`${API_BASE}/api/session/mixed-completed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ completedDates: currentDates })
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync mixed completion date to server:', e);
+      }
+
       fetchTodayReviews(referenceDate);
       return;
     }
@@ -7411,6 +7451,25 @@ export default function App() {
         .catch(e => console.warn('Sync delete mixed session failed:', e));
 
       localStorage.setItem(`anti_mixed_completed_${referenceDate}`, 'true');
+
+      try {
+        const getRes = await fetch(`${API_BASE}/api/session/mixed-completed?t=${Date.now()}`);
+        if (getRes.ok) {
+          const getBody = await getRes.json();
+          const currentDates = (getBody && getBody.data && getBody.data.completedDates) || [];
+          if (!currentDates.includes(referenceDate)) {
+            currentDates.push(referenceDate);
+            await fetch(`${API_BASE}/api/session/mixed-completed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ completedDates: currentDates })
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync mixed completion date to server:', e);
+      }
+
       showNotification(`오늘의 필수 믹스복습 완료! (성적: ${scoreMC}점)`, 'success');
 
       setSelectedTopic(null);
@@ -7736,6 +7795,21 @@ export default function App() {
       return;
     }
     localStorage.removeItem(`anti_mixed_completed_${referenceDate}`);
+    try {
+      const getRes = await fetch(`${API_BASE}/api/session/mixed-completed?t=${Date.now()}`);
+      if (getRes.ok) {
+        const getBody = await getRes.json();
+        const currentDates = (getBody && getBody.data && getBody.data.completedDates) || [];
+        const updatedDates = currentDates.filter(d => d !== referenceDate);
+        await fetch(`${API_BASE}/api/session/mixed-completed`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completedDates: updatedDates })
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to sync mixed completion date removal to server:', e);
+    }
     try {
       await fetch(`${API_BASE}/api/session/review/topic/mixed_acronym_table`, { method: 'DELETE' });
     } catch (e) {

@@ -7971,6 +7971,41 @@ app.post('/api/session/images', async (req, res) => {
   }
 });
 
+// GET /api/session/mixed-completed → 믹스복습 완료일 목록 반환
+app.get('/api/session/mixed-completed', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['mixed_completed_dates']
+    );
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { completedDates: [] } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/mixed-completed error:', err);
+    res.json({ data: { completedDates: [] } });
+  }
+});
+
+// POST /api/session/mixed-completed → 믹스복습 완료일 목록 추가/저장
+app.post('/api/session/mixed-completed', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { completedDates } = req.body;
+    const value = JSON.stringify({ completedDates });
+    await saveSessionValue('mixed_completed_dates', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/mixed-completed error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/image-standards/analyze → 붙여넣은 그림/그래프 멀티모달 분석
 app.post('/api/image-standards/analyze', async (req, res) => {
   try {
