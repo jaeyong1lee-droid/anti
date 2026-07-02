@@ -7351,34 +7351,53 @@ app.get('/api/session/review', async (req, res) => {
       }
     }
 
-    // 3. [추가 크로스-하이브리드 폴백]
-    // 여전히 row를 찾지 못했으나, 이 토픽과 매핑된 다른 스케줄의 활성화된 세션이 있는 경우 이를 조회하여 복원
+    // 3. [🚨 초강력 토픽 ID 통합 세션 복원 가드 🚨]
+    // 직접 조회 및 기본적인 크로스-하이브리드 조회 실패 시, 
+    // 지정된 topicId(챕터 ID)와 관련된 모든 활성 세션(스케줄 또는 토픽 기반) 중 가장 최신 세션을 무조건 복원합니다.
     if (!row && !isCompletedOrFailed) {
-      const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [topicId]);
-      if (schedules && schedules.length > 0) {
-        const schedIds = schedules.map(s => s.id);
+      console.log(`[Super-Sync Fallback] Scanning all sessions for topicId=${topicId}`);
+      
+      // 3-1. 토픽 패턴 최신 조회
+      const topicPattern = `review_questions_topic_${topicId}_sess_%`;
+      const topicSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
+        [topicPattern]
+      );
+      
+      if (topicSessionRow) {
+        console.log(`[Super-Sync] Found recent topic session: ${topicSessionRow.key}`);
+        row = topicSessionRow;
+        try {
+          const parsedVal = JSON.parse(row.value);
+          const prefix = `review_questions_topic_${topicId}_sess_`;
+          const extractedSid = topicSessionRow.key.replace(prefix, '');
+          if (parsedVal && extractedSid) {
+            parsedVal.sessionId = extractedSid;
+            row.value = JSON.stringify(parsedVal);
+          }
+        } catch (e) {}
+      } else {
+        // 3-2. 스케줄 패턴 전체 스캔 (최신 100개 세션 중 JSON 내부의 topicId가 일치하는 최신 항목 탐색)
         const allSchedSessions = await dbQuery.all(
-          `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%' ORDER BY updated_at DESC LIMIT 50`
+          `SELECT key, value FROM app_session WHERE key LIKE 'review_questions_schedule_%' ORDER BY updated_at DESC LIMIT 100`
         );
         if (allSchedSessions && allSchedSessions.length > 0) {
           for (const sRow of allSchedSessions) {
-            const match = sRow.key.match(/^review_questions_schedule_(\d+)_sess_(.+)$/);
-            if (match) {
-              const sIdFromKey = parseInt(match[1], 10);
-              const extractedSid = match[2];
-              if (schedIds.includes(sIdFromKey)) {
-                console.log(`[Cross-Device Sync] Fallback to schedule session of the same topic: ${sRow.key}`);
+            try {
+              const parsedVal = JSON.parse(sRow.value);
+              if (parsedVal && parsedVal.topicId === topicId && parsedVal.questions && parsedVal.questions.length > 0) {
+                console.log(`[Super-Sync] Found recent schedule session inside JSON: ${sRow.key}`);
                 row = sRow;
-                try {
-                  const parsedVal = JSON.parse(row.value);
-                  if (parsedVal && extractedSid) {
-                    parsedVal.sessionId = extractedSid;
-                    row.value = JSON.stringify(parsedVal);
-                  }
-                } catch (e) {}
+                
+                const match = sRow.key.match(/^review_questions_schedule_(\d+)_sess_(.+)$/);
+                if (match && parsedVal) {
+                  const extractedSid = match[2];
+                  parsedVal.sessionId = extractedSid;
+                  row.value = JSON.stringify(parsedVal);
+                }
                 break;
               }
-            }
+            } catch (err) {}
           }
         }
       }
