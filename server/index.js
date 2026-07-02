@@ -4005,7 +4005,7 @@ ${content}
 `;
       }
       
-      const response = await localCallLLM(systemPrompt, userPrompt, null, mixedType === 'table' ? 'mixed_table_regen' : 'mixed_acronym_regen');
+      const response = await localCallLLM(systemPrompt, userPrompt, null, mixedType === 'table' ? 'mixed_table_regen' : 'mixed_acronym_regen', { temperature: 1.0 });
       
       // JSON 파싱 및 보정
       let parsed = {};
@@ -4759,7 +4759,7 @@ ${ENGINEERING_STANDARDS}
 ${formatRequirement}
 `;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();

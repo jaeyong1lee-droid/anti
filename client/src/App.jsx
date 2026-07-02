@@ -604,15 +604,50 @@ const healCorruptedKatexHtml = (text) => {
   
   let cleaned = text.replace(/\u200b/g, '');
   
-  // 1. Find any annotation block (normal or space-corrupted) and extract formula
-  const annotationRegex = /<\s*annotation[a-z]*\b[^>]*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
+  const cleanAndSplitFormula = (formula) => {
+    let clean = formula.trim().replace(/\\+/g, '\\');
+    // Decode basic HTML entities inside formula before parsing/splitting
+    clean = clean.replace(/&#x27;/g, "'")
+                 .replace(/&quot;/g, '"')
+                 .replace(/&lt;/g, '<')
+                 .replace(/&gt;/g, '>')
+                 .replace(/&amp;/g, '&');
+                 
+    // Split by any HTML tags (e.g. </div>, <br>, <a/>)
+    const parts = clean.split(/(?:<[^>]+?>)/gi);
+    return parts.map(p => {
+      const trimmed = p.trim();
+      if (!trimmed) return '';
+      // Math formula check: has math operators/symbols, and is not pure Korean text
+      const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
+      const hasKorean = /[가-힣]/.test(trimmed);
+      if (isMath && !hasKorean) {
+        return ` __MATH_FORMULA_START__${trimmed}__MATH_FORMULA_END__ `;
+      } else {
+        return ` ${trimmed} `;
+      }
+    }).join(' ');
+  };
+
+  // 1. Match any annotation block (normal or space-corrupted) and extract formula
+  const annotationRegex = /<\s*annotation[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
   cleaned = cleaned.replace(annotationRegex, (match, formula) => {
-    let cleanFormula = formula.trim().replace(/\\+/g, '\\');
-    return ` __MATH_FORMULA_START__${cleanFormula}__MATH_FORMULA_END__ `;
+    return cleanAndSplitFormula(formula);
+  });
+  
+  // 1.5. Match any KaTeX error blocks and extract formula from title attribute
+  const errorSpanRegex = /<\s*span\b(?:[^"'>]|"[^"]*"|'[^']*')*?\bclass=["'][^"']*\bkatex-error\b[^"']*["'](?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*span\s*>/gi;
+  cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
+    const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (titleMatch && titleMatch[1]) {
+      return cleanAndSplitFormula(titleMatch[1]);
+    }
+    return errContent;
   });
   
   // 2. Strip all KaTeX-related HTML tags (allowing space corruption suffixes and prefix spaces)
-  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b[^>]*>/gi;
+  // Using quote-safe regex to prevent matching '>' inside attribute values
+  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>/gi;
   cleaned = cleaned.replace(katexTagsRegex, '');
   
   // 3. Restore formula markers with standard dollar signs
