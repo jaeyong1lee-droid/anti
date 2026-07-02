@@ -7252,23 +7252,24 @@ app.get('/api/session/review', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
-    const topicId = req.query.topicId;
+    const rawTopicId = req.query.topicId;
+    const targetTopicId = String(rawTopicId || '');
 
     try {
       fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
-        `[${new Date().toISOString()}] GET /api/session/review : topicId=${topicId}, query=${JSON.stringify(req.query)}\n`
+        `[${new Date().toISOString()}] GET /api/session/review : topicId=${rawTopicId}, query=${JSON.stringify(req.query)}\n`
       );
     } catch (e) {
       console.error('Debug log write failed:', e.message);
     }
 
-    if (!topicId) {
+    if (!rawTopicId) {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
 
-    if (topicId && topicId.startsWith('mixed_')) {
+    if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       const sId = req.query.sessionId || 'legacy_default';
-      const key = `review_questions_topic_${topicId}_sess_${sId}`;
+      const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
       let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
       if (row && row.value) {
         return res.json({ success: true, data: JSON.parse(row.value) });
@@ -7277,19 +7278,19 @@ app.get('/api/session/review', async (req, res) => {
     }
 
     // 100% 토픽 ID(챕터 ID) 단일 식별자 기준으로만 캐시 키를 설정합니다!
-    const key = `review_questions_topic_${topicId}`;
+    const key = `review_questions_topic_${targetTopicId}`;
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
     if (global.addDebugLog) {
-      global.addDebugLog(`GET review: topicId=${topicId}, resolvedKey=${key}, foundRow=${!!row}`);
+      global.addDebugLog(`GET review: topicId=${targetTopicId}, resolvedKey=${key}, foundRow=${!!row}`);
     }
 
     // [🚨 단일 세션 모델 마이그레이션 폴백 🚨]
     // 단일 키 조회를 실패했을 때만, 레거시 키 패턴에서 topicId가 정확히 일치하는 데이터를 전수 스캔 및 엄격 대조하여 안전하게 복원합니다.
     if (!row) {
-      console.log(`[Migration Fallback] Single key not found. Scanning legacy sessions for topicId=${topicId}`);
+      console.log(`[Migration Fallback] Single key not found. Scanning legacy sessions for topicId=${targetTopicId}`);
       
       // 1. 토픽 기반 레거시 키 조회 (review_questions_topic_54-01_sess_%)
-      const topicPattern = `review_questions_topic_${topicId}_sess_%`;
+      const topicPattern = `review_questions_topic_${targetTopicId}_sess_%`;
       const topicSessionRow = await dbQuery.get(
         'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
         [topicPattern]
@@ -7308,7 +7309,7 @@ app.get('/api/session/review', async (req, res) => {
           for (const sRow of allSchedSessions) {
             try {
               const parsedVal = JSON.parse(sRow.value);
-              if (parsedVal && parsedVal.topicId === topicId && parsedVal.questions && parsedVal.questions.length > 0) {
+              if (parsedVal && String(parsedVal.topicId || '') === targetTopicId && parsedVal.questions && parsedVal.questions.length > 0) {
                 row = sRow;
                 console.log(`[Migration Fallback] Found legacy schedule session matching topicId inside JSON: ${sRow.key}`);
                 break;
@@ -7391,6 +7392,7 @@ app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
     const { topicId, scheduleId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
+    const targetTopicId = String(topicId || '');
 
     try {
       fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
@@ -7404,9 +7406,9 @@ app.post('/api/session/review', async (req, res) => {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
 
-    if (topicId && topicId.startsWith('mixed_')) {
+    if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       const sId = sessionId || 'legacy_default';
-      const key = `review_questions_topic_${topicId}_sess_${sId}`;
+      const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
       const value = JSON.stringify({
         sessionId: sessionId || '',
         questions,
@@ -7427,7 +7429,7 @@ app.post('/api/session/review', async (req, res) => {
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
-    const key = `review_questions_topic_${topicId}`;
+    const key = `review_questions_topic_${targetTopicId}`;
 
 
 
@@ -7462,11 +7464,12 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
   try {
     await ensureSessionTable();
     const topicId = req.params.id;
+    const targetTopicId = String(topicId || '');
 
-    if (topicId && topicId.startsWith('mixed_')) {
+    if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       await dbQuery.run(
         "DELETE FROM app_session WHERE key LIKE ?",
-        [`review_questions_topic_${topicId}%`]
+        [`review_questions_topic_${targetTopicId}%`]
       );
       return res.json({ ok: true });
     }
@@ -7474,11 +7477,11 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
     // 1. 토픽 기반 세션 키 삭제
     await dbQuery.run(
       "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-      [`review_questions_topic_${topicId}`, `review_questions_topic_${topicId}_sess_%`]
+      [`review_questions_topic_${targetTopicId}`, `review_questions_topic_${targetTopicId}_sess_%`]
     );
 
     // 2. 이 토픽에 연결된 모든 스케줄의 세션 키 삭제
-    const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [topicId]);
+    const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [targetTopicId]);
     if (schedules && schedules.length > 0) {
       for (const s of schedules) {
         await dbQuery.run(
@@ -7496,7 +7499,7 @@ app.delete('/api/session/review/topic/:id', async (req, res) => {
       for (const sRow of allSchedSessions) {
         try {
           const parsedVal = JSON.parse(sRow.value);
-          if (parsedVal && parsedVal.topicId === topicId) {
+          if (parsedVal && String(parsedVal.topicId || '') === targetTopicId) {
             await dbQuery.run('DELETE FROM app_session WHERE key = ?', [sRow.key]);
             console.log(`[Session Purge] Deleted orphan schedule session matching topicId: ${sRow.key}`);
           }
