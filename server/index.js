@@ -7253,6 +7253,15 @@ app.get('/api/session/review', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const topicId = req.query.topicId;
+
+    try {
+      fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
+        `[${new Date().toISOString()}] GET /api/session/review : topicId=${topicId}, query=${JSON.stringify(req.query)}\n`
+      );
+    } catch (e) {
+      console.error('Debug log write failed:', e.message);
+    }
+
     if (!topicId) {
       return res.status(400).json({ error: 'topicId가 누락되었습니다.' });
     }
@@ -7382,6 +7391,15 @@ app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
     const { topicId, scheduleId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
+
+    try {
+      fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
+        `[${new Date().toISOString()}] POST /api/session/review : topicId=${topicId}, scheduleId=${scheduleId}, questionsCount=${questions?.length || 0}\n`
+      );
+    } catch (e) {
+      console.error('Debug log write failed:', e.message);
+    }
+
     if (!topicId || !questions) {
       return res.status(400).json({ error: '필수 인자가 누락되었습니다.' });
     }
