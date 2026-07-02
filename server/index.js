@@ -7275,27 +7275,37 @@ app.get('/api/session/review', async (req, res) => {
     }
 
     // [🚨 단일 세션 모델 마이그레이션 폴백 🚨]
-    // 만약 단일 키로 세션 조회를 실패한 경우, 어제까지 쌓인 구버전 세션 키 찌꺼기가 있는지 전수 탐색해 복원해 줍니다.
+    // 단일 키 조회를 실패했을 때만, 레거시 키 패턴에서 topicId가 정확히 일치하는 데이터를 전수 스캔 및 엄격 대조하여 안전하게 복원합니다.
     if (!row) {
+      console.log(`[Migration Fallback] Single key not found. Scanning legacy sessions for topicId=${topicId}`);
+      
+      // 1. 토픽 기반 레거시 키 조회 (review_questions_topic_54-01_sess_%)
       const topicPattern = `review_questions_topic_${topicId}_sess_%`;
-      const newestSessionRow = await dbQuery.get(
-        `SELECT key, value FROM app_session 
-         WHERE (key LIKE ?) OR (key LIKE 'review_questions_schedule_%') OR (key LIKE 'review_questions_topic_${topicId}%')
-         ORDER BY updated_at DESC LIMIT 50`,
+      const topicSessionRow = await dbQuery.get(
+        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
         [topicPattern]
       );
-      if (newestSessionRow) {
-        if (newestSessionRow.key.includes(topicId)) {
-          row = newestSessionRow;
-          console.log(`[Migration Fallback] Recovered active session from legacy key: ${newestSessionRow.key}`);
-        } else {
-          try {
-            const parsed = JSON.parse(newestSessionRow.value);
-            if (parsed && parsed.topicId === topicId && parsed.questions && parsed.questions.length > 0) {
-              row = newestSessionRow;
-              console.log(`[Migration Fallback] Recovered from legacy schedule key inside JSON: ${newestSessionRow.key}`);
-            }
-          } catch (e) {}
+      if (topicSessionRow) {
+        row = topicSessionRow;
+        console.log(`[Migration Fallback] Found legacy topic session: ${topicSessionRow.key}`);
+      } else {
+        // 2. 스케줄 기반 레거시 키 전수 조사 (최근 100개 중 JSON 내부의 topicId가 "정확하게" 일치하는 녀석 탐색)
+        const allSchedSessions = await dbQuery.all(
+          `SELECT key, value FROM app_session 
+           WHERE key LIKE 'review_questions_schedule_%' 
+           ORDER BY updated_at DESC LIMIT 100`
+        );
+        if (allSchedSessions && allSchedSessions.length > 0) {
+          for (const sRow of allSchedSessions) {
+            try {
+              const parsedVal = JSON.parse(sRow.value);
+              if (parsedVal && parsedVal.topicId === topicId && parsedVal.questions && parsedVal.questions.length > 0) {
+                row = sRow;
+                console.log(`[Migration Fallback] Found legacy schedule session matching topicId inside JSON: ${sRow.key}`);
+                break;
+              }
+            } catch (err) {}
+          }
         }
       }
     }
