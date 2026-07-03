@@ -22446,6 +22446,16 @@ ${itemsStr}
                 <span>답안지</span>
               </button>
 
+              <div className="h-px bg-slate-800/60 my-1" />
+
+              <button
+                onClick={() => setShowAiHistoryModal(true)}
+                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-slate-400 border-slate-800/80 hover:text-violet-300 hover:bg-slate-800/50 transition-all cursor-pointer"
+              >
+                <Clock size={12} className="text-violet-400 shrink-0" />
+                <span>AI이력</span>
+              </button>
+
               </div>
             
             {/* Left: Formula Wrapper (Takes exactly 68% width on Desktop) */}
