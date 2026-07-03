@@ -2494,9 +2494,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
   const subjsTable = questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
   const mcs = questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
 
-  // 2. Q12, Q13 (Short Answer) - exactly 2
+  // 2. Q12, Q13, Q14, Q15 (Short Answer) - exactly 4
   let finalSubjsShort = [...subjsShort];
-  if (finalSubjsShort.length < 2) {
+  if (finalSubjsShort.length < 4) {
     const fallbackShorts = fallbackQs.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula);
     finalSubjsShort = [...finalSubjsShort, ...fallbackShorts];
   }
@@ -2511,10 +2511,10 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       uniqueShort.push(q);
     }
   });
-  finalSubjsShort = uniqueShort.slice(0, 2);
+  finalSubjsShort = uniqueShort.slice(0, 4);
 
-  // If we still need more to make exactly 2, we dynamically derive from Q1 (qIntro)
-  if (finalSubjsShort.length < 2 && qIntro) {
+  // If we still need more to make exactly 4, we dynamically derive from Q1 (qIntro)
+  if (finalSubjsShort.length < 4 && qIntro) {
     finalSubjsShort.push({
       type: "주관식 (단답형)",
       question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
@@ -2523,23 +2523,31 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     });
   }
 
-  // Ensure we have exactly 2
-  while (finalSubjsShort.length < 2) {
+  // Ensure we have exactly 4
+  const defaultShortQuestions = [
+    `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
+    `${topic.title} 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.`,
+    `${topic.title} 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.`,
+    `${topic.title}의 장단점을 타 유사 공법과 비교하여 설명하시오.`
+  ];
+  let defaultQIdx = 0;
+  while (finalSubjsShort.length < 4) {
     finalSubjsShort.push({
       type: "주관식 (단답형)",
-      question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
-      answer: "핵심 메커니즘",
-      explanation: `${topic.title}의 기본적인 공학적 개념과 핵심 작동 메커니즘입니다.`
+      question: defaultShortQuestions[defaultQIdx % defaultShortQuestions.length],
+      answer: "핵심 메커니즘 및 공학적 대책",
+      explanation: `${topic.title}의 세부 공학적 개념과 현장 실무적인 작동 원리입니다.`
     });
+    defaultQIdx++;
   }
 
-  // 3. Q5, Q6, Q7 (Table Quiz) - exactly 3
-  let finalSubjsTable = [...subjsTable].slice(0, 3);
-  if (finalSubjsTable.length < 3) {
+  // 3. Q5 (Table Quiz) - exactly 1
+  let finalSubjsTable = [...subjsTable].slice(0, 1);
+  if (finalSubjsTable.length < 1) {
     const fallbackTables = fallbackQs.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
-    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 3);
+    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 1);
   }
-  while (finalSubjsTable.length < 3) {
+  while (finalSubjsTable.length < 1) {
     finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
   }
 
@@ -2980,7 +2988,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       specialInstructions = `
 [특별 출제 지침 - 매우 중요]:
 이 토픽은 '프란틀 지지력 공식'이나 '테르자기 극한지지력 공식' 자체의 상세한 유도나 공식 정의를 단독으로 묻는 토픽이 아닙니다.
-반드시 다음의 핵심 영역들에 고도로 집중하여 객관식 7문제와 주관식 표채우기 3문제를 출제하십시오:
+반드시 다음의 핵심 영역들에 고도로 집중하여 객관식 6문제, 주관식 표채우기 1문제, 주관식 단답형 4문제를 출제하십시오:
 1. 기초 아래 지반의 3대 파괴 형태: "전반전단파괴(General Shear Failure)", "국부전단파괴(Local Shear Failure)", "관입전단파괴(Punching Shear Failure)"의 구체적 발생 조건(상대밀도 $D_r$, 근입깊이비 $D_f/B$, 지반 압축성 등), 파괴면의 발달 메커니즘, 융기(Heaving) 및 침하의 시각적 거동 특징.
 2. Vesic(1973)이 제안한 모래 지반에서의 파괴형태 예측 도표의 특징.
 3. 기초 강성(연성기초 vs 강성기초)과 흙의 종류(사질토 vs 점성토)의 4가지 조합에 따른 접지압(Contact Pressure) 분포 패턴 및 침하 형상(등분포 여부, 가장자리/중심 최대 여부 등).
@@ -3356,7 +3364,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 3), 객관식(6개), 주관식(단답형 2)을 순서대로 배열하여 총 13개 완성)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 1), 객관식(6개), 주관식(단답형 4)을 순서대로 배열하여 총 13개 완성)
 ]
 `;
 
@@ -3404,7 +3412,7 @@ ${ENGINEERING_STANDARDS}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 4개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 단답형 2개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 단답형 4개)를 생성해 주십시오.
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
@@ -3416,7 +3424,7 @@ ${ENGINEERING_STANDARDS}
 - 단, 다른 대주제 토픽의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 제목]** 범위 내에 머물러야 합니다.
 
 [출제 요구사항]:
-반드시 총 4개의 문제를 다음과 같이 구성하여 출제하십시오:
+반드시 총 6개의 문제를 다음과 같이 구성하여 출제하십시오:
 
 [1번 문제] 주관식 (개요):
 - 목적: 토픽의 핵심 정의(개요)를 명확하고 짜임새 있게 묻는 질문.
@@ -3434,12 +3442,12 @@ ${ENGINEERING_STANDARDS}
 - "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$")
 - "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")
 
-[12번~13번 문제] 주관식 (단답형):
-- 개수: 반드시 정확히 2문제를 출제하십시오.
+[주관식 (단답형) 문제들]:
+- 개수: 반드시 정확히 4문제를 출제하십시오.
 - "type" 값: 반드시 "주관식 (단답형)"
 - 출제 원칙:
-  * 12번 문제: 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
-  * 13번 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
+  * 1~3번째 단답형 문제: 단순한 키워드나 용어 명칭만을 단답으로 묻는 문제를 **절대로 출제하지 마십시오.** 1번 문제(주관식 개요) 내용과 일부 중복되거나 유사하더라도 무방하므로, **해당 토픽의 가장 중요하고 핵심적인 공학적 개념(정의, 기본 가정, 또는 주요 공학적 의미/메커니즘 등)**을 깊이 있게 묻는 주관식 서술형 질문으로 출제하십시오.
+  * 4번째 단답형 문제: 해당 토픽과 밀접하게 관계가 있는 **구체적인 공학적 문제 상황이나 시나리오(Engineering Problem/Scenario, 예: 주변 지반 침하, 급격한 변위 발달, 강도 저하, 붕괴 위험 등)**를 지문으로 제시하고, 기술사 관점에서의 **구체적이고 실무적인 공학적 해결책, 공학적 대책 또는 대처 방안(Engineering Solution/Countermeasure)**을 묻는 질문으로 출제하십시오.
   * 정답("answer"): 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 50자에서 최대 120자 내외)으로 명료하게 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
   * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
 
@@ -3465,15 +3473,27 @@ ${LATEX_PROMPT_INSTRUCTIONS}
   },
   {
     "type": "주관식 (단답형)",
-    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문",
-    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구",
-    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명"
+    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 1",
+    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 1",
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 1"
   },
   {
     "type": "주관식 (단답형)",
-    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문",
-    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안",
-    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명"
+    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 2",
+    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 2",
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 2"
+  },
+  {
+    "type": "주관식 (단답형)",
+    "question": "토픽의 가장 중요하고 핵심적인 공학적 정의, 기본 가정, 또는 주요 공학적 의미를 묻는 서술형 질문 3",
+    "answer": "핵심 개념이나 거동 특성을 요약한 1줄 서술형 답안 문구 3",
+    "explanation": "해당 개념의 학술적/공학적 의미에 대한 상세 설명 3"
+  },
+  {
+    "type": "주관식 (단답형)",
+    "question": "해당 토픽과 관련된 구체적인 공학적 현장 문제 상황(시나리오)을 제시하고 대처/방지 방안(해결 대책)을 요구하는 질문 4",
+    "answer": "문제 상황에 대처하기 위한 구체적인 공학적 대안 또는 대책 서술형 답안 4",
+    "explanation": "제안한 공학적 대책의 타당성 및 작동 메커니즘 설명 4"
   }
 ]
 `;
@@ -3496,16 +3516,16 @@ ${ENGINEERING_STANDARDS}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 3개**의 예상문제(주관식 표채우기 3개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 1개**의 예상문제(주관식 표채우기 1개)를 생성해 주십시오.
 
 [토픽 제목]: ${topic.title}
 [핵심 키워드]: ${topic.keywords || '제공되지 않음'}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
-반드시 총 3개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
+반드시 총 1개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
 
-[주관식 (표채우기) 문제 3개]:
+[주관식 (표채우기) 문제 1개]:
 - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법의 특징을 대조하는 유기적 표(Table) 질문 출제.
   - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(구분 항목)을 둡니다.
   - 🚨 **[구분 항목(행 제목) 명확화 및 행동 유도 원칙 - 극도로 중요!]**: 구분 항목(행 제목)은 **그것만 읽어도 ① 이 표가 무슨 주제/토픽에 대한 비교인지, ② 이 행에 어떤 종류의 구체적인 답(조치 사항, 원리, 방법 등)을 써야 하는지 100% 확신할 수 있어야** 합니다. **글자수는 반드시 최소 15자에서 최대 45자 이내**로 구체적이고 길게 작성하십시오. 단순히 '시험 결과의 신뢰성 확보' 같이 추상적인 상태를 명사로만 적지 마십시오. 사용자가 **'신뢰성을 확보하기 위해 구체적으로 무엇을 해야 하는지(현장 관리 대책/방법/제어 조건)'**를 작성할 수 있도록, **'신뢰성 높은 시험 결과를 획득하기 위해 현장에서 통제 및 관리해야 하는 구체적인 방법/조치 사항'** 또는 **'측정 오차를 최소화하고 데이터 신뢰성을 확보하기 위해 확보해야 하는 핵심 시공 조건'**과 같이 **행동 및 구체적 방법론을 유도하는 설명적인 구문**으로 작성하십시오.
