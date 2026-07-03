@@ -4341,6 +4341,25 @@ export default function App() {
         }).catch(e => console.warn('복습 세션 동기화 실패:', e));
       }
 
+      if (showExam && examQuestions.length > 0 && !loadingExam) {
+        await fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examQuestions,
+            examRevealed,
+            examAnswers,
+            examTopic,
+            tableAnswers: examTableAnswers,
+            tableGradingResults: nextGrading,
+            tutorAnswers,
+            tutorInputText,
+            chatHistory,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+      }
+
       stopProgressPolling('채점 완료!', 100);
       return nextGrading;
     } catch (e) {
@@ -6892,7 +6911,8 @@ export default function App() {
     }
   };
 
-  // Effect 1: Debounced Auto-Save (Idea 1)
+  // Effect 1: Debounced Auto-Save (Idea 1) - Disabled per user instructions
+  /*
   useEffect(() => {
     const hasActiveReview = !!(selectedTopic && selectedTopic.id && aiQuestions.length > 0);
     const hasActiveExam = !!(examQuestions.length > 0 && !loadingExam);
@@ -6928,6 +6948,7 @@ export default function App() {
     examTableAnswers,
     examTableGradingResults
   ]);
+  */
 
 
 
@@ -17263,6 +17284,17 @@ ${itemsStr}
                 <div className="flex items-center gap-2 select-none shrink-0">
                   <button
                     onClick={async () => {
+                      showNotification('서버에 현재 진행 상황을 저장합니다...', 'info');
+                      await forceSaveActiveSessions();
+                      showNotification('저장 완료!', 'success');
+                    }}
+                    className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-350 transition-all duration-200 cursor-pointer active:scale-95 text-[11px] font-black"
+                    title="클라우드 동기화: 현재 진행 상황을 서버에 저장합니다."
+                  >
+                    <span>SAVE</span>
+                  </button>
+                  <button
+                    onClick={async () => {
                       showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
                       await refreshActiveReviewSession();
                       showNotification('동기화 완료!', 'success');
@@ -17270,8 +17302,7 @@ ${itemsStr}
                     className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-350 transition-all duration-200 cursor-pointer active:scale-95 text-[11px] font-black"
                     title="클라우드 동기화: 다른 기기에서 풀던 진행 상황을 서버에서 불러옵니다."
                   >
-                    <UploadCloud size={11} className="text-emerald-400" />
-                    <span>불러오기</span>
+                    <span>LOAD</span>
                   </button>
                   <span className="text-xs sm:text-sm font-black text-amber-400 whitespace-nowrap" style={{ textShadow: '0 0 12px rgba(245, 158, 11, 0.3)' }}>
                     {getDisplayReviewScore()} / 100점
@@ -17291,18 +17322,30 @@ ${itemsStr}
                 </button>
               )}
               {selectedTopic && (
-                <button
-                  onClick={async () => {
-                    showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
-                    await refreshActiveReviewSession();
-                    showNotification('동기화 완료!', 'success');
-                  }}
-                  className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                  title="클라우드 동기화: 다른 기기에서 풀던 진행 상황을 서버에서 불러옵니다."
-                >
-                  <UploadCloud size={11} className="text-emerald-400 mr-1 shrink-0" />
-                  <span className="whitespace-nowrap">불러오기</span>
-                </button>
+                <>
+                  <button
+                    onClick={async () => {
+                      showNotification('서버에 현재 진행 상황을 저장합니다...', 'info');
+                      await forceSaveActiveSessions();
+                      showNotification('저장 완료!', 'success');
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                    title="클라우드 동기화: 현재 진행 상황을 서버에 저장합니다."
+                  >
+                    <span className="whitespace-nowrap">SAVE</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      showNotification('서버에서 최신 복습 세션을 불러옵니다...', 'info');
+                      await refreshActiveReviewSession();
+                      showNotification('동기화 완료!', 'success');
+                    }}
+                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white border border-slate-700/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                    title="클라우드 동기화: 다른 기기에서 풀던 진행 상황을 서버에서 불러옵니다."
+                  >
+                    <span className="whitespace-nowrap">LOAD</span>
+                  </button>
+                </>
               )}
               {selectedTopic && (
                 <div className="relative flex-1 md:flex-none flex">
@@ -20563,17 +20606,25 @@ ${itemsStr}
           {/* Main Layout Area */}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-                        {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
             <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
+              
+              <button
+                onClick={() => {
+                  // 수동 저장 기능
+                  fetch(`${API_BASE}/api/session/exam`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, tableAnswers: examTableAnswers, tableGradingResults: examTableGradingResults, savedExamScroll: examBodyRef.current?.scrollTop || 0 }),
+                  }).then(() => alert('진행 상황이 저장되었습니다.')).catch(e => console.warn('세션 저장 실패:', e));
+                }}
+                className="flex items-center justify-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-emerald-950/40 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/60 transition-all cursor-pointer active:scale-95"
+              >
+                <span>SAVE</span>
+              </button>
+
               {lastActiveReview && (
                 <button
                   onClick={() => {
-                    savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                    fetch(`${API_BASE}/api/session/exam`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ examQuestions, examRevealed, examAnswers, examTopic, savedExamScroll: savedExamScroll.current }),
-                    }).catch(e => console.warn('세션 저장 실패:', e));
                     setShowExam(false);
                     handleOpenLastActiveReview();
                   }}
@@ -21270,21 +21321,40 @@ ${itemsStr}
                                 key={oIdx}
                                 onClick={() => {
                                   if (answered) return; // 한번 선택하면 끝, 다시 선택 불가
-                                  setExamAnswers(prev => {
-                                    const updated = { ...prev, [idx]: opt };
-                                    const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
-                                    if (isDesktop || isMobileLandscape) {
-                                      if (normalizeAns(opt) === normalizeAns(q.answer)) {
-                                        setTimeout(() => {
-                                          const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
-                                          if (cards && cards[idx]) {
-                                            examBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
-                                          }
-                                        }, 600);
-                                      }
+                                  const nextExamAnswers = { ...examAnswers, [idx]: opt };
+                                  setExamAnswers(nextExamAnswers);
+
+                                  // 즉시 서버 세션 동기화 (Force Sync)
+                                  if (examQuestions.length > 0 && !loadingExam) {
+                                    fetch(`${API_BASE}/api/session/exam`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        examQuestions,
+                                        examRevealed,
+                                        examAnswers: nextExamAnswers,
+                                        examTopic,
+                                        tableAnswers: examTableAnswers,
+                                        tableGradingResults: examTableGradingResults,
+                                        tutorAnswers,
+                                        tutorInputText,
+                                        chatHistory,
+                                        savedExamScroll: examBodyRef.current?.scrollTop || 0
+                                      })
+                                    }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+                                  }
+
+                                  const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                                  if (isDesktop || isMobileLandscape) {
+                                    if (normalizeAns(opt) === normalizeAns(q.answer)) {
+                                      setTimeout(() => {
+                                        const cards = examBodyRef.current?.querySelectorAll('.exam-card-item');
+                                        if (cards && cards[idx]) {
+                                          examBodyRef.current?.scrollTo({ top: cards[idx].offsetTop, behavior: 'smooth' });
+                                        }
+                                      }, 600);
                                     }
-                                    return updated;
-                                  });
+                                  }
                                 }}
                                 className={cls}
                               >
