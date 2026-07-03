@@ -4007,6 +4007,7 @@ export default function App() {
   });
   const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
   const [showMemoryTypeSelectPopup, setShowMemoryTypeSelectPopup] = useState(false);
+  const [showMainMemoryTypePopup, setShowMainMemoryTypePopup] = useState(false);
   const [showMobileReviewMemoryPopup, setShowMobileReviewMemoryPopup] = useState(false);
   const [showMobileNavbarMemoryPopup, setShowMobileNavbarMemoryPopup] = useState(false);
   const activeProgressIdRef = useRef(null);
@@ -6627,7 +6628,7 @@ export default function App() {
     } else {
       console.log(`[Auto-Sync] Ignored. selectedTopic=${!!selectedTopic}, aiQuestions=${aiQuestions?.length}, chatHistory=${chatHistory?.length}, restoring=${restoringReviewSession}`);
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, restoringReviewSession, reviewSessionId]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableGradingResults, tutorAnswers, chatHistory, restoringReviewSession, reviewSessionId]);
 
   // ── Save active session progress to localStorage on any state change (fast local write)
   useEffect(() => {
@@ -6678,7 +6679,7 @@ export default function App() {
         }
       }
     }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, reviewSessionId]);
+  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableGradingResults, tutorAnswers, chatHistory, reviewSessionId]);
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -6704,7 +6705,7 @@ export default function App() {
 
       return () => clearTimeout(delayDebounceFn);
     }
-  }, [examQuestions, examRevealed, examAnswers, examTopic, examTableAnswers, examTableGradingResults, tutorAnswers, tutorInputText, chatHistory, loadingExam]);
+  }, [examQuestions, examRevealed, examAnswers, examTopic, examTableGradingResults, tutorAnswers, chatHistory, loadingExam]);
 
   // 백그라운드 실시간 덮어쓰기 폴링은 제거하고 진입/새로고침 시에만 동기화하도록 간소화
 
@@ -15700,30 +15701,36 @@ ${itemsStr}
               {/* AI Tutor Button on PC */}
               {(viewMode === 'dashboard' || viewMode === 'all_topics') && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet && (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleAcronymPromptRequest()}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-emerald-955/80 border border-solid border-emerald-500/30 text-emerald-400 hover:bg-emerald-900/60 transition-all shadow-md cursor-pointer select-none"
-                    title="앞글자(두문자) 생성 입력 팝업 띄우기"
-                  >
-                    <Sparkles size={14} />
-                    <span>두문자 생성</span>
-                  </button>
-                  <button
-                    onClick={() => handleOverviewPromptRequest()}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-rose-955/80 border border-solid border-rose-500/30 text-rose-455 hover:bg-rose-900/60 transition-all shadow-md cursor-pointer select-none"
-                    title="개요 생성 입력 팝업 띄우기"
-                  >
-                    <LayoutTemplate size={14} />
-                    <span>개요 생성</span>
-                  </button>
-                  <button
-                    onClick={handleOpenLockscreenPoolModal}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-emerald-600 border border-solid border-emerald-500 text-white hover:bg-emerald-500 transition-all shadow-md cursor-pointer select-none"
-                    title="대기 중인 잠금화면 퀴즈 목록 보기"
-                  >
-                    <Lock size={14} />
-                    <span>생성된 잠금퀴즈</span>
-                  </button>
+                  <div className="relative flex items-center">
+                    <button
+                      onClick={() => setShowMainMemoryTypePopup(prev => !prev)}
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm bg-violet-950/80 border border-solid border-violet-500/30 text-violet-400 hover:bg-violet-900/60 transition-all shadow-md cursor-pointer select-none"
+                      title="두문자 또는 개요 생성 팝업 열기"
+                    >
+                      <Sparkles size={14} />
+                      <span>두/개</span>
+                    </button>
+                    {showMainMemoryTypePopup && (
+                      <>
+                        <div className="fixed inset-0 z-[200]" onClick={() => setShowMainMemoryTypePopup(false)} />
+                        <div className="absolute right-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[120px] animate-fadeIn">
+                          <button
+                            onClick={() => { setShowMainMemoryTypePopup(false); handleAcronymPromptRequest(); }}
+                            className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors cursor-pointer text-left border-none"
+                          >
+                            <span>두문자 생성</span>
+                          </button>
+                          <div className="h-px bg-slate-800" />
+                          <button
+                            onClick={() => { setShowMainMemoryTypePopup(false); handleOverviewPromptRequest(); }}
+                            className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-rose-400 hover:bg-rose-955/40 hover:text-rose-300 transition-colors cursor-pointer text-left border-none"
+                          >
+                            <span>개요 생성</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <button 
                     onClick={() => setIsRealTimeTutorOpen(true)}
                     className="flex items-center gap-2 bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white font-bold text-sm px-4 py-2 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer select-none border-none"
@@ -25368,7 +25375,7 @@ ${itemsStr}
       />
 
       <FloatingMemorization
-        isVisible={showFloatingMemorization}
+        isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
         onClose={() => setShowFloatingMemorization(false)}
         formulaTables={formulaTables}
         setFormulaTables={setFormulaTables}
