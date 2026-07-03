@@ -28,6 +28,7 @@ import {
   Award, 
   BookOpen, 
   Sigma, 
+  Layers, 
   Info,
   Check,
   Eye,
@@ -57,6 +58,7 @@ import {
   Type
 } from 'lucide-react';
 import { FloatingCalculator } from './components/ScientificCalculator';
+import { FloatingMemorization } from './components/FloatingMemorization';
 import { ImageUploadPanel, ImageTabList } from './components/ImageStandardsPlugin';
 
 // ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
@@ -3678,6 +3680,7 @@ export default function App() {
     }
   };
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
+  const [showFloatingMemorization, setShowFloatingMemorization] = useState(false);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
   const [lastActiveReview, setLastActiveReview] = useState(null);
@@ -25216,6 +25219,20 @@ ${itemsStr}
                 <Image size={13} />
                 <span className="text-[10px] font-bold tracking-tight select-none">그림</span>
               </button>
+
+              {/* 플로팅 버튼 */}
+              <button
+                onClick={() => setShowFloatingMemorization(prev => !prev)}
+                className={`flex items-center justify-center gap-1.5 w-full h-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                  showFloatingMemorization
+                    ? 'bg-gradient-to-tr from-violet-600 to-fuchsia-500 text-white shadow-lg glow-purple'
+                    : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+                }`}
+                title="암기 자료 플로팅 창 토글"
+              >
+                <Layers size={13} />
+                <span className="text-[10px] font-bold tracking-tight select-none">플로팅</span>
+              </button>
             </div>
 
             {/* AI이력 버튼 */}
@@ -25344,6 +25361,45 @@ ${itemsStr}
       <FloatingCalculator 
         isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
         onClose={() => setShowFloatingCalculator(false)} 
+      />
+
+      <FloatingMemorization
+        isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
+        onClose={() => setShowFloatingMemorization(false)}
+        formulaTables={formulaTables}
+        setFormulaTables={setFormulaTables}
+        loadingFormulaTables={loadingFormulaTables}
+        expandedTableIds={expandedTableIds}
+        setExpandedTableIds={setExpandedTableIds}
+        handleSaveFormulaTables={handleSaveFormulaTables}
+        editingTableIdx={editingTableIdx}
+        setEditingTableIdx={setEditingTableIdx}
+        editingTableText={editingTableText}
+        setEditingTableText={setEditingTableText}
+        formulaAcronyms={formulaAcronyms}
+        setFormulaAcronyms={setFormulaAcronyms}
+        loadingFormulaAcronyms={loadingFormulaAcronyms}
+        editingAcronymId={editingAcronymId}
+        setEditingAcronymId={setEditingAcronymId}
+        editingAcronymText={editingAcronymText}
+        setEditingAcronymText={setEditingAcronymText}
+        handleUpdateAcronymSentence={handleUpdateAcronymSentence}
+        handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
+        handleDeleteAcronymCard={handleDeleteAcronymCard}
+        handleRebuildAcronymSentence={handleRebuildAcronymSentence}
+        getAcronymRows={getAcronymRows}
+        formulaOverviews={formulaOverviews}
+        setFormulaOverviews={setFormulaOverviews}
+        loadingFormulaOverviews={loadingFormulaOverviews}
+        handleSaveFormulaOverviews={handleSaveFormulaOverviews}
+        formulaImages={formulaImages}
+        setFormulaImages={setFormulaImages}
+        handleSaveFormulaImages={handleSaveFormulaImages}
+        showNotification={showNotification}
+        API_BASE={API_BASE}
+        LatexRenderer={LatexRenderer}
+        katexLoaded={katexLoaded}
+        isDesktop={isDesktop}
       />
 
       {/* Drag Selection AI Tutor Popup */}

@@ -1136,9 +1136,9 @@ export function ScientificCalculator() {
           .replace(/sin\(/g, 'Math.sin((Math.PI/180)*')
           .replace(/cos\(/g, 'Math.cos((Math.PI/180)*')
           .replace(/tan\(/g, 'Math.tan((Math.PI/180)*')
-          .replace(/asin\(/g, '((180/Math.PI)*Math.asin(')
-          .replace(/acos\(/g, '((180/Math.PI)*Math.acos(')
-          .replace(/atan\(/g, '((180/Math.PI)*Math.atan(');
+          .replace(/asin\(/g, '(180/Math.PI)*Math.asin(')
+          .replace(/acos\(/g, '(180/Math.PI)*Math.acos(')
+          .replace(/atan\(/g, '(180/Math.PI)*Math.atan(');
       } else {
         preProcessed = preProcessed
           .replace(/sin\(/g, 'Math.sin(')
