@@ -91,7 +91,7 @@ export function FloatingMemorization({
   handleUpdateAcronymSentence,
   handleUpdateAcronymRowCell,
   handleDeleteAcronymCard,
-  handleRebuildAcronymSentence,
+  handleOptimizeAcronym,
   getAcronymRows,
   // Overviews
   formulaOverviews,
@@ -633,7 +633,7 @@ export function FloatingMemorization({
                             />
                           </div>
                           <button
-                            onClick={() => handleRebuildAcronymSentence(ac.id, ac.title)}
+                            onClick={() => handleOptimizeAcronym(ac.id)}
                             className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded border border-slate-750 text-[10px] font-bold cursor-pointer select-none shrink-0"
                             title="AI가 연상문장을 재조합합니다"
                           >

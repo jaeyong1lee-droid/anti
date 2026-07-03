@@ -13084,6 +13084,15 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
+  const handleDeleteAcronymCard = async (acronymId, title) => {
+    if (window.confirm(`[${title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
+      const updated = formulaAcronyms.filter(x => x.id !== acronymId);
+      setFormulaAcronyms(updated);
+      await handleSaveFormulaAcronyms(updated, false);
+      showNotification(`[${title}] 앞글자가 삭제되었습니다.`, 'info');
+    }
+  };
+
   const handleOptimizeAcronym = async (acronymId) => {
     const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
     if (acronymIdx === -1) return;
@@ -23118,14 +23127,7 @@ ${itemsStr}
 
                                     {/* 삭제 버튼 */}
                                     <button
-                                      onClick={() => {
-                                        if (window.confirm(`[${ac.title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
-                                          const updated = formulaAcronyms.filter(x => x.id !== ac.id);
-                                          setFormulaAcronyms(updated);
-                                          handleSaveFormulaAcronyms(updated, false);
-                                          showNotification(`[${ac.title}] 앞글자가 삭제되었습니다.`, 'info');
-                                        }
-                                      }}
+                                      onClick={() => handleDeleteAcronymCard(ac.id, ac.title)}
                                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1"
                                       title="앞글자 삭제"
                                     >
@@ -25388,7 +25390,7 @@ ${itemsStr}
         handleUpdateAcronymSentence={handleUpdateAcronymSentence}
         handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
         handleDeleteAcronymCard={handleDeleteAcronymCard}
-        handleRebuildAcronymSentence={handleRebuildAcronymSentence}
+        handleOptimizeAcronym={handleOptimizeAcronym}
         getAcronymRows={getAcronymRows}
         formulaOverviews={formulaOverviews}
         setFormulaOverviews={setFormulaOverviews}
