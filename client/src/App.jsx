@@ -25218,6 +25218,20 @@ ${itemsStr}
               </button>
             </div>
 
+            {/* AI이력 버튼 */}
+            <button
+              onClick={() => setShowAiHistoryModal(true)}
+              className={`flex flex-col items-center justify-center gap-2 w-20 h-20 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                showAiHistoryModal
+                  ? 'bg-slate-800 text-white shadow-lg border border-slate-700/60'
+                  : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+              title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
+            >
+              <Clock size={20} className="text-violet-400" />
+              <span className="text-[10px] font-bold tracking-tight select-none">AI이력</span>
+            </button>
+
             {/* 답안지 버튼 */}
             <button
               onClick={async () => {
