@@ -18546,38 +18546,28 @@ ${itemsStr}
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
                         <button
                           onClick={handleOpenManageTopicInstructionsModal}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 hover:text-white border border-amber-500/40 transition-all cursor-pointer active:scale-95 shadow-md"
                           title="토픽 전용 문제 출제 지침을 관리합니다."
                         >
-                          <BookOpen size={10} className="flex-shrink-0" />
-                          <span>지침</span>
+                          지침
                         </button>
                         {selectedTopic.pdf_name && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
                           <button
                             onClick={handleOpenOriginalReport}
-                            className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
+                            className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 transition-all cursor-pointer active:scale-95 shadow-md"
                             title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                           >
-                            <FileText size={10} className="flex-shrink-0" />
-                            <span>원보고서</span>
+                            원
                           </button>
                         )}
 
                         <button
                           onClick={handleRefreshReviewQuestions}
                           disabled={loadingAI}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1 disabled:opacity-50"
+                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md disabled:opacity-50"
                           title="주제와 문제가 맞지 않을 때 전체 AI 재출제"
                         >
-                          {loadingAI ? (
-                            <svg className="animate-spin h-2.5 w-2.5 text-violet-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : (
-                            <span className="text-violet-300 flex-shrink-0">🔄</span>
-                          )}
-                          <span>AI 재출제</span>
+                          AI
                         </button>
                         <button
                           onClick={() => { 
@@ -18646,20 +18636,36 @@ ${itemsStr}
                         </button>
                       </div>
                     )}
-                    <button
-                      onClick={() => handleOverviewPromptRequest()}
-                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800/80 hover:bg-slate-800/50 mr-1"
-                      title="주제 개요 생성 팝업 열기"
-                    >
-                      <span>개</span>
-                    </button>
-                    <button
-                      onClick={() => handleAcronymPromptRequest('sidebar')}
-                      className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800/80 hover:bg-slate-800/50"
-                      title="앞글자(두문자) 암기법 생성 팝업 열기"
-                    >
-                      <span>두</span>
-                    </button>
+                    {/* 두문자/개요 통합 버튼 + 팝업 */}
+                    <div className="relative hidden md:flex items-center mr-1">
+                      <button
+                        onClick={() => setShowMemoryTypeSelectPopup(prev => !prev)}
+                        className="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center bg-slateCustom-900 text-violet-400 hover:text-violet-300 border border-slate-800/80 hover:bg-slate-800/50"
+                        title="두문자 또는 개요 생성 팝업 열기"
+                      >
+                        두·개
+                      </button>
+                      {showMemoryTypeSelectPopup && (
+                        <>
+                          <div className="fixed inset-0 z-[200]" onClick={() => setShowMemoryTypeSelectPopup(false)} />
+                          <div className="absolute right-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[110px] animate-fadeIn">
+                            <button
+                              onClick={() => { setShowMemoryTypeSelectPopup(false); handleAcronymPromptRequest('sidebar'); }}
+                              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors cursor-pointer"
+                            >
+                              <span>두문자</span>
+                            </button>
+                            <div className="h-px bg-slate-800" />
+                            <button
+                              onClick={() => { setShowMemoryTypeSelectPopup(false); handleOverviewPromptRequest(); }}
+                              className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-colors cursor-pointer"
+                            >
+                              <span>개요</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     <button
                       onClick={() => setShowFloatingCalculator(prev => !prev)}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
