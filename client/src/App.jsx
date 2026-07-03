@@ -17227,14 +17227,9 @@ ${itemsStr}
               )}
 
               <button
-                onClick={async () => { 
+                onClick={() => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                  if (selectedTopic?.isReadOnly) {
-                    setSelectedTopic(null); 
-                  } else {
-                    await forceSaveActiveSessions();
-                    setSelectedTopic(null); 
-                  }
+                  setSelectedTopic(null); 
                 }}
                 className="flex items-center justify-center w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
                 title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
@@ -17405,21 +17400,9 @@ ${itemsStr}
               )}
               <button
                 disabled={isSavingSession}
-                onClick={async () => { 
+                onClick={() => { 
                   savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                  if (selectedTopic?.isReadOnly) {
-                    setSelectedTopic(null); 
-                  } else {
-                    setIsSavingSession(true);
-                    try {
-                      await forceSaveActiveSessions();
-                    } catch (e) {
-                      console.warn('저장 실패:', e);
-                    } finally {
-                      setIsSavingSession(false);
-                      setSelectedTopic(null); 
-                    }
-                  }
+                  setSelectedTopic(null); 
                 }}
                 className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
                 title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
@@ -20735,26 +20718,8 @@ ${itemsStr}
               </button>
 
               <button
-                onClick={async () => {
+                onClick={() => {
                   savedExamScroll.current = examBodyRef.current?.scrollTop || 0;
-                  try {
-                    const r = await fetch(`${API_BASE}/api/session/exam`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        examQuestions, 
-                        examRevealed, 
-                        examAnswers, 
-                        examTopic,
-                        tableAnswers: examTableAnswers,
-                        tableGradingResults: examTableGradingResults,
-                        savedExamScroll: savedExamScroll.current 
-                      }),
-                    });
-                    if (!r.ok) throw new Error('서버 응답 오류');
-                  } catch (e) {
-                    console.warn('세션 저장 실패:', e);
-                  }
                   setShowExam(false);
                 }}
                 className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900 text-slate-300 hover:text-white border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95"
