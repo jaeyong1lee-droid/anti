@@ -2541,22 +2541,22 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     defaultQIdx++;
   }
 
-  // 3. Q5 (Table Quiz) - exactly 1
-  let finalSubjsTable = [...subjsTable].slice(0, 1);
-  if (finalSubjsTable.length < 1) {
+  // 3. Q5 (Table Quiz) - exactly 2
+  let finalSubjsTable = [...subjsTable].slice(0, 2);
+  if (finalSubjsTable.length < 2) {
     const fallbackTables = fallbackQs.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
-    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 1);
+    finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 2);
   }
-  while (finalSubjsTable.length < 1) {
+  while (finalSubjsTable.length < 2) {
     finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
   }
 
-  // 4. MC questions (6 questions)
+  // 4. MC questions (5 questions)
   let finalMcs = [];
   const uniqueMcQuestions = new Set();
 
   mcs.forEach(q => {
-    if (finalMcs.length >= 6) return;
+    if (finalMcs.length >= 5) return;
     const cleanQ = (q.question || '').trim();
     if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
       uniqueMcQuestions.add(cleanQ);
@@ -2564,10 +2564,10 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   });
 
-  if (finalMcs.length < 6 && carryOverQuestions && carryOverQuestions.length > 0) {
+  if (finalMcs.length < 5 && carryOverQuestions && carryOverQuestions.length > 0) {
     const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
     shuffledCarryOvers.forEach(q => {
-      if (finalMcs.length >= 6) return;
+      if (finalMcs.length >= 5) return;
       const cleanQ = (q.question || '').trim();
       if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
         uniqueMcQuestions.add(cleanQ);
@@ -2576,10 +2576,10 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     });
   }
 
-  if (finalMcs.length < 6) {
+  if (finalMcs.length < 5) {
     const fallbackMcs = fallbackQs.filter(q => (q.options && q.options.length > 0) && q !== qIntro && q !== qFormula).map(q => shuffleMultipleChoice(q));
     for (const fQ of fallbackMcs) {
-      if (finalMcs.length >= 6) break;
+      if (finalMcs.length >= 5) break;
       const cleanQ = (fQ.question || '').trim();
       if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
         uniqueMcQuestions.add(cleanQ);
@@ -2588,8 +2588,8 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  if (finalMcs.length < 6) {
-    const deficit = 6 - finalMcs.length;
+  if (finalMcs.length < 5) {
+    const deficit = 5 - finalMcs.length;
     console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
     for (let i = 0; i < deficit; i++) {
       finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
@@ -2862,7 +2862,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
 
     const carryOverCount = Math.min(incorrectQuestions.length, 5);
     carryOverQuestions = incorrectQuestions.slice(0, carryOverCount);
-    const neededAiMcCount = 6;
+    const neededAiMcCount = 5;
 
     let fileText = '';
     if (topic.pdf_data) {
@@ -3286,11 +3286,11 @@ ${adjustmentsPrompt}
      🚨 **[모범 답안-구분항목 범주 일치 원칙 - 극도로 중요!]**: 각 INPUT의 모범 답안은 반드시 **해당 행의 구분 항목(행 제목)이 요구하는 답변 범주**에 정확히 부합하는 내용이어야 합니다. 예를 들어 구분 항목이 '실무 활용처 및 적용 사례'이면 모범 답안도 '어디에 쓰이는지(활용처)'를 기술해야 하고, '시공 시 유의사항 및 한계'이면 '주의해야 할 점(유의사항)'을 기술해야 합니다. 구분 항목이 묻는 범주와 전혀 다른 범주의 답(예: 유의점을 물었는데 활용처를 답안으로 작성)은 **출제 오류**이므로 절대 발생시키지 마십시오.
    - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
 
-   [3번~11번 문제 중 6개] 객관식 (4지선다):
+   [3번~11번 문제 중 5개] 객관식 (4지선다):
    - 목적: ${carryOverQuestions.length > 0 ? '이전 회차 오답 문제들의 취약한 개념을 보완하고, ' : ''}토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
    - "type" 값: 반드시 "객관식 (4지선다)"
-   - 개수: 반드시 정확히 6개의 객관식 문제를 출제해야 합니다.
-    - [계산문제 비중 조건 - 매우 중요]: 전체 6개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, [단순 대입 계산 문제 절대 금지]: 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오. 대신, 공학적 변수 간의 인과관계, 비례/반비례 거동의 물리적 원인, 설계 조건 변화에 따른 결과 예측 등 핵심 원리의 이해력을 검증하는 정량적 사고 문제로 구성하십시오.
+   - 개수: 반드시 정확히 5개의 객관식 문제를 출제해야 합니다.
+    - [계산문제 비중 조건 - 매우 중요]: 전체 5개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, [단순 대입 계산 문제 절대 금지]: 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오. 대신, 공학적 변수 간의 인과관계, 비례/반비례 거동의 물리적 원인, 설계 조건 변화에 따른 결과 예측 등 핵심 원리의 이해력을 검증하는 정량적 사고 문제로 구성하십시오.
   '   - [핵심 관통 질문 원칙]: 모든 객관식 문제는 해당 토픽의 가장 본질적인 공학적 메커니즘, 거동 원리, 설계 판단 근거를 관통하는 질문이어야 합니다. 보기(options) 역시 공학적 개념 차이를 정확히 식별해야만 정답을 고를 수 있도록 설계하십시오.\n' +
    - "question": 구체적이고 학술적인 내용 일치 또는 원리 분석 객관식 질문. (⚠️ 중요: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래 of "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.)
    - "tableData": (선택사항) 문제에 표를 표시해야 하는 경우에만 정의하십시오. 주관식 (표채우기)와 마찬가지로 "headers"(열 제목 배열)와 "rows"(각 행 데이터의 배열)를 포함하는 오브젝트여야 합니다. (예: {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적환경", "해수", "담수"]]})
@@ -3364,7 +3364,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
     "answer": "정확히 일치하는 정답 보기 텍스트",
     "explanation": "상세한 해설"
   }
-  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 1), 객관식(6개), 주관식(단답형 4)을 순서대로 배열하여 총 13개 완성)
+  ... (총 ${totalAiQuestionsCount}개가 되도록 주관식(개요 1, 공식 1, 표채우기 2), 객관식(5개), 주관식(단답형 4)을 순서대로 배열하여 총 13개 완성)
 ]
 `;
 
@@ -3569,7 +3569,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 `;
 
           // -------------------------------------------------------------
-          // Batch 3 Prompt: Multiple Choice (객관식 6문항) -> 총 6문항
+          // Batch 3 Prompt: Multiple Choice (객관식 5문항) -> 총 5문항
           // -------------------------------------------------------------
           const promptBatch3 = `
 [🚨 최우선 절대 준수 법규 (Constitutional Guidelines) - 작업을 시작하기 전에 가장 먼저 확인하고 100% 준수하십시오]:
@@ -3586,7 +3586,7 @@ ${ENGINEERING_STANDARDS}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
-위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 6개**의 예상문제(객관식 4지선다 6개)를 생성해 주십시오.
+위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 5개**의 예상문제(객관식 4지선다 5개)를 생성해 주십시오.
 ${specialInstructions}
 ${weaknessPrompt}
 ${feedbackPrompt}
@@ -3601,11 +3601,11 @@ ${adjustmentsPrompt}
 - **🚨 [표 작성 개행 규칙 - 극도로 중요!]**: 마크다운 표의 각 행은 반드시 실제 줄바꿈 문자(\\n)를 사용하여 각각 다른 줄에 작성되어야 합니다.
 
 [출제 요구사항]:
-반드시 총 6개의 객관식 문제를 다음과 같이 구성하여 출제하십시오:
+반드시 총 5개의 객관식 문제를 다음과 같이 구성하여 출제하십시오:
 
 - 목적: 토픽의 상세한 원리, 메커니즘, 장단점 등을 다각도로 평가하는 고난도 4지선다형 질문.
 - "type" 값: 반드시 "객관식 (4지선다)"
-- [계산문제 비중 조건 - 매우 중요]: 전체 6개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
+- [계산문제 비중 조건 - 매우 중요]: 전체 5개의 객관식 문제 중, 반드시 정확히 2개의 문제는 공학적 수치 판단이나 정량적 분석 능력을 평가하는 문제로 출제하십시오. 단, 질문 지문에 공식이나 수치를 미리 제시한 뒤 "이 값을 대입하여 계산하시오" 식의 기계적 계산 문제는 절대로 출제하지 마십시오.
 - [핵심 관통 질문 원칙]: 모든 객관식 문제는 해당 토픽의 가장 본질적인 공학적 메커니즘, 거동 원리, 설계 판단 근거를 관통하는 질문이어야 합니다.
 - 🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]: 모든 객관식 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다.
 - 🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 **절대로 직접 텍스트로 적어 제공하지 마십시오.**
