@@ -25368,7 +25368,7 @@ ${itemsStr}
       />
 
       <FloatingMemorization
-        isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
+        isVisible={showFloatingMemorization}
         onClose={() => setShowFloatingMemorization(false)}
         formulaTables={formulaTables}
         setFormulaTables={setFormulaTables}
