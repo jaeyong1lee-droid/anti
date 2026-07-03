@@ -4004,6 +4004,8 @@ export default function App() {
   });
   const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
   const [showMemoryTypeSelectPopup, setShowMemoryTypeSelectPopup] = useState(false);
+  const [showMobileReviewMemoryPopup, setShowMobileReviewMemoryPopup] = useState(false);
+  const [showMobileNavbarMemoryPopup, setShowMobileNavbarMemoryPopup] = useState(false);
   const activeProgressIdRef = useRef(null);
 
   const startProgressPolling = (progressId) => {
@@ -11903,6 +11905,7 @@ export default function App() {
 
       showNotification(`[${parsedTitle}] 앞글자 암기법이 생성되었습니다!`, 'success');
       setAcronymPromptTopic('');
+      setExportAddedTarget({ type: 'acronym', title: parsedTitle });
     } catch (err) {
       console.error('Failed to generate acronym:', err);
       setFormulaAcronyms(prev => prev.filter(ac => ac.id !== tempId));
@@ -15600,21 +15603,34 @@ ${itemsStr}
             <div>
               <h1 className="text-lg md:text-2xl font-extrabold tracking-tight flex items-center gap-3">
                 {(!isDesktop && !isMobileLandscape) ? (
-                  <div className="flex items-center gap-1.5 select-none">
+                  <div className="relative flex items-center select-none">
                     <button
-                      onClick={() => handleAcronymPromptRequest()}
-                      className="flex items-center justify-center bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
-                      title="앞글자(두문자) 생성 입력 팝업 띄우기"
+                      onClick={() => setShowMobileNavbarMemoryPopup(prev => !prev)}
+                      className="flex items-center justify-center bg-slateCustom-900 text-violet-400 border border-slate-800 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer active:scale-95"
+                      title="두문자 또는 개요 생성 팝업 열기"
                     >
-                      두
+                      두·개
                     </button>
-                    <button
-                      onClick={() => handleOverviewPromptRequest()}
-                      className="flex items-center justify-center bg-rose-955/80 text-rose-455 border border-rose-500/20 font-black text-xs px-2.5 py-1 rounded-lg transition-all shadow-md cursor-pointer"
-                      title="개요 생성 입력 팝업 띄우기"
-                    >
-                      개
-                    </button>
+                    {showMobileNavbarMemoryPopup && (
+                      <>
+                        <div className="fixed inset-0 z-[200]" onClick={() => setShowMobileNavbarMemoryPopup(false)} />
+                        <div className="absolute left-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[110px] animate-fadeIn">
+                          <button
+                            onClick={() => { setShowMobileNavbarMemoryPopup(false); handleAcronymPromptRequest(); }}
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors cursor-pointer"
+                          >
+                            <span>두문자</span>
+                          </button>
+                          <div className="h-px bg-slate-800" />
+                          <button
+                            onClick={() => { setShowMobileNavbarMemoryPopup(false); handleOverviewPromptRequest(); }}
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-black text-rose-400 hover:bg-rose-955/40 hover:text-rose-300 transition-colors cursor-pointer"
+                          >
+                            <span>개요</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <span className="bg-gradient-to-r from-white via-slate-100 to-brand-400 bg-clip-text text-transparent">
@@ -17065,7 +17081,7 @@ ${itemsStr}
           <div className="flex-1 flex flex-row min-h-0 w-full overflow-hidden">
             {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
                         {/* Left Vertical Button Strip (Visible ONLY in mobile landscape) */}
-            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none">
+            <div className="hidden landscape-mobile-only flex-col gap-2 p-2 bg-slateCustom-950 border-r border-slate-800/80 w-40 flex-shrink-0 items-stretch justify-start overflow-y-auto scrollbar-none" style={isTabletScreen ? {display:'flex'} : {}}>
               {lastActiveReview && (
                 <button
                   onClick={() => {
@@ -17289,22 +17305,35 @@ ${itemsStr}
                 </button>
               )}
               {selectedTopic && (
-                <>
+                <div className="relative flex-1 md:flex-none flex">
                   <button
-                    onClick={() => handleAcronymPromptRequest()}
-                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                    title="앞글자(두문자) 생성 입력 팝업 띄우기"
+                    onClick={() => setShowMobileReviewMemoryPopup(prev => !prev)}
+                    className="w-full px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-violet-400 hover:text-violet-300 border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
+                    title="두문자 또는 개요 생성 팝업 열기"
                   >
-                    <span className="whitespace-nowrap">두</span>
+                    <span className="whitespace-nowrap">두·개</span>
                   </button>
-                  <button
-                    onClick={() => handleOverviewPromptRequest()}
-                    className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-rose-955/80 hover:bg-rose-900 text-rose-350 hover:text-white border border-rose-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
-                    title="개요 생성 입력 팝업 띄우기"
-                  >
-                    <span className="whitespace-nowrap">개</span>
-                  </button>
-                </>
+                  {showMobileReviewMemoryPopup && (
+                    <>
+                      <div className="fixed inset-0 z-[200]" onClick={() => setShowMobileReviewMemoryPopup(false)} />
+                      <div className="absolute right-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[110px] animate-fadeIn">
+                        <button
+                          onClick={() => { setShowMobileReviewMemoryPopup(false); handleAcronymPromptRequest(); }}
+                          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors cursor-pointer"
+                        >
+                          <span>두문자</span>
+                        </button>
+                        <div className="h-px bg-slate-800" />
+                        <button
+                          onClick={() => { setShowMobileReviewMemoryPopup(false); handleOverviewPromptRequest(); }}
+                          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-black text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-colors cursor-pointer"
+                        >
+                          <span>개요</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               {selectedTopic && isDesktop && (
                 <button
@@ -20234,6 +20263,8 @@ ${itemsStr}
                   setViewMode('dashboard'); // Navigation target
                   setFormulaSubTab(type); // 'table', 'acronym', 'overview'
                   setIsRealTimeTutorOpen(false);
+                  setShowAcronymPromptModal(false);
+                  setShowOverviewPromptModal(false);
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
               >
