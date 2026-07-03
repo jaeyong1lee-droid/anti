@@ -15661,18 +15661,6 @@ ${itemsStr}
                     기술사 Spaced Repetition 복습 시스템
                   </span>
                 )}
-                {isDesktop && (
-                  <div className="flex flex-col gap-1 select-none text-[13px] font-semibold leading-tight ml-3">
-                    <span className={isRecentBuild ? "text-emerald-400 font-bold bg-emerald-950/30 px-1 py-0.5 rounded border border-emerald-500/30 w-fit" : "text-slate-500"}>
-                      build : {buildTimeStr}
-                    </span>
-                    <span className="text-cyan-400/90">
-                      neon : {lastNeonSyncTime 
-                        ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
-                        : '대기 중'}
-                    </span>
-                  </div>
-                )}
               </h1>
               {(!(!isDesktop && !isMobileLandscape)) && (
                 <p className="text-xs md:text-sm text-slate-400 font-medium">
@@ -25270,6 +25258,20 @@ ${itemsStr}
               <FileText size={20} />
               <span className="text-[10px] font-bold tracking-tight">답안지</span>
             </button>
+
+            {/* Build & Neon Sync Info */}
+            {isDesktop && (
+              <div className="flex flex-col gap-1 mt-1 text-[8.5px] font-bold tracking-tight leading-tight select-none w-20 border-t border-slate-800/80 pt-2 text-left px-0.5 shrink-0">
+                <span className="text-slate-500 whitespace-nowrap">
+                  build : {buildTimeStr}
+                </span>
+                <span className="text-cyan-400/90 whitespace-nowrap font-semibold">
+                  neon : {lastNeonSyncTime 
+                    ? `${String(lastNeonSyncTime.getMonth() + 1).padStart(2, '0')}.${String(lastNeonSyncTime.getDate()).padStart(2, '0')} ${String(lastNeonSyncTime.getHours()).padStart(2, '0')}:${String(lastNeonSyncTime.getMinutes()).padStart(2, '0')}`
+                    : '대기'}
+                </span>
+              </div>
+            )}
           </div>
         </>
       )}
