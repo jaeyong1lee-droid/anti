@@ -18668,22 +18668,9 @@ ${itemsStr}
                           종료
                         </button>
                         <button
-                          disabled={isSavingSession}
-                          onClick={async () => { 
+                          onClick={() => { 
                             savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                            if (selectedTopic?.isReadOnly) {
-                              setSelectedTopic(null); 
-                            } else {
-                              setIsSavingSession(true);
-                              try {
-                                await forceSaveActiveSessions();
-                              } catch (e) {
-                                console.warn('저장 실패:', e);
-                              } finally {
-                                setIsSavingSession(false);
-                                setSelectedTopic(null); 
-                              }
-                            }
+                            setSelectedTopic(null); 
                           }}
                           className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 transition-all cursor-pointer active:scale-95 shadow-md"
                         >
