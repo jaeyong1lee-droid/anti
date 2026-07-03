@@ -257,8 +257,8 @@ const parseAcronymContent = (content) => {
     const trimmed = line.trim();
     if (trimmed.startsWith('두문자:')) {
       acronym = trimmed.replace('두문자:', '').trim();
-    } else if (trimmed.startsWith('연상문장:')) {
-      sentence = trimmed.replace('연상문장:', '').trim();
+    } else if (line.trim().startsWith('연상문장:')) {
+      sentence = line.replace(/^\s*연상문장:\s*/, '');
     } else if (trimmed.includes('|')) {
       const parts = trimmed.split('|').map(p => p.trim());
       if (parts.length >= 4) {
@@ -22651,9 +22651,7 @@ ${itemsStr}
                         <RefreshCw className="animate-spin text-rose-500" size={32} />
                         <span className="text-sm font-bold text-white">표 데이터를 로드하는 중...</span>
                       </div>
-                    ) : formulaTables.filter(t => {
-                      return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                    }).length === 0 ? (
+                    ) : formulaTables.length === 0 ? (
                       <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
                         <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
                           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" className="text-slate-500"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
@@ -22665,11 +22663,33 @@ ${itemsStr}
                           </p>
                         </div>
                       </div>
+                    ) : formulaTables.filter(t => {
+                      const query = formulaSearchQuery.toLowerCase();
+                      return (t.title || '').toLowerCase().includes(query) ||
+                             (t.html || '').toLowerCase().includes(query);
+                    }).length === 0 ? (
+                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center animate-scale-up">
+                          <Search size={32} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                          <p className="text-xs text-slate-400 mt-1">다른 검색어로 검색하시거나 검색어를 확인해 보세요.</p>
+                        </div>
+                        <button
+                          onClick={() => setFormulaSearchQuery('')}
+                          className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                        >
+                          검색 필터 초기화
+                        </button>
+                      </div>
                     ) : (
                       <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden animate-fade-in">
                         {formulaTables
                           .filter(t => {
-                            return (t.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                            const query = formulaSearchQuery.toLowerCase();
+                            return (t.title || '').toLowerCase().includes(query) ||
+                                   (t.html || '').toLowerCase().includes(query);
                           })
                           .map((t) => {
                             const idx = formulaTables.indexOf(t);
@@ -22954,10 +22974,7 @@ ${itemsStr}
                         <RefreshCw className="animate-spin text-rose-500" size={32} />
                         <span className="text-sm font-bold text-white">앞글자 데이터를 로드하는 중...</span>
                       </div>
-                    ) : formulaAcronyms.filter(ac => {
-                      return (ac.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
-                             (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                    }).length === 0 ? (
+                    ) : formulaAcronyms.length === 0 ? (
                       <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
                         <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
                           <Type size={32} className="text-slate-500" />
@@ -22968,6 +22985,25 @@ ${itemsStr}
                             중요한 핵심 개념을 앞글자(두문자) 키워드를 사용해 쉽게 암기할 수 있는 공간입니다.
                           </p>
                         </div>
+                      </div>
+                    ) : formulaAcronyms.filter(ac => {
+                      return (ac.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                             (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                    }).length === 0 ? (
+                      <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                        <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center animate-scale-up">
+                          <Search size={32} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                          <p className="text-xs text-slate-400 mt-1">다른 검색어로 검색하시거나 검색어를 확인해 보세요.</p>
+                        </div>
+                        <button
+                          onClick={() => setFormulaSearchQuery('')}
+                          className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                        >
+                          검색 필터 초기화
+                        </button>
                       </div>
                     ) : (
                       <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden animate-fade-in">
@@ -23120,7 +23156,7 @@ ${itemsStr}
                                   const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
                                   const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
                                   const sentenceMatch = ac.content.match(/^연상문장:\s*([^\n]+)/m);
-                                  const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
+                                  const sentenceText = sentenceMatch ? sentenceMatch[1] : '';
 
                                   return (
                                     <div className="space-y-3 animate-fade-in">
@@ -23330,12 +23366,44 @@ ${itemsStr}
                       </div>
 
                       {/* AI Generated Overviews List */}
-                      <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden shadow-md">
-                        {formulaOverviews
-                          .filter(ov => {
-                            return (ov.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
-                                   (ov.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
-                          })
+                      {formulaOverviews.length === 0 ? (
+                        <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                          <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+                            <BookOpen size={32} className="text-slate-500" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-white">저장된 개요가 없습니다</h4>
+                            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                              AI 튜터의 답변 중 유용한 학습 개요를 우측 상단의 <strong>[개요 보관]</strong> 버튼을 눌러 여기에 보관할 수 있습니다.
+                            </p>
+                          </div>
+                        </div>
+                      ) : formulaOverviews.filter(ov => {
+                        return (ov.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                               (ov.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                      }).length === 0 ? (
+                        <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+                          <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center animate-scale-up">
+                            <Search size={32} />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+                            <p className="text-xs text-slate-400 mt-1">다른 검색어로 검색하시거나 검색어를 확인해 보세요.</p>
+                          </div>
+                          <button
+                            onClick={() => setFormulaSearchQuery('')}
+                            className="px-4 py-2 bg-slateCustom-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-black rounded-xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer active:scale-95"
+                          >
+                            검색 필터 초기화
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden shadow-md">
+                          {formulaOverviews
+                            .filter(ov => {
+                              return (ov.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase()) || 
+                                     (ov.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                            })
                           .map((ov, idx) => {
                             if (ov.isLoading) {
                               return (
@@ -23559,9 +23627,10 @@ ${itemsStr}
                               </div>
                             );
                           })}
-                      </div>
+                        </div>
+                      )}
                     </div>
-) : formulaSubTab === 'image' ? (
+                  ) : formulaSubTab === 'image' ? (
                     <div className="w-full pb-20 select-text">
                       <ImageTabList
                         formulaImages={formulaImages}
@@ -23571,6 +23640,7 @@ ${itemsStr}
                         API_BASE={API_BASE}
                         LatexRenderer={LatexRenderer}
                         katexLoaded={katexLoaded}
+                        formulaSearchQuery={formulaSearchQuery}
                       />
                     </div>
                   ) : formulaQuestions.filter(q => {
@@ -25408,7 +25478,7 @@ ${itemsStr}
           {/* Chat Messages */}
           <div
             ref={realTimeChatBodyRef}
-            className="flex-grow overflow-y-auto p-4 flex flex-col gap-3.5 select-text scrollbar-thin"
+            className="flex-grow overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-3.5 select-text scrollbar-thin w-full max-w-full min-w-0"
             style={{ scrollbarWidth: 'thin' }}
           >
             {realTimeChatHistory.length === 0 ? (
@@ -25423,7 +25493,7 @@ ${itemsStr}
               realTimeChatHistory.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col gap-1 ${msg.role === 'user' ? 'max-w-[85%] self-end items-end' : 'max-w-[98%] self-start items-start w-full'}`}
+                  className={`flex flex-col gap-1 min-w-0 max-w-full ${msg.role === 'user' ? 'max-w-[85%] self-end items-end' : 'max-w-[98%] self-start items-start w-full'}`}
                 >
                   {msg.role === 'user' ? (
                     <>
@@ -25433,7 +25503,7 @@ ${itemsStr}
                         </div>
                       )}
                       <div 
-                        className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm"
+                        className="px-3.5 py-2 bg-indigo-600 text-white rounded-2xl rounded-tr-none text-sm md:text-base font-semibold leading-relaxed break-words shadow-sm max-w-full overflow-hidden"
                         style={{ fontSize: isDesktop ? '16px' : '14px' }}
                       >
                         <LatexRenderer 
@@ -25448,7 +25518,7 @@ ${itemsStr}
                     </>
                   ) : (
                     <div 
-                      className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-sm md:text-base font-medium leading-relaxed break-words shadow-sm w-full"
+                      className="px-3.5 py-2 bg-slate-800 text-slate-100 border border-slate-700/40 rounded-2xl rounded-tl-none text-sm md:text-base font-medium leading-relaxed break-words shadow-sm w-full min-w-0 overflow-hidden"
                       style={{ fontSize: isDesktop ? '16px' : '14px' }}
                     >
                       <LatexRenderer 

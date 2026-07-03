@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 // 1. PC Right-side Upload Panel
 export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFormulaImages, API_BASE, showNotification }) {
@@ -185,7 +185,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
 }
 
 // 2. Memorization Modal -> "그림" Subtab list
-export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormulaImages, showNotification, API_BASE, LatexRenderer, katexLoaded }) {
+export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormulaImages, showNotification, API_BASE, LatexRenderer, katexLoaded, formulaSearchQuery = '' }) {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [refreshingId, setRefreshingId] = useState(null);
@@ -260,6 +260,14 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
     }
   };
 
+  const filteredImages = formulaImages.filter(img => {
+    const query = formulaSearchQuery.toLowerCase();
+    return (img.title || '').toLowerCase().includes(query) ||
+           (img.analysis || '').toLowerCase().includes(query) ||
+           (img.intuitive || '').toLowerCase().includes(query) ||
+           (img.description || '').toLowerCase().includes(query);
+  });
+
   if (!formulaImages || formulaImages.length === 0) {
     return (
       <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
@@ -288,9 +296,31 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
     );
   }
 
+  if (filteredImages.length === 0) {
+    return (
+      <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+        <div className="border-b border-slate-800/80 pb-3 text-left">
+          <h2 className="text-base md:text-lg font-black text-white">필수 암기 그림</h2>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            암기 및 이해를 돕기 위한 필수 공학 그림 자료입니다.
+          </p>
+        </div>
+        <div className="py-24 text-center flex flex-col items-center justify-center gap-4 text-center animate-scale-up">
+          <div className="p-5 bg-slateCustom-950/60 border border-slate-800 text-slate-500 rounded-full flex items-center justify-center select-none animate-scale-up">
+            <Search size={32} />
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-white">검색 결과가 없습니다</h4>
+            <p className="text-xs text-slate-400 mt-1">다른 검색어로 검색하시거나 검색어를 확인해 보세요.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-slateCustom-900 border border-slate-800 rounded-2xl divide-y divide-slate-800/80 overflow-hidden animate-fade-in">
-      {formulaImages.map((img, idx) => {
+      {filteredImages.map((img, idx) => {
         const isEditing = editingId === img.id;
         return (
           <div key={img.id} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 w-full text-left">
