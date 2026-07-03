@@ -141,25 +141,32 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
 export const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
 
 export function checkWaterWeightEquivalence(userStr, correctStr) {
-  const clean = (s) => {
+  const cleanSingle = (s) => {
     const match = String(s || '').replace(/,/g, '').match(/[-+]?\d*\.?\d+/);
     return match ? parseFloat(match[0]) : null;
   };
-  const uVal = clean(userStr);
-  const cVal = clean(correctStr);
-  if (uVal === null || cVal === null || uVal === 0 || cVal === 0) return false;
+  const uVal = cleanSingle(userStr);
+  if (uVal === null || uVal === 0) return false;
 
-  const ratio = uVal / cVal;
-  const ratio1 = 10 / 9.81;
-  const ratio2 = 9.81 / 10;
-  
-  const diffRatio1 = Math.abs(ratio - ratio1) / ratio1;
-  const diffRatio2 = Math.abs(ratio - ratio2) / ratio2;
-  const directDiff = Math.abs(uVal - cVal) / Math.abs(cVal);
+  const allNumbers = String(correctStr || '').replace(/,/g, '').match(/[-+]?\d*\.?\d+/g);
+  if (!allNumbers || allNumbers.length === 0) return false;
 
-  const tolerance = 0.005; // 0.5% tolerance
-  if (diffRatio1 < tolerance || diffRatio2 < tolerance || directDiff < tolerance) {
-    return true;
+  for (const numStr of allNumbers) {
+    const cVal = parseFloat(numStr);
+    if (cVal === 0) continue;
+
+    const ratio = uVal / cVal;
+    const ratio1 = 10 / 9.81;
+    const ratio2 = 9.81 / 10;
+    
+    const diffRatio1 = Math.abs(ratio - ratio1) / ratio1;
+    const diffRatio2 = Math.abs(ratio - ratio2) / ratio2;
+    const directDiff = Math.abs(uVal - cVal) / Math.abs(cVal);
+
+    const tolerance = 0.005; // 0.5% tolerance
+    if (diffRatio1 < tolerance || diffRatio2 < tolerance || directDiff < tolerance) {
+      return true;
+    }
   }
   return false;
 }
@@ -190,7 +197,8 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(question || '') || 
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(explanation || '');
   
-  const canApplyWaterWeightCheck = isCalc && isNumericAnswer(userAnswer) && isNumericAnswer(correctAnswer);
+  const hasNumbersInCorrect = /[-+]?\d*\.?\d+/.test(correctAnswer || '');
+  const canApplyWaterWeightCheck = isCalc && isNumericAnswer(userAnswer) && hasNumbersInCorrect;
   
   if (canApplyWaterWeightCheck && checkWaterWeightEquivalence(userAnswer, correctAnswer)) {
     return { 
