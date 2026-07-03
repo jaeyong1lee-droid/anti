@@ -4003,6 +4003,7 @@ export default function App() {
     }
   });
   const [showAiHistoryModal, setShowAiHistoryModal] = useState(false);
+  const [showMemoryTypeSelectPopup, setShowMemoryTypeSelectPopup] = useState(false);
   const activeProgressIdRef = useRef(null);
 
   const startProgressPolling = (progressId) => {
@@ -18561,14 +18562,7 @@ ${itemsStr}
                             <span>원보고서</span>
                           </button>
                         )}
-                        <button
-                          onClick={() => setShowAiHistoryModal(true)}
-                          className="px-2.5 py-1 text-[10px] font-black rounded-lg bg-slate-900/80 hover:bg-slate-850 text-slate-350 hover:text-white border border-slate-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1"
-                          title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
-                        >
-                          <Clock size={10} className="text-violet-400 flex-shrink-0" />
-                          <span>AI이력</span>
-                        </button>
+
                         <button
                           onClick={handleRefreshReviewQuestions}
                           disabled={loadingAI}
@@ -22274,19 +22268,46 @@ ${itemsStr}
                         </button>
                       </div>
                     )}
+                {/* 두문자/개요 통합 버튼 + 팝업 */}
+                <div className="relative hidden md:flex items-center mr-1.5">
+                  <button
+                    onClick={() => setShowMemoryTypeSelectPopup(prev => !prev)}
+                    className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center bg-slateCustom-900 text-violet-400 hover:text-violet-300 border border-slate-800 hover:bg-slate-800/50"
+                    title="두문자 또는 개요 생성 팝업 열기"
+                  >
+                    <span>두·개</span>
+                  </button>
+                  {showMemoryTypeSelectPopup && (
+                    <>
+                      <div className="fixed inset-0 z-[200]" onClick={() => setShowMemoryTypeSelectPopup(false)} />
+                      <div className="absolute right-0 top-full mt-1.5 z-[201] bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden min-w-[130px] animate-fadeIn">
+                        <button
+                          onClick={() => { setShowMemoryTypeSelectPopup(false); handleAcronymPromptRequest('realtime'); }}
+                          className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 transition-colors cursor-pointer"
+                        >
+                          <span>✦</span>
+                          <span>두문자</span>
+                        </button>
+                        <div className="h-px bg-slate-800" />
+                        <button
+                          onClick={() => { setShowMemoryTypeSelectPopup(false); handleOverviewPromptRequest(); }}
+                          className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-black text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 transition-colors cursor-pointer"
+                        >
+                          <span>✦</span>
+                          <span>개요</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* AI이력 버튼 (복습 퀴즈에서 이동) */}
                 <button
-                  onClick={() => handleOverviewPromptRequest()}
-                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-rose-450 hover:text-rose-400 border border-slate-800 hover:bg-slate-800/50 mr-1.5"
-                  title="주제 개요 생성 팝업 열기"
+                  onClick={() => setShowAiHistoryModal(true)}
+                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-700/40 hover:bg-slate-800/50"
+                  title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
                 >
-                  <span>개</span>
-                </button>
-                <button
-                  onClick={() => handleAcronymPromptRequest('realtime')}
-                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center bg-slateCustom-900 text-emerald-400 hover:text-emerald-350 border border-slate-800 hover:bg-slate-800/50"
-                  title="앞글자(두문자) 암기법 생성 팝업 열기"
-                >
-                  <span>두</span>
+                  <Clock size={11} className="text-violet-400 flex-shrink-0" />
+                  <span>AI이력</span>
                 </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
@@ -22312,13 +22333,12 @@ ${itemsStr}
                 </button>
                 <button
                   onClick={() => {
-                    handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false); // 닫기를 눌러도 저장후 닫기
                     savedFormulaScroll.current = formulaBodyRef.current?.scrollTop || 0;
                     setFormulaSearchQuery('');
                     setShowFormulaExam(false);
                   }}
                   className="px-4 py-2 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 flex-grow sm:flex-grow-0 text-center"
-                  title="저장 후 닫기"
+                  title="닫기"
                 >
                   닫기
                 </button>
