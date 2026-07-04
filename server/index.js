@@ -2584,14 +2584,25 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  const middleGroup = [
-    ...finalSubjsTable,
-    ...finalMcs,
-    finalSubjsShort[0],
-    finalSubjsShort[1]
+  const shuffledMcs = shuffleArray([...finalMcs]);
+  const shuffledTables = shuffleArray([...finalSubjsTable]);
+  const shuffledShortsMiddle = shuffleArray([finalSubjsShort[0], finalSubjsShort[1]]);
+
+  return [
+    qIntro,                     // 1번 주관식 (index 0)
+    qFormula,                   // 2번 주관식 (index 1)
+    shuffledMcs[0],             // 3번 객관식 (index 2)
+    shuffledTables[0],          // 4번 표채우기 (index 3)
+    shuffledMcs[1],             // 5번 객관식 (index 4)
+    shuffledShortsMiddle[0],    // 6번 주관식 (index 5)
+    shuffledMcs[2],             // 7번 객관식 (index 6)
+    shuffledTables[1],          // 8번 표채우기 (index 7)
+    shuffledMcs[3],             // 9번 객관식 (index 8)
+    shuffledShortsMiddle[1],    // 10번 주관식 (index 9)
+    shuffledMcs[4],             // 11번 객관식 (index 10)
+    finalSubjsShort[2],         // 12번 주관식 (index 11)
+    finalSubjsShort[3]          // 13번 주관식 (index 12)
   ];
-  const shuffledRest = shuffleArray(middleGroup);
-  return [qIntro, qFormula, ...shuffledRest, finalSubjsShort[2], finalSubjsShort[3]];
 }
 
 function generateCalculationFallbackQuestions(title, keywords) {
