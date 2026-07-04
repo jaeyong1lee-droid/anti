@@ -1169,7 +1169,15 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
     return placeholder;
   });
 
-  // Collapse consecutive newlines (or empty lines) to at most 2 newlines (\n\n)
+  // [인라인 수식 연속 줄바꿈 방지 가드]:
+  // AI 응답에서 $p'$\n)을... 처럼 인라인 수식 뒤에 단독 \n이 붙어 <br/>로 변환되는 현상 방지.
+  // BLOCK_MATH는 건드리지 않으므로 가운데 정렬 수식에 영향 없음.
+  // Case 1: ___INLINE_MATH_N___\n)을 → 붙임 (닫는 괄호·쉼표·한글 등이 다음 줄에 있는 경우)
+  tempText = tempText.replace(/(___INLINE_MATH_\d+___)\n(?!\n)([)}\],.!?\uAC00-\uD7A3a-zA-Z0-9])/g, '$1$2');
+  // Case 2: 유효응력(\n___INLINE_MATH_N___ → 공백으로 이어붙임 (여는 괄호 뒤에서 줄바꿈된 경우)
+  tempText = tempText.replace(/([(\[{\uAC00-\uD7A3a-zA-Z0-9])\n(?!\n)(___INLINE_MATH_\d+___)/g, '$1 $2');
+
+
   tempText = tempText.replace(/\n\s*\n/g, '\n\n');
   tempText = tempText.replace(/\n{3,}/g, '\n\n');
 
