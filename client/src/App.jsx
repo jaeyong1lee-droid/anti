@@ -855,6 +855,7 @@ const buildHtmlDocument = (text, isPopup = false) => {
         padding: 0.5em 8px !important;
         margin: 0.25em 0 !important;
         white-space: nowrap !important;
+        text-align: center !important;
       }
       .katex-display > .katex {
         display: inline-block !important;
