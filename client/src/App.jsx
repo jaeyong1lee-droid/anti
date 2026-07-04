@@ -12568,18 +12568,6 @@ export default function App() {
     setShowAcronymPromptModal(false);
     setAcronymPromptTopic('');
 
-    setTimeout(() => {
-      if (window.confirm(`[${topic}] 앞글자 암기법 생성을 시작했습니다. 필수공식 '앞글자' 보관함 탭으로 이동하시겠습니까?`)) {
-        setSelectedTopic(null);
-        setShowExam(false);
-        setShowTheoryExam(false);
-        setShowAnswerSheet(false);
-        setFormulaSubTab('acronym');
-        handleOpenFormulaExam();
-        if (isTabletScreen) showTabletNavBriefly();
-      }
-    }, 100);
-
     showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the acronyms list
@@ -12665,18 +12653,6 @@ export default function App() {
     // Immediately close modal & clean up prompt state to avoid duplicate submits
     setShowOverviewPromptModal(false);
     setOverviewPromptTopic('');
-
-    setTimeout(() => {
-      if (window.confirm(`[${topic}] 주제 개요 생성을 시작했습니다. 필수공식 '개요' 보관함 탭으로 이동하시겠습니까?`)) {
-        setSelectedTopic(null);
-        setShowExam(false);
-        setShowTheoryExam(false);
-        setShowAnswerSheet(false);
-        setFormulaSubTab('overview');
-        handleOpenFormulaExam();
-        if (isTabletScreen) showTabletNavBriefly();
-      }
-    }, 100);
 
     showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
 
