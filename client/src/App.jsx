@@ -1249,7 +1249,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
       }
       
       const contentWithoutMarker = line.replace(listMarkerRegex, '');
-      const marginVal = isMarkdown ? '1rem' : '0.2rem';
+      const marginVal = isMarkdown ? '0.5rem' : '0.2rem';
       const paddingVal = isMarkdown ? '1.25rem' : '1rem';
       const lineHi = isMarkdown ? '1.6' : '1.5';
       
@@ -1257,12 +1257,17 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
         outerStyleStart: `<div style="margin-top: ${marginVal}; margin-bottom: ${marginVal}; padding-left: ${paddingVal}; text-indent: -${paddingVal}; color: #ffffff; line-height: ${lineHi};">`,
         content: [displayMarker + contentWithoutMarker]
       };
-    } else if (line.trim() === '') {
-      if (currentListBlock) {
-        renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
-        currentListBlock = null;
+    } else if (line.trim() === '' || /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim())) {
+      // 수식 플레이스홀더 줄은 리스트 항목 내부 continuation으로 처리 (빈 줄이 아닌 경우)
+      if (/^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim()) && currentListBlock) {
+        currentListBlock.content.push(line);
+      } else {
+        if (currentListBlock) {
+          renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
+          currentListBlock = null;
+        }
+        renderedLines.push('');
       }
-      renderedLines.push('');
     } else {
       if (currentListBlock) {
         currentListBlock.content.push(line);
@@ -1288,6 +1293,10 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
 
   // Remove any <br/> or spacer divs immediately surrounding BLOCK math placeholders to prevent double spacing
   tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)*\s*(___BLOCK_MATH_\d+___)\s*(?:<br\/>|<div style="height: [^"]*"><\/div>)*/g, '$1');
+
+  // Remove br/spacer divs immediately before or after list-item divs to prevent double spacing
+  tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1');
+  tempText = tempText.replace(/(<\/div>)(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1$2');
 
   // Restore math blocks — MUST use function replacer to prevent $ from being treated as special pattern ($1, $&, etc.)
   mathBlocks.forEach(block => {
