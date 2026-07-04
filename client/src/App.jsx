@@ -4401,6 +4401,7 @@ export default function App() {
 
   const realTimeFileInputRef = useRef(null);
   const realTimeChatBodyRef = useRef(null);
+  const realTimeTutorInputRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('anti_realtime_tutor_open', isRealTimeTutorOpen ? 'true' : 'false');
@@ -21165,16 +21166,26 @@ ${itemsStr}
                 onClick={() => {
                   const target = formulaConfirmTarget;
                   setFormulaConfirmTarget(null);
-                  if (isRealTimeTutorOpen) {
-                    setRealTimeTutorInput(prev => {
-                      const suffix = `$${target.math}$`;
-                      return prev ? `${prev} ${suffix}` : suffix;
-                    });
-                  } else {
-                    setTutorAttachedFormula(target.math);
-                    setReviewMobileTab('tutor');
-                    setExamMobileTab('tutor');
-                  }
+                  
+                  // Always open real-time tutor panel and switch tabs
+                  setIsRealTimeTutorOpen(true);
+                  setReviewMobileTab('tutor');
+                  setExamMobileTab('tutor');
+
+                  // Populate tutor input and attachments
+                  setRealTimeTutorInput(prev => {
+                    const suffix = `$${target.math}$`;
+                    return prev ? `${prev} ${suffix}` : suffix;
+                  });
+                  setTutorAttachedFormula(target.math);
+
+                  // Scroll chat body to bottom and focus the input field
+                  setTimeout(() => {
+                    if (realTimeChatBodyRef.current) {
+                      realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+                    }
+                    realTimeTutorInputRef.current?.focus();
+                  }, 150);
                 }}
                 className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
               >
@@ -27041,6 +27052,7 @@ ${itemsStr}
 
               <input
                 type="text"
+                ref={realTimeTutorInputRef}
                 value={realTimeTutorInput}
                 onChange={(e) => setRealTimeTutorInput(e.target.value)}
                 onPaste={handleRealTimePasteImage}
