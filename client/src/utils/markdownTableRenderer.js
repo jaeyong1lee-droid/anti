@@ -217,14 +217,14 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
                 if (candidate.includes(':') || candidate.includes('：')) {
                   const colonIdx = candidate.indexOf(':') !== -1 ? candidate.indexOf(':') : candidate.indexOf('：');
                   const prefix = candidate.substring(0, colonIdx).replace(/\*+/g, '').trim();
-                  if (prefix.length > 1 && prefix.length <= 40) {
+                  if (prefix.length > 1 && prefix.length <= 100) {
                     candidate = prefix;
                   }
                 }
                 
-                // Limit title length to 40 characters maximum to avoid long description lines
-                if (candidate.length > 40) {
-                  candidate = candidate.substring(0, 40) + '...';
+                // Limit title length to 100 characters maximum to avoid long description lines
+                if (candidate.length > 100) {
+                  candidate = candidate.substring(0, 100) + '...';
                 }
                 
                 precedingTitle = candidate;
