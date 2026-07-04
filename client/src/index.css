@@ -611,12 +611,15 @@ div[class*="overflow-y-auto"] {
 }
 
 .bg-light-rainbow-animate {
-  background: linear-gradient(135deg, #ff9a9e, #fecfef, #fef08a, #a7f3d0, #bfdbfe, #c084fc, #ff9a9e) !important;
-  background-size: 300% 300% !important;
-  animation: rainbowBackgroundShift 8s ease infinite, rainbowGlowShadow 8s ease infinite !important;
-  border-width: 1px !important;
-  will-change: background-position, box-shadow, border-color;
-  transform: translateZ(0);
+  background: #f5f3ff !important; /* soft solid lavender/violet */
+  border: 1px solid #d8b4fe !important; /* soft violet border */
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.bg-light-rainbow-animate:hover {
+  background: #ede9fe !important; /* slightly darker on hover */
+  border-color: #c084fc !important;
 }
 
 /* Ensure cards never stretch or overflow horizontally, keeping layouts locked */
