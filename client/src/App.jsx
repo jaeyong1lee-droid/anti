@@ -12399,6 +12399,22 @@ export default function App() {
     const count = parseInt(acronymPromptCount, 10) || 4;
     if (!topic) return;
 
+    // Immediately close modal & clean up prompt state to avoid duplicate submits
+    setShowAcronymPromptModal(false);
+    setAcronymPromptTopic('');
+
+    setTimeout(() => {
+      if (window.confirm(`[${topic}] 앞글자 암기법 생성을 시작했습니다. 필수공식 '앞글자' 보관함 탭으로 이동하시겠습니까?`)) {
+        setSelectedTopic(null);
+        setShowExam(false);
+        setShowTheoryExam(false);
+        setShowAnswerSheet(false);
+        setFormulaSubTab('acronym');
+        handleOpenFormulaExam();
+        if (isTabletScreen) showTabletNavBriefly();
+      }
+    }, 100);
+
     showNotification(`[${topic}] 앞글자 암기법 생성을 시작했습니다.`, 'info');
 
     // Create a temporary loading card in the acronyms list
@@ -12458,8 +12474,6 @@ export default function App() {
       });
 
       showNotification(`[${parsedTitle}] 앞글자 암기법이 생성되었습니다!`, 'success');
-      setAcronymPromptTopic('');
-      setShowAcronymPromptModal(false);
       setExportAddedTarget({ type: 'acronym', title: parsedTitle });
     } catch (err) {
       console.error('Failed to generate acronym:', err);
@@ -12482,6 +12496,22 @@ export default function App() {
   const handleGenerateOverviewSubmitWithTopic = async (topicVal, isRecommendation = false) => {
     const topic = topicVal.trim();
     if (!topic) return;
+
+    // Immediately close modal & clean up prompt state to avoid duplicate submits
+    setShowOverviewPromptModal(false);
+    setOverviewPromptTopic('');
+
+    setTimeout(() => {
+      if (window.confirm(`[${topic}] 주제 개요 생성을 시작했습니다. 필수공식 '개요' 보관함 탭으로 이동하시겠습니까?`)) {
+        setSelectedTopic(null);
+        setShowExam(false);
+        setShowTheoryExam(false);
+        setShowAnswerSheet(false);
+        setFormulaSubTab('overview');
+        handleOpenFormulaExam();
+        if (isTabletScreen) showTabletNavBriefly();
+      }
+    }, 100);
 
     showNotification(`[${topic}] 주제 개요 생성을 시작했습니다.`, 'info');
 
@@ -12531,8 +12561,6 @@ export default function App() {
       });
 
       showNotification(`[${topic}] 개요가 생성되었습니다!`, 'success');
-      setOverviewPromptTopic('');
-      setShowOverviewPromptModal(false);
       setExportAddedTarget({ type: 'overview', title: topic });
     } catch (err) {
       console.error('Failed to generate overview:', err);
@@ -12540,6 +12568,8 @@ export default function App() {
       showNotification(`생성 실패: ${err.message}`, 'error');
     }
   };
+
+
 
   const handleDragAiSubmit = () => {
     const qText = selectionPopup.question.trim();
@@ -26666,6 +26696,11 @@ ${itemsStr}
                   placeholder="예: 흙의 동해 방지대책, 지반조사 단계 등"
                   value={acronymPromptTopic}
                   onChange={(e) => setAcronymPromptTopic(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && acronymPromptTopic.trim()) {
+                      handleGenerateAcronymSubmit();
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
                   autoFocus
                 />
@@ -26680,10 +26715,14 @@ ${itemsStr}
                   placeholder="예: 4"
                   value={acronymPromptCount}
                   onChange={(e) => setAcronymPromptCount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && acronymPromptTopic.trim()) {
+                      handleGenerateAcronymSubmit();
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-bold"
                 />
               </div>
-
               {/* 추천 단어 영역 */}
               <div className="space-y-2 pt-1 border-t border-slate-800/40">
                 <div className="flex items-center justify-between">
