@@ -708,6 +708,27 @@ div[class*="overflow-y-auto"] {
     border: 2px solid transparent !important;
     background-clip: padding-box !important;
   }
+
+  .custom-vertical-scrollbar::-webkit-scrollbar:horizontal {
+    height: 6px !important;
+    display: block !important;
+  }
+
+  .custom-vertical-scrollbar::-webkit-scrollbar-track:horizontal {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .custom-vertical-scrollbar::-webkit-scrollbar-thumb:horizontal {
+    background: rgba(156, 163, 175, 0.5) !important;
+    border-radius: 9999px !important;
+    border: none !important;
+    background-clip: border-box !important;
+  }
+
+  .custom-vertical-scrollbar::-webkit-scrollbar-thumb:horizontal:hover {
+    background: rgba(156, 163, 175, 0.8) !important;
+  }
 }
 
 /* 📱 Galaxy Z Flip Cover Screen Layout Adjustments (viewport height <= 520px) */
