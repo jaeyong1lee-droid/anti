@@ -22,6 +22,7 @@ import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateC
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from './plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from './plugins/overviewsPlugin.js';
+import { ASCII_DIAGRAM_PROMPT } from './plugins/asciiDiagramPlugin.js';
 
 const execAsync = promisify(exec);
 
@@ -6525,6 +6526,7 @@ app.post('/api/chat', async (req, res) => {
      | --- | --- | --- | --- |
      | 분류 | 이론적 해석법 | 경험적/역해석법 | 경험적/역해석법 |
 ${ENGINEERING_STANDARDS}
+${ASCII_DIAGRAM_PROMPT}
 ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
       const responseText = await localCallLLM(systemInstruction, structuredPrompt, image, 'tutor');
       const healedText = healLatexFormulas(responseText); // AI 튜터 렌더링 깨짐 치유 적용
