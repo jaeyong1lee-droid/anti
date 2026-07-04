@@ -3047,11 +3047,21 @@ export default function App() {
     const startX = clientX;
     const startY = clientY;
 
+    // Standard drag state lock
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    // Temporarily disable pointer-events on all iframes to prevent event interception
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
     let answerPopupMoveRafId = null;
 
     const handleMove = (moveEvent) => {
-      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
       const dx = currentX - startX;
       const dy = currentY - startY;
@@ -3070,6 +3080,15 @@ export default function App() {
 
     const handleMoveEnd = () => {
       if (answerPopupMoveRafId) cancelAnimationFrame(answerPopupMoveRafId);
+      
+      // Restore iframe pointer-events and text selection
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+
       const finalPos = latestAnswerPopupPosRef.current;
       setAnswerPopupPos(finalPos);
       localStorage.setItem('anti_answer_popup_pos', JSON.stringify(finalPos));
@@ -6602,12 +6621,22 @@ export default function App() {
     const startPopupX = latestDragPopupCoordsRef.current.x;
     const startPopupY = latestDragPopupCoordsRef.current.y;
 
+    // Standard drag state lock
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    // Temporarily disable pointer-events on all iframes to prevent event interception
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
     let dragPopupRafId = null;
 
     const handleDragMove = (moveEvent) => {
       if (moveEvent.cancelable) moveEvent.preventDefault();
-      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
       const dx = currentX - startX;
       const dy = currentY - startY;
@@ -6626,6 +6655,15 @@ export default function App() {
 
     const handleDragEnd = () => {
       if (dragPopupRafId) cancelAnimationFrame(dragPopupRafId);
+
+      // Restore iframe pointer-events and text selection
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+
       isDraggingPopupRef.current = false;
       setSelectionPopup(prev => ({
         ...prev,
@@ -11026,11 +11064,21 @@ export default function App() {
     const startX = clientX;
     const startY = clientY;
 
+    // Standard drag state lock
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'se-resize';
+
+    // Temporarily disable pointer-events on all iframes to prevent event interception
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
     let realTimeResizeRafId = null;
 
     const handleResizeMove = (moveEvent) => {
-      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
       const dx = currentX - startX;
       const dy = currentY - startY;
@@ -11049,6 +11097,15 @@ export default function App() {
 
     const handleResizeEnd = () => {
       if (realTimeResizeRafId) cancelAnimationFrame(realTimeResizeRafId);
+
+      // Restore iframe pointer-events and text selection
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+
       const finalSize = latestRealTimeTutorSizeRef.current;
       setRealTimeTutorSize(finalSize);
       localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(finalSize));
@@ -11076,11 +11133,21 @@ export default function App() {
     const startX = clientX;
     const startY = clientY;
 
+    // Standard drag state lock
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    // Temporarily disable pointer-events on all iframes to prevent event interception
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
     let realTimeMoveRafId = null;
 
     const handleMove = (moveEvent) => {
-      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
       const dx = currentX - startX;
       const dy = currentY - startY;
@@ -11100,6 +11167,15 @@ export default function App() {
 
     const handleMoveEnd = () => {
       if (realTimeMoveRafId) cancelAnimationFrame(realTimeMoveRafId);
+
+      // Restore iframe pointer-events and text selection
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+
       const finalPos = latestRealTimeTutorPosRef.current;
       setRealTimeTutorPos(finalPos);
       localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(finalPos));
