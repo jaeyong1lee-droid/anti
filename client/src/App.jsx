@@ -3925,6 +3925,15 @@ export default function App() {
   }, [selectionPopup]);
 
   const isDraggingPopupRef = useRef(false);
+  const latestDragPopupCoordsRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (selectionPopup.show) {
+      document.documentElement.style.setProperty('--drag-popup-x', `${selectionPopup.x}px`);
+      document.documentElement.style.setProperty('--drag-popup-y', `${selectionPopup.y}px`);
+      latestDragPopupCoordsRef.current = { x: selectionPopup.x, y: selectionPopup.y };
+    }
+  }, [selectionPopup.show, selectionPopup.x, selectionPopup.y]);
 
   const [aiProgressMessage, setAiProgressMessage] = useState('');
   const [aiProgressPercent, setAiProgressPercent] = useState(0);
@@ -3978,6 +3987,21 @@ export default function App() {
     const h = Math.min(window.innerHeight - 32, 600);
     return { x: (window.innerWidth - w) / 2, y: (window.innerHeight - h) / 2 };
   });
+
+  const latestRealTimeTutorSizeRef = useRef({ width: 450, height: 600 });
+  const latestRealTimeTutorPosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--realtime-tutor-w', `${realTimeTutorSize.width}px`);
+    document.documentElement.style.setProperty('--realtime-tutor-h', `${realTimeTutorSize.height}px`);
+    latestRealTimeTutorSizeRef.current = realTimeTutorSize;
+  }, [realTimeTutorSize]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--realtime-tutor-x', `${realTimeTutorPos.x}px`);
+    document.documentElement.style.setProperty('--realtime-tutor-y', `${realTimeTutorPos.y}px`);
+    latestRealTimeTutorPosRef.current = realTimeTutorPos;
+  }, [realTimeTutorPos]);
 
   const realTimeFileInputRef = useRef(null);
   const realTimeChatBodyRef = useRef(null);
@@ -4654,6 +4678,11 @@ export default function App() {
     return Math.max(300, Math.min(800, Math.round(window.innerWidth * 0.24)));
   });
   const [isResizing, setIsResizing] = useState(false);
+  const latestRightSidebarWidthRef = useRef(null);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--right-sidebar-width', `${rightSidebarWidth}px`);
+  }, [rightSidebarWidth]);
 
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -4835,11 +4864,16 @@ export default function App() {
       const newWidth = window.innerWidth - clientX - 25;
       const minWidth = 250;
       const maxWidth = window.innerWidth * 0.7;
-      setRightSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
+      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      document.documentElement.style.setProperty('--right-sidebar-width', `${clampedWidth}px`);
+      latestRightSidebarWidthRef.current = clampedWidth;
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      if (latestRightSidebarWidthRef.current !== null) {
+        setRightSidebarWidth(latestRightSidebarWidthRef.current);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -6483,8 +6517,8 @@ export default function App() {
     
     const startX = clientX;
     const startY = clientY;
-    const startPopupX = selectionPopup.x;
-    const startPopupY = selectionPopup.y;
+    const startPopupX = latestDragPopupCoordsRef.current.x;
+    const startPopupY = latestDragPopupCoordsRef.current.y;
 
     const handleDragMove = (moveEvent) => {
       if (moveEvent.cancelable) moveEvent.preventDefault();
@@ -6497,15 +6531,18 @@ export default function App() {
       const newX = Math.max(16, Math.min(window.innerWidth - 340, startPopupX + dx));
       const newY = Math.max(16, Math.min(window.innerHeight - 200, startPopupY + dy));
 
-      setSelectionPopup(prev => ({
-        ...prev,
-        x: newX,
-        y: newY
-      }));
+      document.documentElement.style.setProperty('--drag-popup-x', `${newX}px`);
+      document.documentElement.style.setProperty('--drag-popup-y', `${newY}px`);
+      latestDragPopupCoordsRef.current = { x: newX, y: newY };
     };
 
     const handleDragEnd = () => {
       isDraggingPopupRef.current = false;
+      setSelectionPopup(prev => ({
+        ...prev,
+        x: latestDragPopupCoordsRef.current.x,
+        y: latestDragPopupCoordsRef.current.y
+      }));
       window.removeEventListener('mousemove', handleDragMove);
       window.removeEventListener('mouseup', handleDragEnd);
       window.removeEventListener('touchmove', handleDragMove);
@@ -10893,10 +10930,10 @@ export default function App() {
     e.stopPropagation();
     const isTouch = e.type === 'touchstart';
     const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    const clientY = isTouch ? e.type === 'touchstart' ? e.touches[0].clientY : e.clientY : e.clientY;
 
-    const startWidth = realTimeTutorSize.width;
-    const startHeight = realTimeTutorSize.height;
+    const startWidth = latestRealTimeTutorSizeRef.current.width;
+    const startHeight = latestRealTimeTutorSizeRef.current.height;
     const startX = clientX;
     const startY = clientY;
 
@@ -10910,14 +10947,15 @@ export default function App() {
       const newWidth = Math.max(320, Math.min(window.innerWidth - 32, startWidth + dx));
       const newHeight = Math.max(400, Math.min(window.innerHeight - 32, startHeight + dy));
 
-      setRealTimeTutorSize({ width: newWidth, height: newHeight });
+      document.documentElement.style.setProperty('--realtime-tutor-w', `${newWidth}px`);
+      document.documentElement.style.setProperty('--realtime-tutor-h', `${newHeight}px`);
+      latestRealTimeTutorSizeRef.current = { width: newWidth, height: newHeight };
     };
 
     const handleResizeEnd = () => {
-      setRealTimeTutorSize(curr => {
-        localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(curr));
-        return curr;
-      });
+      const finalSize = latestRealTimeTutorSizeRef.current;
+      setRealTimeTutorSize(finalSize);
+      localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(finalSize));
       window.removeEventListener('mousemove', handleResizeMove);
       window.removeEventListener('mouseup', handleResizeEnd);
       window.removeEventListener('touchmove', handleResizeMove);
@@ -10937,8 +10975,8 @@ export default function App() {
     const clientX = isTouch ? e.touches[0].clientX : e.clientX;
     const clientY = isTouch ? e.touches[0].clientY : e.clientY;
 
-    const startXPos = realTimeTutorPos.x;
-    const startYPos = realTimeTutorPos.y;
+    const startXPos = latestRealTimeTutorPosRef.current.x;
+    const startYPos = latestRealTimeTutorPosRef.current.y;
     const startX = clientX;
     const startY = clientY;
 
@@ -10949,17 +10987,19 @@ export default function App() {
       const dx = currentX - startX;
       const dy = currentY - startY;
 
-      const newX = Math.max(0, Math.min(window.innerWidth - realTimeTutorSize.width, startXPos + dx));
-      const newY = Math.max(0, Math.min(window.innerHeight - realTimeTutorSize.height, startYPos + dy));
+      const currentSize = latestRealTimeTutorSizeRef.current;
+      const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startXPos + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startYPos + dy));
 
-      setRealTimeTutorPos({ x: newX, y: newY });
+      document.documentElement.style.setProperty('--realtime-tutor-x', `${newX}px`);
+      document.documentElement.style.setProperty('--realtime-tutor-y', `${newY}px`);
+      latestRealTimeTutorPosRef.current = { x: newX, y: newY };
     };
 
     const handleMoveEnd = () => {
-      setRealTimeTutorPos(curr => {
-        localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(curr));
-        return curr;
-      });
+      const finalPos = latestRealTimeTutorPosRef.current;
+      setRealTimeTutorPos(finalPos);
+      localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(finalPos));
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleMoveEnd);
       window.removeEventListener('touchmove', handleMove, { passive: false });
@@ -17470,23 +17510,7 @@ ${itemsStr}
               <div 
                 ref={quizBodyRef}
                 onScroll={(e) => {
-                  const scrollTop = e.currentTarget.scrollTop;
-                  savedQuizScroll.current = scrollTop;
-                  if (selectedTopic) {
-                    const key = selectedTopic.schedule_id 
-                      ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-                      : `anti_review_progress_${selectedTopic.id}`;
-                    const savedProgress = localStorage.getItem(key);
-                    if (savedProgress) {
-                      try {
-                        const parsed = JSON.parse(savedProgress);
-                        parsed.savedQuizScroll = scrollTop;
-                        localStorage.setItem(key, JSON.stringify(parsed));
-                      } catch (err) {
-                        console.warn(err);
-                      }
-                    }
-                  }
+                  savedQuizScroll.current = e.currentTarget.scrollTop;
                 }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -18596,7 +18620,7 @@ ${itemsStr}
 
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
-            style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+            style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
             className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
@@ -20899,20 +20923,7 @@ ${itemsStr}
               <div 
                 ref={examBodyRef}
                 onScroll={(e) => {
-                  const scrollTop = e.currentTarget.scrollTop;
-                  savedExamScroll.current = scrollTop;
-                  if (showExam) {
-                    const savedExamProgress = localStorage.getItem('anti_exam_progress');
-                    if (savedExamProgress) {
-                      try {
-                        const parsed = JSON.parse(savedExamProgress);
-                        parsed.savedExamScroll = scrollTop;
-                        localStorage.setItem('anti_exam_progress', JSON.stringify(parsed));
-                      } catch (err) {
-                        console.warn(err);
-                      }
-                    }
-                  }
+                  savedExamScroll.current = e.currentTarget.scrollTop;
                 }}
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -21812,7 +21823,7 @@ ${itemsStr}
 
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
-              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
               className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
@@ -23989,7 +24000,7 @@ ${itemsStr}
 
             {/* Right: Formula AI Tutor Sidebar */}
               <div 
-                style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+                style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
                 className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
                   (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
                 }`}
@@ -24879,7 +24890,7 @@ ${itemsStr}
 
             {/* Right: PDF/HTML upload section instead of AI Tutor */}
             <div 
-              style={isDesktop ? { width: `${rightSidebarWidth}px` } : {}}
+              style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
               className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col ${
                 (!isDesktop && !isMobileLandscape && answersheetMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
@@ -25420,8 +25431,8 @@ ${itemsStr}
           id="drag-ai-popup"
           style={{
             position: 'fixed',
-            left: `${selectionPopup.x}px`,
-            top: `${selectionPopup.y}px`,
+            left: 'var(--drag-popup-x)',
+            top: 'var(--drag-popup-y)',
             zIndex: 100050,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
@@ -25507,10 +25518,10 @@ ${itemsStr}
             flexDirection: 'column',
           } : {
             position: 'fixed',
-            left: `${realTimeTutorPos.x}px`,
-            top: `${realTimeTutorPos.y}px`,
-            width: `${realTimeTutorSize.width}px`,
-            height: `${realTimeTutorSize.height}px`,
+            left: 'var(--realtime-tutor-x)',
+            top: 'var(--realtime-tutor-y)',
+            width: 'var(--realtime-tutor-w)',
+            height: 'var(--realtime-tutor-h)',
             zIndex: 99999,
             display: 'flex',
             flexDirection: 'column',
