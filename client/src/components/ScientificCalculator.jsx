@@ -1133,36 +1133,36 @@ export function ScientificCalculator() {
 
       if (angleMode === 'deg') {
         preProcessed = preProcessed
-          .replace(/sin\(/g, 'Math.sin((Math.PI/180)*')
-          .replace(/cos\(/g, 'Math.cos((Math.PI/180)*')
-          .replace(/tan\(/g, 'Math.tan((Math.PI/180)*')
-          .replace(/asin\(/g, '(180/Math.PI)*Math.asin(')
-          .replace(/acos\(/g, '(180/Math.PI)*Math.acos(')
-          .replace(/atan\(/g, '(180/Math.PI)*Math.atan(');
+          .replace(/\bsin\(/g, 'Math.sin((Math.PI/180)*')
+          .replace(/\bcos\(/g, 'Math.cos((Math.PI/180)*')
+          .replace(/\btan\(/g, 'Math.tan((Math.PI/180)*')
+          .replace(/\basin\(/g, '(180/Math.PI)*Math.asin(')
+          .replace(/\bacos\(/g, '(180/Math.PI)*Math.acos(')
+          .replace(/\batan\(/g, '(180/Math.PI)*Math.atan(');
       } else {
         preProcessed = preProcessed
-          .replace(/sin\(/g, 'Math.sin(')
-          .replace(/cos\(/g, 'Math.cos(')
-          .replace(/tan\(/g, 'Math.tan(')
-          .replace(/asin\(/g, 'Math.asin(')
-          .replace(/acos\(/g, 'Math.acos(')
-          .replace(/atan\(/g, 'Math.atan(');
+          .replace(/\bsin\(/g, 'Math.sin(')
+          .replace(/\bcos\(/g, 'Math.cos(')
+          .replace(/\btan\(/g, 'Math.tan(')
+          .replace(/\basin\(/g, 'Math.asin(')
+          .replace(/\bacos\(/g, 'Math.acos(')
+          .replace(/\batan\(/g, 'Math.atan(');
       }
 
       preProcessed = preProcessed
-        .replace(/sinh\(/g, 'Math.sinh(')
-        .replace(/cosh\(/g, 'Math.cosh(')
-        .replace(/tanh\(/g, 'Math.tanh(')
-        .replace(/asinh\(/g, 'Math.asinh(')
-        .replace(/acosh\(/g, 'Math.acosh(')
-        .replace(/atanh\(/g, 'Math.atanh(');
+        .replace(/\bsinh\(/g, 'Math.sinh(')
+        .replace(/\bcosh\(/g, 'Math.cosh(')
+        .replace(/\btanh\(/g, 'Math.tanh(')
+        .replace(/\basinh\(/g, 'Math.asinh(')
+        .replace(/\bacosh\(/g, 'Math.acosh(')
+        .replace(/\batanh\(/g, 'Math.atanh(');
 
       preProcessed = preProcessed
-        .replace(/ln\(/g, 'Math.log(')
-        .replace(/sqrt\(/g, 'Math.sqrt(')
-        .replace(/cbrt\(/g, 'Math.cbrt(')
-        .replace(/exp\(/g, 'Math.exp(')
-        .replace(/Abs\(/g, 'Math.abs(')
+        .replace(/\bln\(/g, 'Math.log(')
+        .replace(/\bsqrt\(/g, 'Math.sqrt(')
+        .replace(/\bcbrt\(/g, 'Math.cbrt(')
+        .replace(/\bexp\(/g, 'Math.exp(')
+        .replace(/\bAbs\(/g, 'Math.abs(')
         .replace(/\^/g, '**');
 
       const fact = (n) => {
