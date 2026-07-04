@@ -4320,7 +4320,12 @@ export default function App() {
 
   useEffect(() => {
     if (realTimeChatBodyRef.current) {
-      realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+      const history = realTimeChatHistory || [];
+      if (history.length > 0 && history[history.length - 1].role === 'model') {
+        scrollToLastTutorResponse(realTimeChatBodyRef.current);
+      } else {
+        realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
+      }
     }
   }, [realTimeChatHistory, isRealTimeChatLoading]);
 
@@ -26526,7 +26531,7 @@ ${itemsStr}
               realTimeChatHistory.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col gap-1 min-w-0 max-w-full ${msg.role === 'user' ? 'max-w-[85%] self-end items-end' : 'max-w-[98%] self-start items-start w-full'}`}
+                  className={`flex flex-col gap-1 min-w-0 max-w-full ${msg.role === 'user' ? 'max-w-[85%] self-end items-end' : 'max-w-[98%] self-start items-start w-full tutor-msg-bubble-container'}`}
                 >
                   {msg.role === 'user' ? (
                     <>
