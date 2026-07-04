@@ -3012,6 +3012,85 @@ export default function App() {
 
   const [activeAnswerPopupData, setActiveAnswerPopupData] = useState(null);
 
+  const [answerPopupPos, setAnswerPopupPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_answer_popup_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
+      }
+    } catch (e) {}
+    return { x: 100, y: 100 };
+  });
+
+  const latestAnswerPopupPosRef = useRef({ x: 100, y: 100 });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--answer-popup-x', `${answerPopupPos.x}px`);
+    document.documentElement.style.setProperty('--answer-popup-y', `${answerPopupPos.y}px`);
+    latestAnswerPopupPosRef.current = answerPopupPos;
+  }, [answerPopupPos]);
+
+  useEffect(() => {
+    if (activeAnswerPopupData) {
+      const width = Math.min(window.innerWidth - 32, 768);
+      const height = Math.min(window.innerHeight - 32, window.innerHeight * 0.85);
+      const x = Math.max(16, (window.innerWidth - width) / 2);
+      const y = Math.max(16, (window.innerHeight - height) / 2);
+      setAnswerPopupPos({ x, y });
+    }
+  }, [activeAnswerPopupData]);
+
+  const handleAnswerPopupMoveStart = (e) => {
+    if (e.target.closest('button, svg, path, input, textarea')) return;
+
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const startXPos = latestAnswerPopupPosRef.current.x;
+    const startYPos = latestAnswerPopupPosRef.current.y;
+    const startX = clientX;
+    const startY = clientY;
+
+    let answerPopupMoveRafId = null;
+
+    const handleMove = (moveEvent) => {
+      const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      const newX = Math.max(0, Math.min(window.innerWidth - 100, startXPos + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - 50, startYPos + dy));
+
+      latestAnswerPopupPosRef.current = { x: newX, y: newY };
+
+      if (answerPopupMoveRafId) cancelAnimationFrame(answerPopupMoveRafId);
+      answerPopupMoveRafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--answer-popup-x', `${newX}px`);
+        document.documentElement.style.setProperty('--answer-popup-y', `${newY}px`);
+      });
+    };
+
+    const handleMoveEnd = () => {
+      if (answerPopupMoveRafId) cancelAnimationFrame(answerPopupMoveRafId);
+      const finalPos = latestAnswerPopupPosRef.current;
+      setAnswerPopupPos(finalPos);
+      localStorage.setItem('anti_answer_popup_pos', JSON.stringify(finalPos));
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleMoveEnd);
+      window.removeEventListener('touchmove', handleMove, { passive: false });
+      window.removeEventListener('touchend', handleMoveEnd);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleMoveEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleMoveEnd);
+  };
+
   const handleOpenAnswerPopup = (q) => {
     const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
     const lowerQuestion = q.question.toLowerCase();
@@ -25971,10 +26050,26 @@ ${itemsStr}
 
       {/* Answer Popup Modal */}
       {activeAnswerPopupData && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in select-text">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden glassmorphism transform scale-100 transition-all">
+        <div
+          id="answer-popup-modal"
+          style={{
+            position: 'fixed',
+            left: 'var(--answer-popup-x)',
+            top: 'var(--answer-popup-y)',
+            width: 'min(768px, calc(100vw - 32px))',
+            maxHeight: '75vh',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          className="bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
+        >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 select-none">
+            <div
+              onMouseDown={handleAnswerPopupMoveStart}
+              onTouchStart={handleAnswerPopupMoveStart}
+              className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 cursor-grab active:cursor-grabbing select-none"
+            >
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
                   {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
@@ -26175,7 +26270,6 @@ ${itemsStr}
                 닫기
               </button>
             </div>
-          </div>
         </div>
       )}
 
