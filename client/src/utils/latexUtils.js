@@ -398,6 +398,15 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
+  // [Self-Healing] Remove space between backslash and LaTeX commands
+  processed = processed.replace(/\\\s+(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
+
+  // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
+  const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
+  const deltaGreekRegex = new RegExp(`\\\\\\s*Delta\\s*(${greekNames})\\b`, 'gi');
+  processed = processed.replace(deltaGreekRegex, '\\Delta \\$1');
+  processed = processed.replace(/\\\s*Delta\s*([a-zA-Z])\b/gi, '\\Delta $1');
+
   // [🚨 KaTeX HTML 블록 최우선 복원 필터 🚨]
   // 텍스트 내부에 들어있는 KaTeX HTML 사전 렌더링 블록을 감지하여
   // 그 내부에 들어있는 원본 LaTeX 수식 문자열(annotation encoding="application/x-tex")을 추출한 뒤,

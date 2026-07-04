@@ -6417,10 +6417,11 @@ app.post('/api/chat', async (req, res) => {
     if (overviewMode) {
       try {
         const responseText = await generateOverviewTutorResponse(message, image, localCallLLM);
+        const healedText = healLatexFormulas(responseText);
         if (progressId) {
           updateProgress(progressId, 1, '1단계: 개요 답변 생성 완료!', 100);
         }
-        return res.json({ text: responseText });
+        return res.json({ text: healedText });
       } catch (err) {
         console.error('Overview tutor generation error:', err);
         if (progressId) {
