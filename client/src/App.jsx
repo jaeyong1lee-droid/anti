@@ -26009,9 +26009,23 @@ ${itemsStr}
 
       {/* Custom Acronym Prompt Modal */}
       {showAcronymPromptModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
-          <div className="w-full max-w-sm bg-slateCustom-900 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div 
+          id="acronym-prompt-popup"
+          style={{
+            position: 'fixed',
+            left: 'var(--generator-popup-x, 50%)',
+            top: 'var(--generator-popup-y, 50%)',
+            transform: 'translate(0, 0)',
+            zIndex: 99999,
+            width: '24rem',
+          }}
+          className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
+        >
+          <div 
+            onMouseDown={handleGeneratorPopupMoveStart}
+            onTouchStart={handleGeneratorPopupMoveStart}
+            className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab active:cursor-grabbing select-none"
+          >
               <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2">
                 <span className="px-1.5 py-0.5 bg-emerald-500/10 rounded text-[10px] font-black">AI</span>
                 앞글자(두문자) 암기법 생성기
@@ -26022,9 +26036,9 @@ ${itemsStr}
               >
                 <X size={16} />
               </button>
-            </div>
-            
-            <div className="space-y-4">
+          </div>
+          
+          <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-black text-slate-400">암기 토픽 제목</label>
                 <input
@@ -26120,7 +26134,6 @@ ${itemsStr}
                 생성하기
               </button>
             </div>
-          </div>
         </div>
       )}
 
@@ -26351,9 +26364,23 @@ ${itemsStr}
 
       {/* Custom Overview Prompt Modal */}
       {showOverviewPromptModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
-          <div className="w-full max-w-sm bg-slateCustom-900 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div 
+          id="overview-prompt-popup"
+          style={{
+            position: 'fixed',
+            left: 'var(--generator-popup-x, 50%)',
+            top: 'var(--generator-popup-y, 50%)',
+            transform: 'translate(0, 0)',
+            zIndex: 99999,
+            width: '24rem',
+          }}
+          className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
+        >
+          <div 
+            onMouseDown={handleGeneratorPopupMoveStart}
+            onTouchStart={handleGeneratorPopupMoveStart}
+            className="flex items-center justify-between border-b border-slate-800 pb-3 cursor-grab active:cursor-grabbing select-none"
+          >
               <h3 className="text-sm font-black text-rose-450 flex items-center gap-2">
                 <span className="px-1.5 py-0.5 bg-rose-500/10 rounded text-[10px] font-black">AI</span>
                 주제 개요 생성기
@@ -26364,9 +26391,9 @@ ${itemsStr}
               >
                 <X size={16} />
               </button>
-            </div>
-            
-            <div className="space-y-4">
+          </div>
+          
+          <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-black text-slate-400">주제 (토픽) 제목</label>
                 <input
@@ -26454,7 +26481,6 @@ ${itemsStr}
                 생성하기
               </button>
             </div>
-          </div>
         </div>
       )}
     </div>
