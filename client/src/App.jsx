@@ -26230,12 +26230,12 @@ ${itemsStr}
               {activeAnswerPopupData.type === 'table' && (() => {
                 const parsed = parseHtmlTable(activeAnswerPopupData.content.html);
                 return (
-                  <div className="table-quiz-container overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-0 text-left">
+                  <div className="table-quiz-container overflow-x-auto rounded-2xl border border-white/20 bg-slate-950/40 p-0 text-left">
                     <table className="table-quiz-table w-full table-auto text-center border-collapse text-[13px] sm:text-[14px]">
                       <thead>
-                        <tr className="bg-slate-955/80 text-slate-355 border-b border-slate-800">
+                        <tr className="bg-slate-955/80 text-slate-355 border-b border-white/20">
                           {parsed.headers.map((h, hIdx) => (
-                            <th key={hIdx} className="p-2.5 border-r border-slate-800 last:border-r-0 font-extrabold">
+                            <th key={hIdx} className="p-2.5 border-r border-white/20 last:border-r-0 font-extrabold">
                               <LatexRenderer text={h} katexLoaded={katexLoaded} />
                             </th>
                           ))}
@@ -26243,9 +26243,9 @@ ${itemsStr}
                       </thead>
                       <tbody>
                         {parsed.rows.map((row, rIdx) => (
-                          <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/10">
+                          <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
                             {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="p-3 border-r border-slate-800 last:border-r-0 text-slate-200 align-middle">
+                              <td key={cIdx} className="p-3 border-r border-white/20 last:border-r-0 text-slate-200 align-middle">
                                 <LatexRenderer text={cell} katexLoaded={katexLoaded} />
                               </td>
                             ))}
@@ -26265,7 +26265,7 @@ ${itemsStr}
                 const sentenceText = sentenceMatch ? sentenceMatch[1].trim() : '';
                 return (
                   <div className="space-y-4">
-                    <div className="flex flex-col gap-2 bg-slate-955/40 border border-slate-800/80 rounded-2xl p-4 text-left">
+                    <div className="flex flex-col gap-2 bg-slate-955/40 border border-white/20 rounded-2xl p-4 text-left">
                       <div className="text-xs font-black text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20 w-fit">
                         두문자 조합: {acronymHeaderText}
                       </div>
@@ -26276,20 +26276,20 @@ ${itemsStr}
                       )}
                     </div>
                     {rows.length > 0 && (
-                      <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-2xl">
+                      <div className="overflow-x-auto w-full border border-white/20 bg-slate-950/40 rounded-2xl">
                         <table className="w-full text-left border-collapse text-[13px] sm:text-[14px]">
                           <thead>
-                            <tr className="border-b border-slate-800 bg-slate-955/80 text-slate-355">
-                              <th className="p-2.5 font-black text-center border-r border-slate-800 w-16">두문자</th>
-                              <th className="p-2.5 font-black border-r border-slate-800">암기단어</th>
+                            <tr className="border-b border-white/20 bg-slate-955/80 text-slate-355">
+                              <th className="p-2.5 font-black text-center border-r border-white/20 w-16">두문자</th>
+                              <th className="p-2.5 font-black border-r border-white/20">암기단어</th>
                               <th className="p-2.5 font-black">설명</th>
                             </tr>
                           </thead>
                           <tbody>
                             {rows.map((row, rIdx) => (
-                              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/10">
-                                <td className="p-2.5 text-center font-extrabold text-emerald-400 border-r border-slate-800">{row.acronym}</td>
-                                <td className="p-2.5 font-bold text-white border-r border-slate-800">{row.word}</td>
+                              <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10">
+                                <td className="p-2.5 text-center font-extrabold text-emerald-400 border-r border-white/20">{row.acronym}</td>
+                                <td className="p-2.5 font-bold text-white border-r border-white/20">{row.word}</td>
                                 <td className="p-2.5 text-slate-300">{row.description}</td>
                               </tr>
                             ))}
