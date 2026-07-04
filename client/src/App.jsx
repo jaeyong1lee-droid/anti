@@ -12895,8 +12895,9 @@ export default function App() {
         `요청: 위의 두문자 조합과 항목 정보, 그리고 토픽 제목을 바탕으로 암기하기 가장 쉬운 짧고 직관적인 연상문장(한 줄)을 한국어로 창작해줘.\n` +
         `필수 조건:\n` +
         `1. 문장 내에 반드시 토픽 제목(또는 토픽 제목을 상징하는 핵심 키워드/단어. 예: '부등침하'의 경우 '부등' 혹은 '부등침하')을 자연스럽게 포함해야 함.\n` +
-        `2. 두문자 키워드들의 각 글자들이 연상문장 단어들에 자연스럽게 녹아들거나 따옴표로 표현되어야 함.\n` +
-        `3. 오직 생성된 연상문장 1줄만 반환하고, 양쪽 끝의 따옴표나 '연상문장:' 접두사, 다른 불필요한 설명은 일절 덧붙이지 마십시오.`;
+        `2. 두문자 결합 규칙 (핵심 - 매우 중요): 두문자 조합("${newAcronymLetters}")에서 글자들이 연속될 때, 가능한 한 2글자 이상씩 서로 합쳐서 의미 있는 단어나 구(예: "지지", "오용", "차단", "배치" 등)로 묶어서 연상문장에 포함시켜야 합니다. 개별 한 글자씩 따로 쪼개어 연상문장에 넣지 말고, 적어도 두 글자 이상을 합친 단어 형태로 묶어서 쌍따옴표를 씌우십시오. (예: "지"와 "지"를 따로 쓰는 것 대신 "지지"로 합치고, "오"와 "용"을 따로 쓰는 대신 "오용"으로 합쳐서 연상문장을 구성함)\n` +
+        `3. 누락 금지: 새로운 두문자 조합("${newAcronymLetters}")의 모든 글자는 단 하나도 누락되지 않고 반드시 문장 속 쌍따옴표 안에 결합된 단어로 포함되어야 합니다.\n` +
+        `4. 오직 생성된 연상문장 1줄만 반환하고, 양쪽 끝의 따옴표나 '연상문장:' 접두사, 다른 불필요한 설명은 일절 덧붙이지 마십시오.`;
 
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -17314,13 +17315,24 @@ ${itemsStr}
             </div>
 
             <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
+              <button
+                disabled={isSavingSession}
+                onClick={() => { 
+                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
+                  setSelectedTopic(null); 
+                }}
+                className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
+                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
+              >
+                닫기
+              </button>
               {selectedTopic.pdf_name && !(selectedTopic.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
                 <button
                   onClick={handleOpenOriginalReport}
                   className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-violet-950/80 hover:bg-violet-900 text-violet-300 hover:text-white border border-violet-500/40 rounded-xl text-[11px] sm:text-xs md:text-sm font-black tracking-tight transition-all duration-200 cursor-pointer active:scale-95 flex items-center justify-center whitespace-nowrap min-w-0"
                   title="원본 보고서 파일(HTML/PDF) 팝업 열기"
                 >
-                  <span className="whitespace-nowrap">원보고서</span>
+                  <span className="whitespace-nowrap">원</span>
                 </button>
               )}
               {selectedTopic && (
@@ -17402,20 +17414,9 @@ ${itemsStr}
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
-                  <span className="whitespace-nowrap">AI 재출제</span>
+                  <span className="whitespace-nowrap">재출제</span>
                 </button>
               )}
-              <button
-                disabled={isSavingSession}
-                onClick={() => { 
-                  savedQuizScroll.current = quizBodyRef.current?.scrollTop || 0; 
-                  setSelectedTopic(null); 
-                }}
-                className="flex-1 md:flex-none px-2 md:px-5 py-2 md:py-2.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-800 hover:bg-slate-800/50 rounded-xl text-[11px] sm:text-xs md:text-sm font-black transition-all duration-200 cursor-pointer active:scale-95 text-center whitespace-nowrap min-w-0"
-                title={selectedTopic?.isReadOnly ? "화면 닫기" : "화면만 숨김 (재개 시 문제 유지)"}
-              >
-                닫기
-              </button>
               {selectedTopic && (
                 <button
                 onClick={() => { 
