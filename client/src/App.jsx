@@ -678,6 +678,12 @@ const cleanAndSanitizeMathText = (rawText) => {
   // [🚨 핵심] KaTeX HTML 블록 매칭 전에 en-dash/em-dash/math minus를 일반 하이픈으로 정규화
   // 이렇게 해야 "application/x − tex" → "application/x-tex" 으로 복원되어 annotation 추출 가능
   cleaned = cleaned.replace(/[–—−]/g, '-');
+  
+  // [🚨 핵심] 𝑘 (U+1D458), 𝐤 (U+1D48C), 𝒌 (U+1D4C0) 및 전각 ｋ/Ｋ를 아스키 k로 정규화하여 정규식 \b(k)\b 매칭 복원
+  cleaned = cleaned.replace(/\uD835\uDC58/g, 'k')
+                   .replace(/\uD835\uDC8C/g, 'k')
+                   .replace(/\uD835\uDCC0/g, 'k')
+                   .replace(/[\uFF4B\uFF2B]/g, 'k');
   // 태그 속성 주변의 비정상적 공백 정규화 (예: "x - tex" → "x-tex", "py - 1.5" → "py-1.5")
   // HTML 태그 내부의 속성값에서만 적용 (수식 텍스트의 "1.65 - 1.2" 공백 보존)
   cleaned = cleaned.replace(/<[^>]+>/g, (tag) => {
@@ -1535,7 +1541,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return `$${base}^{${exp}}$`;
     });
     // Auto-convert comparison operators with variable, e.g. "k >= 10^-2" -> "$k \ge 10^{-2}$"
-    renderText = renderText.replace(/(?<!\$)\b(k)\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1, e1, b2, e2) => {
+    renderText = renderText.replace(/(?<!\$)\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1, e1, b2, e2) => {
       const base = b1 || b2;
       const exp = e1 || e2;
       let latexOp = op;
@@ -1546,7 +1552,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return `$${variable} ${latexOp} ${base}^{${exp}}$`;
     });
     // Auto-convert comparison operators with exponent range
-    renderText = renderText.replace(/(?<!\$)\b(k)\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+    renderText = renderText.replace(/(?<!\$)\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
       const b1 = b1_1 || b1_2;
       const e1 = e1_1 || e1_2;
       const b2 = b2_1 || b2_2;
