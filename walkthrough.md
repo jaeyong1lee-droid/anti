@@ -138,5 +138,9 @@
      * **문제**: 이전 코드 변경 중 `getSelectionTextWithLatex` 헬퍼 함수의 닫는 중괄호(`};`)가 누락되어 전체 `App.jsx` 하단 컴포넌트 전체가 해당 함수 본문에 중첩되는 끔찍한 구문 오류(Syntax Error)가 발생해 있었습니다. 이로 인해 빌드 도구(esbuild)가 `export default function App()` 구문을 함수 내부 선언으로 오인하여 `Unexpected "export"` 에러를 내며 빌드가 완전히 실패하고 있었고, `BufferedInput`과 `BufferedTextarea`가 모듈 스코프와 중첩 스코프에서 중복 선언되어 충돌하던 치명적인 결함이 있었습니다.
      * **해결**: 누락되었던 `getSelectionTextWithLatex` 함수의 닫는 괄호를 올바르게 추가하고, 중복되어 빌드 에러를 유발하던 1300라인 부근의 `BufferedTextarea` 및 `BufferedInput` 정의를 안전하게 제거했습니다. 패치 후 Vite Production Build를 실행하여 빌드 타임 경고 및 컴파일 에러 없이 `0 errors`로 완벽하게 4초 만에 번들링이 완료됨을 확인하고 Git 리포지토리에 즉시 커밋 및 푸시하여 반영했습니다.
   4. **AI 개요/앞글자 생성 팝업(Draggable Modal) 드래그 및 초기 위치 제어 랙/ReferenceError 해결**:
-     * **문제**: 사용자가 학습 중 "개" (개요) 또는 "두" (두문자) 버튼을 누르면 AI 팝업창이 뜰 때, 최근 리팩토링된 드래그 이동 관련 핸들러 `handleGeneratorPopupMoveStart`와 이동 위치 저장용 상태 변수 `generatorPopupPos`가 선언되지 않아 `ReferenceError: handleGeneratorPopupMoveStart is not defined` 오류가 나며 화면이 완전히 먹통(Freeze)되던 치명적인 버그가 발견되었습니다.
+     * **문제**: 사용자가 학습 중 "개" (개요) 또는 "두" (두문자) 버튼을 누르면 AI 팝업창이 뜰 때, 최근 리팩토링된 드래그 이동 관련 핸들러 `handleGeneratorPopupMoveStart`와 이동 위치 저장용 상태 변_수 `generatorPopupPos`가 선언되지 않아 `ReferenceError: handleGeneratorPopupMoveStart is not defined` 오류가 나며 화면이 완전히 먹통(Freeze)되던 치명적인 버그가 발견되었습니다.
      * **해결**: 드래그 이동 팝업 핸들러인 `handleGeneratorPopupMoveStart`를 정상 정의하고, 로컬스토리지 연동형 `generatorPopupPos` 상태 변수를 생성하여 마우스 및 모바일 터치 드래그 위치 제어 기능이 크래시 없이 안정적으로 작동하도록 전면 보완했습니다. 마찬가지로 커밋 및 즉시 원격지에 배포를 완료하였습니다.
+  5. **AI 생성기(두문자, 개요) 더블 클릭 중복 제출 방지 및 즉시 모달 닫기, 보관함 이동 팝업 구현**:
+     * **문제**: 사용자가 앞글자(두문자) 및 개요 생성 팝업에서 단어/주제를 입력하고 엔터를 누르거나 [생성하기] 버튼을 중복 클릭할 경우, API 로딩이 완료될 때까지 입력 창이 닫히지 않고 열려 있어서 동일한 아이템이 2개씩 중복 등록되는 현상이 발생했습니다.
+     * **해결**: 엔터를 치거나 생성하기 버튼을 누르는 순간 즉시(API 요청 시작 전) 입력창 모달을 닫아버리고(`setShowAcronymPromptModal(false)`, `setShowOverviewPromptModal(false)`) 입력 버퍼를 초기화하여 중복 제출 가능성을 원천적으로 차단했습니다. 모달이 닫힌 직후, "앞글자/개요 보관함 탭으로 이동하시겠습니까?" 라는 확인 팝업(`window.confirm`)을 띄워 사용자가 확인을 누를 경우 해당 보관함 탭(`acronym` 또는 `overview`)으로 자동 전환되게 하였으며, 탭 이동 시에는 백그라운드에서 실시간으로 생성 중인 스켈레톤 카드를 즉시 확인할 수 있도록 연동했습니다. 추가로 앞글자 생성기 인풋 필드들에도 `onKeyDown` 엔터 단축키 리스너를 매핑하여 부드럽고 직관적인 사용성을 제공합니다.
+
