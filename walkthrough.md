@@ -137,3 +137,6 @@
   3. **코드베이스 내 핵심 구문 에러 및 중복 정의 제거**:
      * **문제**: 이전 코드 변경 중 `getSelectionTextWithLatex` 헬퍼 함수의 닫는 중괄호(`};`)가 누락되어 전체 `App.jsx` 하단 컴포넌트 전체가 해당 함수 본문에 중첩되는 끔찍한 구문 오류(Syntax Error)가 발생해 있었습니다. 이로 인해 빌드 도구(esbuild)가 `export default function App()` 구문을 함수 내부 선언으로 오인하여 `Unexpected "export"` 에러를 내며 빌드가 완전히 실패하고 있었고, `BufferedInput`과 `BufferedTextarea`가 모듈 스코프와 중첩 스코프에서 중복 선언되어 충돌하던 치명적인 결함이 있었습니다.
      * **해결**: 누락되었던 `getSelectionTextWithLatex` 함수의 닫는 괄호를 올바르게 추가하고, 중복되어 빌드 에러를 유발하던 1300라인 부근의 `BufferedTextarea` 및 `BufferedInput` 정의를 안전하게 제거했습니다. 패치 후 Vite Production Build를 실행하여 빌드 타임 경고 및 컴파일 에러 없이 `0 errors`로 완벽하게 4초 만에 번들링이 완료됨을 확인하고 Git 리포지토리에 즉시 커밋 및 푸시하여 반영했습니다.
+  4. **AI 개요/앞글자 생성 팝업(Draggable Modal) 드래그 및 초기 위치 제어 랙/ReferenceError 해결**:
+     * **문제**: 사용자가 학습 중 "개" (개요) 또는 "두" (두문자) 버튼을 누르면 AI 팝업창이 뜰 때, 최근 리팩토링된 드래그 이동 관련 핸들러 `handleGeneratorPopupMoveStart`와 이동 위치 저장용 상태 변수 `generatorPopupPos`가 선언되지 않아 `ReferenceError: handleGeneratorPopupMoveStart is not defined` 오류가 나며 화면이 완전히 먹통(Freeze)되던 치명적인 버그가 발견되었습니다.
+     * **해결**: 드래그 이동 팝업 핸들러인 `handleGeneratorPopupMoveStart`를 정상 정의하고, 로컬스토리지 연동형 `generatorPopupPos` 상태 변수를 생성하여 마우스 및 모바일 터치 드래그 위치 제어 기능이 크래시 없이 안정적으로 작동하도록 전면 보완했습니다. 마찬가지로 커밋 및 즉시 원격지에 배포를 완료하였습니다.
