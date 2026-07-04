@@ -22548,14 +22548,6 @@ ${itemsStr}
                 {selectedTopic && (
                       <div className="hidden md:flex items-center gap-1.5 mr-1.5">
                         <button
-                          onClick={() => setShowAiHistoryModal(true)}
-                          className="px-3 py-2 text-xs font-black rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-700/40 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
-                          title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
-                        >
-                          <Clock size={12} className="text-violet-400 flex-shrink-0" />
-                          <span>AI이력</span>
-                        </button>
-                        <button
                           onClick={handleRefreshReviewQuestions}
                           disabled={loadingAI}
                           className="px-3 py-2 text-xs font-black rounded-xl bg-violet-950/40 hover:bg-violet-900/60 text-violet-300 hover:text-white border border-violet-500/20 transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
@@ -22619,15 +22611,6 @@ ${itemsStr}
                     </>
                   )}
                 </div>
-                {/* AI이력 버튼 (복습 퀴즈에서 이동) */}
-                <button
-                  onClick={() => setShowAiHistoryModal(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center gap-1.5 bg-slateCustom-900 text-slate-300 hover:text-white border border-slate-700/40 hover:bg-slate-800/50"
-                  title="AI 작업 이력 및 자가검증 교정 로그를 조회합니다."
-                >
-                  <Clock size={11} className="text-violet-400 flex-shrink-0" />
-                  <span>AI이력</span>
-                </button>
                 <button
                   onClick={() => setShowFloatingCalculator(prev => !prev)}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
