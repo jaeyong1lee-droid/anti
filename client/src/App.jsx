@@ -4394,17 +4394,43 @@ export default function App() {
     document.documentElement.style.setProperty('--realtime-tutor-w', `${realTimeTutorSize.width}px`);
     document.documentElement.style.setProperty('--realtime-tutor-h', `${realTimeTutorSize.height}px`);
     latestRealTimeTutorSizeRef.current = realTimeTutorSize;
-  }, [realTimeTutorSize]);
+  }, [realTimeTutorSize, isRealTimeTutorOpen]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--realtime-tutor-x', `${realTimeTutorPos.x}px`);
     document.documentElement.style.setProperty('--realtime-tutor-y', `${realTimeTutorPos.y}px`);
     latestRealTimeTutorPosRef.current = realTimeTutorPos;
-  }, [realTimeTutorPos]);
+  }, [realTimeTutorPos, isRealTimeTutorOpen]);
+
+  // Bounds check size and position when opening the real-time tutor popup
+  useEffect(() => {
+    if (isRealTimeTutorOpen) {
+      const newW = Math.max(320, Math.min(window.innerWidth - 32, realTimeTutorSize.width));
+      const newH = Math.max(400, Math.min(window.innerHeight - 32, realTimeTutorSize.height));
+      const sizeChanged = newW !== realTimeTutorSize.width || newH !== realTimeTutorSize.height;
+      if (sizeChanged) {
+        const finalSize = { width: newW, height: newH };
+        setRealTimeTutorSize(finalSize);
+        localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(finalSize));
+      }
+
+      const currentW = sizeChanged ? newW : realTimeTutorSize.width;
+      const currentH = sizeChanged ? newH : realTimeTutorSize.height;
+      const newX = Math.max(0, Math.min(window.innerWidth - currentW, realTimeTutorPos.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - currentH, realTimeTutorPos.y));
+      if (newX !== realTimeTutorPos.x || newY !== realTimeTutorPos.y) {
+        const finalPos = { x: newX, y: newY };
+        setRealTimeTutorPos(finalPos);
+        localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(finalPos));
+      }
+    }
+  }, [isRealTimeTutorOpen]);
 
   const realTimeFileInputRef = useRef(null);
   const realTimeChatBodyRef = useRef(null);
   const realTimeTutorInputRef = useRef(null);
+  const sidebarChatInputRef = useRef(null);
+  const mobileChatInputRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('anti_realtime_tutor_open', isRealTimeTutorOpen ? 'true' : 'false');
@@ -19924,6 +19950,7 @@ ${itemsStr}
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
+                      ref={sidebarChatInputRef}
                       rows={1}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
@@ -21170,19 +21197,41 @@ ${itemsStr}
                   const target = formulaConfirmTarget;
                   setFormulaConfirmTarget(null);
                   
-                  // Always open real-time tutor panel and switch tabs
-                  setIsRealTimeTutorOpen(true);
+                  // Switch tabs on mobile
                   setReviewMobileTab('tutor');
                   setExamMobileTab('tutor');
 
-                  // Populate tutor input and attachments
+                  // Set sidebar tutor's attached formula
+                  setTutorAttachedFormula(target.math);
+
+                  // Scroll chat body to bottom and focus the sidebar input field
+                  setTimeout(() => {
+                    if (chatBodyRef.current) {
+                      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+                    }
+                    sidebarChatInputRef.current?.focus();
+                    mobileChatInputRef.current?.focus();
+                  }, 150);
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
+              >
+                AI 튜터로 전송
+              </button>
+              <button
+                onClick={() => {
+                  const target = formulaConfirmTarget;
+                  setFormulaConfirmTarget(null);
+                  
+                  // Open real-time tutor popup
+                  setIsRealTimeTutorOpen(true);
+
+                  // Populate real-time tutor input
                   setRealTimeTutorInput(prev => {
                     const suffix = `$${target.math}$`;
                     return prev ? `${prev} ${suffix}` : suffix;
                   });
-                  setTutorAttachedFormula(target.math);
 
-                  // Scroll chat body to bottom and focus the input field
+                  // Scroll real-time chat body to bottom and focus the input field
                   setTimeout(() => {
                     if (realTimeChatBodyRef.current) {
                       realTimeChatBodyRef.current.scrollTop = realTimeChatBodyRef.current.scrollHeight;
@@ -21190,9 +21239,9 @@ ${itemsStr}
                     realTimeTutorInputRef.current?.focus();
                   }, 150);
                 }}
-                className="w-full py-2.5 rounded-xl bg-slate-300 hover:bg-slate-200 text-slate-900 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-slate-300/10"
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md shadow-indigo-600/10"
               >
-                AI 튜터로 전송
+                AI 팝업튜터로 전송
               </button>
               <button
                 onClick={async () => {
@@ -23108,6 +23157,7 @@ ${itemsStr}
                   {/* 텍스트 입력창 */}
                   <div className="flex-grow">
                     <textarea
+                      ref={mobileChatInputRef}
                       rows={1}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
