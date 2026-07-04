@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 // 1. PC Right-side Upload Panel
-export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFormulaImages, API_BASE, showNotification }) {
+export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFormulaImages, API_BASE, showNotification, compact = false }) {
   const [imageSrc, setImageSrc] = useState(null);
   const [description, setDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -90,16 +90,20 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
   };
 
   return (
-    <div className="bg-slateCustom-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-5 animate-fade-in w-full text-left">
-      <div className="border-b border-slate-800/80 pb-3 flex items-center justify-between">
+    <div className={`bg-slateCustom-900/60 border border-slate-800 rounded-2xl text-left animate-fade-in w-full ${
+      compact ? 'p-3 space-y-2.5' : 'p-5 md:p-6 space-y-5'
+    }`}>
+      <div className={`border-b border-slate-800/80 flex items-center justify-between ${compact ? 'pb-2' : 'pb-3'}`}>
         <div>
-          <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-            <ImageIcon size={14} className="text-brand-400" />
+          <h3 className={`${compact ? 'text-xs' : 'text-sm'} font-extrabold text-white flex items-center gap-1.5`}>
+            <ImageIcon size={compact ? 12 : 14} className="text-brand-400" />
             <span>필수 암기 그림 등록</span>
           </h3>
-          <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-            클립보드 이미지를 복사하여 붙여넣고 AI 분석 결과를 그림 카드로 등록하세요.
-          </p>
+          {!compact && (
+            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+              클립보드 이미지를 복사하여 붙여넣고 AI 분석 결과를 그림 카드로 등록하세요.
+            </p>
+          )}
         </div>
       </div>
 
@@ -107,15 +111,17 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       <div
         ref={pasteAreaRef}
         tabIndex={0}
-        className={`relative border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-3 transition-all duration-200 focus:outline-none min-h-[160px] cursor-pointer select-none ${
+        className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer select-none ${
+          compact ? 'p-3 min-h-[80px] gap-1.5' : 'p-6 min-h-[160px] gap-3'
+        } ${
           imageSrc 
             ? 'border-indigo-500/50 bg-indigo-950/10' 
             : 'border-slate-700/60 hover:border-slate-600 bg-slate-950/30 focus:border-brand-500/50 focus:bg-slate-950/50'
         }`}
       >
         {imageSrc ? (
-          <div className="relative w-full max-h-[140px] flex items-center justify-center overflow-hidden rounded-lg">
-            <img src={imageSrc} className="max-h-[130px] object-contain rounded" alt="Pasted preview" />
+          <div className={`relative w-full flex items-center justify-center overflow-hidden rounded-lg ${compact ? 'max-h-[70px]' : 'max-h-[140px]'}`}>
+            <img src={imageSrc} className={`${compact ? 'max-h-[60px]' : 'max-h-[130px]'} object-contain rounded`} alt="Pasted preview" />
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -128,31 +134,31 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-center gap-2">
-            <div className="p-3 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl">
-              <Clipboard size={22} className="animate-pulse" />
+          <div className="flex flex-col items-center justify-center text-center gap-1.5">
+            <div className={`bg-slate-900 border border-slate-800 text-slate-400 rounded-xl ${compact ? 'p-1.5' : 'p-3'}`}>
+              <Clipboard size={compact ? 15 : 22} className="animate-pulse" />
             </div>
             <div className="space-y-0.5">
-              <p className="text-[12px] font-bold text-white">클립보드 스크린샷 붙여넣기</p>
-              <p className="text-[10px] text-slate-400">클릭 후 단축키 Ctrl+V를 입력하세요</p>
+              <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-bold text-white`}>클립보드 스크린샷 붙여넣기</p>
+              {!compact && <p className="text-[10px] text-slate-400">클릭 후 단축키 Ctrl+V를 입력하세요</p>}
             </div>
           </div>
         )}
       </div>
 
       {/* Description Textarea */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-black text-slate-400 flex items-center gap-1 select-none">
-          <FileText size={11} />
-          <span>그림/그래프 추가 설명 (한글)</span>
+      <div className="space-y-1">
+        <label className="text-[10px] font-black text-slate-400 flex items-center gap-1 select-none">
+          <FileText size={10} />
+          <span>그림/그래프 추가 설명</span>
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="그림에 대한 참고사항이나 추가할 한글 내용을 입력해 보세요. (한글 전용, 공란 가능)"
-          rows={3}
+          placeholder={compact ? "추가할 한글 참고사항 (공란 가능)" : "그림에 대한 참고사항이나 추가할 한글 내용을 입력해 보세요. (한글 전용, 공란 가능)"}
+          rows={compact ? 1 : 3}
           disabled={isAnalyzing}
-          className="w-full bg-slateCustom-950 border border-slate-700 text-white placeholder-slate-500 text-xs rounded-xl p-3 focus:outline-none focus:border-brand-500 transition-all font-semibold resize-none"
+          className="w-full bg-slateCustom-950 border border-slate-700 text-white placeholder-slate-500 text-[11px] rounded-xl p-2 focus:outline-none focus:border-brand-500 transition-all font-semibold resize-none"
         />
       </div>
 
@@ -160,7 +166,9 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       <button
         onClick={handleRegisterImageCard}
         disabled={isAnalyzing || !imageSrc}
-        className={`w-full py-2.5 rounded-xl font-black text-xs transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 border-none shadow-md ${
+        className={`w-full rounded-xl font-black text-[11px] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 border-none shadow-md ${
+          compact ? 'py-1.5' : 'py-2.5'
+        } ${
           isAnalyzing
             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
             : imageSrc
@@ -170,12 +178,12 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       >
         {isAnalyzing ? (
           <>
-            <RefreshCw className="animate-spin" size={13} />
-            <span>AI가 그림/그래프 정밀 분석 중...</span>
+            <RefreshCw className="animate-spin" size={12} />
+            <span>AI 정밀 분석 중...</span>
           </>
         ) : (
           <>
-            <Sparkles size={13} />
+            <Sparkles size={12} />
             <span>그림 암기 카드로 등록</span>
           </>
         )}

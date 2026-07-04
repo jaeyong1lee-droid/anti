@@ -24327,14 +24327,197 @@ ${itemsStr}
                 }`}
               >
               {formulaSubTab === 'image' ? (
-                <div className="p-4 overflow-y-auto h-full w-full">
-                  <ImageUploadPanel
-                    formulaImages={formulaImages}
-                    setFormulaImages={setFormulaImages}
-                    handleSaveFormulaImages={handleSaveFormulaImages}
-                    API_BASE={API_BASE}
-                    showNotification={showNotification}
-                  />
+                <div className="flex flex-col h-full overflow-hidden w-full">
+                  {/* Minimized Image Upload Panel */}
+                  <div className="p-3 border-b border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                    <ImageUploadPanel
+                      formulaImages={formulaImages}
+                      setFormulaImages={setFormulaImages}
+                      handleSaveFormulaImages={handleSaveFormulaImages}
+                      API_BASE={API_BASE}
+                      showNotification={showNotification}
+                      compact={true}
+                    />
+                  </div>
+                  
+                  {/* Real-time AI Tutor Chat in Compact Stacked View */}
+                  <div className="flex-grow flex flex-col min-h-0 bg-slate-900 overflow-hidden">
+                    {/* Header with Formula Selector */}
+                    <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare size={14} className="text-rose-500 animate-pulse" />
+                          <span className="text-[11px] font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <select
+                          value={selectedFormulaIdx}
+                          onChange={(e) => handleFormulaSelect(Number(e.target.value))}
+                          className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
+                        >
+                          <option value={-1}>-- 학습 공식 선택 (선택 안함 가능) --</option>
+                          {formulaQuestions.map((fq, idx) => (
+                            <option key={idx} value={idx}>
+                              Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Chat Message History */}
+                    <div 
+                      ref={formulaChatBodyRef}
+                      className="flex-grow overflow-y-auto overflow-x-hidden px-3 pb-3 pt-1.5 md:pr-2 space-y-3.5 scrollbar-none-mobile bg-slate-950/20 custom-vertical-scrollbar min-h-0"
+                    >
+                      {(selectedFormulaIdx === -1 && formulaChatHistory.length === 0) ? (
+                        <div className="text-center py-8 px-4 opacity-50 flex flex-col items-center justify-center h-full">
+                          <div className="p-2.5 bg-slateCustom-900 border border-slate-800/80 text-rose-500 rounded-xl mb-2 animate-bounce-slow">
+                            <MessageSquare size={20} />
+                          </div>
+                          <p className="text-[11px] text-slate-350 font-bold">공식에 대해 AI 튜터와 논의해 보세요!</p>
+                        </div>
+                      ) : (
+                        <div className="w-full flex flex-col gap-3">
+                          {selectedFormulaIdx !== -1 && (() => {
+                            const formulaStr = formulaQuestions[selectedFormulaIdx]?.formula || '';
+                            const lines = formulaStr.split('\n');
+                            const mathLines = lines.filter(line => {
+                              const trimmed = line.trim();
+                              if (!trimmed) return false;
+                              if (trimmed.startsWith('-') || trimmed.startsWith('—') || trimmed.startsWith('–') || trimmed.startsWith('―') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                                return false;
+                              }
+                              if (trimmed.includes(':')) {
+                                return false;
+                              }
+                              if (trimmed.toLowerCase().includes('where') || trimmed.includes('단,') || trimmed.includes('여기서')) {
+                                return false;
+                              }
+                              return true;
+                            });
+                            const formulaOnly = mathLines.join('\n').trim();
+                            
+                            return formulaOnly ? (
+                              <div className="w-full bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40 text-xs text-slate-200 leading-relaxed text-left overflow-x-auto custom-vertical-scrollbar">
+                                <LatexRenderer 
+                                  text={formulaOnly} 
+                                  katexLoaded={katexLoaded} 
+                                  isMarkdown={true} 
+                                  enableAddFormula={true}
+                                  formulaSource="tutor"
+                                />
+                              </div>
+                            ) : null;
+                          })()}
+
+                          {formulaChatHistory.map((msg, mIdx) => {
+                            const isUser = msg.role === 'user';
+                            return (
+                              <div 
+                                key={mIdx} 
+                                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-0.5`}
+                              >
+                                <span className="text-[9px] text-slate-400 font-bold px-1">
+                                  {isUser ? '수험생' : 'AI 튜터'}
+                                </span>
+                                <div className={`${isUser ? 'max-w-[92%] text-[11px]' : 'max-w-[97%] tutor-response-content text-[13px] sm:text-[14px]'} rounded-xl px-2.5 py-1.5 leading-relaxed select-text break-words ${
+                                  isUser 
+                                    ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
+                                    : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
+                                }`}>
+                                  {isUser ? (
+                                    <div className="flex flex-col gap-1.5">
+                                      {msg.image && (
+                                        <img 
+                                          src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                          alt="첨부 이미지" 
+                                          className="max-w-full max-h-36 rounded-lg object-contain border border-rose-500/50 shadow-md cursor-pointer"
+                                          onClick={() => handleOpenImagePreviewModal(`data:${msg.image.mimeType};base64,${msg.image.data}`)}
+                                        />
+                                      )}
+                                      <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
+                                    </div>
+                                  ) : (
+                                    <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {isFormulaChatLoading && (
+                        <div className="flex flex-col items-start space-y-0.5">
+                          <span className="text-[9px] text-slate-400 font-bold px-1">AI 튜터</span>
+                          <div className="bg-slateCustom-900/60 border border-slate-800/80 text-slate-400 rounded-xl rounded-tl-none px-3 py-2 text-[11px] flex items-center gap-1">
+                            <RefreshCw size={10} className="animate-spin text-rose-500" />
+                            <span>생각하는 중...</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Chat Input Area */}
+                    <div className="p-2 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
+                      {formulaAttachedImage && (
+                        <div className="mb-1.5 p-1 bg-slateCustom-900 border border-slate-800 rounded-lg flex items-center justify-between gap-1.5 max-w-full">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <img 
+                              src={`data:${formulaAttachedImage.mimeType};base64,${formulaAttachedImage.data}`} 
+                              alt="첨부 이미지" 
+                              className="w-6 h-6 rounded object-cover border border-slate-700"
+                            />
+                            <span className="text-[9px] text-slate-350 truncate font-mono">
+                              {formulaAttachedImage.name}
+                            </span>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={handleClearFormulaAttachedImage}
+                            className="text-slate-400 hover:text-white p-0.5 hover:bg-slate-850 rounded-full transition-colors shrink-0"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                      <form onSubmit={handleSendFormulaChatMessage} className="flex gap-1.5 items-center">
+                        <input 
+                          type="file"
+                          ref={formulaTutorFileInputRef}
+                          onChange={handleFormulaImageAttachment}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={isFormulaChatLoading}
+                          onClick={() => formulaTutorFileInputRef.current?.click()}
+                          className="p-2 bg-slateCustom-900 border border-slate-800 hover:border-slate-700 hover:bg-slateCustom-850 text-slate-400 hover:text-white rounded-lg transition-all duration-150 flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="이미지 첨부"
+                        >
+                          <Image size={13} />
+                        </button>
+                        <input
+                          type="text"
+                          disabled={isFormulaChatLoading}
+                          value={formulaChatInput}
+                          onChange={(e) => setFormulaChatInput(e.target.value)}
+                          onPaste={handleFormulaPasteImage}
+                          placeholder="공식 튜터에게 질문해 보세요..."
+                          className="flex-grow bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2.5 py-1.5 focus:outline-none placeholder-slate-550 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isFormulaChatLoading || (!formulaChatInput.trim() && !formulaAttachedImage)}
+                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 border border-rose-500/20 text-white text-[11px] font-black rounded-lg transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
+                        >
+                          <span>보내기</span>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <>
