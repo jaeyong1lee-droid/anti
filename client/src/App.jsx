@@ -4754,6 +4754,8 @@ export default function App() {
   const [isFormulaChatLoading, setIsFormulaChatLoading] = useState(false);
   const formulaChatBodyRef = useRef(null);
   const [formulaChatInput, setFormulaChatInput] = useState('');
+  const [formulaAttachedImage, setFormulaAttachedImage] = useState(null); // { name, mimeType, data }
+  const formulaTutorFileInputRef = useRef(null);
 
   // Single Question Regeneration states
   const [regeneratingReview, setRegeneratingReview] = useState({});
@@ -10907,6 +10909,80 @@ export default function App() {
     examBodyRef.current?.scrollTo({ top: cards[targetIndex].offsetTop, behavior: 'smooth' });
   };
 
+  const handleFormulaImageAttachment = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showNotification('이미지 파일만 첨부할 수 있습니다.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result.split(',')[1];
+      setFormulaAttachedImage({
+        name: file.name,
+        mimeType: file.type,
+        data: base64Data
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearFormulaAttachedImage = () => {
+    setFormulaAttachedImage(null);
+  };
+
+  const handleFormulaPasteImage = (e) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setFormulaAttachedImage({
+              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type,
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/') || item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setFormulaAttachedImage({
+              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type || 'image/png',
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
   // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
   const handleImageAttachment = (e) => {
     const file = e.target.files[0];
@@ -15071,11 +15147,13 @@ ${itemsStr}
     const userMessage = (typeof customMessage === 'string' ? customMessage : formulaChatInput).trim();
     if (isFormulaChatLoading || !userMessage) return;
     
+    const currentAttachedImage = formulaAttachedImage;
     if (typeof customMessage !== 'string') {
       setFormulaChatInput('');
+      setFormulaAttachedImage(null);
     }
     
-    const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage }];
+    const updatedHistory = [...formulaChatHistory, { role: 'user', text: userMessage, image: currentAttachedImage }];
     saveFormulaChatHistory(updatedHistory);
     setIsFormulaChatLoading(true);
     
@@ -15101,9 +15179,13 @@ ${itemsStr}
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          history: formulaChatHistory.map(h => ({ role: h.role, text: h.text })),
+          history: formulaChatHistory.map(h => ({ 
+            role: h.role, 
+            text: h.text,
+            image: h.image ? { mimeType: h.image.mimeType, data: h.image.data } : null
+          })),
           message: promptText,
-          image: null,
+          image: currentAttachedImage ? { mimeType: currentAttachedImage.mimeType, data: currentAttachedImage.data } : null,
           progressId
         })
       });
@@ -24387,7 +24469,21 @@ ${itemsStr}
                                 ? 'bg-rose-600 text-white border border-rose-500/20 rounded-tr-none' 
                                 : 'bg-slateCustom-900/60 border border-slate-800/80 text-slate-200 rounded-tl-none'
                             }`}>
-                              <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
+                              {isUser ? (
+                                <div className="flex flex-col gap-2">
+                                  {msg.image && (
+                                    <img 
+                                      src={`data:${msg.image.mimeType};base64,${msg.image.data}`} 
+                                      alt="첨부 이미지" 
+                                      className="max-w-full max-h-48 rounded-xl object-contain border border-rose-500/50 shadow-md cursor-pointer"
+                                      onClick={() => handleOpenImagePreviewModal(`data:${msg.image.mimeType};base64,${msg.image.data}`)}
+                                    />
+                                  )}
+                                  <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
+                                </div>
+                              ) : (
+                                <LatexRenderer text={msg.text} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} formulaSource="tutor" />
+                              )}
                             </div>
                           </div>
                         );
@@ -24407,12 +24503,50 @@ ${itemsStr}
 
                 {/* Input Area */}
                 <div className="p-3 border-t border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                  <form onSubmit={handleSendFormulaChatMessage} className="flex gap-2">
+                  {formulaAttachedImage && (
+                    <div className="mb-2 p-1.5 bg-slateCustom-900 border border-slate-800 rounded-lg flex items-center justify-between gap-2 max-w-full">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <img 
+                          src={`data:${formulaAttachedImage.mimeType};base64,${formulaAttachedImage.data}`} 
+                          alt="첨부 이미지" 
+                          className="w-8 h-8 rounded object-cover border border-slate-700"
+                        />
+                        <span className="text-[10px] text-slate-300 truncate font-mono">
+                          {formulaAttachedImage.name}
+                        </span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={handleClearFormulaAttachedImage}
+                        className="text-slate-400 hover:text-white p-1 hover:bg-slate-850 rounded-full transition-colors shrink-0"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <form onSubmit={handleSendFormulaChatMessage} className="flex gap-2 items-center">
+                    <input 
+                      type="file"
+                      ref={formulaTutorFileInputRef}
+                      onChange={handleFormulaImageAttachment}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={isFormulaChatLoading}
+                      onClick={() => formulaTutorFileInputRef.current?.click()}
+                      className="p-2.5 bg-slateCustom-900 border border-slate-800 hover:border-slate-700 hover:bg-slateCustom-850 text-slate-400 hover:text-white rounded-xl transition-all duration-150 flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="이미지 첨부"
+                    >
+                      <Image size={15} />
+                    </button>
                     <input
                       type="text"
                       disabled={isFormulaChatLoading}
                       value={formulaChatInput}
                       onChange={(e) => setFormulaChatInput(e.target.value)}
+                      onPaste={handleFormulaPasteImage}
                       placeholder={
                         selectedFormulaIdx === -1 
                           ? "AI 공식 튜터에게 자유롭게 질문해 보세요..." 
@@ -24422,8 +24556,8 @@ ${itemsStr}
                     />
                     <button
                       type="submit"
-                      disabled={isFormulaChatLoading || !formulaChatInput.trim()}
-                      className="px-4 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
+                      disabled={isFormulaChatLoading || (!formulaChatInput.trim() && !formulaAttachedImage)}
+                      className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-800 border border-rose-500/20 text-white text-xs font-black rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:scale-100"
                     >
                       <span>보내기</span>
                     </button>
