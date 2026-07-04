@@ -23782,10 +23782,13 @@ ${itemsStr}
                                                         )}
                                                       </div>
                                                     ) : isEditing ? (
-                                                      <input
-                                                        type="text"
+                                                      <textarea
                                                         value={editingCellValue}
-                                                        onChange={(e) => setEditingCellValue(e.target.value)}
+                                                        onChange={(e) => {
+                                                          setEditingCellValue(e.target.value);
+                                                          e.target.style.height = 'auto';
+                                                          e.target.style.height = `${e.target.scrollHeight}px`;
+                                                        }}
                                                         onBlur={() => {
                                                           const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
                                                           const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
@@ -23795,7 +23798,8 @@ ${itemsStr}
                                                           setActiveEditCell(null);
                                                         }}
                                                         onKeyDown={(e) => {
-                                                          if (e.key === 'Enter') {
+                                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
                                                             const updatedHeaders = parsed.headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
                                                             const newHtml = rebuildTableHtml(updatedHeaders, parsed.rows);
                                                             const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
@@ -23804,8 +23808,17 @@ ${itemsStr}
                                                             setActiveEditCell(null);
                                                           }
                                                         }}
-                                                        className="w-full text-center bg-slateCustom-955 border border-slate-750 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
-                                                        autoFocus
+                                                        className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-black p-0 text-[14px] md:text-sm resize-none block align-middle overflow-hidden"
+                                                        rows={1}
+                                                        ref={(el) => {
+                                                          if (el) {
+                                                            el.focus();
+                                                            el.style.height = 'auto';
+                                                            el.style.height = `${el.scrollHeight}px`;
+                                                            const len = el.value.length;
+                                                            el.setSelectionRange(len, len);
+                                                          }
+                                                        }}
                                                       />
                                                     ) : (
                                                       <div className="flex flex-col items-center gap-1.5">
@@ -23859,10 +23872,13 @@ ${itemsStr}
                                                       }}
                                                     >
                                                       {isEditing ? (
-                                                        <input
-                                                          type="text"
+                                                        <textarea
                                                           value={editingCellValue}
-                                                          onChange={(e) => setEditingCellValue(e.target.value)}
+                                                          onChange={(e) => {
+                                                            setEditingCellValue(e.target.value);
+                                                            e.target.style.height = 'auto';
+                                                            e.target.style.height = `${e.target.scrollHeight}px`;
+                                                          }}
                                                           onBlur={() => {
                                                             const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
                                                               rIdx2 === rIdx 
@@ -23876,7 +23892,8 @@ ${itemsStr}
                                                             setActiveEditCell(null);
                                                           }}
                                                           onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
+                                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                              e.preventDefault();
                                                               const updatedRows = parsed.rows.map((rowVal, rIdx2) => 
                                                                 rIdx2 === rIdx 
                                                                   ? rowVal.map((cellVal, cIdx2) => cIdx2 === cIdx ? editingCellValue : cellVal)
@@ -23889,8 +23906,17 @@ ${itemsStr}
                                                               setActiveEditCell(null);
                                                             }
                                                           }}
-                                                          className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-semibold focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
-                                                          autoFocus
+                                                          className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-semibold p-0 text-[14px] md:text-sm resize-none block align-middle overflow-hidden"
+                                                          rows={1}
+                                                          ref={(el) => {
+                                                            if (el) {
+                                                              el.focus();
+                                                              el.style.height = 'auto';
+                                                              el.style.height = `${el.scrollHeight}px`;
+                                                              const len = el.value.length;
+                                                              el.setSelectionRange(len, len);
+                                                            }
+                                                          }}
                                                         />
                                                       ) : (
                                                         <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-semibold select-text">
