@@ -2968,15 +2968,18 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
   const isImageTopic = resolvedCategory === '계산';
 
   const renderImageElement = () => {
-    if (q.imageSrc) {
+    const imgs = q.imageSrcs || (q.imageSrc ? [q.imageSrc] : []);
+    if (imgs.length > 0) {
       return (
-        <div className="mt-3 flex flex-col items-center w-full">
+        <div className="mt-3 flex flex-col items-center w-full gap-3">
           <div className="text-[11px] text-indigo-400 font-extrabold mb-1 select-none flex items-center gap-1.5 w-full justify-start">
             <span>🖼️ 첨부된 문제 그래프/그림</span>
           </div>
-          <div className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
-            <img src={q.imageSrc} className="max-h-[320px] object-contain rounded-lg max-w-full" alt="첨부 그림" />
-          </div>
+          {imgs.map((src, index) => (
+            <div key={index} className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px]">
+              <img src={src} className="max-h-[320px] object-contain rounded-lg max-w-full" alt={`첨부 그림 ${index + 1}`} />
+            </div>
+          ))}
         </div>
       );
     }
@@ -5364,8 +5367,16 @@ export default function App() {
       if (q && q.originalId && (q.subtype === '그림' || q.type === '주관식 (그림)' || q.mixedType === 'image')) {
         const cleanId = String(q.originalId).replace(/\$/g, '').trim();
         const origImg = currentFormulaImages.find(img => img.id === cleanId);
-        if (origImg && origImg.base64Image) {
-          return { ...q, originalId: cleanId, imageSrc: origImg.base64Image };
+        if (origImg) {
+          const imgs = origImg.base64Images || (origImg.base64Image ? [origImg.base64Image] : []);
+          if (imgs.length > 0) {
+            return {
+              ...q,
+              originalId: cleanId,
+              imageSrc: imgs[0],
+              imageSrcs: imgs
+            };
+          }
         }
       }
       return q;
@@ -9071,7 +9082,8 @@ export default function App() {
               type: '주관식 (그림)',
               subtype: '그림',
               question: specificQuestion,
-              imageSrc: item.base64Image,
+              imageSrc: item.base64Images?.[0] || item.base64Image,
+              imageSrcs: item.base64Images || (item.base64Image ? [item.base64Image] : []),
               answer: item.title,
               concept: item.title,
               explanation: explanationHtml,
@@ -9153,7 +9165,8 @@ export default function App() {
               type: '주관식 (그림)',
               subtype: '그림',
               question: specificQuestion,
-              imageSrc: item.base64Image,
+              imageSrc: item.base64Images?.[0] || item.base64Image,
+              imageSrcs: item.base64Images || (item.base64Image ? [item.base64Image] : []),
               answer: item.title,
               concept: item.title,
               explanation: explanationHtml,
@@ -9819,7 +9832,8 @@ export default function App() {
               type: '주관식 (그림)',
               subtype: '그림',
               question: specificQuestion,
-              imageSrc: item.base64Image,
+              imageSrc: item.base64Images?.[0] || item.base64Image,
+              imageSrcs: item.base64Images || (item.base64Image ? [item.base64Image] : []),
               answer: item.title,
               concept: item.title,
               explanation: explanationHtml,

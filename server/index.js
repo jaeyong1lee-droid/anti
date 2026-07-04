@@ -709,7 +709,9 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   const grokKey = process.env.GROK_API_KEY ? process.env.GROK_API_KEY.trim().replace(/^['"]|['"]$/g, '') : null;
 
   const keyErrors = [];
-  const hasImage = image && image.data && image.mimeType;
+  const hasImage = Array.isArray(image)
+    ? image.some(img => img && img.data && img.mimeType)
+    : !!(image && image.data && image.mimeType);
 
   // 2. 사용자가 규정한 최적화 실행 리스트 구성
   const executionList = [];
@@ -866,17 +868,28 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
             }
           }, { apiVersion: 'v1beta' });
 
-          let generateContentArg = userPrompt;
-          if (image && image.data && image.mimeType) {
-            generateContentArg = [
-              userPrompt,
-              {
-                inlineData: {
-                  mimeType: image.mimeType,
-                  data: image.data
-                }
+          let generateContentArg = [userPrompt];
+          if (Array.isArray(image)) {
+            image.forEach(img => {
+              if (img && img.data && img.mimeType) {
+                generateContentArg.push({
+                  inlineData: {
+                    mimeType: img.mimeType,
+                    data: img.data
+                  }
+                });
               }
-            ];
+            });
+          } else if (image && image.data && image.mimeType) {
+            generateContentArg.push({
+              inlineData: {
+                mimeType: image.mimeType,
+                data: image.data
+              }
+            });
+          }
+          if (generateContentArg.length === 1) {
+            generateContentArg = userPrompt;
           }
 
           reportLlmProgress(options, scenario, modelName);
@@ -7380,7 +7393,14 @@ app.get('/api/session/review', async (req, res) => {
             if (healed && healed.originalId && (healed.subtype === '그림' || healed.type === '주관식 (그림)' || healed.mixedType === 'image')) {
               const matchedImg = formulaImages.find(img => img.id === healed.originalId);
               if (matchedImg) {
-                healed.imageSrc = matchedImg.base64Image || matchedImg.src;
+                const imgs = matchedImg.base64Images || (matchedImg.base64Image ? [matchedImg.base64Image] : []);
+                if (imgs.length > 0) {
+                  healed.imageSrc = imgs[0];
+                  healed.imageSrcs = imgs;
+                } else if (matchedImg.src) {
+                  healed.imageSrc = matchedImg.src;
+                  healed.imageSrcs = [matchedImg.src];
+                }
               }
             }
             return healed;
@@ -8001,39 +8021,43 @@ app.post('/api/session/mixed-completed', async (req, res) => {
 // POST /api/image-standards/analyze → 붙여넣은 그림/그래프 멀티모달 분석
 app.post('/api/image-standards/analyze', async (req, res) => {
   try {
-    const { base64Image, description } = req.body;
-    if (!base64Image) {
+    const { base64Image, base64Images, description } = req.body;
+    const incomingImages = base64Images || (base64Image ? [base64Image] : []);
+    if (!incomingImages || incomingImages.length === 0) {
       return res.status(400).json({ error: '이미지 데이터가 존재하지 않습니다.' });
     }
 
-    let mimeType = 'image/png';
-    let rawBase64 = base64Image;
-    const match = base64Image.match(/^data:(image\/[^;]+);base64,(.+)$/);
-    if (match) {
-      mimeType = match[1];
-      rawBase64 = match[2];
-    }
+    const imageParts = incomingImages.map(imgStr => {
+      let mimeType = 'image/png';
+      let rawBase64 = imgStr;
+      const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
+      if (match) {
+        mimeType = match[1];
+        rawBase64 = match[2];
+      }
+      return { data: rawBase64, mimeType };
+    });
 
     const systemInstruction = `당신은 지반공학, 토질역학 및 토목 전공 기술사 자격시험 전문 채점위원이자 튜터입니다.
-사용자가 붙여넣은 공학 그림/그래프/도해 이미지와 관련 텍스트 설명을 바탕으로 정밀 분석을 수행하십시오.
+사용자가 붙여넣은 공학 그림/그래프/도해 이미지들(1개 이상, 2개 이상일 수 있음)과 관련 텍스트 설명을 바탕으로 한꺼번에 연계하여 정밀 분석을 수행하십시오.
 반드시 아래 지정된 JSON 형식으로만 응답해야 합니다. 다른 설명 텍스트나 마크다운 코드블록 기호(예: \`\`\`json)는 절대 포함하지 마십시오.
 
 JSON 포맷 규격:
 {
-  "title": "이 그림/그래프가 무엇을 뜻하는지 가장 정밀하고 간결한 핵심 전공 주제명으로 한글(공백 포함 25자 이내)로 자동 제안하십시오. (조사, 서술어 일체 배제)",
-  "analysis": "해당 그림/그래프/도해에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 작동 메커니즘을 상세히 설명하십시오. 중요 기호나 핵심 개념을 명확하게 짚어주어야 하며, 텍스트가 줄바꿈이 많이 필요한 경우 적절히 구성하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오. (한글로 작성)",
-  "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (한글 2~3문장)"
+  "title": "이 그림/그래프들이 무엇을 뜻하는지 가장 정밀하고 간결한 핵심 전공 주제명으로 한글(공백 포함 25자 이내)로 자동 제안하십시오. (조사, 서술어 일체 배제)",
+  "analysis": "해당 그림/그래프/도해들에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 작동 메커니즘을 연계하여 상세히 설명하십시오. 중요 기호나 핵심 개념을 명확하게 짚어주어야 하며, 텍스트가 줄바꿈이 많이 필요한 경우 적절히 구성하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오. (한글로 작성)",
+  "intuitive": "이 복잡한 공학 도표나 그림들이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (한글 2~3문장)"
 }`;
 
     const userPrompt = description 
-      ? `사용자가 덧붙인 한글 설명:\n${description}\n\n위 한글 설명과 함께 첨부된 공학 그림/그래프의 형태와 수식적 변수 배치를 면밀히 판독하여 분석 내용을 완성하십시오.`
-      : `첨부된 공학 그림/그래프의 상세 구조와 기호들의 상호작용을 면밀히 판독하여 분석 내용을 완성하십시오.`;
+      ? `사용자가 덧붙인 한글 설명:\n${description}\n\n위 한글 설명과 함께 첨부된 공학 그림/그래프들의 형태와 수식적 변수 배치를 면밀히 판독하여 한꺼번에 분석 내용을 완성하십시오.`
+      : `첨부된 공학 그림/그래프들의 상세 구조와 기호들의 상호작용을 면밀히 판독하여 한꺼번에 분석 내용을 완성하십시오.`;
 
     try {
       const responseText = await callLLMWithFailover(
         systemInstruction,
         userPrompt,
-        { data: rawBase64, mimeType },
+        imageParts,
         'formula'
       );
 

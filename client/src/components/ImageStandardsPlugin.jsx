@@ -3,7 +3,7 @@ import { Image as ImageIcon, Trash2, RefreshCw, Clipboard, FileText, Sparkles, C
 
 // 1. PC Right-side Upload Panel
 export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFormulaImages, API_BASE, showNotification, compact = false }) {
-  const [imageSrc, setImageSrc] = useState(null);
+  const [images, setImages] = useState([]);
   const [description, setDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const pasteAreaRef = useRef(null);
@@ -24,7 +24,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
           const file = items[i].getAsFile();
           const reader = new FileReader();
           reader.onload = (event) => {
-            setImageSrc(event.target.result);
+            setImages(prev => [...prev, event.target.result]);
             showNotification('클립보드 스크린샷이 성공적으로 붙여넣어졌습니다.', 'success');
           };
           reader.readAsDataURL(file);
@@ -40,7 +40,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
   }, [showNotification]);
 
   const handleRegisterImageCard = async () => {
-    if (!imageSrc) {
+    if (images.length === 0) {
       showNotification('먼저 클립보드 스크린샷을 붙여넣으세요.', 'warning');
       return;
     }
@@ -51,7 +51,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          base64Image: imageSrc,
+          base64Images: images,
           description: description.trim()
         })
       });
@@ -66,7 +66,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         const newCard = {
           id: `img_${Date.now()}`,
           title: result.title,
-          base64Image: imageSrc,
+          base64Images: images,
           description: description.trim(),
           analysis: result.analysis,
           intuitive: result.intuitive
@@ -77,7 +77,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         await handleSaveFormulaImages(updated, false);
 
         // Reset inputs
-        setImageSrc(null);
+        setImages([]);
         setDescription('');
         showNotification(`[${result.title}] 그림 카드가 성공적으로 등록되었습니다.`, 'success');
       }
@@ -114,24 +114,28 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
         className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-200 focus:outline-none cursor-pointer select-none ${
           compact ? 'p-3 min-h-[80px] gap-1.5' : 'p-6 min-h-[160px] gap-3'
         } ${
-          imageSrc 
+          images.length > 0 
             ? 'border-indigo-500/50 bg-indigo-950/10' 
             : 'border-slate-700/60 hover:border-slate-600 bg-slate-950/30 focus:border-brand-500/50 focus:bg-slate-950/50'
         }`}
       >
-        {imageSrc ? (
-          <div className={`relative w-full flex items-center justify-center overflow-hidden rounded-lg ${compact ? 'max-h-[70px]' : 'max-h-[140px]'}`}>
-            <img src={imageSrc} className={`${compact ? 'max-h-[60px]' : 'max-h-[130px]'} object-contain rounded`} alt="Pasted preview" />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setImageSrc(null);
-              }}
-              className="absolute top-1 right-1 p-1 bg-slate-950/80 hover:bg-rose-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-              title="이미지 삭제"
-            >
-              <Trash2 size={12} />
-            </button>
+        {images.length > 0 ? (
+          <div className="w-full flex flex-col gap-2 overflow-y-auto max-h-[300px] p-1">
+            {images.map((src, index) => (
+              <div key={index} className={`relative w-full flex items-center justify-center overflow-hidden rounded-lg border border-slate-800 ${compact ? 'max-h-[80px]' : 'max-h-[140px]'}`}>
+                <img src={src} className={`${compact ? 'max-h-[70px]' : 'max-h-[130px]'} object-contain rounded`} alt={`Pasted preview ${index + 1}`} />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImages(prev => prev.filter((_, idx) => idx !== index));
+                  }}
+                  className="absolute top-1 right-1 p-1 bg-slate-950/80 hover:bg-rose-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                  title="이미지 삭제"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center gap-1.5">
@@ -140,7 +144,7 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
             </div>
             <div className="space-y-0.5">
               <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-bold text-white`}>클립보드 스크린샷 붙여넣기</p>
-              {!compact && <p className="text-[10px] text-slate-400">클릭 후 단축키 Ctrl+V를 입력하세요</p>}
+              {!compact && <p className="text-[10px] text-slate-400">클릭 후 단축키 Ctrl+V를 입력하세요 (2개 이상 가능)</p>}
             </div>
           </div>
         )}
@@ -165,13 +169,13 @@ export function ImageUploadPanel({ formulaImages, setFormulaImages, handleSaveFo
       {/* Submit Button */}
       <button
         onClick={handleRegisterImageCard}
-        disabled={isAnalyzing || !imageSrc}
+        disabled={isAnalyzing || images.length === 0}
         className={`w-full rounded-xl font-black text-[11px] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 border-none shadow-md ${
           compact ? 'py-1.5' : 'py-2.5'
         } ${
           isAnalyzing
             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-            : imageSrc
+            : images.length > 0
               ? 'bg-gradient-to-tr from-brand-600 to-indigo-500 hover:from-brand-500 hover:to-indigo-400 text-white active:scale-95'
               : 'bg-slate-800 text-slate-400 cursor-not-allowed opacity-50'
         }`}
@@ -226,14 +230,15 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
     }
   };
 
-  const handleRefreshImageCard = async (id, base64Image, description, title) => {
+  const handleRefreshImageCard = async (id, base64Images, base64Image, description, title) => {
     setRefreshingId(id);
     try {
+      const imgs = base64Images || (base64Image ? [base64Image] : []);
       const res = await fetch(`${API_BASE}/api/image-standards/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          base64Image,
+          base64Images: imgs,
           description: (description || '').trim()
         })
       });
@@ -395,7 +400,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                 </button>
 
                 <button
-                  onClick={() => handleRefreshImageCard(img.id, img.base64Image, img.description, img.title)}
+                  onClick={() => handleRefreshImageCard(img.id, img.base64Images, img.base64Image, img.description, img.title)}
                   disabled={refreshingId === img.id}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 hover:border-rose-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
                   title="AI 재분석 (새로고침)"
@@ -418,13 +423,17 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
             {/* 2-Column Comparison Layout (Left: Image, Right: AI Analysis & Metaphor) */}
             {!collapsedIds[img.id] && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start w-full animate-fade-in">
-                {/* Left Column: Image */}
-                <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
-                  <img
-                    src={img.base64Image}
-                    className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
-                    alt={img.title}
-                  />
+                {/* Left Column: Image(s) stacked vertically */}
+                <div className="flex flex-col gap-3 w-full">
+                  {(img.base64Images || [img.base64Image]).filter(Boolean).map((src, index) => (
+                    <div key={index} className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40 p-2 flex items-center justify-center max-h-[340px] w-full select-none">
+                      <img
+                        src={src}
+                        className="max-h-[320px] object-contain rounded-lg max-w-full hover:scale-[1.02] transition-transform duration-300"
+                        alt={`${img.title} - ${index + 1}`}
+                      />
+                    </div>
+                  ))}
                 </div>
 
                 {/* Right Column: AI Analysis */}
