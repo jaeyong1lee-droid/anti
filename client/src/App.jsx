@@ -2366,6 +2366,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
   }
 
   const { rows } = q.tableData;
+  const tableRef = React.useRef(null);
 
   const handleInputChange = (key, val) => {
     setTableAnswers(prev => ({
@@ -2379,7 +2380,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
 
       {/* 테이블 입력란 */}
       <div className="w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-        <table className="w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-[320px] sm:min-w-[600px]">
+        <table ref={tableRef} className="w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-[320px] sm:min-w-[600px]">
           <colgroup>
             <col style={{ width: '20%' }} />
             <col style={{ width: '80%' }} />
@@ -2416,6 +2417,16 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                         onChange={(e) => handleInputChange(`ROW_${rIdx}_ACRONYM`, e.target.value)}
                         placeholder="글자"
                         className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (tableRef.current) {
+                              const rowEl = e.target.closest('tr');
+                              const textarea = rowEl?.querySelector('textarea');
+                              if (textarea) textarea.focus();
+                            }
+                          }
+                        }}
                       />
                     )}
                   </td>
@@ -2451,6 +2462,17 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
                           e.target.blur();
+                          if (tableRef.current) {
+                            const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                            const curIdx = textareas.indexOf(e.target);
+                            if (curIdx !== -1) {
+                              if (curIdx === textareas.length - 1) {
+                                if (onSubmit) onSubmit();
+                              } else {
+                                textareas[curIdx + 1].focus();
+                              }
+                            }
+                          }
                         }
                       }}
                     />
