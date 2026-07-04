@@ -169,6 +169,20 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
   return html;
 }
 
+function isHeaderLine(line) {
+  const trimmed = line.trim();
+  if (trimmed.startsWith('#')) return true;
+  if (trimmed.startsWith('**') && trimmed.endsWith('**')) return true;
+  if (trimmed.startsWith('*') && trimmed.endsWith('*')) return true;
+  if (trimmed.length > 0 && trimmed.length < 40) {
+    const hasSentenceEnding = /[.!?다]$/.test(trimmed) || trimmed.includes('. ') || trimmed.includes(', ');
+    if (!hasSentenceEnding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Parses markdown tables from a given string and converts them into HTML tables.
  * Extremely robust against spacing variations in the separator line (e.g. |:---| or | : - - - |).
@@ -212,23 +226,35 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
             while (searchIdx >= 0) {
               const pLine = lines[searchIdx].trim();
               if (pLine && !pLine.includes('|') && !pLine.startsWith('```')) {
-                let candidate = pLine.replace(/^(#+\s*|\*+\s*|-\s*)/, '').replace(/\*+$/, '').trim();
-                
-                // If it contains a colon, check if the prefix is a good title candidate
-                if (candidate.includes(':') || candidate.includes('：')) {
-                  const colonIdx = candidate.indexOf(':') !== -1 ? candidate.indexOf(':') : candidate.indexOf('：');
-                  const prefix = candidate.substring(0, colonIdx).replace(/\*+/g, '').trim();
-                  if (prefix.length > 1 && prefix.length <= 100) {
-                    candidate = prefix;
+                if (isHeaderLine(pLine)) {
+                  let candidate = pLine.replace(/^(#+\s*|\*+\s*|-\s*)/, '').replace(/\*+$/, '').trim();
+                  
+                  // If it contains a colon, check if the prefix is a good title candidate
+                  if (candidate.includes(':') || candidate.includes('：')) {
+                    const colonIdx = candidate.indexOf(':') !== -1 ? candidate.indexOf(':') : candidate.indexOf('：');
+                    const prefix = candidate.substring(0, colonIdx).replace(/\*+/g, '').trim();
+                    if (prefix.length > 1 && prefix.length <= 100) {
+                      candidate = prefix;
+                    }
+                  }
+                  
+                  // Limit title length to 100 characters maximum to avoid long description lines
+                  if (candidate.length > 100) {
+                    candidate = candidate.substring(0, 100) + '...';
+                  }
+                  
+                  precedingTitle = candidate;
+                  
+                  // Nullify the consumed title line in processedLines so it is not rendered twice
+                  processedLines[searchIdx] = null;
+                  
+                  // Nullify any blank lines between the consumed title and the table to prevent gap/spacing issues
+                  for (let k = searchIdx + 1; k < i; k++) {
+                    if (processedLines[k] !== undefined && processedLines[k] !== null && processedLines[k].trim() === "") {
+                      processedLines[k] = null;
+                    }
                   }
                 }
-                
-                // Limit title length to 100 characters maximum to avoid long description lines
-                if (candidate.length > 100) {
-                  candidate = candidate.substring(0, 100) + '...';
-                }
-                
-                precedingTitle = candidate;
                 break;
               }
               searchIdx--;
@@ -246,5 +272,5 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
     i++;
   }
   
-  return processedLines.join('\n');
+  return processedLines.filter(line => line !== null).join('\n');
 }
