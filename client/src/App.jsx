@@ -12149,6 +12149,7 @@ export default function App() {
 
       showNotification(`[${parsedTitle}] 앞글자 암기법이 생성되었습니다!`, 'success');
       setAcronymPromptTopic('');
+      setShowAcronymPromptModal(false);
       setExportAddedTarget({ type: 'acronym', title: parsedTitle });
     } catch (err) {
       console.error('Failed to generate acronym:', err);
@@ -12221,6 +12222,7 @@ export default function App() {
 
       showNotification(`[${topic}] 개요가 생성되었습니다!`, 'success');
       setOverviewPromptTopic('');
+      setShowOverviewPromptModal(false);
       setExportAddedTarget({ type: 'overview', title: topic });
     } catch (err) {
       console.error('Failed to generate overview:', err);
@@ -20495,7 +20497,11 @@ ${itemsStr}
                 이동하기
               </button>
               <button
-                onClick={() => setExportAddedTarget(null)}
+                onClick={() => {
+                  setExportAddedTarget(null);
+                  setShowAcronymPromptModal(false);
+                  setShowOverviewPromptModal(false);
+                }}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs tracking-wide transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
               >
                 현재 화면 대기
