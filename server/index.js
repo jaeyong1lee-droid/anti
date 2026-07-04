@@ -2925,6 +2925,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
     const searchTarget = `${cleanTitle} ${cleanKeywords}`;
 
     const isCoreTopic = 
+      searchTarget.includes('활성도') || searchTarget.includes('activity') ||
       searchTarget.includes('이중층') || searchTarget.includes('double layer') || searchTarget.includes('전기이중층') || searchTarget.includes('ddl') ||
       searchTarget.includes('압밀') || searchTarget.includes('consolidation') || searchTarget.includes('침하') || searchTarget.includes('settlement') ||
       searchTarget.includes('sand mat') || searchTarget.includes('샌드매트') || searchTarget.includes('샌드 매트') || searchTarget.includes('sandmat') ||
@@ -2932,7 +2933,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
       searchTarget.includes('인발') || searchTarget.includes('인발시험') || searchTarget.includes('pullout') || searchTarget.includes('pull-out') || searchTarget.includes('락볼트 인발') || searchTarget.includes('인발 시험') ||
       searchTarget.includes('q 분류') || searchTarget.includes('q분류') || searchTarget.includes('q system') || searchTarget.includes('q-system') || searchTarget.includes('barton') || searchTarget.includes('바톤') ||
       searchTarget.includes('싱글쉘') || searchTarget.includes('single shell') || searchTarget.includes('single_shell') || searchTarget.includes('싱글 쉘') || searchTarget.includes('sst') || searchTarget.includes('더블쉘') ||
-      searchTarget.includes('소일내일') || searchTarget.includes('소일네일') || searchTarget.includes('soil nail') || searchTarget.includes('어스앵커') || searchTarget.includes('어스 앵커') || searchTarget.includes('earth anchor') || searchTarget.includes('네일') || searchTarget.includes('앵커') ||
+      searchTarget.includes('소일내일') || searchTarget.includes('소일네일') || searchTarget.includes('soil nail') || searchTarget.includes('어스앵커') || searchTarget.includes('어스 앵커') || searchTarget.includes('earth anchor') ||
       searchTarget.includes('프란틀') || searchTarget.includes('prandtl') ||
       searchTarget.includes('여굴') || searchTarget.includes('overbreak') || searchTarget.includes('제어발파') || searchTarget.includes('제어 발파') || searchTarget.includes('contour hole') || searchTarget.includes('외곽공') || searchTarget.includes('smooth blasting') || searchTarget.includes('스무드 블라스팅') || searchTarget.includes('스무드블라스팅') || searchTarget.includes('line drilling') || searchTarget.includes('라인 드릴링') || searchTarget.includes('presplitting') || searchTarget.includes('프리스플리팅') || searchTarget.includes('디커플링') || searchTarget.includes('decoupling') ||
       searchTarget.includes('사면안정') || searchTarget.includes('사면 안정') || searchTarget.includes('slope stability') || searchTarget.includes('slope') || searchTarget.includes('사면 붕괴') || searchTarget.includes('사면붕괴') || searchTarget.includes('원호파괴') || searchTarget.includes('평면파괴') || searchTarget.includes('쐐기파괴') || searchTarget.includes('전도파괴') || searchTarget.includes('절편법') || searchTarget.includes('fellenius') || searchTarget.includes('펠레니우스') || searchTarget.includes('bishop') || searchTarget.includes('비숍') ||
@@ -3257,6 +3258,10 @@ ${adjustmentsPrompt}
 [첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
+[🚨 예시 모방 절대 금지 규칙 — 극도로 중요!]:
+- 절대로 프롬프트에 예시로 제시된 '소일네일링'이나 '어스앵커' 등의 비교 대상을 그대로 복제하여 출제하지 마십시오.
+- 만약 현재 토픽이 소일네일링 챕터가 아니라면, 반드시 현재 **[토픽 제목]** 범위 내에 머무르는 적절한 비교 대상(예: 점토의 이중층인 경우 '면모 구조' vs '이산 구조', 삼축압축인 경우 '배수 시험' vs '비배수 시험' 등)을 스스로 선택하여 표채우기를 설계하십시오.
+
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
 - 만약 첨부파일 내용이 좁거나 단편적이더라도, 해당 **[토픽 제목]**이 다루는 전반적인 표준 학술 이론 및 기술사 시험 범위의 표준 개념(예: 기본 원리, 핵심 유도 공식, 시험 시 가정사항, 측정값의 공학적 의미 및 해석 단계, 장단점, 실무 유의사항 및 한계 등)에 대해 AI의 풍부한 공학 지식을 활용하여 문제를 적극적이고 넓게 출제하십시오. (예: 수압파쇄법 토픽이라면 보고서에 없더라도 수압파쇄법의 기본 가정사항, 단계별 압력 해석 공식인 $\sigma_h = P_s$, $\sigma_H = 3P_s - P_b + T$ 등의 핵심 공식과 그 의미를 당연히 출제 범위에 포함해야 합니다.)
 - 단, 다른 대주제 토픽(예: 가설 흙막이/Chang, 응력경로, 사면안정, 압밀 등)의 개념이나 수식으로 완전히 넘어가 출제하는 것은 여전히 **절대 금지**이며, 모든 질문/정답/해설은 오직 현재 **[토픽 제목]** 범위 내에 머물러야 합니다.
@@ -3296,7 +3301,7 @@ ${adjustmentsPrompt}
      * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
 
    [3번~11번 문제 중 3개] 주관식 (표채우기):
-   - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법(예: 소일네일링 vs 어스앵커, 얕은기초 vs 깊은기초 등)의 특징을 대조하는 유기적 표(Table) 질문 출제.
+   - 목적: 토픽에서 기술사로서 반드시 숙지하고 있어야 하는 가장 핵심적이고 중요한 공학 개념, 메커니즘, 혹은 서로 비교/대비되는 두 공법(예: 공법 A vs 공법 B, 이론 A vs 이론 B 등)의 특징을 대조하는 유기적 표(Table) 질문 출제.
      - 구성 형태: 열(Column)에 비교 대상들을 배치하고, 행(Row)의 첫 번째 열에는 구분/평가 기준(구분 항목)을 둡니다. 이때, 구분 항목은 단순히 '지반 보강 특성', '보강 효과', '실무 적용', '시험 특징' 등과 같이 너무 짧고 모호하게 작성하지 마십시오. 사용자가 빈칸에 채워 넣을 답안의 방향(예: 보강 효과 및 두께 영향인지, 한계점 및 단점인지, 실무 활용처인지, 시공 시 유의사항인지 등)을 명확하게 파악할 수 있도록 **구체적이고 명확한 평가 기준명으로 서술형태의 구체적인 명칭을 적용**하십시오.
       - 🚨 **[구분 항목(행 제목) 명확화 및 행동 유도 원칙 - 극도로 중요!]**: 구분 항목(행 제목)은 **그것만 읽어도 ① 이 표가 무슨 주제/토픽에 대한 비교인지, ② 이 행에 어떤 종류의 구체적인 답(조치 사항, 원리, 방법 등)을 써야 하는지 100% 확신할 수 있어야** 합니다. **글자수는 반드시 최소 15자에서 최대 45자 이내**로 구체적이고 길게 작성하십시오. 단순히 '시험 결과의 신뢰성 확보' 같이 추상적인 상태를 명사로만 적지 마십시오. 사용자가 **'신뢰성을 확보하기 위해 구체적으로 무엇을 해야 하는지(현장 관리 대책/방법/제어 조건)'**를 작성할 수 있도록, **'신뢰성 높은 시험 결과를 획득하기 위해 현장에서 통제 및 관리해야 하는 구체적인 방법/조치 사항'** 또는 **'측정 오차를 최소화하고 데이터 신뢰성을 확보하기 위해 확보해야 하는 핵심 시공 조건'**과 같이 **행동 및 구체적 방법론을 유도하는 설명적인 구문**으로 작성하십시오.
         🚫 **절대 금지하는 구분항목 유형**:
@@ -3305,7 +3310,7 @@ ${adjustmentsPrompt}
         ✅ **올바른 구분항목 작성법**: 반드시 **해당 비교 대상(예: 소일네일링 vs 어스앵커)의 고유한 공학적 특성·거동·현상을 직접 언급**하여, 이 구분항목만 읽어도 "아, 이건 OO과 XX를 비교하는 표에서 △△ 측면을 묻는 행이구나"라고 즉시 파악할 수 있도록 작성하십시오.
         ❌ 나쁜 예(범용적·추상적, 무슨 문제인지 알 수 없음): '지지 메커니즘', '보강 효과', '시험 특징', '실무 적용 특성', '시험 결과의 신뢰성 확보'
          ✅ 좋은 예(토픽 특화 및 행동 유도, 해당 문제 내용이 명확히 드러남):
-           - 소일네일링 vs 어스앵커 비교 시: '네일/앵커체 인장력 전달 및 선행 긴장 도입 여부', '굴착면 수동저항 vs 정착부 능동긴장의 지반보강 원리 차이', '네일/앵커 설계 시 인발저항력 산정 기준 및 안전율 적용 차이'
+           - 소일네일링 vs 어스앵커 비교 시: '공법 A/B 인장력 전달 및 선행 긴장 도입 여부', '굴착면 수동저항 vs 정착부 능동긴장의 지반보강 원리 차이', '설계 시 인발저항력 산정 기준 및 안전율 적용 차이'
            - CU vs CD 삼축시험 비교 시: '전단 중 간극수압 배수 허용 여부와 유효응력 경로 차이', '시험 소요시간 및 포화점토 현장 재현성 차이', '파괴 시 측정되는 강도정수(Cu vs C',φ') 종류 차이'
            - 수압파쇄시험 vs 응력해방법 비교 시: '측정 데이터의 정확성과 신뢰성을 확보하기 위해 현장에서 통제/확보해야 할 주요 조치 사항'
         🔍 **자기 검증 필수**: 구분 항목 작성 후 반드시 자문하십시오—**"이 구분항목을 비교 대상 컬럼(헤더) 없이 단독으로 읽었을 때, 무슨 토픽/주제에 대한 비교표인지 추측할 수 있는가?"** → 추측할 수 없다면 구분항목이 너무 범용적인 것이므로, 해당 토픽의 고유 특성을 반영하여 더 구체적으로 수정하십시오.
@@ -3322,11 +3327,11 @@ ${adjustmentsPrompt}
       3. 질문 지문(question) 내의 빈칸 표시 (A), (B), (C), (D)... 개수는 실제 사용된 입력 토큰의 총 개수와 정확히 일치해야 합니다. (예: 빈칸이 3개 사용된 경우 (A), (B), (C)까지만 지칭).
       4. 만약 비교 대상 열이 비어 있어 아무것도 입력할 수 없거나 비교 대상이 단 하나뿐이라면 2개 열(구분, 비교대상1)만으로 표를 구성하고, 비교 대상이 여러 개일 때도 필수적인 빈칸만 부분적으로 토큰화하십시오.
    - "type" 값: 반드시 "주관식 (표채우기)"
-    - "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 소일네일링과 어스앵커 공법의 주요 공학적 특징 비교표 빈칸 (A), (B), (C), (D)에 들어갈 내용을 기술하십시오."). (⚠️ [지문 작성 수칙 - 매우 중요!]): "question" 본문에는 절대로 "INPUT_1", "INPUT_2" 또는 "[INPUT_1]" 같은 시스템 토큰명 자체를 노출하여 적지 마십시오. 대신 사용자가 직관적으로 알아볼 수 있도록 순서대로 "(A)", "(B)", "(C)", "(D)" 등으로 지칭하여 지문을 구성하십시오. 만약 비교 대상이 3개 이상이거나 행이 늘어나 입력창이 5개 이상인 경우에는 순서대로 "(A)", "(B)", "(C)", "(D)", "(E)", "(F)" 등 늘어난 개수만큼 명시하여 지문을 구성하십시오.
+    - "question": 표의 빈칸에 알맞은 핵심 답안을 서술하라는 질문 (예: "다음 공법 A와 공법 B의 주요 공학적 특징 비교표 빈칸 (A), (B), (C), (D)에 들어갈 내용을 기술하십시오. [토픽 범위에 적합한 공법명들로 반드시 변경하여 구성]"). (⚠️ [지문 작성 수칙 - 매우 중요!]): "question" 본문에는 절대로 "INPUT_1", "INPUT_2" 또는 "[INPUT_1]" 같은 시스템 토큰명 자체를 노출하여 적지 마십시오. 대신 사용자가 직관적으로 알아볼 수 있도록 순서대로 "(A)", "(B)", "(C)", "(D)" 등으로 지칭하여 지문을 구성하십시오. 만약 비교 대상이 3개 이상이거나 행이 늘어나 입력창이 5개 이상인 경우에는 순서대로 "(A)", "(B)", "(C)", "(D)", "(E)", "(F)" 등 늘어난 개수만큼 명시하여 지문을 구성하십시오.
    - "tableData": 표의 데이터를 구조화한 객체. 반드시 다음 키를 포함하는 오브젝트여야 합니다:
-     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["구분 항목", "소일네일링", "어스앵커"])
-     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 첫 번째 '구분 항목' 열을 제외하고, 출제하고자 하는 핵심 비교 포인트만 순차적으로 '[INPUT_1]', '[INPUT_2]' 등의 입력 토큰으로 비워두고, 나머지 셀들은 일반 텍스트 설명문구(정답 및 힌트가 되는 모범 서술형 문장)로 채워 자연스러운 표의 문맥을 보존하십시오. ❌ 모든 비교 셀을 기계적으로 무조건 전부 비워두는 것을 엄격히 금지합니다. (예: rows 구조: [["지지 매커니즘", "[INPUT_1]", "[INPUT_2]"], ["설계 핵심 변수", "[INPUT_3]", "인장력을 도입하여 변위를 적극적 제어"]])
-   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "인장 및 전단력에 대한 수동적 저항", "INPUT_2": "정착지반 마찰저항 및 인장력 선도입", "INPUT_3": "선행 긴장력을 도입하지 않음", "INPUT_4": "인장력을 도입하여 변위를 적극적 제어"}). 각 모범 답안은 핵심 메커니즘과 지반의 반응 인과관계를 상세히 서술하는 **최소 40자에서 최대 80자 내외의 명료한 설명식 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
+     * "headers": 표의 열 제목들을 담은 문자열 배열 (예: ["구분 항목", "공법 A", "공법 B"])
+     * "rows": 각 행의 셀 데이터들을 담은 이중 배열. 첫 번째 '구분 항목' 열을 제외하고, 출제하고자 하는 핵심 비교 포인트만 순차적으로 '[INPUT_1]', '[INPUT_2]' 등의 입력 토큰으로 비워두고, 나머지 셀들은 일반 텍스트 설명문구(정답 및 힌트가 되는 모범 서술형 문장)로 채워 자연스러운 표의 문맥을 보존하십시오. ❌ 모든 비교 셀을 기계적으로 무조건 전부 비워두는 것을 엄격히 금지합니다. (예: rows 구조: [["핵심 매커니즘", "[INPUT_1]", "[INPUT_2]"], ["설계 핵심 변수", "[INPUT_3]", "(토픽 범위에 해당하는 비교 설명 문장)"]])
+   - "answers": 각 빈칸 토큰에 해당하는 정확한 모범 답안 객체 (예: {"INPUT_1": "비교 대상의 구체적인 메커니즘 서술", "INPUT_2": "다른 비교 대상의 상반되는 메커니즘 서술", "INPUT_3": "상태 변화에 따른 지반 반응 특징 서술"}). 각 모범 답안은 핵심 메커니즘과 지반의 반응 인과관계를 상세히 서술하는 **최소 40자에서 최대 80자 내외의 명료한 설명식 서술형 문구**여야 합니다. 단순 용어 명칭은 제외하십시오.
      🚨 **[모범 답안-구분항목 범주 일치 원칙 - 극도로 중요!]**: 각 INPUT의 모범 답안은 반드시 **해당 행의 구분 항목(행 제목)이 요구하는 답변 범주**에 정확히 부합하는 내용이어야 합니다. 예를 들어 구분 항목이 '실무 활용처 및 적용 사례'이면 모범 답안도 '어디에 쓰이는지(활용처)'를 기술해야 하고, '시공 시 유의사항 및 한계'이면 '주의해야 할 점(유의사항)'을 기술해야 합니다. 구분 항목이 묻는 범주와 전혀 다른 범주의 답(예: 유의점을 물었는데 활용처를 답안으로 작성)은 **출제 오류**이므로 절대 발생시키지 마십시오.
    - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
 

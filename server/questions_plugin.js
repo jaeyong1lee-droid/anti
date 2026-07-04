@@ -2972,7 +2972,10 @@ export function getPluginQuestionsByTopic(title, keywords) {
   if (match('싱글쉘') || match('single shell') || match('single_shell') || match('싱글 쉘') || match('sst') || match('더블쉘')) {
     return questionsPlugin.single_shell;
   }
-  if (match('소일내일') || match('소일네일') || match('soil nail') || match('어스앵커') || match('어스 앵커') || match('earth anchor') || match('네일') || match('앵커')) {
+  if (match('활성도') || match('activity of clay') || match('clay activity') || match('activity')) {
+    return questionsPlugin.double_layer;
+  }
+  if (match('소일내일') || match('소일네일') || match('soil nail') || match('어스앵커') || match('어스 앵커') || match('earth anchor')) {
     return questionsPlugin.soil_nailing_earth_anchor;
   }
   if (match('프란틀') || match('prandtl') || match('지지력') || match('bearing') || match('확대기초') || match('얕은기초') || match('테르자기') || match('terzaghi') || match('흙의 거동') || match('기초 아래 흙')) {
