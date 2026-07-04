@@ -1555,7 +1555,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     });
 
     // Auto-convert exponents and ranges, e.g. "10^-2~10^-3" -> "$10^{-2} \sim 10^{-3}$"
-    renderText = renderText.replace(/(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?/g, (m, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+    renderText = renderText.replace(/(?<!\$)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\$)/g, (m, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
       const b1 = b1_1 || b1_2;
       const e1 = e1_1 || e1_2;
       const b2 = b2_1 || b2_2;
@@ -1592,8 +1592,6 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       else if (op === '<') latexOp = '<';
       return `$${variable} ${latexOp} ${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
     });
-    // Clean up double dollar signs
-    renderText = renderText.replace(/\$\$/g, '$');
   }
   if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
