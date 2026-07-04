@@ -3020,7 +3020,11 @@ export default function App() {
         if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
       }
     } catch (e) {}
-    return { x: 100, y: 100 };
+    const width = Math.min(window.innerWidth - 32, 768);
+    const height = Math.min(window.innerHeight - 32, window.innerHeight * 0.85);
+    const x = Math.max(16, (window.innerWidth - width) / 2);
+    const y = Math.max(16, (window.innerHeight - height) / 2);
+    return { x, y };
   });
 
   const latestAnswerPopupPosRef = useRef({ x: 100, y: 100 });
@@ -3030,16 +3034,6 @@ export default function App() {
     document.documentElement.style.setProperty('--answer-popup-y', `${answerPopupPos.y}px`);
     latestAnswerPopupPosRef.current = answerPopupPos;
   }, [answerPopupPos]);
-
-  useEffect(() => {
-    if (activeAnswerPopupData) {
-      const width = Math.min(window.innerWidth - 32, 768);
-      const height = Math.min(window.innerHeight - 32, window.innerHeight * 0.85);
-      const x = Math.max(16, (window.innerWidth - width) / 2);
-      const y = Math.max(16, (window.innerHeight - height) / 2);
-      setAnswerPopupPos({ x, y });
-    }
-  }, [activeAnswerPopupData]);
 
   const handleAnswerPopupMoveStart = (e) => {
     if (e.target.closest('button, svg, path, input, textarea')) return;
