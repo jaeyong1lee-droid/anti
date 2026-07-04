@@ -13307,6 +13307,62 @@ export default function App() {
     await handleSaveFormulaAcronyms(updated, false);
   };
 
+  const handleAddAcronymKeyword = async (acronymId, keyword, title, currentContent) => {
+    const acronymIdx = formulaAcronyms.findIndex(item => item.id === acronymId);
+    if (acronymIdx === -1) return;
+
+    showNotification(`[${keyword}] 키워드 추가 및 재분석을 시작했습니다.`, 'info');
+
+    // Set isLoading state on the card to show loading pulse/spinner
+    const updated = [...formulaAcronyms];
+    updated[acronymIdx] = { ...updated[acronymIdx], isLoading: true };
+    setFormulaAcronyms(updated);
+
+    try {
+      const prompt = `[키워드추가]\n토픽: ${title}\n기존 두문자표 내용:\n${currentContent}\n\n추가할 키워드: ${keyword}`;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: [],
+          message: prompt,
+          image: null,
+          acronymMode: true
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
+
+      const newContent = data.text.trim();
+
+      const freshAcronyms = [...formulaAcronyms];
+      const freshIdx = freshAcronyms.findIndex(item => item.id === acronymId);
+      if (freshIdx !== -1) {
+        freshAcronyms[freshIdx] = {
+          ...freshAcronyms[freshIdx],
+          content: newContent,
+          isLoading: false
+        };
+        setFormulaAcronyms(freshAcronyms);
+        await handleSaveFormulaAcronyms(freshAcronyms, false);
+        showNotification('키워드가 추가되었고, 새로운 두문자 조합과 연상문장이 적용되었습니다.', 'success');
+      }
+    } catch (err) {
+      showNotification(`키워드 추가 실패: ${err.message}`, 'error');
+      const freshAcronyms = [...formulaAcronyms];
+      const freshIdx = freshAcronyms.findIndex(item => item.id === acronymId);
+      if (freshIdx !== -1) {
+        freshAcronyms[freshIdx] = {
+          ...freshAcronyms[freshIdx],
+          isLoading: false
+        };
+        setFormulaAcronyms(freshAcronyms);
+      }
+    }
+  };
+
   const handleDeleteAcronymCard = async (acronymId, title) => {
     if (window.confirm(`[${title}] 앞글자를 필수암기 리스트에서 삭제하시겠습니까?`)) {
       const updated = formulaAcronyms.filter(x => x.id !== acronymId);
@@ -23369,6 +23425,21 @@ ${itemsStr}
                                             onChange={(e) => handleUpdateAcronymSentence(ac.id, e.target.value)}
                                             placeholder="예: 동해를 '차단'하기 위해 '배치'했다"
                                             className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0"
+                                          />
+                                        </div>
+                                        {/* 추가 키워드 입력창 */}
+                                        <div className="flex items-center gap-1.5 shrink-0 bg-slate-950/45 border border-slate-800/80 rounded-xl px-3 py-1.5 focus-within:border-emerald-500/40 transition-all w-full md:w-56">
+                                          <span className="text-[11px] font-black text-emerald-400 shrink-0 select-none">➕ 키워드 추가:</span>
+                                          <input
+                                            type="text"
+                                            placeholder="키워드 입력 후 Enter"
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' && e.target.value.trim()) {
+                                                handleAddAcronymKeyword(ac.id, e.target.value.trim(), ac.title, ac.content);
+                                                e.target.value = '';
+                                              }
+                                            }}
+                                            className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0 font-bold"
                                           />
                                         </div>
                                       </div>
