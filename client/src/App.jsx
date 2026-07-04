@@ -1177,7 +1177,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   });
 
   // Protect $ ... $ (Allowing newlines inside inline math blocks so they don't break during split)
-  tempText = tempText.replace(/\$([^\$]+?)\$/g, (match, math) => {
+  tempText = tempText.replace(/\$([^\$\n<>]+?)\$/g, (match, math) => {
     const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
     if (!isReal) {
       return match;
@@ -1880,7 +1880,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
       // Render inline math $ ... $
-      htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
+      htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
         const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
         if (!isReal) {
           return m;
@@ -1961,7 +1961,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           } else {
             let htmlContent = part.content;
             try {
-              htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
+              htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
                   const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
@@ -2015,12 +2015,9 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
           // 비인라인 일반 텍스트 및 인라인 수식
           let htmlContent = part.content;
           try {
-            htmlContent = htmlContent.replace(/\$([^\$]+?)\$/gs, (m, math) => {
-              if (/[\uAC00-\uD7A3]/.test(math)) {
-                const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
-                if (!isRealFormula) {
-                  return m;
-                }
+            htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
+                return m;
               }
               return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
             });
