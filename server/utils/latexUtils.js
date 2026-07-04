@@ -398,16 +398,18 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
-  // [Self-Healing] Clean up '...' used on its own line as code block boundary
-  processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
+  // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
+  const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
+  const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
+  processed = processed.replace(spaceRegex, '\\$1$2');
 
-  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v)
+  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v, \sigma'v -> \sigma'_v)
   const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
-  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})([a-zA-Z0-9])\\b`, 'gi');
-  processed = processed.replace(greekSubscriptRegex, '\\$1_$2');
+  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})('?)([a-zA-Z0-9])\\b`, 'gi');
+  processed = processed.replace(greekSubscriptRegex, '\\$1$2_$3');
 
-  // [Self-Healing] Remove space between backslash and LaTeX commands
-  processed = processed.replace(/\\\s+(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
+  // [Self-Healing] Remove space between backslash and general math commands
+  processed = processed.replace(/\\\s+(Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
   // [Self-Healing] Fix space-corrupted or missing-space Delta variables (e.g. \Deltau, \ Deltau, \Deltasigma)
   const greekNames = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega';
