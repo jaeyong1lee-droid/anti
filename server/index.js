@@ -2584,8 +2584,14 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     }
   }
 
-  const shuffledRest = shuffleArray([...finalSubjsTable, ...finalMcs]);
-  return [qIntro, qFormula, ...shuffledRest, ...finalSubjsShort];
+  const middleGroup = [
+    ...finalSubjsTable,
+    ...finalMcs,
+    finalSubjsShort[0],
+    finalSubjsShort[1]
+  ];
+  const shuffledRest = shuffleArray(middleGroup);
+  return [qIntro, qFormula, ...shuffledRest, finalSubjsShort[2], finalSubjsShort[3]];
 }
 
 function generateCalculationFallbackQuestions(title, keywords) {
