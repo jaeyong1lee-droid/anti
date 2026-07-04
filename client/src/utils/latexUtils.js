@@ -398,16 +398,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
-  // Protect code blocks (``` ... ```) from intermediate healing modifications
-  const codeBlocks = [];
-  let codeBlockIndex = 0;
-  processed = processed.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
-    const placeholder = `___HEAL_CODE_BLOCK_${codeBlockIndex}___`;
-    codeBlocks.push({ placeholder, content: match });
-    codeBlockIndex++;
-    return placeholder;
-  });
-
   // [Self-Healing] Clean up '...' used on its own line as code block boundary
   processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
 
@@ -912,7 +902,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
 
   // 한국어 조사 결합 어미 공백 규격 조율
   result = result.replace(/(\$[^\$]+\$)(은|는|이|가|을|를|의|로|으로|에|에서|와|과|도|만|일때|입니다|라하면|값은)/g, '$1 $2');
-  result = result.replace(/[ \t]+/g, ' ').trim();
+  result = result.trim();
 
   // 2. Restore [INPUT_n] placeholders (remove accidental math formatting)
   result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
@@ -920,13 +910,6 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
   }
-
-  // Restore code blocks
-  codeBlocks.forEach(block => {
-    while (result.includes(block.placeholder)) {
-      result = result.replace(block.placeholder, () => block.content);
-    }
-  });
 
   return result;
 }
