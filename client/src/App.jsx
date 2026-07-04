@@ -4854,6 +4854,8 @@ export default function App() {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
+    let rafId = null;
+
     const handleMouseMove = (e) => {
       // Prevent browser default panning/scrolling while dragging to resize
       if (e.cancelable) {
@@ -4865,11 +4867,17 @@ export default function App() {
       const minWidth = 250;
       const maxWidth = window.innerWidth * 0.7;
       const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
-      document.documentElement.style.setProperty('--right-sidebar-width', `${clampedWidth}px`);
+      
       latestRightSidebarWidthRef.current = clampedWidth;
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--right-sidebar-width', `${clampedWidth}px`);
+      });
     };
 
     const handleMouseUp = () => {
+      if (rafId) cancelAnimationFrame(rafId);
       setIsResizing(false);
       if (latestRightSidebarWidthRef.current !== null) {
         setRightSidebarWidth(latestRightSidebarWidthRef.current);
@@ -4882,6 +4890,7 @@ export default function App() {
     window.addEventListener('touchend', handleMouseUp);
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleMouseMove);
@@ -6520,6 +6529,8 @@ export default function App() {
     const startPopupX = latestDragPopupCoordsRef.current.x;
     const startPopupY = latestDragPopupCoordsRef.current.y;
 
+    let dragPopupRafId = null;
+
     const handleDragMove = (moveEvent) => {
       if (moveEvent.cancelable) moveEvent.preventDefault();
       const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
@@ -6531,12 +6542,17 @@ export default function App() {
       const newX = Math.max(16, Math.min(window.innerWidth - 340, startPopupX + dx));
       const newY = Math.max(16, Math.min(window.innerHeight - 200, startPopupY + dy));
 
-      document.documentElement.style.setProperty('--drag-popup-x', `${newX}px`);
-      document.documentElement.style.setProperty('--drag-popup-y', `${newY}px`);
       latestDragPopupCoordsRef.current = { x: newX, y: newY };
+
+      if (dragPopupRafId) cancelAnimationFrame(dragPopupRafId);
+      dragPopupRafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--drag-popup-x', `${newX}px`);
+        document.documentElement.style.setProperty('--drag-popup-y', `${newY}px`);
+      });
     };
 
     const handleDragEnd = () => {
+      if (dragPopupRafId) cancelAnimationFrame(dragPopupRafId);
       isDraggingPopupRef.current = false;
       setSelectionPopup(prev => ({
         ...prev,
@@ -10937,6 +10953,8 @@ export default function App() {
     const startX = clientX;
     const startY = clientY;
 
+    let realTimeResizeRafId = null;
+
     const handleResizeMove = (moveEvent) => {
       const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -10947,12 +10965,17 @@ export default function App() {
       const newWidth = Math.max(320, Math.min(window.innerWidth - 32, startWidth + dx));
       const newHeight = Math.max(400, Math.min(window.innerHeight - 32, startHeight + dy));
 
-      document.documentElement.style.setProperty('--realtime-tutor-w', `${newWidth}px`);
-      document.documentElement.style.setProperty('--realtime-tutor-h', `${newHeight}px`);
       latestRealTimeTutorSizeRef.current = { width: newWidth, height: newHeight };
+
+      if (realTimeResizeRafId) cancelAnimationFrame(realTimeResizeRafId);
+      realTimeResizeRafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--realtime-tutor-w', `${newWidth}px`);
+        document.documentElement.style.setProperty('--realtime-tutor-h', `${newHeight}px`);
+      });
     };
 
     const handleResizeEnd = () => {
+      if (realTimeResizeRafId) cancelAnimationFrame(realTimeResizeRafId);
       const finalSize = latestRealTimeTutorSizeRef.current;
       setRealTimeTutorSize(finalSize);
       localStorage.setItem('anti_realtime_tutor_size', JSON.stringify(finalSize));
@@ -10980,6 +11003,8 @@ export default function App() {
     const startX = clientX;
     const startY = clientY;
 
+    let realTimeMoveRafId = null;
+
     const handleMove = (moveEvent) => {
       const currentX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
       const currentY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -10991,12 +11016,17 @@ export default function App() {
       const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startXPos + dx));
       const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startYPos + dy));
 
-      document.documentElement.style.setProperty('--realtime-tutor-x', `${newX}px`);
-      document.documentElement.style.setProperty('--realtime-tutor-y', `${newY}px`);
       latestRealTimeTutorPosRef.current = { x: newX, y: newY };
+
+      if (realTimeMoveRafId) cancelAnimationFrame(realTimeMoveRafId);
+      realTimeMoveRafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--realtime-tutor-x', `${newX}px`);
+        document.documentElement.style.setProperty('--realtime-tutor-y', `${newY}px`);
+      });
     };
 
     const handleMoveEnd = () => {
+      if (realTimeMoveRafId) cancelAnimationFrame(realTimeMoveRafId);
       const finalPos = latestRealTimeTutorPosRef.current;
       setRealTimeTutorPos(finalPos);
       localStorage.setItem('anti_realtime_tutor_pos', JSON.stringify(finalPos));
