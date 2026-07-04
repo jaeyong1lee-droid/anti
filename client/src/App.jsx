@@ -1519,6 +1519,31 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       const num = parseInt(p1, 10);
       return String.fromCharCode(64 + num);
     });
+
+    // Auto-convert exponents and ranges, e.g. "10^-2~10^-3" -> "$10^{-2} \sim 10^{-3}$"
+    renderText = renderText.replace(/(\d+)\^{?([+-]?\d+)}?\s*~\s*(\d+)\^{?([+-]?\d+)}?/g, (m, b1, e1, b2, e2) => {
+      return `$${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
+    });
+    // Auto-convert single exponent, e.g. "10^-2" -> "$10^{-2}$"
+    renderText = renderText.replace(/(?<!\$)(?<!\d)(\d+)\^{?([+-]?\d+)}?(?!\d)(?!\$)/g, (m, base, exp) => {
+      return `$${base}^{${exp}}$`;
+    });
+    // Auto-convert comparison operators with variable, e.g. "k >= 10^-2" -> "$k \ge 10^{-2}$"
+    renderText = renderText.replace(/(?<!\$)\b(k)\b\s*(>=|<=|\\ge|\\le|\\approx)\s*\$?(\d+)\^{?([+-]?\d+)}?\$?/g, (m, variable, op, base, exp) => {
+      let latexOp = op;
+      if (op === '>=') latexOp = '\\ge';
+      else if (op === '<=') latexOp = '\\le';
+      return `$${variable} ${latexOp} ${base}^{${exp}}$`;
+    });
+    // Auto-convert comparison operators with exponent range
+    renderText = renderText.replace(/(?<!\$)\b(k)\b\s*(>=|<=|\\ge|\\le|\\approx)\s*\$?(\d+)\^{?([+-]?\d+)}?\$?\s*\\sim\s*\$?(\d+)\^{?([+-]?\d+)}?\$?/g, (m, variable, op, b1, e1, b2, e2) => {
+      let latexOp = op;
+      if (op === '>=') latexOp = '\\ge';
+      else if (op === '<=') latexOp = '\\le';
+      return `$${variable} ${latexOp} ${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
+    });
+    // Clean up double dollar signs
+    renderText = renderText.replace(/\$\$/g, '$');
   }
   if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
     try {
@@ -23130,7 +23155,7 @@ ${itemsStr}
                       placeholder="공식 제목 검색..."
                       value={formulaSearchQuery}
                       onChange={(e) => setFormulaSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
+                      className="w-full pl-9 pr-8 py-2 bg-slateCustom-900/60 hover:bg-slateCustom-900 border border-slate-700/50 focus:border-rose-500/50 text-white placeholder-slate-500 text-xs rounded-xl focus:outline-none transition-all duration-200"
                     />
                     {formulaSearchQuery && (
                       <button
@@ -23717,7 +23742,7 @@ ${itemsStr}
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in relative min-h-[150px]">
+                                  <div className="table-quiz-container overflow-x-auto rounded-xl border border-white/20 bg-slate-950/40 p-0 select-text animate-fade-in relative min-h-[150px]">
                                     {tableRegeneratingIds[t.id] && (
                                       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
                                         <RefreshCw className="animate-spin text-emerald-450" size={28} />
@@ -23729,13 +23754,13 @@ ${itemsStr}
                                       return (
                                         <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
                                           <thead>
-                                            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+                                            <tr className="bg-slate-900/80 text-slate-355 border-b border-white/20">
                                               {parsed.headers.map((h, hIdx) => {
                                                 const isEditing = activeEditCell && activeEditCell.tableId === t.id && activeEditCell.type === 'header' && activeEditCell.colIdx === hIdx;
                                                 return (
                                                   <th 
                                                     key={hIdx} 
-                                                    className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[90px]"
+                                                    className={`p-1.5 border-r border-white/20 last:border-r-0 align-middle cursor-pointer min-w-[90px] ${(hIdx > 0 && (!h || !h.trim())) ? 'bg-white/[0.05]' : ''}`}
                                                     onClick={() => {
                                                       if (hIdx === 0) return;
                                                       if (!isEditing) {
@@ -23857,13 +23882,13 @@ ${itemsStr}
                                           </thead>
                                           <tbody>
                                             {parsed.rows.map((row, rIdx) => (
-                                              <tr key={rIdx} className="border-b border-slate-800/80 last:border-b-0 hover:bg-slate-900/10 transition-colors">
+                                              <tr key={rIdx} className="border-b border-white/20 last:border-b-0 hover:bg-slate-900/10 transition-colors">
                                                 {row.map((cell, cIdx) => {
                                                   const isEditing = activeEditCell && activeEditCell.tableId === t.id && activeEditCell.type === 'cell' && activeEditCell.rIdx === rIdx && activeEditCell.colIdx === cIdx;
                                                   return (
                                                     <td 
                                                       key={cIdx} 
-                                                      className="p-1 border-r border-slate-800/60 last:border-r-0 align-middle cursor-pointer min-w-[100px]"
+                                                      className={`p-1 border-r border-white/20 last:border-r-0 align-middle cursor-pointer min-w-[100px] ${(!cell || !cell.trim()) ? 'bg-white/[0.05]' : ''}`}
                                                       onClick={() => {
                                                         if (!isEditing) {
                                                           setActiveEditCell({ tableId: t.id, type: 'cell', rIdx, colIdx: cIdx });
