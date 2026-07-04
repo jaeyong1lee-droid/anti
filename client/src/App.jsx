@@ -21168,7 +21168,7 @@ ${itemsStr}
 
       {/* 내보내기 완료 및 이동 확인 모달 (Export Added Modal) */}
       {exportAddedTarget && (
-        <div className="fixed inset-0 z-[200100] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
+        <div className="fixed inset-0 z-[200200] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
           <div className="w-full max-w-[340px] bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
@@ -26950,7 +26950,7 @@ ${itemsStr}
 
       {/* Table Export Confirmation Modal */}
       {tableConfirmTarget && (
-        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
+        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[200150] flex items-center justify-center p-4 animate-fade-in select-none">
           <div className="bg-slateCustom-900 border border-white/20 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center gap-3 text-rose-400">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
@@ -27010,7 +27010,7 @@ ${itemsStr}
 
       {/* Acronym Export Confirmation Modal */}
       {acronymConfirmTarget && (
-        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
+        <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[200150] flex items-center justify-center p-4 animate-fade-in select-none">
           <div className="bg-slateCustom-900 border border-white/20 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center gap-3 text-emerald-400">
               <Type size={24} />
