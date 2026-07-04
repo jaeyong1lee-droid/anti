@@ -11340,6 +11340,83 @@ export default function App() {
     setRealTimeAttachedImage(null);
   };
 
+  const handleRealTimePasteImage = (e) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setRealTimeAttachedImage({
+              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type,
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/') || item.kind === 'file') {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setRealTimeAttachedImage({
+              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
+              mimeType: file.type || 'image/png',
+              data: base64Data
+            });
+            showNotification('클립보드 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
+  const handleRealTimeDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleRealTimeDrop = (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1];
+            setRealTimeAttachedImage({
+              name: file.name,
+              mimeType: file.type,
+              data: base64Data
+            });
+            showNotification('드롭한 이미지가 첨부되었습니다!');
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
+    }
+  };
+
   const handleSendRealTimeMessage = async (e, customMessage, overrideAcronymMode = false) => {
     if (e) e.preventDefault();
     const userMessage = (typeof customMessage === 'string' ? customMessage : realTimeTutorInput).trim();
@@ -26452,6 +26529,8 @@ ${itemsStr}
       {isRealTimeTutorOpen && (
         <div
           id="realtime-ai-tutor"
+          onDragOver={handleRealTimeDragOver}
+          onDrop={handleRealTimeDrop}
           style={(!isDesktop && !isMobileLandscape) ? {
             position: 'fixed',
             left: 0,
@@ -26633,6 +26712,7 @@ ${itemsStr}
                 type="text"
                 value={realTimeTutorInput}
                 onChange={(e) => setRealTimeTutorInput(e.target.value)}
+                onPaste={handleRealTimePasteImage}
                 disabled={isRealTimeChatLoading}
                 placeholder="실시간 튜터에게 질문하기..."
                 className="flex-grow bg-slate-950 border border-slate-800 focus:border-brand-500/80 text-white text-sm md:text-base rounded-xl px-3 py-2 focus:outline-none transition-all placeholder-slate-500"
