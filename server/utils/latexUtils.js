@@ -398,6 +398,16 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
+  // Protect code blocks (``` ... ```) from intermediate healing modifications
+  const codeBlocks = [];
+  let codeBlockIndex = 0;
+  processed = processed.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n```/g, (match, lang, code) => {
+    const placeholder = `___HEAL_CODE_BLOCK_${codeBlockIndex}___`;
+    codeBlocks.push({ placeholder, content: match });
+    codeBlockIndex++;
+    return placeholder;
+  });
+
   // [Self-Healing] Remove space between backslash and Greek commands (including trailing alphanumeric characters)
   const greekSubscriptFullLetters = 'alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa';
   const spaceRegex = new RegExp(`\\\\\\s+(${greekSubscriptFullLetters})([a-zA-Z0-9]*)\\b`, 'gi');
@@ -907,6 +917,13 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   if (!isNested) {
     result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
   }
+
+  // Restore code blocks
+  codeBlocks.forEach(block => {
+    while (result.includes(block.placeholder)) {
+      result = result.replace(block.placeholder, () => block.content);
+    }
+  });
 
   return result;
 }
