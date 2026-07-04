@@ -78,6 +78,8 @@ export function convertMarkdownAcronymsToHtml(text) {
 
     const cleanTitle = title.replace(/["']/g, '&quot;');
     const cleanContent = content.replace(/["']/g, '&quot;').replace(/\n/g, '\\n');
+    const safeTitleForDataAttr = cleanTitle.replace(/\$/g, '&#36;');
+    const safeContentForDataAttr = cleanContent.replace(/\$/g, '&#36;');
 
     let html = '';
     html += `<div class="w-full my-4 space-y-2 acronym-export-wrapper relative">`;
@@ -86,7 +88,9 @@ export function convertMarkdownAcronymsToHtml(text) {
     html += `💡 ${cleanTitle}`;
     html += `</span>`;
     html += `<button 
-      onclick="if(window.__handleAcronymConfirmRequest) { window.__handleAcronymConfirmRequest('${cleanTitle}', '${cleanContent}') }"
+      data-title="${safeTitleForDataAttr}"
+      data-content="${safeContentForDataAttr}"
+      onclick="if(window.__handleAcronymConfirmRequest) { window.__handleAcronymConfirmRequest(this.getAttribute('data-title'), this.getAttribute('data-content')) }"
       class="p-1.5 bg-slate-900 hover:bg-emerald-600 border border-slate-700/50 rounded-lg text-slate-200 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-md select-none hover:scale-105 active:scale-95"
       title="필수암기 앞글자로 내보내기"
       style="outline: none;"
