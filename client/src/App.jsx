@@ -1254,7 +1254,7 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   });
 
   // 4.5. Render horizontal rules (divider lines) to HTML
-  tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 1.2rem 0;" />');
+  tempText = tempText.replace(/^[ \t]*(?:\*\*\*|\* \* \*|---|---|===)[ \t]*$/gm, '<hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0 0 1.0rem 0;" />');
 
   // 5. Render list items (both bullet points * and - and numbered/sub-numbered lists) - 멀티라인 범위화 적용
   const lines = tempText.split('\n');
@@ -1327,6 +1327,9 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
   // Remove br/spacer divs immediately before or after list-item divs to prevent double spacing
   tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1');
   tempText = tempText.replace(/(<\/div>)(?:<br\/>|<div style="height: [^"]*"><\/div>)+(<div style="[^"]*padding-left:[^"]*")/g, '$1$2');
+
+  // Remove br/spacer divs immediately before hr tags to make top spacing 0
+  tempText = tempText.replace(/(?:<br\/>|<div style="height: [^"]*"><\/div>)+\s*(<hr\b[^>]*>)/g, '$1');
 
   // Restore math blocks — MUST use function replacer to prevent $ from being treated as special pattern ($1, $&, etc.)
   mathBlocks.forEach(block => {
