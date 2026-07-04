@@ -24349,7 +24349,7 @@ ${itemsStr}
                     <div className="p-3 border-b border-slate-800 flex flex-col gap-2 bg-slateCustom-950 flex-shrink-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <MessageSquare size={14} className="text-rose-500 animate-pulse" />
+                          <MessageSquare size={14} className={`text-rose-500 ${isFormulaChatLoading ? 'animate-pulse' : ''}`} />
                           <span className="text-[11px] font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
                         </div>
                       </div>
@@ -24530,7 +24530,7 @@ ${itemsStr}
                 <div className="p-3.5 border-b border-slate-800 flex flex-col gap-2.5 bg-slateCustom-950 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <MessageSquare size={16} className="text-rose-500 animate-pulse" />
+                      <MessageSquare size={16} className={`text-rose-500 ${isFormulaChatLoading ? 'animate-pulse' : ''}`} />
                       <span className="text-xs font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
                     </div>
                     {(!isDesktop && !isMobileLandscape) && (
