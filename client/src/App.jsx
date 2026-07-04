@@ -13764,14 +13764,10 @@ export default function App() {
       }
     });
 
-    // 3. Fallbacks
-    const fallbacks = ['투수계수', '전단강도', '과잉간극수압', '사면안정', '압밀도', '유효응력', '주동토압', '극한지지력', '점착력'];
-    fallbacks.forEach(k => list.push(k));
-
     // Deduplicate
     const uniqueCandidates = Array.from(new Set(list));
 
-    // 4. Extract existing words in the acronym table to filter them out
+    // 3. Extract existing words in the acronym table to filter them out
     const existingNormalizedWords = new Set();
     const normalize = s => (s || '').replace(/\s+/g, '').toLowerCase();
 
@@ -13787,10 +13783,20 @@ export default function App() {
     } catch (e) {}
 
     // Filter out candidates that already exist in the table (by normalized match)
-    const filteredCandidates = uniqueCandidates.filter(candidate => {
+    let filteredCandidates = uniqueCandidates.filter(candidate => {
       const normalizedCandidate = normalize(candidate);
       return !existingNormalizedWords.has(normalizedCandidate);
     });
+
+    // 4. Fallbacks - ONLY if we still have absolutely no keywords to recommend
+    if (filteredCandidates.length === 0) {
+      const fallbacks = ['투수계수', '전단강도', '과잉간극수압', '사면안정', '압밀도', '유효응력', '주동토압', '극한지지력', '점착력'];
+      const filteredFallbacks = fallbacks.filter(candidate => {
+        const normalizedCandidate = normalize(candidate);
+        return !existingNormalizedWords.has(normalizedCandidate);
+      });
+      filteredCandidates = filteredFallbacks;
+    }
 
     return filteredCandidates;
   };
