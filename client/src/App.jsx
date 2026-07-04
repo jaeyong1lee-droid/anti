@@ -13729,8 +13729,25 @@ export default function App() {
 
   const getAcronymRecommendKeywords = (ac) => {
     const list = [];
-    
-    // 1. matching topic keywords
+    const topicKeywordMap = {
+      '약액주입': ['지하수오염', '지반용기', '용탈', '알칼리용탈', '식생영향', '유기물오염', '수질오염', '시멘트용출', '중금속용출', '내구성저하', '겔화시간', '침투압', '고결체'],
+      '사면안정': ['한계평형해석', 'Fellenius방법', 'Bishop간편법', 'Spencer방법', 'Janbu방법', '수치해석', '안전율', '지하수위', '인장균열', '사면경사', '소단', '옹벽', '보강토'],
+      '토목섬유': ['지오텍스타일', '지오그리드', '지오네트', '지오멤브레인', '지오콤포지트', '필터', '배수', '보강', '격리', '방수', '보호', '인장강도', '크리프'],
+      '투수계수': ['양수시험', '주입시험', '이방성비(kh/kv)', '등가투수계수', '상류법', '압밀시험', '현장투수시험', '정수두시험', '변수두시험', 'Darcy법칙', '간극비', '윤동도'],
+      '부등침하': ['연약지반', '편재하중', '투수성차이', '다짐불량', '지반개량', '구조물강성화', '침하계측', '압밀침하', '즉시침하', '허용부등침하각', '말뚝기초'],
+      '말뚝': ['슬라임(Slime)', '공벽붕괴', '이흙(Mud Cake)', '콘크리트품질', '케이싱인발', '응력이완', '공벽방치시간', '주변마찰력', '선단지지력', '동재하시험', '정재하시험'],
+      '비배수': ['일축압축시험', '삼축압축시험(UU)', '현장베인시험(VST)', '콘관입시험(CPT)', '수성비(c/p)', '비배수강도', '예민비', '교란', '점착력'],
+      '터널': ['강관다단그라우팅', '훠폴링', '숏크리트', '락볼트', '강지보', '계측', '천단침하', '내공변위', '지중변위', '인버트', '막장면안정', '지반이완'],
+      '옹벽': ['주동토압', '수동토압', '정지토압', 'Coulomb토압', 'Rankine토압', '전도', '활동', '지지력', '배수공', '뒷채움재', '보강토옹벽', '지오그리드'],
+      '연약지반': ['샌드드레인', '페이퍼드레인', '팩드레인', '심층혼합처리(DCM)', '웰포인트', '진공압밀', '치환공법', '프리로딩', '압밀침하', '침하계측', '측방유동'],
+      '다짐': ['최적함수비(OMC)', '최대건조밀도', '다짐에너지', '현장다짐도', '들밀도시험', '모래치환법', '평판재하시험(PBT)', '영공기간극곡선', '점성토다짐'],
+      '암반': ['RQD', 'RMR', 'Q분류', '불연속면', '절리', '층리', '단층', '평사투영', '원추파괴', '평면파괴', '쐐기파괴', '전도파괴', '지압', '초기응력'],
+      '흙막이': ['지중연속벽(Slurry Wall)', 'SGR공법', 'LW공법', 'JSP공법', '어스앵커', '소일네일링', '스트러트(Strut)', '히빙(Heaving)', '보일링(Boiling)', '파이핑(Piping)', '계측'],
+      '댐': ['파이핑(Piping)', '누수', '필터재', '코어(Core)', '사면안정', '수압파쇄(Hydraulic Fracturing)', '침윤선', '차수벽', '그라우팅'],
+      '기초': ['얕은기초', '깊은기초', '허용지지력', '극한지지력', 'Terzaghi공식', 'Meyerhof공식', 'Vesic공식', '탄성침하', '압밀침하', '말뚝지지력', '부마찰력']
+    };
+
+    // 1. matching topic keywords from DB
     const matchingTopic = allTopics.find(t => t.title === ac.title);
     if (matchingTopic && matchingTopic.keywords) {
       matchingTopic.keywords.split(',').forEach(k => {
@@ -13739,25 +13756,43 @@ export default function App() {
       });
     }
 
-    // 2. parse from acronym content
-    try {
-      const parsed = parseAcronymContent(ac.content);
-      if (parsed && Array.isArray(parsed.rows)) {
-        parsed.rows.forEach(r => {
-          if (r.word) {
-            const trimmed = r.word.trim();
-            if (trimmed && trimmed.length > 1) list.push(trimmed);
-          }
-        });
+    // 2. matching category keywords from topicKeywordMap based on title
+    const normalizedTitle = (ac.title || '').replace(/\s+/g, '');
+    Object.keys(topicKeywordMap).forEach(key => {
+      if (normalizedTitle.includes(key)) {
+        topicKeywordMap[key].forEach(k => list.push(k));
       }
-    } catch (e) {}
+    });
 
     // 3. Fallbacks
     const fallbacks = ['투수계수', '전단강도', '과잉간극수압', '사면안정', '압밀도', '유효응력', '주동토압', '극한지지력', '점착력'];
     fallbacks.forEach(k => list.push(k));
 
     // Deduplicate
-    return Array.from(new Set(list));
+    const uniqueCandidates = Array.from(new Set(list));
+
+    // 4. Extract existing words in the acronym table to filter them out
+    const existingNormalizedWords = new Set();
+    const normalize = s => (s || '').replace(/\s+/g, '').toLowerCase();
+
+    try {
+      const parsed = parseAcronymContent(ac.content);
+      if (parsed && Array.isArray(parsed.rows)) {
+        parsed.rows.forEach(r => {
+          if (r.word) {
+            existingNormalizedWords.add(normalize(r.word));
+          }
+        });
+      }
+    } catch (e) {}
+
+    // Filter out candidates that already exist in the table (by normalized match)
+    const filteredCandidates = uniqueCandidates.filter(candidate => {
+      const normalizedCandidate = normalize(candidate);
+      return !existingNormalizedWords.has(normalizedCandidate);
+    });
+
+    return filteredCandidates;
   };
 
   const handleRecommendKeywordClick = (ac) => {
