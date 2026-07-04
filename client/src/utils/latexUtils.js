@@ -859,8 +859,8 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
         }
         return subToken.content;
       }).join('');
-      // Escape angle brackets for safety
-      return t.replace(/</g, '\\lt ').replace(/>/g, '\\gt ');
+      // Escape angle brackets for safety (preventing \gt -> ₩gt on Windows)
+      return t.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     } else {
       let math = token.content.replace(/^\$\$?|\$\$?$/g, '').trim();
       math = healBackslashes(math).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
