@@ -2384,62 +2384,106 @@ function shuffleMultipleChoice(q) {
 }
 
 // 6. AI Review Helper: Generate 3 custom PE-style exam questions
-function createLocalFallbackTableQuestion(idx, title, keywords) {
-  if (idx === 0) {
-    return {
-      type: "주관식 (표채우기)",
-      question: "다음 소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 알맞은 핵심 개념을 서술하시오.",
-      tableData: {
-        headers: ["구분 항목", "소일네일링 (Soil Nailing)", "어스앵커 (Earth Anchor)"],
-        rows: [
-          ["보강 방식 및 지지력 메커니즘", "[INPUT_1]", "[INPUT_2]"],
-          ["긴장력 도입 여부", "수동적 보강 (긴장력 도입 없음)", "능동적 보강 (프리스트레스 긴장력 도입)"],
-          ["주요 구성 요소", "강봉 또는 네일, 시멘트 그라우팅", "PC 강연선, 인장재, 자유장 및 정착장"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "수동적 전단 및 인장 저항",
-        "INPUT_2": "선단 지지력 및 주면 마찰력"
-      },
-      explanation: "소일네일링은 지반 변형 시 가동되는 수동적 저항 메커니즘을 가지며, 어스앵커는 프리스트레스를 이용해 능동적으로 지반을 지지하는 특성을 갖습니다."
-    };
-  } else if (idx === 1) {
-    return {
-      type: "주관식 (표채우기)",
-      question: "다음 얕은기초(확대기초)와 깊은기초(말뚝기초)의 공학적 설계 조건 및 하중 전이 경로 비교표 빈칸 (A), (B)에 들어갈 핵심 용어를 작성하시오.",
-      tableData: {
-        headers: ["비교 구분 항목", "얕은기초 (확대기초)", "깊은기초 (말뚝기초)"],
-        rows: [
-          ["근입 깊이 기하학적 조건", "근입깊이가 기초 폭보다 작거나 같음 (Df <= B)", "근입깊이가 기초 폭보다 훨씬 큼 (Df >> B)"],
-          ["하중 전이 경로 및 저항 기전", "[INPUT_1]", "[INPUT_2]"],
-          ["적용 지층의 조건", "상부 지반의 지지력이 양호함", "상부 연약 지반 아래에 견고한 지지층이 존재함"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "기초 저면 지반의 직접 지지력",
-        "INPUT_2": "선단 지지력 및 주면 마찰력"
-      },
-      explanation: "얕은기초는 저면 지반의 지지력을 직접 이용하며, 깊은기초는 얕은 지층이 연약할 때 하부 암반층까지 말뚝을 박아 선단 지지력과 주면 마찰력으로 저항합니다."
-    };
-  } else {
-    return {
-      type: "주관식 (표채우기)",
-      question: "터널 굴착면 상부의 보강 공법인 강관다단 그라우팅과 천단 훠폴링 공법의 비교표 빈칸 (A), (B)에 들어갈 공학적 설명을 기술하시오.",
-      tableData: {
-        headers: ["비교 항목", "강관다단 그라우팅 공법", "천단 훠폴링 (Forepoling) 공법"],
-        rows: [
-          ["보강재 규격 및 특성", "대구경 강관 주입재 가압 그라우팅", "[INPUT_1]"],
-          ["주요 역할 및 역학적 기전", "[INPUT_2]", "천단 낙석 방지 및 국부 붕괴 방지"],
-          ["시공 길이 및 범위", "10m ~ 15m (중첩 시공 필요)", "3m ~ 6m 내외"]
-        ]
-      },
-      answers: {
-        "INPUT_1": "소구경 강봉 또는 이형철근 주입",
-        "INPUT_2": "터널 상부 종방향 아치 형성 및 차수"
-      },
-      explanation: "강관다단 그라우팅은 대구경 강관과 가압 주입을 통해 천단부에 종방향 아치를 형성하고 차수 효과를 극대화하는 반면, 훠폴링은 소구경 보강재로 천단의 국부 탈락 및 낙석 방지에 초점을 둡니다."
-    };
+function createLocalFallbackTableQuestion(existingListOrIdx, title, keywords) {
+  const cleanTitle = (title || '').toLowerCase();
+  const cleanKeywords = (keywords || '').toLowerCase();
+  const match = (term) => cleanTitle.includes(term) || cleanKeywords.includes(term);
+
+  // Define candidate questions with relevance matching
+  const candidates = [
+    {
+      id: 'soil_nailing_vs_earth_anchor',
+      match: () => match('네일') || match('앵커') || match('소일') || match('옹벽') || match('사면') || match('토압') || match('nail') || match('anchor') || match('흙막이'),
+      data: {
+        type: "주관식 (표채우기)",
+        question: "다음 소일네일링(Soil Nailing) 공법과 어스앵커(Earth Anchor) 공법의 주요 공학적 특징 비교표 빈칸 (A), (B)에 들어갈 알맞은 핵심 개념을 서술하시오.",
+        tableData: {
+          headers: ["구분 항목", "소일네일링 (Soil Nailing)", "어스앵커 (Earth Anchor)"],
+          rows: [
+            ["보강 방식 및 지지력 메커니즘", "[INPUT_1]", "[INPUT_2]"],
+            ["긴장력 도입 여부", "수동적 보강 (긴장력 도입 없음)", "능동적 보강 (프리스트레스 긴장력 도입)"],
+            ["주요 구성 요소", "강봉 또는 네일, 시멘트 그라우팅", "PC 강연선, 인장재, 자유장 및 정착장"]
+          ]
+        },
+        answers: {
+          "INPUT_1": "수동적 전단 및 인장 저항",
+          "INPUT_2": "선단 지지력 및 주면 마찰력"
+        },
+        explanation: "소일네일링은 지반 변형 시 가동되는 수동적 저항 메커니즘을 가지며, 어스앵커는 프리스트레스를 이용해 능동적으로 지반을 지지하는 특성을 갖습니다."
+      }
+    },
+    {
+      id: 'shallow_vs_deep_foundation',
+      match: () => match('기초') || match('지지력') || match('프란틀') || match('테르자기') || match('bearing') || match('foundation') || match('prandtl') || match('terzaghi') || match('침하'),
+      data: {
+        type: "주관식 (표채우기)",
+        question: "다음 얕은기초(확대기초)와 깊은기초(말뚝기초)의 공학적 설계 조건 및 하중 전이 경로 비교표 빈칸 (A), (B)에 들어갈 핵심 용어를 작성하시오.",
+        tableData: {
+          headers: ["비교 구분 항목", "얕은기초 (확대기초)", "깊은기초 (말뚝기초)"],
+          rows: [
+            ["근입 깊이 기하학적 조건", "근입깊이가 기초 폭보다 작거나 같음 (Df <= B)", "근입깊이가 기초 폭보다 훨씬 큼 (Df >> B)"],
+            ["하중 전이 경로 및 저항 기전", "[INPUT_1]", "[INPUT_2]"],
+            ["적용 지층의 조건", "상부 지반의 지지력이 양호함", "상부 연약 지반 아래에 견고한 지지층이 존재함"]
+          ]
+        },
+        answers: {
+          "INPUT_1": "기초 저면 지반의 직접 지지력",
+          "INPUT_2": "선단 지지력 및 주면 마찰력"
+        },
+        explanation: "얕은기초는 저면 지반의 지지력을 직접 이용하며, 깊은기초는 얕은 지층이 연약할 때 하부 암반층까지 말뚝을 박아 선단 지지력과 주면 마찰력으로 저항합니다."
+      }
+    },
+    {
+      id: 'tunnel_grouting_vs_forepoling',
+      match: () => match('터널') || match('굴착') || match('싱글쉘') || match('훠폴링') || match('그라우팅') || match('막장') || match('tunnel') || match('excavation') || match('shell'),
+      data: {
+        type: "주관식 (표채우기)",
+        question: "터널 굴착면 상부의 보강 공법인 강관다단 그라우팅과 천단 훠폴링 공법의 비교표 빈칸 (A), (B)에 들어갈 공학적 설명을 기술하시오.",
+        tableData: {
+          headers: ["비교 항목", "강관다단 그라우팅 공법", "천단 훠폴링 (Forepoling) 공법"],
+          rows: [
+            ["보강재 규격 및 특성", "대구경 강관 주입재 가압 그라우팅", "[INPUT_1]"],
+            ["주요 역할 및 역학적 기전", "[INPUT_2]", "천단 낙석 방지 및 국부 붕괴 방지"],
+            ["시공 길이 및 범위", "10m ~ 15m (중첩 시공 필요)", "3m ~ 6m 내외"]
+          ]
+        },
+        answers: {
+          "INPUT_1": "소구경 강봉 또는 이형철근 주입",
+          "INPUT_2": "터널 상부 종방향 아치 형성 및 차수"
+        },
+        explanation: "강관다단 그라우팅은 대구경 강관과 가압 주입을 통해 천단부에 종방향 아치를 형성하고 차수 효과를 극대화하는 반면, 훠폴링은 소구경 보강재로 천단의 국부 탈락 및 낙석 방지에 초점을 둡니다."
+      }
+    }
+  ];
+
+  // Separate matched and unmatched candidates
+  const matched = [];
+  const unmatched = [];
+  candidates.forEach(c => {
+    if (c.match()) {
+      matched.push(c);
+    } else {
+      unmatched.push(c);
+    }
+  });
+
+  const orderedCandidates = [...matched, ...unmatched];
+
+  // Deduplicate against existingListOrIdx if it is an array
+  if (Array.isArray(existingListOrIdx)) {
+    const existingQuestions = existingListOrIdx.map(q => (q.question || '').trim());
+    for (const cand of orderedCandidates) {
+      const qText = cand.data.question.trim();
+      if (!existingQuestions.includes(qText)) {
+        return cand.data;
+      }
+    }
+    return orderedCandidates[0].data;
   }
+
+  // Fallback to legacy index logic
+  const idx = typeof existingListOrIdx === 'number' ? existingListOrIdx : 0;
+  return orderedCandidates[idx % orderedCandidates.length].data;
 }
 
 
@@ -2548,7 +2592,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     finalSubjsTable = [...finalSubjsTable, ...fallbackTables].slice(0, 2);
   }
   while (finalSubjsTable.length < 2) {
-    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
+    finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable, topic.title, topic.keywords));
   }
 
   // 4. MC questions (5 questions)
@@ -2592,7 +2636,7 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     const deficit = 5 - finalMcs.length;
     console.log(`[문항 치환] 유니크 객관식이 부족하여 ${deficit}개 문항을 표 주관식으로 대체합니다.`);
     for (let i = 0; i < deficit; i++) {
-      finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable.length, topic.title, topic.keywords));
+      finalSubjsTable.push(createLocalFallbackTableQuestion(finalSubjsTable, topic.title, topic.keywords));
     }
   }
 
