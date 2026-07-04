@@ -1371,7 +1371,6 @@ const getSelectionTextWithLatex = (selection) => {
       }
     }
   }
-  
   return (fragment.textContent || "").trim();
 };
 
@@ -2081,7 +2080,103 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
       };
 };
 
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
+const BufferedInput = React.memo(({ value, onChange, onKeystroke, onKeyDown, ...props }) => {
+  const [localVal, setLocalVal] = React.useState(value || '');
+
+  React.useEffect(() => {
+    setLocalVal(value || '');
+  }, [value]);
+
+  const handleBlur = () => {
+    if (onChange && localVal !== value) {
+      onChange(localVal);
+    }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setLocalVal(val);
+    if (onKeystroke) {
+      onKeystroke(val);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (onChange && localVal !== value) {
+        onChange(localVal);
+      }
+    }
+    if (onKeyDown) {
+      onKeyDown(e);
+    }
+  };
+
+  return (
+    <input
+      {...props}
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    />
+  );
+});
+
+const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKeyDown, ...props }) => {
+  const [localVal, setLocalVal] = React.useState(value || '');
+  const textareaRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setLocalVal(value || '');
+  }, [value]);
+
+  React.useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [localVal]);
+
+  const handleBlur = () => {
+    if (onChange && localVal !== value) {
+      onChange(localVal);
+    }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setLocalVal(val);
+    if (onKeystroke) {
+      onKeystroke(val);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (onChange && localVal !== value) {
+        onChange(localVal);
+      }
+    }
+    if (onKeyDown) {
+      onKeyDown(e);
+    }
+  };
+
+  return (
+    <textarea
+      {...props}
+      ref={textareaRef}
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    />
+  );
+});
+
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -2090,10 +2185,19 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   const inputIds = Object.keys(q.answers || {});
 
   const handleInputChange = (inputId, val) => {
+    if (tableAnswersRef) {
+      tableAnswersRef.current[`${questionIdx}_${inputId}`] = val;
+    }
     setTableAnswers(prev => ({
       ...prev,
       [`${questionIdx}_${inputId}`]: val
     }));
+  };
+
+  const handleInputKeystroke = (inputId, val) => {
+    if (tableAnswersRef) {
+      tableAnswersRef.current[`${questionIdx}_${inputId}`] = val;
+    }
   };
 
   const colCount = headers.length;
@@ -2297,20 +2401,13 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                             </div>
                           );
                         })() : (
-                          <textarea
-                            ref={(el) => {
-                              if (el && el.dataset.lastVal !== value) {
-                                el.style.height = 'auto';
-                                el.style.height = `${el.scrollHeight}px`;
-                                el.dataset.lastVal = value;
-                              }
-                            }}
+                          <BufferedTextarea
                             value={value}
-                            onChange={(e) => {
-                              handleInputChange(inputId, e.target.value);
-                              e.target.style.height = 'auto';
-                              e.target.style.height = `${e.target.scrollHeight}px`;
-                              e.target.dataset.lastVal = e.target.value;
+                            onChange={(val) => {
+                              handleInputChange(inputId, val);
+                            }}
+                            onKeystroke={(val) => {
+                              handleInputKeystroke(inputId, val);
                             }}
                             placeholder={`${inputLetter} 입력`}
                             data-answer-key={`${questionIdx}_${inputId}`}
@@ -2360,7 +2457,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   );
 });
 
-const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
+const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
   if (!q.tableData || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
   }
@@ -2369,10 +2466,19 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
   const tableRef = React.useRef(null);
 
   const handleInputChange = (key, val) => {
+    if (tableAnswersRef) {
+      tableAnswersRef.current[`${questionIdx}_${key}`] = val;
+    }
     setTableAnswers(prev => ({
       ...prev,
       [`${questionIdx}_${key}`]: val
     }));
+  };
+
+  const handleInputKeystroke = (key, val) => {
+    if (tableAnswersRef) {
+      tableAnswersRef.current[`${questionIdx}_${key}`] = val;
+    }
   };
 
   return (
@@ -2410,11 +2516,12 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                         {rowAcronymVal || '(미입력)'}
                       </div>
                     ) : (
-                      <input
+                      <BufferedInput
                         type="text"
                         maxLength={1}
                         value={rowAcronymVal}
-                        onChange={(e) => handleInputChange(`ROW_${rIdx}_ACRONYM`, e.target.value)}
+                        onChange={(val) => handleInputChange(`ROW_${rIdx}_ACRONYM`, val)}
+                        onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_ACRONYM`, val)}
                         placeholder="글자"
                         className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1"
                         onKeyDown={(e) => {
@@ -2440,42 +2547,31 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                         <div className="font-bold">{rowCombVal || '(미입력)'}</div>
                       </div>
                     ) : (
-                      <textarea
-                      ref={(el) => {
-                        if (el && el.dataset.lastVal !== rowCombVal) {
-                          el.style.height = 'auto';
-                          el.style.height = `${el.scrollHeight}px`;
-                          el.dataset.lastVal = rowCombVal;
-                        }
-                      }}
-                      value={rowCombVal}
-                      onChange={(e) => {
-                        handleInputChange(`ROW_${rIdx}_COMB`, e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${e.target.scrollHeight}px`;
-                        e.target.dataset.lastVal = e.target.value;
-                      }}
-                      placeholder="암기단어 : 설명"
-                      className="w-full text-left text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-2 resize-none min-h-[30px] block"
-                      rows={1}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          e.target.blur();
-                          if (tableRef.current) {
-                            const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
-                            const curIdx = textareas.indexOf(e.target);
-                            if (curIdx !== -1) {
-                              if (curIdx === textareas.length - 1) {
-                                if (onSubmit) onSubmit();
-                              } else {
-                                textareas[curIdx + 1].focus();
+                      <BufferedTextarea
+                        value={rowCombVal}
+                        onChange={(val) => handleInputChange(`ROW_${rIdx}_COMB`, val)}
+                        onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_COMB`, val)}
+                        placeholder="암기단어 : 설명"
+                        className="w-full text-left text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-2 resize-none min-h-[30px] block"
+                        rows={1}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            e.target.blur();
+                            if (tableRef.current) {
+                              const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                              const curIdx = textareas.indexOf(e.target);
+                              if (curIdx !== -1) {
+                                if (curIdx === textareas.length - 1) {
+                                  if (onSubmit) onSubmit();
+                                } else {
+                                  textareas[curIdx + 1].focus();
+                                }
                               }
                             }
                           }
-                        }
-                      }}
-                    />
+                        }}
+                      />
                   )}
                 </td>
               </tr>
@@ -3594,7 +3690,7 @@ export default function App() {
     
     const rowCount = q.tableData?.rows?.length || 0;
     const userAcronym = Array.from({ length: rowCount })
-      .map((_, rIdx) => (tableAnswers[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim())
+      .map((_, rIdx) => (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim())
       .join('');
     const correctAcronym = (q.acronym || '').trim();
     
@@ -3610,8 +3706,8 @@ export default function App() {
     
     const userRows = Array.from({ length: rowCount }).map((_, rIdx) => {
       return {
-        acronym: (tableAnswers[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
-        combined: (tableAnswers[`${qIdx}_ROW_${rIdx}_COMB`] || '').trim()
+        acronym: (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_ACRONYM`] || '').trim(),
+        combined: (tableAnswersRef.current[`${qIdx}_ROW_${rIdx}_COMB`] || '').trim()
       };
     });
     
@@ -4388,9 +4484,27 @@ export default function App() {
   };
   const [revealedQuestions, setRevealedQuestions] = useState({}); // Stores which question answers are unblurred/revealed
   const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores chosen options for multiple choice questions { [questionIdx]: optionString }
-  const [tableAnswers, setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
+  const [tableAnswers, _setTableAnswers] = useState({}); // Stores user text inputs for table fill-in questions
+  const tableAnswersRef = useRef({});
+  const setTableAnswers = useCallback((val) => {
+    _setTableAnswers(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      tableAnswersRef.current = next;
+      return next;
+    });
+  }, []);
+
   const [tableGradingResults, setTableGradingResults] = useState({});
-  const [examTableAnswers, setExamTableAnswers] = useState({});
+
+  const [examTableAnswers, _setExamTableAnswers] = useState({});
+  const examTableAnswersRef = useRef({});
+  const setExamTableAnswers = useCallback((val) => {
+    _setExamTableAnswers(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      examTableAnswersRef.current = next;
+      return next;
+    });
+  }, []);
   const [examTableGradingResults, setExamTableGradingResults] = useState({});
   const [showAnswersState, setShowAnswersState] = useState({});
   const [examShowAnswersState, setExamShowAnswersState] = useState({});
@@ -4399,7 +4513,7 @@ export default function App() {
   const gradeTableQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
     const inputs = Object.keys(q.answers || {});
-    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
     const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
@@ -4647,7 +4761,7 @@ export default function App() {
 
   const gradeSubjectiveQuestion = async (qIdx, q) => {
     setGradingLoading(prev => ({ ...prev, [qIdx]: true }));
-    const activeAnswers = showExam ? examTableAnswers : tableAnswers;
+    const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
 
     const userAnswer = activeAnswers[`${qIdx}_INPUT`] || '';
@@ -18632,6 +18746,7 @@ ${itemsStr}
                                     q={q} 
                                     tableAnswers={tableAnswers} 
                                     setTableAnswers={setTableAnswers} 
+                                    tableAnswersRef={tableAnswersRef}
                                     revealed={isRevd} 
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
@@ -18685,6 +18800,7 @@ ${itemsStr}
                                     q={q} 
                                     tableAnswers={tableAnswers} 
                                     setTableAnswers={setTableAnswers} 
+                                    tableAnswersRef={tableAnswersRef}
                                     revealed={isRevd} 
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={tableGradingResults}
@@ -18734,14 +18850,16 @@ ${itemsStr}
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
-                                      <textarea
+                                      <BufferedTextarea
                                         disabled={isRevd}
                                         data-answer-key={`${idx}_INPUT`}
                                         value={tableAnswers[`${idx}_INPUT`] || ''}
-                                        onChange={(e) => {
-                                          setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }));
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = `${e.target.scrollHeight}px`;
+                                        onChange={(val) => {
+                                          tableAnswersRef.current[`${idx}_INPUT`] = val;
+                                          setTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: val }));
+                                        }}
+                                        onKeystroke={(val) => {
+                                          tableAnswersRef.current[`${idx}_INPUT`] = val;
                                         }}
                                         onKeyDown={async (e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -18750,12 +18868,6 @@ ${itemsStr}
                                               await gradeSubjectiveQuestion(idx, q);
                                               setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                             }
-                                          }
-                                        }}
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.height = 'auto';
-                                            el.style.height = `${el.scrollHeight}px`;
                                           }
                                         }}
                                         rows={1}
@@ -21916,6 +22028,7 @@ ${itemsStr}
                                     q={q} 
                                     tableAnswers={examTableAnswers} 
                                     setTableAnswers={setExamTableAnswers} 
+                                    tableAnswersRef={examTableAnswersRef}
                                     revealed={!!examRevealed[idx]} 
                                     katexLoaded={katexLoaded} 
                                     tableGradingResults={examTableGradingResults}
@@ -21965,13 +22078,15 @@ ${itemsStr}
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
                                   <div className="relative">
-                                      <textarea
+                                      <BufferedTextarea
                                         disabled={!!examRevealed[idx]}
                                         value={examTableAnswers[`${idx}_INPUT`] || ''}
-                                        onChange={(e) => {
-                                          setExamTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: e.target.value }));
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = `${e.target.scrollHeight}px`;
+                                        onChange={(val) => {
+                                          examTableAnswersRef.current[`${idx}_INPUT`] = val;
+                                          setExamTableAnswers(prev => ({ ...prev, [`${idx}_INPUT`]: val }));
+                                        }}
+                                        onKeystroke={(val) => {
+                                          examTableAnswersRef.current[`${idx}_INPUT`] = val;
                                         }}
                                         onKeyDown={async (e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -21980,12 +22095,6 @@ ${itemsStr}
                                               await gradeSubjectiveQuestion(idx, q);
                                               setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                             }
-                                          }
-                                        }}
-                                        ref={(el) => {
-                                          if (el) {
-                                            el.style.height = 'auto';
-                                            el.style.height = `${el.scrollHeight}px`;
                                           }
                                         }}
                                         rows={1}
