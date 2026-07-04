@@ -5286,6 +5286,8 @@ export default function App() {
   const [acronymModeActive, setAcronymModeActive] = useState(false);
   const [editingAcronymId, setEditingAcronymId] = useState(null);
   const [editingAcronymText, setEditingAcronymText] = useState('');
+  const [acronymKeywordInputs, setAcronymKeywordInputs] = useState({});
+  const [acronymKeywordIndices, setAcronymKeywordIndices] = useState({});
   const [expandedAcronymIds, setExpandedAcronymIds] = useState({});
   const [formulaRevealed, setFormulaRevealed] = useState(() => {
     try {
@@ -13723,6 +13725,57 @@ export default function App() {
         }
       }
     }
+  };
+
+  const getAcronymRecommendKeywords = (ac) => {
+    const list = [];
+    
+    // 1. matching topic keywords
+    const matchingTopic = allTopics.find(t => t.title === ac.title);
+    if (matchingTopic && matchingTopic.keywords) {
+      matchingTopic.keywords.split(',').forEach(k => {
+        const trimmed = k.trim();
+        if (trimmed) list.push(trimmed);
+      });
+    }
+
+    // 2. parse from acronym content
+    try {
+      const parsed = parseAcronymContent(ac.content);
+      if (parsed && Array.isArray(parsed.rows)) {
+        parsed.rows.forEach(r => {
+          if (r.word) {
+            const trimmed = r.word.trim();
+            if (trimmed && trimmed.length > 1) list.push(trimmed);
+          }
+        });
+      }
+    } catch (e) {}
+
+    // 3. Fallbacks
+    const fallbacks = ['투수계수', '전단강도', '과잉간극수압', '사면안정', '압밀도', '유효응력', '주동토압', '극한지지력', '점착력'];
+    fallbacks.forEach(k => list.push(k));
+
+    // Deduplicate
+    return Array.from(new Set(list));
+  };
+
+  const handleRecommendKeywordClick = (ac) => {
+    const recs = getAcronymRecommendKeywords(ac);
+    if (recs.length === 0) return;
+    
+    const currIdx = acronymKeywordIndices[ac.id] !== undefined ? acronymKeywordIndices[ac.id] : 0;
+    const nextIdx = (currIdx + 1) % recs.length;
+    const recommendedWord = recs[currIdx];
+
+    setAcronymKeywordInputs(prev => ({
+      ...prev,
+      [ac.id]: recommendedWord
+    }));
+    setAcronymKeywordIndices(prev => ({
+      ...prev,
+      [ac.id]: nextIdx
+    }));
   };
 
   const handleDeleteAcronymCard = async (acronymId, title) => {
@@ -23771,14 +23824,22 @@ ${itemsStr}
                                         </div>
                                         {/* 추가 키워드 입력창 */}
                                         <div className="flex items-center gap-1.5 shrink-0 bg-slate-950/45 border border-slate-800/80 rounded-xl px-3 py-1.5 focus-within:border-emerald-500/40 transition-all w-full md:w-56">
-                                          <span className="text-[11px] font-black text-emerald-400 shrink-0 select-none">➕ 키워드 추가:</span>
+                                          <span 
+                                            onClick={() => handleRecommendKeywordClick(ac)}
+                                            className="text-[11px] font-black text-emerald-400 shrink-0 select-none cursor-pointer hover:text-emerald-300 active:scale-95 transition-all"
+                                            title="클릭하여 추천 키워드 입력 (다시 누르면 다음 단어)"
+                                          >
+                                            ➕ 키워드 추가:
+                                          </span>
                                           <input
                                             type="text"
                                             placeholder="키워드 입력 후 Enter"
+                                            value={acronymKeywordInputs[ac.id] || ''}
+                                            onChange={(e) => setAcronymKeywordInputs(prev => ({ ...prev, [ac.id]: e.target.value }))}
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter' && e.target.value.trim()) {
                                                 handleAddAcronymKeyword(ac.id, e.target.value.trim(), ac.title, ac.content);
-                                                e.target.value = '';
+                                                setAcronymKeywordInputs(prev => ({ ...prev, [ac.id]: '' }));
                                               }
                                             }}
                                             className="w-full bg-transparent border-0 text-[11px] text-slate-200 focus:outline-none p-0 font-bold"
