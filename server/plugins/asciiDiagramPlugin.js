@@ -87,4 +87,28 @@ export const ASCII_DIAGRAM_PROMPT = `
 - Circle A: 전응력원 (건조 상태)
 - Circle B: 유효응력원 (간극수압 발생 시)
 - u: 간극수압 발생으로 인해 전응력원에서 유효응력원으로 좌측 이동한 크기
+
+예시 E: 응력 경로 (Stress Path: TSP & ESP on p-q Diagram)
+\`\`\`
+     Shear Stress (q)
+          ^
+          │                 / [Failure Envelope: Kf Line]
+          │                /  q = d' + p'·tan(ψ')
+          │               / 
+          │              /      [ESP]           [TSP]
+          │             /    (Effective)       (Total)
+          │            /         ▲              ╱
+          │           /         ╱              ╱
+          │          /        .'              ╱ 
+          │         /       .'               ╱  <- Slope = 1:1 (45°)
+          │        /       │    <--- u ---> ╱
+          │       /        │               ╱
+          │  d'  /         │              ╱
+          │     /          O             O (Start)
+      ━━━━┴━━━━#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━> Mean Normal Stress (p, p')
+\`\`\`
+※ [설명]:
+- TSP (Total Stress Path): 전응력 기준 경로 (기울기 1:1, 45도 방향으로 직진)
+- ESP (Effective Stress Path): 유효응력 기준 경로 (간극수압 u 발생으로 인해 좌측으로 휘어지며 파괴선 Kf에 도달)
+- u: 간극수압 발생에 따라 TSP와 ESP 사이에 발생하는 수평 응력 차이
 `;
