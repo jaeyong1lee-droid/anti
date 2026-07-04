@@ -92,6 +92,7 @@ export function FloatingMemorization({
   handleUpdateAcronymRowCell,
   handleDeleteAcronymCard,
   handleOptimizeAcronym,
+  handleAddAcronymKeyword,
   getAcronymRows,
   // Overviews
   formulaOverviews,
@@ -564,6 +565,27 @@ export function FloatingMemorization({
                   return (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
                 })
                 .map((ac, idx) => {
+                  if (ac.isLoading) {
+                    return (
+                      <div key={ac.id || idx} className="px-3 py-4 bg-slateCustom-900 border border-slate-800/80 rounded-xl space-y-3 animate-pulse select-none w-full">
+                        <div className="flex items-center gap-2 border-b border-slate-800/60 pb-2">
+                          <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                            AI
+                          </span>
+                          <h4 className="text-xs font-black text-white">
+                            [{ac.title}] 앞글자 암기법을 생성하는 중...
+                          </h4>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-4 gap-2">
+                          <RefreshCw className="animate-spin text-emerald-400" size={20} />
+                          <p className="text-[10px] text-slate-400 text-center">
+                            AI 튜터가 최적의 앞글자 단어 조합과 마크다운 비교표를 구성하고 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const rows = getAcronymRows(ac.content);
                   const acronymHeaderMatch = ac.content.match(/^두문자:\s*([^\n]+)/m);
                   const acronymHeaderText = acronymHeaderMatch ? acronymHeaderMatch[1].trim() : rows.map(r => r.acronym).join('');
@@ -630,6 +652,22 @@ export function FloatingMemorization({
                               onChange={(e) => handleUpdateAcronymSentence(ac.id, e.target.value)}
                               placeholder="예: 띄어쓰기를 자유롭게 입력할 수 있습니다"
                               className="w-full bg-transparent border-0 text-[10.5px] text-slate-200 focus:outline-none p-0"
+                            />
+                          </div>
+                          {/* 추가 키워드 입력창 */}
+                          <div className="flex items-center gap-1.5 shrink-0 bg-slate-950/45 border border-slate-800 rounded-lg px-2 py-1 focus-within:border-emerald-500/40 transition-all w-full sm:w-48">
+                            <span className="text-[10px] font-black text-emerald-400 shrink-0 select-none">➕ 키워드 추가:</span>
+                            <input
+                              type="text"
+                              placeholder="키워드 입력 후 Enter"
+                              disabled={ac.isLoading}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.target.value.trim()) {
+                                  handleAddAcronymKeyword(ac.id, e.target.value.trim(), ac.title, ac.content);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="w-full bg-transparent border-0 text-[10.5px] text-slate-200 focus:outline-none p-0 font-bold disabled:opacity-50"
                             />
                           </div>
                           <button

@@ -13401,6 +13401,13 @@ export default function App() {
     updated[acronymIdx] = { ...updated[acronymIdx], isLoading: true };
     setFormulaAcronyms(updated);
 
+    if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+      setActiveAnswerPopupData({
+        ...activeAnswerPopupData,
+        content: updated[acronymIdx]
+      });
+    }
+
     try {
       const prompt = `[키워드추가]\n토픽: ${title}\n기존 두문자표 내용:\n${currentContent}\n\n추가할 키워드: ${keyword}`;
 
@@ -13429,6 +13436,12 @@ export default function App() {
           isLoading: false
         };
         setFormulaAcronyms(freshAcronyms);
+        if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+          setActiveAnswerPopupData({
+            ...activeAnswerPopupData,
+            content: freshAcronyms[freshIdx]
+          });
+        }
         await handleSaveFormulaAcronyms(freshAcronyms, false);
         showNotification('키워드가 추가되었고, 새로운 두문자 조합과 연상문장이 적용되었습니다.', 'success');
       }
@@ -13442,6 +13455,12 @@ export default function App() {
           isLoading: false
         };
         setFormulaAcronyms(freshAcronyms);
+        if (activeAnswerPopupData && activeAnswerPopupData.type === 'acronym' && activeAnswerPopupData.content.id === acronymId) {
+          setActiveAnswerPopupData({
+            ...activeAnswerPopupData,
+            content: freshAcronyms[freshIdx]
+          });
+        }
       }
     }
   };
@@ -25973,6 +25992,7 @@ ${itemsStr}
         handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
         handleDeleteAcronymCard={handleDeleteAcronymCard}
         handleOptimizeAcronym={handleOptimizeAcronym}
+        handleAddAcronymKeyword={handleAddAcronymKeyword}
         getAcronymRows={getAcronymRows}
         formulaOverviews={formulaOverviews}
         setFormulaOverviews={setFormulaOverviews}
