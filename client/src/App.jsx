@@ -8348,18 +8348,7 @@ export default function App() {
       console.warn('Failed to clear mixed review session on server:', e);
     }
     await fetchTodayReviews(referenceDate);
-    handleOpenAIQuestions(
-      mixedTopicId,
-      '오늘의 필수 믹스복습 (10제 1세트)',
-      '',
-      'mixed.html',
-      'ai',
-      mixedScheduleId,
-      'MIX',
-      false,
-      false,
-      '믹스'
-    );
+    showNotification('오늘의 필수 믹스복습이 복습 목록에 추가되었습니다.', 'success');
   };
 
   // 약점 보완 추천 토픽 수동 추가 요청 핸들러
