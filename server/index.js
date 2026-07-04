@@ -6934,6 +6934,65 @@ app.post('/api/table/suggest-title-and-refine', async (req, res) => {
 });
 
 
+// 6-6. Table Content Regeneration by Row/Col Headers
+app.post('/api/table/regenerate', async (req, res) => {
+  try {
+    const { title, headers, rowHeaders } = req.body;
+    if (!title || !headers || !rowHeaders) {
+      return res.status(400).json({ error: '필수 매개변수(title, headers, rowHeaders)가 누락되었습니다.' });
+    }
+
+    const systemInstruction = `당신은 지반공학 및 토목공학 전공을 지도하는 대학교수이자 전문 AI 튜터입니다.
+사용자가 제공한 표의 제목(주제), 열 헤더(첫 번째 행), 행 헤더(첫 번째 열)를 기준으로 표의 나머지 본문 셀 내용을 전공 지식에 맞게 전문적으로 채워주세요.
+
+반드시 다음 형식의 JSON 객체만 반환해야 합니다 (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+{
+  "rows": [
+    ["행헤더1", "본문셀1-1", "본문셀1-2", ...],
+    ["행헤더2", "본문셀2-1", "본문셀2-2", ...]
+  ]
+}
+
+주의사항:
+1. 각 행의 첫 번째 원소는 반드시 사용자가 제공한 행 헤더와 동일해야 합니다.
+2. 행 헤더와 열 헤더를 연계 분석하여 지반공학 전공 수준의 구체적이고 전문적인 지식을 한글로 작성해 주세요.
+3. 마크다운 기호나 추가적인 텍스트 설명은 배제하고 오직 위 형식의 JSON 데이터만 출력해 주세요. JSON 형식이 깨지면 안 됩니다.`;
+
+    const userPrompt = `
+- 표 제목(주제): ${title}
+- 열 헤더: ${JSON.stringify(headers)}
+- 행 헤더(첫 번째 열의 목록): ${JSON.stringify(rowHeaders)}
+`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor', { temperature: 0.2 });
+    
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const result = parseLlmJson(cleanJsonText);
+      if (result && Array.isArray(result.rows)) {
+        res.json({ success: true, rows: result.rows });
+      } else {
+        throw new Error('응답 형식이 올바르지 않습니다.');
+      }
+    } catch (parseErr) {
+      console.error('Regenerate table JSON parsing failed:', parseErr, 'Raw:', responseText);
+      res.status(500).json({ error: 'AI 응답 분석 실패. 다시 시도해 주세요.' });
+    }
+  } catch (err) {
+    console.error('Regenerate table error:', err);
+    res.status(500).json({ error: err.message || '표 내용 재작성에 실패했습니다.' });
+  }
+});
+
+
 // 7. Get Topic File Raw Text for Reading
 app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;

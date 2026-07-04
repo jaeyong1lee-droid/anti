@@ -55,7 +55,10 @@ import {
   Lock,
   Unlock,
   Cpu,
-  Type
+  Type,
+  ChevronLeft,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { FloatingCalculator } from './components/ScientificCalculator';
 import { FloatingMemorization } from './components/FloatingMemorization';
@@ -5283,6 +5286,8 @@ export default function App() {
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
+  const [activeAddDropdownTableId, setActiveAddDropdownTableId] = useState(null);
+  const [tableRegeneratingIds, setTableRegeneratingIds] = useState({}); // { [tableId]: boolean }
   const [activeEditAcronymCell, setActiveEditAcronymCell] = useState(null); // { acronymId, rIdx, type: 'acronym'|'combined' }
   const [editingAcronymValue, setEditingAcronymValue] = useState('');
   const [editingCellValue, setEditingCellValue] = useState('');
@@ -13133,6 +13138,124 @@ export default function App() {
       if (showToast) {
         showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
       }
+    }
+  };
+
+  const handleAddRow = (tableId, parsed) => {
+    const emptyRow = Array(parsed.headers.length).fill('');
+    const updatedRows = [...parsed.rows, emptyRow];
+    const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    setFormulaTables(updatedTables);
+    handleSaveFormulaTables(updatedTables, false);
+    showNotification('새 행이 추가되었습니다.', 'success');
+  };
+
+  const handleAddColumn = (tableId, parsed) => {
+    const updatedHeaders = [...parsed.headers, '새 열'];
+    const updatedRows = parsed.rows.map(row => [...row, '']);
+    const newHtml = rebuildTableHtml(updatedHeaders, updatedRows);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    setFormulaTables(updatedTables);
+    handleSaveFormulaTables(updatedTables, false);
+    showNotification('새 열이 추가되었습니다.', 'success');
+  };
+
+  const handleMoveRow = (tableId, rIdx, direction) => {
+    const table = formulaTables.find(item => item.id === tableId);
+    if (!table) return;
+    const parsed = parseHtmlTable(table.html);
+    const rows = [...parsed.rows];
+    if (direction === 'up' && rIdx > 0) {
+      const temp = rows[rIdx];
+      rows[rIdx] = rows[rIdx - 1];
+      rows[rIdx - 1] = temp;
+    } else if (direction === 'down' && rIdx < rows.length - 1) {
+      const temp = rows[rIdx];
+      rows[rIdx] = rows[rIdx + 1];
+      rows[rIdx + 1] = temp;
+    } else {
+      return;
+    }
+    const newHtml = rebuildTableHtml(parsed.headers, rows);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    setFormulaTables(updatedTables);
+    handleSaveFormulaTables(updatedTables, false);
+    showNotification('행 순서가 변경되었습니다.', 'success');
+  };
+
+  const handleMoveColumn = (tableId, colIdx, direction) => {
+    const table = formulaTables.find(item => item.id === tableId);
+    if (!table) return;
+    const parsed = parseHtmlTable(table.html);
+    const headers = [...parsed.headers];
+    const rows = parsed.rows.map(row => [...row]);
+    
+    let targetIdx = colIdx;
+    if (direction === 'left' && colIdx > 1) {
+      targetIdx = colIdx - 1;
+    } else if (direction === 'right' && colIdx < headers.length - 1) {
+      targetIdx = colIdx + 1;
+    } else {
+      return;
+    }
+
+    const tempHeader = headers[colIdx];
+    headers[colIdx] = headers[targetIdx];
+    headers[targetIdx] = tempHeader;
+
+    rows.forEach(row => {
+      const tempCell = row[colIdx];
+      row[colIdx] = row[targetIdx];
+      row[targetIdx] = tempCell;
+    });
+
+    const newHtml = rebuildTableHtml(headers, rows);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    setFormulaTables(updatedTables);
+    handleSaveFormulaTables(updatedTables, false);
+    showNotification('열 순서가 변경되었습니다.', 'success');
+  };
+
+  const handleRegenerateTable = async (tableId) => {
+    const table = formulaTables.find(item => item.id === tableId);
+    if (!table) return;
+
+    const parsed = parseHtmlTable(table.html);
+    const title = table.title || '새 비교표';
+    const headers = parsed.headers;
+    const rowHeaders = parsed.rows.map(row => row[0] || '');
+
+    setTableRegeneratingIds(prev => ({ ...prev, [tableId]: true }));
+    showNotification('AI가 표 내용을 분석 및 재작성하고 있습니다. 잠시만 기다려 주세요...', 'info');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/table/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, headers, rowHeaders })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || '서버 오류가 발생했습니다.');
+      }
+
+      const data = await res.json();
+      if (data.success && Array.isArray(data.rows)) {
+        const newHtml = rebuildTableHtml(headers, data.rows);
+        const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+        setFormulaTables(updatedTables);
+        handleSaveFormulaTables(updatedTables, false);
+        showNotification('표 내용이 성공적으로 재작성되었습니다!', 'success');
+      } else {
+        throw new Error('응답 형식 분석에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('Table regeneration failed:', err);
+      showNotification(`표 재작성 실패: ${err.message}`, 'error');
+    } finally {
+      setTableRegeneratingIds(prev => ({ ...prev, [tableId]: false }));
     }
   };
 
@@ -23546,6 +23669,19 @@ ${itemsStr}
 
                                   {/* Action Buttons Group */}
                                   <div className="flex items-center gap-2 self-end md:self-auto shrink-0 select-none">
+                                    {/* 새로고침 버튼 */}
+                                    {isExpanded && (
+                                      <button
+                                        onClick={() => handleRegenerateTable(t.id)}
+                                        disabled={tableRegeneratingIds[t.id]}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-slate-700/50 bg-slate-800/40 transition-all cursor-pointer text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 disabled:pointer-events-none"
+                                        title="AI 표 내용 재작성"
+                                      >
+                                        <RefreshCw size={12} className={tableRegeneratingIds[t.id] ? "animate-spin text-emerald-400" : ""} />
+                                        <span>AI 재작성</span>
+                                      </button>
+                                    )}
+
                                     {/* 열기/접기 버튼 */}
                                     <button
                                       onClick={() => {
@@ -23581,7 +23717,13 @@ ${itemsStr}
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in">
+                                  <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in relative min-h-[150px]">
+                                    {tableRegeneratingIds[t.id] && (
+                                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
+                                        <RefreshCw className="animate-spin text-emerald-450" size={28} />
+                                        <span className="text-xs font-bold text-slate-300">AI가 표를 재작성하는 중...</span>
+                                      </div>
+                                    )}
                                     {(() => {
                                       const parsed = parseHtmlTable(t.html);
                                       return (
@@ -23593,15 +23735,53 @@ ${itemsStr}
                                                 return (
                                                   <th 
                                                     key={hIdx} 
-                                                    className="p-1 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[80px]"
+                                                    className="p-1.5 border-r border-slate-800/80 last:border-r-0 align-middle cursor-pointer min-w-[90px]"
                                                     onClick={() => {
+                                                      if (hIdx === 0) return;
                                                       if (!isEditing) {
                                                         setActiveEditCell({ tableId: t.id, type: 'header', colIdx: hIdx });
                                                         setEditingCellValue(h);
                                                       }
                                                     }}
                                                   >
-                                                    {isEditing ? (
+                                                    {hIdx === 0 ? (
+                                                      <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveAddDropdownTableId(activeAddDropdownTableId === t.id ? null : t.id);
+                                                          }}
+                                                          className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20 flex items-center gap-0.5 mx-auto"
+                                                          title="행 또는 열 추가"
+                                                        >
+                                                          + 행/열 추가
+                                                        </button>
+                                                        {activeAddDropdownTableId === t.id && (
+                                                          <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-24 bg-slate-950 border border-slate-800 rounded-lg shadow-xl z-50 flex flex-col overflow-hidden py-1">
+                                                            <button
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleAddRow(t.id, parsed);
+                                                                setActiveAddDropdownTableId(null);
+                                                              }}
+                                                              className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                                                            >
+                                                              행 추가
+                                                            </button>
+                                                            <button
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleAddColumn(t.id, parsed);
+                                                                setActiveAddDropdownTableId(null);
+                                                              }}
+                                                              className="w-full px-2 py-1.5 hover:bg-slate-900 text-center text-xs font-bold text-slate-200 cursor-pointer border-none bg-transparent"
+                                                            >
+                                                              열 추가
+                                                            </button>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    ) : isEditing ? (
                                                       <input
                                                         type="text"
                                                         value={editingCellValue}
@@ -23624,36 +23804,41 @@ ${itemsStr}
                                                             setActiveEditCell(null);
                                                           }
                                                         }}
-                                                        className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
+                                                        className="w-full text-center bg-slateCustom-955 border border-slate-750 text-slate-200 font-black focus:outline-none focus:ring-0 p-1 text-[14px] md:text-sm rounded-lg"
                                                         autoFocus
                                                       />
                                                     ) : (
-                                                      <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-black select-text">
-                                                        <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                                                      <div className="flex flex-col items-center gap-1.5">
+                                                        <div className="flex items-center gap-1.5 select-none" onClick={(e) => e.stopPropagation()}>
+                                                          {hIdx > 1 && (
+                                                            <button 
+                                                              onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'left'); }} 
+                                                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                                                              title="왼쪽으로 이동"
+                                                            >
+                                                              <ChevronLeft size={12} />
+                                                            </button>
+                                                          )}
+                                                          {hIdx < parsed.headers.length - 1 && (
+                                                            <button 
+                                                              onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'right'); }} 
+                                                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                                                              title="오른쪽으로 이동"
+                                                            >
+                                                              <ChevronRight size={12} />
+                                                            </button>
+                                                          )}
+                                                        </div>
+                                                        <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-black select-text">
+                                                          <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                                                        </div>
                                                       </div>
                                                     )}
                                                   </th>
                                                 );
                                               })}
                                               <th className="p-2 md:p-2.5 font-black text-rose-400 w-24 select-none align-middle">
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                  <button
-                                                    onClick={() => {
-                                                      const emptyRow = Array(parsed.headers.length).fill('');
-                                                      const updatedRows = [...parsed.rows, emptyRow];
-                                                      const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                      const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                      setFormulaTables(updatedTables);
-                                                      handleSaveFormulaTables(updatedTables, false);
-                                                      showNotification('새 행이 추가되었습니다.', 'success');
-                                                    }}
-                                                    className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black cursor-pointer transition-all active:scale-95 border border-emerald-500/20"
-                                                    title="새 행 추가"
-                                                  >
-                                                    + 행추가
-                                                  </button>
-                                                  <span>삭제</span>
-                                                </div>
+                                                <span>삭제</span>
                                               </th>
                                             </tr>
                                           </thead>
@@ -23715,23 +23900,41 @@ ${itemsStr}
                                                     </td>
                                                   );
                                                 })}
-                                                <td className="p-2 md:p-2.5 text-center align-middle">
-                                                  <button
-                                                    onClick={() => {
-                                                      if (window.confirm('이 행을 삭제하시겠습니까?')) {
-                                                        const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
-                                                        const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
-                                                        const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
-                                                        setFormulaTables(updatedTables);
-                                                        handleSaveFormulaTables(updatedTables, false);
-                                                        showNotification('행이 삭제되었습니다.', 'info');
-                                                      }
-                                                    }}
-                                                    className="p-1 rounded bg-slate-850 hover:bg-rose-950/75 text-slate-400 hover:text-rose-455 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20 flex items-center justify-center mx-auto"
-                                                    title="행 삭제"
-                                                  >
-                                                    <Trash2 size={11} />
-                                                  </button>
+                                                <td className="p-2 md:p-2.5 text-center align-middle w-24 select-none">
+                                                  <div className="flex items-center justify-center gap-1 mx-auto">
+                                                    <button
+                                                      onClick={() => handleMoveRow(t.id, rIdx, 'up')}
+                                                      disabled={rIdx === 0}
+                                                      className="p-1 rounded bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:pointer-events-none transition-all border border-slate-700/50 flex items-center justify-center"
+                                                      title="위로 이동"
+                                                    >
+                                                      <ArrowUp size={11} />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleMoveRow(t.id, rIdx, 'down')}
+                                                      disabled={rIdx === parsed.rows.length - 1}
+                                                      className="p-1 rounded bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer disabled:opacity-30 disabled:pointer-events-none transition-all border border-slate-700/50 flex items-center justify-center"
+                                                      title="아래로 이동"
+                                                    >
+                                                      <ArrowDown size={11} />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        if (window.confirm('이 행을 삭제하시겠습니까?')) {
+                                                          const updatedRows = parsed.rows.filter((_, idx) => idx !== rIdx);
+                                                          const newHtml = rebuildTableHtml(parsed.headers, updatedRows);
+                                                          const updatedTables = formulaTables.map(item => item.id === t.id ? { ...item, html: newHtml } : item);
+                                                          setFormulaTables(updatedTables);
+                                                          handleSaveFormulaTables(updatedTables, false);
+                                                          showNotification('행이 삭제되었습니다.', 'info');
+                                                        }
+                                                      }}
+                                                      className="p-1 rounded bg-slate-850 hover:bg-rose-950/75 text-slate-400 hover:text-rose-455 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20 flex items-center justify-center"
+                                                      title="행 삭제"
+                                                    >
+                                                      <Trash2 size={11} />
+                                                    </button>
+                                                  </div>
                                                 </td>
                                               </tr>
                                             ))}
