@@ -1258,15 +1258,17 @@ function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold = false
         content: [displayMarker + contentWithoutMarker]
       };
     } else if (line.trim() === '' || /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim())) {
-      // 수식 플레이스홀더 줄은 리스트 항목 내부 continuation으로 처리 (빈 줄이 아닌 경우)
-      if (/^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim()) && currentListBlock) {
+      const isMathPlaceholder = /^___(?:BLOCK|INLINE)_MATH_\d+___$/.test(line.trim());
+      if (isMathPlaceholder && currentListBlock) {
+        // 리스트 내부의 수식 플레이스홀더 → continuation으로 유지
         currentListBlock.content.push(line);
       } else {
         if (currentListBlock) {
           renderedLines.push(currentListBlock.outerStyleStart + currentListBlock.content.join('\n') + '</div>');
           currentListBlock = null;
         }
-        renderedLines.push('');
+        // 수식 플레이스홀더는 그대로 유지 (빈 문자열로 대체하면 수식이 사라짐)
+        renderedLines.push(isMathPlaceholder ? line : '');
       }
     } else {
       if (currentListBlock) {
