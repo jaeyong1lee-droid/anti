@@ -52,26 +52,40 @@ function parseFormula(str) {
       if (str.startsWith('frac(', i)) {
         const startIdx = i;
         const openIdx = i + 4;
-        const closeIdx = parentMap[openIdx];
+        let closeIdx = parentMap[openIdx];
         if (closeIdx === undefined) {
           nodes.push({ type: 'text', content: 'frac(', startIdx: i, endIdx: i + 5 });
           i += 5;
           continue;
         }
         
+        // Hijack check: if outer closing parenthesis was padded but the real string
+        // ends with a ')' that got hijacked by a nested unmatched '('
+        if (closeIdx >= str.length && str[str.length - 1] === ')') {
+          const hijackedIdx = str.length - 1;
+          const mappedOpen = parentMap[hijackedIdx];
+          if (mappedOpen !== undefined && mappedOpen > openIdx) {
+            closeIdx = hijackedIdx;
+          }
+        }
+        
+        // Find comma using minimum parenthesis level
         let level = 0;
+        let minLevel = Infinity;
         let commaIdx = -1;
         for (let j = openIdx + 1; j < closeIdx; j++) {
           if (str[j] === '(') level++;
           else if (str[j] === ')') level--;
-          else if (str[j] === ',' && level === 0) {
-            commaIdx = j;
-            break;
+          else if (str[j] === ',') {
+            if (level < minLevel) {
+              minLevel = level;
+              commaIdx = j;
+            }
           }
         }
         
         if (commaIdx === -1) {
-          nodes.push({ type: 'text', content: str.substring(i, closeIdx + 1), startIdx: i, endIdx: closeIdx + 1 });
+          nodes.push({ type: 'text', content: str.substring(i, Math.min(closeIdx + 1, str.length)), startIdx: i, endIdx: Math.min(closeIdx + 1, str.length) });
           i = closeIdx + 1;
           continue;
         }
@@ -79,7 +93,7 @@ function parseFormula(str) {
         const numStartIdx = openIdx + 1;
         const numEndIdx = commaIdx;
         const denStartIdx = commaIdx + 1;
-        const denEndIdx = closeIdx;
+        const denEndIdx = Math.min(closeIdx, str.length);
         
         nodes.push({
           type: 'fraction',
@@ -90,7 +104,7 @@ function parseFormula(str) {
           numStr: str.substring(numStartIdx, numEndIdx),
           denStr: str.substring(denStartIdx, denEndIdx),
           startIdx,
-          endIdx: closeIdx + 1
+          endIdx: Math.min(closeIdx + 1, str.length)
         });
         i = closeIdx + 1;
       } else if (str.startsWith('^(', i)) {
