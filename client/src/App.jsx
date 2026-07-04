@@ -10909,6 +10909,23 @@ export default function App() {
     examBodyRef.current?.scrollTo({ top: cards[targetIndex].offsetTop, behavior: 'smooth' });
   };
 
+  const scrollToLastTutorResponse = (containerEl) => {
+    if (!containerEl) return;
+    requestAnimationFrame(() => {
+      const bubbles = containerEl.querySelectorAll('.tutor-msg-bubble-container');
+      if (bubbles && bubbles.length > 0) {
+        const lastBubble = bubbles[bubbles.length - 1];
+        if (lastBubble) {
+          const containerRect = containerEl.getBoundingClientRect();
+          const bubbleRect = lastBubble.getBoundingClientRect();
+          containerEl.scrollTop = containerEl.scrollTop + (bubbleRect.top - containerRect.top);
+        }
+      } else {
+        containerEl.scrollTop = containerEl.scrollHeight;
+      }
+    });
+  };
+
   const handleFormulaImageAttachment = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -11126,6 +11143,7 @@ export default function App() {
       setRealTimeChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsRealTimeChatLoading(false);
+      scrollToLastTutorResponse(realTimeChatBodyRef.current);
     }
   };
 
@@ -12133,18 +12151,7 @@ export default function App() {
       setChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
-      requestAnimationFrame(() => {
-        const parent = chatBodyRef.current;
-        const userMsgEl = parent?.querySelector(`#chat-msg-${userMsgIdx}`);
-        if (parent && userMsgEl) {
-          const parentRect = parent.getBoundingClientRect();
-          const childRect = userMsgEl.getBoundingClientRect();
-          const relativeTop = childRect.top - parentRect.top + parent.scrollTop;
-          parent.scrollTo({ top: relativeTop, behavior: 'smooth' });
-        } else if (parent) {
-          parent.scrollTop = parent.scrollHeight;
-        }
-      });
+      scrollToLastTutorResponse(chatBodyRef.current);
     }
   };
 
@@ -15198,11 +15205,7 @@ ${itemsStr}
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: `오류가 발생했습니다: ${err.message}` }]);
     } finally {
       setIsFormulaChatLoading(false);
-      requestAnimationFrame(() => {
-        if (formulaChatBodyRef.current) {
-          formulaChatBodyRef.current.scrollTop = formulaChatBodyRef.current.scrollHeight;
-        }
-      });
+      scrollToLastTutorResponse(formulaChatBodyRef.current);
     }
   };
 
@@ -19128,7 +19131,7 @@ ${itemsStr}
 
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.map((msg, i) => (
-                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full ${msg.role === 'model' ? 'tutor-msg-bubble-container' : ''}`}>
                     <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-violet-400 ml-1'}`}>
                       {msg.role === 'user' ? '나' : 'Gemini'}
                     </div>
@@ -22305,7 +22308,7 @@ ${itemsStr}
               
               <div ref={chatBodyRef} className="flex-1 overflow-y-auto p-3 space-y-3 scroll-smooth">
                 {chatHistory.map((msg, i) => (
-                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full`}>
+                  <div key={i} id={`chat-msg-${i}`} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} w-full ${msg.role === 'model' ? 'tutor-msg-bubble-container' : ''}`}>
                     <div className={`text-[10px] mb-1 font-bold ${msg.role === 'user' ? 'text-indigo-400 mr-1' : 'text-amber-400 ml-1'}`}>
                       {msg.role === 'user' ? '나' : 'Gemini'}
                     </div>
@@ -24417,7 +24420,7 @@ ${itemsStr}
                             return (
                               <div 
                                 key={mIdx} 
-                                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-0.5`}
+                                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-0.5 ${!isUser ? 'tutor-msg-bubble-container' : ''}`}
                               >
                                 <span className="text-[9px] text-slate-400 font-bold px-1">
                                   {isUser ? '수험생' : 'AI 튜터'}
@@ -24642,7 +24645,7 @@ ${itemsStr}
                         return (
                           <div 
                             key={mIdx} 
-                            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
+                            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1 ${!isUser ? 'tutor-msg-bubble-container' : ''}`}
                           >
                             <span className="text-[10px] text-slate-400 font-bold px-1">
                               {isUser ? '수험생' : 'AI 튜터'}
