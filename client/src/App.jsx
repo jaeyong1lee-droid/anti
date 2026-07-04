@@ -13242,6 +13242,29 @@ export default function App() {
     showNotification('열 순서가 변경되었습니다.', 'success');
   };
 
+  const handleDeleteColumn = (tableId, colIdx) => {
+    const table = formulaTables.find(item => item.id === tableId);
+    if (!table) return;
+    const parsed = parseHtmlTable(table.html);
+    const headers = [...parsed.headers];
+    if (headers.length <= 2) {
+      showNotification('최소 1개의 열(헤더 제외)은 유지되어야 합니다.', 'warning');
+      return;
+    }
+    headers.splice(colIdx, 1);
+    const rows = parsed.rows.map(row => {
+      const newRow = [...row];
+      newRow.splice(colIdx, 1);
+      return newRow;
+    });
+
+    const newHtml = rebuildTableHtml(headers, rows);
+    const updatedTables = formulaTables.map(item => item.id === tableId ? { ...item, html: newHtml } : item);
+    setFormulaTables(updatedTables);
+    handleSaveFormulaTables(updatedTables, false);
+    showNotification('열이 삭제되었습니다.', 'success');
+  };
+
   const handleRegenerateTable = async (tableId) => {
     const table = formulaTables.find(item => item.id === tableId);
     if (!table) return;
@@ -23864,6 +23887,20 @@ ${itemsStr}
                                                               title="오른쪽으로 이동"
                                                             >
                                                               <ChevronRight size={12} />
+                                                            </button>
+                                                          )}
+                                                          {hIdx > 0 && (
+                                                            <button 
+                                                              onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                if (window.confirm('이 열을 삭제하시겠습니까?')) {
+                                                                  handleDeleteColumn(t.id, hIdx);
+                                                                }
+                                                               }} 
+                                                              className="p-0.5 rounded hover:bg-rose-500/10 text-rose-450 hover:text-rose-350 border-none bg-transparent cursor-pointer"
+                                                              title="열 삭제"
+                                                            >
+                                                              <Trash2 size={12} />
                                                             </button>
                                                           )}
                                                         </div>
