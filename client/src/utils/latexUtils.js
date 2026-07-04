@@ -398,6 +398,14 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   // Normalize dashes (en-dash, em-dash, math minus) to standard hyphens
   processed = processed.replace(/[–—−]/g, '-');
 
+  // [Self-Healing] Clean up '...' used on its own line as code block boundary
+  processed = processed.replace(/(?:^|\n)\s*\.\.\.\s*(?=\n)/g, '\n```');
+
+  // [Self-Healing] Clean up Greek letter variables missing underscores (e.g. \sigmav -> \sigma_v)
+  const greekSubscriptLetters = 'sigma|gamma|tau|theta|alpha|beta|epsilon|phi|psi|omega|mu|nu';
+  const greekSubscriptRegex = new RegExp(`\\\\(${greekSubscriptLetters})([a-zA-Z0-9])\\b`, 'gi');
+  processed = processed.replace(greekSubscriptRegex, '\\$1_$2');
+
   // [Self-Healing] Remove space between backslash and LaTeX commands
   processed = processed.replace(/\\\s+(alpha|beta|gamma|sigma|tau|phi|theta|epsilon|pi|delta|omega|mu|lambda|psi|rho|eta|nu|xi|zeta|chi|upsilon|kappa|Delta|Sigma|Gamma|Phi|Theta|Omega|frac|dfrac|tfrac|sqrt|cdot|times|div|pm|infty|partial|sum|int|sim|le|ge|lt|gt|sin|cos|tan|log|ln|nabla|neq|ne|approx)\b/g, '\\$1');
 
