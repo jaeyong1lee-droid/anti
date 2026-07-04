@@ -10,21 +10,41 @@
 
 /* Premium Custom Utility Classes */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  will-change: backdrop-filter;
   contain: layout style;
 }
 
 .glass-panel-light {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  will-change: backdrop-filter;
   contain: layout style;
+}
+
+/* Global Backdrop Blur Overrides for GPU/CPU Performance optimization (prevents video/YouTube stuttering) */
+.backdrop-blur-2xl {
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+.backdrop-blur-xl {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+.backdrop-blur-lg {
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+}
+.backdrop-blur-md, .backdrop-blur {
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+}
+.backdrop-blur-sm {
+  backdrop-filter: blur(1px) !important;
+  -webkit-backdrop-filter: blur(1px) !important;
 }
 
 .glow-purple {
