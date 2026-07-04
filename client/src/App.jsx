@@ -3222,6 +3222,97 @@ export default function App() {
     window.addEventListener('touchend', handleMoveEnd);
   };
 
+  const [generatorPopupPos, setGeneratorPopupPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_generator_popup_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
+      }
+    } catch (e) {}
+    const width = 384;
+    const height = 300;
+    const x = Math.max(16, (window.innerWidth - width) / 2);
+    const y = Math.max(16, (window.innerHeight - height) / 2);
+    return { x, y };
+  });
+
+  const latestGeneratorPopupPosRef = useRef({ x: 100, y: 100 });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--generator-popup-x', `${generatorPopupPos.x}px`);
+    document.documentElement.style.setProperty('--generator-popup-y', `${generatorPopupPos.y}px`);
+    latestGeneratorPopupPosRef.current = generatorPopupPos;
+  }, [generatorPopupPos]);
+
+  const handleGeneratorPopupMoveStart = (e) => {
+    if (e.target.closest('button, svg, path, input, textarea')) return;
+
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const startXPos = latestGeneratorPopupPosRef.current.x;
+    const startYPos = latestGeneratorPopupPosRef.current.y;
+    const startX = clientX;
+    const startY = clientY;
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'none';
+    });
+
+    let generatorPopupMoveRafId = null;
+
+    const handleMove = (moveEvent) => {
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      const newX = Math.max(0, Math.min(window.innerWidth - 100, startXPos + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - 50, startYPos + dy));
+
+      latestGeneratorPopupPosRef.current = { x: newX, y: newY };
+
+      if (generatorPopupMoveRafId) cancelAnimationFrame(generatorPopupMoveRafId);
+      generatorPopupMoveRafId = requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--generator-popup-x', `${newX}px`);
+        document.documentElement.style.setProperty('--generator-popup-y', `${newY}px`);
+      });
+    };
+
+    const handleMoveEnd = () => {
+      if (generatorPopupMoveRafId) cancelAnimationFrame(generatorPopupMoveRafId);
+
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleMoveEnd);
+      window.removeEventListener('touchmove', handleMove, { passive: false });
+      window.removeEventListener('touchend', handleMoveEnd);
+
+      setGeneratorPopupPos(latestGeneratorPopupPosRef.current);
+      try {
+        localStorage.setItem('anti_generator_popup_pos', JSON.stringify(latestGeneratorPopupPosRef.current));
+      } catch (e) {}
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleMoveEnd);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleMoveEnd);
+  };
+
   const handleOpenAnswerPopup = (q) => {
     const cleanTitle = q.question.replace(/^\[.*?\]\s*/, '').trim();
     const lowerQuestion = q.question.toLowerCase();
