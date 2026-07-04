@@ -24353,20 +24353,22 @@ ${itemsStr}
                           <span className="text-[11px] font-extrabold text-slate-200">실시간 AI 공식 튜터</span>
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <select
-                          value={selectedFormulaIdx}
-                          onChange={(e) => handleFormulaSelect(Number(e.target.value))}
-                          className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
-                        >
-                          <option value={-1}>-- 학습 공식 선택 (선택 안함 가능) --</option>
-                          {formulaQuestions.map((fq, idx) => (
-                            <option key={idx} value={idx}>
-                              Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {formulaSubTab === 'formula' && (
+                        <div className="space-y-1">
+                          <select
+                            value={selectedFormulaIdx}
+                            onChange={(e) => handleFormulaSelect(Number(e.target.value))}
+                            className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-[11px] rounded-lg px-2 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
+                          >
+                            <option value={-1}>-- 학습 공식 선택 (선택 안함 가능) --</option>
+                            {formulaQuestions.map((fq, idx) => (
+                              <option key={idx} value={idx}>
+                                Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Chat Message History */}
@@ -24559,31 +24561,33 @@ ${itemsStr}
                   </div>
 
                   {/* Formula Dropdown Selector */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-400 font-extrabold block">학습 및 질의할 공식 선택:</label>
-                    <select
-                      value={selectedFormulaIdx}
-                      onChange={(e) => handleFormulaSelect(Number(e.target.value))}
-                      className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-2.5 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
-                    >
-                      <option value={-1}>-- 공식을 선택하세요 --</option>
-                      {formulaQuestions.map((fq, idx) => (
-                        <option key={idx} value={idx}>
-                          Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedFormulaIdx !== -1 && (
-                      <button
-                        onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
-                        disabled={isFormulaChatLoading}
-                        className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  {formulaSubTab === 'formula' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400 font-extrabold block">학습 및 질의할 공식 선택:</label>
+                      <select
+                        value={selectedFormulaIdx}
+                        onChange={(e) => handleFormulaSelect(Number(e.target.value))}
+                        className="w-full bg-slateCustom-900 border border-slate-800 focus:border-rose-500/50 text-white text-xs rounded-xl px-2.5 py-1.5 focus:outline-none transition-all cursor-pointer font-bold"
                       >
-                        <HelpCircle size={11} className="text-amber-400" />
-                        <span>이 공식으로 문제 출제 받기 📝</span>
-                      </button>
-                    )}
-                  </div>
+                        <option value={-1}>-- 공식을 선택하세요 --</option>
+                        {formulaQuestions.map((fq, idx) => (
+                          <option key={idx} value={idx}>
+                            Q{idx + 1}. {fq.title || `공식 카드 ${idx + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedFormulaIdx !== -1 && (
+                        <button
+                          onClick={() => handleGenerateFormulaProblem(selectedFormulaIdx)}
+                          disabled={isFormulaChatLoading}
+                          className="mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/30 transition-all active:scale-98 text-[11px] font-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <HelpCircle size={11} className="text-amber-400" />
+                          <span>이 공식으로 문제 출제 받기 📝</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Chat Message History */}
