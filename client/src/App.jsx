@@ -15265,7 +15265,7 @@ ${itemsStr}
           </div>
         )}
 
-        <div className={`w-full max-w-[360px] bg-slateCustom-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center space-y-6 text-center transition-all ${isPinInputShaking ? 'animate-shake' : ''}`}>
+        <div className={`w-full max-w-[360px] bg-slateCustom-900 border border-white/20 rounded-3xl p-8 shadow-2xl flex flex-col items-center space-y-6 text-center transition-all ${isPinInputShaking ? 'animate-shake' : ''}`}>
           
           <div className="p-4 bg-violet-500/10 text-violet-400 rounded-2xl">
             <Lock size={36} className="text-violet-500 animate-pulse" />
@@ -15314,7 +15314,7 @@ ${itemsStr}
       {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
       {isLockscreenPoolModalOpen && (
         <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[85vh]">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[85vh]">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -15399,7 +15399,7 @@ ${itemsStr}
         const q = selectedPoolQuestion;
         return (
           <div className="fixed inset-0 z-[999999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 select-none">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh]">
+            <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh]">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
@@ -19078,7 +19078,7 @@ ${itemsStr}
       {/* 💡 힌트 보기 모달 (Hint Modal) */}
       {showHintModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowHintModal(false)}>
-          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <div className="flex items-center gap-2">
@@ -19129,7 +19129,7 @@ ${itemsStr}
       {/* ⚙️ 공학 기준 통합 관리 모달 (Engineering Standards Management Modal) */}
       {showManageStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19234,7 +19234,7 @@ ${itemsStr}
       {/* ✏️ 공학 기준 추가/수정 서브 모달 (Engineering Standard Add/Edit Sub-Modal) */}
       {showEditStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19319,7 +19319,7 @@ ${itemsStr}
       {/* ⚙️ 채점 기준 통합 관리 모달 (Grading Standards Management Modal) */}
       {showManageGradingStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageGradingStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19424,7 +19424,7 @@ ${itemsStr}
       {/* ✏️ 채점 기준 추가/수정 서브 모달 (Grading Standard Add/Edit Sub-Modal) */}
       {showEditGradingStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditGradingStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19507,7 +19507,7 @@ ${itemsStr}
       {/* ⚙️ 검증 기준 통합 관리 모달 (Validation Standards Management Modal) */}
       {showManageValidationStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageValidationStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19612,7 +19612,7 @@ ${itemsStr}
       {/* ⚙️ 문제생성 지침 통합 관리 모달 (Generation Standards Management Modal) */}
       {showManageGenerationStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageGenerationStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19717,7 +19717,7 @@ ${itemsStr}
       {/* ✏️ 문제생성 지침 추가/수정 서브 모달 (Generation Standard Add/Edit Sub-Modal) */}
       {showEditGenerationStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditGenerationStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19799,7 +19799,7 @@ ${itemsStr}
       {/* ⚙️ 락스크린 출제 지침 통합 관리 모달 (Lockscreen Standards Management Modal) */}
       {showManageLockscreenStandardsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageLockscreenStandardsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19902,7 +19902,7 @@ ${itemsStr}
       {/* ✏️ 락스크린 출제 지침 추가/수정 서브 모달 (Lockscreen Standard Add/Edit Sub-Modal) */}
       {showEditLockscreenStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditLockscreenStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -19984,7 +19984,7 @@ ${itemsStr}
       {/* ✏️ 검증 기준 추가/수정 서브 모달 (Validation Standard Add/Edit Sub-Modal) */}
       {showEditValidationStandardModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditValidationStandardModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -20066,7 +20066,7 @@ ${itemsStr}
       {/* ⚙️ 토픽 전용 출제 지침 통합 관리 모달 */}
       {showManageTopicInstructionsModal && (
         <div className="fixed inset-0 z-[200] overflow-y-auto flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowManageTopicInstructionsModal(false)}>
-          <div className="w-full max-w-4xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-4xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -20171,7 +20171,7 @@ ${itemsStr}
       {/* ✏️ 토픽 전용 출제 지침 추가/수정 서브 모달 */}
       {showEditTopicInstructionModal && (
         <div className="fixed inset-0 z-[210] overflow-y-auto flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300 animate-fade-in" onClick={() => setShowEditTopicInstructionModal(false)}>
-          <div className="w-full max-w-2xl bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 animate-scale-up text-left" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -20252,7 +20252,7 @@ ${itemsStr}
 
       {formulaConfirmTarget && (
         <div className="fixed inset-0 z-[200000] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
-          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
             <div className="flex flex-col items-center gap-2.5">
@@ -20333,7 +20333,7 @@ ${itemsStr}
       {/* 공식 추가 완료 및 이동 확인 모달 (Formula Added Modal) */}
       {formulaAddedTarget && (
         <div className="fixed inset-0 z-[200100] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
-          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
             <div className="flex flex-col items-center gap-2.5">
@@ -20380,7 +20380,7 @@ ${itemsStr}
       {/* 내보내기 완료 및 이동 확인 모달 (Export Added Modal) */}
       {exportAddedTarget && (
         <div className="fixed inset-0 z-[200100] overflow-y-auto flex items-center justify-center p-4 bg-black/35 transition-all duration-300 animate-fade-in">
-          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
+          <div className="w-full max-w-[340px] bg-slateCustom-900 border border-white/20 rounded-2xl overflow-hidden shadow-2xl p-5 text-center space-y-4 animate-scale-up">
             
             {/* Modal Icon and Title */}
             <div className="flex flex-col items-center gap-2.5">
@@ -20439,7 +20439,7 @@ ${itemsStr}
       {/* 복습 초기화 확인 모달 (Reset Review Confirmation Modal) */}
       {resetConfirmTarget && (
         <div className="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center p-4 bg-slateCustom-950/80 backdrop-blur-sm transition-all duration-300">
-          <div className="w-full max-w-md bg-slateCustom-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
+          <div className="w-full max-w-md bg-slateCustom-900 border border-white/20 rounded-3xl overflow-hidden shadow-2xl p-6 text-center space-y-6 animate-scale-up">
             
             {/* Modal Icon and Title */}
             <div className="flex flex-col items-center gap-3">
@@ -25545,7 +25545,7 @@ ${itemsStr}
             zIndex: 100050,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
-          className="w-[calc(100vw-32px)] sm:w-[320px] bg-slate-900/95 border border-slate-700/60 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
+          className="w-[calc(100vw-32px)] sm:w-[320px] bg-slate-900/95 border border-white/20 rounded-2xl shadow-2xl p-3.5 backdrop-blur-md flex flex-col gap-2.5 font-sans select-none"
         >
           <style>{`
             @keyframes dragPopupFadeIn {
@@ -25636,7 +25636,7 @@ ${itemsStr}
             flexDirection: 'column',
           }}
           className={`bg-slate-900/95 shadow-2xl backdrop-blur-md font-sans overflow-hidden select-none animate-dragPopupFadeIn ${
-            (!isDesktop && !isMobileLandscape) ? '' : 'border border-slate-700/60 rounded-2xl'
+            (!isDesktop && !isMobileLandscape) ? '' : 'border border-white/20 rounded-2xl'
           }`}
         >
           {/* Header */}
@@ -25832,7 +25832,7 @@ ${itemsStr}
       {/* Table Export Confirmation Modal */}
       {tableConfirmTarget && (
         <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
-          <div className="bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+          <div className="bg-slateCustom-900 border border-white/20 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center gap-3 text-rose-400">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3Z"></path><path d="M21 9H3"></path><path d="M21 15H3"></path><path d="M12 3v18"></path></svg>
               <h3 className="text-lg font-black text-white">필수암기 표로 내보내기</h3>
@@ -25892,7 +25892,7 @@ ${itemsStr}
       {/* Acronym Export Confirmation Modal */}
       {acronymConfirmTarget && (
         <div className="fixed inset-0 bg-slateCustom-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in select-none">
-          <div className="bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+          <div className="bg-slateCustom-900 border border-white/20 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center gap-3 text-emerald-400">
               <Type size={24} />
               <h3 className="text-lg font-black text-white">앞글자 암기법 내보내기</h3>
@@ -25934,7 +25934,7 @@ ${itemsStr}
       {/* Custom Acronym Prompt Modal */}
       {showAcronymPromptModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
-          <div className="w-full max-w-sm bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+          <div className="w-full max-w-sm bg-slateCustom-900 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2">
                 <span className="px-1.5 py-0.5 bg-emerald-500/10 rounded text-[10px] font-black">AI</span>
@@ -26062,7 +26062,7 @@ ${itemsStr}
             display: 'flex',
             flexDirection: 'column',
           }}
-          className="bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
+          className="bg-slate-900/95 border border-white/20 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
         >
             {/* Modal Header */}
             <div
@@ -26276,7 +26276,7 @@ ${itemsStr}
       {/* Custom Overview Prompt Modal */}
       {showOverviewPromptModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in select-none">
-          <div className="w-full max-w-sm bg-slateCustom-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
+          <div className="w-full max-w-sm bg-slateCustom-900 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-scale-up">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-sm font-black text-rose-450 flex items-center gap-2">
                 <span className="px-1.5 py-0.5 bg-rose-500/10 rounded text-[10px] font-black">AI</span>
