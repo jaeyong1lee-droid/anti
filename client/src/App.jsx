@@ -6378,39 +6378,7 @@ export default function App() {
   const [isPinVerifying, setIsPinVerifying] = useState(false);
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
 
-  // Inactivity dimmer (dims virtual screen brightness after 1 minute of inactivity)
-  const [isDimmed, setIsDimmed] = useState(false);
-  useEffect(() => {
-    if (!isPinVerified) {
-      setIsDimmed(false);
-      return;
-    }
-    let timeoutId = null;
-    const resetTimer = () => {
-      setIsDimmed(false);
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setIsDimmed(true);
-      }, 60000); // 1 minute
-    };
-    resetTimer();
 
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'touchmove', 'click'];
-    const handleActivity = () => {
-      resetTimer();
-    };
-
-    events.forEach(event => {
-      window.addEventListener(event, handleActivity, { passive: true });
-    });
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      events.forEach(event => {
-        window.removeEventListener(event, handleActivity);
-      });
-    };
-  }, [isPinVerified]);
 
   const lastTickRef = useRef(Date.now());
   const tickCountRef = useRef(0);
@@ -6448,40 +6416,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isPinVerified, isDesktop]);
 
-  // Prevent screen dimming and sleeping on mobile devices (Screen Wake Lock API)
-  useEffect(() => {
-    let wakeLock = null;
 
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          console.log('Screen Wake Lock successfully acquired.');
-        }
-      } catch (err) {
-        console.warn(`Screen Wake Lock request failed: ${err.name}, ${err.message}`);
-      }
-    };
-
-    if (isPinVerified) {
-      requestWakeLock();
-    }
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && isPinVerified) {
-        await requestWakeLock();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (wakeLock) {
-        wakeLock.release().catch(e => console.warn('Failed to release wake lock:', e));
-      }
-    };
-  }, [isPinVerified]);
 
   // Listener to trigger the quiz immediately on visibility change (wake up / app return)
   useEffect(() => {
@@ -16562,11 +16497,7 @@ ${itemsStr}
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
-      {/* Virtual Screen Dimmer Overlay */}
-      <div 
-        className="fixed inset-0 bg-black pointer-events-none z-[999999] transition-opacity duration-700" 
-        style={{ opacity: isDimmed ? 0.75 : 0 }}
-      />
+
       {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
       {isLockscreenPoolModalOpen && (
         <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
