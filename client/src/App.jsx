@@ -5810,7 +5810,15 @@ export default function App() {
     if (aiQuestions && aiQuestions.length > 0) {
       const updatedAi = aiQuestions.map(q => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          const matchedCard = formulaAcronyms.find(ac => ac.id === q.originalId);
+          const matchedCard = formulaAcronyms.find(ac => {
+            if (q.originalId && ac.id === q.originalId) return true;
+            const cleanTitle = (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
+            const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
+            if (cleanTitle && cleanQ) {
+              if (cleanTitle === cleanQ || cleanTitle.includes(cleanQ) || cleanQ.includes(cleanTitle)) return true;
+            }
+            return false;
+          });
           if (matchedCard) {
             const parsed = parseAcronymContent(matchedCard.content);
             const acronymChanged = q.acronym !== parsed.acronym;
@@ -5844,7 +5852,15 @@ export default function App() {
     if (examQuestions && examQuestions.length > 0) {
       const updatedExam = examQuestions.map(q => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          const matchedCard = formulaAcronyms.find(ac => ac.id === q.originalId);
+          const matchedCard = formulaAcronyms.find(ac => {
+            if (q.originalId && ac.id === q.originalId) return true;
+            const cleanTitle = (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
+            const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
+            if (cleanTitle && cleanQ) {
+              if (cleanTitle === cleanQ || cleanTitle.includes(cleanQ) || cleanQ.includes(cleanTitle)) return true;
+            }
+            return false;
+          });
           if (matchedCard) {
             const parsed = parseAcronymContent(matchedCard.content);
             const acronymChanged = q.acronym !== parsed.acronym;
