@@ -947,7 +947,6 @@ div[class*="overflow-y-auto"] {
   }
 
   .table-quiz-container {
-    --first-col-width: 7.5rem !important;
     --other-col-width: auto !important;
   }
 
@@ -958,7 +957,7 @@ div[class*="overflow-y-auto"] {
 
   .table-quiz-container col:first-child,
   .table-quiz-col-first {
-    width: 7.5rem !important;
+    width: var(--first-col-width, 7.5rem) !important;
   }
 
   .table-quiz-container col:not(:first-child) {
