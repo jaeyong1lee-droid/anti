@@ -926,9 +926,9 @@ div[class*="overflow-y-auto"] {
     left: 0 !important;
     z-index: 10 !important;
     background-color: #0b1329 !important; /* solid background */
-    width: 5.5rem !important; /* 5 characters width */
-    min-width: 5.5rem !important;
-    max-width: 5.5rem !important;
+    width: 7.5rem !important; /* 7 characters width */
+    min-width: 7.5rem !important;
+    max-width: 7.5rem !important;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.4);
     word-break: break-all !important;
     white-space: normal !important;
@@ -942,7 +942,7 @@ div[class*="overflow-y-auto"] {
   }
 
   .table-quiz-container col:first-child {
-    width: 5.5rem !important;
+    width: 7.5rem !important;
   }
 
   .table-quiz-container th:not(:first-child),

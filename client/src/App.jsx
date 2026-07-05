@@ -2472,8 +2472,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         {revealed ? (() => {
                           const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
                           return (
-                            <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
-                              <div className="flex-1 text-left font-medium">
+                            <div className={`w-full flex flex-col items-stretch gap-1 sm:flex-row sm:justify-between sm:items-center p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
+                              <div className="flex-grow text-left font-medium">
                                 <BufferedTextarea
                                   value={value}
                                   onChange={(val) => {
@@ -2508,7 +2508,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                       }
                                     }}
                                     title="클릭 시 이 칸만 재평가합니다"
-                                    className={`ml-2 text-right font-extrabold select-none whitespace-nowrap px-2 py-1 rounded border border-current/25 bg-black/25 hover:bg-black/45 active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                    className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap px-2 py-1 rounded border border-current/25 bg-black/25 hover:bg-black/45 active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
                                       isCellLoading ? 'animate-pulse' : ''
                                     }`}
                                   >
@@ -19795,7 +19795,7 @@ ${itemsStr}
           {/* Right: Gemini Chat Sidebar (Takes exactly 30% width on Desktop) */}
           <div 
             style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-            className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+            className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
               (!isDesktop && !isMobileLandscape && reviewMobileTab !== 'tutor') ? 'hidden' : ''
             }`}
           >
@@ -23034,7 +23034,7 @@ ${itemsStr}
             {/* Right: Gemini Sidebar (Takes exactly 30% width on Desktop) */}
             <div 
               style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-              className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col ${
+              className={`w-full md:w-[24vw] landscape-w-45 min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 md:border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
                 (!isDesktop && !isMobileLandscape && examMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
@@ -25338,7 +25338,7 @@ ${itemsStr}
             {/* Right: Formula AI Tutor Sidebar */}
               <div 
                 style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-                className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col ${
+                className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800/30 flex flex-col overflow-x-hidden ${
                   (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'tutor') ? 'hidden' : ''
                 }`}
               >
@@ -26467,7 +26467,7 @@ ${itemsStr}
             {/* Right: PDF/HTML upload section instead of AI Tutor */}
             <div 
               style={isDesktop ? { width: 'var(--right-sidebar-width)' } : {}}
-              className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col ${
+              className={`w-full max-w-full landscape-hide min-w-0 shrink-0 md:shrink snap-start h-full bg-slate-900 border-l border-slate-800 flex flex-col overflow-x-hidden ${
                 (!isDesktop && !isMobileLandscape && answersheetMobileTab !== 'tutor') ? 'hidden' : ''
               }`}
             >
