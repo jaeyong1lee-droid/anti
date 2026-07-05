@@ -3218,6 +3218,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+const cleanOptionText = (text) => {
+  if (typeof text !== 'string') return text;
+  return text.replace(/^(?:\d+\.\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
+};
+
 export default function App() {
   const buildTimeMs = typeof __BUILD_TIME_MS__ !== 'undefined' ? __BUILD_TIME_MS__ : Date.now();
   const buildTimeStr = typeof __BUILD_TIME_STR__ !== 'undefined' ? __BUILD_TIME_STR__ : 'local_dev';
@@ -16382,7 +16387,10 @@ ${itemsStr}
                         className={`w-full py-3 px-4 rounded-xl border text-sm font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
                       >
                         <div className="flex-1 min-w-0">
-                          <LatexRenderer text={option} katexLoaded={katexLoaded} />
+                          <span className="flex gap-2 items-center select-text w-full">
+                            <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-350">{['①','②','③','④'][idx]}</span>
+                            <LatexRenderer text={cleanOptionText(option)} katexLoaded={katexLoaded} className="inline select-text" />
+                          </span>
                         </div>
                         {previewSelectedOption && (
                           <span className="shrink-0 text-xs">
@@ -16539,7 +16547,10 @@ ${itemsStr}
                       className={`w-full py-3.5 px-5 rounded-2xl border text-[15px] font-bold text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 ${optionClass}`}
                     >
                       <div className="flex-1 min-w-0">
-                        <LatexRenderer text={option} katexLoaded={katexLoaded} />
+                        <span className="flex gap-2 items-center select-text w-full">
+                          <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-350">{['①','②','③','④'][idx]}</span>
+                          <LatexRenderer text={cleanOptionText(option)} katexLoaded={katexLoaded} className="inline select-text" />
+                        </span>
                       </div>
                       {lockscreenSelectedOption && (
                         <span className="shrink-0 text-[15px]">
@@ -19069,7 +19080,7 @@ ${itemsStr}
                                 >
                                   <span className="flex gap-2 items-center select-text w-full">
                                     <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-300">{['①','②','③','④'][oIdx]}</span>
-                                    <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
+                                    <LatexRenderer text={cleanOptionText(opt)} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                   </span>
                                 </div>
                               );
@@ -22384,7 +22395,7 @@ ${itemsStr}
                               >
                                 <span className="flex gap-2 items-center select-text w-full">
                                   <span className="font-bold text-[15px] flex-shrink-0 select-none text-slate-300">{['①','②','③','④'][oIdx]}</span>
-                                  <LatexRenderer text={opt} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
+                                  <LatexRenderer text={cleanOptionText(opt)} katexLoaded={katexLoaded} className="inline select-text" enableAddFormula={true} />
                                 </span>
                               </div>
                             );
