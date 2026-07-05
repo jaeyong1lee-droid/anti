@@ -3895,7 +3895,7 @@ export default function App() {
                 )}
                 <div>
                   <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
-                  <span className="text-slate-100 font-semibold inline">
+                  <div className="text-slate-100 font-semibold mt-1">
                     <LatexRenderer 
                       text={
                         (() => {
@@ -3908,9 +3908,9 @@ export default function App() {
                       katexLoaded={katexLoaded} 
                       isMarkdown={true} 
                       highlightBold={true} 
-                      className="inline" 
+                      enableAddFormula={true} 
                     />
-                  </span>
+                  </div>
                 </div>
               </div>
             );
