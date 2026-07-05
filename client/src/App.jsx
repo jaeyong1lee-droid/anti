@@ -2356,6 +2356,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     return typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || '7.5rem') : '7.5rem';
   });
 
+  const [mobileOtherColWidth, setMobileOtherColWidth] = React.useState('140px');
+
   React.useEffect(() => {
     const handleWidthChange = (e) => {
       const targetIdx = e.detail?.questionIdx;
@@ -2382,6 +2384,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
     const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
+    const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
@@ -2400,6 +2403,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
           detail: { questionIdx, width: `${newWidth}px` }
         }));
+      } else if (idx >= 1 && isMobile) {
+        const newWidth = Math.max(60, targetColStartWidth + deltaX);
+        setMobileOtherColWidth(`${newWidth}px`);
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
@@ -2438,7 +2444,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   return (
     <div 
       className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
-      style={{ '--first-col-width': mobileFirstColWidth }}
+      style={{ 
+        '--first-col-width': mobileFirstColWidth,
+        '--other-col-width': mobileOtherColWidth 
+      }}
     >
       <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
@@ -2792,6 +2801,8 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     return typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || '7.5rem') : '7.5rem';
   });
 
+  const [mobileOtherColWidth, setMobileOtherColWidth] = React.useState('140px');
+
   React.useEffect(() => {
     const handleWidthChange = (e) => {
       const targetIdx = e.detail?.questionIdx;
@@ -2818,6 +2829,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
     const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
+    const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
@@ -2836,6 +2848,9 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
         window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
           detail: { questionIdx, width: `${newWidth}px` }
         }));
+      } else if (idx >= 1 && isMobile) {
+        const newWidth = Math.max(60, targetColStartWidth + deltaX);
+        setMobileOtherColWidth(`${newWidth}px`);
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
@@ -2874,7 +2889,10 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
   return (
     <div 
       className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
-      style={{ '--first-col-width': mobileFirstColWidth }}
+      style={{ 
+        '--first-col-width': mobileFirstColWidth,
+        '--other-col-width': mobileOtherColWidth 
+      }}
     >
       <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'

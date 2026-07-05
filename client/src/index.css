@@ -956,6 +956,10 @@ div[class*="overflow-y-auto"] {
     width: var(--first-col-width, 7.5rem) !important;
   }
 
+  .table-quiz-container col:not(:first-child) {
+    width: var(--other-col-width, auto) !important;
+  }
+
   .table-quiz-container th:not(:first-child),
   .table-quiz-container td:not(:first-child) {
     min-width: 60px !important;
