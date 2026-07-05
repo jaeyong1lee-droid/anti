@@ -946,10 +946,6 @@ div[class*="overflow-y-auto"] {
     padding-right: 6px !important;
   }
 
-  .table-quiz-container {
-    --other-col-width: auto !important;
-  }
-
   .table-quiz-table,
   .table-quiz-container table {
     table-layout: fixed !important; /* enforce strict column widths with horizontal scroll */
@@ -960,13 +956,9 @@ div[class*="overflow-y-auto"] {
     width: var(--first-col-width, 7.5rem) !important;
   }
 
-  .table-quiz-container col:not(:first-child) {
-    width: auto !important;
-  }
-
   .table-quiz-container th:not(:first-child),
   .table-quiz-container td:not(:first-child) {
-    min-width: 140px !important;
+    min-width: 60px !important;
   }
 
   /* 📝 Enforce exactly 14px font-size for all contents inside suggested/model answer sections */
