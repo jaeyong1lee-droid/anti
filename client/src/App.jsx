@@ -4012,16 +4012,20 @@ export default function App() {
         <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">💡 항목별 상세 피드백:</span>
         <div className="divide-y divide-slate-800/80 mt-1">
           {(() => {
-            const rowCount = q.tableData?.rows?.length || 0;
             const val = activeAnswers[`${idx}_ACRONYM_COMB`] || Array.from({ length: rowCount })
               .map((_, rIdx) => (activeAnswers[`${idx}_ROW_${rIdx}_ACRONYM`] || '').trim())
               .join('');
             const grading = activeGradingResults[`${idx}_ACRONYM_COMB`];
             const isCorrect = grading ? grading.isCorrect : false;
             
-            const itemWeight = weight / (1 + rowCount);
-            const scoreObtained = grading && grading.score !== undefined ? (grading.score / 10) * itemWeight : 0;
-            const displayScore = Math.round(scoreObtained * 10) / 10;
+            // Calculate total acronym letters score: sum of ROW_rIdx_ACRONYM scores
+            let totalAcronymScore = 0;
+            for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+              const letterGrading = activeGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
+              totalAcronymScore += ((letterGrading?.score || 0) / 10) * (weight / (rowCount * 2));
+            }
+            const displayScore = Math.round(totalAcronymScore * 10) / 10;
+            const maxAcronymScore = weight / 2;
             
             return (
               <div key="acronym_comb" className="py-3.5 first:pt-1 last:pb-1 text-[14px] sm:text-[16px] space-y-1 w-full text-left">
@@ -4030,7 +4034,7 @@ export default function App() {
                     <span className="text-slate-100 font-bold">두문자 조합 입력</span>
                   </div>
                   <span className={isCorrect ? 'text-emerald-400' : 'text-rose-400'}>
-                    {displayScore} / {Math.round(itemWeight * 10) / 10}점
+                    {displayScore} / {Math.round(maxAcronymScore * 10) / 10}점
                   </span>
                 </div>
                 <div className="text-slate-300">내 답변: <span className={`font-semibold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{val || '(미입력)'}</span></div>
@@ -4051,12 +4055,13 @@ export default function App() {
             const acronymGrading = activeGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
             const combGrading = activeGradingResults[`${idx}_ROW_${rIdx}_COMB`];
             
-            const isLetterCorrect = acronymGrading ? acronymGrading.isCorrect : false;
             const isContentCorrect = combGrading ? combGrading.isCorrect : false;
             
-            const itemWeight = weight / (1 + rowCount);
-            const scoreObtained = combGrading && combGrading.score !== undefined ? (combGrading.score / 10) * itemWeight : 0;
-            const displayScore = Math.round(scoreObtained * 10) / 10;
+            // Match the scoring of AcronymQuiz rows
+            const acronymScore = ((acronymGrading?.score || 0) / 10) * (weight / (rowCount * 2));
+            const combScore = ((combGrading?.score || 0) / 10) * (weight / (rowCount * 2));
+            const rowTotalScore = Math.round((acronymScore + combScore) * 10) / 10;
+            const rowMaxScore = weight / rowCount;
             
             let correctRow = q.correctRows?.[rIdx];
             if (correctRow && correctRow.acronym !== userLetter) {
@@ -4073,7 +4078,7 @@ export default function App() {
                     <span className="text-slate-100 font-bold">행 {rIdx + 1} ({userLetter || '미입력'})</span>
                   </div>
                   <span className={isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}>
-                    {displayScore} / {Math.round(itemWeight * 10) / 10}점
+                    {rowTotalScore} / {Math.round(rowMaxScore * 10) / 10}점
                   </span>
                 </div>
                 <div className="text-slate-300">입력내용: <span className={`font-semibold ${isContentCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>{userContent || '(미입력)'}</span></div>
@@ -5241,14 +5246,16 @@ export default function App() {
         let sumVal = 0;
         let countVal = 0;
         
-        const combGrading = tableGradingResults[`${idx}_ACRONYM_COMB`];
-        if (combGrading && combGrading.score !== undefined) {
-          sumVal += combGrading.score;
-        }
-        countVal++;
-        
         const rowCount = q.tableData?.rows?.length || 0;
         for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+          // Add acronym letter score (max 10)
+          const letterGrading = tableGradingResults[`${idx}_ROW_${rIdx}_ACRONYM`];
+          if (letterGrading && letterGrading.score !== undefined) {
+            sumVal += letterGrading.score;
+          }
+          countVal++;
+          
+          // Add content description score (max 10)
           const rowGrading = tableGradingResults[`${idx}_ROW_${rIdx}_COMB`];
           if (rowGrading && rowGrading.score !== undefined) {
             sumVal += rowGrading.score;
