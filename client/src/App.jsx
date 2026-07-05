@@ -2463,7 +2463,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text"
+                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text h-full"
                         onClick={(e) => {
                           const textarea = e.currentTarget.querySelector('textarea');
                           if (textarea) textarea.focus();
@@ -2472,7 +2472,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         {revealed ? (() => {
                           const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
                           return (
-                            <div className={`w-full flex flex-col items-stretch gap-1 sm:flex-row sm:justify-between sm:items-center p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
+                            <div className={`w-full h-full flex flex-col justify-between items-stretch gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
                               <div className="flex-grow text-left font-medium">
                                 <BufferedTextarea
                                   value={value}
@@ -2508,7 +2508,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                       }
                                     }}
                                     title="클릭 시 이 칸만 재평가합니다"
-                                    className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap px-2 py-1 rounded border border-current/25 bg-black/25 hover:bg-black/45 active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                    className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
                                       isCellLoading ? 'animate-pulse' : ''
                                     }`}
                                   >
