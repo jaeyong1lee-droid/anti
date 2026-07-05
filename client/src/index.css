@@ -1024,13 +1024,26 @@ div[class*="overflow-y-auto"] {
     max-width: 100vw !important;
   }
 
-  /* Wrap and enable horizontal scroll on long inline math formulas or code blocks inside AI tutor responses */
+  /* Wrap and block horizontal scroll on AI tutor responses to prevent layout wiggle, letting inner tables/formulas scroll independently */
   .tutor-response-content, 
   .tutor-msg-text,
   .subjective-feedback-content,
   .acronym-response-content {
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Wrap and enable horizontal scroll on long inline math formulas inside AI tutor responses to prevent content cutoff */
+  .tutor-response-content .katex,
+  .tutor-msg-text .katex,
+  .subjective-feedback-content .katex,
+  .acronym-response-content .katex {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: inline-block !important;
+    vertical-align: middle;
   }
 }
 
