@@ -948,10 +948,11 @@ div[class*="overflow-y-auto"] {
 
   .table-quiz-table,
   .table-quiz-container table {
-    table-layout: auto !important; /* allow other columns to expand and scroll auto */
+    table-layout: fixed !important; /* enforce strict column widths with horizontal scroll */
   }
 
-  .table-quiz-container col:first-child {
+  .table-quiz-container col:first-child,
+  .table-quiz-col-first {
     width: 7.5rem !important;
   }
 
