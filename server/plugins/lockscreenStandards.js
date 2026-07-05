@@ -24,7 +24,7 @@ export let LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(lockscreenSt
 
 export function assembleLockscreenStandardsPrompt(list) {
   if (!Array.isArray(list) || list.length === 0) {
-    return "- 등록된 락스크린 출제 지침 기준이 없습니다.";
+    return "- 등록된 지침 기준이 없습니다.";
   }
   return list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
 }
