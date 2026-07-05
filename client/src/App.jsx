@@ -1908,7 +1908,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     }
     return (
       <div 
-        className={`${className} select-text w-full whitespace-pre-wrap formula-scroll-container ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        className={`${className} select-text w-full whitespace-pre-wrap ${enableAddFormula ? 'enable-add-formula' : ''}`}
         {...eventHandlers}
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />

@@ -1032,18 +1032,7 @@ div[class*="overflow-y-auto"] {
     overflow-x: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
-  }
-
-  /* Wrap and enable horizontal scroll on long inline math formulas inside AI tutor responses to prevent content cutoff */
-  .tutor-response-content .katex,
-  .tutor-msg-text .katex,
-  .subjective-feedback-content .katex,
-  .acronym-response-content .katex {
-    max-width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    display: inline-block !important;
-    vertical-align: middle;
+    word-break: break-all;
   }
 }
 
