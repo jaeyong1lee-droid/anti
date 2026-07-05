@@ -18528,7 +18528,7 @@ ${itemsStr}
               )}
             </div>
 
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
+            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 w-full md:justify-end border-t border-slate-800/40 md:border-t-0 pt-3 md:pt-1 md:hidden">
               <button
                 disabled={isSavingSession}
                 onClick={() => { 
@@ -22054,7 +22054,7 @@ ${itemsStr}
               )}
             </div>
 
-            <div className="md:hidden flex items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start border-t border-slate-800/40 pt-3">
+            <div className="md:hidden flex flex-wrap items-center gap-1 sm:gap-2 flex-shrink-0 w-full justify-start border-t border-slate-800/40 pt-3">
               <button
                 onClick={handleAddExamQuestions}
                 disabled={loadingExam}
