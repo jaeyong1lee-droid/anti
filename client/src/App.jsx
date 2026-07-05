@@ -14885,23 +14885,7 @@ ${itemsStr}
       console.warn('[Sync] Database theory loading failed:', err);
     }
 
-    // 2) Try LocalStorage Fallback
-    if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_theory_questions');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            loadedData = parsed;
-            console.log('[Fallback] Loaded theory questions from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 이론유도 복원 실패:', err);
-      }
-    }
-
-    // 3) Fallback to Defaults if still empty
+    // 2) Fallback to Defaults if still empty
     if (!loadedData) {
       const defaultTheories = [
         {
@@ -14926,18 +14910,16 @@ ${itemsStr}
     const cleaned = (loadedData || []).map(healTheoryQuestionObject);
     latestTheoryQuestionsRef.current = cleaned;
     setTheoryQuestions(cleaned);
-    localStorage.setItem('anti_theory_questions', JSON.stringify(cleaned));
     setLoadingTheory(false);
     return loadedData;
   };
 
   const handleSaveTheoryQuestions = async () => {};
-  const _handleSaveTheoryQuestions_unused = async () => {
+  const _handleSaveTheoryQuestions_unused = async (qs, showToast = true) => {
     try {
       const healedQs = Array.isArray(qs) ? qs.map(healTheoryQuestionObject) : qs;
       latestTheoryQuestionsRef.current = healedQs;
       setTheoryQuestions(healedQs);
-      localStorage.setItem('anti_theory_questions', JSON.stringify(healedQs));
       
       // Sync with database for cross-device support (AWAITED to avoid timing issues)
       const res = await fetch(`${API_BASE}/api/session/theory`, {
@@ -14956,7 +14938,7 @@ ${itemsStr}
     } catch (err) {
       console.warn('이론유도 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
