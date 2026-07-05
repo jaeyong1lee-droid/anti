@@ -19639,7 +19639,7 @@ ${itemsStr}
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
                                     <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(tableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text model-answer-section">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer 
@@ -19738,7 +19738,7 @@ ${itemsStr}
                                 💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
                               </button>
                             ) : (
-                              <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                              <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2 model-answer-section">
                                 <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                   <span>📝 모범 답안</span>
                                 </div>
@@ -22901,7 +22901,7 @@ ${itemsStr}
                                       <span className={getSubjectiveTextColorClass(idx)}>{getSubjectiveStatusText(idx)}</span>
                                     </div>
                                     <div className="text-[14px] sm:text-[16px] leading-relaxed opacity-90"><LatexRenderer text={formatGradingReason(examTableGradingResults[`${idx}_INPUT`].reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} /></div>
-                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                    <div className="mt-1.5 pt-1.5 border-t border-current/10 text-[14px] sm:text-[16px] select-text model-answer-section">
                                       <span className="font-extrabold">💡 모범 답안:</span>
                                       <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
                                         <LatexRenderer 
@@ -23000,7 +23000,7 @@ ${itemsStr}
                                 💡 머릿속으로 답안을 구성한 뒤 → 정답 확인
                               </button>
                             ) : (
-                              <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2">
+                              <div className="md:bg-blue-950/40 md:border md:border-blue-500/30 md:rounded-xl md:p-4 p-0 bg-transparent border-0 space-y-2 model-answer-section">
                                 <div className="flex justify-between items-center text-[11px] font-black text-amber-400">
                                   <span>📝 모범 답안</span>
                                 </div>
