@@ -2652,7 +2652,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   );
 });
 
-const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
+const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit, gradingLoading }) {
   if (!q.tableData || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
   }
@@ -2693,83 +2693,216 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rIdx) => {
-              const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
-              const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
-              
-              const rowAcronymGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_ACRONYM`];
-              const rowCombGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_COMB`];
-
-              return (
-                <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
-                  {/* 두문자 글자 입력 cell */}
-                  <td className="p-1 border-r border-slate-800 align-middle">
-                    {revealed ? (
-                      <div className={`w-full p-2 font-medium ${
-                        rowAcronymGrading?.isCorrect ? 'text-emerald-400 bg-emerald-950/10' : 'text-rose-400 bg-rose-950/10'
-                      }`}>
-                        {rowAcronymVal || '(미입력)'}
-                      </div>
-                    ) : (
-                      <BufferedInput
-                        type="text"
-                        maxLength={1}
-                        value={rowAcronymVal}
-                        onChange={(val) => handleInputChange(`ROW_${rIdx}_ACRONYM`, val)}
-                        onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_ACRONYM`, val)}
-                        placeholder="글자"
-                        className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (tableRef.current) {
-                              const rowEl = e.target.closest('tr');
-                              const textarea = rowEl?.querySelector('textarea');
-                              if (textarea) textarea.focus();
-                            }
-                          }
-                        }}
-                      />
-                    )}
-                  </td>
+              return (() => {
+                const acronymQuizRows = rows.map((row, rIdx) => {
+                  const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
+                  const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
                   
-                  {/* 내용(암기단어 : 설명) 입력 cell */}
-                  <td className="p-0 align-middle">
-                    {revealed ? (
-                      <div className={`w-full flex flex-col p-2 text-left text-[13px] sm:text-[15px] ${
-                        rowCombGrading?.isCorrect ? 'bg-emerald-950/20 text-emerald-300' : 'bg-rose-950/20 text-rose-300'
-                      }`}>
-                        <div className="font-medium">{rowCombVal || '(미입력)'}</div>
-                      </div>
-                    ) : (
-                      <BufferedTextarea
-                        value={rowCombVal}
-                        onChange={(val) => handleInputChange(`ROW_${rIdx}_COMB`, val)}
-                        onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_COMB`, val)}
-                        placeholder="암기단어 : 설명"
-                        className="w-full text-left text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-2 resize-none min-h-[30px] block"
-                        rows={1}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            e.target.blur();
-                            if (tableRef.current) {
-                              const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
-                              const curIdx = textareas.indexOf(e.target);
-                              if (curIdx !== -1) {
-                                if (curIdx === textareas.length - 1) {
-                                  if (onSubmit) onSubmit();
-                                } else {
-                                  textareas[curIdx + 1].focus();
+                  const rowAcronymGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_ACRONYM`];
+                  const rowCombGrading = tableGradingResults[`${questionIdx}_ROW_${rIdx}_COMB`];
+
+                  const acronymScore = ((rowAcronymGrading?.score || 0) / 10) * (weight / (rows.length * 2));
+                  const combScore = ((rowCombGrading?.score || 0) / 10) * (weight / (rows.length * 2));
+                  const rowTotalScore = Math.round((acronymScore + combScore) * 10) / 10;
+
+                  return (
+                    <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                      {/* 두문자 글자 입력 cell */}
+                      <td className="p-0 border-r border-slate-800 align-middle">
+                        {revealed ? (
+                          <div className={`w-full h-full p-0.5 ${
+                            rowAcronymGrading?.isCorrect ? 'bg-emerald-950/10 text-emerald-400' : 'bg-rose-950/10 text-rose-400'
+                          }`}>
+                            <BufferedInput
+                              type="text"
+                              maxLength={1}
+                              disabled={gradingLoading}
+                              value={rowAcronymVal}
+                              onChange={(val) => handleInputChange(`ROW_${rIdx}_ACRONYM`, val)}
+                              onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_ACRONYM`, val)}
+                              placeholder="글자"
+                              className="w-full text-center text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1"
+                            />
+                          </div>
+                        ) : (
+                          <BufferedInput
+                            type="text"
+                            maxLength={1}
+                            disabled={gradingLoading}
+                            value={rowAcronymVal}
+                            onChange={(val) => handleInputChange(`ROW_${rIdx}_ACRONYM`, val)}
+                            onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_ACRONYM`, val)}
+                            placeholder="글자"
+                            className="w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (tableRef.current) {
+                                  const rowEl = e.target.closest('tr');
+                                  const textarea = rowEl?.querySelector('textarea');
+                                  if (textarea) textarea.focus();
                                 }
                               }
-                            }
-                          }
-                        }}
-                      />
-                  )}
-                </td>
-              </tr>
+                            }}
+                          />
+                        )}
+                      </td>
+                      
+                      {/* 내용(암기단어 : 설명) 입력 cell */}
+                      <td className="p-0 align-middle">
+                        {revealed ? (
+                          <div className={`w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${
+                            rowCombGrading?.isCorrect ? 'bg-emerald-950/20 text-emerald-300' : 'bg-rose-950/20 text-rose-300'
+                          }`}>
+                            <div className="flex-grow text-left font-medium">
+                              <BufferedTextarea
+                                value={rowCombVal}
+                                disabled={gradingLoading}
+                                onChange={(val) => handleInputChange(`ROW_${rIdx}_COMB`, val)}
+                                onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_COMB`, val)}
+                                placeholder="암기단어 : 설명"
+                                className="w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
+                                rows={1}
+                              />
+                            </div>
+                            {rowCombGrading && rowCombGrading.score !== undefined && (
+                              <button
+                                disabled={gradingLoading}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (gradingLoading) return;
+                                  if (onSubmit) await onSubmit();
+                                }}
+                                title="클릭 시 전체 답안을 재평가합니다"
+                                className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer bg-transparent border-0 ${
+                                  rowCombGrading.isCorrect ? 'text-emerald-400' : 'text-rose-400'
+                                } ${gradingLoading ? 'animate-pulse' : ''}`}
+                                style={{ outline: 'none' }}
+                              >
+                                {gradingLoading ? (
+                                  <span className="flex items-center gap-1">
+                                    <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    ...
+                                  </span>
+                                ) : (
+                                  `${rowTotalScore}점 ↻`
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <BufferedTextarea
+                            value={rowCombVal}
+                            disabled={gradingLoading}
+                            onChange={(val) => handleInputChange(`ROW_${rIdx}_COMB`, val)}
+                            onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_COMB`, val)}
+                            placeholder="암기단어 : 설명"
+                            className="w-full text-left text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-2 resize-none min-h-[30px] block"
+                            rows={1}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                e.target.blur();
+                                if (tableRef.current) {
+                                  const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                                  const curIdx = textareas.indexOf(e.target);
+                                  if (curIdx !== -1) {
+                                    if (curIdx === textareas.length - 1) {
+                                      if (onSubmit) onSubmit();
+                                    } else {
+                                      textareas[curIdx + 1].focus();
+                                    }
+                                  }
+                                }
+                              }
+                            }}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                });
+                return acronymQuizRows;
+              })()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             );
           })}
         </tbody>
@@ -19578,7 +19711,8 @@ ${itemsStr}
                                 const sIdx = scoredIndices.indexOf(idx);
                                 const W = sIdx !== -1 ? (sIdx < remainder ? (baseWeight + 1) : baseWeight) : 0;
                                 return (
-                                  <AcronymQuiz 
+                                  <AcronymQuiz
+                                                                      gradingLoading={gradingLoading[idx]} 
                                     questionIdx={idx} 
                                     q={q} 
                                     tableAnswers={tableAnswers} 
