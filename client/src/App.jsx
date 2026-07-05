@@ -2351,54 +2351,92 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     return () => window.removeEventListener('resize', handleResize);
   }, [colCount, q.mixedType]);
 
-  const tableRef = React.useRef(null);
-  const dragInfo = React.useRef({ startX: 0, startWidths: [], totalWidth: 0, colIdx: -1 });
+  const [mobileFirstColWidth, setMobileFirstColWidth] = React.useState(() => {
+    const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    return typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || '7.5rem') : '7.5rem';
+  });
 
-  const handleMouseDown = React.useCallback((e, idx) => {
-    e.preventDefault();
+  React.useEffect(() => {
+    const handleWidthChange = (e) => {
+      const targetIdx = e.detail?.questionIdx;
+      if (targetIdx === questionIdx) {
+        setMobileFirstColWidth(e.detail.width);
+      }
+    };
+    window.addEventListener('firstColWidthChanged', handleWidthChange);
+    return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
+  }, [questionIdx]);
+
+  const tableRef = React.useRef(null);
+
+  const startColumnResize = React.useCallback((e, idx, isTouch) => {
+    if (isTouch) {
+      if (e.cancelable) e.preventDefault();
+    } else {
+      e.preventDefault();
+    }
     if (!tableRef.current) return;
 
     const thElements = tableRef.current.querySelectorAll('th');
     const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
+    const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
 
-    dragInfo.current = {
-      startX: e.clientX,
-      startWidths: percentWidths,
-      totalWidth,
-      colIdx: idx
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+
+    const doResize = (ev) => {
+      const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
+      const deltaX = currentX - startX;
+
+      const isMobile = window.innerWidth < 768;
+      if (idx === 0 && isMobile) {
+        const newWidth = Math.max(50, firstColStartWidth + deltaX);
+        const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+        localStorage.setItem(storageKey, `${newWidth}px`);
+        window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+          detail: { questionIdx, width: `${newWidth}px` }
+        }));
+      } else {
+        const deltaPercent = (deltaX / totalWidth) * 100;
+        setColWidths(prev => {
+          const next = [...prev];
+          const sum = percentWidths[idx] + percentWidths[idx + 1];
+          const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
+          const actualLeft = Math.min(sum - 10, percentWidths[idx] + deltaPercent);
+          const actualRight = sum - actualLeft;
+
+          next[idx] = actualLeft;
+          next[idx + 1] = actualRight;
+          return next;
+        });
+      }
     };
 
-    const handleMouseMove = (ev) => {
-      const { startX, startWidths, totalWidth, colIdx } = dragInfo.current;
-      const deltaX = ev.clientX - startX;
-      const deltaPercent = (deltaX / totalWidth) * 100;
-
-      setColWidths(prev => {
-        const next = [...prev];
-        const sum = startWidths[colIdx] + startWidths[colIdx + 1];
-        const newLeftWidth = Math.max(10, startWidths[colIdx] + deltaPercent);
-        const actualLeft = Math.min(sum - 10, newLeftWidth);
-        const actualRight = sum - actualLeft;
-
-        next[colIdx] = actualLeft;
-        next[colIdx + 1] = actualRight;
-        return next;
-      });
+    const stopResize = () => {
+      if (isTouch) {
+        window.removeEventListener('touchmove', doResize);
+        window.removeEventListener('touchend', stopResize);
+      } else {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+      }
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    if (isTouch) {
+      window.addEventListener('touchmove', doResize, { passive: false });
+      window.addEventListener('touchend', stopResize);
+    } else {
+      window.addEventListener('mousemove', doResize);
+      window.addEventListener('mouseup', stopResize);
+    }
   }, []);
 
   return (
-    <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+    <div 
+      className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+      style={{ '--first-col-width': mobileFirstColWidth }}
+    >
       <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
       }`}>
@@ -2429,8 +2467,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
                   {hIdx < colCount - 1 && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50"
-                      onMouseDown={(e) => handleMouseDown(e, hIdx)}
+                      className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
+                      onMouseDown={(e) => startColumnResize(e, hIdx, false)}
+                      onTouchStart={(e) => startColumnResize(e, hIdx, true)}
                     />
                   )}
                 </th>
@@ -2731,7 +2770,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
 });
 
 // ── 객관식 표 렌더러 ──────────────────
-const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded }) {
+const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded, questionIdx = null }) {
   if (!tableData || !tableData.headers || !tableData.rows) return null;
   const { headers, rows } = tableData;
   const colCount = headers.length;
@@ -2745,54 +2784,92 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     return [first, ...Array(colCount - 1).fill(others)];
   });
 
-  const tableRef = React.useRef(null);
-  const dragInfo = React.useRef({ startX: 0, startWidths: [], totalWidth: 0, colIdx: -1 });
+  const [mobileFirstColWidth, setMobileFirstColWidth] = React.useState(() => {
+    const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    return typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || '7.5rem') : '7.5rem';
+  });
 
-  const handleMouseDown = React.useCallback((e, idx) => {
-    e.preventDefault();
+  React.useEffect(() => {
+    const handleWidthChange = (e) => {
+      const targetIdx = e.detail?.questionIdx;
+      if (targetIdx === questionIdx) {
+        setMobileFirstColWidth(e.detail.width);
+      }
+    };
+    window.addEventListener('firstColWidthChanged', handleWidthChange);
+    return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
+  }, [questionIdx]);
+
+  const tableRef = React.useRef(null);
+
+  const startColumnResize = React.useCallback((e, idx, isTouch) => {
+    if (isTouch) {
+      if (e.cancelable) e.preventDefault();
+    } else {
+      e.preventDefault();
+    }
     if (!tableRef.current) return;
 
     const thElements = tableRef.current.querySelectorAll('th');
     const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
+    const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
 
-    dragInfo.current = {
-      startX: e.clientX,
-      startWidths: percentWidths,
-      totalWidth,
-      colIdx: idx
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+
+    const doResize = (ev) => {
+      const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
+      const deltaX = currentX - startX;
+
+      const isMobile = window.innerWidth < 768;
+      if (idx === 0 && isMobile) {
+        const newWidth = Math.max(50, firstColStartWidth + deltaX);
+        const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+        localStorage.setItem(storageKey, `${newWidth}px`);
+        window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+          detail: { questionIdx, width: `${newWidth}px` }
+        }));
+      } else {
+        const deltaPercent = (deltaX / totalWidth) * 100;
+        setColWidths(prev => {
+          const next = [...prev];
+          const sum = percentWidths[idx] + percentWidths[idx + 1];
+          const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
+          const actualLeft = Math.min(sum - 10, percentWidths[idx] + deltaPercent);
+          const actualRight = sum - actualLeft;
+
+          next[idx] = actualLeft;
+          next[idx + 1] = actualRight;
+          return next;
+        });
+      }
     };
 
-    const handleMouseMove = (ev) => {
-      const { startX, startWidths, totalWidth, colIdx } = dragInfo.current;
-      const deltaX = ev.clientX - startX;
-      const deltaPercent = (deltaX / totalWidth) * 100;
-
-      setColWidths(prev => {
-        const next = [...prev];
-        const sum = startWidths[colIdx] + startWidths[colIdx + 1];
-        const newLeftWidth = Math.max(10, startWidths[colIdx] + deltaPercent);
-        const actualLeft = Math.min(sum - 10, newLeftWidth);
-        const actualRight = sum - actualLeft;
-
-        next[colIdx] = actualLeft;
-        next[colIdx + 1] = actualRight;
-        return next;
-      });
+    const stopResize = () => {
+      if (isTouch) {
+        window.removeEventListener('touchmove', doResize);
+        window.removeEventListener('touchend', stopResize);
+      } else {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+      }
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    if (isTouch) {
+      window.addEventListener('touchmove', doResize, { passive: false });
+      window.addEventListener('touchend', stopResize);
+    } else {
+      window.addEventListener('mousemove', doResize);
+      window.addEventListener('mouseup', stopResize);
+    }
   }, []);
 
   return (
-    <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+    <div 
+      className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+      style={{ '--first-col-width': mobileFirstColWidth }}
+    >
       <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
         colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
       }`}>
@@ -2823,8 +2900,9 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
                   {hIdx < colCount - 1 && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50"
-                      onMouseDown={(e) => handleMouseDown(e, hIdx)}
+                      className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
+                      onMouseDown={(e) => startColumnResize(e, hIdx, false)}
+                      onTouchStart={(e) => startColumnResize(e, hIdx, true)}
                     />
                   )}
                 </th>
@@ -3099,7 +3177,7 @@ function parseQuestionTable(q, topicTitle) {
 }
 
 
-const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "") => {
+const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfName = null, topicCategory = null, pdfjsLoaded = false, showImage = false, totalCount = 0, questionKey = "", questionIdx = null) => {
   const { questionText, tableData, referenceTableData } = parseQuestionTable(q, topicTitle);
   const cleanQuestionText = questionText.replace(/\r/g, '').replace(/[ \t]+/g, ' ');
   
@@ -3233,11 +3311,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
         {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
           <div className="my-3 overflow-x-auto w-full">
             <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
-            <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
+            <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
           </div>
         )}
         {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
-          <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+          <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
         )}
       </div>
     );
@@ -3254,11 +3332,11 @@ const renderQuestionContent = (q, topicTitle, katexLoaded, topicId = null, pdfNa
       {referenceTableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
         <div className="my-3 overflow-x-auto w-full">
           <div className="text-[12px] text-indigo-400 font-extrabold mb-1.5 flex items-center gap-1.5 select-none">📋 [시험 결과 데이터 표]</div>
-          <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} />
+          <ReadOnlyTable tableData={referenceTableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
         </div>
       )}
       {tableData && !showImage && q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (앞글자)' && (
-        <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} />
+        <ReadOnlyTable tableData={tableData} katexLoaded={katexLoaded} questionIdx={questionIdx} />
       )}
     </>
   );
@@ -19203,7 +19281,7 @@ ${itemsStr}
                           </div>
                         </div>
 
-                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length)}
+                        {renderQuestionContent(q, selectedTopic?.title, katexLoaded, selectedTopic?.id, selectedTopic?.pdf_name, selectedTopic?.category, pdfjsLoaded, idx === 0, aiQuestions.length, "", idx)}
 
                         {/* MC Options */}
                         {isMC && (
@@ -22532,7 +22610,9 @@ ${itemsStr}
                         q.category || examTopic?.category, 
                         pdfjsLoaded,
                         examQuestions.findIndex(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)) === idx,
-                        examQuestions.filter(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)).length
+                        examQuestions.filter(x => (x.topic_id || examTopic?.id) === (q.topic_id || examTopic?.id)).length,
+                        "",
+                        idx
                       )}
 
                       {/* MC Options */}
