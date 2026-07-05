@@ -5810,15 +5810,70 @@ export default function App() {
     if (aiQuestions && aiQuestions.length > 0) {
       const updatedAi = aiQuestions.map(q => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          const matchedCard = formulaAcronyms.find(ac => {
-            if (q.originalId && ac.id === q.originalId) return true;
-            const cleanTitle = (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
+          // Find the best matched card using a multi-layered matching strategy
+          let matchedCard = null;
+          
+          // 1. Try exact ID matching first
+          matchedCard = formulaAcronyms.find(ac => 
+            (q.originalId && ac.id === q.originalId) || 
+            (q.topic_id && ac.id === q.topic_id)
+          );
+          
+          // 2. If not found, try text/title matching
+          if (!matchedCard) {
+            const cleanTitle = (ac) => (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
             const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
-            if (cleanTitle && cleanQ) {
-              if (cleanTitle === cleanQ || cleanTitle.includes(cleanQ) || cleanQ.includes(cleanTitle)) return true;
+            
+            // Try exact title matching
+            matchedCard = formulaAcronyms.find(ac => cleanTitle(ac) === cleanQ);
+            
+            // Try substring containment matching
+            if (!matchedCard && cleanQ) {
+              matchedCard = formulaAcronyms.find(ac => {
+                const ct = cleanTitle(ac);
+                return ct && (ct.includes(cleanQ) || cleanQ.includes(ct));
+              });
             }
-            return false;
-          });
+            
+            // Try keyword overlap matching
+            if (!matchedCard) {
+              let bestScore = -1;
+              let bestCard = null;
+              
+              const getKeywords = (str) => {
+                return (str || '').toLowerCase()
+                  .replace(/[^a-z0-9가-힣\s]/g, '')
+                  .split(/\s+/)
+                  .filter(w => w.length > 1);
+              };
+              
+              const qKws = getKeywords(q.question);
+              
+              if (qKws.length > 0) {
+                formulaAcronyms.forEach(ac => {
+                  const acKws = getKeywords(ac.title);
+                  if (acKws.length === 0) return;
+                  
+                  let matches = 0;
+                  qKws.forEach(qw => {
+                    if (acKws.some(aw => aw.includes(qw) || qw.includes(aw))) {
+                      matches++;
+                    }
+                  });
+                  const score = matches / Math.min(qKws.length, acKws.length);
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestCard = ac;
+                  }
+                });
+                
+                if (bestCard && bestScore >= 0.3) {
+                  matchedCard = bestCard;
+                }
+              }
+            }
+          }
+
           if (matchedCard) {
             const parsed = parseAcronymContent(matchedCard.content);
             const acronymChanged = q.acronym !== parsed.acronym;
@@ -5852,15 +5907,70 @@ export default function App() {
     if (examQuestions && examQuestions.length > 0) {
       const updatedExam = examQuestions.map(q => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
-          const matchedCard = formulaAcronyms.find(ac => {
-            if (q.originalId && ac.id === q.originalId) return true;
-            const cleanTitle = (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
+          // Find the best matched card using a multi-layered matching strategy
+          let matchedCard = null;
+          
+          // 1. Try exact ID matching first
+          matchedCard = formulaAcronyms.find(ac => 
+            (q.originalId && ac.id === q.originalId) || 
+            (q.topic_id && ac.id === q.topic_id)
+          );
+          
+          // 2. If not found, try text/title matching
+          if (!matchedCard) {
+            const cleanTitle = (ac) => (ac.title || '').trim().toLowerCase().replace(/\s+/g, '');
             const cleanQ = (q.question || '').trim().toLowerCase().replace(/\s+/g, '');
-            if (cleanTitle && cleanQ) {
-              if (cleanTitle === cleanQ || cleanTitle.includes(cleanQ) || cleanQ.includes(cleanTitle)) return true;
+            
+            // Try exact title matching
+            matchedCard = formulaAcronyms.find(ac => cleanTitle(ac) === cleanQ);
+            
+            // Try substring containment matching
+            if (!matchedCard && cleanQ) {
+              matchedCard = formulaAcronyms.find(ac => {
+                const ct = cleanTitle(ac);
+                return ct && (ct.includes(cleanQ) || cleanQ.includes(ct));
+              });
             }
-            return false;
-          });
+            
+            // Try keyword overlap matching
+            if (!matchedCard) {
+              let bestScore = -1;
+              let bestCard = null;
+              
+              const getKeywords = (str) => {
+                return (str || '').toLowerCase()
+                  .replace(/[^a-z0-9가-힣\s]/g, '')
+                  .split(/\s+/)
+                  .filter(w => w.length > 1);
+              };
+              
+              const qKws = getKeywords(q.question);
+              
+              if (qKws.length > 0) {
+                formulaAcronyms.forEach(ac => {
+                  const acKws = getKeywords(ac.title);
+                  if (acKws.length === 0) return;
+                  
+                  let matches = 0;
+                  qKws.forEach(qw => {
+                    if (acKws.some(aw => aw.includes(qw) || qw.includes(aw))) {
+                      matches++;
+                    }
+                  });
+                  const score = matches / Math.min(qKws.length, acKws.length);
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestCard = ac;
+                  }
+                });
+                
+                if (bestCard && bestScore >= 0.3) {
+                  matchedCard = bestCard;
+                }
+              }
+            }
+          }
+
           if (matchedCard) {
             const parsed = parseAcronymContent(matchedCard.content);
             const acronymChanged = q.acronym !== parsed.acronym;
