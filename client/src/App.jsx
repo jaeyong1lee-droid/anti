@@ -1577,7 +1577,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
     });
 
     // Auto-convert exponents and ranges, e.g. "10^-2~10^-3" -> "$10^{-2} \sim 10^{-3}$"
-    renderText = renderText.replace(/(?<!\$)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\$)/g, (m, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|((?<!\$)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\$))/g, (m, p1, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+      if (m.startsWith('$')) return m;
       const b1 = b1_1 || b1_2;
       const e1 = e1_1 || e1_2;
       const b2 = b2_1 || b2_2;
@@ -1585,13 +1586,15 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return `$${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
     });
     // Auto-convert single exponent, e.g. "10^-2" -> "$10^{-2}$"
-    renderText = renderText.replace(/(?<!\$)(?<!\d)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\d)(?!\$)/g, (m, b1, e1, b2, e2) => {
+    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|((?<!\d)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\d))/g, (m, p1, b1, e1, b2, e2) => {
+      if (m.startsWith('$')) return m;
       const base = b1 || b2;
       const exp = e1 || e2;
       return `$${base}^{${exp}}$`;
     });
     // Auto-convert comparison operators with variable, e.g. "k >= 10^-2" -> "$k \ge 10^{-2}$"
-    renderText = renderText.replace(/(?<!\$)\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1, e1, b2, e2) => {
+    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1, e1, b2, e2) => {
+      if (m.startsWith('$')) return m;
       const base = b1 || b2;
       const exp = e1 || e2;
       let latexOp = op;
@@ -1602,7 +1605,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
       return `$${variable} ${latexOp} ${base}^{${exp}}$`;
     });
     // Auto-convert comparison operators with exponent range
-    renderText = renderText.replace(/(?<!\$)\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?/g, (m, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+    renderText = renderText.replace(/\$\$[^$]*\$\$|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+      if (m.startsWith('$')) return m;
       const b1 = b1_1 || b1_2;
       const e1 = e1_1 || e1_2;
       const b2 = b2_1 || b2_2;
