@@ -10003,11 +10003,29 @@ async function migrateLegacySessionKeys() {
 }
 
 function mergeDefaultAndDbStandards(defaultList, dbList) {
-  // DB에 저장된 지침 목록이 존재한다면, 사용자의 추가/수정/삭제 내역이 100% 보존되도록 DB 목록을 그대로 최종 권위로 삼아 반환합니다.
-  if (Array.isArray(dbList)) {
-    return dbList;
+  if (!Array.isArray(dbList)) {
+    return defaultList;
   }
-  return defaultList;
+  
+  const mergedList = [...dbList];
+  
+  for (const defItem of defaultList) {
+    const dbItemIdx = mergedList.findIndex(item => item.id === defItem.id);
+    if (dbItemIdx === -1) {
+      mergedList.push(defItem);
+    } else {
+      const dbItem = mergedList[dbItemIdx];
+      const defTime = new Date(defItem.updatedAt || defItem.updated_at || 0).getTime();
+      const dbTime = new Date(dbItem.updatedAt || dbItem.updated_at || 0).getTime();
+      
+      if (defTime > dbTime) {
+        mergedList[dbItemIdx] = defItem;
+        console.log(`[Sync] Updated standard '${defItem.id}' in database with newer default code version.`);
+      }
+    }
+  }
+  
+  return mergedList;
 }
 
 

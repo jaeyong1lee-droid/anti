@@ -197,10 +197,13 @@ export async function gradeSubjective({ question, correctAnswer, userAnswer, row
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(question || '') || 
                  /물|단위중량|수압|유효|포화|간극|부력|침투|γ|gamma_w/.test(explanation || '');
   
-  const hasNumbersInCorrect = /[-+]?\d*\.?\d+/.test(correctAnswer || '');
+  const hasNumbersInCorrect = /[-+]?\d*\.?\d+/.test(correctAnswer || '') || /[-+]?\d*\.?\d+/.test(explanation || '');
   const canApplyWaterWeightCheck = isCalc && isNumericAnswer(userAnswer) && hasNumbersInCorrect;
   
-  if (canApplyWaterWeightCheck && checkWaterWeightEquivalence(userAnswer, correctAnswer)) {
+  if (canApplyWaterWeightCheck && (
+    checkWaterWeightEquivalence(userAnswer, correctAnswer) || 
+    (explanation && checkWaterWeightEquivalence(userAnswer, explanation))
+  )) {
     return { 
       isCorrect: true, 
       score: 10, 
