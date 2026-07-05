@@ -2390,6 +2390,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
+    const container = tableRef.current.closest('.table-quiz-container');
+    const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
     const doResize = (ev) => {
@@ -2397,7 +2399,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         ev.preventDefault();
       }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
-      const deltaX = currentX - startX;
+    const currentScrollLeft = container ? container.scrollLeft : 0;
+    const scrollDelta = currentScrollLeft - startScrollLeft;
+    const deltaX = (currentX - startX) + scrollDelta;
 
       const isMobile = window.innerWidth < 768;
       if (idx === 0 && isMobile) {
@@ -2835,6 +2839,8 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
+    const container = tableRef.current.closest('.table-quiz-container');
+    const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
     const doResize = (ev) => {
@@ -2842,7 +2848,9 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
         ev.preventDefault();
       }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
-      const deltaX = currentX - startX;
+    const currentScrollLeft = container ? container.scrollLeft : 0;
+    const scrollDelta = currentScrollLeft - startScrollLeft;
+    const deltaX = (currentX - startX) + scrollDelta;
 
       const isMobile = window.innerWidth < 768;
       if (idx === 0 && isMobile) {
