@@ -2214,6 +2214,7 @@ const BufferedInput = React.memo(({ value, onChange, onKeystroke, onKeyDown, ...
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      spellCheck={false}
     />
   );
 });
@@ -2267,6 +2268,7 @@ const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKeyDown, 
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      spellCheck={false}
     />
   );
 });

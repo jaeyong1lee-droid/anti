@@ -951,3 +951,34 @@ div[class*="overflow-y-auto"] {
   }
 }
 
+/* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */
+.table-quiz-table td,
+.table-quiz-input,
+.table-quiz-table textarea,
+.table-quiz-table input,
+.subjective-quiz-textarea {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+.table-quiz-table th {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+@media (min-width: 768px) {
+  .table-quiz-table td,
+  .table-quiz-input,
+  .table-quiz-table textarea,
+  .table-quiz-table input,
+  .subjective-quiz-textarea {
+    font-size: 16px !important;
+    font-weight: 400 !important;
+  }
+
+  .table-quiz-table th {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+  }
+}
+
