@@ -2531,7 +2531,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         {revealed ? (() => {
                           const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
                           return (
-                            <div className={`w-full h-full flex flex-col justify-between items-stretch gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
+                            <div className={`w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
                               <div className="flex-grow text-left font-medium">
                                 <BufferedTextarea
                                   value={value}
