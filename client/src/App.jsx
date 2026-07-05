@@ -2410,7 +2410,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
               style={{ 
                 width: idx === 0 
                   ? `var(--first-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
-                  : (typeof w === 'number' ? `${w}%` : w) 
+                  : `var(--other-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
               }} 
             />
           ))}
@@ -2804,7 +2804,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
               style={{ 
                 width: idx === 0 
                   ? `var(--first-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
-                  : (typeof w === 'number' ? `${w}%` : w) 
+                  : `var(--other-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
               }} 
             />
           ))}
