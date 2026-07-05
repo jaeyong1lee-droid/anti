@@ -4384,11 +4384,35 @@ export default function App() {
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
   const [lastActiveReview, setLastActiveReview] = useState(null);
-  useEffect(() => {
-    const saved = localStorage.getItem('anti_last_active_review');
+    useEffect(() => {
+    // Clean up corrupted/extremely long local backup keys to free space
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith("anti_review_progress_") || k.startsWith("anti_session_id_") || k.startsWith("anti_mixed_completed_") || k.startsWith("anti_app_state") || k.startsWith("anti_last_active_review"))) {
+          if (k.length > 200 || k.includes("_sess_sess_") || (k.match(/_sess_/g) || []).length > 1) {
+            console.log("[Cleanup] Removing corrupted key: " + k);
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[Cleanup] Failed to clean localStorage:", e);
+    }
+
+    const saved = localStorage.getItem("anti_last_active_review");
     if (saved) {
       try {
-        setLastActiveReview(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          if (parsed.topicId && typeof parsed.topicId === "string" && parsed.topicId.startsWith("mixed_") && parsed.topicId.includes("_sess_")) {
+            parsed.topicId = parsed.topicId.split("_sess_")[0];
+          }
+          if (parsed.scheduleId && typeof parsed.scheduleId === "string" && parsed.scheduleId.startsWith("mixed_") && parsed.scheduleId.includes("_sess_")) {
+            parsed.scheduleId = parsed.scheduleId.split("_sess_")[0];
+          }
+          setLastActiveReview(parsed);
+        }
       } catch (e) {}
     }
 
@@ -4397,11 +4421,18 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         if (data.success && data.lastActive) {
-          setLastActiveReview(data.lastActive);
-          localStorage.setItem('anti_last_active_review', JSON.stringify(data.lastActive));
+          const parsed = data.lastActive;
+          if (parsed.topicId && typeof parsed.topicId === "string" && parsed.topicId.startsWith("mixed_") && parsed.topicId.includes("_sess_")) {
+            parsed.topicId = parsed.topicId.split("_sess_")[0];
+          }
+          if (parsed.scheduleId && typeof parsed.scheduleId === "string" && parsed.scheduleId.startsWith("mixed_") && parsed.scheduleId.includes("_sess_")) {
+            parsed.scheduleId = parsed.scheduleId.split("_sess_")[0];
+          }
+          setLastActiveReview(parsed);
+          localStorage.setItem("anti_last_active_review", JSON.stringify(parsed));
         }
       })
-      .catch(err => console.warn('마지막 복습 내역 로드 실패:', err));
+      .catch(err => console.warn("Failed to load last active review:", err));
   }, []);
   const [editingFormulaIdx, setEditingFormulaIdx] = useState(null);
   const [editingFormulaText, setEditingFormulaText] = useState("");
@@ -9350,6 +9381,21 @@ export default function App() {
   };
 
   const handleOpenAIQuestions = async (topicId, title, keywords, pdfName, mode = 'ai', scheduleId = null, reviewRound = null, isBonus = false, isPractice = false, passedCategory = null, isRestore = false) => {
+    // Sanitize mixed review IDs to prevent repeating sess suffix accumulation
+    let cleanTopicId = topicId;
+    if (typeof cleanTopicId === "string" && cleanTopicId.startsWith("mixed_")) {
+      if (cleanTopicId.includes("_sess_")) {
+        cleanTopicId = cleanTopicId.split("_sess_")[0];
+      }
+    }
+    let cleanScheduleId = scheduleId;
+    if (typeof cleanScheduleId === "string" && cleanScheduleId.startsWith("mixed_")) {
+      if (cleanScheduleId.includes("_sess_")) {
+        cleanScheduleId = cleanScheduleId.split("_sess_")[0];
+      }
+    }
+    topicId = cleanTopicId;
+    scheduleId = cleanScheduleId;
     // 1) 동시 호출 방지 락 체킹
     if (loadingTopicLockRef.current) {
       console.log('[handleOpenAIQuestions] Denied: Concurrency lock active.');
@@ -16466,9 +16512,18 @@ ${itemsStr}
         if (saved) {
           const s = JSON.parse(saved);
           if (s.selectedTopic) {
+            let topicId = s.selectedTopic.id;
+            if (typeof topicId === "string" && topicId.startsWith("mixed_") && topicId.includes("_sess_")) {
+              topicId = topicId.split("_sess_")[0];
+              s.selectedTopic.id = topicId;
+            }
+            let scheduleId = s.selectedTopic.schedule_id || "";
+            if (typeof scheduleId === "string" && scheduleId.startsWith("mixed_") && scheduleId.includes("_sess_")) {
+              scheduleId = scheduleId.split("_sess_")[0];
+              s.selectedTopic.schedule_id = scheduleId;
+            }
+
             console.log('[Mount Restore] Querying active review session from server for topic:', s.selectedTopic.title);
-            const topicId = s.selectedTopic.id;
-            const scheduleId = s.selectedTopic.schedule_id || '';
             const isMixed = topicId && typeof topicId === 'string' && topicId.startsWith('mixed_');
             const activeSid = isMixed 
               ? `sess_${topicId}` 

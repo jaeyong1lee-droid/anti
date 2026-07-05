@@ -7418,7 +7418,10 @@ app.get('/api/session/review', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     await ensureSessionTable();
     const rawTopicId = req.query.topicId;
-    const targetTopicId = String(rawTopicId || '');
+    let targetTopicId = String(rawTopicId || '');
+    if (targetTopicId.startsWith('mixed_') && targetTopicId.includes('_sess_')) {
+      targetTopicId = targetTopicId.split('_sess_')[0];
+    }
 
     try {
       fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
@@ -7564,7 +7567,10 @@ app.post('/api/session/review', async (req, res) => {
   try {
     await ensureSessionTable();
     const { topicId, scheduleId, sessionId, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedQuizScroll } = req.body;
-    const targetTopicId = String(topicId || '');
+    let targetTopicId = String(topicId || '');
+    if (targetTopicId.startsWith('mixed_') && targetTopicId.includes('_sess_')) {
+      targetTopicId = targetTopicId.split('_sess_')[0];
+    }
 
     try {
       fs.appendFileSync(path.resolve(__dirname, 'debug_call_log.txt'), 
@@ -7816,7 +7822,10 @@ app.get('/api/session/last-active-review', async (req, res) => {
         });
       }
     } else if (key.startsWith('review_questions_topic_')) {
-      const topicIdRaw = key.replace('review_questions_topic_', '');
+      let topicIdRaw = key.replace('review_questions_topic_', '');
+      if (topicIdRaw.includes('_sess_')) {
+        topicIdRaw = topicIdRaw.split('_sess_')[0];
+      }
       if (topicIdRaw.startsWith('mixed_')) {
         return res.json({
           success: true,
