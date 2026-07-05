@@ -19682,7 +19682,7 @@ ${itemsStr}
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <BufferedTextarea
-                                        disabled={isRevd}
+                                        disabled={gradingLoading[idx]}
                                         data-answer-key={`${idx}_INPUT`}
                                         value={tableAnswers[`${idx}_INPUT`] || ''}
                                         onChange={(val) => {
@@ -19705,13 +19705,44 @@ ${itemsStr}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
-                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
-                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
-                                          {Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
-                                        </span>
-                                      </div>
-                                    )}
+                                    {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (() => {
+                                      const displayScore = Math.round(((tableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10;
+                                      const isLoading = gradingLoading[idx];
+                                      return (
+                                        <button
+                                          disabled={isLoading}
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (isLoading) return;
+                                            await gradeSubjectiveQuestion(idx, q);
+                                            setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
+                                          }}
+                                          title="클릭 시 이 문항을 재평가합니다"
+                                          className={`absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 select-none z-10 font-black text-[10px] text-amber-400 bg-transparent border-0 cursor-pointer hover:underline ${
+                                            isLoading ? 'animate-pulse' : ''
+                                          }`}
+                                          style={{ outline: 'none' }}
+                                        >
+                                          {isLoading ? (
+                                            <span className="flex items-center gap-1">
+                                              <svg className="animate-spin h-3 w-3 text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                              </svg>
+                                              ...
+                                            </span>
+                                          ) : (
+                                            `${displayScore}점 ↻`
+                                          )}
+                                        </button>
+                                      );
+                                    })()}
+
+
+
+
+
+
                                   </div>
                                 </div>
                                 {isRevd && tableGradingResults[`${idx}_INPUT`] && (
@@ -22947,7 +22978,7 @@ ${itemsStr}
                                 <div className="space-y-1">
                                   <div className="relative">
                                       <BufferedTextarea
-                                        disabled={!!examRevealed[idx]}
+                                        disabled={gradingLoading[idx]}
                                         value={examTableAnswers[`${idx}_INPUT`] || ''}
                                         onChange={(val) => {
                                           examTableAnswersRef.current[`${idx}_INPUT`] = val;
@@ -22969,13 +23000,44 @@ ${itemsStr}
                                         placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
-                                    {examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (
-                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 select-none z-10">
-                                        <span className="text-[10px] font-black text-amber-400 whitespace-nowrap">
-                                          {Math.round(((examTableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10}점
-                                        </span>
-                                      </div>
-                                    )}
+                                    {examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (() => {
+                                      const displayScore = Math.round(((examTableGradingResults[`${idx}_INPUT`].score / 10) * W) * 10) / 10;
+                                      const isLoading = gradingLoading[idx];
+                                      return (
+                                        <button
+                                          disabled={isLoading}
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (isLoading) return;
+                                            await gradeSubjectiveQuestion(idx, q);
+                                            setExamRevealed(prev => ({ ...prev, [idx]: true }));
+                                          }}
+                                          title="클릭 시 이 문항을 재평가합니다"
+                                          className={`absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 select-none z-10 font-black text-[10px] text-amber-400 bg-transparent border-0 cursor-pointer hover:underline ${
+                                            isLoading ? 'animate-pulse' : ''
+                                          }`}
+                                          style={{ outline: 'none' }}
+                                        >
+                                          {isLoading ? (
+                                            <span className="flex items-center gap-1">
+                                              <svg className="animate-spin h-3 w-3 text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                              </svg>
+                                              ...
+                                            </span>
+                                          ) : (
+                                            `${displayScore}점 ↻`
+                                          )}
+                                        </button>
+                                      );
+                                    })()}
+
+
+
+
+
+
                                   </div>
                                 </div>
                                 {examRevealed[idx] && examTableGradingResults[`${idx}_INPUT`] && (
