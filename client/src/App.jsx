@@ -4060,7 +4060,10 @@ export default function App() {
             
             let correctRow = q.correctRows?.[rIdx];
             if (correctRow && correctRow.acronym !== userLetter) {
-              correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+              const matched = q.correctRows?.find(r => r.acronym === userLetter);
+              if (matched) {
+                correctRow = matched;
+              }
             }
             
             return (
@@ -4129,7 +4132,10 @@ export default function App() {
       
       let correctRow = q.correctRows?.[rIdx];
       if (correctRow && correctRow.acronym !== userLetter) {
-        correctRow = q.correctRows?.find(r => r.acronym === userLetter);
+        const matched = q.correctRows?.find(r => r.acronym === userLetter);
+        if (matched) {
+          correctRow = matched;
+        }
       }
       
       if (!userLetter) {
@@ -4138,13 +4144,12 @@ export default function App() {
         return;
       }
       
-      if (!correctRow) {
-        results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: false, score: 0, reason: `존재하지 않는 두문자 글자 (${userLetter})` };
-        results[`${qIdx}_ROW_${rIdx}_COMB`] = { isCorrect: false, score: 0, reason: `매칭 실패` };
-        return;
-      }
-      
-      results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = { isCorrect: true, score: 10, reason: `두문자 매칭 성공` };
+      const isLetterCorrect = correctRow.acronym === userLetter;
+      results[`${qIdx}_ROW_${rIdx}_ACRONYM`] = {
+        isCorrect: isLetterCorrect,
+        score: isLetterCorrect ? 10 : 0,
+        reason: isLetterCorrect ? `두문자 매칭 성공` : `두문자 불일치 (입력: ${userLetter}, 모범답안: ${correctRow.acronym})`
+      };
       
       const correctAnswer = `${correctRow.word} : ${correctRow.description}`;
       
