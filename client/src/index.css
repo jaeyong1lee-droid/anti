@@ -538,6 +538,16 @@ div[class*="overflow-y-auto"] {
   .mobile-portrait-hide {
     display: none !important;
   }
+
+  /* Set solid premium slate background on mobile portrait instead of muddy bg-black/80 translucent overlays */
+  .fixed.inset-y-0.right-0.left-0.z-50,
+  .fixed.inset-y-0.right-0.left-0.z-\[60\],
+  .fixed.inset-y-0.right-0.left-0.z-\[100\] {
+    background-color: #0b1329 !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
 
 /* Hide right scrollbar in mobile/tablet views and expand question window */

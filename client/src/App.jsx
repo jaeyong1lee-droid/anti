@@ -6296,6 +6296,41 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isPinVerified, isDesktop]);
 
+  // Prevent screen dimming and sleeping on mobile devices (Screen Wake Lock API)
+  useEffect(() => {
+    let wakeLock = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Screen Wake Lock successfully acquired.');
+        }
+      } catch (err) {
+        console.warn(`Screen Wake Lock request failed: ${err.name}, ${err.message}`);
+      }
+    };
+
+    if (isPinVerified) {
+      requestWakeLock();
+    }
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isPinVerified) {
+        await requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) {
+        wakeLock.release().catch(e => console.warn('Failed to release wake lock:', e));
+      }
+    };
+  }, [isPinVerified]);
+
   // Listener to trigger the quiz immediately on visibility change (wake up / app return)
   useEffect(() => {
     if (!isPinVerified || isDesktop) return;
