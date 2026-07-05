@@ -84,6 +84,7 @@ export function FloatingMemorization({
   formulaAcronyms,
   setFormulaAcronyms,
   loadingFormulaAcronyms,
+  handleSaveFormulaAcronyms,
   editingAcronymId,
   setEditingAcronymId,
   editingAcronymText,
@@ -725,7 +726,7 @@ export function FloatingMemorization({
                                       />
                                     </td>
                                     <td className="p-1 text-center align-middle select-none">
-                                      <div className="flex items-center justify-center gap-0.5">
+                                      <div className="flex items-center justify-center gap-1">
                                         <button
                                           onClick={() => {
                                             // Shift row up
@@ -748,6 +749,7 @@ export function FloatingMemorization({
                                           }}
                                           disabled={rIdx === 0}
                                           className="px-1 py-0.2 rounded bg-slate-800 text-slate-300 hover:text-white disabled:opacity-20 text-[9px] cursor-pointer"
+                                          title="위로 이동"
                                         >
                                           ▲
                                         </button>
@@ -773,8 +775,30 @@ export function FloatingMemorization({
                                           }}
                                           disabled={rIdx === rows.length - 1}
                                           className="px-1 py-0.2 rounded bg-slate-800 text-slate-300 hover:text-white disabled:opacity-20 text-[9px] cursor-pointer"
+                                          title="아래로 이동"
                                         >
                                           ▼
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (window.confirm('이 행을 삭제하시겠습니까?')) {
+                                              const newRows = rows.filter((_, idx) => idx !== rIdx);
+                                              const newContent = [
+                                                `두문자: ${acronymHeaderText}`,
+                                                `연상문장: ${sentenceText}`,
+                                                '| 두문자 | 암기단어 | 설명 |',
+                                                '| :--- | :--- | :--- |',
+                                                ...newRows.map(r => `| ${r.acronym} | ${r.word} | ${r.description} |`)
+                                              ].join('\n');
+                                              const updated = formulaAcronyms.map(item => item.id === ac.id ? { ...item, content: newContent } : item);
+                                              setFormulaAcronyms(updated);
+                                              handleSaveFormulaAcronyms(updated, false);
+                                            }
+                                          }}
+                                          className="px-1 py-0.5 rounded bg-slate-800/60 hover:bg-rose-950/75 text-slate-400 hover:text-rose-450 border border-slate-700/50 hover:border-rose-500/20 text-[9px] cursor-pointer transition-all"
+                                          title="행 삭제"
+                                        >
+                                          <Trash2 size={10} />
                                         </button>
                                       </div>
                                     </td>

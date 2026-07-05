@@ -27043,6 +27043,7 @@ ${itemsStr}
         formulaAcronyms={formulaAcronyms}
         setFormulaAcronyms={setFormulaAcronyms}
         loadingFormulaAcronyms={loadingFormulaAcronyms}
+        handleSaveFormulaAcronyms={handleSaveFormulaAcronyms}
         editingAcronymId={editingAcronymId}
         setEditingAcronymId={setEditingAcronymId}
         editingAcronymText={editingAcronymText}
