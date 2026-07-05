@@ -2271,7 +2271,7 @@ const BufferedTextarea = React.memo(({ value, onChange, onKeystroke, onKeyDown, 
   );
 });
 
-const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit }) {
+const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit, gradeSingleTableCell, cellGradingLoading }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
@@ -2461,36 +2461,67 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       <td 
                         key={cIdx} 
                         colSpan={cellColSpan}
-                        className={`p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle ${
-                          !revealed ? 'cursor-text' : ''
-                        }`}
-                        onClick={!revealed ? (e) => {
+                        className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text"
+                        onClick={(e) => {
                           const textarea = e.currentTarget.querySelector('textarea');
                           if (textarea) textarea.focus();
-                        } : undefined}
+                        }}
                       >
                         {revealed ? (() => {
                           const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
                           return (
                             <div className={`w-full flex justify-between items-center p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
-                              <div className="text-left font-medium">
-                                {value ? (
-                                  <span className="font-bold">
-                                    <LatexRenderer text={value} katexLoaded={katexLoaded} className="inline" />
-                                  </span>
-                                ) : (
-                                  <span className="text-rose-400/80 italic font-medium">
-                                    (미입력)
-                                  </span>
-                                )}
+                              <div className="flex-1 text-left font-medium">
+                                <BufferedTextarea
+                                  value={value}
+                                  onChange={(val) => {
+                                    handleInputChange(inputId, val);
+                                  }}
+                                  onKeystroke={(val) => {
+                                    handleInputKeystroke(inputId, val);
+                                  }}
+                                  placeholder={`${inputLetter} 입력`}
+                                  data-answer-key={`${questionIdx}_${inputId}`}
+                                  className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-bold align-middle"
+                                  rows={1}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      e.target.blur();
+                                    }
+                                  }}
+                                />
                               </div>
                               {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
                                 const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                                 const displayScore = Math.round(cellObtained * 10) / 10;
+                                const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
                                 return (
-                                  <div className={`text-right font-extrabold select-none whitespace-nowrap pl-2 text-[11px] sm:text-[13px] ${theme.text}`}>
-                                    {displayScore}점
-                                  </div>
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (isCellLoading) return;
+                                      if (gradeSingleTableCell) {
+                                        await gradeSingleTableCell(questionIdx, q, inputId);
+                                      }
+                                    }}
+                                    title="클릭 시 이 칸만 재평가합니다"
+                                    className={`ml-2 text-right font-extrabold select-none whitespace-nowrap px-2 py-1 rounded border border-current/25 bg-black/25 hover:bg-black/45 active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                      isCellLoading ? 'animate-pulse' : ''
+                                    }`}
+                                  >
+                                    {isCellLoading ? (
+                                      <span className="flex items-center gap-1">
+                                        <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        ...
+                                      </span>
+                                    ) : (
+                                      `${displayScore}점 ↻`
+                                    )}
+                                  </button>
                                 );
                               })()}
                             </div>
@@ -4848,6 +4879,118 @@ export default function App() {
       stopProgressPolling('채점 실패', 100, false);
     } finally {
       setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
+    }
+  };
+
+  const [cellGradingLoading, setCellGradingLoading] = useState({});
+
+  const gradeSingleTableCell = async (qIdx, q, inputId) => {
+    const key = `${qIdx}_${inputId}`;
+    setCellGradingLoading(prev => ({ ...prev, [key]: true }));
+
+    const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
+    const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
+    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const nextGrading = { ...currentGrading };
+
+    const progressId = 'grade_cell_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+
+    const userAnswer = activeAnswers[key] || '';
+    const correctAnswer = q.answers[inputId] || '';
+
+    let rowHeader = '';
+    let colHeader = '';
+    if (q.tableData && q.tableData.rows && q.tableData.headers) {
+      q.tableData.rows.forEach((row) => {
+        row.forEach((cell, colIdx) => {
+          if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+            rowHeader = row[0] || '';
+            colHeader = q.tableData.headers[colIdx] || '';
+          }
+        });
+      });
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/grade-subjective`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q.question,
+          correctAnswer,
+          userAnswer,
+          rowHeader,
+          colHeader,
+          explanation: q.explanation || q.answer || '',
+          category: showExam ? examTopic?.category : selectedTopic?.category,
+          progressId
+        })
+      });
+      const data = await res.json();
+      nextGrading[key] = {
+        isCorrect: data.isCorrect,
+        score: data.score,
+        reason: data.reason,
+        suggestedModelAnswer: data.suggestedModelAnswer
+      };
+    } catch (err) {
+      console.error('Single cell grading error:', err);
+      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+      const isCorrect = normalize(userAnswer) === normalize(correctAnswer);
+      nextGrading[key] = {
+        isCorrect,
+        score: isCorrect ? 10 : 0,
+        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+      };
+    }
+
+    try {
+      activeSetGradingResults(nextGrading);
+
+      // Save state immediately to DB/session to guarantee persistence
+      if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+        await fetch(`${API_BASE}/api/session/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: selectedTopic.id,
+            scheduleId: selectedTopic.schedule_id,
+            sessionId: reviewSessionId,
+            questions: aiQuestions,
+            selectedAnswers,
+            revealedQuestions,
+            tableAnswers,
+            tableGradingResults: nextGrading,
+            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      }
+
+      if (showExam && examQuestions.length > 0 && !loadingExam) {
+        await fetch(`${API_BASE}/api/session/exam`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examQuestions,
+            examRevealed,
+            examAnswers,
+            examTopic,
+            tableAnswers: examTableAnswers,
+            tableGradingResults: nextGrading,
+            tutorAnswers,
+            tutorInputText,
+            chatHistory,
+            savedExamScroll: examBodyRef.current?.scrollTop || 0
+          })
+        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+      }
+
+      stopProgressPolling('재채점 완료!', 100);
+    } catch (e) {
+      stopProgressPolling('재채점 실패', 100, false);
+    } finally {
+      setCellGradingLoading(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -19362,6 +19505,8 @@ ${itemsStr}
                                       await gradeTableQuestion(idx, q);
                                       setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                     }}
+                                    gradeSingleTableCell={gradeSingleTableCell}
+                                    cellGradingLoading={cellGradingLoading}
                                   />
                                 );
                               })()}
@@ -22623,6 +22768,8 @@ ${itemsStr}
                                       await gradeTableQuestion(idx, q);
                                       setExamRevealed(prev => ({ ...prev, [idx]: true }));
                                     }}
+                                    gradeSingleTableCell={gradeSingleTableCell}
+                                    cellGradingLoading={cellGradingLoading}
                                   />
                                 );
                               })()}
