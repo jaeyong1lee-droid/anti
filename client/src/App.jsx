@@ -5802,13 +5802,14 @@ export default function App() {
   const [expandedAcronymIds, setExpandedAcronymIds] = useState({});
 
   useEffect(() => {
+    console.log('[SyncAcronyms] useEffect triggered. Acronyms count:', formulaAcronyms?.length, 'aiQuestions:', aiQuestions?.length, 'examQuestions:', examQuestions?.length);
     if (!formulaAcronyms || formulaAcronyms.length === 0) return;
 
     let aiChanged = false;
     let examChanged = false;
 
     if (aiQuestions && aiQuestions.length > 0) {
-      const updatedAi = aiQuestions.map(q => {
+      const updatedAi = aiQuestions.map((q, idx) => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
           // Find the best matched card using a multi-layered matching strategy
           let matchedCard = null;
@@ -5874,12 +5875,18 @@ export default function App() {
             }
           }
 
+          console.log(`[SyncAcronyms] Q${idx+1} matching detail: questionText="${q.question}", originalId="${q.originalId}", topic_id="${q.topic_id}" => matchedCardTitle="${matchedCard ? matchedCard.title : 'NONE'}"`);
+
           if (matchedCard) {
             const parsed = parseAcronymContent(matchedCard.content);
             const acronymChanged = q.acronym !== parsed.acronym;
             const sentenceChanged = q.sentence !== parsed.sentence;
             const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
             
+            console.log(`[SyncAcronyms] Q${idx+1} comparison: acronymChanged=${acronymChanged}, sentenceChanged=${sentenceChanged}, rowsChanged=${rowsChanged}`);
+            console.log(`[SyncAcronyms] Q${idx+1} correctRows inside question:`, q.correctRows);
+            console.log(`[SyncAcronyms] Q${idx+1} parsed rows from card:`, parsed.rows);
+
             if (acronymChanged || sentenceChanged || rowsChanged) {
               aiChanged = true;
               const blankRows = parsed.rows.map(() => ['', '']);
@@ -5900,12 +5907,13 @@ export default function App() {
         return q;
       });
       if (aiChanged) {
+        console.log('[SyncAcronyms] Dispatching _setAiQuestions update!');
         _setAiQuestions(updatedAi);
       }
     }
 
     if (examQuestions && examQuestions.length > 0) {
-      const updatedExam = examQuestions.map(q => {
+      const updatedExam = examQuestions.map((q, idx) => {
         if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
           // Find the best matched card using a multi-layered matching strategy
           let matchedCard = null;
@@ -13906,7 +13914,7 @@ export default function App() {
         const body = await res.json();
         if (body && body.data && Array.isArray(body.data.formulaAcronyms)) {
           loadedData = body.data.formulaAcronyms;
-          console.log('[Sync] Loaded formula acronyms from database.');
+          console.log('[Sync] Loaded formula acronyms from database. Count:', loadedData.length);
         }
       }
     } catch (err) {
