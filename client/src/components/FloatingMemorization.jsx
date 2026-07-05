@@ -69,6 +69,7 @@ const rebuildTableHtml = (headers, rows) => {
 export function FloatingMemorization({
   isVisible,
   onClose,
+  focusedQuestion,
   // Tables
   formulaTables,
   setFormulaTables,
@@ -122,6 +123,121 @@ export function FloatingMemorization({
 
   const [subTab, setSubTab] = useState('table'); // 'table', 'acronym', 'overview', 'image'
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (isVisible && focusedQuestion) {
+      const qText = (focusedQuestion.question || '').toLowerCase();
+      const qType = (focusedQuestion.type || '').toLowerCase();
+      const qSubtype = (focusedQuestion.subtype || '').toLowerCase();
+      const qTitle = (focusedQuestion.title || '').toLowerCase();
+      
+      let targetTab = 'table';
+      
+      // Decide targetTab based on type and content
+      if (qType.includes('앞글자') || qType.includes('acronym') || qSubtype.includes('앞글자') || qText.includes('두문자') || qText.includes('앞글자')) {
+        targetTab = 'acronym';
+      } else if (qType.includes('그림') || qType.includes('image') || qSubtype.includes('그림') || qText.includes('그림') || qText.includes('그래프')) {
+        targetTab = 'image';
+      } else if (qType.includes('표') || qType.includes('table') || qSubtype.includes('표') || qText.includes('표채우기') || qText.includes('비교표')) {
+        targetTab = 'table';
+      } else if (qType.includes('공식') || qType.includes('formula') || qSubtype.includes('공식')) {
+        targetTab = 'overview';
+      } else {
+        // Fallback matching logic based on acronym cards, tables, etc.
+        const hasAcronymMatch = formulaAcronyms?.some(ac => {
+          const titleClean = (ac.title || '').replace(/\s+/g, '').toLowerCase();
+          return titleClean && (qText.replace(/\s+/g, '').includes(titleClean) || qTitle.replace(/\s+/g, '').includes(titleClean));
+        });
+        if (hasAcronymMatch) {
+          targetTab = 'acronym';
+        } else {
+          const hasTableMatch = formulaTables?.some(tb => {
+            const titleClean = (tb.title || '').replace(/\s+/g, '').toLowerCase();
+            return titleClean && (qText.replace(/\s+/g, '').includes(titleClean) || qTitle.replace(/\s+/g, '').includes(titleClean));
+          });
+          if (hasTableMatch) {
+            targetTab = 'table';
+          } else {
+            const hasOverviewMatch = formulaOverviews?.some(ov => {
+              const titleClean = (ov.title || '').replace(/\s+/g, '').toLowerCase();
+              return titleClean && (qText.replace(/\s+/g, '').includes(titleClean) || qTitle.replace(/\s+/g, '').includes(titleClean));
+            });
+            if (hasOverviewMatch) {
+              targetTab = 'overview';
+            }
+          }
+        }
+      }
+      
+      // Find best matching card title/keyword
+      let bestMatch = '';
+      if (targetTab === 'acronym' && formulaAcronyms) {
+        const found = formulaAcronyms.find(ac => {
+          const title = (ac.title || '').trim();
+          if (!title) return false;
+          const tClean = title.toLowerCase().replace(/\s+/g, '');
+          const qTextClean = qText.replace(/\s+/g, '');
+          return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
+        });
+        if (found) {
+          bestMatch = found.title;
+        } else {
+          const keywords = ['비배수', '전단강도', '압밀', '액상화', '지하수', '토압', '지지력', '사면', '옹벽', '터널', '말뚝', '기초'];
+          for (const kw of keywords) {
+            if (qText.includes(kw) || qTitle.includes(kw)) {
+              const foundKw = formulaAcronyms.find(ac => (ac.title || '').includes(kw));
+              if (foundKw) {
+                bestMatch = foundKw.title;
+                break;
+              }
+            }
+          }
+        }
+      } else if (targetTab === 'table' && formulaTables) {
+        const found = formulaTables.find(tb => {
+          const title = (tb.title || '').trim();
+          if (!title) return false;
+          const tClean = title.toLowerCase().replace(/\s+/g, '');
+          const qTextClean = qText.replace(/\s+/g, '');
+          return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
+        });
+        if (found) bestMatch = found.title;
+      } else if (targetTab === 'overview' && formulaOverviews) {
+        const found = formulaOverviews.find(ov => {
+          const title = (ov.title || '').trim();
+          if (!title) return false;
+          const tClean = title.toLowerCase().replace(/\s+/g, '');
+          const qTextClean = qText.replace(/\s+/g, '');
+          return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
+        });
+        if (found) bestMatch = found.title;
+      } else if (targetTab === 'image' && formulaImages) {
+        const found = formulaImages.find(img => {
+          const title = (img.title || '').trim();
+          if (!title) return false;
+          const tClean = title.toLowerCase().replace(/\s+/g, '');
+          const qTextClean = qText.replace(/\s+/g, '');
+          return qTextClean.includes(tClean) || tClean.includes(qTextClean) || (qTitle && (qTitle.includes(tClean) || tClean.includes(qTitle)));
+        });
+        if (found) bestMatch = found.title;
+      }
+      
+      setSubTab(targetTab);
+      if (bestMatch) {
+        setSearchQuery(bestMatch);
+      } else {
+        const keywords = ['비배수', '전단강도', '압밀', '액상화', '지하수', '토압', '지지력', '사면', '옹벽', '터널', '말뚝', '기초'];
+        let fallbackKw = '';
+        for (const kw of keywords) {
+          if (qText.includes(kw) || qTitle.includes(kw)) {
+            fallbackKw = kw;
+            break;
+          }
+        }
+        setSearchQuery(fallbackKw);
+      }
+    }
+  }, [isVisible, focusedQuestion, formulaAcronyms, formulaTables, formulaOverviews, formulaImages]);
 
   // Local editing states for cells and overviews inside the popup
   const [localActiveEditCell, setLocalActiveEditCell] = useState(null); // { tableId, type, rIdx, colIdx }

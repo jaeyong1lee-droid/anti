@@ -4300,6 +4300,7 @@ export default function App() {
   };
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
   const [showFloatingMemorization, setShowFloatingMemorization] = useState(false);
+  const [focusedQuestion, setFocusedQuestion] = useState(null);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
   const [lastActiveReview, setLastActiveReview] = useState(null);
@@ -5602,6 +5603,22 @@ export default function App() {
 
   const examTopicRefForFormula = useRef(null);
   examTopicRefForFormula.current = examTopic;
+
+  useEffect(() => {
+    if (showExam) {
+      if (examQuestions && examQuestions.length > 0) {
+        if (!focusedQuestion || !examQuestions.some(eq => eq.question === focusedQuestion.question)) {
+          setFocusedQuestion(examQuestions[0]);
+        }
+      }
+    } else {
+      if (aiQuestions && aiQuestions.length > 0) {
+        if (!focusedQuestion || !aiQuestions.some(aq => aq.question === focusedQuestion.question)) {
+          setFocusedQuestion(aiQuestions[0]);
+        }
+      }
+    }
+  }, [aiQuestions, examQuestions, showExam, focusedQuestion]);
 
   useEffect(() => {
     window.__handleFormulaConfirmRequest = (math, fullText, source) => {
@@ -18941,7 +18958,12 @@ ${itemsStr}
                       'bg-amber-700';
 
                     return (
-                      <div key={idx} className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                      <div 
+                        key={idx} 
+                        className="quiz-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50"
+                        onFocusCapture={() => setFocusedQuestion(q)}
+                        onClickCapture={() => setFocusedQuestion(q)}
+                      >
                         {/* Q Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
                           <div className="flex items-center justify-between w-full sm:w-auto gap-2">
@@ -22275,7 +22297,12 @@ ${itemsStr}
                     'bg-emerald-700';
 
                   return (
-                    <div key={idx} className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50">
+                    <div 
+                      key={idx} 
+                      className="exam-card-item bg-slateCustom-900 border border-slate-800 rounded-2xl px-2.5 py-4 sm:p-5 space-y-3 scroll-mt-2 transition-all duration-300 hover:border-slate-700/50"
+                      onFocusCapture={() => setFocusedQuestion(q)}
+                      onClickCapture={() => setFocusedQuestion(q)}
+                    >
                       {/* Q Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
                         <div className="flex items-center justify-between w-full sm:w-auto gap-2">
@@ -27030,6 +27057,7 @@ ${itemsStr}
       <FloatingMemorization
         isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
         onClose={() => setShowFloatingMemorization(false)}
+        focusedQuestion={focusedQuestion}
         formulaTables={formulaTables}
         setFormulaTables={setFormulaTables}
         loadingFormulaTables={loadingFormulaTables}
