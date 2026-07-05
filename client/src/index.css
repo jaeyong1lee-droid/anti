@@ -946,6 +946,10 @@ div[class*="overflow-y-auto"] {
     padding-right: 6px !important;
   }
 
+  .table-quiz-container {
+    --first-col-width: 7.5rem !important;
+  }
+
   .table-quiz-table,
   .table-quiz-container table {
     table-layout: fixed !important; /* enforce strict column widths with horizontal scroll */

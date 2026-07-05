@@ -2404,7 +2404,15 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
       }`}>
         <colgroup>
           {colWidths.map((w, idx) => (
-            <col key={idx} className={idx === 0 ? "table-quiz-col-first" : ""} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            <col 
+              key={idx} 
+              className={idx === 0 ? "table-quiz-col-first" : ""} 
+              style={{ 
+                width: idx === 0 
+                  ? `var(--first-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
+                  : (typeof w === 'number' ? `${w}%` : w) 
+              }} 
+            />
           ))}
         </colgroup>
         <thead>
@@ -2790,7 +2798,15 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
       }`}>
         <colgroup>
           {colWidths.map((w, idx) => (
-            <col key={idx} className={idx === 0 ? "table-quiz-col-first" : ""} style={{ width: typeof w === 'number' ? `${w}%` : w }} />
+            <col 
+              key={idx} 
+              className={idx === 0 ? "table-quiz-col-first" : ""} 
+              style={{ 
+                width: idx === 0 
+                  ? `var(--first-col-width, ${typeof w === 'number' ? `${w}%` : w})` 
+                  : (typeof w === 'number' ? `${w}%` : w) 
+              }} 
+            />
           ))}
         </colgroup>
         <thead>
