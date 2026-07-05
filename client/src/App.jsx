@@ -2544,7 +2544,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                   }}
                                 />
                               </div>
-                              {questionIdx >= 2 && gradingResult && gradingResult.score !== undefined && (() => {
+                              {gradingResult && gradingResult.score !== undefined && (() => {
                                 const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
                                 const displayScore = Math.round(cellObtained * 10) / 10;
                                 const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
@@ -5062,7 +5062,7 @@ export default function App() {
             questions: aiQuestions,
             selectedAnswers,
             revealedQuestions,
-            tableAnswers,
+            tableAnswers: activeAnswers,
             tableGradingResults: nextGrading,
             savedQuizScroll: quizBodyRef.current?.scrollTop || 0
           })
@@ -5078,7 +5078,7 @@ export default function App() {
             examRevealed,
             examAnswers,
             examTopic,
-            tableAnswers: examTableAnswers,
+            tableAnswers: activeAnswers,
             tableGradingResults: nextGrading,
             tutorAnswers,
             tutorInputText,
@@ -6359,6 +6359,40 @@ export default function App() {
   const [pinError, setPinError] = useState('');
   const [isPinVerifying, setIsPinVerifying] = useState(false);
   const [isPinInputShaking, setIsPinInputShaking] = useState(false);
+
+  // Inactivity dimmer (dims virtual screen brightness after 1 minute of inactivity)
+  const [isDimmed, setIsDimmed] = useState(false);
+  useEffect(() => {
+    if (!isPinVerified) {
+      setIsDimmed(false);
+      return;
+    }
+    let timeoutId = null;
+    const resetTimer = () => {
+      setIsDimmed(false);
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsDimmed(true);
+      }, 60000); // 1 minute
+    };
+    resetTimer();
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'touchmove', 'click'];
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [isPinVerified]);
 
   const lastTickRef = useRef(Date.now());
   const tickCountRef = useRef(0);
@@ -16510,6 +16544,11 @@ ${itemsStr}
 
   return (
     <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
+      {/* Virtual Screen Dimmer Overlay */}
+      <div 
+        className="fixed inset-0 bg-black pointer-events-none z-[999999] transition-opacity duration-700" 
+        style={{ opacity: isDimmed ? 0.75 : 0 }}
+      />
       {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
       {isLockscreenPoolModalOpen && (
         <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
