@@ -2692,9 +2692,8 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
               <th className="p-2 font-extrabold select-none">내용 (암기단어 : 설명)</th>
             </tr>
           </thead>
-          <tbody>
-              return (() => {
-                const acronymQuizRows = rows.map((row, rIdx) => {
+                    <tbody>
+            {rows.map((row, rIdx) => {
                   const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
                   const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
                   
@@ -2824,88 +2823,8 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                       </td>
                     </tr>
                   );
-                });
-                return acronymQuizRows;
-              })()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            );
-          })}
-        </tbody>
+            })}
+          </tbody>
       </table>
     </div>
     {revealed && (
