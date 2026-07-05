@@ -10018,7 +10018,9 @@ function mergeDefaultAndDbStandards(defaultList, dbList) {
       const defTime = new Date(defItem.updatedAt || defItem.updated_at || 0).getTime();
       const dbTime = new Date(dbItem.updatedAt || dbItem.updated_at || 0).getTime();
       
-      if (defTime > dbTime) {
+      const isContentDiff = defItem.content !== dbItem.content || defItem.title !== dbItem.title;
+      
+      if (defTime > dbTime || isContentDiff) {
         mergedList[dbItemIdx] = defItem;
         console.log(`[Sync] Updated standard '${defItem.id}' in database with newer default code version.`);
       }
