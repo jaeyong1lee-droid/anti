@@ -8840,6 +8840,9 @@ export default function App() {
   // 특정 완료 복습 회차 클릭 시, 이전 풀이 기록(풀었던 문제, 마크한 정답, 유도과정 열람)을 기기 간 복구하여 조회 전용으로 시각화
   const handleOpenCompletedReview = async (scheduleId, topicId, topicTitle, round, keywords = '', pdfName = '') => {
     await forceSaveActiveSessions();
+    const topicObj = allTopics.find(t => String(t.id) === String(topicId));
+    const topicCategory = topicObj ? topicObj.category : '일반';
+
     const activeInfo = {
       topicId,
       title: topicTitle,
@@ -8848,7 +8851,8 @@ export default function App() {
       mode: 'completed',
       scheduleId,
       reviewRound: round,
-      isReadOnly: true
+      isReadOnly: true,
+      category: topicCategory
     };
     localStorage.setItem('anti_last_active_review', JSON.stringify(activeInfo));
     setLastActiveReview(activeInfo);
@@ -8867,7 +8871,8 @@ export default function App() {
       pdf_name: pdfName,
       schedule_id: scheduleId, 
       review_round: round, 
-      isReadOnly: true 
+      isReadOnly: true,
+      category: topicCategory
     };
     setSelectedTopic(targetTopic);
     selectedTopicRef.current = targetTopic;
@@ -9228,7 +9233,7 @@ export default function App() {
     
     try {
       if (!isPractice && !finalScheduleId) {
-        const topicObj = allTopics.find(t => t.id === topicId);
+        const topicObj = allTopics.find(t => String(t.id) === String(topicId));
         if (topicObj && topicObj.schedules) {
           const pendingSched = topicObj.schedules.find(s => s.status === 'pending');
           if (pendingSched) {
@@ -9238,7 +9243,7 @@ export default function App() {
         }
       }
 
-      const topicObj = allTopics.find(t => t.id === topicId);
+      const topicObj = allTopics.find(t => String(t.id) === String(topicId));
       const topicCategory = topicObj ? topicObj.category : (passedCategory || '일반');
 
       const activeInfo = {
@@ -9849,7 +9854,7 @@ export default function App() {
       if (info.isReadOnly || info.mode === 'completed') {
         handleOpenCompletedReview(info.scheduleId, info.topicId, info.title, info.reviewRound, info.keywords, info.pdfName);
       } else {
-        handleOpenAIQuestions(info.topicId, info.title, info.keywords, info.pdfName, info.mode || 'ai', info.scheduleId, info.reviewRound, info.isBonus);
+        handleOpenAIQuestions(info.topicId, info.title, info.keywords, info.pdfName, info.mode || 'ai', info.scheduleId, info.reviewRound, info.isBonus, false, info.category);
       }
     } catch (err) {
       console.error('Error opening last active review:', err);
