@@ -2386,6 +2386,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
     const doResize = (ev) => {
+      if (isTouch && ev.cancelable) {
+        ev.preventDefault();
+      }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - startX;
 
@@ -2403,7 +2406,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           const next = [...prev];
           const sum = percentWidths[idx] + percentWidths[idx + 1];
           const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
-          const actualLeft = Math.min(sum - 10, percentWidths[idx] + deltaPercent);
+          const actualLeft = Math.min(sum - 10, newLeftWidth);
           const actualRight = sum - actualLeft;
 
           next[idx] = actualLeft;
@@ -2430,7 +2433,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
       window.addEventListener('mousemove', doResize);
       window.addEventListener('mouseup', stopResize);
     }
-  }, []);
+  }, [questionIdx]);
 
   return (
     <div 
@@ -2819,6 +2822,9 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
     const doResize = (ev) => {
+      if (isTouch && ev.cancelable) {
+        ev.preventDefault();
+      }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - startX;
 
@@ -2836,7 +2842,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
           const next = [...prev];
           const sum = percentWidths[idx] + percentWidths[idx + 1];
           const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
-          const actualLeft = Math.min(sum - 10, percentWidths[idx] + deltaPercent);
+          const actualLeft = Math.min(sum - 10, newLeftWidth);
           const actualRight = sum - actualLeft;
 
           next[idx] = actualLeft;
@@ -2863,7 +2869,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
       window.addEventListener('mousemove', doResize);
       window.addEventListener('mouseup', stopResize);
     }
-  }, []);
+  }, [questionIdx]);
 
   return (
     <div 
