@@ -5844,18 +5844,7 @@ export default function App() {
 
   const restoreQuestionImages = (questionsList) => {
     if (!Array.isArray(questionsList)) return [];
-    let currentFormulaImages = formulaImages;
-    if (!currentFormulaImages || currentFormulaImages.length === 0) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_images');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            currentFormulaImages = parsed;
-          }
-        }
-      } catch (e) {}
-    }
+    const currentFormulaImages = formulaImages || [];
     
     return questionsList.map(q => {
       if (q && q.originalId && (q.subtype === '그림' || q.type === '주관식 (그림)' || q.mixedType === 'image')) {
@@ -13471,7 +13460,6 @@ export default function App() {
       const healedQs = Array.isArray(qs) ? qs.map(healFormulaQuestionObject) : qs;
       latestFormulaQuestionsRef.current = healedQs;
       setFormulaQuestions(healedQs);
-      localStorage.setItem('anti_formula_questions', JSON.stringify(healedQs));
       
       // Sync with database for cross-device support (AWAITED to avoid timing issues)
       const res = await fetch(`${API_BASE}/api/session/formula`, {
@@ -13490,7 +13478,7 @@ export default function App() {
     } catch (err) {
       console.warn('필수공식 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -13498,7 +13486,6 @@ export default function App() {
   const loadFormulaTables = async () => {
     setLoadingFormulaTables(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/tables?t=${Date.now()}`);
@@ -13514,36 +13501,10 @@ export default function App() {
     }
 
     if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_tables');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log('[Fallback] Loaded formula tables from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 필수암기 표 복원 실패:', err);
-      }
-    }
-
-    if (!loadedData) {
       loadedData = [];
     }
 
     setFormulaTables(loadedData);
-    localStorage.setItem('anti_formula_tables', JSON.stringify(loadedData));
-
-    if (fallbackToLocal && loadedData.length > 0) {
-      console.log('[Sync] Auto syncing local tables to database...');
-      fetch(`${API_BASE}/api/session/tables`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaTables: loadedData })
-      }).catch(err => console.warn('[Sync] Auto sync tables failed:', err));
-    }
 
     setLoadingFormulaTables(false);
     return loadedData;
@@ -13552,7 +13513,6 @@ export default function App() {
   const handleSaveFormulaTables = async (tables = formulaTables, showToast = true) => {
     try {
       setFormulaTables(tables);
-      localStorage.setItem('anti_formula_tables', JSON.stringify(tables));
       
       const res = await fetch(`${API_BASE}/api/session/tables`, {
         method: 'POST',
@@ -13570,7 +13530,7 @@ export default function App() {
     } catch (err) {
       console.warn('필수암기 표 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -13719,7 +13679,6 @@ export default function App() {
   const loadFormulaAcronyms = async () => {
     setLoadingFormulaAcronyms(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/acronyms?t=${Date.now()}`);
@@ -13735,36 +13694,10 @@ export default function App() {
     }
 
     if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_acronyms');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log('[Fallback] Loaded formula acronyms from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 필수암기 앞글자 복원 실패:', err);
-      }
-    }
-
-    if (!loadedData) {
       loadedData = [];
     }
 
     setFormulaAcronyms(loadedData);
-    localStorage.setItem('anti_formula_acronyms', JSON.stringify(loadedData));
-
-    if (fallbackToLocal && loadedData.length > 0) {
-      console.log('[Sync] Auto syncing local acronyms to database...');
-      fetch(`${API_BASE}/api/session/acronyms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaAcronyms: loadedData })
-      }).catch(err => console.warn('[Sync] Auto sync acronyms failed:', err));
-    }
 
     setLoadingFormulaAcronyms(false);
     return loadedData;
@@ -13773,7 +13706,6 @@ export default function App() {
   const handleSaveFormulaAcronyms = async (acronyms = formulaAcronyms, showToast = true) => {
     try {
       setFormulaAcronyms(acronyms);
-      localStorage.setItem('anti_formula_acronyms', JSON.stringify(acronyms));
       
       const res = await fetch(`${API_BASE}/api/session/acronyms`, {
         method: 'POST',
@@ -13791,7 +13723,7 @@ export default function App() {
     } catch (err) {
       console.warn('필수암기 앞글자 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -13799,7 +13731,6 @@ export default function App() {
   const loadFormulaOverviews = async () => {
     setLoadingFormulaOverviews(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/overviews?t=${Date.now()}`);
@@ -13815,36 +13746,10 @@ export default function App() {
     }
 
     if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_overviews');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log('[Fallback] Loaded formula overviews from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 필수암기 개요 복원 실패:', err);
-      }
-    }
-
-    if (!loadedData) {
       loadedData = [];
     }
 
     setFormulaOverviews(loadedData);
-    localStorage.setItem('anti_formula_overviews', JSON.stringify(loadedData));
-
-    if (fallbackToLocal && loadedData.length > 0) {
-      console.log('[Sync] Auto syncing local overviews to database...');
-      fetch(`${API_BASE}/api/session/overviews`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaOverviews: loadedData })
-      }).catch(err => console.warn('[Sync] Auto sync overviews failed:', err));
-    }
 
     setLoadingFormulaOverviews(false);
     return loadedData;
@@ -13897,7 +13802,6 @@ export default function App() {
   const handleSaveFormulaOverviews = async (overviews = formulaOverviews, showToast = true) => {
     try {
       setFormulaOverviews(overviews);
-      localStorage.setItem('anti_formula_overviews', JSON.stringify(overviews));
       
       const res = await fetch(`${API_BASE}/api/session/overviews`, {
         method: 'POST',
@@ -13912,7 +13816,7 @@ export default function App() {
     } catch (err) {
       console.warn('필수암기 개요 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -13941,7 +13845,6 @@ export default function App() {
   const loadFormulaImages = async () => {
     setLoadingFormulaImages(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/images?t=${Date.now()}`);
@@ -13957,36 +13860,11 @@ export default function App() {
     }
 
     if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_images');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log(`[Fallback] Loaded ${loadedData.length} formula images from LocalStorage.`);
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 필수암기 그림 복원 실패:', err);
-      }
-    }
-
-    if (!loadedData) {
       loadedData = [];
     }
 
     setFormulaImages(loadedData);
     // No local caching of database images
-
-    if (fallbackToLocal && loadedData.length > 0) {
-      console.log('[Sync] Auto syncing local images to database...');
-      fetch(`${API_BASE}/api/session/images`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaImages: loadedData })
-      }).catch(err => console.warn('[Sync] Auto sync images failed:', err));
-    }
 
     setLoadingFormulaImages(false);
     return loadedData;
@@ -14010,7 +13888,7 @@ export default function App() {
     } catch (err) {
       console.warn('필수암기 그림 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -14880,7 +14758,6 @@ ${itemsStr}
   const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     // 1) Try Database Sync
     try {
@@ -14896,24 +14773,7 @@ ${itemsStr}
       console.warn('[Sync] Database formula loading failed:', err);
     }
 
-    // 2) Try LocalStorage Fallback
-    if (!loadedData) {
-      try {
-        const savedStr = localStorage.getItem('anti_formula_questions');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log('[Fallback] Loaded formula questions from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 필수공식 복원 실패:', err);
-      }
-    }
-
-    // 3) Fallback to Defaults if still empty
+    // 2) Fallback to Defaults if still empty
     if (!loadedData) {
       const defaultFormulas = [
         {
@@ -15001,17 +14861,6 @@ ${itemsStr}
     const cleaned = normalizeAndCompactifyFormulas(loadedData).map(healFormulaQuestionObject);
     latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
-    localStorage.setItem('anti_formula_questions', JSON.stringify(cleaned));
-    
-    // Auto sync back to database if loaded from local storage fallback
-    if (fallbackToLocal) {
-      console.log('[Sync] Auto syncing local formulas to database...');
-      fetch(`${API_BASE}/api/session/formula`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formulaQuestions: cleaned })
-      }).catch(err => console.warn('[Sync] Auto sync formulas failed:', err));
-    }
 
     setLoadingFormula(false);
     return cleaned;
@@ -15225,7 +15074,6 @@ ${itemsStr}
     const loadAnswersheetQuestions = async () => {
     setLoadingAnswersheet(true);
     let loadedData = null;
-    let fallbackToLocal = false;
 
     try {
       const res = await fetch(`${API_BASE}/api/session/answersheet?t=${Date.now()}`);
@@ -15241,39 +15089,12 @@ ${itemsStr}
     }
 
     if (loadedData === null) {
-      try {
-        const savedStr = localStorage.getItem('anti_answersheet_questions');
-        if (savedStr) {
-          const parsed = JSON.parse(savedStr);
-          if (Array.isArray(parsed)) {
-            loadedData = parsed;
-            fallbackToLocal = true;
-            console.log('[Fallback] Loaded answersheet questions from LocalStorage.');
-          }
-        }
-      } catch (err) {
-        console.warn('localStorage 답안지 복원 실패:', err);
-      }
-    }
-
-    if (loadedData === null) {
       loadedData = [];
     }
 
     const cleaned = (loadedData || []).map(healAnswersheetQuestionObject);
     latestAnswersheetQuestionsRef.current = cleaned;
     setAnswersheetQuestions(cleaned);
-    localStorage.setItem('anti_answersheet_questions', JSON.stringify(cleaned));
-    
-    // Auto sync back to database if loaded from local storage fallback
-    if (fallbackToLocal) {
-      console.log('[Sync] Auto syncing local answersheet to database...');
-      fetch(`${API_BASE}/api/session/answersheet`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answersheetQuestions: cleaned })
-      }).catch(err => console.warn('[Sync] Auto sync answersheet failed:', err));
-    }
 
     setLoadingAnswersheet(false);
     return loadedData;
@@ -15284,7 +15105,6 @@ ${itemsStr}
       const healedQs = Array.isArray(qs) ? qs.map(healAnswersheetQuestionObject) : qs;
       latestAnswersheetQuestionsRef.current = healedQs;
       setAnswersheetQuestions(healedQs);
-      localStorage.setItem('anti_answersheet_questions', JSON.stringify(healedQs));
       
       const res = await fetch(`${API_BASE}/api/session/answersheet`, {
         method: 'POST',
@@ -15302,7 +15122,7 @@ ${itemsStr}
     } catch (err) {
       console.warn('답안지 저장 실패:', err);
       if (showToast) {
-        showNotification('서버 저장 실패: 로컬 스토리지에만 저장됩니다.', 'warning');
+        showNotification('서버 저장 실패: 저장에 실패했습니다.', 'error');
       }
     }
   };
@@ -25452,7 +25272,6 @@ ${itemsStr}
                                             updated[idx] = { ...updated[idx], formula: val };
                                             latestFormulaQuestionsRef.current = updated;
                                             setFormulaQuestions(updated);
-                                            localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
                                             handleSaveFormulaQuestions(updated, false);
                                           }
                                         } else {
@@ -25549,7 +25368,6 @@ ${itemsStr}
                                       updated[idx] = { ...updated[idx], formula: e.target.value };
                                       latestFormulaQuestionsRef.current = updated;
                                       setFormulaQuestions(updated);
-                                      localStorage.setItem('anti_formula_questions', JSON.stringify(updated));
                                     }}
                                     onBlur={() => {
                                       handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
@@ -26621,7 +26439,6 @@ ${itemsStr}
                                       updated[idx] = { ...updated[idx], formula: val };
                                       latestAnswersheetQuestionsRef.current = updated;
                                       setAnswersheetQuestions(updated);
-                                      localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
                                       handleSaveAnswersheetQuestions(updated, false);
                                     }
                                   } else {
@@ -26684,7 +26501,9 @@ ${itemsStr}
                                 updated[idx] = { ...updated[idx], formula: e.target.value };
                                 latestAnswersheetQuestionsRef.current = updated;
                                 setAnswersheetQuestions(updated);
-                                localStorage.setItem('anti_answersheet_questions', JSON.stringify(updated));
+                              }}
+                              onBlur={() => {
+                                handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                               }}
                               className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-emerald-500/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none transition-colors h-32"
                               placeholder="여기에 LaTeX 블록($ ... $), 인라인 수식($ ... $), 또는 HTML 문서를 입력하거나 복사-붙여넣기 하세요."
