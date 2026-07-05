@@ -5621,6 +5621,81 @@ export default function App() {
   }, [aiQuestions, examQuestions, showExam, focusedQuestion]);
 
   useEffect(() => {
+    if (!formulaAcronyms || formulaAcronyms.length === 0) return;
+
+    let aiChanged = false;
+    let examChanged = false;
+
+    if (aiQuestions && aiQuestions.length > 0) {
+      const updatedAi = aiQuestions.map(q => {
+        if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
+          const matchedCard = formulaAcronyms.find(ac => ac.id === q.originalId);
+          if (matchedCard) {
+            const parsed = parseAcronymContent(matchedCard.content);
+            const acronymChanged = q.acronym !== parsed.acronym;
+            const sentenceChanged = q.sentence !== parsed.sentence;
+            const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
+            
+            if (acronymChanged || sentenceChanged || rowsChanged) {
+              aiChanged = true;
+              const blankRows = parsed.rows.map(() => ['', '']);
+              return {
+                ...q,
+                acronym: parsed.acronym,
+                sentence: parsed.sentence,
+                correctRows: parsed.rows,
+                tableData: {
+                  headers: ['두', '내용 (암기단어 : 설명)'],
+                  rows: blankRows
+                },
+                explanation: matchedCard.content
+              };
+            }
+          }
+        }
+        return q;
+      });
+      if (aiChanged) {
+        _setAiQuestions(updatedAi);
+      }
+    }
+
+    if (examQuestions && examQuestions.length > 0) {
+      const updatedExam = examQuestions.map(q => {
+        if (q.type === '주관식 (앞글자)' || q.mixedType === 'acronym') {
+          const matchedCard = formulaAcronyms.find(ac => ac.id === q.originalId);
+          if (matchedCard) {
+            const parsed = parseAcronymContent(matchedCard.content);
+            const acronymChanged = q.acronym !== parsed.acronym;
+            const sentenceChanged = q.sentence !== parsed.sentence;
+            const rowsChanged = JSON.stringify(q.correctRows) !== JSON.stringify(parsed.rows);
+            
+            if (acronymChanged || sentenceChanged || rowsChanged) {
+              examChanged = true;
+              const blankRows = parsed.rows.map(() => ['', '']);
+              return {
+                ...q,
+                acronym: parsed.acronym,
+                sentence: parsed.sentence,
+                correctRows: parsed.rows,
+                tableData: {
+                  headers: ['두', '내용 (암기단어 : 설명)'],
+                  rows: blankRows
+                },
+                explanation: matchedCard.content
+              };
+            }
+          }
+        }
+        return q;
+      });
+      if (examChanged) {
+        setExamQuestions(updatedExam);
+      }
+    }
+  }, [formulaAcronyms, aiQuestions, examQuestions]);
+
+  useEffect(() => {
     window.__handleFormulaConfirmRequest = (math, fullText, source) => {
       window.__isFormulaConfirmOpen = true; // Set synchronously to prevent race condition
       let contextText = fullText || "";
