@@ -7614,55 +7614,7 @@ export default function App() {
   }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableGradingResults, tutorAnswers, chatHistory, restoringReviewSession, reviewSessionId]);
 
   // ── Save active session progress to localStorage on any state change (fast local write)
-  useEffect(() => {
-    if (selectedTopic && selectedTopic.id && aiQuestions.length > 0) {
-      const activeSid = reviewSessionId || 'legacy_default';
-      const key = selectedTopic.schedule_id 
-        ? `anti_review_progress_sched_${selectedTopic.schedule_id}_${activeSid}`
-        : `anti_review_progress_${selectedTopic.id}_${activeSid}`;
-
-      try {
-        localStorage.setItem(key, JSON.stringify({
-          questions: aiQuestions,
-          selectedAnswers,
-          revealedQuestions,
-          tableAnswers,
-          tableGradingResults,
-          tutorAnswers,
-          tutorInputText,
-          chatHistory,
-          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-        }));
-      } catch (e) {
-        console.warn('[Local Backup] Failed to save local progress:', e);
-        if (e.name === 'QuotaExceededError' || e.code === 22 || e.number === 0x8007000E) {
-          try {
-            console.log('[Local Backup] Cleaning up old progress keys to free space...');
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-              const k = localStorage.key(i);
-              if (k && k !== key && (k.startsWith('anti_review_progress_') || k.startsWith('anti_review_progress_sched_'))) {
-                localStorage.removeItem(k);
-              }
-            }
-            localStorage.setItem(key, JSON.stringify({
-              questions: aiQuestions,
-              selectedAnswers,
-              revealedQuestions,
-              tableAnswers,
-              tableGradingResults,
-              tutorAnswers,
-              tutorInputText,
-              chatHistory,
-              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-            }));
-            console.log('[Local Backup] Retry saved successfully after cleaning old backups!');
-          } catch (retryErr) {
-            console.error('[Local Backup] Retry failed even after cleaning old backups:', retryErr);
-          }
-        }
-      }
-    }
-  }, [selectedTopic, aiQuestions, selectedAnswers, revealedQuestions, tableGradingResults, tutorAnswers, chatHistory, reviewSessionId]);
+        // Absolute Rule: All progress is stored in the database. Local progress backup is not used.
 
   // ── Auto-sync Comprehensive Exam state to server on changes (for multi-device real-time link)
   useEffect(() => {
@@ -14106,7 +14058,7 @@ export default function App() {
     }
 
     setFormulaImages(loadedData);
-    localStorage.setItem('anti_formula_images', JSON.stringify(loadedData));
+    // No local caching of database images
 
     if (fallbackToLocal && loadedData.length > 0) {
       console.log('[Sync] Auto syncing local images to database...');
@@ -14124,7 +14076,7 @@ export default function App() {
   const handleSaveFormulaImages = async (images = formulaImages, showToast = true) => {
     try {
       setFormulaImages(images);
-      localStorage.setItem('anti_formula_images', JSON.stringify(images));
+      // No local caching of database images
       
       const res = await fetch(`${API_BASE}/api/session/images`, {
         method: 'POST',
