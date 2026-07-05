@@ -5816,8 +5816,8 @@ export default function App() {
           
           // 1. Try exact ID matching first
           matchedCard = formulaAcronyms.find(ac => 
-            (q.originalId && ac.id === q.originalId) || 
-            (q.topic_id && ac.id === q.topic_id)
+            (q.originalId && String(ac.id) === String(q.originalId)) || 
+            (q.topic_id && String(ac.id) === String(q.topic_id))
           );
           
           // 2. If not found, try text/title matching
@@ -5920,8 +5920,8 @@ export default function App() {
           
           // 1. Try exact ID matching first
           matchedCard = formulaAcronyms.find(ac => 
-            (q.originalId && ac.id === q.originalId) || 
-            (q.topic_id && ac.id === q.topic_id)
+            (q.originalId && String(ac.id) === String(q.originalId)) || 
+            (q.topic_id && String(ac.id) === String(q.topic_id))
           );
           
           // 2. If not found, try text/title matching
