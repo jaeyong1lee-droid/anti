@@ -27724,13 +27724,21 @@ ${itemsStr}
       {showAcronymPromptModal && (
         <div 
           id="acronym-prompt-popup"
-          style={{
+          style={isDesktop ? {
             position: 'fixed',
             left: 'var(--generator-popup-x, 50%)',
             top: 'var(--generator-popup-y, 50%)',
             transform: 'translate(0, 0)',
             zIndex: 99999,
             width: '24rem',
+          } : {
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 99999,
+            width: 'calc(100% - 32px)',
+            maxWidth: '384px',
           }}
           className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
         >
@@ -28088,13 +28096,21 @@ ${itemsStr}
       {showOverviewPromptModal && (
         <div 
           id="overview-prompt-popup"
-          style={{
+          style={isDesktop ? {
             position: 'fixed',
             left: 'var(--generator-popup-x, 50%)',
             top: 'var(--generator-popup-y, 50%)',
             transform: 'translate(0, 0)',
             zIndex: 99999,
             width: '24rem',
+          } : {
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 99999,
+            width: 'calc(100% - 32px)',
+            maxWidth: '384px',
           }}
           className="bg-slate-900/95 border border-white/20 rounded-3xl p-6 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] glassmorphism animate-scale-up text-left select-text"
         >
