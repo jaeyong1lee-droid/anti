@@ -2121,7 +2121,7 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
   if (score !== undefined) {
     if (score >= 9) {
       return {
-        cellBg: 'bg-emerald-950/20 text-emerald-300 font-bold',
+        cellBg: 'bg-emerald-950/20 text-emerald-300 font-medium',
         border: 'border-emerald-800/60',
         text: 'text-emerald-400',
         scoreText: 'text-emerald-400'
@@ -2129,7 +2129,7 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
     }
     if (score >= 8) {
       return {
-        cellBg: 'bg-yellow-950/20 text-yellow-300 font-bold',
+        cellBg: 'bg-yellow-950/20 text-yellow-300 font-medium',
         border: 'border-yellow-800/60',
         text: 'text-yellow-400',
         scoreText: 'text-yellow-400'
@@ -2137,14 +2137,14 @@ const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
     }
     if (score >= 5) {
       return {
-        cellBg: 'bg-orange-950/20 text-orange-300 font-bold',
+        cellBg: 'bg-orange-950/20 text-orange-300 font-medium',
         border: 'border-orange-800/60',
         text: 'text-orange-400',
         scoreText: 'text-orange-400'
       };
     }
     return {
-      cellBg: 'bg-rose-950/20 text-rose-300',
+      cellBg: 'bg-rose-950/20 text-rose-300 font-medium',
       border: 'border-rose-800/60',
       text: 'text-rose-400',
       scoreText: 'text-rose-400'
@@ -2482,7 +2482,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                   }}
                                   placeholder={`${inputLetter} 입력`}
                                   data-answer-key={`${questionIdx}_${inputId}`}
-                                  className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-slate-100 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-bold align-middle"
+                                  className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
                                   rows={1}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -2636,7 +2636,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                   {/* 두문자 글자 입력 cell */}
                   <td className="p-1 border-r border-slate-800 align-middle">
                     {revealed ? (
-                      <div className={`w-full p-2 font-black ${
+                      <div className={`w-full p-2 font-medium ${
                         rowAcronymGrading?.isCorrect ? 'text-emerald-400 bg-emerald-950/10' : 'text-rose-400 bg-rose-950/10'
                       }`}>
                         {rowAcronymVal || '(미입력)'}
@@ -2670,7 +2670,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                       <div className={`w-full flex flex-col p-2 text-left text-[13px] sm:text-[15px] ${
                         rowCombGrading?.isCorrect ? 'bg-emerald-950/20 text-emerald-300' : 'bg-rose-950/20 text-rose-300'
                       }`}>
-                        <div className="font-bold">{rowCombVal || '(미입력)'}</div>
+                        <div className="font-medium">{rowCombVal || '(미입력)'}</div>
                       </div>
                     ) : (
                       <BufferedTextarea
@@ -3542,10 +3542,10 @@ export default function App() {
     
     const score = activeGradingResults[`${idx}_INPUT`]?.score;
     if (score === undefined) return 'border-slate-750 text-white';
-    if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-bold';
-    if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-bold';
-    if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-bold';
-    return 'border-rose-500 bg-rose-950/20 text-rose-300';
+    if (score >= 9) return 'border-emerald-500 bg-emerald-950/20 text-emerald-300 font-medium';
+    if (score >= 8) return 'border-yellow-500 bg-yellow-950/20 text-yellow-300 font-medium';
+    if (score >= 5) return 'border-orange-500 bg-orange-950/20 text-orange-300 font-medium';
+    return 'border-rose-500 bg-rose-950/20 text-rose-300 font-medium';
   };
 
   const getSubjectiveContainerClasses = (idx, isRevd) => {
