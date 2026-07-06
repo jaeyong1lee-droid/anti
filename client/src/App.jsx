@@ -66,18 +66,18 @@ const cleanMemorizationTipText = (tip) => {
   if (!tip) return '';
   let clean = tip;
   
-  // 1) $ ... $ 로 된 수식 블록과 그 안의 내용 통째로 제거
+  // 1) 디스플레이 수식 블록($ ... $)과 그 안의 내용 통째로 제거 (중복 이미지 방지)
   clean = clean.replace(/\$\$\s*[\s\S]*?\s*\$\$/g, '');
   
-  // 2) $ ... $ 로 된 인라인 수식 블록과 그 안의 내용 통째로 제거
-  clean = clean.replace(/\$[^$]+?\$/g, '');
-  
-  // 3) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
+  // 2) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
   clean = clean.replace(/연상법\s*:\s*[\s\S]*?(\n|$)/gi, '');
 
-  // 4) 중복된 암기 팁: 헤더 문구 제거
+  // 3) 중복된 암기 팁: 헤더 문구 제거
   clean = clean.replace(/💡\s*\*\*암기\s*팁\*\*:\s*/gi, '');
   clean = clean.replace(/💡\s*암기\s*팁\s*:\s*/gi, '');
+  
+  // 4) 인라인 수식 기호($)만 제거하여 괄호 안의 문자들(T_s, cos, alpha 등)을 텍스트로 보존함!
+  clean = clean.replace(/\$/g, '');
   
   // 5) 쓸데없는 개행 문자 및 트리밍 정리
   clean = clean.replace(/\n\s*\n+/g, '\n').trim();
