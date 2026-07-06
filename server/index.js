@@ -11,8 +11,6 @@ import { generateFallbackQuestions } from './fallback_generator.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import PDFDocument from 'pdfkit';
 import { gradeSubjective, GRADING_STANDARDS, gradingStandardsList, updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { ENGINEERING_STANDARDS, standardsList, updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
@@ -23,8 +21,6 @@ import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin
 import { defaultAcronyms, generateAcronymTutorResponse } from './plugins/acronymsPlugin.js';
 import { defaultOverviews, generateOverviewTutorResponse } from './plugins/overviewsPlugin.js';
 import { ASCII_DIAGRAM_PROMPT } from './plugins/asciiDiagramPlugin.js';
-
-const execAsync = promisify(exec);
 
 // validationPlugin.js가 완전히 삭제되었으므로 Stub으로 대체하여 무결성을 유지합니다.
 export async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
@@ -8839,8 +8835,7 @@ app.post('/api/engineering-standards', async (req, res) => {
       console.error('Failed to save engineering standards to database:', dbErr.message);
     }
 
-    // 3. Save to local file system
-    await writeStandardToFile('engineering_standards', stamped);
+    // 3. Save to local file system (Disabled)
 
     // 4. Push to Vercel production server
     pushStandardToProduction('engineering-standards', stamped).catch(() => {});
@@ -8896,8 +8891,7 @@ app.post('/api/grading-standards', async (req, res) => {
       console.error('Failed to save grading standards to database:', dbErr.message);
     }
 
-    // 3. Save to local file system
-    await writeStandardToFile('grading_standards', stamped);
+    // 3. Save to local file system (Disabled)
 
     // 4. Push to Vercel production server
     pushStandardToProduction('grading-standards', stamped).catch(() => {});
@@ -8953,8 +8947,7 @@ app.post('/api/validation-standards', async (req, res) => {
       console.error('Failed to save validation standards to database:', dbErr.message);
     }
 
-    // 3. Save to local file system
-    await writeStandardToFile('validation_standards', stamped);
+    // 3. Save to local file system (Disabled)
 
     // 4. Push to Vercel production server
     pushStandardToProduction('validation-standards', stamped).catch(() => {});
@@ -9006,8 +8999,7 @@ app.post('/api/generation-standards', async (req, res) => {
       console.error('Failed to save generation standards to database:', dbErr.message);
     }
 
-    // 3. Save to local file system
-    await writeStandardToFile('generation_standards', stamped);
+    // 3. Save to local file system (Disabled)
 
     // 4. Push to Vercel production server
     pushStandardToProduction('generation-standards', stamped).catch(() => {});
@@ -9060,8 +9052,7 @@ app.post('/api/lockscreen-standards', async (req, res) => {
       console.error('Failed to save lockscreen standards to database:', dbErr.message);
     }
 
-    // 3. Save to local file system
-    await writeStandardToFile('lockscreen_standards', stamped);
+    // 3. Save to local file system (Disabled)
 
     // 4. Push to Vercel production server
     pushStandardToProduction('lockscreen-standards', stamped).catch(() => {});
@@ -9507,7 +9498,6 @@ app.get('/api/temp-update-db', async (req, res) => {
 
     await saveSessionValue('generation_standards', JSON.stringify(latestStandards));
     updateLiveGenerationStandards(latestStandards);
-    await writeStandardToFile('generation_standards', latestStandards);
     log.push("Successfully synchronized all generation standards to database.");
 
     res.json({ success: true, log });
@@ -10109,7 +10099,6 @@ async function initializeEngineeringStandards() {
       console.log('[Initialize] Synced and merged engineering standards in database.');
     }
     updateLiveEngineeringStandards(finalList);
-    await writeStandardToFile('engineering_standards', finalList);
   } catch (err) {
     console.error('Failed to initialize engineering standards:', err.message);
   }
@@ -10129,7 +10118,6 @@ async function initializeGradingStandards() {
       console.log('[Initialize] Synced and merged grading standards in database.');
     }
     updateLiveGradingStandards(finalList);
-    await writeStandardToFile('grading_standards', finalList);
   } catch (err) {
     console.error('Failed to initialize grading standards:', err.message);
   }
@@ -10149,7 +10137,6 @@ async function initializeValidationStandards() {
       console.log('[Initialize] Synced and merged validation standards in database.');
     }
     updateLiveValidationStandards(finalList);
-    await writeStandardToFile('validation_standards', finalList);
   } catch (err) {
     console.error('Failed to initialize validation standards:', err.message);
   }
@@ -10169,7 +10156,6 @@ async function initializeGenerationStandards() {
       console.log('[Initialize] Synced and merged generation standards in database.');
     }
     updateLiveGenerationStandards(finalList);
-    await writeStandardToFile('generation_standards', finalList);
   } catch (err) {
     console.error('Failed to initialize generation standards:', err.message);
   }
@@ -10189,7 +10175,6 @@ async function initializeLockscreenStandards() {
       console.log('[Initialize] Synced and merged lockscreen standards in database.');
     }
     updateLiveLockscreenStandards(finalList);
-    await writeStandardToFile('lockscreen_standards', finalList);
 
     // One-time pool migration: clear pool when version increments to trigger fresh correct question generation
     const versionKey = 'lockscreen_pool_version';
@@ -10205,156 +10190,7 @@ async function initializeLockscreenStandards() {
   }
 }
 
-async function writeStandardToFile(key, standards) {
-  try {
-    if (key === 'generation_standards') {
-      const standardsFilePath = path.join(__dirname, 'plugins', 'generationStandards.js');
-      const resolvedContent = `// This file is auto-generated by the system. Do not edit manually.
-export let generationStandardsList = ${JSON.stringify(standards, null, 2)};
 
-export let GENERATION_STANDARDS = assembleGenerationStandardsPrompt(generationStandardsList);
-
-export function assembleGenerationStandardsPrompt(list) {
-  if (!Array.isArray(list) || list.length === 0) {
-    return "- 등록된 문제생성 지침 기준이 없습니다.";
-  }
-  return list.map((std, idx) => \`\${idx + 1}. **\${std.title}**:\\n   - \${std.content}\`).join('\\n');
-}
-
-export function updateLiveGenerationStandards(newList) {
-  generationStandardsList = newList;
-  GENERATION_STANDARDS = assembleGenerationStandardsPrompt(newList);
-}
-`;
-      await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
-      console.log('Successfully wrote generation standards to local file.');
-    } else if (key === 'lockscreen_standards') {
-      const standardsFilePath = path.join(__dirname, 'plugins', 'lockscreenStandards.js');
-      const resolvedContent = `// This file is auto-generated by the system. Do not edit manually.
-export let lockscreenStandardsList = ${JSON.stringify(standards, null, 2)};
-
-export let LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(lockscreenStandardsList);
-
-export function assembleLockscreenStandardsPrompt(list) {
-  if (!Array.isArray(list) || list.length === 0) {
-    return "- 등록된 락스크린 출제 지침 기준이 없습니다.";
-  }
-  return list.map((std, idx) => \`\${idx + 1}. **\${std.title}**:\\n   - \${std.content}\`).join('\\n');
-}
-
-export function updateLiveLockscreenStandards(newList) {
-  lockscreenStandardsList = newList;
-  LOCKSCREEN_STANDARDS = assembleLockscreenStandardsPrompt(newList);
-}
-`;
-      await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
-      console.log('Successfully wrote lockscreen standards to local file.');
-    } else if (key === 'engineering_standards') {
-      const standardsFilePath = path.join(__dirname, 'plugins', 'engineeringStandards.js');
-      const resolvedContent = `// This file is auto-generated by the system. Do not edit manually.
-export let standardsList = ${JSON.stringify(standards, null, 2)};
-
-export let ENGINEERING_STANDARDS = standardsList.map(s => s.content).join('\\n\\n');
-
-export function updateLiveEngineeringStandards(newList) {
-  if (Array.isArray(newList)) {
-    standardsList = newList;
-    ENGINEERING_STANDARDS = newList.map(s => s.content).join('\\n\\n');
-  }
-}
-
-// Backwards compatibility exports
-export const STRESS_CONVENTION = "";
-export const SUBGRADE_REACTION_CONVENTION = "";
-export const GRAPH_AND_TABLE_CONVENTION = "";
-export const SITUATIONAL_FEASIBILITY_CONVENTION = "";
-export const SEEPAGE_PRESSURE_CONVENTION = "";
-export const USER_CONVENTIONS = "";
-`;
-      await fs.promises.writeFile(standardsFilePath, resolvedContent, 'utf-8');
-      console.log('Successfully wrote engineering standards to local file.');
-    } else if (key === 'grading_standards') {
-      const filePath = path.join(__dirname, 'plugins', 'gradingPlugin.js');
-      const fileContent = await fs.promises.readFile(filePath, 'utf-8');
-      const updatedContent = fileContent.replace(
-        /export let gradingStandardsList = \[\s*[\s\S]*?\n\];/m,
-        `export let gradingStandardsList = ${JSON.stringify(standards, null, 2)};`
-      );
-      await fs.promises.writeFile(filePath, updatedContent, 'utf-8');
-      console.log('Successfully wrote grading standards to local file (gradingPlugin.js).');
-    } else if (key === 'validation_standards') {
-      console.log('Bypassed writing validation standards to local file since validationPlugin was removed.');
-    }
-
-    // 로컬 파일 저장이 성공했다면 비동기로 git commit & push 파이프라인을 가동합니다.
-    autoGitPushStandards(key).catch(() => {});
-  } catch (fsErr) {
-    if (fsErr.code === 'EROFS') {
-      console.log(`Read-only file system detected (Vercel). Bypassed file write for ${key}.`);
-    } else {
-      console.error(`Failed to write ${key} to local file:`, fsErr.message);
-    }
-  }
-}
-
-async function autoGitPushStandards(key) {
-  if (process.env.VERCEL) {
-    return;
-  }
-  
-  const getGitCmd = async () => {
-    try {
-      await execAsync('git --version');
-      return 'git';
-    } catch {
-      const paths = [
-        'C:\\Program Files\\Git\\cmd\\git.exe',
-        'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
-        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Git', 'cmd', 'git.exe')
-      ];
-      for (const p of paths) {
-        if (fs.existsSync(p)) {
-          return `"${p}"`;
-        }
-      }
-      return 'git';
-    }
-  };
-
-  try {
-    const gitCmd = await getGitCmd();
-    console.log(`[Auto Git Sync] Resolved Git command path: ${gitCmd}`);
-    console.log(`[Auto Git Sync] Starting automatic git commit & push for ${key}...`);
-
-    const execOpts = {
-      env: {
-        ...process.env,
-        GIT_TERMINAL_PROMPT: '0',
-        GIT_ASKPASS: 'true'
-      }
-    };
-
-    try {
-      await execAsync(`${gitCmd} config --get user.name`, execOpts);
-    } catch {
-      console.log('[Auto Git Sync] user.name is missing. Setting up fallback configuration...');
-      await execAsync(`${gitCmd} config --local user.name "AI Tutor AutoSync"`, execOpts);
-      await execAsync(`${gitCmd} config --local user.email "tutor-autosync@anti.internal"`, execOpts);
-    }
-
-    await execAsync(`${gitCmd} add .`, execOpts);
-    const commitMsg = `feat: auto-update ${key} standards from UI [${new Date().toLocaleTimeString()}]`;
-    await execAsync(`${gitCmd} commit -m "${commitMsg}"`, execOpts);
-    await execAsync(`${gitCmd} push origin main`, execOpts);
-    console.log(`[Auto Git Sync] Successfully pushed ${key} updates to GitHub origin!`);
-  } catch (err) {
-    if (err.message && err.message.includes('nothing to commit')) {
-      console.log('[Auto Git Sync] Nothing to commit, working directory is clean.');
-    } else {
-      console.error('[Auto Git Sync] Failed to run auto git commit & push:', err.message);
-    }
-  }
-}
 
 async function pushStandardToProduction(apiPath, standards) {
   const isVercel = !!process.env.VERCEL;
@@ -10412,8 +10248,6 @@ async function syncStandardsFromProduction() {
           
           // Save to database to persist across restarts
           await saveSessionValue(item.key, JSON.stringify(mergedList));
-          // Sync to local physical files as well
-          await writeStandardToFile(item.key, mergedList);
           console.log(`[Sync] Synced ${item.key} (${mergedList.length} items) successfully.`);
         }
       }
