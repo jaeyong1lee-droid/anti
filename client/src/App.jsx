@@ -264,7 +264,13 @@ const parseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
   if (!content) return result;
 
-  const lines = content.split('\n');
+  // [자가 복구 필터] 백엔드 치화 과정에서 뭉개져 사라진 마크다운 테이블 개행 복원
+  let healedContent = content;
+  if (typeof healedContent === 'string') {
+    healedContent = healedContent.replace(/\|\s*\|\s*(구분|:---|정의|물리적|활용|파괴면|응력상태|배수제어|적용|대상|장점|단점|적용 지반|주요 기전|강도 발현)/gi, '\n| $1');
+  }
+
+  const lines = healedContent.split('\n');
   let currentKey = null;
 
   for (const line of lines) {
@@ -301,12 +307,12 @@ const parseOverviewContent = (content) => {
         currentKey = 'definition';
       } else if (rawKey.includes('메커니즘')) {
         currentKey = 'mechanism';
+      } else if (rawKey.includes('직관적')) { // '직관적'을 '의미'보다 먼저 감사하여 '직관적의미' 오인 분류 차단
+        currentKey = 'intuitive';
       } else if (rawKey.includes('비교') || rawKey.includes('비교표') || rawKey.includes('장단점')) {
         currentKey = 'comparison';
       } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
         currentKey = 'significance';
-      } else if (rawKey.includes('직관적')) {
-        currentKey = 'intuitive';
       }
 
       result[currentKey] = rawVal;
