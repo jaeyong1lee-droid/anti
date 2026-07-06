@@ -25447,7 +25447,12 @@ ${itemsStr}
                             const isExpanded = !!expandedOverviewIds[ov.id];
                             const isEditing = editingOverviewId === ov.id;
                             return (
-                              <div key={ov.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden">
+                              <div
+                                id={`overview-card-${ov.id}`}
+                                key={ov.id || idx}
+                                style={{ scrollMarginTop: '75px' }}
+                                className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden"
+                              >
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
@@ -25526,6 +25531,14 @@ ${itemsStr}
                                       onClick={() => {
                                         setExpandedOverviewIds(prev => {
                                           const nextVal = !prev[ov.id];
+                                          if (nextVal) {
+                                            setTimeout(() => {
+                                              const el = document.getElementById(`overview-card-${ov.id}`);
+                                              if (el) {
+                                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                              }
+                                            }, 120);
+                                          }
                                           return nextVal ? { [ov.id]: true } : {};
                                         });
                                       }}
