@@ -15323,6 +15323,51 @@ ${itemsStr}
     return cleaned;
   };
 
+  const handleGenerateMemorizationTip = async (idx) => {
+    const q = formulaQuestions[idx];
+    if (!q) {
+      console.error('[GenerateTip] formulaQuestion at index not found:', idx);
+      return;
+    }
+    setGeneratingTipIds(prev => ({ ...prev, [idx]: true }));
+    console.log('[GenerateTip] Requesting tip for:', q.title);
+    try {
+      const url = `${API_BASE || ''}/api/formula/generate-memorization-tip`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: q.title || q.question,
+          concept: q.concept,
+          formula: q.formula
+        })
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body && body.memorizationTip) {
+          const updated = [...formulaQuestions];
+          updated[idx] = { ...updated[idx], memorizationTip: body.memorizationTip };
+          latestFormulaQuestionsRef.current = updated;
+          setFormulaQuestions(updated);
+          handleSaveFormulaQuestions(updated, false);
+          showNotification('공식 암기법 아이디어가 생성되어 저장되었습니다!', 'success');
+        } else {
+          console.warn('[GenerateTip] Empty response body:', body);
+          showNotification('암기법 생성 결과가 올바르지 않습니다.', 'error');
+        }
+      } else {
+        const errText = await res.text();
+        console.error('[GenerateTip] API failure response:', res.status, errText);
+        showNotification(`AI 암기법 생성 실패 (${res.status})`, 'error');
+      }
+    } catch (err) {
+      console.error('[GenerateTip] Error during fetch:', err);
+      showNotification('AI 암기법을 생성하는 과정에 오류가 발생했습니다.', 'error');
+    } finally {
+      setGeneratingTipIds(prev => ({ ...prev, [idx]: false }));
+    }
+  };
+
   const loadTheoryQuestions = async () => { return []; };
   const _loadTheoryQuestions_unused = async () => {
     setLoadingTheory(true);
