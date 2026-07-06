@@ -976,8 +976,14 @@ div[class*="overflow-y-auto"] {
 }
 .markdown-table th,
 .markdown-table td {
-  padding: 8px 10px;
+  padding: 5px 4px !important; /* Minimize padding on mobile */
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (min-width: 768px) {
+  .markdown-table th,
+  .markdown-table td {
+    padding: 8px 10px !important; /* Standard padding on desktop */
+  }
 }
 .markdown-table th {
   background-color: rgba(15, 23, 42, 0.6);

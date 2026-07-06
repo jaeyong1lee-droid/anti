@@ -86,10 +86,10 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
     html += `<div class="markdown-table-container w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
     html += `<table class="markdown-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
-    html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
+    html += `<tr class="bg-slate-900/80 text-slate-355 border-b border-slate-800">`;
     headers.forEach(h => {
       const renderedH = renderCellMath(h);
-      html += `<th class="p-2 sm:p-2.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
+      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
     });
     html += `</tr>`;
     html += `</thead>`;
@@ -100,11 +100,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
       html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
       row.forEach(cell => {
         const renderedCell = renderCellMath(cell);
-        html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${renderedCell}</td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
         for (let k = row.length; k < colCount; k++) {
-          html += `<td class="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold"></td>`;
+          html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold"></td>`;
         }
       }
       html += `</tr>`;
