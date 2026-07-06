@@ -2520,9 +2520,16 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         return acc;
       }, {})}
     >
-      <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
-        colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
-      }`}>
+      <table 
+        ref={tableRef} 
+        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
+          colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+        }`}
+        style={isMobileView ? {
+          width: mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) + 'px',
+          minWidth: '0px'
+        } : undefined}
+      >
         <colgroup>
           {colWidths.map((w, idx) => (
             <col 
@@ -3080,9 +3087,16 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
         return acc;
       }, {})}
     >
-      <table ref={tableRef} className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
-        colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
-      }`}>
+      <table 
+        ref={tableRef} 
+        className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
+          colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
+        }`}
+        style={isMobileView ? {
+          width: mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) + 'px',
+          minWidth: '0px'
+        } : undefined}
+      >
         <colgroup>
           {colWidths.map((w, idx) => (
             <col 
