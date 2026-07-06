@@ -15170,6 +15170,23 @@ ${itemsStr}
     }
   }, [showFormulaExam, formulaQuestions, initializeFormulaQuiz]);
 
+  // 핸드폰/PC 크로스 디바이스 실시간 자동 동기화 (탭 포커스 이동 시 서버 세션 실시간 새로고침)
+  useEffect(() => {
+    const handleAutoSync = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Sync] Window visible. Auto-syncing formula data from server...');
+        loadFormulaQuestions().catch(e => console.warn('Auto-sync questions failed:', e));
+        loadFormulaTables().catch(e => console.warn('Auto-sync tables failed:', e));
+      }
+    };
+    document.addEventListener('visibilitychange', handleAutoSync);
+    window.addEventListener('focus', handleAutoSync);
+    return () => {
+      document.removeEventListener('visibilitychange', handleAutoSync);
+      window.removeEventListener('focus', handleAutoSync);
+    };
+  }, []);
+
   const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
     let loadedData = null;
@@ -15373,8 +15390,8 @@ ${itemsStr}
           updated[idx] = { ...updated[idx], memorizationTip: body.memorizationTip };
           latestFormulaQuestionsRef.current = updated;
           setFormulaQuestions(updated);
-          handleSaveFormulaQuestions(updated, false);
-          showNotification('공식 암기법 아이디어가 생성되어 저장되었습니다!', 'success');
+          await handleSaveFormulaQuestions(updated, true); // true로 변경하여 서버 저장 토스트 표출 및 동기화 인지
+          showNotification('공식 암기법이 생성되어 서버 및 핸드폰과 동기화되었습니다!', 'success');
         } else {
           console.warn('[GenerateTip] Empty response body:', body);
           showNotification('암기법 생성 결과가 올바르지 않습니다.', 'error');
@@ -25895,11 +25912,11 @@ ${itemsStr}
                                                 const trimmed = editingTipText.trim();
                                                 setFormulaQuestions(prev => {
                                                   const updated = prev.map((item, i) => i === idx ? { ...item, memorizationTip: trimmed } : item).map(healFormulaQuestionObject);
-                                                  handleSaveFormulaQuestions(updated, false);
+                                                  handleSaveFormulaQuestions(updated, true); // true로 변경하여 실시간 동기화 알림 제공
                                                   return updated;
                                                 });
                                                 setEditingTipIdx(null);
-                                                showNotification('공식 암기 팁이 수정되었습니다.', 'success');
+                                                showNotification('공식 암기 팁이 서버 및 핸드폰과 동기화되었습니다!', 'success');
                                               }}
                                               className="px-2.5 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
                                             >
