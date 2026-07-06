@@ -25843,8 +25843,18 @@ ${itemsStr}
 
                                                                     {q.memorizationTip ? (
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">
-                                      <span className="text-[10px] font-black text-emerald-400 font-extrabold flex items-center gap-1 select-none">
-                                        💡 공식 암기 팁:
+                                      <span className="text-[10px] font-black text-emerald-400 font-extrabold flex items-center justify-between w-full select-none">
+                                        <span className="flex items-center gap-1">💡 공식 암기 팁:</span>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await handleGenerateMemorizationTip(idx);
+                                          }}
+                                          disabled={generatingTipIds[idx]}
+                                          className="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/25 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                                        >
+                                          {generatingTipIds[idx] ? '⏳ 생성 중...' : '🔄 AI 암기법 추천받기'}
+                                        </button>
                                       </span>
                                       {editingTipIdx === idx ? (
                                         <div className="space-y-2 mt-1">
