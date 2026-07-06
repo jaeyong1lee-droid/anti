@@ -2331,8 +2331,12 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     return [first, ...Array(colCount - 1).fill(others)];
   });
 
+  // 모바일 세로보기 여부: CSS var()가 col 요소에 cascade 안 되는 브라우저 한계를 피하기 위해 상태로 관리
+  const [isMobileView, setIsMobileView] = React.useState(() => window.innerWidth < 768);
+
   React.useEffect(() => {
     const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
       const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
       const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
       if (isMixedTableOrOverview) {
@@ -2525,7 +2529,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
               key={idx} 
               className={idx === 0 ? "table-quiz-col-first" : ""} 
               style={{ 
-                width: `var(--col-width-${idx}, ${typeof w === 'number' ? `${w}%` : w})` 
+                // 모바일에선 mobileColWidths를 col에 직접 적용 (CSS var()는 col에 cascade 불안정)
+                width: isMobileView
+                  ? (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w))
+                  : (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
           ))}
@@ -2913,6 +2920,15 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     return [first, ...Array(colCount - 1).fill(others)];
   });
 
+  // 모바일 세로보기 여부: CSS var()가 col 요소에 cascade 안 되는 브라우저 한계를 피하기 위해 상태로 관리
+  const [isMobileView, setIsMobileView] = React.useState(() => window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const handleMobileViewResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleMobileViewResize);
+    return () => window.removeEventListener('resize', handleMobileViewResize);
+  }, []);
+
   const [mobileColWidths, setMobileColWidths] = React.useState(() => {
     const widths = [];
     const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
@@ -3073,7 +3089,10 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
               key={idx} 
               className={idx === 0 ? "table-quiz-col-first" : ""} 
               style={{ 
-                width: `var(--col-width-${idx}, ${typeof w === 'number' ? `${w}%` : w})` 
+                // 모바일에선 mobileColWidths를 col에 직접 적용 (CSS var()는 col에 cascade 불안정)
+                width: isMobileView
+                  ? (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w))
+                  : (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
           ))}
