@@ -18,10 +18,23 @@ export default defineConfig({
     )
   },
   build: {
+    // 소스맵 제거로 빌드 output 크기 감소
+    sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
+        manualChunks: (id) => {
+          // React core — 가장 먼저 캐싱됨
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          // 아이콘 라이브러리 — 크고 잘 변경되지 않음
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-lucide';
+          }
+          // KaTeX 수식 렌더러 — 크고 잘 변경되지 않음
+          if (id.includes('node_modules/katex')) {
+            return 'vendor-katex';
+          }
         }
       }
     }

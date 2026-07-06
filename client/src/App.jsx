@@ -60,9 +60,19 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { FloatingCalculator } from './components/ScientificCalculator';
-import { FloatingMemorization } from './components/FloatingMemorization';
-import { ImageUploadPanel, ImageTabList } from './components/ImageStandardsPlugin';
+// ── Lazy-loaded heavy components (excluded from initial bundle) ──
+const FloatingCalculator = React.lazy(() =>
+  import('./components/ScientificCalculator').then(m => ({ default: m.FloatingCalculator }))
+);
+const FloatingMemorization = React.lazy(() =>
+  import('./components/FloatingMemorization').then(m => ({ default: m.FloatingMemorization }))
+);
+const ImageUploadPanel = React.lazy(() =>
+  import('./components/ImageStandardsPlugin').then(m => ({ default: m.ImageUploadPanel }))
+);
+const ImageTabList = React.lazy(() =>
+  import('./components/ImageStandardsPlugin').then(m => ({ default: m.ImageTabList }))
+);
 
 // ── Storage Access Fallback for Strict Tracking Prevention / Sandboxed Storage ──
 const safeLocalStorage = (() => {
@@ -25382,16 +25392,18 @@ ${itemsStr}
                     </div>
                   ) : formulaSubTab === 'image' ? (
                     <div className="w-full pb-20 select-text">
-                      <ImageTabList
-                        formulaImages={formulaImages}
-                        setFormulaImages={setFormulaImages}
-                        handleSaveFormulaImages={handleSaveFormulaImages}
-                        showNotification={showNotification}
-                        API_BASE={API_BASE}
-                        LatexRenderer={LatexRenderer}
-                        katexLoaded={katexLoaded}
-                        formulaSearchQuery={formulaSearchQuery}
-                      />
+                      <React.Suspense fallback={<div className="text-slate-500 text-xs p-4">로딩 중...</div>}>
+                        <ImageTabList
+                          formulaImages={formulaImages}
+                          setFormulaImages={setFormulaImages}
+                          handleSaveFormulaImages={handleSaveFormulaImages}
+                          showNotification={showNotification}
+                          API_BASE={API_BASE}
+                          LatexRenderer={LatexRenderer}
+                          katexLoaded={katexLoaded}
+                          formulaSearchQuery={formulaSearchQuery}
+                        />
+                      </React.Suspense>
                     </div>
                   ) : formulaQuestions.filter(q => {
                     const titleMatch = (q.title || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
@@ -25745,14 +25757,16 @@ ${itemsStr}
                 <div className="flex flex-col h-full overflow-hidden w-full">
                   {/* Minimized Image Upload Panel */}
                   <div className="p-3 border-b border-slate-800 bg-slateCustom-950 flex-shrink-0">
-                    <ImageUploadPanel
-                      formulaImages={formulaImages}
-                      setFormulaImages={setFormulaImages}
-                      handleSaveFormulaImages={handleSaveFormulaImages}
-                      API_BASE={API_BASE}
-                      showNotification={showNotification}
-                      compact={true}
-                    />
+                    <React.Suspense fallback={null}>
+                      <ImageUploadPanel
+                        formulaImages={formulaImages}
+                        setFormulaImages={setFormulaImages}
+                        handleSaveFormulaImages={handleSaveFormulaImages}
+                        API_BASE={API_BASE}
+                        showNotification={showNotification}
+                        compact={true}
+                      />
+                    </React.Suspense>
                   </div>
                   
                   {/* Real-time AI Tutor Chat in Compact Stacked View */}
@@ -27357,52 +27371,56 @@ ${itemsStr}
         />
       )}
 
-      <FloatingCalculator 
-        isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
-        onClose={() => setShowFloatingCalculator(false)} 
-      />
+      <React.Suspense fallback={null}>
+        <FloatingCalculator 
+          isVisible={showFloatingCalculator && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)} 
+          onClose={() => setShowFloatingCalculator(false)} 
+        />
+      </React.Suspense>
 
-      <FloatingMemorization
-        isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
-        onClose={() => setShowFloatingMemorization(false)}
-        focusedQuestion={focusedQuestion}
-        formulaTables={formulaTables}
-        setFormulaTables={setFormulaTables}
-        loadingFormulaTables={loadingFormulaTables}
-        expandedTableIds={expandedTableIds}
-        setExpandedTableIds={setExpandedTableIds}
-        handleSaveFormulaTables={handleSaveFormulaTables}
-        editingTableIdx={editingTableIdx}
-        setEditingTableIdx={setEditingTableIdx}
-        editingTableText={editingTableText}
-        setEditingTableText={setEditingTableText}
-        formulaAcronyms={formulaAcronyms}
-        setFormulaAcronyms={setFormulaAcronyms}
-        loadingFormulaAcronyms={loadingFormulaAcronyms}
-        handleSaveFormulaAcronyms={handleSaveFormulaAcronyms}
-        editingAcronymId={editingAcronymId}
-        setEditingAcronymId={setEditingAcronymId}
-        editingAcronymText={editingAcronymText}
-        setEditingAcronymText={setEditingAcronymText}
-        handleUpdateAcronymSentence={handleUpdateAcronymSentence}
-        handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
-        handleDeleteAcronymCard={handleDeleteAcronymCard}
-        handleOptimizeAcronym={handleOptimizeAcronym}
-        handleAddAcronymKeyword={handleAddAcronymKeyword}
-        getAcronymRows={getAcronymRows}
-        formulaOverviews={formulaOverviews}
-        setFormulaOverviews={setFormulaOverviews}
-        loadingFormulaOverviews={loadingFormulaOverviews}
-        handleSaveFormulaOverviews={handleSaveFormulaOverviews}
-        formulaImages={formulaImages}
-        setFormulaImages={setFormulaImages}
-        handleSaveFormulaImages={handleSaveFormulaImages}
-        showNotification={showNotification}
-        API_BASE={API_BASE}
-        LatexRenderer={LatexRenderer}
-        katexLoaded={katexLoaded}
-        isDesktop={isDesktop}
-      />
+      <React.Suspense fallback={null}>
+        <FloatingMemorization
+          isVisible={showFloatingMemorization && (showFormulaExam || showAnswerSheet || selectedTopic !== null || showExam)}
+          onClose={() => setShowFloatingMemorization(false)}
+          focusedQuestion={focusedQuestion}
+          formulaTables={formulaTables}
+          setFormulaTables={setFormulaTables}
+          loadingFormulaTables={loadingFormulaTables}
+          expandedTableIds={expandedTableIds}
+          setExpandedTableIds={setExpandedTableIds}
+          handleSaveFormulaTables={handleSaveFormulaTables}
+          editingTableIdx={editingTableIdx}
+          setEditingTableIdx={setEditingTableIdx}
+          editingTableText={editingTableText}
+          setEditingTableText={setEditingTableText}
+          formulaAcronyms={formulaAcronyms}
+          setFormulaAcronyms={setFormulaAcronyms}
+          loadingFormulaAcronyms={loadingFormulaAcronyms}
+          handleSaveFormulaAcronyms={handleSaveFormulaAcronyms}
+          editingAcronymId={editingAcronymId}
+          setEditingAcronymId={setEditingAcronymId}
+          editingAcronymText={editingAcronymText}
+          setEditingAcronymText={setEditingAcronymText}
+          handleUpdateAcronymSentence={handleUpdateAcronymSentence}
+          handleUpdateAcronymRowCell={handleUpdateAcronymRowCell}
+          handleDeleteAcronymCard={handleDeleteAcronymCard}
+          handleOptimizeAcronym={handleOptimizeAcronym}
+          handleAddAcronymKeyword={handleAddAcronymKeyword}
+          getAcronymRows={getAcronymRows}
+          formulaOverviews={formulaOverviews}
+          setFormulaOverviews={setFormulaOverviews}
+          loadingFormulaOverviews={loadingFormulaOverviews}
+          handleSaveFormulaOverviews={handleSaveFormulaOverviews}
+          formulaImages={formulaImages}
+          setFormulaImages={setFormulaImages}
+          handleSaveFormulaImages={handleSaveFormulaImages}
+          showNotification={showNotification}
+          API_BASE={API_BASE}
+          LatexRenderer={LatexRenderer}
+          katexLoaded={katexLoaded}
+          isDesktop={isDesktop}
+        />
+      </React.Suspense>
 
       {/* Drag Selection AI Tutor Popup */}
       {selectionPopup.show && (
