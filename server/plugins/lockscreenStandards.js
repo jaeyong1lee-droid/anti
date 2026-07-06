@@ -17,6 +17,12 @@ export let lockscreenStandardsList = [
     "title": "공식의 각 항목이 가지는 의미를 묻기",
     "content": "이런식의 문제도 좋아 : 공식의 각 항목이 가지는 의미\n예시)\n- 변수위 투수계수 공식\n$$k = 2.303 \\dfrac{aL}{At} \\log_{10} \\left( \\dfrac{h_1}{h_2} \\right)$$\n\n분자 dfrac{aL}{At}가 가지는 직관적의미는?",
     "updatedAt": "2026-06-28T03:50:02.745Z"
+  },
+  {
+    "id": "user_lockscreen_interval_10min",
+    "title": "출제 간격 지침",
+    "content": "락스크린 문제는 한 문제 출제 후 최소 10분이 경과하고 조건(백그라운드에서 복귀 등)이 만족되는 경우에만 출제합니다.",
+    "updatedAt": "2026-07-06T03:55:00.000Z"
   }
 ];
 

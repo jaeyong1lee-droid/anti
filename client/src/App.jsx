@@ -4559,6 +4559,15 @@ export default function App() {
 
   const triggerLockscreenQuiz = () => {
     if (!isLockscreenQuizEnabled) return;
+
+    // Check if 10 minutes have passed since the last trigger
+    const lastTimeStr = localStorage.getItem('anti_last_lockscreen_time');
+    if (lastTimeStr) {
+      const lastTime = parseInt(lastTimeStr, 10);
+      if (!isNaN(lastTime) && Date.now() - lastTime < 10 * 60 * 1000) {
+        return;
+      }
+    }
     
     const cached = localStorage.getItem('anti_lockscreen_questions');
     if (cached) {
@@ -4571,6 +4580,7 @@ export default function App() {
           setLockscreenAnswerResult(null);
           setShowLockscreenQuiz(true);
           setLockscreenLoading(false);
+          localStorage.setItem('anti_last_lockscreen_time', String(Date.now()));
           return;
         }
       } catch (e) {
@@ -4583,6 +4593,7 @@ export default function App() {
     setLockscreenLoading(true);
     setLockscreenSelectedOption(null);
     setLockscreenAnswerResult(null);
+    localStorage.setItem('anti_last_lockscreen_time', String(Date.now()));
 
     generateNewLockscreenQuestion().then(questions => {
       if (questions && Array.isArray(questions) && questions.length > 0) {
