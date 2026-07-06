@@ -936,9 +936,9 @@ div[class*="overflow-y-auto"] {
     left: 0 !important;
     z-index: 10 !important;
     background-color: #0b1329 !important; /* solid background */
-    width: 7.5rem !important; /* 7 characters width */
-    min-width: 7.5rem !important;
-    max-width: 7.5rem !important;
+    width: var(--col-width-0, 7.5rem) !important;
+    min-width: var(--col-width-0, 7.5rem) !important;
+    max-width: var(--col-width-0, 7.5rem) !important;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.4);
     word-break: break-all !important;
     white-space: normal !important;
@@ -949,34 +949,38 @@ div[class*="overflow-y-auto"] {
   .table-quiz-table,
   .table-quiz-container table {
     table-layout: fixed !important; /* enforce strict column widths with horizontal scroll */
-  }
-
-  .table-quiz-container col:first-child,
-  .table-quiz-col-first {
-    width: var(--first-col-width, 7.5rem) !important;
-  }
-
-  .table-quiz-container col:not(:first-child) {
-    width: var(--other-col-width, auto) !important;
+    width: max-content !important; /* enforce sum of individual column widths on mobile */
   }
 
   .table-quiz-container th:not(:first-child),
   .table-quiz-container td:not(:first-child) {
     min-width: 60px !important;
   }
+}
 
-  /* 📝 Enforce exactly 14px font-size for all contents inside suggested/model answer sections */
-  .model-answer-section,
-  .model-answer-section *,
-  .model-answer-section div,
-  .model-answer-section span,
-  .model-answer-section p,
-  .model-answer-section li,
-  .model-answer-section th,
-  .model-answer-section td,
-  .model-answer-section code {
-    font-size: 14px !important;
-  }
+/* 📝 Display-only Markdown Table Styles */
+.markdown-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+.markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 14px;
+}
+.markdown-table th,
+.markdown-table td {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.markdown-table th {
+  background-color: rgba(15, 23, 42, 0.6);
+  font-weight: 700;
+  color: #cbd5e1;
+}
+.markdown-table td {
+  color: #cbd5e1;
 }
 
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */

@@ -906,7 +906,7 @@ export function healLatexFormulas(text, isNested = false, passedPoissonSymbol = 
   result = result.replace(/\$?\[\s*INPUT_(\d+(?:_\d+)?)\s*\]\$?/gi, '[INPUT_$1]');
 
   if (!isNested) {
-    result = result.replace(/(?:<!--|\\lt !--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt)\n?/gi, '');
+    result = result.replace(/(?:<!--|\\lt !--|&lt;!--)\s*(?:-\s*)*\s*(?:START|END)_TABLE\s*(?:-\s*)*\s*(?:-->|--\\gt|>|\\gt|--&gt;)\n?/gi, '');
   }
 
   return result;

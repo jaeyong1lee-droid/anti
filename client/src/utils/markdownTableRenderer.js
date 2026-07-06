@@ -83,10 +83,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
 
   if (hideWrapper) {
     // Render clean table container without Comparison Table card, buttons, or extra headers
-    html += `<div class="table-quiz-container w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
-    html += `<table class="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] ${
-      colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
-    }">`;
+    html += `<div class="markdown-table-container w-full my-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/20">`;
+    html += `<table class="markdown-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
     html += `<thead>`;
     html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
     headers.forEach(h => {
@@ -133,10 +131,8 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
   html += `</button>`;
   html += `</div>`;
 
-  html += `<div class="table-quiz-container w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
-  html += `<table class="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] ${
-    colCount === 2 ? 'min-w-[320px] sm:min-w-full' : 'min-w-[480px] sm:min-w-full'
-  }">`;
+  html += `<div class="markdown-table-container w-full overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">`;
+  html += `<table class="markdown-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">`;
   html += `<thead>`;
   html += `<tr class="bg-slate-900/80 text-slate-350 border-b border-slate-800">`;
   headers.forEach(h => {
