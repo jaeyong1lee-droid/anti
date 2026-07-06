@@ -25800,17 +25800,6 @@ ${itemsStr}
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                       <span className="text-[10px] font-black text-emerald-400 font-extrabold flex items-center gap-1 select-none">
                                         💡 공식 암기 팁:
-                                        {editingTipIdx !== idx && (
-                                          <span 
-                                            className="text-[9px] text-slate-500 font-normal hover:text-rose-400 cursor-pointer ml-1" 
-                                            onClick={() => {
-                                              setEditingTipIdx(idx);
-                                              setEditingTipText(q.memorizationTip || '');
-                                            }}
-                                          >
-                                            (✏️ 수정)
-                                          </span>
-                                        )}
                                       </span>
                                       {editingTipIdx === idx ? (
                                         <div className="space-y-2 mt-1">
@@ -25847,12 +25836,12 @@ ${itemsStr}
                                         </div>
                                       ) : (
                                         <div 
-                                          onDoubleClick={() => {
+                                          onClick={() => {
                                             setEditingTipIdx(idx);
                                             setEditingTipText(q.memorizationTip || '');
                                           }}
                                           className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full cursor-pointer hover:bg-slate-900/60 transition-colors"
-                                          title="더블클릭하여 암기 팁 수정"
+                                          title="클릭하여 암기 팁 수정"
                                         >
                                           <LatexRenderer text={q.memorizationTip} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
                                         </div>
