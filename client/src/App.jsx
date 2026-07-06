@@ -269,8 +269,8 @@ const parseOverviewContent = (content) => {
   if (typeof healedContent === 'string') {
     // 1단계: 뭉개져서 한 줄로 합쳐진 개요/메커니즘/비교표/의미/직관적 행 경계에 개행 삽입
     healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
-    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원 (특정 키워드 의존성 완전 제거)
-    healedContent = healedContent.replace(/\|\s*\|\s*/g, '\n|');
+    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원 (특정 키워드 의존성 완전 제거, 개행 횡단 매칭 차단)
+    healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
   }
 
   const lines = healedContent.split('\n');
@@ -278,7 +278,7 @@ const parseOverviewContent = (content) => {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed || trimmed === '|') continue;
     
     // 테이블 양식의 데코레이션 행들은 파싱에서 제외 (최초 1회만 스킵)
     if ((trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) && !currentKey) {
@@ -25597,7 +25597,7 @@ ${itemsStr}
                                           <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                                             <div className="text-slate-250 leading-relaxed font-semibold">
-                                              <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                                              <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
                                             </div>
                                           </div>
                                         )}
@@ -28379,7 +28379,7 @@ ${itemsStr}
                       <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
                         <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                         <div className="text-slate-250 text-sm leading-relaxed font-semibold">
-                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
                         </div>
                       </div>
                     )}
