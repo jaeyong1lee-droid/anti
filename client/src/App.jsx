@@ -2433,14 +2433,20 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
+    // React의 onTouchStart는 passive 리스너라 e.preventDefault()가 동작하지 않음
+    // → 터치 시작 즉시 컨테이너 스크롤을 잠가서 가로 스크롤 점프 방지
+    if (isTouch && container) {
+      container.scrollLeft = startScrollLeft; // touchstart 중 발생한 미세 스크롤 복원
+      container.style.overflowX = 'hidden';
+    }
+
     const doResize = (ev) => {
       if (isTouch && ev.cancelable) {
         ev.preventDefault();
       }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
-    const currentScrollLeft = container ? container.scrollLeft : 0;
-    const scrollDelta = currentScrollLeft - startScrollLeft;
-    const deltaX = (currentX - startX) + scrollDelta;
+      // 스크롤이 잠긴 상태이므로 scrollDelta 없이 순수 손가락 이동량만 계산
+      const deltaX = currentX - startX;
 
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
@@ -2480,6 +2486,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     };
 
     const stopResize = () => {
+      // 잠근 컨테이너 스크롤 복원
+      if (isTouch && container) {
+        container.style.overflowX = '';
+      }
       if (isTouch) {
         window.removeEventListener('touchmove', doResize);
         window.removeEventListener('touchend', stopResize);
@@ -2971,14 +2981,20 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     const startScrollLeft = container ? container.scrollLeft : 0;
     const startX = isTouch ? e.touches[0].clientX : e.clientX;
 
+    // React의 onTouchStart는 passive 리스너라 e.preventDefault()가 동작하지 않음
+    // → 터치 시작 즉시 컨테이너 스크롤을 잠가서 가로 스크롤 점프 방지
+    if (isTouch && container) {
+      container.scrollLeft = startScrollLeft; // touchstart 중 발생한 미세 스크롤 복원
+      container.style.overflowX = 'hidden';
+    }
+
     const doResize = (ev) => {
       if (isTouch && ev.cancelable) {
         ev.preventDefault();
       }
       const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
-    const currentScrollLeft = container ? container.scrollLeft : 0;
-    const scrollDelta = currentScrollLeft - startScrollLeft;
-    const deltaX = (currentX - startX) + scrollDelta;
+      // 스크롤이 잠긴 상태이므로 scrollDelta 없이 순수 손가락 이동량만 계산
+      const deltaX = currentX - startX;
 
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
@@ -3018,6 +3034,10 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     };
 
     const stopResize = () => {
+      // 잠근 컨테이너 스크롤 복원
+      if (isTouch && container) {
+        container.style.overflowX = '';
+      }
       if (isTouch) {
         window.removeEventListener('touchmove', doResize);
         window.removeEventListener('touchend', stopResize);
