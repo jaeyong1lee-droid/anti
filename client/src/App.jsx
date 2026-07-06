@@ -266,22 +266,29 @@ const parseOverviewContent = (content) => {
 
   const lines = content.split('\n');
   for (const line of lines) {
-    if (!line.includes('|')) continue;
-    const parts = line.split('|').map(p => p.trim()).filter(Boolean);
-    if (parts.length < 2) continue;
-    const key = parts[0];
-    const val = parts[1];
+    const cleanLine = line.trim();
+    if (!cleanLine.startsWith('|') || cleanLine.includes(':---')) continue;
+    
+    // 첫번째와 마지막 파이프(|)를 포함한 Key-Value 추출 정규식 (값 내부 파이프문자 보존)
+    const match = cleanLine.match(/^\|\s*([^|]+)\s*\|\s*([\s\S]*)\s*\|$/);
+    if (!match) continue;
+    
+    const key = match[1].trim();
+    const val = match[2].trim();
+    
+    // <br> 태그를 실제 개행 문자로 치환하여 마크다운 표 줄바꿈이 정상 렌더링되게 함
+    const formattedVal = val.replace(/<br\s*\/?>/gi, '\n');
     
     if (key.includes('개요')) {
-      result.definition = val;
+      result.definition = formattedVal;
     } else if (key.includes('메커니즘')) {
-      result.mechanism = val;
+      result.mechanism = formattedVal;
     } else if (key.includes('비교표')) {
-      result.comparison = val;
+      result.comparison = formattedVal;
     } else if (key.includes('의미') || key.includes('한계성')) {
-      result.significance = val;
+      result.significance = formattedVal;
     } else if (key.includes('직관적의미') || key.includes('직관적')) {
-      result.intuitive = val;
+      result.intuitive = formattedVal;
     }
   }
   return result;
@@ -25504,7 +25511,7 @@ ${itemsStr}
                                       <div className="space-y-4 animate-fade-in w-full">
                                         {/* 1. 개요 */}
                                         {parsed.definition && (
-                                          <div className="bg-slate-900/40 border border-slate-800/60 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left">
+                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left py-1.5 px-0.5">
                                             <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
                                             <div className="font-bold text-white leading-relaxed">
                                               <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -25542,7 +25549,7 @@ ${itemsStr}
 
                                         {/* 비교표 */}
                                         {parsed.comparison && (
-                                          <div className="bg-emerald-950/15 border border-emerald-500/15 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in">
+                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
                                             <div className="text-slate-250 leading-relaxed font-semibold">
                                               <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -25552,7 +25559,7 @@ ${itemsStr}
 
                                         {/* 공학적 의미/한계성 */}
                                         {parsed.significance && (
-                                          <div className="bg-rose-950/10 border border-rose-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in">
+                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
                                             <div className="text-slate-250 leading-relaxed font-semibold">
                                               <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -25562,7 +25569,7 @@ ${itemsStr}
 
                                         {/* 3. 직관적 의미 */}
                                         {parsed.intuitive && (
-                                          <div className="bg-violet-950/15 border border-violet-500/10 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left">
+                                          <div className="text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left py-1.5 px-0.5">
                                             <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                                             <div className="text-slate-300 leading-relaxed">
                                               <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -28290,7 +28297,7 @@ ${itemsStr}
                 return (
                   <div className="space-y-4">
                     {parsed.definition && (
-                      <div className="bg-slate-955/40 border border-slate-800/60 p-4 rounded-2xl text-left">
+                      <div className="text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
                         <div className="font-bold text-white text-sm leading-relaxed">
                           <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -28332,7 +28339,7 @@ ${itemsStr}
                       </div>
                     )}
                     {parsed.significance && (
-                      <div className="bg-rose-955/10 border border-rose-500/10 p-4 rounded-2xl text-left">
+                      <div className="text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
                         <div className="text-slate-250 text-sm leading-relaxed font-semibold">
                           <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -28340,7 +28347,7 @@ ${itemsStr}
                       </div>
                     )}
                     {parsed.intuitive && (
-                      <div className="bg-violet-955/15 border border-violet-500/10 p-4 rounded-2xl text-left">
+                      <div className="text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                         <div className="text-slate-300 text-sm leading-relaxed">
                           <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
