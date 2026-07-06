@@ -25537,7 +25537,7 @@ ${itemsStr}
 
                                 {isExpanded && (() => {
                                   const parsed = parseOverviewContent(ov.content);
-                                  const hasParsedData = parsed.definition || parsed.mechanism || parsed.intuitive;
+                                  const hasParsedData = parsed.definition || parsed.mechanism || parsed.comparison || parsed.significance || parsed.intuitive;
                                   
                                   if (hasParsedData) {
                                     const steps = parsed.mechanism
