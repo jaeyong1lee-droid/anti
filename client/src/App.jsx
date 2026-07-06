@@ -2626,7 +2626,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     }
   }, [questionIdx]);
 
-  return (
+  const mainTable = (
     <div 
       className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
       style={mobileColWidths.reduce((acc, w, i) => {
@@ -2837,6 +2837,158 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           })}
         </tbody>
       </table>
+    </div>
+  );
+
+  const compTable = q.comparisonTableData ? (
+    <div className="mt-4 space-y-2">
+      <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
+        ⚖️ 비교표 / 장단점 채우기
+      </div>
+      <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
+        <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[16px] min-w-full">
+          <thead>
+            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+              {q.comparisonTableData.headers.map((header, hIdx) => (
+                <th 
+                  key={hIdx} 
+                  className={`p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
+                    hIdx === 0 ? 'text-left break-all' : ''
+                  }`}
+                >
+                  <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {q.comparisonTableData.rows.map((row, rIdx) => {
+              return (
+                <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                  {row.map((cell, cIdx) => {
+                    const isInput = typeof cell === 'string' && cell.includes('[INPUT_');
+                    if (isInput) {
+                      const inputId = cell.replace('[', '').replace(']', '').trim();
+                      const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+                      const correctAnswer = q.answers?.[inputId] || '';
+                      
+                      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+                      const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+                      const isCorrect = gradingResult 
+                        ? gradingResult.isCorrect 
+                        : (normalize(value) === normalize(correctAnswer));
+     
+                      const match = inputId.match(/\d+/);
+                      const inputNum = match ? parseInt(match[0], 10) : 1;
+                      const inputLetter = String.fromCharCode(64 + inputNum);
+
+                      return (
+                        <td 
+                          key={cIdx} 
+                          className="p-0 border-r border-slate-800 last:border-r-0 text-slate-200 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle cursor-text h-full"
+                          onClick={(e) => {
+                            const textarea = e.currentTarget.querySelector('textarea');
+                            if (textarea) textarea.focus();
+                          }}
+                        >
+                          {revealed ? (() => {
+                            const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
+                            return (
+                              <div className={`w-full h-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-1 p-1 sm:p-1.5 text-[14px] sm:text-[16px] ${theme.cellBg}`}>
+                                <div className="flex-grow text-left font-medium">
+                                  <BufferedTextarea
+                                    value={value}
+                                    onChange={(val) => handleInputChange(inputId, val)}
+                                    onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                                    placeholder={`${inputLetter} 입력`}
+                                    data-answer-key={`${questionIdx}_${inputId}`}
+                                    className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
+                                    rows={1}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        e.target.blur();
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                {gradingResult && gradingResult.score !== undefined && (() => {
+                                  const cellObtained = (gradingResult.score / 10) * (weight / inputIds.length);
+                                  const displayScore = Math.round(cellObtained * 10) / 10;
+                                  const isCellLoading = cellGradingLoading?.[`${questionIdx}_${inputId}`];
+                                  return (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (isCellLoading) return;
+                                        if (gradeSingleTableCell) {
+                                          await gradeSingleTableCell(questionIdx, q, inputId);
+                                        }
+                                      }}
+                                      title="클릭 시 이 칸만 재평가합니다"
+                                      className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer ${theme.text} ${
+                                        isCellLoading ? 'animate-pulse' : ''
+                                      }`}
+                                    >
+                                      {isCellLoading ? (
+                                        <span className="flex items-center gap-1">
+                                          <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                          </svg>
+                                          ...
+                                        </span>
+                                      ) : (
+                                        `${displayScore}점 ↻`
+                                      )}
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                            );
+                          })() : (
+                            <BufferedTextarea
+                              value={value}
+                              onChange={(val) => handleInputChange(inputId, val)}
+                              onKeystroke={(val) => handleInputKeystroke(inputId, val)}
+                              placeholder={`${inputLetter} 입력`}
+                              data-answer-key={`${questionIdx}_${inputId}`}
+                              className="table-quiz-input w-full text-center text-[14px] sm:text-[16px] bg-slate-900/10 focus:bg-slate-900/40 border-0 outline-none focus:outline-none focus:ring-0 text-slate-250 placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block align-middle"
+                              rows={1}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  e.target.blur();
+                                }
+                              }}
+                            />
+                          )}
+                        </td>
+                      );
+                    }
+                    
+                    return (
+                      <td 
+                        key={cIdx} 
+                        className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-355 text-[14px] sm:text-[16px] whitespace-normal break-words text-center align-middle font-extrabold select-text"
+                      >
+                        <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div className="w-full">
+      {mainTable}
+      {compTable}
     </div>
   );
 });
@@ -5320,6 +5472,16 @@ export default function App() {
             if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
               rowHeader = row[0] || '';
               colHeader = q.tableData.headers[colIdx] || '';
+            }
+          });
+        });
+      }
+      if (!rowHeader && q.comparisonTableData && q.comparisonTableData.rows && q.comparisonTableData.headers) {
+        q.comparisonTableData.rows.forEach((row) => {
+          row.forEach((cell, colIdx) => {
+            if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+              rowHeader = row[0] || '';
+              colHeader = q.comparisonTableData.headers[colIdx] || '';
             }
           });
         });
@@ -10106,12 +10268,52 @@ export default function App() {
               rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
             }
             
-            const explanationHtml = `
+            let comparisonTableData = null;
+            if (parsed.comparison) {
+              let normalizedComparison = parsed.comparison;
+              normalizedComparison = normalizedComparison.split('\n').map(line => {
+                let l = line.trim();
+                if (l && l.includes('|')) {
+                  if (!l.startsWith('|')) l = '| ' + l;
+                  if (!l.endsWith('|')) l = l + ' |';
+                }
+                return l;
+              }).join('\n');
+
+              const parsedComp = parseMarkdownTable(normalizedComparison);
+              if (parsedComp && parsedComp.tableData && parsedComp.tableData.headers && parsedComp.tableData.rows) {
+                const compRows = parsedComp.tableData.rows.map((row, rIdx) => {
+                  return row.map((cell, cIdx) => {
+                    if (cIdx === 0) return cell;
+                    const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
+                    answers[inputId] = cell;
+                    return `[${inputId}]`;
+                  });
+                });
+                comparisonTableData = {
+                  headers: parsedComp.tableData.headers,
+                  rows: compRows
+                };
+              }
+            }
+            
+            let explanationHtml = `
               <div class="space-y-3 text-left">
                 ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
                 ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
               </div>
             `;
+
+            if (parsed.comparison) {
+              explanationHtml += `
+                <div class="mt-4 text-left">
+                  <span class="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                  <div class="text-slate-250 leading-relaxed font-normal">
+                    ${convertMarkdownTablesToHtml(parsed.comparison, true)}
+                  </div>
+                </div>
+              `;
+            }
             
             return {
               id: `mixed_q_${qIdx}`,
@@ -10122,6 +10324,7 @@ export default function App() {
                 headers: ['구분', '내용'],
                 rows: rows
               },
+              comparisonTableData: comparisonTableData,
               answers: answers,
               explanation: explanationHtml,
               mixedType: 'overview',
@@ -10773,12 +10976,52 @@ export default function App() {
               rows.push(['공학적 작동 메커니즘', `[INPUT_${rowIdx}_1]`]);
             }
             
-            const explanationHtml = `
+            let comparisonTableData = null;
+            if (parsed.comparison) {
+              let normalizedComparison = parsed.comparison;
+              normalizedComparison = normalizedComparison.split('\n').map(line => {
+                let l = line.trim();
+                if (l && l.includes('|')) {
+                  if (!l.startsWith('|')) l = '| ' + l;
+                  if (!l.endsWith('|')) l = l + ' |';
+                }
+                return l;
+              }).join('\n');
+
+              const parsedComp = parseMarkdownTable(normalizedComparison);
+              if (parsedComp && parsedComp.tableData && parsedComp.tableData.headers && parsedComp.tableData.rows) {
+                const compRows = parsedComp.tableData.rows.map((row, rIdx) => {
+                  return row.map((cell, cIdx) => {
+                    if (cIdx === 0) return cell;
+                    const inputId = `INPUT_${rows.length + rIdx}_${cIdx}`;
+                    answers[inputId] = cell;
+                    return `[${inputId}]`;
+                  });
+                });
+                comparisonTableData = {
+                  headers: parsedComp.tableData.headers,
+                  rows: compRows
+                };
+              }
+            }
+            
+            let explanationHtml = `
               <div class="space-y-3 text-left">
                 ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
                 ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
               </div>
             `;
+
+            if (parsed.comparison) {
+              explanationHtml += `
+                <div class="mt-4 text-left">
+                  <span class="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                  <div class="text-slate-250 leading-relaxed font-normal">
+                    ${convertMarkdownTablesToHtml(parsed.comparison, true)}
+                  </div>
+                </div>
+              `;
+            }
             
             return {
               id: `mixed_q_${qIdx}`,
@@ -10789,6 +11032,7 @@ export default function App() {
                 headers: ['구분', '내용'],
                 rows: rows
               },
+              comparisonTableData: comparisonTableData,
               answers: answers,
               explanation: explanationHtml,
               mixedType: 'overview',
