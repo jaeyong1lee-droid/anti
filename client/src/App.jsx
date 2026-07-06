@@ -2444,8 +2444,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
 
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
-        const startWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : (idx === 0 ? 120 : 140);
-        const newWidth = Math.max(idx === 0 ? 50 : 60, startWidth + deltaX);
+        // targetColStartWidth는 드래그 시작 시점에 고정된 값 - 매번 재측정하면 deltaX가 누적돼 폭발적으로 커지는 버그 발생
+        const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         
         setMobileColWidths(prev => {
           const next = [...prev];
@@ -2982,8 +2982,8 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
 
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
-        const startWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : (idx === 0 ? 120 : 140);
-        const newWidth = Math.max(idx === 0 ? 50 : 60, startWidth + deltaX);
+        // targetColStartWidth는 드래그 시작 시점에 고정된 값 - 매번 재측정하면 deltaX가 누적돼 폭발적으로 커지는 버그 발생
+        const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         
         setMobileColWidths(prev => {
           const next = [...prev];
