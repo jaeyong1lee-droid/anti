@@ -15256,6 +15256,62 @@ ${itemsStr}
       console.log('[Fallback] Loaded default formula questions.');
     }
 
+    // DB 등에서 불러온 기존 공식 데이터에 새로운 암기 팁(memorizationTip)이 누락되어 있다면 defaultFormulas에서 가져와 보충해줍니다.
+    if (Array.isArray(loadedData)) {
+      const defaultFormulasLocal = [
+        {
+          title: "바톤 암반 Q분류(Barton Q-system, $Q$)",
+          memorizationTip: "💡 **암기 팁**: RQD는 Jn으로 나누고, Jr은 Ja로 나누며, Jw는 SRF로 나눈다!  \n연상법: **\"알제이(RQD/Jn)가 제이아(Jr/Ja)를 만나 제이떱에스(Jw/SRF)가 되었다!\"**"
+        },
+        {
+          title: "테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)",
+          memorizationTip: "💡 **암기 팁**: 세 가지 성분(점착력 + 상재압 + 자중)의 합!  \n연상법: **\"씨엔씨($c N_c$) 더하기 큐엔큐($q N_q$) 더하기 반감비엔감($0.5 \\gamma B N_{\\gamma}$)\"**"
+        },
+        {
+          title: "연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)",
+          memorizationTip: "💡 **암기 팁**: 분자는 장비 접지압에서 지지력을 뺀 값! 분모는 2배의 모래 단위중량 곱하기 탄젠트 각!  \n연상법: **\"위에는 $q - q_a$, 밑에는 $2 \\gamma \\tan\\theta$!\"**"
+        },
+        {
+          title: "슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)",
+          memorizationTip: "💡 **암기 팁**: 면적을 보존하는 구면 투영 공식!  \n연상법: **\"루트2 알($\\sqrt{2} R$) 싸인($\\sin$) 사오 마이너스 반각($45^\\circ - \\alpha/2$)\"**"
+        },
+        {
+          title: "락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)",
+          memorizationTip: "💡 **암기 팁**: 볼트 주변의 원통형 표면적에 마찰강도를 곱함!  \n연상법: **\"파이디엘타우($P = \\pi d L \\tau$)!\"**"
+        },
+        {
+          title: "랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)",
+          memorizationTip: "💡 **암기 팁**: 주동토압 계수는 45도에서 각도를 **빼고**($45^\\circ - \\phi/2$), 수평 토압강도는 2c 루트 Ka를 **뺀다**!  \n연상법: **\"주동은 마이너스가 위! ($K_a = \\tan^2(45^\\circ - \\phi/2)$) / 수평토압은 케이에이 감젯 마이너스 이씨 루트 케이에이 ($p_a = K_a \\gamma z - 2c\\sqrt{K_a}$)\"**"
+        },
+        {
+          title: "테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)",
+          memorizationTip: "💡 **암기 팁**: 시간에 따른 과잉수압의 변화율은 압밀계수($C_v$) 곱하기 깊이에 따른 2차 미분값!  \n연상법: **\"시간 미분(1차) = $C_v$ × 공간 미분(2차)! (\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$)\"**"
+        },
+        {
+          title: "보상기초 보상도(Compensated Foundation Safety Factor, $C$)",
+          memorizationTip: "💡 **암기 팁**: 굴착해서 나간 흙 무게 분의 위에 얹어질 건물 무게!  \n연상법: **\"분자는 나간 흙($\\gamma D_f$), 분모는 들어올 건물($q$)! ($C = \\frac{\\gamma D_f}{q}$)\"**"
+        },
+        {
+          title: "싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)",
+          memorizationTip: "💡 **암기 팁**: 물의 단위중량에 지하수위 수두를 곱한 단순 수압식!  \n연상법: **\"수압은 감더블유 에이치 ($p_w = \\gamma_w H$)!\"**"
+        },
+        {
+          title: "가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)",
+          memorizationTip: "💡 **암기 팁**: 표준 반력계수에 치수효과인 폭의 비율의 $-3/4$승을 적용!  \n연상법: **\"스프링상수 = $k_{h0} \\times (B_H/0.3)^{-3/4}$!\"**"
+        }
+      ];
+
+      loadedData = loadedData.map(q => {
+        if (!q.memorizationTip) {
+          const matched = defaultFormulasLocal.find(df => df.title === q.title || (q.title && df.title && (df.title.includes(q.title) || q.title.includes(df.title))));
+          if (matched) {
+            return { ...q, memorizationTip: matched.memorizationTip };
+          }
+        }
+        return q;
+      });
+    }
+
     const cleaned = normalizeAndCompactifyFormulas(loadedData).map(healFormulaQuestionObject);
     latestFormulaQuestionsRef.current = cleaned;
     setFormulaQuestions(cleaned);
@@ -24607,45 +24663,45 @@ ${itemsStr}
                                                         }}
                                                       />
                                                     ) : (
-                                                      <div className="flex flex-col items-center gap-1.5">
-                                                        <div className="flex items-center gap-1.5 select-none" onClick={(e) => e.stopPropagation()}>
-                                                          {hIdx > 1 && (
-                                                            <button 
-                                                              onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'left'); }} 
-                                                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                                                              title="왼쪽으로 이동"
-                                                            >
-                                                              <ChevronLeft size={12} />
-                                                            </button>
-                                                          )}
-                                                          {hIdx < parsed.headers.length - 1 && (
-                                                            <button 
-                                                              onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'right'); }} 
-                                                              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                                                              title="오른쪽으로 이동"
-                                                            >
-                                                              <ChevronRight size={12} />
-                                                            </button>
-                                                          )}
-                                                          {hIdx > 0 && (
-                                                            <button 
-                                                              onClick={(e) => { 
-                                                                e.stopPropagation(); 
-                                                                if (window.confirm('이 열을 삭제하시겠습니까?')) {
-                                                                  handleDeleteColumn(t.id, hIdx);
-                                                                }
-                                                               }} 
-                                                              className="p-0.5 rounded hover:bg-rose-500/10 text-rose-450 hover:text-rose-350 border-none bg-transparent cursor-pointer"
-                                                              title="열 삭제"
-                                                            >
-                                                              <Trash2 size={12} />
-                                                            </button>
-                                                          )}
-                                                        </div>
-                                                        <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-black select-text">
-                                                          <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
-                                                        </div>
-                                                      </div>
+                                                      <div className="inline-flex items-center justify-center gap-1.5 flex-wrap">
+                                                         <span className="text-[14px] md:text-sm text-slate-200 font-black select-text">
+                                                           <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
+                                                         </span>
+                                                         <div className="flex items-center gap-1 select-none shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                           {hIdx > 1 && (
+                                                             <button 
+                                                               onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'left'); }} 
+                                                               className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer flex items-center justify-center"
+                                                               title="왼쪽으로 이동"
+                                                             >
+                                                               <ChevronLeft size={11} />
+                                                             </button>
+                                                           )}
+                                                           {hIdx < parsed.headers.length - 1 && (
+                                                             <button 
+                                                               onClick={(e) => { e.stopPropagation(); handleMoveColumn(t.id, hIdx, 'right'); }} 
+                                                               className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white border-none bg-transparent cursor-pointer flex items-center justify-center"
+                                                               title="오른쪽으로 이동"
+                                                             >
+                                                               <ChevronRight size={11} />
+                                                             </button>
+                                                           )}
+                                                           {hIdx > 0 && (
+                                                             <button 
+                                                               onClick={(e) => { 
+                                                                 e.stopPropagation(); 
+                                                                 if (window.confirm('이 열을 삭제하시겠습니까?')) {
+                                                                   handleDeleteColumn(t.id, hIdx);
+                                                                 }
+                                                                }} 
+                                                               className="p-0.5 rounded hover:bg-rose-500/10 text-rose-450 hover:text-rose-350 border-none bg-transparent cursor-pointer flex items-center justify-center"
+                                                               title="열 삭제"
+                                                             >
+                                                               <Trash2 size={11} />
+                                                             </button>
+                                                           )}
+                                                         </div>
+                                                       </div>
                                                     )}
                                                   </th>
                                                 );
