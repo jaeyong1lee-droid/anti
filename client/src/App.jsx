@@ -9893,7 +9893,7 @@ export default function App() {
           return !item.createdAt.startsWith(referenceDate);
         });
         
-        const rng = getSeededRandom(referenceDate);
+        const rng = getSeededRandom(Math.random().toString());
         
         const shuffledToday = [...todayItems];
         for (let i = shuffledToday.length - 1; i > 0; i--) {
