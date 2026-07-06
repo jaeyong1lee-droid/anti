@@ -7978,6 +7978,45 @@ app.post('/api/session/formula', async (req, res) => {
   }
 });
 
+// POST /api/formula/generate-memorization-tip → 공식을 쉽게 외울 수 있는 팁을 AI가 생성하여 반환
+app.post('/api/formula/generate-memorization-tip', async (req, res) => {
+  const { title, concept, formula } = req.body;
+  if (!title && !formula) {
+    return res.status(400).json({ error: '공식 제목 또는 수식 내용이 필요합니다.' });
+  }
+
+  try {
+    const prompt = `
+당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 수험생을 지도하는 최고 권위의 암기 튜터입니다.
+다음 공학 수식에 대해, 수험생들이 머릿속으로 이 복잡한 수식을 쉽게 떠올려 외울 수 있도록 돕는 기발하고 직관적인 **공식 암기 팁(1~2줄)**을 한국어로 창작해 주십시오.
+
+[공식명]: ${title || '이름 없음'}
+[핵심 개념]: ${concept || '개념 설명 없음'}
+[대표 공식]:
+${formula || '수식 없음'}
+
+[요구사항]:
+1. 핵심만 짚어서 직관적인 비유나 문장 연상법(예: 각 기호의 한글 발음을 연계한 재미있는 말장난 등)을 사용하여 1~2줄 이내로 명확하게 한글로 만들어 주십시오.
+2. 마크다운의 '\`\`\`' 등의 특수 기호는 사용하지 말고 다음의 완성된 암기 팁 문장(한 줄 또는 두 줄)만을 출력해 주십시오.
+   예시: "💡 **암기 팁**: ... 연상법: \\\"알제이(RQD/Jn)가 제이아(Jr/Ja)를 만나...\\\""
+3. ${LATEX_PROMPT_INSTRUCTIONS}
+`;
+
+    const responseText = await callLLMWithFailover(
+      "당신은 복잡한 공학 공식을 한눈에 외우기 쉬운 비유와 연상식으로 창작해주는 암기 비법 튜터입니다.",
+      prompt,
+      null,
+      'tutor',
+      { temperature: 0.7 }
+    );
+    
+    res.json({ memorizationTip: responseText.trim() });
+  } catch (err) {
+    console.error('Error generating formula memorization tip:', err);
+    res.status(500).json({ error: 'AI 암기 팁을 생성하지 못했습니다.' });
+  }
+});
+
 // GET /api/session/tables → 저장된 필수암기 표 상태 반환
 app.get('/api/session/tables', async (req, res) => {
   try {

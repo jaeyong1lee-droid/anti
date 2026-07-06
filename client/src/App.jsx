@@ -5920,6 +5920,7 @@ export default function App() {
   const reviewSplitContainerRef = useRef(null);
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
+  const [generatingTipIds, setGeneratingTipIds] = useState({});
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaSubTab, setFormulaSubTab] = useState(() => localStorage.getItem('anti_formula_subtab') || 'formula');
   const [formulaTables, setFormulaTables] = useState([]);
@@ -25793,12 +25794,25 @@ ${itemsStr}
                                     </div>
                                   )}
 
-                                  {q.memorizationTip && (
+                                                                    {q.memorizationTip ? (
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                       <span className="text-[10px] font-black text-emerald-400 font-extrabold">💡 공식 암기 팁: </span>
                                       <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
                                         <LatexRenderer text={q.memorizationTip} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
                                       </div>
+                                    </div>
+                                  ) : (
+                                    <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-900/20 rounded-xl border border-slate-800/40 select-none">
+                                      <span className="text-[11px] text-slate-400">아직 등록된 공식 암기 팁이 없습니다. AI가 신박한 아이디어를 제안해 드립니다.</span>
+                                      <button
+                                        onClick={async () => {
+                                          await handleGenerateMemorizationTip(idx);
+                                        }}
+                                        disabled={generatingTipIds[idx]}
+                                        className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                                      >
+                                        {generatingTipIds[idx] ? '💡 AI 암기 비법 구상 중...' : '✨ AI 암기법 추천받기'}
+                                      </button>
                                     </div>
                                   )}
 
