@@ -265,32 +265,66 @@ const parseOverviewContent = (content) => {
   if (!content) return result;
 
   const lines = content.split('\n');
+  let currentKey = null;
+
   for (const line of lines) {
-    const cleanLine = line.trim();
-    if (!cleanLine.startsWith('|') || cleanLine.includes(':---')) continue;
+    const trimmed = line.trim();
+    if (!trimmed) continue;
     
-    // 첫번째와 마지막 파이프(|)를 포함한 Key-Value 추출 정규식 (값 내부 파이프문자 보존)
-    const match = cleanLine.match(/^\|\s*([^|]+)\s*\|\s*([\s\S]*)\s*\|$/);
-    if (!match) continue;
+    // 테이블 양식의 데코레이션 행들은 파싱에서 제외
+    if (trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) {
+      continue;
+    }
+
+    // 신규 섹션 키 감지 정규식
+    const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|\s*([\s\S]*)$/);
     
-    const key = match[1].trim();
-    const val = match[2].trim();
-    
-    // <br> 태그를 실제 개행 문자로 치환하여 마크다운 표 줄바꿈이 정상 렌더링되게 함
-    const formattedVal = val.replace(/<br\s*\/?>/gi, '\n');
-    
-    if (key.includes('개요')) {
-      result.definition = formattedVal;
-    } else if (key.includes('메커니즘')) {
-      result.mechanism = formattedVal;
-    } else if (key.includes('비교표')) {
-      result.comparison = formattedVal;
-    } else if (key.includes('의미') || key.includes('한계성')) {
-      result.significance = formattedVal;
-    } else if (key.includes('직관적의미') || key.includes('직관적')) {
-      result.intuitive = formattedVal;
+    if (sectionMatch && (
+      sectionMatch[1].includes('개요') ||
+      sectionMatch[1].includes('메커니즘') ||
+      sectionMatch[1].includes('비교표') ||
+      sectionMatch[1].includes('의미') ||
+      sectionMatch[1].includes('한계성') ||
+      sectionMatch[1].includes('직관적')
+    )) {
+      const rawKey = sectionMatch[1].trim();
+      let rawVal = sectionMatch[2].trim();
+      
+      // 맨 끝의 닫는 파이프(|)만 지능적으로 제거
+      if (rawVal.endsWith('|')) {
+        rawVal = rawVal.slice(0, -1).trim();
+      }
+
+      if (rawKey.includes('개요')) {
+        currentKey = 'definition';
+      } else if (rawKey.includes('메커니즘')) {
+        currentKey = 'mechanism';
+      } else if (rawKey.includes('비교표')) {
+        currentKey = 'comparison';
+      } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
+        currentKey = 'significance';
+      } else if (rawKey.includes('직관적')) {
+        currentKey = 'intuitive';
+      }
+
+      result[currentKey] = rawVal;
+    } else {
+      // 키 행이 아니라면, 현재 활성화된 섹션의 텍스트로 후속 라인을 그대로 보존하여 누적 (마크다운 표 줄바꿈 지원)
+      if (currentKey) {
+        result[currentKey] += '\n' + trimmed;
+      }
     }
   }
+
+  // 최종 문자 정제 및 트리밍
+  for (const k in result) {
+    result[k] = result[k].replace(/<br\s*\/?>/gi, '\n').trim();
+    // 한 줄짜리 기존 줄글 데이터의 맨 뒤에 단독으로 남은 파이프(|) 제거
+    if (result[k].endsWith('|') && !result[k].includes('\n')) {
+      result[k] = result[k].slice(0, -1).trim();
+    }
+  }
+
   return result;
 };
 
