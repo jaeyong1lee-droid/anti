@@ -967,7 +967,12 @@ div[class*="overflow-y-auto"] {
   width: 100%;
   border-collapse: collapse;
   text-align: center;
-  font-size: 14px;
+  font-size: 14px; /* Mobile font size */
+}
+@media (min-width: 768px) {
+  .markdown-table {
+    font-size: 16px; /* PC font size */
+  }
 }
 .markdown-table th,
 .markdown-table td {
@@ -976,11 +981,12 @@ div[class*="overflow-y-auto"] {
 }
 .markdown-table th {
   background-color: rgba(15, 23, 42, 0.6);
-  font-weight: 700;
+  font-weight: 700 !important;
   color: #cbd5e1;
 }
 .markdown-table td {
   color: #cbd5e1;
+  font-weight: 400 !important; /* Normal weight, no bold styling */
 }
 
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */

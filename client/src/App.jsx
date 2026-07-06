@@ -25625,7 +25625,7 @@ ${itemsStr}
                                         {parsed.comparison && (
                                           <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                                            <div className="text-slate-250 leading-relaxed font-semibold">
+                                            <div className="text-slate-250 leading-relaxed font-normal">
                                               <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
                                             </div>
                                           </div>
@@ -28407,7 +28407,7 @@ ${itemsStr}
                     {parsed.comparison && (
                       <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
                         <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                        <div className="text-slate-250 text-sm leading-relaxed font-normal">
                           <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
                         </div>
                       </div>
