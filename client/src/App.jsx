@@ -16202,7 +16202,8 @@ ${itemsStr}
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
                   formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
-                  structure: suggestedStructure || f.structure
+                  structure: suggestedStructure || f.structure,
+                  memorizationTip: data.memorizationTip || f.memorizationTip
                 };
               }
               return f;
@@ -16286,7 +16287,8 @@ ${itemsStr}
                   question: suggestedTitle,
                   concept: suggestedConcept || f.concept,
                   formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
-                  structure: suggestedStructure || f.structure
+                  structure: suggestedStructure || f.structure,
+                  memorizationTip: data.memorizationTip || f.memorizationTip
                 };
               }
               return f;
@@ -16367,7 +16369,8 @@ ${itemsStr}
                 question: suggestedTitle,
                 concept: suggestedConcept || f.concept,
                 formula: `$$${mathContent}$$` + (suggestedStructure ? "\n\n" + suggestedStructure : ""),
-                structure: suggestedStructure || f.structure
+                structure: suggestedStructure || f.structure,
+                  memorizationTip: data.memorizationTip || f.memorizationTip
               };
             }
             return f;
@@ -25867,20 +25870,9 @@ ${itemsStr}
                                     </div>
                                   )}
 
-                                                                    {q.memorizationTip ? (
-                                    <div className="space-y-1 pt-2 border-t border-slate-800/80">
+                                                                    <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                       <span className="text-[10px] font-black text-emerald-400 font-extrabold flex items-center justify-between w-full select-none">
                                         <span className="flex items-center gap-1">💡 공식 암기 팁:</span>
-                                        <button
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            await handleGenerateMemorizationTip(idx);
-                                          }}
-                                          disabled={generatingTipIds[idx]}
-                                          className="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/25 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-                                        >
-                                          {generatingTipIds[idx] ? '⏳ 생성 중...' : '🔄 AI 암기법 추천받기'}
-                                        </button>
                                       </span>
                                       {editingTipIdx === idx ? (
                                         <div className="space-y-2 mt-1">
@@ -25897,7 +25889,7 @@ ${itemsStr}
                                                 const trimmed = editingTipText.trim();
                                                 setFormulaQuestions(prev => {
                                                   const updated = prev.map((item, i) => i === idx ? { ...item, memorizationTip: trimmed } : item).map(healFormulaQuestionObject);
-                                                  handleSaveFormulaQuestions(updated, true); // true로 변경하여 실시간 동기화 알림 제공
+                                                  handleSaveFormulaQuestions(updated, true);
                                                   return updated;
                                                 });
                                                 setEditingTipIdx(null);
@@ -25924,24 +25916,16 @@ ${itemsStr}
                                           className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full cursor-pointer hover:bg-slate-900/60 transition-colors"
                                           title="클릭하여 암기 팁 수정"
                                         >
-                                          <LatexRenderer text={cleanMemorizationTipText(q.memorizationTip)} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
+                                          {q.memorizationTip ? (
+                                            <LatexRenderer text={cleanMemorizationTipText(q.memorizationTip)} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
+                                          ) : (
+                                            <span className="text-[11px] text-slate-500 italic block select-none">
+                                              아직 등록된 공식 암기 팁이 없습니다. 위의 [새로고침] 버튼을 눌러 AI가 암기법을 자동 추천하게 하거나, 여기를 클릭하여 직접 암기 비법을 작성하세요.
+                                            </span>
+                                          )}
                                         </div>
                                       )}
                                     </div>
-                                  ) : (
-                                    <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-900/20 rounded-xl border border-slate-800/40 select-none">
-                                      <span className="text-[11px] text-slate-400">아직 등록된 공식 암기 팁이 없습니다. AI가 신박한 아이디어를 제안해 드립니다.</span>
-                                      <button
-                                        onClick={async () => {
-                                          await handleGenerateMemorizationTip(idx);
-                                        }}
-                                        disabled={generatingTipIds[idx]}
-                                        className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-                                      >
-                                        {generatingTipIds[idx] ? '💡 AI 암기 비법 구상 중...' : '✨ AI 암기법 추천받기'}
-                                      </button>
-                                    </div>
-                                  )}
 
                                   {q.formula ? (
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">

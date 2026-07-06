@@ -6828,6 +6828,12 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
           fallbackConcept = conceptMatch[1].trim();
         }
 
+        let fallbackTip = bestLocalMatch ? bestLocalMatch.memorizationTip : undefined;
+        const tipMatch = responseText.match(/"memorizationTip"\s*:\s*"([^"]+)"/);
+        if (tipMatch && tipMatch[1]) {
+          fallbackTip = tipMatch[1].trim();
+        }
+
         let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
         const extraAllowed2 = [];
         if (bestLocalMatch) {
@@ -6842,7 +6848,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
         res.json({
           title: healLatexFormulas(fallbackTitle),
           concept: healLatexFormulas(fallbackConcept),
-          structure: healLatexFormulas(fallbackStructure)
+          structure: healLatexFormulas(fallbackStructure),
+          memorizationTip: fallbackTip ? healLatexFormulas(fallbackTip) : undefined
         });
       }
     } catch (err) {
@@ -6850,6 +6857,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       let fallbackTitle = bestLocalMatch ? bestLocalMatch.title : '실시간 추출 공식';
       let fallbackConcept = bestLocalMatch ? bestLocalMatch.concept : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.';
       let fallbackStructure = bestLocalMatch ? bestLocalMatch.structure : extractVariablesFromMath(mathContent);
+      let fallbackTip = bestLocalMatch ? bestLocalMatch.memorizationTip : undefined;
       const extraAllowed3 = [];
       if (bestLocalMatch) {
         extraAllowed3.push(...bestLocalMatch.keywords);
@@ -6862,7 +6870,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
       res.json({
         title: healLatexFormulas(fallbackTitle),
         concept: healLatexFormulas(fallbackConcept),
-        structure: healLatexFormulas(fallbackStructure)
+        structure: healLatexFormulas(fallbackStructure),
+        memorizationTip: fallbackTip ? healLatexFormulas(fallbackTip) : undefined
       });
     }
   } catch (err) {
