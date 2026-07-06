@@ -269,8 +269,8 @@ const parseOverviewContent = (content) => {
   if (typeof healedContent === 'string') {
     // 1단계: 뭉개져서 한 줄로 합쳐진 개요/메커니즘/비교표/의미/직관적 행 경계에 개행 삽입
     healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
-    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원
-    healedContent = healedContent.replace(/\|\s*\|\s*(구분|:---|정의|원리|목적|특징|대상지반|대상|한계|효과|방법|재료|시공|설계|비용|구조|안정성|조건|범위|상태|기전|비교|종류|공법|주요장비|장단점|규격|기준|정수|강도|투수성|배수|대책|대표성|정밀성|신뢰성|영향|시험|실험|해석|분석|평가|조사|계측|관리|계획|위치|깊이|두께|폭|길이|높이|지반|압력|주입|약액|물리적|활용|파괴면|응력상태|배수제어|적용|장점|단점|적용 지반|주요 기전|강도 발현)/gi, '\n| $1');
+    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원 (특정 키워드 의존성 완전 제거)
+    healedContent = healedContent.replace(/\|\s*\|\s*/g, '\n|');
   }
 
   const lines = healedContent.split('\n');
@@ -25592,21 +25592,22 @@ ${itemsStr}
                                           </div>
                                         )}
 
-                                        {/* 공학적 의미/한계성 (비교표 포함) */}
-                                        {(parsed.significance || parsed.comparison) && (
+                                        {/* 비교표 / 장단점 */}
+                                        {parsed.comparison && (
+                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
+                                            <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                                            <div className="text-slate-250 leading-relaxed font-semibold">
+                                              <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* 공학적 의미/한계성 */}
+                                        {parsed.significance && (
                                           <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
-                                            <div className="text-slate-250 leading-relaxed font-semibold space-y-3">
-                                              {parsed.significance && (
-                                                <div>
-                                                  <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
-                                                </div>
-                                              )}
-                                              {parsed.comparison && (
-                                                <div className="mt-2.5">
-                                                  <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
-                                                </div>
-                                              )}
+                                            <div className="text-slate-250 leading-relaxed font-semibold">
+                                              <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
                                             </div>
                                           </div>
                                         )}
@@ -28374,23 +28375,19 @@ ${itemsStr}
                         </div>
                       </div>
                     )}
-                    {(parsed.significance || parsed.comparison) && (
+                    {parsed.comparison && (
+                      <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
+                        <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                        </div>
+                      </div>
+                    )}
+                    {parsed.significance && (
                       <div className="text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-semibold space-y-3">
-                          {parsed.significance && (
-                            <div>
-                              <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
-                            </div>
-                          )}
-                          {parsed.comparison && (
-                            <div className="mt-2.5 bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl">
-                              <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
-                              <div className="text-slate-250 text-xs sm:text-sm leading-relaxed font-semibold">
-                                <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
-                              </div>
-                            </div>
-                          )}
+                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
+                          <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
                         </div>
                       </div>
                     )}
