@@ -282,7 +282,9 @@ const parseOverviewContent = (content) => {
     if (sectionMatch && (
       sectionMatch[1].includes('개요') ||
       sectionMatch[1].includes('메커니즘') ||
+      sectionMatch[1].includes('비교') ||
       sectionMatch[1].includes('비교표') ||
+      sectionMatch[1].includes('장단점') ||
       sectionMatch[1].includes('의미') ||
       sectionMatch[1].includes('한계성') ||
       sectionMatch[1].includes('직관적')
@@ -299,7 +301,7 @@ const parseOverviewContent = (content) => {
         currentKey = 'definition';
       } else if (rawKey.includes('메커니즘')) {
         currentKey = 'mechanism';
-      } else if (rawKey.includes('비교표')) {
+      } else if (rawKey.includes('비교') || rawKey.includes('비교표') || rawKey.includes('장단점')) {
         currentKey = 'comparison';
       } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
         currentKey = 'significance';
