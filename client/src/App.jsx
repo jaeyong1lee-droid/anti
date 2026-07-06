@@ -264,9 +264,12 @@ const parseOverviewContent = (content) => {
   const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
   if (!content) return result;
 
-  // [자가 복구 필터] 백엔드 치화 과정에서 뭉개져 사라진 마크다운 테이블 개행 복원
+  // [자가 복구 필터] 백엔드 치화 과정에서 뭉개져 사라진 행 간 개행 및 마크다운 테이블 개행 전면 복원
   let healedContent = content;
   if (typeof healedContent === 'string') {
+    // 1단계: 뭉개져서 한 줄로 합쳐진 개요/메커니즘/비교표/의미/직관적 행 경계에 개행 삽입
+    healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+    // 2단계: 테이블 내부의 뭉개진 파이프라인 개행 복원
     healedContent = healedContent.replace(/\|\s*\|\s*(구분|:---|정의|물리적|활용|파괴면|응력상태|배수제어|적용|대상|장점|단점|적용 지반|주요 기전|강도 발현)/gi, '\n| $1');
   }
 
@@ -25568,7 +25571,7 @@ ${itemsStr}
                                             <div className="flex flex-col gap-1 w-full">
                                               {steps.map((step, sIdx) => (
                                                 <React.Fragment key={sIdx}>
-                                                  <div className="bg-slate-900/60 border border-slate-800/80 px-2.5 py-3 sm:p-3.5 rounded-xl text-slate-250 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                                                  <div className="text-slate-250 text-xs sm:text-sm font-semibold leading-relaxed py-1 px-0.5">
                                                     <div className="flex gap-2.5 items-start">
                                                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
                                                         {sIdx + 1}
@@ -28352,7 +28355,7 @@ ${itemsStr}
                         <div className="flex flex-col gap-1.5 w-full">
                           {steps.map((step, sIdx) => (
                             <React.Fragment key={sIdx}>
-                              <div className="bg-slate-955/60 border border-slate-800/80 p-3.5 rounded-xl text-slate-200 text-xs sm:text-sm font-semibold shadow-inner leading-relaxed">
+                              <div className="text-slate-200 text-xs sm:text-sm font-semibold leading-relaxed py-1 px-0.5">
                                 <div className="flex gap-2.5 items-start">
                                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
                                     {sIdx + 1}
