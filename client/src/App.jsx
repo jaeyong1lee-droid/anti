@@ -5921,6 +5921,8 @@ export default function App() {
   const examSplitContainerRef = useRef(null);
   const [formulaQuestions, setFormulaQuestions] = useState([]);
   const [generatingTipIds, setGeneratingTipIds] = useState({});
+  const [editingTipIdx, setEditingTipIdx] = useState(null);
+  const [editingTipText, setEditingTipText] = useState('');
   const [loadingFormula, setLoadingFormula] = useState(false);
   const [formulaSubTab, setFormulaSubTab] = useState(() => localStorage.getItem('anti_formula_subtab') || 'formula');
   const [formulaTables, setFormulaTables] = useState([]);
@@ -25796,10 +25798,65 @@ ${itemsStr}
 
                                                                     {q.memorizationTip ? (
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">
-                                      <span className="text-[10px] font-black text-emerald-400 font-extrabold">💡 공식 암기 팁: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
-                                        <LatexRenderer text={q.memorizationTip} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
-                                      </div>
+                                      <span className="text-[10px] font-black text-emerald-400 font-extrabold flex items-center gap-1 select-none">
+                                        💡 공식 암기 팁:
+                                        {editingTipIdx !== idx && (
+                                          <span 
+                                            className="text-[9px] text-slate-500 font-normal hover:text-rose-400 cursor-pointer ml-1" 
+                                            onClick={() => {
+                                              setEditingTipIdx(idx);
+                                              setEditingTipText(q.memorizationTip || '');
+                                            }}
+                                          >
+                                            (✏️ 수정)
+                                          </span>
+                                        )}
+                                      </span>
+                                      {editingTipIdx === idx ? (
+                                        <div className="space-y-2 mt-1">
+                                          <textarea
+                                            value={editingTipText}
+                                            onChange={(e) => setEditingTipText(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-rose-500 min-h-[60px] font-sans"
+                                            autoFocus
+                                            placeholder="암기 비법을 직접 입력하거나 수정하세요."
+                                          />
+                                          <div className="flex justify-end gap-1.5">
+                                            <button
+                                              onClick={() => {
+                                                const trimmed = editingTipText.trim();
+                                                setFormulaQuestions(prev => {
+                                                  const updated = prev.map((item, i) => i === idx ? { ...item, memorizationTip: trimmed } : item).map(healFormulaQuestionObject);
+                                                  handleSaveFormulaQuestions(updated, false);
+                                                  return updated;
+                                                });
+                                                setEditingTipIdx(null);
+                                                showNotification('공식 암기 팁이 수정되었습니다.', 'success');
+                                              }}
+                                              className="px-2.5 py-1 bg-emerald-900/60 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold rounded hover:bg-emerald-800/60 transition-colors shrink-0 cursor-pointer"
+                                            >
+                                              저장
+                                            </button>
+                                            <button
+                                              onClick={() => setEditingTipIdx(null)}
+                                              className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
+                                            >
+                                              취소
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div 
+                                          onDoubleClick={() => {
+                                            setEditingTipIdx(idx);
+                                            setEditingTipText(q.memorizationTip || '');
+                                          }}
+                                          className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full cursor-pointer hover:bg-slate-900/60 transition-colors"
+                                          title="더블클릭하여 암기 팁 수정"
+                                        >
+                                          <LatexRenderer text={q.memorizationTip} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
+                                        </div>
+                                      )}
                                     </div>
                                   ) : (
                                     <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-900/20 rounded-xl border border-slate-800/40 select-none">

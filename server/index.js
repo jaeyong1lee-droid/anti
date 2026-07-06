@@ -6752,7 +6752,8 @@ JSON 포맷 규격:
 {
   "title": "해당 수식이 상징하는 가장 적절하고 간결한 전공 공식 명칭입니다. 반드시 한글(영어 전공명) 표준 포맷으로 한 줄 작명해야 합니다. 조사, 서술어 등 미사여구는 일체 배제하십시오. 공식에 학자명이 연관된 경우 반드시 사람이름을 전방 한글명에 무조건 추가하십시오. 예시: 테르자기 1차 압밀방정식(Terzaghi 1D Consolidation), 바톤 암반 Q분류(Barton Q-system)",
   "concept": "이 공식이 상징하는 공학적 의미를 수험생이 쉽게 이해할 수 있도록 친절하게 설명하는 1~2문장의 공학 개념 설명입니다. 수식의 본질적 존재 이유와 실무 공학적 의의를 명확히 작성하십시오.",
-  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 분석한 설명 리스트입니다. 반드시 제공된 공식에 실제 표기된 기호에 한해서만 정의 목록을 작성하십시오. 사족 문장 없이 마크다운 불릿 리스트 형태로만 반환하십시오."
+  "structure": "이 공식에 포함된 각각의 기호, 변수, 상수가 무엇을 의미하는지 공학적으로 분석한 설명 리스트입니다. 반드시 제공된 공식에 실제 표기된 기호에 한해서만 정의 목록을 작성하십시오. 사족 문장 없이 마크다운 불릿 리스트 형태로만 반환하십시오.",
+  "memorizationTip": "이 공식을 수험생이 쉽게 연상하여 외울 수 있도록 돕는 기발하고 직관적인 암기법(연상법) 또는 공식 암기 팁(1~2줄)입니다. 예시: \"💡 **암기 팁**: ... 연상법: \\\"알제이(RQD/Jn)가 제이아(Jr/Ja)를 만나...\\\"\""
 }
 
 ${LATEX_PROMPT_INSTRUCTIONS}`;
@@ -6809,7 +6810,8 @@ ${LATEX_PROMPT_INSTRUCTIONS}`;
         res.json({
           title: result.title ? healLatexFormulas(result.title.replace(/^["'`\s\t\n]+|["'`\s\t\n]+$/g, '').trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.title.trim()) : '실시간 추출 공식'),
           concept: result.concept ? healLatexFormulas(result.concept.trim()) : (bestLocalMatch ? healLatexFormulas(bestLocalMatch.concept.trim()) : '실시간 공식 튜터링 대화에서 개별 추출된 전공 공식입니다.'),
-          structure: healLatexFormulas(structure)
+          structure: healLatexFormulas(structure),
+          memorizationTip: result.memorizationTip ? healLatexFormulas(result.memorizationTip.trim()) : undefined
         });
       } catch (parseErr) {
         console.warn('JSON parsing failed, falling back to plaintext parse or local dictionary:', parseErr);
