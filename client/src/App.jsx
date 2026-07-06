@@ -60,6 +60,31 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
+
+// 공식 암기 팁 텍스트에서 연상법: 및 중복 수식($, $)을 필터링하여 순수 암기 문구만 노출하는 헬퍼 함수
+const cleanMemorizationTipText = (tip) => {
+  if (!tip) return '';
+  let clean = tip;
+  
+  // 1) $ ... $ 로 된 수식 블록과 그 안의 내용 통째로 제거
+  clean = clean.replace(/\$\$\s*[\s\S]*?\s*\$\$/g, '');
+  
+  // 2) $ ... $ 로 된 인라인 수식 블록과 그 안의 내용 통째로 제거
+  clean = clean.replace(/\$[^$]+?\$/g, '');
+  
+  // 3) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
+  clean = clean.replace(/연상법\s*:\s*[\s\S]*?(\n|$)/gi, '');
+
+  // 4) 중복된 암기 팁: 헤더 문구 제거
+  clean = clean.replace(/💡\s*\*\*암기\s*팁\*\*:\s*/gi, '');
+  clean = clean.replace(/💡\s*암기\s*팁\s*:\s*/gi, '');
+  
+  // 5) 쓸데없는 개행 문자 및 트리밍 정리
+  clean = clean.replace(/\n\s*\n+/g, '\n').trim();
+  
+  return clean;
+};
+
 // ── Lazy-loaded heavy components (excluded from initial bundle) ──
 const FloatingCalculator = React.lazy(() =>
   import('./components/ScientificCalculator').then(m => ({ default: m.FloatingCalculator }))
@@ -25898,7 +25923,7 @@ ${itemsStr}
                                           className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full cursor-pointer hover:bg-slate-900/60 transition-colors"
                                           title="클릭하여 암기 팁 수정"
                                         >
-                                          <LatexRenderer text={q.memorizationTip} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
+                                          <LatexRenderer text={cleanMemorizationTipText(q.memorizationTip)} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 공식 암기 팁"} />
                                         </div>
                                       )}
                                     </div>
