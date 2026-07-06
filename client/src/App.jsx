@@ -288,16 +288,21 @@ const parseOverviewContent = (content) => {
     // 신규 섹션 키 감지 정규식 (뒤의 파이프가 유실된 경우도 매칭할 수 있도록 greedy 및 선택적 파이프 적용)
     const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
     
-    if (sectionMatch && (
-      sectionMatch[1].includes('개요') ||
-      sectionMatch[1].includes('메커니즘') ||
-      sectionMatch[1].includes('비교') ||
-      sectionMatch[1].includes('비교표') ||
-      sectionMatch[1].includes('장단점') ||
-      sectionMatch[1].includes('의미') ||
-      sectionMatch[1].includes('한계성') ||
-      sectionMatch[1].includes('직관적')
-    )) {
+    const rawKeyCandidate = sectionMatch ? sectionMatch[1].trim() : '';
+    const isTopLevelKey = 
+      rawKeyCandidate === '개요' || 
+      rawKeyCandidate.startsWith('개요(') || 
+      rawKeyCandidate === '메커니즘' || 
+      rawKeyCandidate === '비교표' || 
+      rawKeyCandidate === '비교' || 
+      rawKeyCandidate === '장단점' || 
+      rawKeyCandidate === '공학적 의미/한계성' || 
+      rawKeyCandidate === '공학적 의미 및 한계성' || 
+      rawKeyCandidate === '의미/한계성' || 
+      rawKeyCandidate === '직관적의미' || 
+      rawKeyCandidate === '직관적';
+
+    if (sectionMatch && isTopLevelKey) {
       const rawKey = sectionMatch[1].trim();
       let rawVal = sectionMatch[2].trim();
       
