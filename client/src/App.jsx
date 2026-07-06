@@ -15170,22 +15170,7 @@ ${itemsStr}
     }
   }, [showFormulaExam, formulaQuestions, initializeFormulaQuiz]);
 
-  // 핸드폰/PC 크로스 디바이스 실시간 자동 동기화 (탭 포커스 이동 시 서버 세션 실시간 새로고침)
-  useEffect(() => {
-    const handleAutoSync = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[Sync] Window visible. Auto-syncing formula data from server...');
-        loadFormulaQuestions().catch(e => console.warn('Auto-sync questions failed:', e));
-        loadFormulaTables().catch(e => console.warn('Auto-sync tables failed:', e));
-      }
-    };
-    document.addEventListener('visibilitychange', handleAutoSync);
-    window.addEventListener('focus', handleAutoSync);
-    return () => {
-      document.removeEventListener('visibilitychange', handleAutoSync);
-      window.removeEventListener('focus', handleAutoSync);
-    };
-  }, []);
+
 
   const loadFormulaQuestions = async () => {
     setLoadingFormula(true);
