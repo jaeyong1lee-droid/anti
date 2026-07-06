@@ -66,7 +66,7 @@ const cleanMemorizationTipText = (tip) => {
   if (!tip) return '';
   let clean = tip;
   
-  // 1) 디스플레이 수식 블록($ ... $)과 그 안의 내용 통째로 제거 (중복 이미지 방지)
+  // 1) 디스플레이 수식 블록($ ... $)과 그 안의 내용만 통째로 제거하여 큰 중복 이미지 출력을 방지합니다.
   clean = clean.replace(/\$\$\s*[\s\S]*?\s*\$\$/g, '');
   
   // 2) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
@@ -76,8 +76,7 @@ const cleanMemorizationTipText = (tip) => {
   clean = clean.replace(/💡\s*\*\*암기\s*팁\*\*:\s*/gi, '');
   clean = clean.replace(/💡\s*암기\s*팁\s*:\s*/gi, '');
   
-  // 4) 인라인 수식 기호($)만 제거하여 괄호 안의 문자들(T_s, cos, alpha 등)을 텍스트로 보존함!
-  clean = clean.replace(/\$/g, '');
+  // 4) 인라인 수식 기호($) 및 그 안의 식들은 LatexRenderer가 이쁘게 수학 폰트로 그리도록 그대로 보존(유지)합니다.
   
   // 5) 쓸데없는 개행 문자 및 트리밍 정리
   clean = clean.replace(/\n\s*\n+/g, '\n').trim();
