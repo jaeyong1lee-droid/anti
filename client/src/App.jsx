@@ -25913,7 +25913,7 @@ ${itemsStr}
                                             setEditingTipIdx(idx);
                                             setEditingTipText(q.memorizationTip || '');
                                           }}
-                                          className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full cursor-pointer hover:bg-slate-900/60 transition-colors"
+                                          className="text-sm text-slate-200 leading-relaxed text-left w-full cursor-pointer hover:text-emerald-400 transition-colors py-1.5 px-0.5"
                                           title="클릭하여 암기 팁 수정"
                                         >
                                           {q.memorizationTip ? (
@@ -25930,7 +25930,7 @@ ${itemsStr}
                                   {q.formula ? (
                                     <div className="space-y-1 pt-2 border-t border-slate-800/80">
                                       <span className="text-[10px] font-black text-rose-400 font-extrabold">📐 대표 공식 및 기호 정의: </span>
-                                      <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full">
+                                      <div className="text-sm text-slate-200 leading-relaxed text-left w-full py-1 px-0.5">
                                         <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                       </div>
                                     </div>
