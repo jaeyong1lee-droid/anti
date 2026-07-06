@@ -6021,7 +6021,14 @@ export default function App() {
   const [loadingFormulaImages, setLoadingFormulaImages] = useState(false);
   const [editingOverviewId, setEditingOverviewId] = useState(null);
   const [editingOverviewText, setEditingOverviewText] = useState('');
-  const [expandedOverviewIds, setExpandedOverviewIds] = useState({});
+  const [expandedOverviewIds, setExpandedOverviewIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_expanded_overview_ids');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
   const [expandedTableIds, setExpandedTableIds] = useState({});
@@ -15914,6 +15921,10 @@ ${itemsStr}
   useEffect(() => {
     localStorage.setItem('anti_formula_subtab', formulaSubTab);
   }, [formulaSubTab]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_expanded_overview_ids', JSON.stringify(expandedOverviewIds));
+  }, [expandedOverviewIds]);
 
   const handleOpenTheoryExam = async () => {};
   const _handleOpenTheoryExam_unused = async () => {
