@@ -949,7 +949,7 @@ div[class*="overflow-y-auto"] {
   .table-quiz-table,
   .table-quiz-container table {
     table-layout: fixed !important; /* enforce strict column widths with horizontal scroll */
-    width: max-content !important; /* enforce sum of individual column widths on mobile */
+    width: var(--table-width, max-content) !important; /* enforce sum of individual column widths on mobile */
   }
 
   .table-quiz-container th:not(:first-child),

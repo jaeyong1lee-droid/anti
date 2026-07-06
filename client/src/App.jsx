@@ -2497,6 +2497,39 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
   }, [questionIdx]);
 
+  const resetMobileColWidths = React.useCallback(() => {
+    const defaultFirst = '120px';
+    const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    localStorage.removeItem(storageKeyFirst);
+    
+    for (let i = 1; i < colCount; i++) {
+      const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+      localStorage.removeItem(storageKeyOther);
+    }
+    
+    setMobileColWidths(prev => {
+      const next = [defaultFirst];
+      for (let i = 1; i < colCount; i++) {
+        next.push('140px');
+      }
+      return next;
+    });
+
+    window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+      detail: { questionIdx, width: defaultFirst }
+    }));
+  }, [questionIdx, colCount]);
+
+  const lastTapRef = React.useRef(0);
+  const handleHeaderClick = React.useCallback(() => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      resetMobileColWidths();
+    }
+    lastTapRef.current = now;
+  }, [resetMobileColWidths]);
+
   const tableRef = React.useRef(null);
 
   const startColumnResize = React.useCallback((e, idx, isTouch) => {
@@ -2607,7 +2640,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
         }`}
         style={isMobileView ? {
-          width: mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) + 'px',
+          '--table-width': `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
         } : undefined}
       >
@@ -2619,7 +2652,9 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
               style={{ 
                 // 모바일에선 mobileColWidths를 col에 직접 적용 (CSS var()는 col에 cascade 불안정)
                 width: isMobileView
-                  ? (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w))
+                  ? (idx === colCount - 1
+                      ? 'auto'
+                      : (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
                   : (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
@@ -2633,8 +2668,10 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                 <th 
                   key={hIdx} 
                   className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
-                    isFirstCol ? 'text-left break-all' : ''
+                    isFirstCol ? 'text-left break-all cursor-pointer' : ''
                   }`}
+                  onClick={isFirstCol ? handleHeaderClick : undefined}
+                  title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
                   {hIdx < colCount - 1 && (
@@ -3064,6 +3101,39 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
     return () => window.removeEventListener('firstColWidthChanged', handleWidthChange);
   }, [questionIdx]);
 
+  const resetMobileColWidths = React.useCallback(() => {
+    const defaultFirst = '120px';
+    const storageKeyFirst = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    localStorage.removeItem(storageKeyFirst);
+    
+    for (let i = 1; i < colCount; i++) {
+      const storageKeyOther = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+      localStorage.removeItem(storageKeyOther);
+    }
+    
+    setMobileColWidths(prev => {
+      const next = [defaultFirst];
+      for (let i = 1; i < colCount; i++) {
+        next.push('140px');
+      }
+      return next;
+    });
+
+    window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+      detail: { questionIdx, width: defaultFirst }
+    }));
+  }, [questionIdx, colCount]);
+
+  const lastTapRef = React.useRef(0);
+  const handleHeaderClick = React.useCallback(() => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      resetMobileColWidths();
+    }
+    lastTapRef.current = now;
+  }, [resetMobileColWidths]);
+
   const tableRef = React.useRef(null);
 
   const startColumnResize = React.useCallback((e, idx, isTouch) => {
@@ -3174,7 +3244,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
         }`}
         style={isMobileView ? {
-          width: mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0) + 'px',
+          '--table-width': `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
         } : undefined}
       >
@@ -3186,7 +3256,9 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
               style={{ 
                 // 모바일에선 mobileColWidths를 col에 직접 적용 (CSS var()는 col에 cascade 불안정)
                 width: isMobileView
-                  ? (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w))
+                  ? (idx === colCount - 1
+                      ? 'auto'
+                      : (mobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
                   : (typeof w === 'number' ? `${w}%` : w)
               }} 
             />
@@ -3200,8 +3272,10 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
                 <th 
                   key={hIdx} 
                   className={`relative p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text ${
-                    isFirstCol ? 'text-left break-all' : ''
+                    isFirstCol ? 'text-left break-all cursor-pointer' : ''
                   }`}
+                  onClick={isFirstCol ? handleHeaderClick : undefined}
+                  title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
                 >
                   <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
                   {hIdx < colCount - 1 && (
