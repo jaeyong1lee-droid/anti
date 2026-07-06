@@ -25592,22 +25592,21 @@ ${itemsStr}
                                           </div>
                                         )}
 
-                                        {/* 비교표 */}
-                                        {parsed.comparison && (
-                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
-                                            <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
-                                            <div className="text-slate-250 leading-relaxed font-semibold">
-                                              <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* 공학적 의미/한계성 */}
-                                        {parsed.significance && (
+                                        {/* 공학적 의미/한계성 (비교표 포함) */}
+                                        {(parsed.significance || parsed.comparison) && (
                                           <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
-                                            <div className="text-slate-250 leading-relaxed font-semibold">
-                                              <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                                            <div className="text-slate-250 leading-relaxed font-semibold space-y-3">
+                                              {parsed.significance && (
+                                                <div>
+                                                  <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                                                </div>
+                                              )}
+                                              {parsed.comparison && (
+                                                <div className="mt-2.5">
+                                                  <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         )}
@@ -28375,19 +28374,23 @@ ${itemsStr}
                         </div>
                       </div>
                     )}
-                    {parsed.comparison && (
-                      <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
-                        <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
-                          <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
-                        </div>
-                      </div>
-                    )}
-                    {parsed.significance && (
+                    {(parsed.significance || parsed.comparison) && (
                       <div className="text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
-                        <div className="text-slate-250 text-sm leading-relaxed font-semibold">
-                          <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                        <div className="text-slate-250 text-sm leading-relaxed font-semibold space-y-3">
+                          {parsed.significance && (
+                            <div>
+                              <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                            </div>
+                          )}
+                          {parsed.comparison && (
+                            <div className="mt-2.5 bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl">
+                              <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 개념 비교 및 장단점</span>
+                              <div className="text-slate-250 text-xs sm:text-sm leading-relaxed font-semibold">
+                                <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
