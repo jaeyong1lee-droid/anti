@@ -1418,6 +1418,29 @@ export function healQuizQuestionObject(q) {
           }
         });
       });
+    // [🚨 지반공학 도메인 특화 자가치료 패치 🚨]
+    // 이방성 유선망 작도 퀴즈(또는 침투/유선망 관련 퀴즈)에서 등방성 지반(A)/(C) 칸의 정답이 이방성 관련 내용(예: 좌표 변환, 기하평균, Keq 등)으로 오매핑되어 있는 경우 강제 교정
+    if (q.question && (q.question.includes('이방성') || q.question.includes('유선망')) && q.answers) {
+      const answers = q.answers;
+      Object.keys(answers).forEach(key => {
+        const val = (answers[key] || '').trim();
+        // 등방성 지반 작도 원리 (A) 교정
+        if (key === 'INPUT_1' || key === 'INPUT_2_1') {
+          if (val.includes('좌표') || val.includes('변환') || val.includes('왜곡') || val.includes('이방성')) {
+            answers[key] = '별도 보정 없이 유선망 작도 (기하학적 왜곡 없음, 유선과 등수두선 직교)';
+            console.log(`[Geotechnical Domain Patch] Fixed anisotropic mapping leakage on ${key} -> ${answers[key]}`);
+          }
+        }
+        // 등방성 지반 투수계수 산정 (C) 교정
+        if (key === 'INPUT_3' || key === 'INPUT_3_1') {
+          if (val.includes('이방성') || val.includes('기하평균') || val.includes('ke') || val.includes('K_e') || val.includes('k_e')) {
+            answers[key] = '단일 투수계수 k 직접 적용 (수평과 연직 투수계수가 같음)';
+            console.log(`[Geotechnical Domain Patch] Fixed anisotropic mapping leakage on ${key} -> ${answers[key]}`);
+          }
+        }
+      });
+    }
+
     }
   }
   return healDeep(q);
