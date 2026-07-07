@@ -4004,7 +4004,8 @@ app.post('/api/question/regenerate', async (req, res) => {
   };
   if (progressId) {
     const targetQText = allQuestions && allQuestions[questionIdx] ? allQuestions[questionIdx].question : '재출제';
-    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, targetQText, GENERATION_STANDARDS, 'generation');
+    // [성능 최적화] 문항 재생성 시 0단계 지침 분석은 생략하여 Vercel 서버리스 타임아웃 방지
+    standardsAnalysis = '- 문항 재생성을 위해 0단계 사전 지침 분석은 생략하고 즉시 재생성 단계로 진입합니다.';
     progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 문항 재생성 시작...', 50, 1500, 5);
   }
 

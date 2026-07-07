@@ -1236,12 +1236,36 @@ export function healQuizQuestionObject(q) {
           if (foundVal === undefined && matchedNum !== null) {
             const letterKey = String.fromCharCode(64 + matchedNum); // A, B, C...
             foundVal = lookup(letterKey) ?? lookup(letterKey.toLowerCase()) ?? lookup(`INPUT_${matchedNum}`) ?? lookup(`input_${matchedNum}`) ?? lookup(matchedNum) ?? lookup(String(matchedNum));
+            
+            // Suffix-based recovery (e.g., match INPUT_2_1 for matchedNum = 1)
+            if (foundVal === undefined) {
+              const matchedKey = Object.keys(oldAnswers).find(key => {
+                const parts = key.split('_');
+                const lastPart = parts[parts.length - 1];
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === matchedNum;
+              });
+              if (matchedKey) {
+                foundVal = oldAnswers[matchedKey];
+              }
+            }
           }
 
           // 3. Sequential fallback based on currentCount
           if (foundVal === undefined) {
             const seqLetter = String.fromCharCode(64 + currentCount); // A, B, C...
             foundVal = lookup(`INPUT_${currentCount}`) ?? lookup(`input_${currentCount}`) ?? lookup(currentCount) ?? lookup(String(currentCount)) ?? lookup(seqLetter) ?? lookup(seqLetter.toLowerCase());
+            
+            // Suffix-based recovery for sequential fallback (e.g., match INPUT_2_1 for currentCount = 1)
+            if (foundVal === undefined) {
+              const matchedKey = Object.keys(oldAnswers).find(key => {
+                const parts = key.split('_');
+                const lastPart = parts[parts.length - 1];
+                return parts[0].toLowerCase() === 'input' && parseInt(lastPart, 10) === currentCount;
+              });
+              if (matchedKey) {
+                foundVal = oldAnswers[matchedKey];
+              }
+            }
           }
 
           if (foundVal !== undefined) {
