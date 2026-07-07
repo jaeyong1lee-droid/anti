@@ -26169,8 +26169,8 @@ ${itemsStr}
                                             return (
                                               <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5 w-full">
                                                 <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                                                <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto">
-                                                  <table className="w-full text-center border-collapse text-[12px] sm:text-[14px] min-w-[320px]">
+                                                <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin">
+                                                  <table className="w-full text-center border-collapse text-[12px] sm:text-[14px] min-w-[500px] md:min-w-full">
                                                     <thead>
                                                       <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                                         {headers.map((h, hIdx) => (
@@ -26207,7 +26207,7 @@ ${itemsStr}
                                                                           showNotification('행이 삭제되었습니다.', 'info');
                                                                         }
                                                                       }}
-                                                                      className="p-1 rounded bg-slate-800 hover:bg-rose-955/80 text-slate-400 hover:text-rose-455 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20 opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                                                                      className="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center shrink-0"
                                                                       title="행 삭제"
                                                                     >
                                                                       <Trash2 size={11} />
