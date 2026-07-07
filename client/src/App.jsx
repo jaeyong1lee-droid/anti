@@ -26184,11 +26184,114 @@ ${itemsStr}
                                                   <table className="w-[calc(100%+64px)] md:w-full text-center border-collapse text-[12px] sm:text-[14px] min-w-[calc(100%+64px)] md:min-w-full">
                                                     <thead>
                                                       <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-                                                        {headers.map((h, hIdx) => (
-                                                          <th key={hIdx} className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam) && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} select-text whitespace-normal break-words`}>
-                                                            <LatexRenderer text={h} katexLoaded={katexLoaded} />
-                                                          </th>
-                                                        ))}
+                                                        {headers.map((h, hIdx) => {
+                                                          const isEditing = activeEditCell && activeEditCell.tableId === ov.id && activeEditCell.type === 'overview-header' && activeEditCell.colIdx === hIdx;
+                                                          return (
+                                                            <th 
+                                                              key={hIdx} 
+                                                              className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam) && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} cursor-pointer whitespace-normal break-words min-w-[90px]`}
+                                                              onClick={() => {
+                                                                if (!isEditing) {
+                                                                  setActiveEditCell({ tableId: ov.id, type: 'overview-header', colIdx: hIdx });
+                                                                  setEditingCellValue(h);
+                                                                }
+                                                              }}
+                                                            >
+                                                              {isEditing ? (
+                                                                <textarea
+                                                                  value={editingCellValue}
+                                                                  onChange={(e) => {
+                                                                    setEditingCellValue(e.target.value);
+                                                                    e.target.style.height = 'auto';
+                                                                    e.target.style.height = `${e.target.scrollHeight}px`;
+                                                                  }}
+                                                                  onBlur={() => {
+                                                                    const updatedHeaders = headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
+                                                                    const newCompTableMd = rebuildMarkdownTable(updatedHeaders, rows, '<br>');
+                                                                    let newContent = ov.content;
+                                                                    let replaced = false;
+                                                                    
+                                                                    const lines = ov.content.split('\n');
+                                                                    const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+                                                                    
+                                                                    if (compIdx !== -1) {
+                                                                      const line = lines[compIdx].trim();
+                                                                      const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                                                                      if (match) {
+                                                                        lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                                                                        newContent = lines.join('\n');
+                                                                        replaced = true;
+                                                                      }
+                                                                    }
+                                                                    if (!replaced) {
+                                                                      const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                                                                      if (match) {
+                                                                        let nestedPart = match[3].trim();
+                                                                        if (nestedPart.endsWith('|')) {
+                                                                          nestedPart = nestedPart.slice(0, -1).trim();
+                                                                        }
+                                                                        newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                                                                        replaced = true;
+                                                                      }
+                                                                    }
+                                                                    
+                                                                    if (replaced) {
+                                                                      const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                                      setFormulaOverviews(updated);
+                                                                      handleSaveFormulaOverviews(updated, false);
+                                                                    }
+                                                                    setActiveEditCell(null);
+                                                                  }}
+                                                                  onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                                      e.preventDefault();
+                                                                      const updatedHeaders = headers.map((hdr, idx) => idx === hIdx ? editingCellValue : hdr);
+                                                                      const newCompTableMd = rebuildMarkdownTable(updatedHeaders, rows, '<br>');
+                                                                      let newContent = ov.content;
+                                                                      let replaced = false;
+                                                                      
+                                                                      const lines = ov.content.split('\n');
+                                                                      const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+                                                                      
+                                                                      if (compIdx !== -1) {
+                                                                        const line = lines[compIdx].trim();
+                                                                        const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                                                                        if (match) {
+                                                                          lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                                                                          newContent = lines.join('\n');
+                                                                          replaced = true;
+                                                                        }
+                                                                      }
+                                                                      if (!replaced) {
+                                                                        const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                                                                        if (match) {
+                                                                          let nestedPart = match[3].trim();
+                                                                          if (nestedPart.endsWith('|')) {
+                                                                            nestedPart = nestedPart.slice(0, -1).trim();
+                                                                          }
+                                                                          newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                                                                          replaced = true;
+                                                                        }
+                                                                      }
+                                                                      
+                                                                      if (replaced) {
+                                                                        const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                                        setFormulaOverviews(updated);
+                                                                        handleSaveFormulaOverviews(updated, false);
+                                                                      }
+                                                                      setActiveEditCell(null);
+                                                                    }
+                                                                  }}
+                                                                  className="w-full text-center bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-extrabold p-0 text-[12px] sm:text-[14px] resize-none block align-middle overflow-hidden"
+                                                                  rows={1}
+                                                                  autoFocus
+                                                                />
+                                                              ) : (
+                                                                <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                                                              )}
+                                                            </th>
+                                                          );
+                                                        })}
                                                         {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && (
                                                           <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
                                                             비고
