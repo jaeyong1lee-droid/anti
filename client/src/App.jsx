@@ -4372,12 +4372,13 @@ export default function App() {
             
             let rowHeader = '';
             let colHeader = '';
-            if (q.tableData && q.tableData.rows && q.tableData.headers) {
-              q.tableData.rows.forEach((row) => {
+            const tData = q.tableData || q.comparisonTableData;
+            if (tData && tData.rows && tData.headers) {
+              tData.rows.forEach((row) => {
                 row.forEach((cell, colIdx) => {
                   if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
                     rowHeader = row[0] || '';
-                    colHeader = q.tableData.headers[colIdx] || '';
+                    colHeader = tData.headers[colIdx] || '';
                   }
                 });
               });
@@ -4674,7 +4675,7 @@ export default function App() {
       const isMC = q.type === '객관식' || (q.options && q.options.length > 0);
       if (isMC) {
         solved = isExam ? (examAnswers[idx] !== undefined) : (selectedAnswers[idx] !== undefined);
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
         solved = inputIds.some(inputId => tableAnswers[`${idx}_${inputId}`]);
       } else {
@@ -5592,12 +5593,13 @@ export default function App() {
 
     let rowHeader = '';
     let colHeader = '';
-    if (q.tableData && q.tableData.rows && q.tableData.headers) {
-      q.tableData.rows.forEach((row) => {
+    const tData = q.tableData || q.comparisonTableData;
+    if (tData && tData.rows && tData.headers) {
+      tData.rows.forEach((row) => {
         row.forEach((cell, colIdx) => {
           if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
             rowHeader = row[0] || '';
-            colHeader = q.tableData.headers[colIdx] || '';
+            colHeader = tData.headers[colIdx] || '';
           }
         });
       });
@@ -5730,7 +5732,7 @@ export default function App() {
         if (countVal > 0) {
           total += (sumVal / (countVal * 10)) * W;
         }
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
         let sumVal = 0;
         let countVal = inputIds.length;
@@ -5798,7 +5800,7 @@ export default function App() {
         if (isCorrect) {
           total += W;
         }
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
         let sumVal = 0;
         let countVal = inputIds.length;
@@ -9016,7 +9018,7 @@ export default function App() {
             });
             gradingPromises.push(p);
           }
-        } else if (q.tableData) {
+        } else if (q.tableData || q.comparisonTableData) {
           const inputIds = Object.keys(q.answers || {});
           let needsGrading = false;
           inputIds.forEach(inputId => {
@@ -9064,7 +9066,7 @@ export default function App() {
           if (!hasAcronym || hasEmptyRow) {
             unsolvedCount++;
           }
-        } else if (q.tableData) {
+        } else if (q.tableData || q.comparisonTableData) {
           const inputIds = Object.keys(q.answers || {});
           let hasEmpty = false;
           inputIds.forEach(inputId => {
@@ -9114,7 +9116,7 @@ export default function App() {
           if (countVal > 0) {
             totalScoreObtained += (sumVal / (countVal * 10)) * W;
           }
-        } else if (q.tableData) {
+        } else if (q.tableData || q.comparisonTableData) {
           const inputIds = Object.keys(q.answers || {});
           inputIds.forEach(inputId => {
             const grading = localGradingResults[`${idx}_${inputId}`];
@@ -9198,7 +9200,7 @@ export default function App() {
           });
           gradingPromises.push(p);
         }
-      } else if (!isMC && !q.tableData) {
+      } else if (!isMC && !q.tableData && !q.comparisonTableData) {
         const isEssay = q.type === '주관식 (서술)' || q.subtype === '서술';
         if (!isEssay) {
           const val = tableAnswers[`${idx}_INPUT`];
@@ -9215,7 +9217,7 @@ export default function App() {
             gradingPromises.push(p);
           }
         }
-      } else if (!isMC && q.tableData) {
+      } else if (!isMC && (q.tableData || q.comparisonTableData)) {
         const inputIds = Object.keys(q.answers || {});
         let needsGrading = false;
         inputIds.forEach(inputId => {
@@ -9276,7 +9278,7 @@ export default function App() {
         if (!hasAcronym || hasEmptyRow) {
           unsolvedCount++;
         }
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
         let hasEmpty = false;
         inputIds.forEach(inputId => {
@@ -9350,7 +9352,7 @@ export default function App() {
           totalScoreObtained += W;
           correctCount++;
         }
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         const inputIds = Object.keys(q.answers || {});
         let sumVal = 0;
         let countVal = inputIds.length;
@@ -12098,7 +12100,7 @@ export default function App() {
           const isCorrect = userAnswer === q.answer;
           userAttemptInfo += `■ 채점 결과: ${isCorrect ? '정답' : '오답'}\n`;
         }
-      } else if (q.tableData) {
+      } else if (q.tableData || q.comparisonTableData) {
         // 표 채우기 문항
         const inputIds = Object.keys(q.answers || {});
         if (inputIds.length > 0) {
@@ -19884,7 +19886,7 @@ ${itemsStr}
                                     );
                                   }
                                 } else {
-                                  if (q.tableData) {
+                                  if (q.tableData || q.comparisonTableData) {
                                     const inputIds = Object.keys(q.answers || {});
                                     let obtainedVal = 0;
                                     let hasGradedVal = false;
@@ -23223,7 +23225,7 @@ ${itemsStr}
                                   );
                                 }
                               } else {
-                                if (q.tableData) {
+                                if (q.tableData || q.comparisonTableData) {
                                   const inputIds = Object.keys(q.answers || {});
                                   let obtainedVal = 0;
                                   let hasGradedVal = false;
@@ -28723,7 +28725,7 @@ ${itemsStr}
                       </div>
                     )}
                     {parsed.comparison && (
-                      <div className="bg-emerald-950/10 border border-emerald-500/15 p-4 rounded-2xl text-left">
+                      <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left py-1.5 px-0.5">
                         <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                         <div className="text-slate-250 text-sm leading-relaxed font-normal">
                           <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
