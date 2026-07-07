@@ -2522,11 +2522,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
         setCompMobileColWidths(prev => {
           const next = [...prev];
-          next[idx] = `${newWidth}px`;
-          const storageKey = idx === 0 
-            ? `mobileFirstCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`
-            : `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
-          localStorage.setItem(storageKey, `${newWidth}px`);
+          if (idx === 0) {
+            next[0] = `${newWidth}px`;
+            const storageKey = `mobileFirstCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
+          } else {
+            for (let i = 1; i < compColCount; i++) {
+              next[i] = `${newWidth}px`;
+              const storageKey = `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+              localStorage.setItem(storageKey, `${newWidth}px`);
+            }
+          }
           return next;
         });
       }
@@ -2780,20 +2786,22 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         
         setMobileColWidths(prev => {
           const next = [...prev];
-          next[idx] = `${newWidth}px`;
+          if (idx === 0) {
+            next[0] = `${newWidth}px`;
+            const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
+            window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+              detail: { questionIdx, width: `${newWidth}px` }
+            }));
+          } else {
+            for (let i = 1; i < colCount; i++) {
+              next[i] = `${newWidth}px`;
+              const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+              localStorage.setItem(storageKey, `${newWidth}px`);
+            }
+          }
           return next;
         });
-
-        if (idx === 0) {
-          const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
-          localStorage.setItem(storageKey, `${newWidth}px`);
-          window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-            detail: { questionIdx, width: `${newWidth}px` }
-          }));
-        } else {
-          const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
-          localStorage.setItem(storageKey, `${newWidth}px`);
-        }
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
@@ -2847,7 +2855,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
         }`}
         style={isMobileView ? {
-          '--table-width': `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+          '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
         } : undefined}
       >
@@ -3064,7 +3072,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
           ref={compTableRef}
           className="table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full"
           style={isMobileView ? {
-            '--table-width': `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+            '--table-width': compColCount === 2 ? '100%' : `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
             minWidth: '0px'
           } : undefined}
         >
@@ -3595,20 +3603,22 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
         
         setMobileColWidths(prev => {
           const next = [...prev];
-          next[idx] = `${newWidth}px`;
+          if (idx === 0) {
+            next[0] = `${newWidth}px`;
+            const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+            localStorage.setItem(storageKey, `${newWidth}px`);
+            window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
+              detail: { questionIdx, width: `${newWidth}px` }
+            }));
+          } else {
+            for (let i = 1; i < colCount; i++) {
+              next[i] = `${newWidth}px`;
+              const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+              localStorage.setItem(storageKey, `${newWidth}px`);
+            }
+          }
           return next;
         });
-
-        if (idx === 0) {
-          const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
-          localStorage.setItem(storageKey, `${newWidth}px`);
-          window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
-            detail: { questionIdx, width: `${newWidth}px` }
-          }));
-        } else {
-          const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
-          localStorage.setItem(storageKey, `${newWidth}px`);
-        }
       } else {
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
@@ -3662,7 +3672,7 @@ const ReadOnlyTable = React.memo(function ReadOnlyTable({ tableData, katexLoaded
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
         }`}
         style={isMobileView ? {
-          '--table-width': `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+          '--table-width': colCount === 2 ? '100%' : `max(100%, ${mobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
           minWidth: '0px'
         } : undefined}
       >
