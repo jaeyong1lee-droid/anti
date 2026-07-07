@@ -2397,6 +2397,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
 
+  const containerRef = React.useRef(null);
   const { headers, rows } = q.tableData;
   const inputIds = Object.keys(q.answers || {});
 
@@ -2766,10 +2767,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                   data-answer-key={`${questionIdx}_${inputId}`}
                                   className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
                                   rows={1}
-                                  onKeyDown={(e) => {
+                                  onKeyDown={async (e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                       e.preventDefault();
+                                      const newVal = e.target.value;
+                                      if (newVal !== value) {
+                                        handleInputChange(inputId, newVal);
+                                      }
                                       e.target.blur();
+                                      if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
+                                        await gradeSingleTableCell(questionIdx, q, inputId);
+                                      }
                                     }
                                   }}
                                 />
@@ -2825,8 +2833,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 e.target.blur();
-                                if (tableRef.current) {
-                                  const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
+                                if (containerRef.current) {
+                                  const textareas = Array.from(containerRef.current.querySelectorAll('textarea'));
                                   const curIdx = textareas.indexOf(e.target);
                                   if (curIdx !== -1) {
                                     if (curIdx === textareas.length - 1) {
@@ -2928,10 +2936,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                     data-answer-key={`${questionIdx}_${inputId}`}
                                     className="table-quiz-input w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
                                     rows={1}
-                                    onKeyDown={(e) => {
+                                    onKeyDown={async (e) => {
                                       if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
+                                        const newVal = e.target.value;
+                                        if (newVal !== value) {
+                                          handleInputChange(inputId, newVal);
+                                        }
                                         e.target.blur();
+                                        if (gradeSingleTableCell && !cellGradingLoading?.[`${questionIdx}_${inputId}`]) {
+                                          await gradeSingleTableCell(questionIdx, q, inputId);
+                                        }
                                       }
                                     }}
                                   />
@@ -2983,6 +2998,17 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                   e.preventDefault();
                                   e.target.blur();
+                                  if (containerRef.current) {
+                                    const textareas = Array.from(containerRef.current.querySelectorAll('textarea'));
+                                    const curIdx = textareas.indexOf(e.target);
+                                    if (curIdx !== -1) {
+                                      if (curIdx === textareas.length - 1) {
+                                        if (onSubmit) onSubmit();
+                                      } else {
+                                        textareas[curIdx + 1].focus();
+                                      }
+                                    }
+                                  }
                                 }
                               }}
                             />
@@ -3010,7 +3036,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   ) : null;
 
   return (
-    <div className="w-full">
+    <div ref={containerRef} className="w-full">
       {mainTable}
       {compTable}
     </div>
