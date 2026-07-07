@@ -760,6 +760,14 @@ const cleanAndSanitizeMathText = (rawText) => {
   let cleaned = healCorruptedKatexHtml(rawText);
   cleaned = cleanCorruptedFormula(cleaned);
 
+  // ₩lt, \lt, &\lt 등 기괴하게 깨진 HTML 엔티티 및 이스케이프 부등호 기호를 표준 < 및 > 기호로 정밀 복원
+  cleaned = cleaned.replace(/&\s*\\lt\b/gi, '<')
+                   .replace(/&\s*\\gt\b/gi, '>')
+                   .replace(/&\s*lt\b/gi, '<')
+                   .replace(/&\s*gt\b/gi, '>')
+                   .replace(/\\lt\b/gi, '<')
+                   .replace(/\\gt\b/gi, '>');
+
   cleaned = cleaned.replace(/&amp;lt;/g, '<')
                    .replace(/&amp;gt;/g, '>')
                    .replace(/&amp;quot;/g, '"')
