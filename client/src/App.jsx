@@ -26203,13 +26203,15 @@ ${itemsStr}
                                                     <thead>
                                                       <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                                         {headers.map((h, hIdx) => (
-                                                          <th key={hIdx} className="p-2 sm:p-2.5 font-extrabold border-r border-slate-800 select-text whitespace-normal break-words">
+                                                          <th key={hIdx} className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} select-text whitespace-normal break-words`}>
                                                             <LatexRenderer text={h} katexLoaded={katexLoaded} />
                                                           </th>
                                                         ))}
-                                                        <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
-                                                          비고
-                                                        </th>
+                                                        {!(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                                                          <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
+                                                            비고
+                                                          </th>
+                                                        )}
                                                       </tr>
                                                     </thead>
                                                     <tbody>
@@ -26217,6 +26219,7 @@ ${itemsStr}
                                                         <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
                                                           {row.map((cell, cIdx) => {
                                                             const isHeader = cIdx === 0;
+                                                            const isMixed = selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_');
                                                             if (isHeader) {
                                                               return (
                                                                 <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
@@ -26225,33 +26228,35 @@ ${itemsStr}
                                                               );
                                                             }
                                                             return (
-                                                              <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
+                                                              <td key={cIdx} className={`p-2 sm:p-2.5 border-r border-slate-800 ${isMixed && cIdx === row.length - 1 ? 'last:border-r-0' : ''} text-slate-200 select-text whitespace-normal break-words align-middle text-center`}>
                                                                 <LatexRenderer text={cell} katexLoaded={katexLoaded} />
                                                               </td>
                                                             );
                                                           })}
-                                                          <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
-                                                            <button
-                                                              onClick={() => {
-                                                                if (window.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
-                                                                  const updatedRows = rows.filter((_, idx) => idx !== rIdx);
-                                                                  const newCompTableMd = rebuildMarkdownTable(headers, updatedRows);
-                                                                  let newContent = ov.content;
-                                                                  if (parsed.comparison) {
-                                                                    newContent = ov.content.replace(parsed.comparison.trim(), newCompTableMd.trim());
+                                                          {!(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                                                            <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
+                                                              <button
+                                                                onClick={() => {
+                                                                  if (window.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
+                                                                    const updatedRows = rows.filter((_, idx) => idx !== rIdx);
+                                                                    const newCompTableMd = rebuildMarkdownTable(headers, updatedRows);
+                                                                    let newContent = ov.content;
+                                                                    if (parsed.comparison) {
+                                                                      newContent = ov.content.replace(parsed.comparison.trim(), newCompTableMd.trim());
+                                                                    }
+                                                                    const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                                    setFormulaOverviews(updated);
+                                                                    handleSaveFormulaOverviews(updated, false);
+                                                                    showNotification('행이 삭제되었습니다.', 'info');
                                                                   }
-                                                                  const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
-                                                                  setFormulaOverviews(updated);
-                                                                  handleSaveFormulaOverviews(updated, false);
-                                                                  showNotification('행이 삭제되었습니다.', 'info');
-                                                                }
-                                                              }}
-                                                              className="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
-                                                              title="행 삭제"
-                                                            >
-                                                              <Trash2 size={11} />
-                                                            </button>
-                                                          </td>
+                                                                }}
+                                                                className="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0"
+                                                                title="행 삭제"
+                                                              >
+                                                                <Trash2 size={11} />
+                                                              </button>
+                                                            </td>
+                                                          )}
                                                         </tr>
                                                       ))}
                                                     </tbody>
