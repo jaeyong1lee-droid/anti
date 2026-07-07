@@ -4030,10 +4030,11 @@ app.post('/api/question/regenerate', async (req, res) => {
         systemPrompt = `당신은 지반공학 기술사 시험 전문 튜터이자 출제위원입니다.
 제공된 비교/대비 표 데이터를 기반으로, 수험생이 학습할 수 있는 참신한 표 빈칸 채우기(Table Quiz) 문항을 새로 구성하여 출제해 주십시오.
 
-[🚨 문제 생성 절대 준수 지침]:
+[🚨 문제 생성 절대 준수 지침 (AI 출제위원 최우선 준수 헌법 #1)]:
+아래 지침 목록은 당신의 문제 생성/변환 행동을 구속하는 최고 순위의 헌법적 철칙입니다. 다른 어떤 공학적 유연성이나 논리보다 아래 지침을 100% 최우선으로 반영하여 충족시켜야 합니다:
 ${GENERATION_STANDARDS}
 
-[🚨 지반공학 표준 이론 및 계산 기준]:
+[🚨 지반공학 표준 이론 및 계산 기준 (AI 출제위원 최우선 준수 헌법 #1)]:
 ${ENGINEERING_STANDARDS}
 
 [출제 규칙]:
@@ -4470,9 +4471,12 @@ ${sourceQuestionExplanation ? `- 기존 해설: ${sourceQuestionExplanation}` : 
 ${typeRequirement}
 
 ${topicInstructionsPrompt}
+[🚨 문제 생성 절대 준수 지침 (AI 출제위원 최우선 준수 헌법 #1)]:
+아래 지침 목록은 최고 순위의 헌법적 철칙입니다. 100% 최우선으로 반영하십시오:
 ${GENERATION_STANDARDS}
 
 ${LATEX_PROMPT_INSTRUCTIONS}
+[🚨 지반공학 표준 이론 및 계산 기준 (AI 출제위원 최우선 준수 헌법 #1)]:
 ${ENGINEERING_STANDARDS}
 - 마크다운 블록 (\`\`\`json) 등 불필요한 설명은 제거하고 오직 순수 JSON 객체만 반환하십시오.
 
