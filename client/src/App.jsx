@@ -3571,6 +3571,14 @@ function parseMarkdownTable(questionText) {
   return null;
 }
 
+function rebuildMarkdownTable(headers, rows) {
+  if (!headers || !rows) return '';
+  const headerLine = '| ' + headers.join(' | ') + ' |';
+  const sepLine = '| ' + headers.map(() => '---').join(' | ') + ' |';
+  const rowLines = rows.map(r => '| ' + r.join(' | ') + ' |');
+  return [headerLine, sepLine, ...rowLines].join('\n');
+}
+
 function getCoreSubjectFromTitle(title) {
   if (!title) return '';
   let subject = title;
@@ -25996,14 +26004,83 @@ ${itemsStr}
                                         )}
 
                                         {/* 비교표 / 장단점 */}
-                                        {parsed.comparison && (
-                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
-                                            <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                                            <div className="text-slate-250 leading-relaxed font-normal">
-                                              <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
+                                        {parsed.comparison && (() => {
+                                          const mdTable = parseMarkdownTable(parsed.comparison);
+                                          if (mdTable && mdTable.tableData && mdTable.tableData.headers) {
+                                            const { headers, rows } = mdTable.tableData;
+                                            return (
+                                              <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5 w-full">
+                                                <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                                                <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto">
+                                                  <table className="w-full text-center border-collapse text-[12px] sm:text-[14px] min-w-[320px]">
+                                                    <thead>
+                                                      <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+                                                        {headers.map((h, hIdx) => (
+                                                          <th key={hIdx} className="p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words">
+                                                            <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                                                          </th>
+                                                        ))}
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {rows.map((row, rIdx) => (
+                                                        <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
+                                                          {row.map((cell, cIdx) => {
+                                                            const isHeader = cIdx === 0;
+                                                            if (isHeader) {
+                                                              return (
+                                                                <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
+                                                                  <div className="flex items-center justify-between gap-1.5 group">
+                                                                    <div className="flex-grow">
+                                                                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                                    </div>
+                                                                    <button
+                                                                      onClick={() => {
+                                                                        if (window.confirm(`'${cell}' 행을 삭제하시겠습니까?`)) {
+                                                                          const updatedRows = rows.filter((_, idx) => idx !== rIdx);
+                                                                          const newCompTableMd = rebuildMarkdownTable(headers, updatedRows);
+                                                                          let newContent = ov.content;
+                                                                          if (parsed.comparison) {
+                                                                            newContent = ov.content.replace(parsed.comparison.trim(), newCompTableMd.trim());
+                                                                          }
+                                                                          const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
+                                                                          setFormulaOverviews(updated);
+                                                                          handleSaveFormulaOverviews(updated, false);
+                                                                          showNotification('행이 삭제되었습니다.', 'info');
+                                                                        }
+                                                                      }}
+                                                                      className="p-1 rounded bg-slate-800 hover:bg-rose-955/80 text-slate-400 hover:text-rose-455 cursor-pointer transition-all border border-slate-700/50 hover:border-rose-500/20 opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                                                                      title="행 삭제"
+                                                                    >
+                                                                      <Trash2 size={11} />
+                                                                    </button>
+                                                                  </div>
+                                                                </td>
+                                                              );
+                                                            }
+                                                            return (
+                                                              <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
+                                                                <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                              </td>
+                                                            );
+                                                          })}
+                                                        </tr>
+                                                      ))}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                          return (
+                                            <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
+                                              <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                                              <div className="text-slate-250 leading-relaxed font-normal">
+                                                <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
+                                              </div>
                                             </div>
-                                          </div>
-                                        )}
+                                          );
+                                        })()}
 
                                         {/* 공학적 의미/한계성 */}
                                         {parsed.significance && (
