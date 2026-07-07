@@ -3545,20 +3545,21 @@ function parseMarkdownTable(questionText) {
     }
   }
 
+  const parseRowCells = (rowText) => {
+    let cells = rowText.split('|').map(c => c.trim());
+    while (cells.length > 0 && cells[0] === '') cells.shift();
+    while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
+    return cells;
+  };
+
   if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
-    const headers = lines[startIdx]
-      .split('|')
-      .slice(1, -1)
-      .map(cell => cell.trim());
+    const headers = parseRowCells(lines[startIdx]);
     
     const separatorLine = lines[startIdx + 1];
     if (separatorLine.includes('---')) {
       const rows = [];
       for (let i = startIdx + 2; i <= endIdx; i++) {
-        const rowCells = lines[i]
-          .split('|')
-          .slice(1, -1)
-          .map(cell => cell.trim());
+        const rowCells = parseRowCells(lines[i]);
         rows.push(rowCells);
       }
       
@@ -15437,14 +15438,16 @@ ${itemsStr}
       const separatorIdx = lines.findIndex(l => l.includes('|') && l.includes('-') && /^[|:\s\-]+$/.test(l));
       if (separatorIdx === -1) return;
 
-      const headers = lines[0].split('|').slice(1, -1).map(c => c.trim());
+      const parseRowCells = (rowText) => {
+        let cells = rowText.split('|').map(c => c.trim());
+        while (cells.length > 0 && cells[0] === '') cells.shift();
+        while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
+        return cells;
+      };
+
+      const headers = parseRowCells(lines[0]);
       const dataLines = lines.slice(separatorIdx + 1);
-      const rows = dataLines.map(line => {
-        let cells = line.split('|');
-        if (cells[0] !== undefined && cells[0].trim() === '') cells.shift();
-        if (cells[cells.length - 1] !== undefined && cells[cells.length - 1].trim() === '') cells.pop();
-        return cells.map(c => c.trim());
-      });
+      const rows = dataLines.map(line => parseRowCells(line));
 
       const updatedRows = rows.filter(r => (r[0] || '').trim() !== rowTitle);
       const newCompTableMd = '| ' + headers.join(' | ') + ' |<br>| ' + headers.map(() => '---').join(' | ') + ' |<br>' + updatedRows.map(r => '| ' + r.join(' | ') + ' |').join('<br>');

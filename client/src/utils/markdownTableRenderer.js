@@ -1,17 +1,13 @@
 function parseRow(rowText) {
   if (!rowText) return [];
-  let cells = rowText.split('|');
-  
-  // If it starts with '|', the first element of split is empty. Remove it.
-  if (cells[0] !== undefined && cells[0].trim() === '') {
+  let cells = rowText.split('|').map(cell => cell.trim());
+  while (cells.length > 0 && cells[0] === '') {
     cells.shift();
   }
-  // If it ends with '|', the last element of split is empty. Remove it.
-  if (cells[cells.length - 1] !== undefined && cells[cells.length - 1].trim() === '') {
+  while (cells.length > 0 && cells[cells.length - 1] === '') {
     cells.pop();
   }
-  
-  return cells.map(cell => cell.trim());
+  return cells;
 }
 
 function renderCellMath(text) {
