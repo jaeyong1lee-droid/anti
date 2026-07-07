@@ -760,7 +760,11 @@ const cleanAndSanitizeMathText = (rawText) => {
   let cleaned = healCorruptedKatexHtml(rawText);
   cleaned = cleanCorruptedFormula(cleaned);
 
-  cleaned = cleaned.replace(/&#x27;/g, "'")
+  cleaned = cleaned.replace(/&amp;lt;/g, '<')
+                   .replace(/&amp;gt;/g, '>')
+                   .replace(/&amp;quot;/g, '"')
+                   .replace(/&amp;apos;/g, "'")
+                   .replace(/&#x27;/g, "'")
                    .replace(/&quot;/g, '"')
                    .replace(/&lt;/g, '<')
                    .replace(/&gt;/g, '>')

@@ -1287,6 +1287,57 @@ export function healQuizQuestionObject(q) {
         }
       }
     }
+    
+    // [Self-Healing] comparisonTableData의 answers 누락 복구
+    if (q.comparisonTableData && q.comparisonTableData.rows && q.answers) {
+      const answers = q.answers;
+      q.comparisonTableData.rows.forEach((row, rIdx) => {
+        row.forEach((cell, cIdx) => {
+          if (cIdx === 0) return; // 첫 번째 열은 구분이므로 건너뜀
+          
+          if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+            const inputId = cell.replace('[', '').replace(']', '').trim();
+            
+            if (answers[inputId] === undefined || answers[inputId] === null || answers[inputId] === '') {
+              const textToParse = q.explanation || '';
+              
+              // 1. 만약 HTML 테이블 형태라면?
+              if (textToParse.includes('<table') || textToParse.includes('<tr>')) {
+                const trs = textToParse.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+                const dataTrs = trs.filter(tr => !tr.includes('<th') && tr.includes('<td'));
+                if (dataTrs[rIdx]) {
+                  const tds = dataTrs[rIdx].match(/<td[^>]*>([\s\S]*?)<\/td>/gi) || [];
+                  if (tds[cIdx]) {
+                    const cleanAns = tds[cIdx].replace(/<[^>]+>/g, '').trim();
+                    if (cleanAns && !cleanAns.includes('[INPUT_')) {
+                      answers[inputId] = cleanAns;
+                      console.log(`[HealComparison] Recovered ${inputId} from HTML explanation: "${cleanAns}"`);
+                    }
+                  }
+                }
+              }
+              
+              // 2. 만약 HTML이 아니라 순수 마크다운 테이블 형태라면?
+              if (!answers[inputId]) {
+                const lines = textToParse.split('\n');
+                const tableLines = lines.filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
+                const dataLines = tableLines.filter(line => !/^[|\s:-]+$/.test(line) && !line.includes('구분') && !line.includes('장단점') && !line.includes('비교표'));
+                if (dataLines[rIdx]) {
+                  const cols = dataLines[rIdx].split('|').map(col => col.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+                  if (cols[cIdx]) {
+                    const cleanAns = cols[cIdx].replace(/\*\*/g, '').trim();
+                    if (cleanAns && !cleanAns.includes('[INPUT_')) {
+                      answers[inputId] = cleanAns;
+                      console.log(`[HealComparison] Recovered ${inputId} from Markdown explanation: "${cleanAns}"`);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      });
+    }
   }
   return healDeep(q);
 }
