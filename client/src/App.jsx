@@ -1819,7 +1819,7 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   if (typeof cleanedText === 'string') {
-    const isMixedReview = (selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam;
+    const isMixedReview = !!window.__isMixedReviewActive;
     cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, isMixedReview);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
   }
