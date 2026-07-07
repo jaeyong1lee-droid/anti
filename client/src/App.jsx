@@ -24588,63 +24588,92 @@ ${itemsStr}
                   필수공식
                 </h1>
                 
-                {/* 6 Category Switcher Buttons */}
+                {/* 9 Category Switcher Buttons (2-row layout) */}
                 <div className="flex flex-col gap-2 w-full">
-                  {/* 첫 번째 줄 */}
-                  <div className="flex gap-2 w-full">
+                  {/* 첫 번째 줄: 오늘의 복습, 복습토픽, 종합평가, 답 */}
+                  <div className="flex gap-1.5 w-full">
                     <button
                       onClick={() => {
                         handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                         setShowFormulaExam(false);
                         setViewMode('dashboard');
+                        setSelectedTopic(null);
+                        setShowExam(false);
+                        setShowTheoryExam(false);
+                        setShowAnswerSheet(false);
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white text-[10px] font-bold whitespace-nowrap"
                     >
-                      <Calendar size={14} />
-                      오늘의 복습
+                      <Calendar size={12} className="shrink-0" />
+                      <span>오늘 복습</span>
                     </button>
                     <button
                       onClick={() => {
                         handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                         setShowFormulaExam(false);
                         setViewMode('all_topics');
+                        setSelectedTopic(null);
+                        setShowExam(false);
+                        setShowTheoryExam(false);
+                        setShowAnswerSheet(false);
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white text-[10px] font-bold whitespace-nowrap"
                     >
-                      <List size={14} />
-                      복습토픽
+                      <List size={12} className="shrink-0" />
+                      <span>복습토픽</span>
                     </button>
                     <button
                       onClick={() => {
                         handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                         setShowFormulaExam(false);
+                        setSelectedTopic(null);
+                        setShowTheoryExam(false);
+                        setShowAnswerSheet(false);
                         handleOpenExam();
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 text-[10px] font-bold whitespace-nowrap"
                     >
-                      <Award size={14} />
-                      종합평가
-                    </button>
-                  </div>
-                  {/* 두 번째 줄 */}
-                  <div className="flex gap-2 w-full">
-                    <button
-                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-rose-500 bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-lg rounded-xl"
-                    >
-                      <Sigma size={14} />
-                      필수공식
+                      <Award size={12} className="shrink-0" />
+                      <span>종합평가</span>
                     </button>
                     <button
                       onClick={() => {
                         handleSaveFormulaQuestions(latestFormulaQuestionsRef.current, false);
                         setShowFormulaExam(false);
+                        setSelectedTopic(null);
+                        setShowExam(false);
+                        setShowTheoryExam(false);
                         handleOpenAnswerSheet();
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 border border-slate-800/80 rounded-xl"
+                      className="flex-1 flex items-center justify-center py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 text-[10px] font-bold whitespace-nowrap"
                     >
-                      <FileText size={14} />
-                      답안지
+                      <span>답</span>
                     </button>
+                  </div>
+
+                  {/* 두 번째 줄: 필수공식 서브탭 5개 버튼 */}
+                  <div className="grid grid-cols-5 gap-1 w-full">
+                    {[
+                      { label: '공식', tab: 'formula' },
+                      { label: '표', tab: 'table' },
+                      { label: '두글자', tab: 'acronym' },
+                      { label: '개요', tab: 'overview' },
+                      { label: '그림', tab: 'image' }
+                    ].map((b) => (
+                      <button
+                        key={b.tab}
+                        onClick={() => {
+                          setFormulaSubTab(b.tab);
+                        }}
+                        className={`py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap ${
+                          formulaSubTab === b.tab
+                            ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-md glow-rose'
+                            : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40'
+                        }`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -27168,63 +27197,86 @@ ${itemsStr}
                 답안지
               </h1>
               
-              {/* 6 Category Switcher Buttons */}
+              {/* 9 Category Switcher Buttons (2-row layout) */}
               <div className="flex flex-col gap-2 w-full">
-                {/* 첫 번째 줄 */}
-                <div className="flex gap-2 w-full">
+                {/* 첫 번째 줄: 오늘의 복습, 복습토픽, 종합평가, 답 */}
+                <div className="flex gap-1.5 w-full">
                   <button
                     onClick={async () => {
                       await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
                       setViewMode('dashboard');
+                      setSelectedTopic(null);
+                      setShowExam(false);
+                      setShowFormulaExam(false);
+                      setShowTheoryExam(false);
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white text-[10px] font-bold whitespace-nowrap"
                   >
-                    <Calendar size={14} />
-                    오늘의 복습
+                    <Calendar size={12} className="shrink-0" />
+                    <span>오늘 복습</span>
                   </button>
                   <button
                     onClick={async () => {
                       await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
                       setViewMode('all_topics');
+                      setSelectedTopic(null);
+                      setShowExam(false);
+                      setShowFormulaExam(false);
+                      setShowTheoryExam(false);
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-slate-400 hover:text-white text-[10px] font-bold whitespace-nowrap"
                   >
-                    <List size={14} />
-                    복습토픽
+                    <List size={12} className="shrink-0" />
+                    <span>복습토픽</span>
                   </button>
                   <button
                     onClick={async () => {
                       await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
                       setShowAnswerSheet(false);
+                      setSelectedTopic(null);
+                      setShowFormulaExam(false);
+                      setShowTheoryExam(false);
                       handleOpenExam();
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 rounded-xl"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-slate-800/80 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 text-[10px] font-bold whitespace-nowrap"
                   >
-                    <Award size={14} />
-                    종합평가
+                    <Award size={12} className="shrink-0" />
+                    <span>종합평가</span>
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center py-2 border border-emerald-500 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg rounded-xl text-[10px] font-bold whitespace-nowrap"
+                  >
+                    <span>답</span>
                   </button>
                 </div>
-                {/* 두 번째 줄 */}
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={async () => {
-                      await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
-                      setShowAnswerSheet(false);
-                      handleOpenFormulaExam();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 rounded-xl"
-                  >
-                    <Sigma size={14} />
-                    필수공식
-                  </button>
-                  <button
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-emerald-500 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg rounded-xl"
-                  >
-                    <FileText size={14} />
-                    답안지
-                  </button>
+
+                {/* 두 번째 줄: 필수공식 서브탭 5개 버튼 */}
+                <div className="grid grid-cols-5 gap-1 w-full">
+                  {[
+                    { label: '공식', tab: 'formula' },
+                    { label: '표', tab: 'table' },
+                    { label: '두글자', tab: 'acronym' },
+                    { label: '개요', tab: 'overview' },
+                    { label: '그림', tab: 'image' }
+                  ].map((b) => (
+                    <button
+                      key={b.tab}
+                      onClick={async () => {
+                        await handleSaveAnswersheetQuestions(latestAnswersheetQuestionsRef.current, false);
+                        setShowAnswerSheet(false);
+                        setSelectedTopic(null);
+                        setShowExam(false);
+                        setShowTheoryExam(false);
+                        setFormulaSubTab(b.tab);
+                        handleOpenFormulaExam();
+                      }}
+                      className="py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40"
+                    >
+                      {b.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
