@@ -15411,12 +15411,24 @@ ${itemsStr}
     window.__handleAcronymConfirmRequest = (title, content) => {
       setAcronymConfirmTarget({ title, content });
     };
-    window.__handleGlobalRowDelete = (escapedRowTitle, escapedPrecedingTitle, escapedTableMd) => {
-      const rowTitle = (escapedRowTitle || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
-      const precedingTitle = (escapedPrecedingTitle || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
-      const rawTableMd = (escapedTableMd || '').replace(/__DOLLAR_TEMP__/g, '$');
-      const originalTableMd = rawTableMd.replace(/\\n/g, '\n').trim();
+    window.__handleGlobalRowDelete = (param1, param2, param3) => {
+      let rowTitle = '';
+      let precedingTitle = '';
+      let originalTableMd = '';
 
+      if (param1 && typeof param1 === 'object' && param1.getAttribute) {
+        const btn = param1;
+        rowTitle = (btn.getAttribute('data-row-title') || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+        precedingTitle = (btn.getAttribute('data-preceding-title') || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+        originalTableMd = (btn.getAttribute('data-entire-table') || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+      } else {
+        rowTitle = (param1 || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+        precedingTitle = (param2 || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+        const rawTableMd = (param3 || '').replace(/__DOLLAR_TEMP__/g, '$');
+        originalTableMd = rawTableMd.replace(/\\n/g, '\n').trim();
+      }
+
+      if (!rowTitle) return;
       if (!window.confirm(`'${rowTitle}' 행을 비교표에서 삭제하시겠습니까?`)) return;
 
       const lines = originalTableMd.split('\n').map(l => l.trim()).filter(Boolean);
@@ -15435,7 +15447,7 @@ ${itemsStr}
       });
 
       const updatedRows = rows.filter(r => (r[0] || '').trim() !== rowTitle);
-      const newCompTableCellMd = '| ' + headers.join(' | ') + ' |<br>| ' + headers.map(() => '---').join(' | ') + ' |<br>' + updatedRows.map(r => '| ' + r.join(' | ') + ' |').join('<br>');
+      const newCompTableMd = '| ' + headers.join(' | ') + ' |<br>| ' + headers.map(() => '---').join(' | ') + ' |<br>' + updatedRows.map(r => '| ' + r.join(' | ') + ' |').join('<br>');
 
       setFormulaOverviews(prevOverviews => {
         let found = false;
@@ -15459,11 +15471,41 @@ ${itemsStr}
           const normalizedTarget = normalizeTable(originalTableMd);
 
           if (normalizedComparison.includes(normalizedTarget) || normalizedTarget.includes(normalizedComparison)) {
-            found = true;
-            return {
-              ...ov,
-              content: contentStr.replace(parsed.comparison.trim(), newCompTableCellMd.trim())
-            };
+            let updatedContent = contentStr;
+            let replaced = false;
+
+            const lines = contentStr.split('\n');
+            const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+
+            if (compIdx !== -1) {
+              const line = lines[compIdx].trim();
+              const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+              if (match) {
+                lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                updatedContent = lines.join('\n');
+                replaced = true;
+              }
+            }
+
+            if (!replaced) {
+              const match = contentStr.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+              if (match) {
+                let nestedPart = match[3].trim();
+                if (nestedPart.endsWith('|')) {
+                  nestedPart = nestedPart.slice(0, -1).trim();
+                }
+                updatedContent = contentStr.replace(nestedPart, newCompTableMd.trim());
+                replaced = true;
+              }
+            }
+
+            if (replaced) {
+              found = true;
+              return {
+                ...ov,
+                content: updatedContent
+              };
+            }
           }
           return ov;
         });
@@ -26312,9 +26354,33 @@ ${itemsStr}
                                                                     const updatedRows = rows.filter((_, idx) => idx !== rIdx);
                                                                     const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
                                                                     let newContent = ov.content;
-                                                                    if (parsed.comparison) {
-                                                                      newContent = ov.content.replace(parsed.comparison.trim(), newCompTableMd.trim());
+                                                                    let replaced = false;
+
+                                                                    const lines = ov.content.split('\n');
+                                                                    const compIdx = lines.findIndex(line => line.trim().match(/^\|\s*(비교표|비교|장단점)\s*\|/i));
+
+                                                                    if (compIdx !== -1) {
+                                                                      const line = lines[compIdx].trim();
+                                                                      const match = line.match(/^(\|\s*(비교표|비교|장단점)\s*\|)(.*)\|$/i);
+                                                                      if (match) {
+                                                                        lines[compIdx] = `${match[1]} ${newCompTableMd.trim()} |`;
+                                                                        newContent = lines.join('\n');
+                                                                        replaced = true;
+                                                                      }
                                                                     }
+
+                                                                    if (!replaced) {
+                                                                      const match = ov.content.match(/^([\s\S]*\|\s*(비교표|비교|장단점)\s*\|)(.*?)(?=\s*\|\s*(공학적 의미\/한계성|공학적 의미 및 한계성|의미\/한계성|직관적의미|직관적)\s*\||$)/i);
+                                                                      if (match) {
+                                                                        let nestedPart = match[3].trim();
+                                                                        if (nestedPart.endsWith('|')) {
+                                                                          nestedPart = nestedPart.slice(0, -1).trim();
+                                                                        }
+                                                                        newContent = ov.content.replace(nestedPart, newCompTableMd.trim());
+                                                                        replaced = true;
+                                                                      }
+                                                                    }
+
                                                                     const updated = formulaOverviews.map(item => item.id === ov.id ? { ...item, content: newContent } : item);
                                                                     setFormulaOverviews(updated);
                                                                     handleSaveFormulaOverviews(updated, false);

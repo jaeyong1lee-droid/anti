@@ -111,11 +111,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
         }
       }
       if (!hideRemarks) {
-        const firstCellSafe = (row[0] || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
-        const cleanTitleSafe = precedingTitle.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
-        const entireTableEscaped = tableLines.join('\n').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\$/g, '&#36;');
+        const firstCellSafe = (row[0] || '').replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
+        const cleanTitleSafe = precedingTitle.replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
+        const entireTableEscaped = tableLines.join('\n').replace(/"/g, '&quot;').replace(/\$/g, '&#36;').replace(/\n/g, '&#10;');
         html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
-        html += `<button onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete('${firstCellSafe}', '${cleanTitleSafe}', '${entireTableEscaped}') } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
+        html += `<button data-row-title="${firstCellSafe}" data-preceding-title="${cleanTitleSafe}" data-entire-table="${entireTableEscaped}" onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete(this) } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
         html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
         html += `</button>`;
         html += `</td>`;
@@ -172,11 +172,11 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false,
       }
     }
     if (!hideRemarks) {
-      const firstCellSafe = (row[0] || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
-      const cleanTitleSafe = cleanTitle.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
-      const entireTableEscaped = tableLines.join('\n').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\$/g, '&#36;');
+      const firstCellSafe = (row[0] || '').replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
+      const cleanTitleSafe = cleanTitle.replace(/"/g, '&quot;').replace(/\$/g, '&#36;');
+      const entireTableEscaped = tableLines.join('\n').replace(/"/g, '&quot;').replace(/\$/g, '&#36;').replace(/\n/g, '&#10;');
       html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
-      html += `<button onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete('${firstCellSafe}', '${cleanTitleSafe}', '${entireTableEscaped}') } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
+      html += `<button data-row-title="${firstCellSafe}" data-preceding-title="${cleanTitleSafe}" data-entire-table="${entireTableEscaped}" onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete(this) } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
       html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
       html += `</button>`;
       html += `</td>`;
