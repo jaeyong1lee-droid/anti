@@ -1156,8 +1156,10 @@ export function healQuizQuestionObject(q) {
     const hasInputPlaceholder = q.tableData && q.tableData.rows && q.tableData.rows.some(row => 
       Array.isArray(row) && row.some((cell, cIdx) => cIdx > 0 && typeof cell === 'string' && (
         cell.includes('[INPUT_') || 
+        cell.includes('입력') ||
         /빈칸\s*\(?\d+\)?/i.test(cell) || 
-        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell)
+        /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(cell) ||
+        /[A-Za-z]\s*입력/i.test(cell)
       ))
     );
 
