@@ -61,7 +61,7 @@ function renderCellMath(text) {
   return temp;
 }
 
-function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false) {
+function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false, hideRemarks = false) {
   if (tableLines.length < 2) return tableLines.join('\n');
 
   let headers = parseRow(tableLines[0]);
@@ -91,21 +91,34 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
       const renderedH = renderCellMath(h);
       html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
     });
+    if (!hideRemarks) {
+      html += `<th class="p-1 sm:p-1.5 font-black border-r border-slate-800 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
+    }
     html += `</tr>`;
     html += `</thead>`;
     html += `<tbody>`;
-    bodyRows.forEach(row => {
+    bodyRows.forEach((row, rIdx) => {
       if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
       
-      html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
+      html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">`;
       row.forEach(cell => {
         const renderedCell = renderCellMath(cell);
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold">${renderedCell}</td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-200 font-semibold">${renderedCell}</td>`;
       });
       if (row.length < colCount) {
         for (let k = row.length; k < colCount; k++) {
-          html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-200 font-semibold"></td>`;
+          html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-200 font-semibold"></td>`;
         }
+      }
+      if (!hideRemarks) {
+        const firstCellSafe = (row[0] || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const cleanTitleSafe = precedingTitle.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const entireTableEscaped = tableLines.join('\n').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+        html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
+        html += `<button onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete('${firstCellSafe}', '${cleanTitleSafe}', '${entireTableEscaped}') } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
+        html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+        html += `</button>`;
+        html += `</td>`;
       }
       html += `</tr>`;
     });
@@ -139,21 +152,34 @@ function renderTableToHtml(tableLines, precedingTitle = "", hideWrapper = false)
     const renderedH = renderCellMath(h);
     html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 last:border-r-0">${renderedH}</th>`;
   });
+  if (!hideRemarks) {
+    html += `<th class="p-1 sm:p-1.5 font-extrabold border-r border-slate-800 text-rose-400 select-none whitespace-nowrap w-16" style="border-right:0;">비고</th>`;
+  }
   html += `</tr>`;
   html += `</thead>`;
   html += `<tbody>`;
   bodyRows.forEach(row => {
     if (row.length === 0 || (row.length === 1 && row[0] === '')) return;
     
-    html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">`;
+    html += `<tr class="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">`;
     row.forEach(cell => {
       const renderedCell = renderCellMath(cell);
-      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350">${renderedCell}</td>`;
+      html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-355">${renderedCell}</td>`;
     });
     if (row.length < colCount) {
       for (let k = row.length; k < colCount; k++) {
-        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 last:border-r-0 text-slate-350"></td>`;
+        html += `<td class="p-1 sm:p-1.5 border-r border-slate-800 text-slate-355"></td>`;
       }
+    }
+    if (!hideRemarks) {
+      const firstCellSafe = (row[0] || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const cleanTitleSafe = cleanTitle.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const entireTableEscaped = tableLines.join('\n').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+      html += `<td class="p-1 sm:p-1.5 text-center align-middle whitespace-nowrap bg-slate-950/10" style="border-right:0;">`;
+      html += `<button onclick="if(window.__handleGlobalRowDelete) { window.__handleGlobalRowDelete('${firstCellSafe}', '${cleanTitleSafe}', '${entireTableEscaped}') } else { alert('공식 개요 삭제 핸들러가 준비되지 않았습니다.'); }" class="p-1 rounded bg-slate-850 hover:bg-rose-950 text-slate-400 hover:text-rose-400 cursor-pointer transition-all border border-slate-800 hover:border-rose-500/20 md:opacity-0 md:group-hover:opacity-100 opacity-100 flex items-center justify-center mx-auto shrink-0 animate-fade-in" title="행 삭제" style="outline:none; display:inline-flex;">`;
+      html += `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+      html += `</button>`;
+      html += `</td>`;
     }
     html += `</tr>`;
   });
@@ -187,7 +213,7 @@ function isHeaderLine(line) {
  * @param {boolean} hideWrapper
  * @returns {string} Converted HTML string
  */
-export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
+export function convertMarkdownTablesToHtml(text, hideWrapper = false, hideRemarks = false) {
   if (!text) return text;
   
   const lines = text.split('\n');
@@ -256,7 +282,7 @@ export function convertMarkdownTablesToHtml(text, hideWrapper = false) {
               searchIdx--;
             }
           }
-          const htmlTable = renderTableToHtml(tableLines, precedingTitle, hideWrapper);
+          const htmlTable = renderTableToHtml(tableLines, precedingTitle, hideWrapper, hideRemarks);
           processedLines.push(htmlTable);
           i = j; // Advance past the table block
           continue;

@@ -1819,7 +1819,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
   }
 
   if (typeof cleanedText === 'string') {
-    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper);
+    const isMixedReview = (selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam;
+    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, isMixedReview);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
   }
 
@@ -15407,9 +15408,64 @@ ${itemsStr}
     window.__handleAcronymConfirmRequest = (title, content) => {
       setAcronymConfirmTarget({ title, content });
     };
+    window.__handleGlobalRowDelete = (rowTitle, precedingTitle, originalTableMd) => {
+      if (!window.confirm(`'${rowTitle}' 행을 비교표에서 삭제하시겠습니까?`)) return;
+
+      const lines = originalTableMd.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) return;
+
+      const separatorIdx = lines.findIndex(l => l.includes('|') && l.includes('-') && /^[|:\s\-]+$/.test(l));
+      if (separatorIdx === -1) return;
+
+      const headerLine = lines[0];
+      const separatorLine = lines[separatorIdx];
+      const dataLines = lines.slice(separatorIdx + 1);
+
+      const updatedDataLines = dataLines.filter(line => {
+        let cells = line.split('|');
+        if (cells[0] !== undefined && cells[0].trim() === '') cells.shift();
+        const firstCell = (cells[0] || '').trim();
+        return firstCell !== rowTitle;
+      });
+
+      const newTableMd = [headerLine, separatorLine, ...updatedDataLines].join('\n');
+
+      setFormulaOverviews(prevOverviews => {
+        let found = false;
+        const updated = prevOverviews.map(ov => {
+          const contentStr = ov.content || '';
+          if (contentStr.includes(originalTableMd.trim())) {
+            found = true;
+            return {
+              ...ov,
+              content: contentStr.replace(originalTableMd.trim(), newTableMd.trim())
+            };
+          }
+          const normalizedContent = contentStr.replace(/\r\n/g, '\n');
+          const normalizedTarget = originalTableMd.replace(/\r\n/g, '\n').trim();
+          if (normalizedContent.includes(normalizedTarget)) {
+            found = true;
+            return {
+              ...ov,
+              content: normalizedContent.replace(normalizedTarget, newTableMd.trim())
+            };
+          }
+          return ov;
+        });
+
+        if (found) {
+          handleSaveFormulaOverviews(updated, false);
+          showNotification('행이 성공적으로 삭제되었습니다.', 'info');
+        } else {
+          showNotification('행이 임시로 화면에서 삭제되었습니다. (데이터베이스 영구 저장은 [개요] 탭에서 가능합니다.)', 'warning');
+        }
+        return updated;
+      });
+    };
     return () => {
       delete window.__handleTableConfirmRequest;
       delete window.__handleAcronymConfirmRequest;
+      delete window.__handleGlobalRowDelete;
     };
   }, []);
 
