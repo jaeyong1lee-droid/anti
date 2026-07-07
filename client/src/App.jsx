@@ -17960,59 +17960,82 @@ ${itemsStr}
           )}
 
           <div className="flex md:hidden landscape-flex-important flex-col gap-2 w-full">
-            {/* 첫 번째 줄 */}
-            <div className="flex gap-2 w-full">
+            {/* 첫 번째 줄: 오늘의 복습, 복습토픽, 종합평가, 답 */}
+            <div className="flex gap-1.5 w-full">
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setViewMode('dashboard'); }}
-                className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
-                  viewMode === 'dashboard'
+                onClick={async () => { await forceSaveActiveSessions(); setViewMode('dashboard'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
+                  viewMode === 'dashboard' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                     ? 'bg-brand-600 text-white shadow-md'
                     : 'bg-slateCustom-900/60 text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
-                <Calendar size={14} />
-                오늘의 복습
+                <Calendar size={12} className="shrink-0" />
+                <span className="text-[10px] font-bold whitespace-nowrap">오늘 복습</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); setViewMode('all_topics'); }}
-                className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
-                  viewMode === 'all_topics'
+                onClick={async () => { await forceSaveActiveSessions(); setViewMode('all_topics'); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); }}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
+                  viewMode === 'all_topics' && !selectedTopic && !showExam && !showFormulaExam && !showTheoryExam && !showAnswerSheet
                     ? 'bg-brand-600 text-white shadow-md'
                     : 'bg-slateCustom-900/60 text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
-                <List size={14} />
-                복습토픽 ({allTopics.length})
+                <List size={12} className="shrink-0" />
+                <span className="text-[10px] font-bold whitespace-nowrap">복습토픽</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); handleOpenExam(); }}
-                className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 border border-slate-800/80 hover:bg-amber-950/40 rounded-xl transition-all duration-200 cursor-pointer"
+                onClick={async () => { await forceSaveActiveSessions(); setSelectedTopic(null); setShowFormulaExam(false); setShowTheoryExam(false); setShowAnswerSheet(false); handleOpenExam(); }}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl transition-all duration-200 border border-slate-800/80 cursor-pointer ${
+                  showExam
+                    ? 'bg-gradient-to-tr from-amber-600 to-yellow-500 text-white border-amber-500 shadow-md'
+                    : 'bg-slateCustom-900/60 text-amber-400 hover:text-amber-200 hover:bg-amber-955/40'
+                }`}
               >
-                <Award size={14} />
-                종합평가
-              </button>
-            </div>
-            
-            {/* 두 번째 줄 */}
-            <div className="flex gap-2 w-full">
-              <button
-                onClick={async () => { await forceSaveActiveSessions(); handleOpenFormulaExam(); }}
-                className="flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 bg-slateCustom-900/60 text-rose-400 hover:text-rose-200 border border-slate-800/80 hover:bg-rose-950/40 rounded-xl transition-all duration-200 cursor-pointer"
-              >
-                <Sigma size={14} />
-                필수공식
+                <Award size={12} className="shrink-0" />
+                <span className="text-[10px] font-bold whitespace-nowrap">종합평가</span>
               </button>
               <button
-                onClick={async () => { await forceSaveActiveSessions(); handleOpenAnswerSheet(); }}
-                className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold py-2.5 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
+                onClick={async () => { await forceSaveActiveSessions(); setSelectedTopic(null); setShowExam(false); setShowFormulaExam(false); setShowTheoryExam(false); handleOpenAnswerSheet(); }}
+                className={`flex-1 flex items-center justify-center py-2 border border-slate-800/80 rounded-xl transition-all duration-200 cursor-pointer ${
                   showAnswerSheet
                     ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg'
                     : 'bg-slateCustom-900/60 text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/40'
                 }`}
               >
-                <FileText size={14} />
-                답안지
+                <span className="text-[10px] font-bold whitespace-nowrap">답</span>
               </button>
+            </div>
+            
+            {/* 두 번째 줄: 필수공식 5개 서브탭 버튼 */}
+            <div className="grid grid-cols-5 gap-1 w-full">
+              {[
+                { label: '공식', tab: 'formula' },
+                { label: '표', tab: 'table' },
+                { label: '두글자', tab: 'acronym' },
+                { label: '개요', tab: 'overview' },
+                { label: '그림', tab: 'image' }
+              ].map((b) => (
+                <button
+                  key={b.tab}
+                  onClick={async () => {
+                    await forceSaveActiveSessions();
+                    setSelectedTopic(null);
+                    setShowExam(false);
+                    setShowTheoryExam(false);
+                    setShowAnswerSheet(false);
+                    setFormulaSubTab(b.tab);
+                    handleOpenFormulaExam();
+                  }}
+                  className={`py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap ${
+                    showFormulaExam && formulaSubTab === b.tab
+                      ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-md glow-rose'
+                      : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40'
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
             </div>
 
             {/* 공부중 버튼 instead of 복습기준일 on mobile portrait under all_topics and dashboard, placed under the 6 switcher buttons */}
@@ -18160,7 +18183,7 @@ ${itemsStr}
                 </button>
 
 
-                {/* 답안지 */}
+                                {/* 답안지 */}
                 <button
                   onClick={async () => {
                     await forceSaveActiveSessions();
@@ -18170,14 +18193,13 @@ ${itemsStr}
                     setShowTheoryExam(false);
                     handleOpenAnswerSheet();
                   }}
-                  className={`flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
                     showAnswerSheet
-                      ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border-emerald-500 shadow-lg glow-emerald'
+                      ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg glow-emerald'
                       : 'bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40'
                   }`}
                 >
-                  <FileText size={16} />
-                  <span>답안지</span>
+                  <span>답</span>
                 </button>
               </div>
             )}
@@ -19369,16 +19391,15 @@ ${itemsStr}
               </button>
 
 
-              <button
+                            <button
                 onClick={async () => {
                   await forceSaveActiveSessions();
                   setSelectedTopic(null);
                   handleOpenAnswerSheet();
                 }}
-                className="flex items-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
+                className="flex items-center justify-center gap-2 w-full text-[11px] font-black py-2 px-2.5 rounded-xl border bg-slateCustom-900/60 text-emerald-400 border-slate-800/80 hover:text-emerald-200 hover:bg-emerald-950/40 transition-all cursor-pointer"
               >
-                <FileText size={12} />
-                <span>답안지</span>
+                <span>답</span>
               </button>
 
               <div className="h-px bg-slate-800/60 my-1 shrink-0" />
@@ -28189,7 +28210,7 @@ ${itemsStr}
               <span className="text-[10px] font-bold tracking-tight select-none">AI이력</span>
             </button>
 
-            {/* 답안지 버튼 */}
+                        {/* 답안지 버튼 */}
             <button
               onClick={async () => {
                 await forceSaveActiveSessions();
@@ -28207,8 +28228,7 @@ ${itemsStr}
               }`}
               title="모범 답안지 및 기술 보고서 학습"
             >
-              <FileText size={20} />
-              <span className="text-[10px] font-bold tracking-tight">답안지</span>
+              <span className="text-[14px] font-bold tracking-tight">답</span>
             </button>
 
             {/* Build & Neon Sync Info */}
