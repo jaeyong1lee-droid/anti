@@ -10036,15 +10036,15 @@ async function migrateLegacySessionKeys() {
           }
           
           // 이미 새로운 키가 데이터베이스에 존재하는지 확인
-          const exists = await dbQuery.get('SELECT id FROM app_session WHERE key = ?', [newKey]);
+          const exists = await dbQuery.get('SELECT key FROM app_session WHERE key = ?', [newKey]);
           if (!exists) {
             // 새로운 키로 업데이트
-            await dbQuery.run('UPDATE app_session SET key = ?, value = ? WHERE id = ?', [newKey, updatedValue, row.id]);
+            await dbQuery.run('UPDATE app_session SET key = ?, value = ? WHERE key = ?', [newKey, updatedValue, row.key]);
             migratedCount++;
             console.log(`[Migration] Migrated legacy key ${row.key} -> ${newKey}`);
           } else {
             // 이미 존재한다면 예전 행을 안전하게 삭제
-            await dbQuery.run('DELETE FROM app_session WHERE id = ?', [row.id]);
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [row.key]);
             console.log(`[Migration] Deleted duplicate legacy key ${row.key} because absolute key already exists.`);
           }
         }
