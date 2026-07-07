@@ -1268,6 +1268,31 @@ export function healQuizQuestionObject(q) {
             }
           }
 
+          // 4. Advanced multidimensional suffix-based recovery (e.g. INPUT_2_1, INPUT_3_1) using rIdx and cIdx
+          if (foundVal === undefined) {
+            const candidateKeys = Object.keys(oldAnswers).filter(key => {
+              const parts = key.split('_');
+              if (parts.length < 3) return false;
+              if (parts[0].toLowerCase() !== 'input') return false;
+              const colNum = parseInt(parts[parts.length - 1], 10);
+              return colNum === cIdx;
+            });
+
+            if (candidateKeys.length > 0) {
+              candidateKeys.sort((a, b) => {
+                const aParts = a.split('_');
+                const bParts = b.split('_');
+                const aRow = parseInt(aParts[1], 10);
+                const bRow = parseInt(bParts[1], 10);
+                return aRow - bRow;
+              });
+
+              if (candidateKeys[rIdx]) {
+                foundVal = oldAnswers[candidateKeys[rIdx]];
+              }
+            }
+          }
+
           if (foundVal !== undefined) {
             correctAnswer = foundVal;
           } else {
