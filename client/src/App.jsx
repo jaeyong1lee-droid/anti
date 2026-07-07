@@ -2403,6 +2403,186 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   const { headers, rows } = q.tableData;
   const inputIds = Object.keys(q.answers || {});
 
+  // Comparison table resize states & methods
+  const compColCount = q.comparisonTableData?.headers?.length || 0;
+  const compTableRef = React.useRef(null);
+
+  const [compColWidths, setCompColWidths] = React.useState(() => {
+    const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
+
+    if (isMobilePortrait && isMixedTableOrOverview) {
+      if (compColCount <= 1) return ['100%'];
+      const remainingPercent = 100 / (compColCount - 1);
+      return ['85px', ...Array(compColCount - 1).fill(`${remainingPercent}%`)];
+    }
+
+    if (compColCount <= 1) return ['100%'];
+    if (compColCount === 2) return [60, 40];
+    if (compColCount === 3) return [40, 30, 30];
+    const first = 30;
+    const others = (100 - first) / (compColCount - 1);
+    return [first, ...Array(compColCount - 1).fill(others)];
+  });
+
+  const [compMobileColWidths, setCompMobileColWidths] = React.useState(() => {
+    const widths = [];
+    const storageKeyFirst = `mobileFirstCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    const savedFirst = typeof window !== 'undefined' ? localStorage.getItem(storageKeyFirst) : null;
+    widths.push(savedFirst || '120px');
+    
+    for (let i = 1; i < compColCount; i++) {
+      const storageKeyOther = `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+      const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
+      widths.push(savedOther || '140px');
+    }
+    return widths;
+  });
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+      const isMixedTableOrOverview = q.mixedType === 'overview' || q.mixedType === 'table';
+      if (isMixedTableOrOverview) {
+        if (isMobilePortrait) {
+          if (compColCount <= 1) {
+            setCompColWidths(['100%']);
+          } else {
+            const remainingPercent = 100 / (compColCount - 1);
+            setCompColWidths(['85px', ...Array(compColCount - 1).fill(`${remainingPercent}%`)]);
+          }
+        } else {
+          if (compColCount <= 1) {
+            setCompColWidths(['100%']);
+          } else if (compColCount === 2) {
+            setCompColWidths([60, 40]);
+          } else if (compColCount === 3) {
+            setCompColWidths([40, 30, 30]);
+          } else {
+            const first = 30;
+            const others = (100 - first) / (compColCount - 1);
+            setCompColWidths([first, ...Array(compColCount - 1).fill(others)]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [compColCount, q.mixedType]);
+
+  React.useEffect(() => {
+    setCompMobileColWidths(prev => {
+      if (prev.length === compColCount) return prev;
+      const next = [...prev];
+      if (next.length < compColCount) {
+        for (let i = next.length; i < compColCount; i++) {
+          const storageKeyOther = `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+          const savedOther = typeof window !== 'undefined' ? localStorage.getItem(storageKeyOther) : null;
+          next.push(savedOther || '140px');
+        }
+      } else {
+        next.splice(compColCount);
+      }
+      return next;
+    });
+  }, [compColCount, questionIdx]);
+
+  const startCompColumnResize = React.useCallback((e, idx, isTouch) => {
+    if (isTouch) {
+      if (e.cancelable) e.preventDefault();
+    } else {
+      e.preventDefault();
+    }
+    if (!compTableRef.current) return;
+
+    const thElements = compTableRef.current.querySelectorAll('th');
+    const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
+
+    const container = compTableRef.current.closest('.table-quiz-container');
+    const startScrollLeft = container ? container.scrollLeft : 0;
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+
+    if (isTouch && container) {
+      container.scrollLeft = startScrollLeft;
+      container.style.overflowX = 'hidden';
+    }
+
+    const doResize = (ev) => {
+      if (isTouch && ev.cancelable) {
+        ev.preventDefault();
+      }
+      const currentX = isTouch ? ev.touches[0].clientX : ev.clientX;
+      const deltaX = currentX - startX;
+
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        const newWidth = Math.max(idx === 0 ? 50 : 60, targetColStartWidth + deltaX);
+        setCompMobileColWidths(prev => {
+          const next = [...prev];
+          next[idx] = `${newWidth}px`;
+          const storageKey = idx === 0 
+            ? `mobileFirstCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`
+            : `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
+          localStorage.setItem(storageKey, `${newWidth}px`);
+          return next;
+        });
+      }
+    };
+
+    const stopResize = () => {
+      if (isTouch && container) {
+        container.style.overflowX = 'auto';
+      }
+      if (isTouch) {
+        window.removeEventListener('touchmove', doResize);
+        window.removeEventListener('touchend', stopResize);
+      } else {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+      }
+    };
+
+    if (isTouch) {
+      window.addEventListener('touchmove', doResize, { passive: false });
+      window.addEventListener('touchend', stopResize);
+    } else {
+      window.addEventListener('mousemove', doResize);
+      window.addEventListener('mouseup', stopResize);
+    }
+  }, [questionIdx]);
+
+  const resetCompMobileColWidths = React.useCallback(() => {
+    const defaultFirst = '120px';
+    const storageKeyFirst = `mobileFirstCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
+    localStorage.removeItem(storageKeyFirst);
+    
+    for (let i = 1; i < compColCount; i++) {
+      const storageKeyOther = `mobileCompColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+      localStorage.removeItem(storageKeyOther);
+    }
+    
+    setCompMobileColWidths(prev => {
+      const next = [defaultFirst];
+      for (let i = 1; i < compColCount; i++) {
+        next.push('140px');
+      }
+      return next;
+    });
+  }, [questionIdx, compColCount]);
+
+  const lastCompTapRef = React.useRef(0);
+  const handleCompHeaderClick = React.useCallback(() => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    if (now - lastCompTapRef.current < DOUBLE_TAP_DELAY) {
+      resetCompMobileColWidths();
+    }
+    lastCompTapRef.current = now;
+  }, [resetCompMobileColWidths]);
+
   const handleInputChange = (inputId, val) => {
     if (tableAnswersRef) {
       tableAnswersRef.current[`${questionIdx}_${inputId}`] = val;
@@ -2880,19 +3060,53 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
         ⚖️ 비교표 / 장단점 채우기
       </div>
       <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-        <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[16px] min-w-full">
+        <table 
+          ref={compTableRef}
+          className="table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full"
+          style={isMobileView ? {
+            '--table-width': `max(100%, ${compMobileColWidths.reduce((sum, w) => sum + parseInt(w || '0', 10), 0)}px)`,
+            minWidth: '0px'
+          } : undefined}
+        >
+          <colgroup>
+            {compColWidths.map((w, idx) => (
+              <col 
+                key={idx} 
+                className={idx === 0 ? "table-quiz-col-first" : ""} 
+                style={{ 
+                  width: isMobileView
+                    ? (idx === compColCount - 1
+                        ? 'auto'
+                        : (compMobileColWidths[idx] || (typeof w === 'number' ? `${w}%` : w)))
+                    : (typeof w === 'number' ? `${w}%` : w)
+                }} 
+              />
+            ))}
+          </colgroup>
           <thead>
             <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
-              {q.comparisonTableData.headers.map((header, hIdx) => (
-                <th 
-                  key={hIdx} 
-                  className={`p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words ${
-                    hIdx === 0 ? 'text-left break-all' : ''
-                  }`}
-                >
-                  <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
-                </th>
-              ))}
+              {q.comparisonTableData.headers.map((header, hIdx) => {
+                const isFirstCol = hIdx === 0;
+                return (
+                  <th 
+                    key={hIdx} 
+                    className={`relative p-1.5 sm:p-2 font-extrabold border-r border-slate-800 last:border-r-0 select-text whitespace-normal break-words cursor-pointer ${
+                      isFirstCol ? 'text-left break-all' : ''
+                    }`}
+                    onClick={isFirstCol ? handleCompHeaderClick : undefined}
+                    title={isFirstCol ? "더블클릭 시 너비 초기화" : undefined}
+                  >
+                    <LatexRenderer text={header} katexLoaded={katexLoaded} className="inline" />
+                    {hIdx < compColCount - 1 && (
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-4 sm:w-2 cursor-col-resize select-none z-10 hover:bg-sky-500/30 active:bg-sky-500/50 touch-none"
+                        onMouseDown={(e) => startCompColumnResize(e, hIdx, false)}
+                        onTouchStart={(e) => startCompColumnResize(e, hIdx, true)}
+                      />
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
