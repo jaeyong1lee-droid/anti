@@ -18030,7 +18030,7 @@ ${itemsStr}
                   className={`py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap ${
                     showFormulaExam && formulaSubTab === b.tab
                       ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-md glow-rose'
-                      : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40'
+                      : 'bg-slateCustom-900/60 text-slate-100 border-slate-800/80 hover:text-white hover:bg-rose-955/40'
                   }`}
                 >
                   {b.label}
@@ -24668,7 +24668,7 @@ ${itemsStr}
                         className={`py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap ${
                           formulaSubTab === b.tab
                             ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white border-rose-500 shadow-md glow-rose'
-                            : 'bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40'
+                            : 'bg-slateCustom-900/60 text-slate-100 border-slate-800/80 hover:text-white hover:bg-rose-955/40'
                         }`}
                       >
                         {b.label}
@@ -24974,8 +24974,8 @@ ${itemsStr}
                   (!isDesktop && !isMobileLandscape && formulaMobileTab !== 'list') ? 'hidden' : ''
                 }`}
               >
-              {/* Sub-tabs for Memorization Modal */}
-              <div className="w-full px-3 sm:px-6 md:px-5 pt-4 pb-2 bg-slateCustom-950/20 flex gap-2 justify-start border-b border-slate-800/40 select-none">
+                            {/* Sub-tabs for Memorization Modal */}
+              <div className="w-full px-3 sm:px-6 md:px-5 pt-4 pb-2 bg-slateCustom-950/20 md:flex hidden gap-2 justify-start border-b border-slate-800/40 select-none">
                 <button
                   onClick={() => setFormulaSubTab('formula')}
                   className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
@@ -27272,7 +27272,7 @@ ${itemsStr}
                         setFormulaSubTab(b.tab);
                         handleOpenFormulaExam();
                       }}
-                      className="py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap bg-slateCustom-900/60 text-rose-400 border-slate-800/80 hover:text-rose-200 hover:bg-rose-955/40"
+                                            className="py-2 rounded-xl text-[10.5px] font-bold cursor-pointer transition-all duration-150 active:scale-95 select-none border text-center whitespace-nowrap bg-slateCustom-900/60 text-slate-100 border-slate-800/80 hover:text-white hover:bg-rose-955/40"
                     >
                       {b.label}
                     </button>
