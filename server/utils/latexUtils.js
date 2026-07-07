@@ -1397,7 +1397,6 @@ export function healQuizQuestionObject(q) {
                   }
                 }
               }
-              
               // 2. 만약 HTML이 아니라 순수 마크다운 테이블 형태라면?
               if (!answers[inputId]) {
                 const lines = textToParse.split('\n');
@@ -1418,6 +1417,8 @@ export function healQuizQuestionObject(q) {
           }
         });
       });
+    }
+
     // [🚨 지반공학 도메인 특화 자가치료 패치 🚨]
     // 이방성 유선망 작도 퀴즈(또는 침투/유선망 관련 퀴즈)에서 등방성 지반(A)/(C) 칸의 정답이 이방성 관련 내용(예: 좌표 변환, 기하평균, Keq 등)으로 오매핑되어 있는 경우 강제 교정
     if (q.question && (q.question.includes('이방성') || q.question.includes('유선망')) && q.answers) {
@@ -1439,8 +1440,6 @@ export function healQuizQuestionObject(q) {
           }
         }
       });
-    }
-
     }
   }
   return healDeep(q);
