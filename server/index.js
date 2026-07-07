@@ -4010,7 +4010,7 @@ app.post('/api/question/regenerate', async (req, res) => {
   }
 
   try {
-    if ((topicId && topicId.startsWith('mixed_')) || currentQuestion?.mixedType) {
+    if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
       const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
       
       if (mixedType === 'image') {
