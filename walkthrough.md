@@ -154,3 +154,16 @@
   1. **동적 폴백 매칭 로직 제거 및 롤백**: 오류와 실수를 방지하기 위해 사용자가 지시하지 않은 복잡한 동적 폴백 매칭 함수(`createLocalFallbackTableQuestion`)를 통째로 삭제하고, 6월 30일 이전의 검증된 정적 터널 공법(강관다단 그라우팅 vs 훠폴링) 폴백 방식으로 안전하게 원복하였습니다.
   2. **프롬프트 내 구체적 예시의 기호화**: AI의 모사 행위를 차단하기 위해 생성 지침 프롬프트의 구체적 비교 대상을 `공법 A` 및 `공법 B`와 같이 범용 기호화하고 **"🚨 [예시 모방 절대 금지 규칙]"**을 강력히 추가하였습니다.
   3. **코드 버전 원격 배포 연동**: 로컬 커밋 및 원격 리포지토리(`origin main`) 푸시를 완료하였습니다.
+
+---
+
+## 13. LatexRenderer 내 selectedTopic ReferenceError로 인한 화면 먹통 현상 해결 (2026-07-07 패치)
+
+* **원인**:
+  * 최근 패치(`e9928bd`)에서 LatexRenderer의 reference error를 방지하기 위해 `App` 컴포넌트 내부에서 `window.__isMixedReviewActive` 전역 프로퍼티를 동적으로 설정하도록 수정했으나, 정작 `LatexRenderer` 내부(라인 1822)에서는 여전히 `App` 컴포넌트의 지역 상태 변수인 `selectedTopic`과 `showFormulaExam`을 참조하고 있었습니다.
+  * 이로 인해 `LatexRenderer` 렌더링 시 외부 스코프에 정의되지 않은 변수에 접근하여 `ReferenceError: selectedTopic is not defined`가 발생하였고, 화면 전체가 먹통(Freeze)되는 현상이 발생했습니다.
+
+* **해결**:
+  * `client/src/App.jsx` 내 `LatexRenderer` 컴포넌트 내부(라인 1822)에서 `selectedTopic`과 `showFormulaExam`을 직접 참조하던 로직을 **`window.__isMixedReviewActive` 전역 변수의 불리언 값 참조(`!!window.__isMixedReviewActive`)**로 변경하여, reference error를 완전히 해결했습니다.
+  * 수정 후 로컬 환경에서 Vite 빌드를 성공적으로 검증하였으며, 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 프로덕션 배포에 반영되도록 조치했습니다.
+
