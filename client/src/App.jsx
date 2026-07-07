@@ -2926,9 +2926,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                       ? gradingResult.isCorrect 
                       : (normalize(value) === normalize(correctAnswer));
    
-                    const match = inputId.match(/\d+/);
-                    const inputNum = match ? parseInt(match[0], 10) : 1;
-                    const inputLetter = String.fromCharCode(64 + inputNum);
+                    const inputIdx = inputIds.indexOf(inputId);
+                    const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
 
                     return (
                       <td 
@@ -3134,9 +3133,8 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
                         ? gradingResult.isCorrect 
                         : (normalize(value) === normalize(correctAnswer));
      
-                      const match = inputId.match(/\d+/);
-                      const inputNum = match ? parseInt(match[0], 10) : 1;
-                      const inputLetter = String.fromCharCode(64 + inputNum);
+                      const inputIdx = inputIds.indexOf(inputId);
+                      const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
 
                       return (
                         <td 
@@ -4640,9 +4638,8 @@ export default function App() {
             const correctAnswer = q.answers?.[inputId] || '';
             const gradingResult = activeGradingResults?.[`${idx}_${inputId}`];
             
-            const match = inputId.match(/\d+/);
-            const inputNum = match ? parseInt(match[0], 10) : 1;
-            const inputLetter = String.fromCharCode(64 + inputNum);
+            const inputIdx = inputIds.indexOf(inputId);
+            const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
             
             const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
             const isCorrect = gradingResult 

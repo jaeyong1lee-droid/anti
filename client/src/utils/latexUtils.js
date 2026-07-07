@@ -1167,10 +1167,27 @@ export function healQuizQuestionObject(q) {
       const newAnswers = {};
       let inputCount = 1;
 
+      const isCellPlaceholder = (cell) => {
+        if (typeof cell !== 'string') return false;
+        const trimmed = cell.trim();
+        return (
+          trimmed.includes('[INPUT_') ||
+          trimmed.includes('입력') ||
+          /빈칸\s*\(?\d+\)?/i.test(trimmed) ||
+          /^\s*[\[\(]?\s*[A-Za-z]\s*[\]\)]?\s*$/i.test(trimmed) ||
+          /[A-Za-z]\s*입력/i.test(trimmed)
+        );
+      };
+
       const newRows = q.tableData.rows.map((row, rIdx) => {
         if (!Array.isArray(row)) return [];
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
+
+          const shouldBeInput = hasInputPlaceholder ? isCellPlaceholder(cell) : true;
+          if (!shouldBeInput) {
+            return cell; // Keep plain text as-is
+          }
 
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
@@ -1225,7 +1242,7 @@ export function healQuizQuestionObject(q) {
             correctAnswer = foundVal;
           } else {
             // If no placeholder value was found in oldAnswers, keep the cell text if it's not a placeholder
-            const isPlaceholder = /^(?:[\[\(]?\s*[A-Za-z]\s*[\]\)]?|\[?\s*INPUT_\d+(?:_\d+)?\s*\]?|빈칸\s*\(?\d+\)?)$/i.test(trimmedCell);
+            const isPlaceholder = isCellPlaceholder(trimmedCell);
             correctAnswer = isPlaceholder ? '' : cell;
           }
 
