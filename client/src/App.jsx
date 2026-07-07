@@ -26203,11 +26203,11 @@ ${itemsStr}
                                                     <thead>
                                                       <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                                         {headers.map((h, hIdx) => (
-                                                          <th key={hIdx} className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} select-text whitespace-normal break-words`}>
+                                                          <th key={hIdx} className={`p-2 sm:p-2.5 font-extrabold border-r border-slate-800 ${(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam) && hIdx === headers.length - 1 ? 'last:border-r-0' : ''} select-text whitespace-normal break-words`}>
                                                             <LatexRenderer text={h} katexLoaded={katexLoaded} />
                                                           </th>
                                                         ))}
-                                                        {!(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                                                        {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && (
                                                           <th className="p-2 sm:p-2.5 font-extrabold text-rose-400 select-none whitespace-nowrap w-16">
                                                             비고
                                                           </th>
@@ -26219,7 +26219,7 @@ ${itemsStr}
                                                         <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
                                                           {row.map((cell, cIdx) => {
                                                             const isHeader = cIdx === 0;
-                                                            const isMixed = selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_');
+                                                            const isMixed = (selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam;
                                                             if (isHeader) {
                                                               return (
                                                                 <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
@@ -26233,7 +26233,7 @@ ${itemsStr}
                                                               </td>
                                                             );
                                                           })}
-                                                          {!(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && (
+                                                          {!((selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_')) && !showFormulaExam) && (
                                                             <td className="p-2 sm:p-2.5 text-center align-middle whitespace-nowrap bg-slate-950/10">
                                                               <button
                                                                 onClick={() => {
