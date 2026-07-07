@@ -4372,13 +4372,22 @@ export default function App() {
             
             let rowHeader = '';
             let colHeader = '';
-            const tData = q.tableData || q.comparisonTableData;
-            if (tData && tData.rows && tData.headers) {
-              tData.rows.forEach((row) => {
+            if (q.tableData && q.tableData.rows && q.tableData.headers) {
+              q.tableData.rows.forEach((row) => {
                 row.forEach((cell, colIdx) => {
                   if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
                     rowHeader = row[0] || '';
-                    colHeader = tData.headers[colIdx] || '';
+                    colHeader = q.tableData.headers[colIdx] || '';
+                  }
+                });
+              });
+            }
+            if (!rowHeader && q.comparisonTableData && q.comparisonTableData.rows && q.comparisonTableData.headers) {
+              q.comparisonTableData.rows.forEach((row) => {
+                row.forEach((cell, colIdx) => {
+                  if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+                    rowHeader = row[0] || '';
+                    colHeader = q.comparisonTableData.headers[colIdx] || '';
                   }
                 });
               });
@@ -5593,13 +5602,22 @@ export default function App() {
 
     let rowHeader = '';
     let colHeader = '';
-    const tData = q.tableData || q.comparisonTableData;
-    if (tData && tData.rows && tData.headers) {
-      tData.rows.forEach((row) => {
+    if (q.tableData && q.tableData.rows && q.tableData.headers) {
+      q.tableData.rows.forEach((row) => {
         row.forEach((cell, colIdx) => {
           if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
             rowHeader = row[0] || '';
-            colHeader = tData.headers[colIdx] || '';
+            colHeader = q.tableData.headers[colIdx] || '';
+          }
+        });
+      });
+    }
+    if (!rowHeader && q.comparisonTableData && q.comparisonTableData.rows && q.comparisonTableData.headers) {
+      q.comparisonTableData.rows.forEach((row) => {
+        row.forEach((cell, colIdx) => {
+          if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+            rowHeader = row[0] || '';
+            colHeader = q.comparisonTableData.headers[colIdx] || '';
           }
         });
       });
@@ -10299,22 +10317,15 @@ export default function App() {
               }
             }
             
-            let explanationHtml = `
-              <div class="space-y-3 text-left">
-                ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
-                ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
-              </div>
-            `;
-
+            let explanationHtml = '';
+            if (parsed.definition) {
+              explanationHtml += `📖 **학술적 정의**\n${parsed.definition}\n\n`;
+            }
+            if (parsed.mechanism) {
+              explanationHtml += `⚙️ **공학적 작동 메커니즘**\n${parsed.mechanism}\n\n`;
+            }
             if (parsed.comparison) {
-              explanationHtml += `
-                <div class="mt-4 text-left">
-                  <span class="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                  <div class="text-slate-250 leading-relaxed font-normal">
-                    ${convertMarkdownTablesToHtml(parsed.comparison, true)}
-                  </div>
-                </div>
-              `;
+              explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
             }
             
             return {
@@ -11007,22 +11018,15 @@ export default function App() {
               }
             }
             
-            let explanationHtml = `
-              <div class="space-y-3 text-left">
-                ${parsed.definition ? `<div class="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl"><span class="text-[10px] text-slate-400 font-black block mb-1 uppercase tracking-wider">📖 학술적 정의</span><p class="font-bold text-white">${parsed.definition}</p></div>` : ''}
-                ${parsed.mechanism ? `<div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl"><span class="text-[10px] text-rose-455 font-black block mb-1 uppercase tracking-wider">⚙️ 공학적 작동 메커니즘</span><p class="text-slate-200">${parsed.mechanism}</p></div>` : ''}
-              </div>
-            `;
-
+            let explanationHtml = '';
+            if (parsed.definition) {
+              explanationHtml += `📖 **학술적 정의**\n${parsed.definition}\n\n`;
+            }
+            if (parsed.mechanism) {
+              explanationHtml += `⚙️ **공학적 작동 메커니즘**\n${parsed.mechanism}\n\n`;
+            }
             if (parsed.comparison) {
-              explanationHtml += `
-                <div class="mt-4 text-left">
-                  <span class="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
-                  <div class="text-slate-250 leading-relaxed font-normal">
-                    ${convertMarkdownTablesToHtml(parsed.comparison, true)}
-                  </div>
-                </div>
-              `;
+              explanationHtml += `⚖️ **비교표 / 장단점**\n${parsed.comparison}\n\n`;
             }
             
             return {
