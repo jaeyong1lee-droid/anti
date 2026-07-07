@@ -3572,12 +3572,12 @@ function parseMarkdownTable(questionText) {
   return null;
 }
 
-function rebuildMarkdownTable(headers, rows) {
+function rebuildMarkdownTable(headers, rows, separator = '\n') {
   if (!headers || !rows) return '';
   const headerLine = '| ' + headers.join(' | ') + ' |';
   const sepLine = '| ' + headers.map(() => '---').join(' | ') + ' |';
   const rowLines = rows.map(r => '| ' + r.join(' | ') + ' |');
-  return [headerLine, sepLine, ...rowLines].join('\n');
+  return [headerLine, sepLine, ...rowLines].join(separator);
 }
 
 function getCoreSubjectFromTitle(title) {
@@ -15411,7 +15411,12 @@ ${itemsStr}
     window.__handleAcronymConfirmRequest = (title, content) => {
       setAcronymConfirmTarget({ title, content });
     };
-    window.__handleGlobalRowDelete = (rowTitle, precedingTitle, originalTableMd) => {
+    window.__handleGlobalRowDelete = (escapedRowTitle, escapedPrecedingTitle, escapedTableMd) => {
+      const rowTitle = (escapedRowTitle || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+      const precedingTitle = (escapedPrecedingTitle || '').replace(/__DOLLAR_TEMP__/g, '$').trim();
+      const rawTableMd = (escapedTableMd || '').replace(/__DOLLAR_TEMP__/g, '$');
+      const originalTableMd = rawTableMd.replace(/\\n/g, '\n').trim();
+
       if (!window.confirm(`'${rowTitle}' 행을 비교표에서 삭제하시겠습니까?`)) return;
 
       const lines = originalTableMd.split('\n').map(l => l.trim()).filter(Boolean);
@@ -15420,37 +15425,44 @@ ${itemsStr}
       const separatorIdx = lines.findIndex(l => l.includes('|') && l.includes('-') && /^[|:\s\-]+$/.test(l));
       if (separatorIdx === -1) return;
 
-      const headerLine = lines[0];
-      const separatorLine = lines[separatorIdx];
+      const headers = lines[0].split('|').slice(1, -1).map(c => c.trim());
       const dataLines = lines.slice(separatorIdx + 1);
-
-      const updatedDataLines = dataLines.filter(line => {
+      const rows = dataLines.map(line => {
         let cells = line.split('|');
         if (cells[0] !== undefined && cells[0].trim() === '') cells.shift();
-        const firstCell = (cells[0] || '').trim();
-        return firstCell !== rowTitle;
+        if (cells[cells.length - 1] !== undefined && cells[cells.length - 1].trim() === '') cells.pop();
+        return cells.map(c => c.trim());
       });
 
-      const newTableMd = [headerLine, separatorLine, ...updatedDataLines].join('\n');
+      const updatedRows = rows.filter(r => (r[0] || '').trim() !== rowTitle);
+      const newCompTableCellMd = '| ' + headers.join(' | ') + ' |<br>| ' + headers.map(() => '---').join(' | ') + ' |<br>' + updatedRows.map(r => '| ' + r.join(' | ') + ' |').join('<br>');
 
       setFormulaOverviews(prevOverviews => {
         let found = false;
         const updated = prevOverviews.map(ov => {
           const contentStr = ov.content || '';
-          if (contentStr.includes(originalTableMd.trim())) {
+          const parsed = parseOverviewContent(contentStr);
+          if (!parsed.comparison) return ov;
+
+          const normalizeTable = (tableStr) => {
+            if (!tableStr) return '';
+            return tableStr
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/\|[ \t]*\|/g, '\n|')
+              .split('\n')
+              .map(l => l.trim())
+              .filter(Boolean)
+              .join('\n');
+          };
+
+          const normalizedComparison = normalizeTable(parsed.comparison);
+          const normalizedTarget = normalizeTable(originalTableMd);
+
+          if (normalizedComparison.includes(normalizedTarget) || normalizedTarget.includes(normalizedComparison)) {
             found = true;
             return {
               ...ov,
-              content: contentStr.replace(originalTableMd.trim(), newTableMd.trim())
-            };
-          }
-          const normalizedContent = contentStr.replace(/\r\n/g, '\n');
-          const normalizedTarget = originalTableMd.replace(/\r\n/g, '\n').trim();
-          if (normalizedContent.includes(normalizedTarget)) {
-            found = true;
-            return {
-              ...ov,
-              content: normalizedContent.replace(normalizedTarget, newTableMd.trim())
+              content: contentStr.replace(parsed.comparison.trim(), newCompTableCellMd.trim())
             };
           }
           return ov;
@@ -26298,7 +26310,7 @@ ${itemsStr}
                                                                 onClick={() => {
                                                                   if (window.confirm(`'${row[0] || '이 행'}' 행을 삭제하시겠습니까?`)) {
                                                                     const updatedRows = rows.filter((_, idx) => idx !== rIdx);
-                                                                    const newCompTableMd = rebuildMarkdownTable(headers, updatedRows);
+                                                                    const newCompTableMd = rebuildMarkdownTable(headers, updatedRows, '<br>');
                                                                     let newContent = ov.content;
                                                                     if (parsed.comparison) {
                                                                       newContent = ov.content.replace(parsed.comparison.trim(), newCompTableMd.trim());
