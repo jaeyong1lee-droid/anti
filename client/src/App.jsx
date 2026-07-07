@@ -6300,6 +6300,9 @@ export default function App() {
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
+  // Synchronously update mixed review active flag for LatexRenderer outer scope
+  window.__isMixedReviewActive = !!(selectedTopic?.id && typeof selectedTopic.id === 'string' && selectedTopic.id.startsWith('mixed_') && !showFormulaExam);
+  
   const showTheoryExam = false;
   const setShowTheoryExam = () => {};
   const theoryBodyRef = { current: null };
