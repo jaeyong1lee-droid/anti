@@ -3534,7 +3534,7 @@ function parseMarkdownTable(questionText) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (line.startsWith('|') && line.endsWith('|')) {
+    if (line.startsWith('|') && line !== '|') {
       if (startIdx === -1) {
         startIdx = i;
       }
