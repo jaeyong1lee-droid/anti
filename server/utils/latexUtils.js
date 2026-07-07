@@ -1190,10 +1190,7 @@ export function healQuizQuestionObject(q) {
         return row.map((cell, cIdx) => {
           if (cIdx === 0) return cell; // Keep the row label intact
 
-          const shouldBeInput = hasInputPlaceholder ? isCellPlaceholder(cell) : true;
-          if (!shouldBeInput) {
-            return cell; // Keep plain text as-is
-          }
+          const shouldBeInput = true;
 
           const inputId = `INPUT_${inputCount}`;
           const currentCount = inputCount;
