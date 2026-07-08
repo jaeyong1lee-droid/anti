@@ -1330,12 +1330,27 @@ export function healQuizQuestionObject(q) {
 
       q.tableData.rows = newRows;
       // 비교표(comparisonTableData)의 answers는 메인 tableData rows 순회에서 처리되지 않으므로
-      // oldAnswers에서 언더스코어가 포함된 키(INPUT_x_y 형식)를 살려서 병합한다.
-      Object.keys(oldAnswers).forEach(key => {
-        if (key.includes('_') && !(key in newAnswers)) {
-          newAnswers[key] = oldAnswers[key];
-        }
-      });
+      // oldAnswers에서 comparisonTableData.rows에 실제로 존재하는 키만 살려서 병합한다.
+      if (q.comparisonTableData && q.comparisonTableData.rows) {
+        const activeComparisonKeys = new Set();
+        q.comparisonTableData.rows.forEach(row => {
+          if (Array.isArray(row)) {
+            row.forEach(cell => {
+              if (typeof cell === 'string' && cell.includes('[INPUT_')) {
+                const cleanId = cell.replace('[', '').replace(']', '').trim();
+                activeComparisonKeys.add(cleanId);
+                activeComparisonKeys.add(cleanId.toLowerCase());
+                activeComparisonKeys.add(cleanId.toUpperCase());
+              }
+            });
+          }
+        });
+        Object.keys(oldAnswers).forEach(key => {
+          if ((activeComparisonKeys.has(key) || activeComparisonKeys.has(key.toLowerCase()) || activeComparisonKeys.has(key.toUpperCase())) && !(key in newAnswers)) {
+            newAnswers[key] = oldAnswers[key];
+          }
+        });
+      }
       q.answers = newAnswers;
 
       // [🚨 주관식 표채우기 지문 빈칸 오표기 보정 로직 🚨]
