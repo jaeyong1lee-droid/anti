@@ -834,11 +834,16 @@ export function FloatingMemorization({
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
                                       <textarea
+                                        ref={(el) => {
+                                          if (el) {
+                                            el.style.height = 'auto';
+                                            el.style.height = `${el.scrollHeight}px`;
+                                          }
+                                        }}
                                         value={rowVal.description}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
                                         rows={1}
-                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-xs resize-none"
-                                        style={{ height: 'auto' }}
+                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-xs resize-none overflow-hidden"
                                       />
                                     </td>
                                     <td className="p-1 text-center align-middle select-none">
