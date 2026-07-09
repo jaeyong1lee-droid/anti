@@ -19,6 +19,7 @@ import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStan
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from './plugins/acronymsPlugin.js';
+import { put, del } from '@vercel/blob';
 import { defaultOverviews, generateOverviewTutorResponse } from './plugins/overviewsPlugin.js';
 import { ASCII_DIAGRAM_PROMPT } from './plugins/asciiDiagramPlugin.js';
 
@@ -600,15 +601,20 @@ export async function getTopicText(topic) {
     }
   }
 
-  // Fallback: If pdf_data is not in memory, lazy load it from DB
+  // Fallback: If pdf_data is not in memory, lazy load it from DB or Vercel Blob
   let pdfData = topic ? topic.pdf_data : null;
   let rawPdfName = topic ? topic.pdf_name : null;
   if (!pdfData && topicId) {
     try {
-      const dbRow = await dbQuery.get('SELECT pdf_name, pdf_data FROM topics WHERE id = ?', [topicId]);
+      const dbRow = await dbQuery.get('SELECT pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?', [topicId]);
       if (dbRow) {
         pdfData = dbRow.pdf_data;
         rawPdfName = dbRow.pdf_name;
+        if (dbRow.pdf_url && (!pdfData || pdfData.length === 0)) {
+          console.log(`Lazy loading PDF/HTML buffer from Vercel Blob URL: ${dbRow.pdf_url}`);
+          const response = await fetch(dbRow.pdf_url);
+          pdfData = Buffer.from(await response.arrayBuffer());
+        }
         if (topic) {
           topic.pdf_data = pdfData;
           topic.pdf_name = rawPdfName;
@@ -1417,16 +1423,35 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
       }
     }
 
+    let pdfUrl = null;
+    let dbPdfData = pdfData;
+
+    if (pdfData && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
+        const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
+          access: 'public',
+          contentType: mimeType,
+        });
+        pdfUrl = blob.url;
+        dbPdfData = null; // Clear binary from PostgreSQL
+        console.log(`Successfully uploaded binary file to Vercel Blob: ${pdfUrl}`);
+      } catch (blobErr) {
+        console.error('Failed to upload topic binary to Vercel Blob, falling back to database storage:', blobErr);
+      }
+    }
+
     // Save topic to DB
     const insertTopicSql = `
-      INSERT INTO topics (title, keywords, pdf_name, pdf_data, extracted_text, created_at, category)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO topics (title, keywords, pdf_name, pdf_data, pdf_url, extracted_text, created_at, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const topicResult = await dbQuery.run(insertTopicSql, [
       title,
       keywords || '',
       pdfName,
-      pdfData,
+      dbPdfData,
+      pdfUrl,
       extractedText,
       dbDateStr,
       category || '일반'
@@ -1492,13 +1517,50 @@ app.post('/api/topics/:id/replace-source', upload.single('pdf'), async (req, res
       }
     }
 
-    // Update topic pdf_name and pdf_data
+    // Fetch existing pdf_url to delete it if exists
+    let oldPdfUrl = null;
+    try {
+      const row = await dbQuery.get('SELECT pdf_url FROM topics WHERE id = ?', [topicId]);
+      if (row && row.pdf_url) oldPdfUrl = row.pdf_url;
+    } catch (e) {
+      console.warn('Failed to query old pdf_url during replace-source:', e);
+    }
+
+    let pdfUrl = null;
+    let dbPdfData = pdfData;
+
+    if (pdfData && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
+        const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
+          access: 'public',
+          contentType: mimeType,
+        });
+        pdfUrl = blob.url;
+        dbPdfData = null; // Clear binary from PostgreSQL
+        console.log(`Successfully uploaded binary file to Vercel Blob for replace-source: ${pdfUrl}`);
+
+        // Try deleting the old blob file to save storage
+        if (oldPdfUrl) {
+          try {
+            await del(oldPdfUrl);
+            console.log(`Successfully deleted old Vercel Blob file: ${oldPdfUrl}`);
+          } catch (delErr) {
+            console.warn(`Failed to delete old Vercel Blob file: ${oldPdfUrl}`, delErr);
+          }
+        }
+      } catch (blobErr) {
+        console.error('Failed to upload topic binary to Vercel Blob during replace-source, falling back to database storage:', blobErr);
+      }
+    }
+
+    // Update topic pdf_name, pdf_data, and pdf_url
     const updateSql = `
       UPDATE topics 
-      SET pdf_name = ?, pdf_data = ?
+      SET pdf_name = ?, pdf_data = ?, pdf_url = ?
       WHERE id = ?
     `;
-    await dbQuery.run(updateSql, [pdfName, pdfData, topicId]);
+    await dbQuery.run(updateSql, [pdfName, dbPdfData, pdfUrl, topicId]);
 
     // Clear extracted text cache
     await dbQuery.run('DELETE FROM app_session WHERE key = ?', [`topic_extracted_text_${topicId}`]);
@@ -2185,11 +2247,20 @@ app.delete('/api/topics/:id', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
 
   try {
-    const checkSql = `SELECT id, title FROM topics WHERE id = ?`;
+    const checkSql = `SELECT id, title, pdf_url FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(checkSql, [topicId]);
 
     if (!topic) {
       return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+    }
+
+    if (topic.pdf_url && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        await del(topic.pdf_url);
+        console.log(`Successfully deleted Vercel Blob file for deleted topic: ${topic.pdf_url}`);
+      } catch (delErr) {
+        console.warn(`Failed to delete Vercel Blob file for topic ID ${topicId}:`, delErr);
+      }
     }
 
     const deleteSql = `DELETE FROM topics WHERE id = ?`;
@@ -2215,7 +2286,7 @@ app.put('/api/topics/:id/title', async (req, res) => {
   }
 
   try {
-    const checkSql = `SELECT * FROM topics WHERE id = ?`;
+    const checkSql = `SELECT id, title FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(checkSql, [topicId]);
 
     if (!topic) {
@@ -2742,7 +2813,7 @@ app.post('/api/topics/:id/ai-questions', async (req, res) => {
   let topic = null;
 
   try {
-    const topicSql = `SELECT * FROM topics WHERE id = ?`;
+    const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
     console.log(`[POST /api/topics/:id/ai-questions] Querying topic row using SQL: "${topicSql}"`);
     topic = await dbQuery.get(topicSql, [topicId]);
 
@@ -4244,7 +4315,7 @@ ${otherQs.map((q, i) => {
         return res.status(400).json({ error: '토픽 ID가 제공되지 않았습니다.' });
       }
 
-      const topicSql = `SELECT * FROM topics WHERE id = ?`;
+      const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
       const topic = await dbQuery.get(topicSql, [topicId]);
 
       if (!topic) {
@@ -4252,7 +4323,7 @@ ${otherQs.map((q, i) => {
       }
 
       let fileText = '';
-      if (topic.pdf_data) {
+      if (topic.pdf_data || topic.pdf_url || topic.extracted_text) {
         fileText = await getTopicText(topic);
         fileText = smartTruncate(fileText, 25000);
       }
@@ -5044,7 +5115,7 @@ app.post('/api/question/adjust', async (req, res) => {
         return res.status(400).json({ error: '토픽 ID가 제공되지 않았습니다.' });
       }
 
-      const topicSql = `SELECT * FROM topics WHERE id = ?`;
+      const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
       const topic = await dbQuery.get(topicSql, [topicId]);
 
       if (!topic) {
@@ -5052,7 +5123,7 @@ app.post('/api/question/adjust', async (req, res) => {
       }
 
       let fileText = '';
-      if (topic.pdf_data) {
+      if (topic.pdf_data || topic.pdf_url || topic.extracted_text) {
         fileText = await getTopicText(topic);
         fileText = smartTruncate(fileText, 25000);
       }
@@ -7076,7 +7147,7 @@ app.get('/api/topics/:id/text', async (req, res) => {
   const topicId = req.params.id;
 
   try {
-    const topicSql = `SELECT * FROM topics WHERE id = ?`;
+    const topicSql = `SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(topicSql, [topicId]);
 
     if (!topic) {
@@ -7122,11 +7193,23 @@ function isBufferWebp(buf) {
 app.get('/api/topics/:id/html-raw', async (req, res) => {
   const topicId = req.params.id;
   try {
-    const topic = await dbQuery.get(`SELECT pdf_name, pdf_data FROM topics WHERE id = ?`, [topicId]);
-    if (!topic || !topic.pdf_data) {
+    const topic = await dbQuery.get(`SELECT pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?`, [topicId]);
+    if (!topic) {
       return res.status(404).json({ error: '첨부된 HTML 원본 파일을 찾을 수 없습니다.' });
     }
-    const html = decodeHtmlBuffer(topic.pdf_data);
+    let pdfData = topic.pdf_data;
+    if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
+      try {
+        const response = await fetch(topic.pdf_url);
+        pdfData = Buffer.from(await response.arrayBuffer());
+      } catch (fetchErr) {
+        console.error(`Failed to lazy load html-raw from URL: ${topic.pdf_url}`, fetchErr);
+      }
+    }
+    if (!pdfData || pdfData.length === 0) {
+      return res.status(404).json({ error: '첨부된 HTML 원본 파일을 찾을 수 없습니다.' });
+    }
+    const html = decodeHtmlBuffer(pdfData);
     res.json({ success: true, html });
   } catch (err) {
     console.error(err);
@@ -7141,12 +7224,35 @@ app.put('/api/topics/:id/html-raw', async (req, res) => {
     return res.status(400).json({ error: 'html 코드는 필수 문자열입니다.' });
   }
   try {
-    const topic = await dbQuery.get(`SELECT pdf_name FROM topics WHERE id = ?`, [topicId]);
+    const topic = await dbQuery.get(`SELECT pdf_name, pdf_url FROM topics WHERE id = ?`, [topicId]);
     if (!topic) {
       return res.status(404).json({ error: '토픽을 찾을 수 없습니다.' });
     }
     const buffer = Buffer.from(html, 'utf-8');
-    await dbQuery.run(`UPDATE topics SET pdf_data = ? WHERE id = ?`, [buffer, topicId]);
+    let pdfUrl = null;
+    let dbPdfData = buffer;
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const blob = await put(`topics/${Date.now()}_${topic.pdf_name || 'edit.html'}`, buffer, {
+          access: 'public',
+          contentType: 'text/html',
+        });
+        pdfUrl = blob.url;
+        dbPdfData = null;
+        if (topic.pdf_url) {
+          try {
+            await del(topic.pdf_url);
+          } catch (delErr) {
+            console.warn(`Failed to delete old Vercel Blob during html-raw edit: ${topic.pdf_url}`, delErr);
+          }
+        }
+      } catch (blobErr) {
+        console.error('Failed to upload edited HTML to Vercel Blob, falling back to database:', blobErr);
+      }
+    }
+
+    await dbQuery.run(`UPDATE topics SET pdf_data = ?, pdf_url = ? WHERE id = ?`, [dbPdfData, pdfUrl, topicId]);
     
     // Clear extracted text cache so that new quiz generations read the updated html.
     // NOTE: This preserves all existing review data, schedules, scores, and past solved sessions.
@@ -7163,23 +7269,37 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
   const topicId = req.params.id;
 
   try {
-    const topicSql = `SELECT pdf_name, pdf_data FROM topics WHERE id = ?`;
+    const topicSql = `SELECT pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(topicSql, [topicId]);
 
-    if (!topic || !topic.pdf_data) {
+    if (!topic) {
       return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
     }
 
-    const isImage = isBufferPng(topic.pdf_data) || isBufferJpeg(topic.pdf_data) || isBufferGif(topic.pdf_data) || isBufferWebp(topic.pdf_data);
+    let pdfData = topic.pdf_data;
+    if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
+      try {
+        const response = await fetch(topic.pdf_url);
+        pdfData = Buffer.from(await response.arrayBuffer());
+      } catch (fetchErr) {
+        console.error(`Failed to lazy load topic buffer from URL: ${topic.pdf_url}`, fetchErr);
+      }
+    }
+
+    if (!pdfData || pdfData.length === 0) {
+      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+    }
+
+    const isImage = isBufferPng(pdfData) || isBufferJpeg(pdfData) || isBufferGif(pdfData) || isBufferWebp(pdfData);
 
     const isHtml = !isImage && topic.pdf_name && (
       topic.pdf_name.toLowerCase().endsWith('.html') || 
       topic.pdf_name.toLowerCase().endsWith('.htm') || 
-      isBufferHtml(topic.pdf_data)
+      isBufferHtml(pdfData)
     );
     if (isHtml) {
       // Decode HTML buffer cleanly and stream it natively with UTF-8 encoding
-      let htmlContent = decodeHtmlBuffer(topic.pdf_data);
+      let htmlContent = decodeHtmlBuffer(pdfData);
       // Remove any script tag containing polyfill.io to prevent malicious loads and credential prompts
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
 
@@ -7355,13 +7475,13 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
     } else {
       const fileNameLower = (topic.pdf_name || '').toLowerCase();
       let contentType = 'application/pdf';
-      if (fileNameLower.endsWith('.png') || isBufferPng(topic.pdf_data)) {
+      if (fileNameLower.endsWith('.png') || isBufferPng(pdfData)) {
         contentType = 'image/png';
-      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg') || isBufferJpeg(topic.pdf_data)) {
+      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg') || isBufferJpeg(pdfData)) {
         contentType = 'image/jpeg';
-      } else if (fileNameLower.endsWith('.gif') || isBufferGif(topic.pdf_data)) {
+      } else if (fileNameLower.endsWith('.gif') || isBufferGif(pdfData)) {
         contentType = 'image/gif';
-      } else if (fileNameLower.endsWith('.webp') || isBufferWebp(topic.pdf_data)) {
+      } else if (fileNameLower.endsWith('.webp') || isBufferWebp(pdfData)) {
         contentType = 'image/webp';
       } else if (fileNameLower.endsWith('.svg')) {
         contentType = 'image/svg+xml';
@@ -7369,7 +7489,7 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(topic.pdf_name)}"`);
-      res.send(topic.pdf_data);
+      res.send(pdfData);
     }
   } catch (error) {
     console.error('Error streaming PDF/HTML file:', error);
@@ -8515,7 +8635,7 @@ async function getLockscreenCandidates() {
   const textExtractedCandidates = await Promise.all(
     pickedForText.map(async (t) => {
       try {
-        const fullTopic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [t.id]);
+        const fullTopic = await dbQuery.get('SELECT id, title, keywords, pdf_name, category, pdf_url, extracted_text FROM topics WHERE id = ?', [t.id]);
         const textContent = fullTopic ? await getTopicText(fullTopic) : '';
         const truncatedText = textContent ? textContent.substring(0, 2000) : '';
         return {
@@ -9608,15 +9728,33 @@ app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, re
     }
     const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
 
+    let pdfUrl = null;
+    let dbPdfData = req.file.buffer;
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const blob = await put(`answersheets/${Date.now()}_${pdfName}`, req.file.buffer, {
+          access: 'public',
+          contentType: req.file.mimetype || 'application/pdf',
+        });
+        pdfUrl = blob.url;
+        dbPdfData = null; // Clear binary from database
+        console.log(`Successfully uploaded answersheet report binary to Vercel Blob: ${pdfUrl}`);
+      } catch (blobErr) {
+        console.error('Failed to upload answersheet report to Vercel Blob, falling back to database storage:', blobErr);
+      }
+    }
+
     // Save the original file to SQLite/Postgres db
     await ensureAnswersheetReportsTable();
     const insertReportSql = `
-      INSERT INTO answersheet_reports (pdf_name, pdf_data)
-      VALUES (?, ?)
+      INSERT INTO answersheet_reports (pdf_name, pdf_data, pdf_url)
+      VALUES (?, ?, ?)
     `;
     const reportResult = await dbQuery.run(insertReportSql, [
       pdfName,
-      req.file.buffer
+      dbPdfData,
+      pdfUrl
     ]);
     const reportId = reportResult.id;
 
@@ -9643,20 +9781,34 @@ app.get('/api/session/answersheet/report/:id', async (req, res) => {
   const forceDownload = req.query.download === 'true';
   try {
     await ensureAnswersheetReportsTable();
-    const reportSql = `SELECT pdf_name, pdf_data FROM answersheet_reports WHERE id = ?`;
+    const reportSql = `SELECT pdf_name, pdf_data, pdf_url FROM answersheet_reports WHERE id = ?`;
     const report = await dbQuery.get(reportSql, [reportId]);
 
-    if (!report || !report.pdf_data) {
+    if (!report) {
+      return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
+    }
+
+    let pdfData = report.pdf_data;
+    if (report.pdf_url && (!pdfData || pdfData.length === 0)) {
+      try {
+        const response = await fetch(report.pdf_url);
+        pdfData = Buffer.from(await response.arrayBuffer());
+      } catch (fetchErr) {
+        console.error(`Failed to lazy load answersheet buffer from URL: ${report.pdf_url}`, fetchErr);
+      }
+    }
+
+    if (!pdfData || pdfData.length === 0) {
       return res.status(404).send('첨부된 PDF/HTML 원본 파일을 찾을 수 없습니다.');
     }
 
     const isHtml = report.pdf_name && (
       report.pdf_name.toLowerCase().endsWith('.html') || 
       report.pdf_name.toLowerCase().endsWith('.htm') || 
-      isBufferHtml(report.pdf_data)
+      isBufferHtml(pdfData)
     );
     if (isHtml) {
-      let htmlContent = decodeHtmlBuffer(report.pdf_data);
+      let htmlContent = decodeHtmlBuffer(pdfData);
       // Remove polyfill scripts if they exist
       htmlContent = htmlContent.replace(/<script\b[^>]*?src=["']?[^"'>]*?polyfill\.io[^"'>]*?["']?[^>]*?>([\s\S]*?<\/script>)?/gi, '<!-- polyfill removed -->');
       
@@ -9786,7 +9938,7 @@ div, section, article, form, .container, .page, .wrapper, .section, .WordSection
       } else {
         res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(report.pdf_name)}"`);
       }
-      res.send(report.pdf_data);
+      res.send(pdfData);
     }
   } catch (error) {
     console.error('Error streaming answersheet report:', error);
@@ -9799,11 +9951,11 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
   const { topicId } = req.body;
   try {
     // 1. Fetch topic from DB
-    const topic = await dbQuery.get('SELECT title, category, pdf_name, pdf_data FROM topics WHERE id = ?', [topicId]);
+    const topic = await dbQuery.get('SELECT title, category, pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?', [topicId]);
     if (!topic) {
       return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
     }
-    if (!topic.pdf_data) {
+    if (!topic.pdf_data && !topic.pdf_url) {
       return res.status(400).json({ error: '해당 토픽에 첨부된 원본 보고서 파일이 없습니다.' });
     }
 
@@ -9812,12 +9964,13 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
     // 2. Save to answersheet_reports
     await ensureAnswersheetReportsTable();
     const insertReportSql = `
-      INSERT INTO answersheet_reports (pdf_name, pdf_data)
-      VALUES (?, ?)
+      INSERT INTO answersheet_reports (pdf_name, pdf_data, pdf_url)
+      VALUES (?, ?, ?)
     `;
     const reportResult = await dbQuery.run(insertReportSql, [
       pdfName,
-      topic.pdf_data
+      topic.pdf_data,
+      topic.pdf_url
     ]);
     const reportId = reportResult.id;
 
