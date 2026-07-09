@@ -1430,7 +1430,7 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
       try {
         const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
         const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
-          access: 'public',
+          access: 'private',
           contentType: mimeType,
         });
         pdfUrl = blob.url;
@@ -1533,7 +1533,7 @@ app.post('/api/topics/:id/replace-source', upload.single('pdf'), async (req, res
       try {
         const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
         const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
-          access: 'public',
+          access: 'private',
           contentType: mimeType,
         });
         pdfUrl = blob.url;
@@ -7235,7 +7235,7 @@ app.put('/api/topics/:id/html-raw', async (req, res) => {
     if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
       try {
         const blob = await put(`topics/${Date.now()}_${topic.pdf_name || 'edit.html'}`, buffer, {
-          access: 'public',
+          access: 'private',
           contentType: 'text/html',
         });
         pdfUrl = blob.url;
@@ -9734,7 +9734,7 @@ app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, re
     if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
       try {
         const blob = await put(`answersheets/${Date.now()}_${pdfName}`, req.file.buffer, {
-          access: 'public',
+          access: 'private',
           contentType: req.file.mimetype || 'application/pdf',
         });
         pdfUrl = blob.url;
@@ -10011,7 +10011,7 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
       try {
         const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
         const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
-          access: 'public',
+          access: 'private',
           contentType: mimeType,
         });
         await dbQuery.run(
@@ -10037,7 +10037,7 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
       try {
         const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
         const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
-          access: 'public',
+          access: 'private',
           contentType: mimeType,
         });
         await dbQuery.run(
@@ -10736,7 +10736,7 @@ async function migrateBinariesToVercelBlob() {
           console.log(`[Blob Migration] Uploading topic ID ${topic.id} ("${topic.title}")...`);
           const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
           const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
-            access: 'public',
+            access: 'private',
             contentType: mimeType,
           });
           
@@ -10767,7 +10767,7 @@ async function migrateBinariesToVercelBlob() {
           console.log(`[Blob Migration] Uploading answersheet ID ${report.id} ("${report.pdf_name}")...`);
           const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
           const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
-            access: 'public',
+            access: 'private',
             contentType: mimeType,
           });
           
