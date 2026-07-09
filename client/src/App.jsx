@@ -3265,7 +3265,7 @@ const TableQuiz = React.memo(function TableQuiz({ questionIdx, q, tableAnswers, 
   );
 });
 
-const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit, gradingLoading }) {
+const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswers, setTableAnswers, tableAnswersRef, revealed, katexLoaded, tableGradingResults, weight = 10, onSubmit, gradingLoading, gradeSingleAcronymCell, cellGradingLoading }) {
   if (!q.tableData || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 앞글자 데이터가 올바르지 않습니다.</div>;
   }
@@ -3305,7 +3305,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
               <th className="p-2 font-extrabold select-none">내용 (암기단어 : 설명)</th>
             </tr>
           </thead>
-                    <tbody>
+          <tbody>
             {rows.map((row, rIdx) => {
                   const rowAcronymVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_ACRONYM`] || '';
                   const rowCombVal = tableAnswers[`${questionIdx}_ROW_${rIdx}_COMB`] || '';
@@ -3316,6 +3316,7 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                   const acronymScore = ((rowAcronymGrading?.score || 0) / 10) * (weight / (rows.length * 2));
                   const combScore = ((rowCombGrading?.score || 0) / 10) * (weight / (rows.length * 2));
                   const rowTotalScore = Math.round((acronymScore + combScore) * 10) / 10;
+                  const isCellLoading = gradingLoading || cellGradingLoading?.[`${questionIdx}_ROW_${rIdx}_COMB`] || cellGradingLoading?.[`${questionIdx}_ROW_${rIdx}_ACRONYM`];
 
                   return (
                     <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20">
@@ -3328,12 +3329,20 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                             <BufferedInput
                               type="text"
                               maxLength={1}
-                              disabled={gradingLoading}
+                              disabled={isCellLoading}
                               value={rowAcronymVal}
                               onChange={(val) => handleInputChange(`ROW_${rIdx}_ACRONYM`, val)}
                               onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_ACRONYM`, val)}
                               placeholder="글자"
                               className="w-full text-center text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1"
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (gradeSingleAcronymCell && !cellGradingLoading?.[`${questionIdx}_ROW_${rIdx}_ACRONYM`]) {
+                                    await gradeSingleAcronymCell(questionIdx, q, rIdx);
+                                  }
+                                }
+                              }}
                             />
                           </div>
                         ) : (
@@ -3350,9 +3359,11 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                               if (e.key === 'Enter') {
                                 e.preventDefault();
                                 if (tableRef.current) {
-                                  const rowEl = e.target.closest('tr');
-                                  const textarea = rowEl?.querySelector('textarea');
-                                  if (textarea) textarea.focus();
+                                  const inputs = Array.from(tableRef.current.querySelectorAll('input, textarea'));
+                                  const curIdx = inputs.indexOf(e.target);
+                                  if (curIdx !== -1 && curIdx < inputs.length - 1) {
+                                    inputs[curIdx + 1].focus();
+                                  }
                                 }
                               }
                             }}
@@ -3369,29 +3380,41 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                             <div className="flex-grow text-left font-medium">
                               <BufferedTextarea
                                 value={rowCombVal}
-                                disabled={gradingLoading}
+                                disabled={isCellLoading}
                                 onChange={(val) => handleInputChange(`ROW_${rIdx}_COMB`, val)}
                                 onKeystroke={(val) => handleInputKeystroke(`ROW_${rIdx}_COMB`, val)}
                                 placeholder="암기단어 : 설명"
                                 className="w-full text-left text-[14px] sm:text-[16px] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-inherit placeholder-slate-500 py-1 px-1.5 resize-none min-h-[30px] block font-medium align-middle"
                                 rows={1}
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (gradeSingleAcronymCell && !cellGradingLoading?.[`${questionIdx}_ROW_${rIdx}_COMB`]) {
+                                      await gradeSingleAcronymCell(questionIdx, q, rIdx);
+                                    }
+                                  }
+                                }}
                               />
                             </div>
                             {rowCombGrading && rowCombGrading.score !== undefined && (
                               <button
-                                disabled={gradingLoading}
+                                disabled={isCellLoading}
                                 onClick={async (e) => {
                                   e.stopPropagation();
-                                  if (gradingLoading) return;
-                                  if (onSubmit) await onSubmit();
+                                  if (isCellLoading) return;
+                                  if (gradeSingleAcronymCell) {
+                                    await gradeSingleAcronymCell(questionIdx, q, rIdx);
+                                  } else if (onSubmit) {
+                                    await onSubmit();
+                                  }
                                 }}
-                                title="클릭 시 전체 답안을 재평가합니다"
+                                title="클릭 시 이 칸의 답안을 재평가합니다"
                                 className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer bg-transparent border-0 ${
                                   rowCombGrading.isCorrect ? 'text-emerald-400' : 'text-rose-400'
-                                } ${gradingLoading ? 'animate-pulse' : ''}`}
+                                } ${isCellLoading ? 'animate-pulse' : ''}`}
                                 style={{ outline: 'none' }}
                               >
-                                {gradingLoading ? (
+                                {isCellLoading ? (
                                   <span className="flex items-center gap-1">
                                     <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -3417,15 +3440,14 @@ const AcronymQuiz = React.memo(function AcronymQuiz({ questionIdx, q, tableAnswe
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
-                                e.target.blur();
                                 if (tableRef.current) {
-                                  const textareas = Array.from(tableRef.current.querySelectorAll('textarea'));
-                                  const curIdx = textareas.indexOf(e.target);
+                                  const inputs = Array.from(tableRef.current.querySelectorAll('input, textarea'));
+                                  const curIdx = inputs.indexOf(e.target);
                                   if (curIdx !== -1) {
-                                    if (curIdx === textareas.length - 1) {
+                                    if (curIdx === inputs.length - 1) {
                                       if (onSubmit) onSubmit();
                                     } else {
-                                      textareas[curIdx + 1].focus();
+                                      inputs[curIdx + 1].focus();
                                     }
                                   }
                                 }
@@ -5866,6 +5888,120 @@ export default function App() {
   };
 
   const [cellGradingLoading, setCellGradingLoading] = useState({});
+
+  const gradeSingleAcronymCell = async (qIdx, q, rIdx) => {
+    const acronymKey = `${qIdx}_ROW_${rIdx}_ACRONYM`;
+    const combKey = `${qIdx}_ROW_${rIdx}_COMB`;
+    
+    setCellGradingLoading(prev => ({ ...prev, [acronymKey]: true, [combKey]: true }));
+    
+    const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
+    const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
+    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const nextGrading = { ...currentGrading };
+    
+    const userLetter = (activeAnswers[acronymKey] || '').trim();
+    const userContent = (activeAnswers[combKey] || '').trim();
+    
+    let correctRow = q.correctRows?.[rIdx];
+    if (correctRow && correctRow.acronym !== userLetter) {
+      const matched = q.correctRows?.find(r => r.acronym === userLetter);
+      if (matched) {
+        correctRow = matched;
+      }
+    }
+    
+    if (!userLetter) {
+      nextGrading[acronymKey] = { isCorrect: false, score: 0, reason: '두문자 미입력' };
+      nextGrading[combKey] = { isCorrect: false, score: 0, reason: '내용 미입력' };
+      activeSetGradingResults(nextGrading);
+      setCellGradingLoading(prev => ({ ...prev, [acronymKey]: false, [combKey]: false }));
+      return;
+    }
+    
+    const isLetterCorrect = correctRow.acronym === userLetter;
+    nextGrading[acronymKey] = {
+      isCorrect: isLetterCorrect,
+      score: isLetterCorrect ? 10 : 0,
+      reason: isLetterCorrect ? `두문자 매칭 성공` : `두문자 불일치 (입력: ${userLetter}, 모범답안: ${correctRow.acronym})`
+    };
+    
+    const correctAnswer = `${correctRow.word} : ${correctRow.description}`;
+    const progressId = 'grade_acronym_cell_' + Math.random().toString(36).substring(2, 9);
+    startProgressPolling(progressId);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/grade-subjective`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: `${q.question} (두문자: ${userLetter})`,
+          correctAnswer,
+          userAnswer: userContent,
+          rowHeader: userLetter,
+          colHeader: '암기단어 및 설명',
+          explanation: correctAnswer,
+          category: '앞글자',
+          progressId
+        })
+      });
+      const data = await res.json();
+      nextGrading[combKey] = {
+        isCorrect: data.isCorrect,
+        score: data.score,
+        reason: data.reason,
+        suggestedModelAnswer: data.suggestedModelAnswer
+      };
+    } catch (err) {
+      console.error('Acronym cell grading error:', err);
+      const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+      const isCorrect = normalize(userContent) === normalize(correctAnswer);
+      nextGrading[combKey] = {
+        isCorrect,
+        score: isCorrect ? 10 : 0,
+        reason: isCorrect ? '단순 일치(로컬 채점)' : '모범 답안과 불일치'
+      };
+    }
+    
+    stopProgressPolling();
+    activeSetGradingResults(nextGrading);
+    
+    if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
+      await fetch(`${API_BASE}/api/session/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          scheduleId: selectedTopic.schedule_id,
+          sessionId: reviewSessionId,
+          questions: aiQuestions,
+          selectedAnswers,
+          revealedQuestions,
+          tableAnswers: activeAnswers,
+          tableGradingResults: nextGrading,
+          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
+        })
+      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+    }
+    
+    if (showExam && examQuestions.length > 0 && !loadingExam) {
+      await fetch(`${API_BASE}/api/session/exam`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examQuestions,
+          examRevealed,
+          examAnswers,
+          examTopic,
+          examTableGradingResults: nextGrading,
+          tutorAnswers,
+          chatHistory
+        })
+      }).catch(e => console.warn('시험 세션 동기화 실패:', e));
+    }
+    
+    setCellGradingLoading(prev => ({ ...prev, [acronymKey]: false, [combKey]: false }));
+  };
 
   const gradeSingleTableCell = async (qIdx, q, inputId) => {
     const key = `${qIdx}_${inputId}`;
@@ -20802,6 +20938,8 @@ ${itemsStr}
                                       await gradeAcronymQuestion(idx, q);
                                       setRevealedQuestions(prev => ({ ...prev, [idx]: true }));
                                     }}
+                                  gradeSingleAcronymCell={gradeSingleAcronymCell}
+                                    cellGradingLoading={cellGradingLoading}
                                   />
                                 );
                               })()}
