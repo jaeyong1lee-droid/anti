@@ -9992,6 +9992,71 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
   }
 });
 
+app.post('/api/admin/migrate-to-blob', async (req, res) => {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return res.status(400).json({ error: 'BLOB_READ_WRITE_TOKEN이 세팅되지 않았습니다.' });
+  }
+
+  const log = [];
+  try {
+    const topics = await dbQuery.all(`
+      SELECT id, title, pdf_name, pdf_data 
+      FROM topics 
+      WHERE pdf_data IS NOT NULL 
+        AND (pdf_url IS NULL OR pdf_url = '')
+    `);
+
+    log.push(`Found ${topics.length} topics to migrate.`);
+    for (const topic of topics) {
+      try {
+        const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
+        const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
+          access: 'public',
+          contentType: mimeType,
+        });
+        await dbQuery.run(
+          `UPDATE topics SET pdf_url = ?, pdf_data = NULL WHERE id = ?`,
+          [blob.url, topic.id]
+        );
+        log.push(`Successfully migrated topic ID ${topic.id} ("${topic.title}") -> ${blob.url}`);
+      } catch (err) {
+        log.push(`Failed to migrate topic ID ${topic.id}: ${err.message}`);
+      }
+    }
+
+    await ensureAnswersheetReportsTable();
+    const reports = await dbQuery.all(`
+      SELECT id, pdf_name, pdf_data 
+      FROM answersheet_reports 
+      WHERE pdf_data IS NOT NULL 
+        AND (pdf_url IS NULL OR pdf_url = '')
+    `);
+
+    log.push(`Found ${reports.length} answersheets to migrate.`);
+    for (const report of reports) {
+      try {
+        const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
+        const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
+          access: 'public',
+          contentType: mimeType,
+        });
+        await dbQuery.run(
+          `UPDATE answersheet_reports SET pdf_url = ?, pdf_data = NULL WHERE id = ?`,
+          [blob.url, report.id]
+        );
+        log.push(`Successfully migrated answersheet ID ${report.id} ("${report.pdf_name}") -> ${blob.url}`);
+      } catch (err) {
+        log.push(`Failed to migrate answersheet ID ${report.id}: ${err.message}`);
+      }
+    }
+
+    res.json({ success: true, log });
+  } catch (err) {
+    console.error('Blob migration API error:', err);
+    res.status(500).json({ error: err.message, log });
+  }
+});
+
 
 
 
