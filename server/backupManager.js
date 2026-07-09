@@ -129,6 +129,11 @@ export async function runBackup() {
 }
 
 export function startBackupScheduler() {
+  if (!!process.env.VERCEL) {
+    console.log('[Backup] Running on Serverless Vercel. Disabling automatic backup scheduler.');
+    return;
+  }
+
   console.log('[Backup] Starting 3-day automatic backup scheduler...');
   
   // Run initial backup asynchronously after 5 seconds to not block startup

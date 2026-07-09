@@ -580,11 +580,11 @@ function extractFirstImageFromTopic(topic) {
 
 // Helper: Extract text from topic (supports PDF, HTML, and Images via Gemini OCR with caching)
 export async function getTopicText(topic) {
-  if (!topic || !topic.pdf_data) {
-    return '수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.';
+  if (topic && topic.extracted_text) {
+    return topic.extracted_text;
   }
 
-  const topicId = topic.id || topic.topic_id;
+  const topicId = topic ? (topic.id || topic.topic_id) : null;
   const cacheKey = `topic_extracted_text_${topicId}`;
 
   // Check if we already have the extracted text in cache (app_session)
@@ -600,7 +600,30 @@ export async function getTopicText(topic) {
     }
   }
 
-  const pdfName = (topic.pdf_name || '').toLowerCase();
+  // Fallback: If pdf_data is not in memory, lazy load it from DB
+  let pdfData = topic ? topic.pdf_data : null;
+  let rawPdfName = topic ? topic.pdf_name : null;
+  if (!pdfData && topicId) {
+    try {
+      const dbRow = await dbQuery.get('SELECT pdf_name, pdf_data FROM topics WHERE id = ?', [topicId]);
+      if (dbRow) {
+        pdfData = dbRow.pdf_data;
+        rawPdfName = dbRow.pdf_name;
+        if (topic) {
+          topic.pdf_data = pdfData;
+          topic.pdf_name = rawPdfName;
+        }
+      }
+    } catch (dbErr) {
+      console.warn(`[DB Fetch Error] Failed to lazy load pdf_data for topicId=${topicId}:`, dbErr);
+    }
+  }
+
+  if (!pdfData) {
+    return '수기로 등록한 토픽이며 첨부된 보고서 파일이 없습니다.';
+  }
+
+  const pdfName = (rawPdfName || '').toLowerCase();
   const isImage = pdfName.endsWith('.png') || pdfName.endsWith('.jpg') || pdfName.endsWith('.jpeg') || pdfName.endsWith('.gif') || pdfName.endsWith('.webp');
 
   let fileText = '';
@@ -1374,16 +1397,37 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
     // Convert local createdDate to string format for SQLite
     const dbDateStr = createdDate.toISOString().slice(0, 19).replace('T', ' ');
 
+    // Extract plain text to optimize DB queries
+    let extractedText = '';
+    if (pdfData) {
+      const isHtml = pdfName.toLowerCase().endsWith('.html') || 
+                     pdfName.toLowerCase().endsWith('.htm') ||
+                     isBufferHtml(pdfData);
+      try {
+        if (isHtml) {
+          extractedText = htmlToPlainText(decodeHtmlBuffer(pdfData));
+        } else {
+          const parsed = await pdfParse(pdfData);
+          extractedText = parsed.text || '';
+        }
+        extractedText = mergeVerticalText(extractedText);
+        console.log(`Successfully pre-extracted ${extractedText.length} chars of text for uploaded topic: ${title}`);
+      } catch (parseErr) {
+        console.warn(`Failed to pre-extract text from PDF/HTML on upload for topic: ${title}`, parseErr.message);
+      }
+    }
+
     // Save topic to DB
     const insertTopicSql = `
-      INSERT INTO topics (title, keywords, pdf_name, pdf_data, created_at, category)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO topics (title, keywords, pdf_name, pdf_data, extracted_text, created_at, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const topicResult = await dbQuery.run(insertTopicSql, [
       title,
       keywords || '',
       pdfName,
       pdfData,
+      extractedText,
       dbDateStr,
       category || '일반'
     ]);
@@ -1639,7 +1683,7 @@ async function generateWeakPointRecommendation(queryDate, isManual = false) {
   // 90점 이하 토픽 중 전체 무작위(랜덤)로 1개 선택
   const selectedCandidate = candidates[Math.floor(Math.random() * candidates.length)];
 
-  const topic = await dbQuery.get('SELECT * FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
+  const topic = await dbQuery.get('SELECT id, title, keywords, pdf_name, category FROM topics WHERE id = ?', [selectedCandidate.topic_id]);
   if (topic) {
     // 오늘 날짜로 이미 대기 중이거나 완료된 해당 토픽의 보너스(round=99) 스케줄이 있는지 점검
     const existingBonus = await dbQuery.get(
@@ -2141,7 +2185,7 @@ app.delete('/api/topics/:id', async (req, res) => {
   const topicId = Number(req.params.id) || req.params.id;
 
   try {
-    const checkSql = `SELECT * FROM topics WHERE id = ?`;
+    const checkSql = `SELECT id, title FROM topics WHERE id = ?`;
     const topic = await dbQuery.get(checkSql, [topicId]);
 
     if (!topic) {
@@ -4534,29 +4578,34 @@ ${formatRequirement}
         return res.status(400).json({ error: '등록된 토픽이 없습니다.' });
       }
 
-      // 2. We only need the pdf_data for the first 8 topics
+      // 2. We only need the pdf_data or extracted_text for the first 8 topics
       const targetTopics = topics.slice(0, 8);
       const targetIds = targetTopics.map(t => t.id);
       
-      // Fetch pdf_data only for those target topics
+      // Fetch extracted_text or pdf_data only for those target topics
       const pdfDataRows = await dbQuery.all(
-        `SELECT id, pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
+        `SELECT id, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
         targetIds
       );
       
-      // Map pdf_data back to targetTopics
+      // Map extracted_text and pdf_data back to targetTopics
       const pdfDataMap = {};
+      const extractedTextMap = {};
       for (const row of pdfDataRows) {
         pdfDataMap[row.id] = row.pdf_data;
+        extractedTextMap[row.id] = row.extracted_text;
       }
       for (const topic of targetTopics) {
         topic.pdf_data = pdfDataMap[topic.id] || null;
+        topic.extracted_text = extractedTextMap[topic.id] || null;
       }
 
       // 텍스트 간략 추출 (Promise.all 병렬 처리)
       const topicTexts = await Promise.all(targetTopics.map(async (topic) => {
         let fileText = '';
-        if (topic.pdf_data) {
+        if (topic.extracted_text) {
+          fileText = topic.extracted_text;
+        } else if (topic.pdf_data) {
           const isHtml = topic.pdf_name && (
             topic.pdf_name.toLowerCase().endsWith('.html') ||
             topic.pdf_name.toLowerCase().endsWith('.htm') ||
@@ -4570,8 +4619,8 @@ ${formatRequirement}
             }
           } catch (e) {}
           fileText = mergeVerticalText(fileText);
-          if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         }
+        if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         return `[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`;
       }));
 
@@ -5245,29 +5294,34 @@ ${formatRequirement}
         return res.status(400).json({ error: '등록된 토픽이 없습니다.' });
       }
 
-      // 2. We only need the pdf_data for the first 8 topics
+      // 2. We only need the pdf_data or extracted_text for the first 8 topics
       const targetTopics = topics.slice(0, 8);
       const targetIds = targetTopics.map(t => t.id);
       
-      // Fetch pdf_data only for those target topics
+      // Fetch extracted_text or pdf_data only for those target topics
       const pdfDataRows = await dbQuery.all(
-        `SELECT id, pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
+        `SELECT id, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics WHERE id IN (${targetIds.map(() => '?').join(',')})`,
         targetIds
       );
       
-      // Map pdf_data back to targetTopics
+      // Map extracted_text and pdf_data back to targetTopics
       const pdfDataMap = {};
+      const extractedTextMap = {};
       for (const row of pdfDataRows) {
         pdfDataMap[row.id] = row.pdf_data;
+        extractedTextMap[row.id] = row.extracted_text;
       }
       for (const topic of targetTopics) {
         topic.pdf_data = pdfDataMap[topic.id] || null;
+        topic.extracted_text = extractedTextMap[topic.id] || null;
       }
 
       // 텍스트 간략 추출 (Promise.all 병렬 처리)
       const topicTexts = await Promise.all(targetTopics.map(async (topic) => {
         let fileText = '';
-        if (topic.pdf_data) {
+        if (topic.extracted_text) {
+          fileText = topic.extracted_text;
+        } else if (topic.pdf_data) {
           const isHtml = topic.pdf_name && (
             topic.pdf_name.toLowerCase().endsWith('.html') ||
             topic.pdf_name.toLowerCase().endsWith('.htm') ||
@@ -5281,8 +5335,8 @@ ${formatRequirement}
             }
           } catch (e) {}
           fileText = mergeVerticalText(fileText);
-          if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         }
+        if (fileText.length > 1000) fileText = fileText.substring(0, 1000);
         return `[토픽: ${topic.title}]\n키워드: ${topic.keywords || '없음'}\n${fileText || ''}`;
       }));
 
@@ -5509,8 +5563,8 @@ app.post('/api/exam/all', async (req, res) => {
     );
     if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
 
-    // Fetch all topics with pdf_data
-    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+    // Fetch all topics with extracted_text (fallback to pdf_data if empty)
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
     if (!topics || topics.length === 0) {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
@@ -5519,7 +5573,9 @@ app.post('/api/exam/all', async (req, res) => {
     // Extract text from each topic in parallel to avoid timeouts
     const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
-      if (topic.pdf_data) {
+      if (topic.extracted_text) {
+        fileText = topic.extracted_text;
+      } else if (topic.pdf_data) {
         const isHtml = topic.pdf_name && (
           topic.pdf_name.toLowerCase().endsWith('.html') ||
           topic.pdf_name.toLowerCase().endsWith('.htm') ||
@@ -5536,8 +5592,8 @@ app.post('/api/exam/all', async (req, res) => {
           console.warn(`Topic ${topic.id} parse error:`, e.message);
         }
         fileText = mergeVerticalText(fileText);
-        fileText = smartTruncate(fileText, 10000);
       }
+      fileText = smartTruncate(fileText, 10000);
       topicTextMap[topic.id] = fileText;
       return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
     }));
@@ -5976,8 +6032,8 @@ app.post('/api/exam/additional', async (req, res) => {
     );
     if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
 
-    // Fetch all topics with pdf_data
-    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, pdf_data FROM topics ORDER BY created_at DESC`);
+    // Fetch all topics with extracted_text (fallback to pdf_data if empty)
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
     if (!topics || topics.length === 0) {
       return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
     }
@@ -5986,7 +6042,9 @@ app.post('/api/exam/additional', async (req, res) => {
     // Extract text from each topic in parallel to avoid timeouts
     const topicTexts = await Promise.all(topics.map(async (topic) => {
       let fileText = '';
-      if (topic.pdf_data) {
+      if (topic.extracted_text) {
+        fileText = topic.extracted_text;
+      } else if (topic.pdf_data) {
         const isHtml = topic.pdf_name && (
           topic.pdf_name.toLowerCase().endsWith('.html') ||
           topic.pdf_name.toLowerCase().endsWith('.htm') ||
@@ -6003,8 +6061,8 @@ app.post('/api/exam/additional', async (req, res) => {
           console.warn(`Topic ${topic.id} parse error:`, e.message);
         }
         fileText = mergeVerticalText(fileText);
-        fileText = smartTruncate(fileText, 10000);
       }
+      fileText = smartTruncate(fileText, 10000);
       topicTextMap[topic.id] = fileText;
       return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
     }));
@@ -6658,13 +6716,15 @@ app.post('/api/formula/generate-quiz-question', async (req, res) => {
     let fileText = '';
     try {
       const matchedTopic = await dbQuery.get(
-        `SELECT id, title, keywords, pdf_name, pdf_data FROM topics WHERE ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%' LIMIT 1`,
+        `SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics WHERE ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%' LIMIT 1`,
         [formulaTitle, formulaTitle]
       );
       if (matchedTopic) {
         topicTitle = matchedTopic.title;
         topicKeywords = matchedTopic.keywords || '';
-        if (matchedTopic.pdf_data) {
+        if (matchedTopic.extracted_text) {
+          fileText = matchedTopic.extracted_text;
+        } else if (matchedTopic.pdf_data) {
           const isHtml = matchedTopic.pdf_name && (
             matchedTopic.pdf_name.toLowerCase().endsWith('.html') ||
             matchedTopic.pdf_name.toLowerCase().endsWith('.htm') ||
@@ -10387,6 +10447,56 @@ async function cleanupOldReviewSessions() {
   }
 }
 
+async function populateExtractedTextForTopics() {
+  try {
+    const topics = await dbQuery.all(`
+      SELECT id, title, pdf_name, pdf_data 
+      FROM topics 
+      WHERE (extracted_text IS NULL OR extracted_text = '') 
+        AND pdf_data IS NOT NULL
+    `);
+
+    if (!topics || topics.length === 0) {
+      console.log('[Text Extraction Migration] No topics require text extraction migration.');
+      return;
+    }
+
+    console.log(`[Text Extraction Migration] Found ${topics.length} topics that need text extraction migration.`);
+
+    for (const topic of topics) {
+      console.log(`[Text Extraction Migration] Processing topic ID ${topic.id}: "${topic.title}"...`);
+      const isHtml = topic.pdf_name && (
+        topic.pdf_name.toLowerCase().endsWith('.html') ||
+        topic.pdf_name.toLowerCase().endsWith('.htm') ||
+        isBufferHtml(topic.pdf_data)
+      );
+
+      let fileText = '';
+      try {
+        if (isHtml) {
+          fileText = htmlToPlainText(decodeHtmlBuffer(topic.pdf_data));
+        } else {
+          const parsed = await pdfParse(topic.pdf_data);
+          fileText = parsed.text || '';
+        }
+        fileText = mergeVerticalText(fileText);
+        
+        if (fileText) {
+          await dbQuery.run(`UPDATE topics SET extracted_text = ? WHERE id = ?`, [fileText, topic.id]);
+          console.log(`[Text Extraction Migration] Successfully migrated topic ID ${topic.id} (${fileText.length} chars extracted).`);
+        } else {
+          console.log(`[Text Extraction Migration] No text could be extracted for topic ID ${topic.id}.`);
+        }
+      } catch (parseErr) {
+        console.warn(`[Text Extraction Migration] Failed to parse topic ID ${topic.id} "${topic.title}":`, parseErr.message);
+      }
+    }
+    console.log('[Text Extraction Migration] All text extraction migrations completed!');
+  } catch (migrationErr) {
+    console.error('[Text Extraction Migration] Migration error:', migrationErr.message);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
@@ -10414,6 +10524,7 @@ async function startServer() {
     await applyScorePatch();
     await applyResetPatchForTopics3To24();
     await cleanupOldReviewSessions();
+    populateExtractedTextForTopics().catch(err => console.error('Migration background process failed:', err));
   } catch (dbErr) {
     console.error('CRITICAL WARNING: Database schema initialization failed. Server starting anyway in degraded mode:', dbErr.message);
     global.dbInitError = dbErr.message;
@@ -10567,6 +10678,7 @@ if (!process.env.VERCEL) {
     await applyScorePatch();
     await applyResetPatchForTopics3To24();
     await cleanupOldReviewSessions();
+    populateExtractedTextForTopics().catch(err => console.error('Migration background process failed:', err));
   }).catch(dbErr => {
     console.error('CRITICAL WARNING: Database schema initialization failed on Vercel:', dbErr.message);
     global.dbInitError = dbErr.message;

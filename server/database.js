@@ -236,6 +236,7 @@ export async function initDatabase() {
             keywords TEXT,
             pdf_name TEXT,
             pdf_data BYTEA,
+            extracted_text TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             category TEXT DEFAULT '일반'
           )
@@ -325,6 +326,7 @@ async function initSQLiteTables() {
       keywords TEXT,
       pdf_name TEXT,
       pdf_data BLOB,
+      extracted_text TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       category TEXT DEFAULT '일반'
     )
@@ -393,6 +395,7 @@ async function migrateSchedulesTable() {
         await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS correct_count INTEGER`);
         await pgPool.query(`ALTER TABLE schedules ADD COLUMN IF NOT EXISTS total_count INTEGER`);
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS category TEXT DEFAULT '일반'`);
+        await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS extracted_text TEXT`);
         console.log('Cloud PostgreSQL schedules and topics tables migration checked.');
       }
     } else {
@@ -407,6 +410,9 @@ async function migrateSchedulesTable() {
       } catch (e) {}
       try {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN category TEXT DEFAULT '일반'`);
+      } catch (e) {}
+      try {
+        await dbQuery.run(`ALTER TABLE topics ADD COLUMN extracted_text TEXT`);
       } catch (e) {}
       try {
         await dbQuery.run(`ALTER TABLE app_session ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
