@@ -7280,6 +7280,9 @@ app.get('/api/topics/:id/pdf', async (req, res) => {
     if (topic.pdf_url && (!pdfData || pdfData.length === 0)) {
       try {
         const response = await fetch(topic.pdf_url);
+        if (!response.ok) {
+          throw new Error(`Vercel Blob fetch failed with status: ${response.status} ${response.statusText}`);
+        }
         pdfData = Buffer.from(await response.arrayBuffer());
       } catch (fetchErr) {
         console.error(`Failed to lazy load topic buffer from URL: ${topic.pdf_url}`, fetchErr);
