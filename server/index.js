@@ -9992,7 +9992,7 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
   }
 });
 
-app.post('/api/admin/migrate-to-blob', async (req, res) => {
+app.all('/api/admin/migrate-to-blob', async (req, res) => {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(400).json({ error: 'BLOB_READ_WRITE_TOKEN이 세팅되지 않았습니다.' });
   }
