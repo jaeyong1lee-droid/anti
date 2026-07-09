@@ -10649,10 +10649,87 @@ async function populateExtractedTextForTopics() {
   }
 }
 
+async function migrateBinariesToVercelBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.log('[Blob Migration] BLOB_READ_WRITE_TOKEN is not configured. Skipping migration to Vercel Blob.');
+    return;
+  }
+
+  try {
+    // 1. Migrate topics binaries
+    const topics = await dbQuery.all(`
+      SELECT id, title, pdf_name, pdf_data 
+      FROM topics 
+      WHERE pdf_data IS NOT NULL 
+        AND (pdf_url IS NULL OR pdf_url = '')
+    `);
+
+    if (topics && topics.length > 0) {
+      console.log(`[Blob Migration] Found ${topics.length} topics to migrate to Vercel Blob.`);
+      for (const topic of topics) {
+        try {
+          console.log(`[Blob Migration] Uploading topic ID ${topic.id} ("${topic.title}")...`);
+          const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
+          const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
+            access: 'public',
+            contentType: mimeType,
+          });
+          
+          await dbQuery.run(
+            `UPDATE topics SET pdf_url = ?, pdf_data = NULL WHERE id = ?`,
+            [blob.url, topic.id]
+          );
+          console.log(`[Blob Migration] Successfully migrated topic ID ${topic.id} to Vercel Blob: ${blob.url}`);
+        } catch (err) {
+          console.error(`[Blob Migration] Failed to migrate topic ID ${topic.id}:`, err);
+        }
+      }
+    }
+
+    // 2. Migrate answersheet_reports binaries
+    await ensureAnswersheetReportsTable();
+    const reports = await dbQuery.all(`
+      SELECT id, pdf_name, pdf_data 
+      FROM answersheet_reports 
+      WHERE pdf_data IS NOT NULL 
+        AND (pdf_url IS NULL OR pdf_url = '')
+    `);
+
+    if (reports && reports.length > 0) {
+      console.log(`[Blob Migration] Found ${reports.length} answersheet reports to migrate to Vercel Blob.`);
+      for (const report of reports) {
+        try {
+          console.log(`[Blob Migration] Uploading answersheet ID ${report.id} ("${report.pdf_name}")...`);
+          const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
+          const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
+            access: 'public',
+            contentType: mimeType,
+          });
+          
+          await dbQuery.run(
+            `UPDATE answersheet_reports SET pdf_url = ?, pdf_data = NULL WHERE id = ?`,
+            [blob.url, report.id]
+          );
+          console.log(`[Blob Migration] Successfully migrated answersheet ID ${report.id} to Vercel Blob: ${blob.url}`);
+        } catch (err) {
+          console.error(`[Blob Migration] Failed to migrate answersheet ID ${report.id}:`, err);
+        }
+      }
+    }
+
+    console.log('[Blob Migration] All binary migrations to Vercel Blob completed!');
+  } catch (err) {
+    console.error('[Blob Migration] Migration process failed:', err);
+  }
+}
+
 async function startServer() {
   try {
     await initDatabase();
     console.log('Database schema initialization completed.');
+    
+    // Run Vercel Blob migration in the background
+    migrateBinariesToVercelBlob().catch(err => console.error('[Blob Migration] Background process failed:', err));
     await loadPreferredModel();
     await initializeEngineeringStandards();
     await initializeGradingStandards();
