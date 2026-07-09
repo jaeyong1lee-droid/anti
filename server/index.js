@@ -1426,7 +1426,7 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
     let pdfUrl = null;
     let dbPdfData = pdfData;
 
-    if (pdfData && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (pdfData && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
       try {
         const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
         const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
@@ -1529,7 +1529,7 @@ app.post('/api/topics/:id/replace-source', upload.single('pdf'), async (req, res
     let pdfUrl = null;
     let dbPdfData = pdfData;
 
-    if (pdfData && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (pdfData && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
       try {
         const mimeType = req.file ? req.file.mimetype : (pdfName.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf');
         const blob = await put(`topics/${Date.now()}_${pdfName}`, pdfData, {
@@ -2254,7 +2254,7 @@ app.delete('/api/topics/:id', async (req, res) => {
       return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
     }
 
-    if (topic.pdf_url && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (topic.pdf_url && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
       try {
         await del(topic.pdf_url);
         console.log(`Successfully deleted Vercel Blob file for deleted topic: ${topic.pdf_url}`);
@@ -7232,7 +7232,7 @@ app.put('/api/topics/:id/html-raw', async (req, res) => {
     let pdfUrl = null;
     let dbPdfData = buffer;
 
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
       try {
         const blob = await put(`topics/${Date.now()}_${topic.pdf_name || 'edit.html'}`, buffer, {
           access: 'public',
@@ -9731,7 +9731,7 @@ app.post('/api/session/answersheet/upload', upload.single('pdf'), async (req, re
     let pdfUrl = null;
     let dbPdfData = req.file.buffer;
 
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
       try {
         const blob = await put(`answersheets/${Date.now()}_${pdfName}`, req.file.buffer, {
           access: 'public',
@@ -9993,8 +9993,8 @@ app.post('/api/session/answersheet/add-from-topic', async (req, res) => {
 });
 
 app.all('/api/admin/migrate-to-blob', async (req, res) => {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return res.status(400).json({ error: 'BLOB_READ_WRITE_TOKEN이 세팅되지 않았습니다.' });
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+    return res.status(400).json({ error: 'Vercel Blob 스토리지 연결(OIDC 또는 토큰)이 되어 있지 않습니다.' });
   }
 
   const log = [];
@@ -10715,8 +10715,8 @@ async function populateExtractedTextForTopics() {
 }
 
 async function migrateBinariesToVercelBlob() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.log('[Blob Migration] BLOB_READ_WRITE_TOKEN is not configured. Skipping migration to Vercel Blob.');
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+    console.log('[Blob Migration] Vercel Blob storage (OIDC or Token) is not configured. Skipping migration.');
     return;
   }
 
