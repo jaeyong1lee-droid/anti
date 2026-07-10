@@ -18414,7 +18414,7 @@ ${itemsStr}
                                     <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
                                   </div>
                                 )}
-                                {subjIdx === 1 && q.structure && (
+                                {subjIdx === 1 && q.structure && !q.formula?.includes('\n-') && !q.formula?.includes('\n*') && (
                                   <div className="space-y-1 pt-2 border-t border-amber-500/10">
                                     <span className="text-[10px] font-black text-rose-455">📋 기호 정의: </span>
                                     <div className="text-sm text-slate-200 leading-relaxed bg-slate-900/40 p-4 rounded-xl border border-slate-800/40 my-1 text-left w-full"><LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} /></div>
@@ -24424,7 +24424,7 @@ ${itemsStr}
                                       <div className="text-sm text-slate-200 leading-relaxed text-left w-full py-1 px-0.5">
                                         <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                       </div>
-                                      {q.structure && (
+                                      {q.structure && !q.formula?.includes('\n-') && !q.formula?.includes('\n*') && (
                                         <div className="pt-2 border-t border-slate-800/40 text-sm text-slate-300 leading-relaxed text-left w-full">
                                           <LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 기호 정의"} />
                                         </div>
