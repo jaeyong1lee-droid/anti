@@ -12,7 +12,7 @@ function updateLiveValidationStandards(newList) {
 }
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
-import { healFormulaQuestionObject, healAnswersheetQuestionObject, parseLlmJson } from '../utils/latexUtils.js';
+import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson } from '../utils/latexUtils.js';
 import { defaultAcronyms } from '../plugins/acronymsPlugin.js';
 import { defaultOverviews } from '../plugins/overviewsPlugin.js';
 
@@ -755,6 +755,57 @@ ${analysis}
     res.json({ success: true, question: responseText.trim() });
   } catch (err) {
     console.error('POST /api/image-standards/generate-question error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/exam
+router.get('/session/exam', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['exam_session']);
+    if (rows.length > 0 && rows[0].value) {
+      const data = JSON.parse(rows[0].value);
+      if (data) {
+        if (Array.isArray(data.questions)) {
+          data.questions = data.questions.map(q => healQuizQuestionObject(q));
+        }
+        if (Array.isArray(data.examQuestions)) {
+          data.examQuestions = data.examQuestions.map(q => healQuizQuestionObject(q));
+        }
+      }
+      res.json({ data });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/exam error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/exam
+router.post('/session/exam', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { examQuestions, examRevealed, examAnswers, examTopic, tableAnswers, tableGradingResults, tutorAnswers, tutorInputText, chatHistory, savedExamScroll } = req.body;
+    const value = JSON.stringify({
+      examQuestions,
+      examRevealed,
+      examAnswers,
+      examTopic,
+      tableAnswers: tableAnswers || {},
+      tableGradingResults: tableGradingResults || {},
+      tutorAnswers: tutorAnswers || {},
+      tutorInputText: tutorInputText || {},
+      chatHistory: chatHistory || [],
+      savedExamScroll
+    });
+    await saveSessionValue('exam_session', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/exam error:', err);
     res.status(500).json({ error: err.message });
   }
 });
