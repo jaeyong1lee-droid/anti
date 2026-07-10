@@ -14081,7 +14081,7 @@ ${itemsStr}
       const cardEl = document.getElementById(`formula-card-${idx}`);
       if (cardEl && formulaBodyRef.current) {
         const container = formulaBodyRef.current;
-        const offsetTop = cardEl.offsetTop - 16; // 최적의 가독성을 위한 16px 마진 감안
+        const offsetTop = cardEl.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
         container.scrollTo({ top: offsetTop, behavior: 'smooth' });
       }
     }, 120);
@@ -14092,7 +14092,7 @@ ${itemsStr}
       const cardEl = document.getElementById(`theory-card-${idx}`);
       if (cardEl && theoryBodyRef.current) {
         const container = theoryBodyRef.current;
-        const offsetTop = cardEl.offsetTop - 16;
+        const offsetTop = cardEl.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
         container.scrollTo({ top: offsetTop, behavior: 'smooth' });
       }
     }, 120);
