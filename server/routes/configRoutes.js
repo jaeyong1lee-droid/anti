@@ -12,9 +12,10 @@ function updateLiveValidationStandards(newList) {
 }
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
-import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson } from '../utils/latexUtils.js';
-import { defaultAcronyms } from '../plugins/acronymsPlugin.js';
-import { defaultOverviews } from '../plugins/overviewsPlugin.js';
+import { healFormulaQuestionObject, healAnswersheetQuestionObject, healQuizQuestionObject, parseLlmJson, healLatexFormulas, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { defaultAcronyms, generateAcronymTutorResponse } from '../plugins/acronymsPlugin.js';
+import { defaultOverviews, generateOverviewTutorResponse } from '../plugins/overviewsPlugin.js';
+import { ASCII_DIAGRAM_PROMPT } from '../plugins/asciiDiagramPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -807,6 +808,125 @@ router.post('/session/exam', async (req, res) => {
   } catch (err) {
     console.error('POST /api/session/exam error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/chat
+router.post('/chat', async (req, res) => {
+  const { message, history, image, overviewMode, acronymMode } = req.body;
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 튜터 답변 생성 중...', 90, 1500, 5);
+  }
+
+  try {
+    if (overviewMode) {
+      try {
+        const responseText = await generateOverviewTutorResponse(message, image, localCallLLM);
+        const healedText = healLatexFormulas(responseText);
+        if (progressId) {
+          updateProgress(progressId, 1, '1단계: 개요서 생성 완료!', 100);
+        }
+        return res.json({ text: healedText });
+      } catch (err) {
+        console.error('Overview tutor generation error:', err);
+        if (progressId) {
+          updateProgress(progressId, 1, '오류 발생으로 개요 생성 실패', 100);
+        }
+        return res.status(500).json({ error: err.message || '개요 생성 실패.' });
+      }
+    }
+
+    if (acronymMode) {
+      try {
+        const responseText = await generateAcronymTutorResponse(message, image, localCallLLM);
+        const healedText = healLatexFormulas(responseText);
+        if (progressId) {
+          updateProgress(progressId, 1, '1단계: 앞글자 연상 완료!', 100);
+        }
+        return res.json({ text: healedText });
+      } catch (err) {
+        console.error('Acronym tutor generation error:', err);
+        if (progressId) {
+          updateProgress(progressId, 1, '오류 발생으로 앞글자 생성 실패', 100);
+        }
+        return res.status(500).json({ error: err.message || '앞글자 생성 실패.' });
+      }
+    }
+
+    // Format conversation history as a structured string prompt
+    let structuredPrompt = '';
+    if (history && Array.isArray(history) && history.length > 0) {
+      structuredPrompt += "이전 대화 기록:\n";
+      for (const msg of history) {
+        const sender = msg.role === 'user' ? '수험생' : '튜터';
+        structuredPrompt += `${sender}: ${msg.text}\n`;
+      }
+      structuredPrompt += "\n현재 질문:\n";
+    }
+    
+    let currentMessage = (message || '').trim();
+    if (image) {
+      if (!currentMessage) {
+        currentMessage = "[첨부 이미지 분석 요청] 수험생이 기술사 관련 스크린샷/이미지를 첨부하였습니다. 이미지에 담긴 모든 텍스트, 문제, 수식, 그래프, 도표 등을 고도로 이해하기 쉽게 분석 및 판독하여, 해당 문제의 출제 의도, 명쾌한 풀이 과정 및 정확한 최종 정답을 친절하고 기술적/공학적으로 완벽히 설명해 주십시오.";
+      } else {
+        currentMessage = `[첨부 이미지 분석 요청] 수험생이 이미지(스크린샷)와 함께 다음 질문을 보냈습니다: "${currentMessage}". 첨부된 이미지에 표현된 핵심 기술적 문제, 수식, 다이어그램, 텍스트 등을 최우선으로 분석하여 질문에 매우 구체적이고 체계적으로 답변해 주십시오.`;
+      }
+    }
+    structuredPrompt += currentMessage;
+
+    try {
+      const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목구조기술사, 토목시공기술사, 도로및공항기술사, 수자원개발기술사, 상하수도기술사, 터널기술사 등 토목공학 전 분야) 최고 권위의 기술사 시험 전문 튜터입니다.
+수험생의 질문이나 이미지 자료에 대해 학회 표준 및 기술사 시험 수준의 전문 용어를 사용하여 매우 깊이 있는 기술적/실무적 답변을 제시해 주십시오.
+
+[기본 원칙]:
+1. 토목공학 전 분야의 유기적 지식 활용:
+   - 지반공학(토질 및 기초, 터널), 구조공학(콘크리트, 강구조, 교량), 시공 및 사업관리, 도로, 수자원 등 전 분야에 걸친 깊이 있는 지식을 기반으로 자연스럽고 전문성 높은 지식의 전파.
+2. 개념의 기술적/실무적 정확성 확보:
+   - 특정 공학적 원리나 거동 메커니즘을 설명할 때는 기술적 맥락을 정확히 파악하여 주동/수동 관점을 명확히 구분하고 균형 있게 설명하십시오.
+   - **실제 전공 설계 기준이나 정립된 공학 이론만을 근거로 삼아야 하며, 임의로 부적절한 수학 공식이나 비현실적인 공학 논리를 조합(창작)하지 마십시오.**
+   - 물리적 거동 메커니즘을 명확하게 파악하여 논리적 인과관계를 철저히 고수해 주십시오.
+3. 환각(Hallucination) 현상 방지:
+   - "현재 예측 Canvas에 그려진 문서", "우측 화면의 캔버스", "상단 문서 뷰어" 등 실제 애플리케이션 인터페이스 요소를 멋대로 추측하거나 언급하지 마십시오.
+   - **[이미지/스크린샷 판독 최우선]**: 만약 사용자가 이미지(캡처 사진, 문제지 사진 등)를 전송하여 질문한 경우, 이미지 내부의 수식, 필기, 표, 그래프를 최우선으로 판독하고 이를 대화 메시지와 종합하여 답변을 도출하십시오.
+4. 겸손하고 전문적인 튜터 태도 유지.
+5. 고품질 학술 구조 및 직관적 설명 보완:
+   - 공인된 전공 교재의 품질에 걸맞도록 체계적인 개요를 지반공학 정보에 입각하여 자연스럽게 구성하십시오.
+   - 설명 도중 등장하는 모든 주요 핵심 개념, 이론, 공식 또는 공학적 판단 기준에 대해서는 수험생의 이해를 돕기 위해 **'정의'**, **'직관적 설명'**, **'메커니즘'** 등의 항목을 아래의 접두사 포맷(글머리 기호 '•', 볼드 '**', 콜론 ':')을 사용하여 개요 바로 아래에 추가하십시오:
+     * • **정의**: [해당 개념의 학술적/기술적 정의] (콜론 뒤에 한 칸의 공백을 두고 즉시 같은 줄에 작성)
+     * • **직관적 설명**: [개념의 본질을 파악할 수 있는 일상생활 비유, 실무적 느낌, 이미지화 기법 등을 추가 보완]
+   - 콜론(:) 바로 앞에서 줄바꿈을 절대 하지 마십시오.
+   - 개 개별 이론이나 공법, 개념을 비교 설명할 때는 불필요한 공백 라인을 줄이고 중제목(###)으로 구조를 명확히 분할하십시오 (예: ### 1. 테르자기의 1차원 압밀이론 등).
+   - 표(Table)를 사용할 경우 반드시 마크다운 테이블 표준 포맷(| 구분 | 공법 A | 공법 B |)만을 이용해 작성하십시오.
+${ENGINEERING_STANDARDS}
+${ASCII_DIAGRAM_PROMPT}
+${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
+
+      const responseText = await localCallLLM(systemInstruction, structuredPrompt, image, 'tutor');
+      const healedText = healLatexFormulas(responseText);
+      if (progressId) {
+        updateProgress(progressId, 1, '1단계: 답변 생성 완료!', 100);
+      }
+      res.json({ text: healedText });
+    } catch (err) {
+      console.error('Chat route error:', err);
+      if (progressId) {
+        updateProgress(progressId, 1, '오류 발생으로 답변 실패', 100);
+      }
+      res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+    }
+  } catch (err) {
+    console.error('Chat route error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 답변 실패', 100);
+    }
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
   }
 });
 
