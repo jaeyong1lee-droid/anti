@@ -3,9 +3,10 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import { put, del } from '@vercel/blob';
 import { dbQuery } from '../database.js';
-import { getTopicText, saveSessionValue } from '../services/aiService.js';
+import { getTopicText, saveSessionValue, callLLMWithFailover } from '../services/aiService.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import * as ocrPlugin from '../plugins/calculationPlugin.js';
+import { parseLlmJson } from '../utils/latexUtils.js';
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -895,6 +896,321 @@ router.get('/dashboard/weak-points', async (req, res) => {
   } catch (error) {
     console.error('Error fetching weak points:', error);
     res.status(500).json({ error: '서버 오류로 약점 토픽을 조회하지 못했습니다.' });
+  }
+});
+
+// Helper database schema check functions
+async function ensureSessionTable() {
+  try {
+    await dbQuery.run(`
+      CREATE TABLE IF NOT EXISTS app_session (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) {
+    console.warn('ensureSessionTable warning:', e.message);
+  }
+}
+
+async function ensureAnswersheetReportsTable() {
+  try {
+    await dbQuery.run(`
+      CREATE TABLE IF NOT EXISTS answersheet_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pdf_name TEXT,
+        pdf_data BLOB,
+        pdf_url TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) {
+    console.warn('ensureAnswersheetReportsTable warning:', e.message);
+  }
+}
+
+// POST /api/topics/suggest-title
+router.post('/topics/suggest-title', async (req, res) => {
+  try {
+    const { image, mimeType, htmlText } = req.body;
+    if (!image && !htmlText) {
+      return res.status(400).json({ error: '이미지 데이터 또는 HTML 텍스트가 필요합니다.' });
+    }
+    const cleanTitle = await ocrPlugin.suggestTitleFromCalculation(image, mimeType, htmlText, callLLMWithFailover);
+    return res.json({ title: cleanTitle });
+  } catch (err) {
+    console.error('Suggest title error:', err);
+    res.status(500).json({ error: '토픽 제목 자동 추천에 실패했습니다.' });
+  }
+});
+
+// POST /api/recommend-topics
+router.post('/recommend-topics', async (req, res) => {
+  try {
+    const { existingTitles, isAcronym } = req.body;
+    const systemInstruction = `당신은 대한민국 국가기술자격 기술사(특히 토질및기초기술사, 토목시공기술사 등 토목공학/지반공학 관련) 시험의 최고 전문 교육 튜터입니다.
+공부하고 있는 수험생이 새로운 공부 주제(토픽)를 추천해달라고 요청했습니다.
+제공되는 [기존 암기 리스트]에 존재하는 주제들과 **절대 겹치지 않으면서**, 기술사 시험 준비에 반드시 필요한 핵심적이고 학술적인 전공 주제 3개를 선별하여 한글로 추천해 주십시오.
+
+[추천 기준]:
+1. 분야: 토질및기초기술사 자격시험(지반공학, 토질역학, 기초공학, 사면안정, 터널공학, 흙막이, 지반개량 등)에서 매우 높은 빈출 비중을 차지하는 중요한 공식, 개념, 이론, 현상, 공법, 시험명 등이어야 합니다.
+2. 제외 항목: 제공되는 [기존 암기 리스트]에 이미 포함된 주제는 절대 중복하여 추천하지 마십시오.
+3. 다양성: 매번 비슷한 주제만 반복하지 말고, 토질역학/기초공학/사면공학/터널 및 지하공간/토류벽/연약지반 개량 등 다양한 세부 분야에서 완전히 새롭고 다양한 주제를 고르게 무작위 추천해 주십시오.
+4. 형식: 오직 추천할 단어 3개만을 줄바꿈(\\n)으로 구분하여 깔끔하게 한글로 출력하십시오. 서론, 부연 설명, 숫자 번호(예: 1., 2.), 특수문자, 따옴표 등은 절대 포함하지 마십시오.
+5. 예시 출력 형태:
+과잉간극수압 소산 메커니즘
+사면 쐐기파괴 안정해석
+테르자기 극한지지력`;
+
+    const userPrompt = `[기존 암기 리스트]:
+${Array.isArray(existingTitles) ? existingTitles.join('\n') : '없음'}
+
+위 기존 리스트에 포함되지 않은 새로운 토질및기초기술사 필수 암기 ${isAcronym ? '두문자(앞글자) 암기법' : '개요'} 주제 단어 3개를 매우 다양하고 창의적으로 무작위 선정하여 추천해 주십시오. (무작위 시드: ${Math.random()}, 타임스탬프: ${Date.now()})`;
+
+    const responseText = await callLLMWithFailover(
+      systemInstruction,
+      userPrompt,
+      null,
+      'formula',
+      { temperature: 1.0 }
+    );
+    
+    const recommendations = responseText
+      .split('\n')
+      .map(line => line.replace(/^\d+\.\s*/, '').replace(/[\*\"\'`]/g, '').trim())
+      .filter(line => line.length > 0 && line.length < 50)
+      .slice(0, 3);
+      
+    res.json({ success: true, recommendations });
+  } catch (err) {
+    console.error('POST /api/recommend-topics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/table/suggest-title-and-refine
+router.post('/table/suggest-title-and-refine', async (req, res) => {
+  try {
+    const { tableHtml, chatHistory } = req.body;
+    if (!tableHtml) {
+      return res.status(400).json({ error: '표 내용이 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = `당신은 대한민국 국가기술자격 기술사 시험(토질및기초기술사, 토목시공기술사, 토목구조기술사 등 토목공학 및 지반공학 분야) 전문 튜터입니다.
+사용자가 공부하던 중 실시간 튜터 창에서 내보내고자 하는 마크다운 표가 입력됩니다.
+해당 표의 원본 HTML 내용과 실시간 튜터 대화 맥락을 분석하여:
+1. 해당 표에 가장 걸맞은 전문적이고 깔끔한 핵심 제목(Title)을 한글로 한 줄(공백 포함 25자 이내)로 도출하십시오. (학자명/공법명 등을 적절히 반영하여 '~~ 비교표' 또는 '~~ 분석표' 등 형식으로 작성)
+2. 표의 전체 내용을 지반공학/토질역학 표준 용어 및 기술사 시험 서술 양식에 맞게 다듬은 정제된 HTML table 마크업을 반환하십시오. 원본 표의 행과 열 구조를 그대로 유지하되, 오탈자가 있거나 부자연스러운 서술이 있다면 깔끔하게 다듬으십시오. (별도의 css 스타일이나 wrapper div는 포함하지 말고 오직 <table>...</table> 형태만 출력해야 합니다.)
+
+반드시 다음 JSON 형식 규격으로만 정확하게 응답하십시오. (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+{
+  "title": "여기에 최적화된 표 제목 기입",
+  "html": "여기에 정제된 <table>...</table> HTML 마크업 기입"
+}`;
+
+    const chatContext = Array.isArray(chatHistory)
+      ? chatHistory.map(h => `${h.role === 'user' ? '사용자' : 'AI 튜터'}: ${h.text}`).join('\n')
+      : '(대화 없음)';
+
+    const userPrompt = `[원본 표 HTML]:\n${tableHtml}\n\n[실시간 튜터 대화 맥락]:\n${chatContext}`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor');
+    
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const result = parseLlmJson(cleanJsonText);
+      res.json({
+        title: (result.title || '새 비교표').replace(/^[📊\s\t\n]+/, '').trim(),
+        html: result.html || tableHtml
+      });
+    } catch (parseErr) {
+      console.warn('Refined table JSON parsing failed, using fallback regex:', parseErr);
+      let fallbackTitle = '새 비교표';
+      const titleMatch = responseText.match(/"title"\s*:\s*"([^"]+)"/);
+      if (titleMatch && titleMatch[1]) {
+        fallbackTitle = titleMatch[1].replace(/^[📊\s\t\n]+/, '').trim();
+      }
+      let fallbackHtml = tableHtml;
+      const htmlMatch = responseText.match(/"html"\s*:\s*"([\s\S]+?)"\s*}/);
+      if (htmlMatch && htmlMatch[1]) {
+        fallbackHtml = htmlMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim();
+      }
+      res.json({
+        title: fallbackTitle,
+        html: fallbackHtml
+      });
+    }
+  } catch (err) {
+    console.error('Refine table route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// POST /api/table/regenerate
+router.post('/table/regenerate', async (req, res) => {
+  try {
+    const { title, headers, rowHeaders } = req.body;
+    if (!title || !headers || !rowHeaders) {
+      return res.status(400).json({ error: '필수 매개변수(title, headers, rowHeaders)가 누락되었습니다.' });
+    }
+
+    const systemInstruction = `당신은 지반공학 및 토목공학 전공을 지도하는 대학교수이자 전문 AI 튜터입니다.
+사용자가 제공한 표의 제목(주제), 열 헤더(첫 번째 행), 행 헤더(첫 번째 열)를 기준으로 표의 나머지 본문 셀 내용을 전공 지식에 맞게 전문적으로 채워주세요.
+
+반드시 다음 형식의 JSON 객체만 반환해야 합니다 (설명이나 마크다운 코드 블록 기호는 절대 출력하지 마십시오):
+{
+  "rows": [
+    ["행헤더1", "본문셀1-1", "본문셀1-2", ...],
+    ["행헤더2", "본문셀2-1", "본문셀2-2", ...]
+  ]
+}
+
+주의사항:
+1. 각 행의 첫 번째 원소는 반드시 사용자가 제공한 행 헤더와 동일해야 합니다.
+2. 행 헤더와 열 헤더를 연계 분석하여 지반공학 전공 수준의 구체적이고 전문적인 지식을 한글로 작성해 주세요.
+3. 마크다운 기호나 추가적인 텍스트 설명은 배제하고 오직 위 형식의 JSON 데이터만 출력해 주세요. JSON 형식이 깨지면 안 됩니다.`;
+
+    const userPrompt = `
+- 표 제목(주제): ${title}
+- 열 헤더: ${JSON.stringify(headers)}
+- 행 헤더(첫 번째 열의 목록): ${JSON.stringify(rowHeaders)}
+`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'tutor', { temperature: 0.2 });
+    
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const result = parseLlmJson(cleanJsonText);
+      if (result && Array.isArray(result.rows)) {
+        res.json({ success: true, rows: result.rows });
+      } else {
+        throw new Error('응답 형식이 올바르지 않습니다.');
+      }
+    } catch (parseErr) {
+      console.error('Regenerate table JSON parsing failed:', parseErr, 'Raw:', responseText);
+      res.status(500).json({ error: 'AI 응답 분석 실패. 다시 시도해 주세요.' });
+    }
+  } catch (err) {
+    console.error('Regenerate table error:', err);
+    res.status(500).json({ error: err.message || '표 내용 재작성에 실패했습니다.' });
+  }
+});
+
+// POST /api/session/answersheet/upload
+router.post('/session/answersheet/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
+    }
+    const pdfName = req.body.fileNameUtf8 || req.file.originalname || '';
+
+    let pdfUrl = null;
+    let dbPdfData = req.file.buffer;
+
+    if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
+      try {
+        const blob = await put(`answersheets/${Date.now()}_${pdfName}`, req.file.buffer, {
+          access: 'private',
+          contentType: req.file.mimetype || 'application/pdf',
+        });
+        pdfUrl = blob.url;
+        dbPdfData = null; // Clear binary from database
+        console.log(`Successfully uploaded answersheet report binary to Vercel Blob: ${pdfUrl}`);
+      } catch (blobErr) {
+        console.error('Failed to upload answersheet report to Vercel Blob, falling back to database storage:', blobErr);
+      }
+    }
+
+    // Save the original file to SQLite/Postgres db
+    await ensureAnswersheetReportsTable();
+    const insertReportSql = `
+      INSERT INTO answersheet_reports (pdf_name, pdf_data, pdf_url)
+      VALUES (?, ?, ?)
+    `;
+    const reportResult = await dbQuery.run(insertReportSql, [
+      pdfName,
+      dbPdfData,
+      pdfUrl
+    ]);
+    const reportId = reportResult.id;
+
+    res.json({
+      theories: [{
+        title: pdfName.replace(/\.[^/.]+$/, ""), // Remove file extension
+        concept: '업로드한 본문 보고서가 연동되었습니다.',
+        assumptions: '',
+        formula: '',
+        answer: '',
+        answersheet_report_id: reportId,
+        pdf_name: pdfName
+      }]
+    });
+  } catch (err) {
+    console.error('POST /api/session/answersheet/upload error:', err);
+    res.status(500).json({ error: err.message || 'PDF/HTML 업로드에 실패했습니다.' });
+  }
+});
+
+// POST /api/session/answersheet/add-from-topic
+router.post('/session/answersheet/add-from-topic', async (req, res) => {
+  const { topicId } = req.body;
+  try {
+    // 1. Fetch topic from DB
+    const topic = await dbQuery.get('SELECT title, category, pdf_name, pdf_data, pdf_url FROM topics WHERE id = ?', [topicId]);
+    if (!topic) {
+      return res.status(404).json({ error: '해당 토픽을 찾을 수 없습니다.' });
+    }
+    if (!topic.pdf_data && !topic.pdf_url) {
+      return res.status(400).json({ error: '해당 토픽에 첨부된 원본 보고서 파일이 없습니다.' });
+    }
+
+    const pdfName = topic.pdf_name || '';
+
+    // 2. Save to answersheet_reports
+    await ensureAnswersheetReportsTable();
+    const insertReportSql = `
+      INSERT INTO answersheet_reports (pdf_name, pdf_data, pdf_url)
+      VALUES (?, ?, ?)
+    `;
+    const reportResult = await dbQuery.run(insertReportSql, [
+      pdfName,
+      topic.pdf_data,
+      topic.pdf_url
+    ]);
+    const reportId = reportResult.id;
+
+    res.json({
+      theories: [{
+        title: topic.title,
+        concept: '연동된 토픽의 본문 보고서입니다.',
+        assumptions: '',
+        formula: '',
+        answer: '',
+        answersheet_report_id: reportId,
+        pdf_name: pdfName,
+        category: topic.category || '일반'
+      }]
+    });
+  } catch (err) {
+    console.error('POST /api/session/answersheet/add-from-topic error:', err);
+    res.status(500).json({ error: err.message || '보고서 연동에 실패했습니다.' });
   }
 });
 

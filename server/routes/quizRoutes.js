@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
-import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
 import { GENERATION_STANDARDS } from '../plugins/generationStandards.js';
@@ -2786,6 +2786,201 @@ router.put('/schedules/:id/score', async (req, res) => {
   } catch (error) {
     console.error('Error updating manual score:', error);
     res.status(500).json({ error: '서버 오류로 성적 업데이트에 실패했습니다.' });
+  }
+});
+
+// POST /api/exam/detailed-answer
+router.post('/exam/detailed-answer', async (req, res) => {
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 심층 해설 생성 중...', 90, 800, 5);
+  }
+
+  try {
+    const { question, answer } = req.body;
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    const prompt = `
+당신은 대한민국 국가기술자격 기술사 시험 출제위원 및 최고 권위자입니다.
+수험생이 종합평가를 풀던 중 다음 문제에 대해 '답안 전문보기(심층 해설)'를 요청했습니다.
+
+[문제]: ${question}
+[기존 간략 정답/해설]: ${answer || '없음'}
+
+위 내용을 바탕으로, 이 문제와 관련된 기술적 배경, 핵심 메커니즘, 그리고 실무적 시사점을 포함하여 완벽한 기술사 모범 답안(또는 심층 해설)을 작성해 주십시오.
+다음 규칙을 엄격히 따르십시오:
+1. 3단락 구조(1. 개요 및 기술적 배경, 2. 핵심 메커니즘/구성요소/비교분석, 3. 실무적 시사점 및 결론)로 논리적으로 작성하십시오.
+2. 보기 편한 Markdown 형식(적절한 굵은 글씨, 글머리 기호 등)을 사용하되, 마크다운 코드블록(\`\`\`markdown)으로 전체를 감싸지 말고 바로 텍스트로 출력하십시오.
+
+${ENGINEERING_STANDARDS}
+${LATEX_CHAT_PROMPT_INSTRUCTIONS}
+`;
+
+    try {
+      const responseText = await localCallLLM(null, prompt);
+      const healedText = healLatexFormulas(responseText.trim()); // 대화 수식 정정 결합
+      if (progressId) {
+        updateProgress(progressId, 1, '1단계: 해설 생성 완료!', 100);
+      }
+      res.json({ text: healedText });
+    } catch (err) {
+      console.error('Detailed answer route error:', err);
+      if (progressId) {
+        updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+      }
+      res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+    }
+  } catch (err) {
+    console.error('Detailed answer route error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 해설 생성 실패', 100);
+    }
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
+  }
+});
+
+// POST /api/hint
+router.post('/hint', async (req, res) => {
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 힌트 생성 중...', 90, 800, 10);
+  }
+
+  try {
+    const { questionText } = req.body;
+    if (!questionText) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '질문(문제) 텍스트가 제공되지 않았습니다.' });
+    }
+
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY
+    );
+    if (!hasAnyAiKey) {
+      if (progressTimer) clearInterval(progressTimer);
+      return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = `당신은 대한민국 기술사 시험 전문 튜터입니다.
+수험생이 풀고 있는 주관식 또는 객관식 문제에 대해 **매우 쉽고 직관적이며 간단한 힌트**를 한 문단(3줄 이내)으로 제공해 주십시오.
+
+[지침]:
+1. 복잡한 공식이나 유도 과정을 설명하지 말고, 이 문제를 해결하기 위해 가장 핵심적으로 생각해야 하는 개념이나 물리적 거동을 일상적이고 직관적인 비유로 설명하십시오.
+2. 수험생이 스스로 문제를 풀 수 있도록 유도해야 하며, 직접적인 해답이나 최종 정답 수치를 제공해서는 절대 안 됩니다.
+3. 친절하고 부드러운 튜터의 말투를 사용하십시오.
+${ENGINEERING_STANDARDS}`;
+    const userPrompt = `다음 문제에 대한 쉽고 직관적인 힌트를 간단히 적어주세요:\n\n[문제 본문]\n${questionText}`;
+    
+    const responseText = await localCallLLM(systemInstruction, userPrompt, null, 'question');
+    const healedText = healLatexFormulas(responseText);
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 힌트 생성 완료!', 100);
+    }
+    res.json({ hint: healedText });
+  } catch (err) {
+    console.error('Hint generation error:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 힌트 생성 실패', 100);
+    }
+    res.status(500).json({ error: err.message || '힌트를 생성하는 데 실패했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
+  }
+});
+
+// POST /api/formula/generate-quiz-question
+router.post('/formula/generate-quiz-question', async (req, res) => {
+  try {
+    const { formulaTitle, formula, concept, assumptions } = req.body;
+    if (!formulaTitle || !formula) {
+      return res.status(400).json({ error: '공식 정보가 부족합니다.' });
+    }
+
+    let topicTitle = formulaTitle;
+    let topicKeywords = '';
+    let fileText = '';
+    try {
+      const matchedTopic = await dbQuery.get(
+        `SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics WHERE ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%' LIMIT 1`,
+        [formulaTitle, formulaTitle]
+      );
+      if (matchedTopic) {
+        topicTitle = matchedTopic.title;
+        topicKeywords = matchedTopic.keywords || '';
+        if (matchedTopic.extracted_text) {
+          fileText = matchedTopic.extracted_text;
+        } else if (matchedTopic.pdf_data) {
+          const isHtml = matchedTopic.pdf_name && (
+            matchedTopic.pdf_name.toLowerCase().endsWith('.html') ||
+            matchedTopic.pdf_name.toLowerCase().endsWith('.htm') ||
+            fileUtils.isBufferHtml(matchedTopic.pdf_data)
+          );
+          try {
+            if (isHtml) fileText = fileUtils.htmlToPlainText(fileUtils.decodeHtmlBuffer(matchedTopic.pdf_data));
+            else {
+              const parsed = await pdfParse(matchedTopic.pdf_data);
+              fileText = parsed.text || '';
+            }
+          } catch (e) {}
+          fileText = fileUtils.mergeVerticalText(fileText);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Failed to find matching topic for formula validation:', dbErr);
+    }
+
+    const finalValidated = await ocrPlugin.generateCalculationQuizQuestion(
+      formulaTitle,
+      formula,
+      concept,
+      assumptions,
+      callLLMWithFailover,
+      topicTitle,
+      topicKeywords,
+      fileText
+    );
+    res.json(finalValidated);
+  } catch (err) {
+    console.error('generate-quiz-question error:', err);
+    res.status(500).json({ error: err.message || '계산 문제 생성에 실패했습니다.' });
+  }
+});
+
+// DELETE /api/session/exam
+router.delete('/session/exam', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', ['exam_session']);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/session/exam error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

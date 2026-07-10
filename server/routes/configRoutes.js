@@ -672,6 +672,31 @@ router.post('/formula/generate-memorization-tip', async (req, res) => {
   }
 });
 
+// POST /api/formula/suggest-title
+router.post('/formula/suggest-title', async (req, res) => {
+  try {
+    const { mathContent, fullText } = req.body;
+    if (!mathContent) {
+      return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
+    }
+
+    const systemInstruction = "당신은 지반공학 및 토질역학/토목 전공 학술 공식 명칭을 명명하는 작명 비서입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로, 해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭(예: 'Darcy의 투수계수식', 'Barton의 암반 Q분류식', 'Terzaghi 극한 지지력 공식' 등)을 칼같이 작명해주세요. 기호, 특수문자, 따옴표 등을 포함하지 말고, 다른 쓸데없는 잡설 없이 오직 한 줄의 '15자 내외 공식 명칭'만 반환해 주세요.";
+    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
+
+    try {
+      const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+      const cleanTitle = responseText.trim().replace(/^["'`\s]+|["'`\s]+$/g, ''); // 앞뒤 따옴표 등 제거
+      res.json({ title: cleanTitle });
+    } catch (err) {
+      console.error('Formula suggest title LLM error:', err);
+      res.status(500).json({ error: err.message || 'LLM 호출 오류' });
+    }
+  } catch (err) {
+    console.error('Formula suggest title route error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
 // POST /api/image-standards/analyze
 router.post('/image-standards/analyze', async (req, res) => {
   try {
@@ -936,6 +961,382 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
     res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
+  }
+});
+
+// GET /api/debug-env
+router.get('/debug-env', async (req, res) => {
+  const connectionString = process.env.DATABASE_URL || 
+                           process.env.POSTGRES_URL || 
+                           process.env.POSTGRES_PRISMA_URL ||
+                           process.env.SUPABASE_DATABASE_URL ||
+                           '';
+  
+  const envKeys = Object.keys(process.env).sort();
+
+  // Parse URL to show connection details (no password)
+  let parsedInfo = null;
+  if (connectionString) {
+    try {
+      const normalized = connectionString.replace(/^postgres:\/\//, 'postgresql://');
+      const url = new URL(normalized);
+      parsedInfo = {
+        host: url.hostname,
+        port: url.port,
+        user: decodeURIComponent(url.username),
+        database: url.pathname.replace(/^\//, ''),
+        passwordLength: url.password.length,
+      };
+    } catch(e) {
+      parsedInfo = { parseError: e.message };
+    }
+  }
+
+  // Live DB connection test and diagnostics
+  let dbLiveTest = 'not_attempted';
+  let dbLiveError = null;
+  let liveTopics = [];
+  let liveSchedules = [];
+  if (connectionString) {
+    try {
+      const { default: pg } = await import('pg');
+      const normalized = connectionString.replace(/^postgres:\/\//, 'postgresql://');
+      const url = new URL(normalized);
+      const testPool = new pg.Pool({
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        host: url.hostname,
+        port: url.port ? parseInt(url.port, 10) : 5432,
+        database: url.pathname.replace(/^\//, ''),
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
+      });
+      await testPool.query('SELECT 1');
+      
+      const topicsRes = await testPool.query('SELECT id, title, category, keywords FROM topics ORDER BY id ASC');
+      liveTopics = topicsRes.rows;
+      
+      const schedulesRes = await testPool.query('SELECT id, topic_id, review_round, status, planned_date FROM schedules ORDER BY id DESC LIMIT 20');
+      liveSchedules = schedulesRes.rows;
+
+      await testPool.end();
+      dbLiveTest = 'success';
+    } catch (e) {
+      dbLiveTest = 'failed';
+      dbLiveError = e.message;
+    }
+  }
+
+  const progressList = [];
+  if (global.progressTracker) {
+    for (const [key, value] of global.progressTracker.entries()) {
+      progressList.push({ progressId: key, ...value });
+    }
+  }
+
+  res.json({
+    hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    primaryKeyPrefix: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 5) : '',
+    hasSecondaryGeminiKey: !!process.env.GEMINI_API_KEY_SECONDARY,
+    secondaryKeyLength: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.length : 0,
+    secondaryKeyPrefix: process.env.GEMINI_API_KEY_SECONDARY ? process.env.GEMINI_API_KEY_SECONDARY.substring(0, 5) : '',
+    hasTertiaryGeminiKey: !!process.env.GEMINI_API_KEY_TERTIARY,
+    tertiaryKeyLength: process.env.GEMINI_API_KEY_TERTIARY ? process.env.GEMINI_API_KEY_TERTIARY.length : 0,
+    hasClaudeKey: !!process.env.ANTHROPIC_API_KEY,
+    claudeKeyLength: process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.length : 0,
+    hasOpenaiKey: !!process.env.OPENAI_API_KEY,
+    openaiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
+    hasXaiKey: !!process.env.XAI_API_KEY,
+    xaiKeyLength: process.env.XAI_API_KEY ? process.env.XAI_API_KEY.length : 0,
+    hasGrokKey: !!process.env.GROK_API_KEY,
+    grokKeyLength: process.env.GROK_API_KEY ? process.env.GROK_API_KEY.length : 0,
+    hasDbUrl: !!connectionString,
+    dbUrlLength: connectionString.length,
+    parsedDbInfo: parsedInfo,
+    dbInitError: global.dbInitError || null,
+    dbLiveTest,
+    dbLiveError,
+    liveTopics,
+    liveSchedules,
+    progressList,
+    envKeys: envKeys,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    time: new Date().toISOString()
+  });
+});
+
+// GET /api/debug-db
+router.get('/debug-db', async (req, res) => {
+  try {
+    const rows = await dbQuery.all("SELECT key, LENGTH(value) as len, updated_at FROM app_session ORDER BY updated_at DESC LIMIT 50");
+    const topics = await dbQuery.all("SELECT id, title FROM topics ORDER BY id DESC LIMIT 50");
+    const formulaRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    const recentLS = await dbQuery.get("SELECT value FROM app_session WHERE key = 'recent_lockscreen_questions'");
+    const formulaParsed = formulaRow && formulaRow.value ? JSON.parse(formulaRow.value) : null;
+    const recentLSParsed = recentLS && recentLS.value ? JSON.parse(recentLS.value) : null;
+    res.json({ 
+      success: true, 
+      rows, 
+      topics, 
+      debugLogs: global.globalDebugLogs,
+      recentLockscreen: recentLSParsed,
+      formulasCount: formulaParsed?.formulaQuestions?.length || 0,
+      firstFormulas: formulaParsed?.formulaQuestions?.slice(0, 3)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/debug-keys
+router.get('/debug-keys', (req, res) => {
+  res.json({
+    primary: process.env.GEMINI_API_KEY || 'not_set',
+    secondary: process.env.GEMINI_API_KEY_SECONDARY || 'not_set'
+  });
+});
+
+// GET /api/debug-topic-27
+router.get('/debug-topic-27', async (req, res) => {
+  try {
+    const resSchedules = await dbQuery.all(
+      "SELECT id, review_round, status, score, completed_at, planned_date FROM schedules WHERE topic_id = 27 ORDER BY review_round"
+    );
+    const scheduleIds = resSchedules.map(r => r.id);
+    let sessions = [];
+    if (scheduleIds.length > 0) {
+      const queryStr = `SELECT key, LENGTH(value) as len FROM app_session WHERE key IN (${scheduleIds.map(id => `'completed_review_schedule_${id}'`).join(',')})`;
+      sessions = await dbQuery.all(queryStr);
+    }
+    res.json({
+      success: true,
+      schedules: resSchedules,
+      sessions: sessions
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/temp-update-db
+router.get('/temp-update-db', async (req, res) => {
+  try {
+    const updateQuestionObj = (formulaQuestions) => {
+      if (!Array.isArray(formulaQuestions)) return formulaQuestions;
+      return formulaQuestions.map(q => {
+        if (!q) return q;
+        
+        // 댐 침투 또는 침윤선 관련 질문 검출 (비교표 형태의 침윤선 질문)
+        const isSeepageTarget = q.id === 11 || 
+                                (q.question && 
+                                 q.question.includes('침투류') && 
+                                 q.question.includes('비교표') && 
+                                 (q.question.includes('차수') || q.question.includes('배수')));
+        
+        // 말뚝 기초 t-z, q-z 거동 관련 질문 검출 (제목/질문에 't-z', 't - z' 포함된 비교표 형태)
+        const isPileTarget = q.question &&
+                             (q.question.includes('t-z') || q.question.includes('t - z')) &&
+                             (q.question.includes('q-z') || q.question.includes('q - z')) &&
+                             q.question.includes('비교표') &&
+                             (q.question.includes('주면마찰') || q.question.includes('선단지'));
+                         
+        if (isSeepageTarget) {
+          console.log(`[Migration] Migrating Seepage Question ID: ${q.id}, Title: ${q.title}`);
+          
+          const answerA = "상류 사면 점토 코어나 차수벽 시공을 통해 유입 침투 유량 자체를 물리적으로 차단하고 침투 경로 연장";
+          const answerB = "자갈, 필터 모래 등 배수재를 하류측 경계부에 배치하여 유입된 침투수를 세굴 없이 안전하게 외곽으로 배수 유도";
+          const answerC = "불투수성 차수벽 전면에서 차단 및 수두 손실이 유도되어 차벽 배후면부터 침윤선 높이가 급격히 저하됨";
+          const answerD = "수평 드레인과 필터 구조체의 배수 작용을 통해 침윤선이 하류 사면으로 분출되는 것을 막고 연직 위치를 낮춤";
+          
+          return {
+            ...q,
+            title: "필터 및 배수/차수 설계",
+            question: "댐체 및 기초지반의 침투류 제어 대책 중 차수 대책과 배수 대책의 거동 메커니즘을 아래 비교표의 빈칸 (A), (B), (C), (D)에 맞게 서술하시오.",
+            tableData: {
+              headers: ["구분", "주요 기전 (유량 제어)", "침윤선(Seepage Line)에 미치는 영향"],
+              rows: [
+                ["차수 대책", "[INPUT_1]", "[INPUT_3]"],
+                ["배수 대책", "[INPUT_2]", "[INPUT_4]"]
+              ]
+            },
+            answers: {
+              "INPUT_1": answerA,
+              "INPUT_2": answerB,
+              "INPUT_3": answerC,
+              "INPUT_4": answerD
+            }
+          };
+        } else if (isPileTarget) {
+          console.log(`[Migration] Migrating Pile Question ID: ${q.id}, Title: ${q.title}`);
+          
+          const answerA = "말뚝 주면의 지반 변위가 발생함에 따라 전단 저항 거동이 발현되며, 매우 미세한 변위(약 5~10mm)에서 최대 극한 저항력에 도달함";
+          const answerB = "말뚝 선단부가 침하 및 압축됨에 따라 지반 압축 전단 저항이 발현되며, 상대적으로 매우 큰 변위(말뚝 직경의 10% 수준)가 요구됨";
+          const answerC = "초기 재하 단계에서 지반 강성 저항을 통해 즉각 발현되어 하중의 대부분을 지지하나, 슬립이 발생한 이후에는 일정한 마찰력 유지";
+          const answerD = "초기 하중 전이 비중이 낮으나 하중이 증가하고 주면 마찰이 항복에 이르면 점진적으로 지지 분담율이 극대화되어 최종 극한 지지력 확보";
+          
+          return {
+            ...q,
+            title: "말뚝 하중 전이 메커니즘",
+            question: "말뚝 기초 하중 전이 메커니즘 중 주면 전단 거동(t-z)과 선단 저항 거동(q-z)의 거동 특징을 아래 비교표의 빈칸 (A), (B), (C), (D)에 맞게 서술하시오.",
+            tableData: {
+              headers: ["구분", "발현 변위 조건 및 극한 상태 도달 기준", "하중 전이 기전 및 지지력 분담 특성"],
+              rows: [
+                ["주면마찰 거동 (t-z)", "[INPUT_1]", "[INPUT_3]"],
+                ["선단지지 거동 (q-z)", "[INPUT_2]", "[INPUT_4]"]
+              ]
+            },
+            answers: {
+              "INPUT_1": answerA,
+              "INPUT_2": answerB,
+              "INPUT_3": answerC,
+              "INPUT_4": answerD
+            }
+          };
+        }
+        return q;
+      });
+    };
+
+    // 1. Migrate formula_questions
+    const formulaRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_questions'");
+    if (formulaRow && formulaRow.value) {
+      const parsed = JSON.parse(formulaRow.value);
+      if (parsed && Array.isArray(parsed.formulaQuestions)) {
+        const updated = updateQuestionObj(parsed.formulaQuestions);
+        await saveSessionValue('formula_questions', JSON.stringify({ formulaQuestions: updated }));
+        console.log('[Migration] Successfully updated formula_questions in DB.');
+      }
+    }
+
+    // 2. Migrate schedules matching review rounds
+    const scheduleIds = await dbQuery.all("SELECT id FROM schedules WHERE topic_id = 11");
+    for (const s of scheduleIds) {
+      const sessionKey = `review_questions_schedule_${s.id}`;
+      const sessionRow = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [sessionKey]);
+      if (sessionRow && sessionRow.value) {
+        const parsed = JSON.parse(sessionRow.value);
+        if (parsed && Array.isArray(parsed.questions)) {
+          const updated = updateQuestionObj(parsed.questions);
+          await saveSessionValue(sessionKey, JSON.stringify({ questions: updated }));
+          console.log(`[Migration] Successfully updated schedule ${s.id} questions in DB.`);
+        }
+      }
+    }
+
+    // 3. Synchronize generation standards as safety fallback
+    const log = [];
+    const latestStandards = [
+      {
+        "id": "user_generation_lqyjy05",
+        "title": "전반적 지침2",
+        "content": "AI는 문제를 출제할 때 제공된 토픽 문서 텍스트에 포함된 단어들을 단순히 빈칸으로 만들거나 그대로 베끼는 1차원적인 문제 출제를 엄격히 금지합니다. 해당 토픽에 대해 튜터와 대화할 때 도출되는 수준의\n① 거동 원리 및 메커니즘\n② 공식 유도 과정 및 가정 조건\n③ 공법/이론 간의 장단점 비교 대조표\n④ 설계·시공 현장에서의 실무적 문제 상황 해결책(시나리오)을\n\n종합적으로 감안하여 학술적 깊이가 있는 기술사형 응용 문제를 출제"
+      },
+      {
+        "id": "user_generation_wiapyp1",
+        "title": "전반적 지침1",
+        "content": "1. 제공된 원보고서(노트)의 요약 텍스트 내용에만 기계적으로 국한하여 출제하지 마십시오.\n2. 해당 토픽의 전반적인 학술적 개요, 물리적·역학적 거동 메커니즘, 이론 전개 시 사용되는 기본 가정 조건, 그리고 핵심 공학 수식을 지반공학 전공 서적 및 실무 설계 기준(KDS) 관점에서 심층 분석하여 문제를 구성하십시오.\n3. 특히 타 공법이나 유사 이론과의 비교표 칸채우기(표채우기 문항), 현장에서 발생할 수 있는 구체적인 한계 상태 시나리오 및 기술사로서의 실무 안정 대책(단답형 문항)을 적극적으로 연계하여 다차원적인 공학적 판단력을 평가할 수 있도록 참신하게 출제해 주십시오."
+      },
+      {
+        "id": "user_generation_cpjrwj5",
+        "title": "복합 문제",
+        "content": "하나의 토픽 내에서 2가지 이상의 세부 항목을 질문할 경우, 각각의 정의를 묻는 방식도 중요하지만  \n두 항목 간의 상호 관계, 역학적 메커니즘의 차이, 설계/시공 시의 상호 영향성, 혹은 공학적 비교 분석을 요구하는 통합형 문제를 출제하십시오.."
+      },
+      {
+        "id": "user_generation_long_noun_ending_answers",
+        "title": "주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화",
+        "content": "🚨 [주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화 - 극도로 중요!]: 주관식(개요, 공식, 단답형, 표채우기 등)의 모든 모범 답안(\"answers\" 내의 각 값 또는 \"answer\")은 절대로 1~2 단어의 단순 명칭이나 짧은 요약형 문장으로 작성해서는 안 되며, 반드시 지반공학적 거동 원리, 인과관계, 시공 및 설계 제어 메커니즘을 명확히 명시하되, 너무 길어지지 않도록 핵심 위주의 명료한 서술형(최소 50자에서 최대 120자 내외)으로 간결하게 작성하십시오. 또한, 모든 정답의 어미는 기술사 답안지 작성 원칙에 부합하도록 \"~다\", \"~입니다\", \"~하겠다\"와 같은 평서문/구어체 종결어미를 절대 금지하며, 반드시 명사형 종결어미(예: ~함, ~저감, ~방지, ~유도, ~제어, ~확보, ~감소, ~소산, ~이동, ~상쇄, ~상태, ~형태, ~수준 등)로 명확히 끝맺음하여 서술하십시오. 예시: '...을 방지함', '...을 통한 침투압 감소' (O) / '...을 방지합니다', '...을 통해 침투압이 감소된다' (X)"
+      },
+      {
+        "id": "user_generation_vfp6zqj",
+        "title": "객관식 지침",
+        "content": "지침 내용: \n1.🚨 [계산형 문항의 정확한 계산값 객관식 보기 의무화 - 극도로 중요!]: 계산형 문제(특히 선택형/객관식 문항)를 출제할 때, 문제의 공식과 대입값으로 산출되는 실제 정확한 수학적/공학적 계산값(소수점 1~2자리 포함, 예: 66.67 GPa)은 반드시 객관식 보기의 4개 항목(options) 중 하나(정답 항목)로 정확히 포함되어야 합니다. 계산 결과가 소수점을 가질 경우, 보기 항목을 임의의 정수나 엉뚱한 값(예: 70 GPa)으로 둥글게 처리하여 '가장 근사한 값을 고르라'는 식으로 얼버무려서 출제하는 행위를 엄격히 금지합니다. 반드시 실제 공식에 값을 대입해 나온 정확한 수치를 보기 항목과 모범 답안으로 등록하십시오.\n\n2.객관식문제낼때 소스에 한정하지말고 소스 토픽을 ai튜터와 이야기 나눴을때, 나오는 메커니즘, 정의, 공식 등 전반적인 내용으로 출제하도록 해\n\n3.중요한 개념문제를 난이도 어렵게 내도록 해"
+      },
+      {
+        "id": "user_generation_bu5e5cd",
+        "title": "표 채우기 문제출제 절대 지침",
+        "content": "1. 🚨 [표 채우기 문항의 가로/세로축 독립 차원 설계 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 형태의 문항을 설계 및 출제할 때, 표의 가로 헤더(Column)와 세로 헤더(Row)가 절대로 동일하거나 유사한 성격의 평가 차원(예: 가로축도 '주변 지반 영향', 세로축도 '역학적 영향' 등)으로 중복 구성되지 않도록 엄격히 제약하십시오. 가로축과 세로축은 반드시 서로 완전히 다른 독립적인 성격의 차원을 형성해야 합니다. 예를 들어, 세로축이 비교 대상이 되는 시공/공법 항목(예: '어스앵커', '소일내일링')이라면, 가로축은 그에 대응하는 평가 속성(예: '거동 메커니즘', '활용성')으로 결합되어 각 격자(Cell)가 고유하고 유일한 지식 범주를 검증할 수 있도록 설계하십시오. 동일한 답안이 가로축의 여러 칸에 의미 없이 복사-붙여넣기식으로 겹쳐서 생성되는 형태의 출제를 엄격히 금지합니다.\n\n2.🚨 [표 채우기 문항의 칸별 정답 속성 매핑 무결성 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 문항을 출제할 때, 각 격자(Cell)에 매핑되는 정답(`answers` 객체의 `INPUT_1`, `INPUT_2` 등)은 반드시 해당 셀이 속한 열(Column) 헤더와 행(Row) 헤더의 기하학적/공학적 정의와 **100% 일치**해야 합니다. 등방성(Isotropic) 지반을 나타내는 열의 셀(`[INPUT_1]`)에 이방성(Anisotropic) 관련 개념이나 수식(예: $x' = x\\sqrt{k_v/k_h}$ 등)을 정답으로 배치하는 식의 컬럼 간 정답 혼동 및 오매핑 행위를 엄격히 금지합니다. 표의 각 입력 칸은 해당 지반 조건(예: 등방성 균질 vs 이방성 불균질) 및 공학 분류의 의미적 범주를 절대 벗어나지 않도록 완벽히 교차 검증하여 정답을 설계하십시오.\n\n3.🚨 [표 채우기 문항의 지문 내 빈칸 지칭 일치 의무화 - 극도로 중요!]: 표 채우기(Table Quiz) 문항을 출제할 때, 질문(question) 지문 내에 언급하는 빈칸 번호(예: \"빈칸 (A), (B), (C), (D)에 들어갈 내용...\")의 개수와 알파벳 순서는 실제 표(tableData) 내부에 배치된 빈칸 토큰(INPUT_1, INPUT_2, INPUT_3, INPUT_4)의 총 개수 및 순서와 반드시 **100% 일치**해야 합니다. 만약 표 내부에 빈칸이 4개(a, b, c, d) 존재함에도 지문에서 \"빈칸 (A), (B)에 들어갈 내용...\"과 같이 일부만 지칭하여 질문하는 식의 심각한 불일치 오류를 절대 발생시키지 마십시오. 또한, 비교 대상(예: 현장 베인 시험, 피에조콘 시험)을 지칭하는 기호(A), (B)는 질문 본문에서 대괄호/괄호 형태 기호로 직접 지칭하는 것을 금지하며, 명칭 자체로만 언급하십시오. `(A), (B), (C), (D)` 기호는 오직 표의 빈칸 입력 칸들만을 순서대로 지칭하는 용도로만 일관되게 사용하십시오."
+      }
+    ];
+
+    await saveSessionValue('generation_standards', JSON.stringify(latestStandards));
+    updateLiveGenerationStandards(latestStandards);
+    log.push("Successfully synchronized all generation standards to database.");
+
+    res.json({ success: true, log });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/run-patch-3-24
+router.get('/run-patch-3-24', async (req, res) => {
+  console.log('[API Patch] Manual trigger run-patch-3-24 requested.');
+  try {
+    const isForce = req.query.force === 'true';
+    if (!isForce) {
+      const checkLock = await dbQuery.get("SELECT value FROM app_session WHERE key = 'patch_reset_topics_3_24_done'");
+      if (checkLock && checkLock.value === 'true') {
+        return res.json({ success: true, message: 'Reset patch already applied previously. Pass ?force=true to override.' });
+      }
+    }
+
+    const baseDateStr = '2026-06-29 00:00:00';
+    const roundDates = {
+      2: '2026-07-03',
+      3: '2026-07-10',
+      4: '2026-07-24',
+      5: '2026-08-28',
+      6: '2026-10-27',
+    };
+
+    const schedules = await dbQuery.all(
+      "SELECT id, topic_id, review_round, status, score FROM schedules WHERE topic_id >= 3 AND topic_id <= 24 AND review_round < 99"
+    );
+
+    let patchCount1 = 0;
+    let patchCount2 = 0;
+    let deletedSessions = 0;
+
+    for (const s of schedules) {
+      if (s.review_round === 1) {
+        const finalScore = (s.score && s.score > 0) ? s.score : 100;
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'completed', completed_at = ?, score = ? WHERE id = ?",
+          [baseDateStr, finalScore, s.id]
+        );
+        patchCount1++;
+      } else if (s.review_round >= 2 && s.review_round <= 6) {
+        const correctPlannedDate = roundDates[s.review_round];
+        await dbQuery.run(
+          "UPDATE schedules SET status = 'pending', completed_at = NULL, score = NULL, correct_count = NULL, total_count = NULL, planned_date = ? WHERE id = ?",
+          [correctPlannedDate, s.id]
+        );
+        
+        const keysToDelete = [
+          `completed_review_schedule_${s.id}`,
+          `review_questions_schedule_${s.id}`
+        ];
+        for (const k of keysToDelete) {
+          const delRes = await dbQuery.run("DELETE FROM app_session WHERE key = ?", [k]);
+          deletedSessions += delRes.changes || 0;
+        }
+        patchCount2++;
+      }
+    }
+
+    await saveSessionValue('patch_reset_topics_3_24_done', 'true');
+    
+    res.json({
+      success: true,
+      message: 'Successfully patched database.',
+      round1_completed_count: patchCount1,
+      round2_to_6_reset_count: patchCount2,
+      deleted_sessions_count: deletedSessions
+    });
+  } catch (err) {
+    console.error('[API Patch] Manual trigger failed:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
