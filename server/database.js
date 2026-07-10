@@ -402,6 +402,8 @@ async function migrateSchedulesTable() {
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS extracted_text TEXT`);
         await pgPool.query(`ALTER TABLE topics ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
         await pgPool.query(`ALTER TABLE answersheet_reports ADD COLUMN IF NOT EXISTS pdf_url TEXT`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_schedules_topic_id ON schedules(topic_id)`);
+        await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status)`);
         console.log('Cloud PostgreSQL schedules and topics tables migration checked.');
       }
     } else {
@@ -413,6 +415,12 @@ async function migrateSchedulesTable() {
       } catch (e) {}
       try {
         await dbQuery.run(`ALTER TABLE schedules ADD COLUMN total_count INTEGER`);
+      } catch (e) {}
+      try {
+        await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_topic_id ON schedules(topic_id)`);
+      } catch (e) {}
+      try {
+        await dbQuery.run(`CREATE INDEX IF NOT EXISTS idx_schedules_status ON schedules(status)`);
       } catch (e) {}
       try {
         await dbQuery.run(`ALTER TABLE topics ADD COLUMN category TEXT DEFAULT '일반'`);

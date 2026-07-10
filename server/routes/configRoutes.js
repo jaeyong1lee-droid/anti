@@ -46,6 +46,9 @@ async function purgeAllQuizCaches() {
   console.log('[Cache Clean] Bypassed automatic quiz cache purging to preserve user review histories.');
 }
 
+// Config In-Memory Cache to bypass DB queries on high frequency reads
+const configMemoryCache = new Map();
+
 function stampUpdatedStandards(newList, oldList) {
   if (!Array.isArray(newList)) return [];
   const oldMap = new Map((oldList || []).map(item => [item.id, item]));
@@ -60,10 +63,14 @@ function stampUpdatedStandards(newList, oldList) {
 
 // GET /api/preferred-model
 router.get('/preferred-model', async (req, res) => {
+  if (configMemoryCache.has('preferred_model')) {
+    return res.json({ model: configMemoryCache.get('preferred_model') });
+  }
   try {
     const row = await dbQuery.get("SELECT value FROM app_session WHERE key = 'preferred_model'");
     if (row && row.value) {
       updatePreferredModel(row.value);
+      configMemoryCache.set('preferred_model', row.value);
     }
   } catch (err) {
     console.warn("Failed to load preferred model from DB in GET /api/preferred-model:", err.message);
@@ -78,6 +85,7 @@ router.post('/preferred-model', async (req, res) => {
     updatePreferredModel(model);
     try {
       await saveSessionValue('preferred_model', model);
+      configMemoryCache.set('preferred_model', model);
       console.log(`[Setting Saved] Preferred Model updated to: ${model}`);
       return res.json({ success: true, model });
     } catch (err) {
