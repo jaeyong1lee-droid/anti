@@ -772,7 +772,7 @@ ${adjustments.map((a, idx) => `
     const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
 JSON 배열 형식으로만 문제를 출력하십시오.`;
 
-    const rawText = await localCallLLM(systemInstruction, prompt, null, 'question');
+    const rawText = await localCallLLM(systemInstruction, prompt, null, 'question', { temperature: 1.0 });
     let parsedArray = null;
     
     // Parse json array safely
@@ -1861,7 +1861,7 @@ ${ENGINEERING_STANDARDS}
       try {
         console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
         const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${batchPrompt}`;
-        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question');
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question', { temperature: 1.0 });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -2325,7 +2325,7 @@ ${ENGINEERING_STANDARDS}
 `;
       try {
         console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
-        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question', { temperature: 1.0 });
         let text = rawText.trim();
         if (text.startsWith('```')) {
           text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
