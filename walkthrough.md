@@ -337,9 +337,10 @@
   1. **React State-Ref 비동기 튐**: 마우스 드래그 시작 시점(`handlePopupDragStart`), 비동기 상태 일괄 처리(React State Batching) 지연으로 인해 이전 좌표 캐시가 ref(`latestDragPopupCoordsRef.current`)에 동기화되지 않은 상태에서 드래그 루프에 진입하여, 팝업이 드래그를 시작하자마자 (0, 0) 등 엉뚱한 위치로 순간 워프하며 버벅거리는 로직 결함이 있었습니다.
   2. **이벤트 차단 유실**: 드래그하는 동안 브라우저 고유의 텍스트 드래그/선택 기능(`selectstart`) 및 드래그 앤 드롭 기본 섀도우 동작(`dragstart`)이 걸러지지 않아, 마우스 포인터 이탈 시 드래그 이동이 끊기고 버벅거렸습니다.
 * **해결**:
-  - **동기 좌표 보정**: `handlePopupDragStart` 진입 즉시 `selectionPopupRef.current` 의 좌표값을 Ref에 동기적으로 일치시켜 튕김 버그를 해결했습니다.
+  - **DOM getBoundingClientRect 기반 물리 좌표 초기화 보정**: React State 비동기 렌더링에 전적으로 의존하지 않고, 마우스/터치 시작 순간에 현재 활성화된 `#drag-ai-popup` 엘리먼트의 실제 DOM Bounding Box 물리 위치(`rect.left`, `rect.top`)를 실시간으로 읽어들여 드래그 시작 좌표로 삼도록 개선했습니다. 이를 통해 리액트 렌더링 대기 시간으로 인한 (0,0) 좌표 워프 현상이 기술적으로 완벽하게 근절되었습니다.
   - **브라우저 기본 선택/드래그 차단**: 드래그 이동 중에는 `selectstart` 와 `dragstart` 이벤트를 강제로 `preventDefault()` 차단하고 드래그 종료 시 해제하도록 보강하여, 랙과 끊김 현상이 완전히 사라진 부드러운 드래그 UX를 완성했습니다.
   - **프로덕션 빌드 & 배포**: Vite 클라이언트 프로덕션 빌드 성공을 검증하고, 원격 리포지토리(`origin main`)에 커밋 및 푸시를 성공적으로 완료했습니다.
+
 
 
 
