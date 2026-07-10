@@ -8492,11 +8492,10 @@ export default function App() {
     answersheetMobileTab
   ]);
 
-    const handlePopupDragStart = (e) => {
+      const handlePopupDragStart = (e) => {
     if (e.target.closest('button, input, textarea')) return;
     
-    // 1. Synchronously retrieve physical bounding box coords of popup element to bypass React async render loop latency
-    const popupEl = document.getElementById('drag-ai-popup');
+    const popupEl = e.currentTarget.closest('#drag-ai-popup') || document.getElementById('drag-ai-popup');
     let startPopupX = latestDragPopupCoordsRef.current.x;
     let startPopupY = latestDragPopupCoordsRef.current.y;
     
@@ -8549,8 +8548,10 @@ export default function App() {
 
       if (dragPopupRafId) cancelAnimationFrame(dragPopupRafId);
       dragPopupRafId = requestAnimationFrame(() => {
-        document.documentElement.style.setProperty('--drag-popup-x', `${newX}px`);
-        document.documentElement.style.setProperty('--drag-popup-y', `${newY}px`);
+        if (popupEl) {
+          popupEl.style.left = `${newX}px`;
+          popupEl.style.top = `${newY}px`;
+        }
       });
     };
 
@@ -28936,8 +28937,8 @@ ${itemsStr}
           id="drag-ai-popup"
           style={{
             position: 'fixed',
-            left: 'var(--drag-popup-x)',
-            top: 'var(--drag-popup-y)',
+            left: `${selectionPopup.x}px`,
+            top: `${selectionPopup.y}px`,
             zIndex: 100050,
             animation: 'dragPopupFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
           }}
