@@ -5,8 +5,13 @@ import {
   renderKatexString, 
   getSelectionTextWithLatex, 
   handleOpenHtmlAnswerPopup,
-  buildHtmlDocument 
+  buildHtmlDocument,
+  isHeavyHtml,
+  cleanAndSanitizeMathText
 } from '../utils/renderingHelpers';
+import { convertMarkdownTablesToHtml } from '../utils/markdownTableRenderer';
+import { convertMarkdownAcronymsToHtml } from '../utils/markdownAcronymRenderer';
+import { healLatexFormulas } from '../utils/latexUtils';
 
 export const LatexRenderer = React.memo(function LatexRenderer({ 
   text, 
@@ -69,69 +74,235 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     window.__isFormulaTouchActive = true;
 
     const isTouchDevice = !!(window.ontouchstart !== undefined && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-    const delay = isTouchDevice ? 350 : 250; // Faster long-press recognition for desktop mouse clicks
+    const duration = isTouchDevice ? 700 : 2000;
 
     longPressTimer.current = setTimeout(() => {
       isLongPressActive.current = true;
       triggerAddFormula(katexEl);
-    }, delay);
+      window.__isFormulaLongPressing = false;
+    }, duration);
   };
 
-  const endPress = (clientX, clientY, target) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-    window.__isFormulaLongPressing = false;
-    window.__isFormulaTouchActive = false;
-
-    // If it was not a long press, but rather a simple click/touch, check if we should trigger the popup
-    if (!isLongPressActive.current) {
+  const cancelPress = (clientX, clientY, isMove = false, isTouch = false) => {
+    if (isMove) {
       const dx = clientX - startPos.current.x;
       const dy = clientY - startPos.current.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 8) {
-        const katexEl = target.closest('.katex, .katex-display');
-        if (katexEl) {
-          // Normal click behavior (if needed)
-        }
-      }
+      const dist = Math.hypot(dx, dy);
+      const threshold = isTouch ? 80 : 35;
+      if (dist < threshold) return;
     }
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    window.__isFormulaLongPressing = false;
+
+    // Keep active flag for 300ms after touch release to block asynchronous selection change popups
+    setTimeout(() => {
+      window.__isFormulaTouchActive = false;
+    }, 300);
   };
 
   const handleMouseDown = (e) => {
-    // Only handle left mouse button (button 0)
     if (e.button !== 0) return;
     startPress(e.clientX, e.clientY, e.target);
   };
 
-  const handleMouseUp = (e) => {
-    if (e.button !== 0) return;
-    endPress(e.clientX, e.clientY, e.target);
+  const handleMouseMove = (e) => {
+    cancelPress(e.clientX, e.clientY, true, false);
+  };
+
+  const handleMouseUpOrLeave = () => {
+    cancelPress(0, 0, false, false);
   };
 
   const handleTouchStart = (e) => {
-    if (e.touches.length > 1) return; // Ignore multi-touch
     const touch = e.touches[0];
     startPress(touch.clientX, touch.clientY, e.target);
   };
 
-  const handleTouchEnd = (e) => {
-    const touch = e.changedTouches[0] || e.touches[0];
-    endPress(touch.clientX, touch.clientY, e.target);
+  const handleTouchMove = (e) => {
+    const touch = e.touches[0];
+    cancelPress(touch.clientX, touch.clientY, true, true);
   };
 
-  // Convert custom bold representations and clean latex
-  let cleanedText = text;
-  
-  // Protect block math newlines
-  const mathBlockPattern = /\$\$\s*([\s\S]*?)\s*\$\$/g;
-  cleanedText = cleanedText.replace(mathBlockPattern, (match, formula) => {
-    const protectedFormula = formula.replace(/\n/g, ' ');
-    return `$$${protectedFormula}$$`;
-  });
+  const handleTouchEndOrCancel = () => {
+    cancelPress(0, 0, false, true);
+  };
 
-  const isHeavy = cleanedText.includes('<!DOCTYPE') || cleanedText.includes('<html') || cleanedText.includes('class="table-quiz-container"');
+  const handleFormulaClick = (e) => {
+    if (isLongPressActive.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPressActive.current = false;
+    }
+  };
 
+  const eventHandlers = enableAddFormula ? {
+    onClick: handleFormulaClick,
+    onMouseDown: handleMouseDown,
+    onMouseMove: handleMouseMove,
+    onMouseUp: handleMouseUpOrLeave,
+    onMouseLeave: handleMouseUpOrLeave,
+    onTouchStart: handleTouchStart,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEndOrCancel,
+    onTouchCancel: handleTouchEndOrCancel,
+    onContextMenu: (e) => {
+      const katexEl = e.target.closest('.katex, .katex-display');
+      if (katexEl) {
+        e.preventDefault();
+      }
+    },
+  } : {};
+
+  // 0.5) 연수공식/이론유도 내 지반단위중량 기호 y(\y) 그리크 감마(\gamma) 자가치유 규칙 탑재
+  const healFormulas = (val) => {
+    return healLatexFormulas(val);
+  };
+
+  let renderText = cleanAndSanitizeMathText(text);
+  if (typeof renderText === 'string') {
+    renderText = renderText.replace(/INPUT_?(\d+)/gi, (match, p1) => {
+      const num = parseInt(p1, 10);
+      return String.fromCharCode(64 + num);
+    });
+
+    // Auto-convert exponents and ranges, e.g. "10^-2~10^-3" -> "$10^{-2} \sim 10^{-3}$"
+    renderText = renderText.replace(/\$\$\$?[^$]*\$\$\$?|\$[^$]*\$|((?<!\$)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\s*[~～〜]\s*(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\$))/g, (m, p1, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+      if (m.startsWith('$')) return m;
+      const b1 = b1_1 || b1_2;
+      const e1 = e1_1 || e1_2;
+      const b2 = b2_1 || b2_2;
+      const e2 = e2_1 || e2_2;
+      return `$${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
+    });
+    // Auto-convert single exponent, e.g. "10^-2" -> "$10^{-2}$"
+    renderText = renderText.replace(/\$\$\$?[^$]*\$\$\$?|\$[^$]*\$|((?<!\d)(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?(?!\d))/g, (m, p1, b1, e1, b2, e2) => {
+      if (m.startsWith('$')) return m;
+      const base = b1 || b2;
+      const exp = e1 || e2;
+      return `$${base}^{${exp}}$`;
+    });
+    // Auto-convert comparison operators with variable, e.g. "k >= 10^-2" -> "$k \ge 10^{-2}$"
+    renderText = renderText.replace(/\$\$\$?[^$]*\$\$\$?|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1, e1, b2, e2) => {
+      if (m.startsWith('$')) return m;
+      const base = b1 || b2;
+      const exp = e1 || e2;
+      let latexOp = op;
+      if (op === '>=') latexOp = '\\ge';
+      else if (op === '<=') latexOp = '\\le';
+      else if (op === '>') latexOp = '>';
+      else if (op === '<') latexOp = '<';
+      return `$${variable} ${latexOp} ${base}^{${exp}}$`;
+    });
+    // Auto-convert comparison operators with exponent range
+    renderText = renderText.replace(/\$\Box?[^$]*\$\Box?|\$[^$]*\$|(\b([kK])\b\s*(>=|<=|>|<|=|\\ge|\\le|\\approx)\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))\$?\s*(?:\\sim|[~～〜])\s*\$?(?:(\d+)\s*\^\s*\{([+-]?\d+)\}|(\d+)\s*\^\s*([+-]?\d+))(?:\s*\})?\$?)/g, (m, p1, variable, op, b1_1, e1_1, b1_2, e1_2, b2_1, e2_1, b2_2, e2_2) => {
+      if (m.startsWith('$')) return m;
+      const b1 = b1_1 || b1_2;
+      const e1 = e1_1 || e1_2;
+      const b2 = b2_1 || b2_2;
+      const e2 = e2_1 || e2_2;
+      let latexOp = op;
+      if (op === '>=') latexOp = '\\ge';
+      else if (op === '<=') latexOp = '\\le';
+      else if (op === '>') latexOp = '>';
+      else if (op === '<') latexOp = '<';
+      return `$${variable} ${latexOp} ${b1}^{${e1}} \\sim ${b2}^{${e2}}$`;
+    });
+  }
+  if (typeof renderText === 'string' && renderText.trim().startsWith('{')) {
+    try {
+      const trimmedText = renderText.trim();
+      if (trimmedText.endsWith('}')) {
+        const parsed = JSON.parse(trimmedText);
+        let parts = [];
+        if (parsed.title) parts.push(`### ${parsed.title}`);
+        if (parsed.concept) parts.push(`**개념:** ${parsed.concept}`);
+        if (parsed.assumptions) parts.push(`**기본 가정:**\n${parsed.assumptions}`);
+        if (parsed.explanation) parts.push(`**상세 설명:**\n${parsed.explanation}`);
+        if (parsed.answer) parts.push(`**유도 및 해설:**\n${parsed.answer}`);
+        if (parts.length > 0) {
+          renderText = parts.join('\n\n');
+        }
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 기본 그대로 사용
+    }
+  }
+
+  const isHeavy = isHeavyHtml(renderText) && !isRealTimeTutor && formulaSource !== 'tutor';
+
+  // Manage iframe resize event listener and message listener cleanly
+  useEffect(() => {
+    if (!isHeavy) return;
+
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'mathRendered') {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.contentWindow === event.source) {
+          try {
+            const doc = iframe.contentWindow?.document;
+            if (doc && doc.body) {
+              const height = Math.max(
+                doc.body.scrollHeight,
+                doc.documentElement.scrollHeight,
+                doc.body.offsetHeight,
+                doc.documentElement.offsetHeight
+              );
+              iframe.style.height = (height + 28) + 'px';
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isHeavy, text]);
+
+  let processedText = renderText;
+  if (typeof processedText === 'string' && !isHeavy) {
+    processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
+    if (!processedText.includes('\n')) {
+      processedText = processedText.replace(/([가-힣a-zA-Z0-9])．\s+/g, '$1．\n\n');
+      // 번호 항목(2., 3., ...) 뒤에 줄바꿈이 없으면 자동 삽입 (1.은 문장 시작이므로 제외)
+      processedText = processedText.replace(/([.,:;)]\s+)(\d+\.\s)/g, '$1\n\n$2');
+    }
+  }
+
+  // 1) 불필요한 연속 개행을 최소 2개로 압축하여 컴팩트하게 정리
+  let cleanedText = processedText;
+  if (typeof cleanedText === 'string') {
+    cleanedText = cleanedText
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\r\n/g, '\n');
+  }
+
+  cleanedText = healFormulas(cleanedText);
+  if (typeof cleanedText === 'string') {
+    // Clean empty bullet headers that have no content (e.g. '* 메커니즘:')
+    cleanedText = cleanedText.replace(/(?:^|\n)[ \t]*(?:\*|-|■)[ \t]*([^:\n]+:)[ \t]*(?=\n\s*(?:\*|-|■|\s*$))/g, '');
+
+    // Collapse empty lines between colon-ended lines and list items
+    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|■|◆))/g, '$1\n$2');
+
+    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  if (typeof cleanedText === 'string') {
+    const isMixedReview = !!window.__isMixedReviewActive;
+    const shouldHideRemarks = isMixedReview || (formulaSource === 'tutor' && !hideTableWrapper);
+    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, shouldHideRemarks);
+    cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
+  }
+
+  // Tutor panels (isMarkdown=true) use rich markdown-to-HTML conversion.
   // Standard answers (isMarkdown=false) use the safe line-by-line rendering path.
   if (!isHeavy && isMarkdown) {
     cleanedText = convertMarkdownToHtml(cleanedText, true, highlightBold, formulaSource === 'tutor');
@@ -164,158 +335,280 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     }
 
     const srcDoc = buildHtmlDocument(text, false);
-    
-    // Auto-calculate height based on content to prevent nested scrolling inside the card
-    const [iframeHeight, setIframeHeight] = useState(260);
-
-    useEffect(() => {
-      let isMounted = true;
-      const handleMessage = (e) => {
-        if (!isMounted) return;
-        if (e.data && e.data.type === 'mathRendered') {
-          setTimeout(() => {
-            const iframe = iframeRef.current;
-            if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
-              const body = iframe.contentWindow.document.body;
-              if (body) {
-                const scrollHeight = body.scrollHeight;
-                const newHeight = Math.max(120, Math.min(1600, scrollHeight + 4));
-                setIframeHeight(newHeight);
-              }
-            }
-          }, 60);
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-      return () => {
-        isMounted = false;
-        window.removeEventListener('message', handleMessage);
-      };
-    }, []);
-
-    const handleIframeLoad = () => {
-      setTimeout(() => {
-        const iframe = iframeRef.current;
-        if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
-          const body = iframe.contentWindow.document.body;
-          if (body) {
-            const scrollHeight = body.scrollHeight;
-            const newHeight = Math.max(120, Math.min(1600, scrollHeight + 4));
-            setIframeHeight(newHeight);
-            
-            // Re-bind click event inside iframe to detect drag selections for Real-time AI Tutor
-            if (isRealTimeTutor) {
-              iframe.contentWindow.document.addEventListener('mouseup', () => {
-                const iframeSelection = iframe.contentWindow.getSelection();
-                if (iframeSelection) {
-                  const selectedText = getSelectionTextWithLatex(iframeSelection);
-                  if (selectedText && selectedText.trim().length > 0) {
-                    if (typeof window.__handleIframeSelection === 'function') {
-                      window.__handleIframeSelection(selectedText, e => {
-                        const rect = iframe.getBoundingClientRect();
-                        const clientX = e.clientX + rect.left;
-                        const clientY = e.clientY + rect.top;
-                        return { clientX, clientY };
-                      });
-                    }
-                  }
-                }
-              });
-            }
-          }
-        }
-      }, 100);
-    };
-
-    const containerStyle = hideTableWrapper 
-      ? { width: '100%' } 
-      : { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-
     return (
-      <div className="table-quiz-container relative my-1 py-1" style={containerStyle}>
+      <div className="w-full my-3 overflow-hidden rounded-2xl border border-slate-700/40 shadow-2xl bg-white animate-fade-in">
         <iframe
           ref={iframeRef}
           srcDoc={srcDoc}
-          onLoad={handleIframeLoad}
-          className="w-full border-0 select-text overflow-hidden"
-          style={{ height: `${iframeHeight}px`, display: 'block', transition: 'height 0.15s ease' }}
+          sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+          className="w-full border-0 block"
+          style={{ height: '520px', overflow: 'hidden' }}
           scrolling="no"
-          sandbox="allow-scripts allow-popups allow-same-origin"
+          onLoad={(e) => {
+            const iframe = e.target;
+            const adjustHeight = () => {
+              try {
+                const doc = iframe.contentWindow?.document;
+                if (doc && doc.body) {
+                  const height = Math.max(
+                    doc.body.scrollHeight,
+                    doc.documentElement.scrollHeight,
+                    doc.body.offsetHeight,
+                    doc.documentElement.offsetHeight
+                  );
+                  iframe.style.height = (height + 28) + 'px';
+                }
+              } catch (err) {
+                // ignore
+              }
+            };
+
+            adjustHeight();
+
+            const intervals = [100, 300, 600, 1000, 2000, 4000];
+            intervals.forEach((delay) => {
+              setTimeout(adjustHeight, delay);
+            });
+
+            // Listen for selection inside iframe
+            try {
+              const doc = iframe.contentWindow?.document;
+              if (doc) {
+                let iframeSelectionTimeout = null;
+                const handleIframeSelection = () => {
+                  if (iframeSelectionTimeout) clearTimeout(iframeSelectionTimeout);
+                  iframeSelectionTimeout = setTimeout(() => {
+                    const iframeSelection = iframe.contentWindow?.getSelection();
+                    if (!iframeSelection) return;
+                    const selectedText = getSelectionTextWithLatex(iframeSelection);
+                    
+                    // Ignore selections in input fields, textareas, etc.
+                    const activeEl = doc.activeElement;
+                    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                      return;
+                    }
+
+                    if (!selectedText) {
+                      const closeEvent = new CustomEvent('anti-selection-close');
+                      window.parent.dispatchEvent(closeEvent);
+                      return;
+                    }
+                    
+                    try {
+                      const range = iframeSelection.getRangeAt(0);
+                      const rect = range.getBoundingClientRect();
+                      const iframeRect = iframe.getBoundingClientRect();
+                      
+                      const changeEvent = new CustomEvent('anti-selection-change', {
+                        detail: {
+                          text: selectedText,
+                          x: iframeRect.left + rect.left + rect.width / 2,
+                          y: iframeRect.top + rect.bottom + 8,
+                          questionKey: questionKey,
+                          isRealTimeTutor: isRealTimeTutor
+                        }
+                      });
+                      window.parent.dispatchEvent(changeEvent);
+                    } catch (err) {}
+                  }, 400); // 400ms debounce
+                };
+
+                doc.addEventListener('selectionchange', handleIframeSelection);
+              }
+            } catch (err) {
+              console.warn('Failed to bind iframe selection events:', err);
+            }
+          }}
+          title="Interactive Simulator Drawing"
         />
       </div>
     );
   }
 
-  // Pure Latex line-by-line render path for standard text
-  const tokens = [];
+  // (B-1) 단일 달러($) 격리 공백 주입
+  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])(?<!\$)\$([^\$]+?)\$(?!\$)/g, (m, p1, p2) => `${p1} $${p2}$`);
+  cleanedText = cleanedText.replace(/(?<!\$)\$([^\$]+?)\$(?!\$)([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$${p1}$ ${p2}`);
+
+  // (B-2) 이중 달러($$) 격리 공백 주입
+  cleanedText = cleanedText.replace(/([\uAC00-\uD7A3a-zA-Z0-9])\$\$\s*([\s\S]*?)\s*\$\$/g, (m, p1, p2) => `${p1} $$${p2}$$`);
+  cleanedText = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$\s*([\uAC00-\uD7A3a-zA-Z0-9])/g, (m, p1, p2) => `$$${p1}$$ ${p2}`);
+
+  // 2. [줄 내의 수식 자동 인라인화 가공]
+  const rawLines = cleanedText.split('\n');
+  const processedLines = rawLines.map(line => {
+    if (/[\uAC00-\uD7A3]/.test(line)) {
+      return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, formula, offset) => {
+        if (/\\(dfrac|frac|sum|int|prod|log|ln|sqrt|begin|end|matrix|array|left|right)/.test(formula)) {
+          return match;
+        }
+        const before = line.substring(0, offset).trim();
+        if (/[.!?]\s*$/.test(before)) {
+          return match;
+        }
+        return `$${formula}$`;
+      });
+    }
+    return line;
+  });
+  cleanedText = processedLines.join('\n');
+
+  // Check if text contains HTML tags
+  const hasHtml = /<\/?(div|table|tr|td|th|tbody|thead|tfoot|p|span|br|hr|strong|em|ul|ol|li|h[1-6]|b|i|a|img|code|pre|style|html|body)\b[^>]*>/i.test(cleanedText);
+
+  if (hasHtml) {
+    let htmlContent = cleanedText;
+    if (window.katex) {
+      const isInline = className.includes('inline');
+      htmlContent = htmlContent.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (m, math) => {
+        if (isInline) {
+          const rendered = renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+          return `<span class="inline bg-transparent select-text">${rendered}</span>`;
+        }
+        const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
+        return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
+      });
+      htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+        const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+        if (!isReal) {
+          return m;
+        }
+        return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+      });
+    }
+
+    const isInline = className.includes('inline');
+    if (isInline) {
+      return (
+        <span 
+          className={`${className} select-text whitespace-pre-wrap ${enableAddFormula ? 'enable-add-formula' : ''}`}
+          {...eventHandlers}
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+      );
+    }
+    return (
+      <div 
+        className={`${className} select-text w-full whitespace-pre-wrap ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        {...eventHandlers}
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+    );
+  }
+
+  if (!window.katex) {
+    return <div className={`${className} whitespace-pre-line leading-relaxed select-text`}>{cleanedText}</div>;
+  }
+
+  // Split by block math $$ ... $$
+  const parts = [];
   let lastIndex = 0;
-  const regex = /(\$\$.*?\$\$)|(\$[^\$\n]+?\$)/g;
+  const blockRegex = /\$\$(.*?)\$\$/gs;
   let match;
 
-  while ((match = regex.exec(cleanedText)) !== null) {
-    const before = cleanedText.substring(lastIndex, match.index);
-    if (before) tokens.push({ type: 'text', content: before });
-    tokens.push({
-      type: match[0].startsWith('$$') ? 'block-math' : 'inline-math',
-      content: match[0]
-    });
-    lastIndex = regex.lastIndex;
+  while ((match = blockRegex.exec(cleanedText)) !== null) {
+    const beforeText = cleanedText.substring(lastIndex, match.index);
+    if (beforeText && beforeText.trim() !== '') {
+      parts.push({ type: 'text', content: beforeText });
+    }
+    parts.push({ type: 'math-block', content: match[1].trim() });
+    lastIndex = blockRegex.lastIndex;
   }
-  const after = cleanedText.substring(lastIndex);
-  if (after) tokens.push({ type: 'text', content: after });
 
-  return (
-    <div 
-      className={`select-text ${className}`} 
-      onMouseDown={enableAddFormula ? handleMouseDown : undefined}
-      onMouseUp={enableAddFormula ? handleMouseUp : undefined}
-      onTouchStart={enableAddFormula ? handleTouchStart : undefined}
-      onTouchEnd={enableAddFormula ? handleTouchEnd : undefined}
-    >
-      {tokens.map((token, idx) => {
-        if (token.type === 'text') {
-          if (isMarkdown) {
+  const afterText = cleanedText.substring(lastIndex);
+  if (afterText && afterText.trim() !== '') {
+    parts.push({ type: 'text', content: afterText });
+  }
+
+  const isInline = className.includes('inline');
+
+  if (isInline) {
+    return (
+      <span 
+        className={`${className} select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+        {...eventHandlers}
+      >
+        {parts.map((part, idx) => {
+          if (part.type === 'math-block') {
+            const mathHtml = renderKatexString(part.content, { displayMode: false, throwOnError: false });
             return (
               <span 
-                key={idx}
-                dangerouslySetInnerHTML={{ __html: token.content }}
-                className="select-text inline"
+                key={idx} 
+                className="inline bg-transparent select-text"
+                dangerouslySetInnerHTML={{ __html: mathHtml }} 
               />
             );
           } else {
+            let htmlContent = part.content;
+            try {
+              htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+                if (/[\uAC00-\uD7A3]/.test(math)) {
+                  const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
+                  if (!isRealFormula) {
+                    return m;
+                  }
+                }
+                return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+              });
+            } catch (e) {
+              console.warn(e);
+            }
             return (
-              <span key={idx} className="select-text inline leading-relaxed whitespace-pre-wrap">
-                {token.content}
-              </span>
+              <span 
+                key={idx}
+                className="leading-relaxed whitespace-pre-line select-text"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
             );
           }
+        })}
+      </span>
+    );
+  }
+
+  return (
+    <div 
+      className={`${className} space-y-1.5 select-text ${enableAddFormula ? 'enable-add-formula' : ''}`}
+      {...eventHandlers}
+    >
+      {parts.map((part, idx) => {
+        if (part.type === 'math-block') {
+          const mathHtml = renderKatexString(part.content, { displayMode: true, throwOnError: false });
+
+          return (
+            <div 
+              key={idx} 
+              className="my-0.5 md:my-1 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
+            >
+              <div 
+                className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
+                onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchMove={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchEnd={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                onTouchCancel={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
+                dangerouslySetInnerHTML={{ __html: mathHtml }} 
+              />
+            </div>
+          );
         } else {
-          const displayMode = token.type === 'block-math';
-          let htmlContent = '';
+          let htmlContent = part.content;
           try {
-            htmlContent = renderKatexString(token.content, { displayMode, throwOnError: false });
+            htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+              if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
+                return m;
+              }
+              return renderKatexString(math.trim(), { displayMode: false, throwOnError: false });
+            });
           } catch (e) {
             console.warn(e);
           }
 
-          if (displayMode) {
-            return (
-              <div 
-                key={idx}
-                className="py-1 my-1 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text block text-center formula-scroll-container"
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
-              />
-            );
-          } else {
-            return (
-              <span 
-                key={idx}
-                className="px-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text inline"
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
-              />
-            );
-          }
+          return (
+            <div 
+              key={idx}
+              className="leading-relaxed whitespace-pre-line select-text"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          );
         }
       })}
     </div>

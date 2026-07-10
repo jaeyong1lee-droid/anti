@@ -1,6 +1,8 @@
 // ============================================================================
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
+import { healLatexFormulas } from './latexUtils';
+
 
 export const formatGradingReason = (reason) => {
   if (!reason) return '';
@@ -680,4 +682,207 @@ export const getTableScoreColorTheme = (gradingResult, isCorrect, value) => {
         text: 'text-rose-400',
         scoreText: 'text-rose-400'
       };
+};
+
+export const isHeavyHtml = (rawText) => {
+  if (!rawText) return false;
+  const lower = rawText.toLowerCase();
+  return (
+    lower.includes('<!doctype') ||
+    lower.includes('<html>') ||
+    lower.includes('<body') ||
+    lower.includes('<script') ||
+    lower.includes('<canvas') ||
+    lower.includes('<svg') ||
+    (lower.includes('<div') && lower.includes('style='))
+  );
+};
+
+export const healCorruptedKatexHtml = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  let cleaned = text.replace(/\u200b/g, '');
+  
+  const cleanAndSplitFormula = (formula) => {
+    let clean = formula.trim().replace(/\\+/g, '\\');
+    clean = clean.replace(/&#x27;/g, "'")
+                 .replace(/&quot;/g, '"')
+                 .replace(/&lt;/g, '<')
+                 .replace(/&gt;/g, '>')
+                 .replace(/&amp;/g, '&');
+                 
+    const parts = clean.split(/(?:<[^>]+?>)/gi);
+    return parts.map(p => {
+      const trimmed = p.trim();
+      if (!trimmed) return '';
+      const isMath = /[\+\-\*\/=_\\^]/.test(trimmed) && !/^[가-힣\s.,:;!]+$/.test(trimmed);
+      const hasKorean = /[가-힣]/.test(trimmed);
+      if (isMath && !hasKorean) {
+        return ` __MATH_FORMULA_START__${trimmed}__MATH_FORMULA_END__ `;
+      } else {
+        return ` ${trimmed} `;
+      }
+    }).join(' ');
+  };
+
+  const annotationRegex = /<\s*annotation[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*annotation[a-z]*\s*>/gi;
+  cleaned = cleaned.replace(annotationRegex, (match, formula) => {
+    return cleanAndSplitFormula(formula);
+  });
+  
+  const errorSpanRegex = /<\s*span\b(?:[^"'>]|"[^"]*"|'[^']*')*?\bclass=["'][^"']*\bkatex-error\b[^"']*["'](?:[^"'>]|"[^"]*"|'[^']*')*?>([\s\S]*?)<\s*\/\s*span\s*>/gi;
+  cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
+    const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (titleMatch && titleMatch[1]) {
+      return cleanAndSplitFormula(titleMatch[1]);
+    }
+    return errContent;
+  });
+  
+  const katexTagsRegex = /<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)[a-z]*\b(?:[^"'>]|"[^"]*"|'[^']*')*?>/gi;
+  cleaned = cleaned.replace(katexTagsRegex, '');
+  
+  cleaned = cleaned.replace(/__MATH_FORMULA_START__([\s\S]*?)__MATH_FORMULA_END__/g, (match, formula) => {
+    return ` $${formula}$ `;
+  });
+  
+  return cleaned;
+};
+
+export const cleanCorruptedFormula = (formula) => {
+  if (!formula || typeof formula !== 'string') return formula;
+  
+  let cleaned = formula;
+  if (cleaned.includes('color:#cc0000') || cleaned.includes('math mode at position')) {
+    const match = cleaned.match(/color:#cc0000"\s*>\s*([^<]+?)\s*<\s*\/\s*span\s*>/i) ||
+                  cleaned.match(/color:#cc0000"\s*&gt;\s*([^&]+?)\s*&lt;\s*\/\s*span\s*&gt;/i);
+                  
+    if (match) {
+      const coreMath = match[1].trim();
+      const closingSpanIndex = cleaned.search(/<\s*\/\s*span\s*>/i);
+      let rest = '';
+      if (closingSpanIndex !== -1) {
+        const restStart = cleaned.indexOf('>', closingSpanIndex);
+        if (restStart !== -1) {
+          rest = cleaned.substring(restStart + 1);
+        }
+      } else {
+        const closingSpanIndexEntity = cleaned.search(/&lt;\s*\/\s*span\s*&gt;/i);
+        if (closingSpanIndexEntity !== -1) {
+          const restStart = cleaned.indexOf('&gt;', closingSpanIndexEntity);
+          if (restStart !== -1) {
+            rest = cleaned.substring(restStart + 4);
+          }
+        }
+      }
+      
+      let cleanRest = rest
+        .replace(/<\s*\/\s*(span|div|p)\s*>/gi, '')
+        .replace(/<\s*(div|span|p)[^>]*>/gi, '')
+        .replace(/&lt;\s*\/\s*(span|div|p)\s*&gt;/gi, '')
+        .replace(/&lt;\s*(div|span|p)[^&]*&gt;/gi, '')
+        .trim();
+        
+      cleaned = `$$${coreMath}$$\n\n${cleanRest}`;
+    }
+  }
+  return cleaned;
+};
+
+export const cleanAndSanitizeMathText = (rawText) => {
+  if (!rawText || typeof rawText !== 'string') return rawText || '';
+  
+  let cleaned = healCorruptedKatexHtml(rawText);
+  cleaned = cleanCorruptedFormula(cleaned);
+
+  cleaned = cleaned.replace(/&amp;\\?lt;/gi, '<')
+                   .replace(/&amp;\\?gt;/gi, '>')
+                   .replace(/&amp;\\?lt\b/gi, '<')
+                   .replace(/&amp;\\?gt\b/gi, '>')
+                   .replace(/&amp;lt;/gi, '<')
+                   .replace(/&amp;gt;/gi, '>')
+                   .replace(/&amp;lt\b/gi, '<')
+                   .replace(/&amp;gt\b/gi, '>')
+                   .replace(/&\\?lt;/gi, '<')
+                   .replace(/&\\?gt;/gi, '>')
+                   .replace(/&\\?lt\b/gi, '<')
+                   .replace(/&\\?gt\b/gi, '>')
+                   .replace(/&lt;/gi, '<')
+                   .replace(/&gt;/gi, '>')
+                   .replace(/&lt\b/gi, '<')
+                   .replace(/&gt\b/gi, '>')
+                   .replace(/\\lt\b/gi, '<')
+                   .replace(/\\gt\b/gi, '>');
+
+  cleaned = cleaned.replace(/&amp;lt;/g, '<')
+                   .replace(/&amp;gt;/g, '>')
+                   .replace(/&amp;quot;/g, '"')
+                   .replace(/&amp;apos;/g, "'")
+                   .replace(/&#x27;/g, "'")
+                   .replace(/&quot;/g, '"')
+                   .replace(/&lt;/g, '<')
+                   .replace(/&gt;/g, '>')
+                   .replace(/&amp;/g, '&');
+   
+  cleaned = cleaned.replace(/[–—−]/g, '-');
+  
+  cleaned = cleaned.replace(/\uD835\uDC58/g, 'k')
+                   .replace(/\uD835\uDC8C/g, 'k')
+                   .replace(/\uD835\uDCC0/g, 'k')
+                   .replace(/[\uFF4B\uFF2B]/g, 'k');
+  cleaned = cleaned.replace(/<[^>]+>/g, (tag) => {
+    return tag.replace(/(\w)\s*-\s*(\w)/g, '$1-$2');
+  });
+
+  const katexHtmlRegex = /<(div|span)\b[^>]*?class=["'][^"']*\b(?:formula-scroll-container|katex|inline|katex-display|katex-error)\b[^"']*["'][\s\S]*?<\/\s*\1\s*>/gi;
+  cleaned = cleaned.replace(katexHtmlRegex, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
+    if (errMatch && errMatch[1]) {
+      const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  const spaceCorruptedKatexRegex = /<\s*(div|span)class\b[\s\S]*?<\/\s*\1\s*>/gi;
+  cleaned = cleaned.replace(spaceCorruptedKatexRegex, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<\s*annotationencoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i) ||
+                       htmlBlock.match(/<annotation[^>]*?encoding=["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/annotation>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  cleaned = cleaned.replace(/<[^>]*?(?:katex|formula-scroll|katex-display)[^>]*>[\s\S]*?<\/\s*(?:div|span)\s*>/gi, (htmlBlock) => {
+    const annotMatch = htmlBlock.match(/<\s*annotation[^>]*?encoding\s*=\s*["']?application\/x-tex["']?[^>]*?>([\s\S]*?)<\/\s*annotation\s*>/i);
+    if (annotMatch && annotMatch[1]) {
+      const formula = annotMatch[1].trim().replace(/\\+/g, '\\');
+      return ` $${formula}$ `;
+    }
+    return '';
+  });
+
+  cleaned = cleaned.replace(/<\s*\/?\s*(?:div|span|annotation|semantics|math|mrow|msub|msup|mfrac|msqrt|msubsup|mo|mi|mn|mtext|mspace|mstyle|mtd|mtr|mtable)\b[^>]*>/gi, '');
+  
+  cleaned = healLatexFormulas(cleaned);
+
+  cleaned = cleaned.replace(/_따라서/g, '따라서');
+
+  cleaned = cleaned.replace(/\\\[(\s*[\s\S]*?\s*)\\\]/g, (match, math) => {
+    return `$$${math}$$`;
+  });
+
+  cleaned = cleaned.replace(/\\\((\s*[\s\S]*?\s*)\\\)/g, (match, math) => {
+    if (/^[가-힣\s,.!?·()]+$/.test(math)) return match;
+    return `$${math}$`;
+  });
+
+  return cleaned;
 };
