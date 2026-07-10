@@ -6,7 +6,7 @@ import { healLatexFormulas } from './latexUtils';
 
 export const formatGradingReason = (reason) => {
   if (!reason) return '';
-  return reason.replace(/(\b\d+(?:\.\d+)?)(?=\s*(?:점\s*)?감점)/g, '10점 만점 기준 $1');
+  return reason.replace(/(\b\d+(?:\.\d+)?)(점\s*(?:을\s*)?감점)/g, '10점 만점 기준 $1$2');
 };
 
 export const buildHtmlDocument = (text, isPopup = false) => {
