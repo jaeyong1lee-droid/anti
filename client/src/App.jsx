@@ -2242,7 +2242,9 @@ export default function App() {
     }
   };
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(false);
-  const [showFloatingMemorization, setShowFloatingMemorization] = useState(false);
+  const [showFloatingMemorization, setShowFloatingMemorization] = useState(() => {
+    return localStorage.getItem('anti_show_floating_memorization') === 'true';
+  });
   const [focusedQuestion, setFocusedQuestion] = useState(null);
   const [showRegenTypeModal, setShowRegenTypeModal] = useState(false);
   const [regenTargetInfo, setRegenTargetInfo] = useState(null);
@@ -3888,7 +3890,14 @@ export default function App() {
   });
   const [editingTableIdx, setEditingTableIdx] = useState(null);
   const [editingTableText, setEditingTableText] = useState('');
-  const [expandedTableIds, setExpandedTableIds] = useState({});
+  const [expandedTableIds, setExpandedTableIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_expanded_table_ids');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [activeEditCell, setActiveEditCell] = useState(null); // { tableId, type: 'header'|'cell', colIdx, rIdx }
   const [activeAddDropdownTableId, setActiveAddDropdownTableId] = useState(null);
   const [tableRegeneratingIds, setTableRegeneratingIds] = useState({}); // { [tableId]: boolean }
@@ -13978,8 +13987,16 @@ ${itemsStr}
   }, [formulaSubTab]);
 
   useEffect(() => {
+    localStorage.setItem('anti_show_floating_memorization', showFloatingMemorization);
+  }, [showFloatingMemorization]);
+
+  useEffect(() => {
     localStorage.setItem('anti_expanded_overview_ids', JSON.stringify(expandedOverviewIds));
   }, [expandedOverviewIds]);
+
+  useEffect(() => {
+    localStorage.setItem('anti_expanded_table_ids', JSON.stringify(expandedTableIds));
+  }, [expandedTableIds]);
 
   const handleOpenTheoryExam = async () => {};
   const _handleOpenTheoryExam_unused = async () => {

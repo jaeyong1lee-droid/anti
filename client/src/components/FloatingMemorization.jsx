@@ -121,8 +121,14 @@ export function FloatingMemorization({
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  const [subTab, setSubTab] = useState('table'); // 'table', 'acronym', 'overview', 'image'
+  const [subTab, setSubTab] = useState(() => {
+    return localStorage.getItem('anti_memorization_sub_tab') || 'table';
+  });
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('anti_memorization_sub_tab', subTab);
+  }, [subTab]);
 
   useEffect(() => {
     if (isVisible && focusedQuestion) {
