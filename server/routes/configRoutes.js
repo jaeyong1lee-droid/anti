@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
-import { saveSessionValue, globalPreferredModel, updatePreferredModel } from '../services/aiService.js';
-import { updateLiveEngineeringStandards, standardsList } from '../plugins/engineeringStandards.js';
+import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
+import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
 let validationStandardsList = [];
 function updateLiveValidationStandards(newList) {
@@ -12,6 +12,9 @@ function updateLiveValidationStandards(newList) {
 }
 import { updateLiveGenerationStandards, generationStandardsList } from '../plugins/generationStandards.js';
 import { updateLiveLockscreenStandards, lockscreenStandardsList } from '../plugins/lockscreenStandards.js';
+import { healFormulaQuestionObject, healAnswersheetQuestionObject, parseLlmJson } from '../utils/latexUtils.js';
+import { defaultAcronyms } from '../plugins/acronymsPlugin.js';
+import { defaultOverviews } from '../plugins/overviewsPlugin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -318,6 +321,440 @@ router.post('/lockscreen-standards', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/lockscreen-standards error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function ensureSessionTable() {
+  try {
+    await dbQuery.run(`
+      CREATE TABLE IF NOT EXISTS app_session (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) {
+    console.warn('ensureSessionTable warning:', e.message);
+  }
+}
+
+const LATEX_PROMPT_INSTRUCTIONS = `
+[수학 공식/특수문자 표기 규칙 - 극도로 중요]:
+1. 인라인(글 중간)에 수학 공식이나 물리적 변수(예: kh, kv 등)를 적을 때는 반드시 단일 달러 기호 하나로 감싸서 LaTeX 형식으로 작성하십시오. (예: $k_h$, $k_v$, $\\beta$ 등)
+2. 디스플레이(독립된 단락) 수학 공식을 작성할 때는 반드시 이중 달러 기호로 감싸서 작성하십시오. (예: $$k_e = \\sqrt{k_h k_v}$$)
+3. 역슬래시 문자는 이스케이프가 중복 처리되지 않도록 한 번만 적어 전달되도록 주의하십시오.
+`;
+
+// GET /api/session/formula
+router.get('/session/formula', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      if (parsed && Array.isArray(parsed.formulaQuestions)) {
+        parsed.formulaQuestions = parsed.formulaQuestions.map(q => healFormulaQuestionObject(q));
+      }
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/formula error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/formula
+router.post('/session/formula', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaQuestions } = req.body;
+    const healedQuestions = Array.isArray(formulaQuestions)
+      ? formulaQuestions.map(healFormulaQuestionObject)
+      : formulaQuestions;
+    const value = JSON.stringify({ formulaQuestions: healedQuestions });
+    await saveSessionValue('formula_questions', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/formula error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/tables
+router.get('/session/tables', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_tables']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: null });
+    }
+  } catch (err) {
+    console.error('GET /api/session/tables error:', err);
+    res.json({ data: null });
+  }
+});
+
+// POST /api/session/tables
+router.post('/session/tables', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaTables } = req.body;
+    const value = JSON.stringify({ formulaTables });
+    await saveSessionValue('formula_tables', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/tables error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/acronyms
+router.get('/session/acronyms', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_acronyms']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { formulaAcronyms: defaultAcronyms } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/acronyms error:', err);
+    res.json({ data: { formulaAcronyms: defaultAcronyms } });
+  }
+});
+
+// POST /api/session/acronyms
+router.post('/session/acronyms', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaAcronyms } = req.body;
+    const value = JSON.stringify({ formulaAcronyms });
+    await saveSessionValue('formula_acronyms', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/acronyms error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/overviews
+router.get('/session/overviews', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_overviews']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { formulaOverviews: defaultOverviews } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/overviews error:', err);
+    res.json({ data: { formulaOverviews: defaultOverviews } });
+  }
+});
+
+// POST /api/session/overviews
+router.post('/session/overviews', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaOverviews } = req.body;
+    const value = JSON.stringify({ formulaOverviews });
+    await saveSessionValue('formula_overviews', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/overviews error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/images
+router.get('/session/images', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_images']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { formulaImages: [] } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/images error:', err);
+    res.json({ data: { formulaImages: [] } });
+  }
+});
+
+// POST /api/session/images
+router.post('/session/images', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { formulaImages } = req.body;
+    const value = JSON.stringify({ formulaImages });
+    await saveSessionValue('formula_images', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/images error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/session/mixed-completed
+router.get('/session/mixed-completed', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    await ensureSessionTable();
+    const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['mixed_completed_dates']);
+    if (rows.length > 0 && rows[0].value) {
+      const parsed = JSON.parse(rows[0].value);
+      res.json({ data: parsed });
+    } else {
+      res.json({ data: { completedDates: [] } });
+    }
+  } catch (err) {
+    console.error('GET /api/session/mixed-completed error:', err);
+    res.json({ data: { completedDates: [] } });
+  }
+});
+
+// POST /api/session/mixed-completed
+router.post('/session/mixed-completed', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const { completedDates } = req.body;
+    const value = JSON.stringify({ completedDates });
+    await saveSessionValue('mixed_completed_dates', value);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/session/mixed-completed error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/options/:key
+router.get('/options/:key', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const key = `option_${req.params.key}`;
+    const row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    res.json({ value: row ? row.value : null });
+  } catch (err) {
+    console.error(`GET /api/options/${req.params.key} error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/options/:key
+router.post('/options/:key', async (req, res) => {
+  try {
+    await ensureSessionTable();
+    const key = `option_${req.params.key}`;
+    const { value } = req.body;
+    await dbQuery.run('DELETE FROM app_session WHERE key = ?', [key]);
+    await dbQuery.run(
+      'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      [key, value]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`POST /api/options/${req.params.key} error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/question/option-explanation
+router.post('/question/option-explanation', async (req, res) => {
+  const { question, options, answer } = req.body;
+  const progressId = req.body.progressId || req.query.progressId;
+  const localCallLLM = (sys, prompt, img, scenario, opts) => 
+    callLLMWithFailover(sys, prompt, img, scenario, { ...opts, progressId });
+
+  if (!question || !options || !Array.isArray(options) || options.length !== 4) {
+    return res.status(400).json({ error: '올바른 객관식 문제 정보가 아닙니다.' });
+  }
+
+  let progressTimer = null;
+  if (progressId) {
+    progressTimer = startBackendProgressTimer(progressId, 1, '1단계: AI 보기 오답 원인 분석 중...', 90, 800, 10);
+  }
+
+  try {
+    const prompt = `
+당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
+제시하는 객관식 문제의 질문과 4개 보기 목록을 면밀히 분석하여, 각 보기(①, ②, ③, ④)가 왜 정답인지(정답 이유) 또는 왜 오답인지(오답 이유)를 공학 지식과 학술 이론에 근거하여 매우 직관적이고 명확하게 기술적 관점에서 설명해 주십시오.
+
+[질문]: ${question}
+[보기 목록]:
+① ${options[0]}
+② ${options[1]}
+③ ${options[2]}
+④ ${options[3]}
+[정답]: ${answer}
+
+[요구사항]:
+1. ①, ②, ③, ④의 보기별 정답/오답 원인 분석이 한눈에 들어오도록 콤팩트하게 구성하십시오 (각 보기당 1~2줄 이내 권장).
+2. ${LATEX_PROMPT_INSTRUCTIONS}
+${ENGINEERING_STANDARDS}
+3. 마크다운의 '\`\`\`' 등의 특수 기호로 감싸지 말고 다음의 문자열 형식으로만 곧바로 반환해 주십시오:
+
+- **① ${options[0]}** : [정답/오답 핵심 분석] (여기에 명확하고 압축된 공학적 해설 기재)
+- **② ${options[1]}** : [정답/오답 핵심 분석] ...
+- **③ ${options[2]}** : [정답/오답 핵심 분석] ...
+- **④ ${options[3]}** : [정답/오답 핵심 분석] ...
+`;
+
+    const responseText = await localCallLLM(null, prompt, null, 'option-explanation');
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 분석 완료!', 100);
+    }
+    res.json({ text: responseText.trim() });
+  } catch (err) {
+    console.error('Error generating option explanation:', err);
+    if (progressId) {
+      updateProgress(progressId, 1, '오류 발생으로 분석 실패', 100);
+    }
+    res.status(500).json({ error: 'AI 보기 분석 해설을 생성하지 못했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
+  }
+});
+
+// POST /api/formula/generate-memorization-tip
+router.post('/formula/generate-memorization-tip', async (req, res) => {
+  const { title, concept, formula } = req.body;
+  if (!title && !formula) {
+    return res.status(400).json({ error: '공식 제목 또는 공식 내용이 필요합니다.' });
+  }
+
+  try {
+    const prompt = `
+당신은 대한민국 국가기술자격 기술사 시험 공부를 지원하는 최고 권위의 공학 전문 튜터입니다.
+시험준비생들이 시험장에서 복잡한 공식의 구조를 물리적으로 이해하여 기억해낼 수 있도록 **[공식의 분모의 의미], [분자의 의미], 그리고 [각 변수의 영향]**을 물리적으로 분석한 직관적 요약(2~3문장)을 한국어로 작성해 주십시오.
+
+[공식명칭]: ${title || '미정'}
+[공식개념]: ${concept || '미정'}
+[수식내용]: ${formula}
+
+[요구사항]:
+1. 직관적이고 쉬운 실무 비유나 물리적 원리를 결합하여 2~3문장으로 간결하게 답변하십시오.
+2. ${LATEX_PROMPT_INSTRUCTIONS}
+3. 다른 사족 설명(예: '요약은 다음과 같습니다') 없이 오직 마크다운 리스트 형태로 핵심 내용만 출력하십시오.
+`;
+
+    const responseText = await callLLMWithFailover(null, prompt, null, 'formula');
+    res.json({ text: responseText.trim() });
+  } catch (err) {
+    console.error('Error generating formula memorization tip:', err);
+    res.status(500).json({ error: '공식 암기 요약을 생성하지 못했습니다.' });
+  }
+});
+
+// POST /api/image-standards/analyze
+router.post('/image-standards/analyze', async (req, res) => {
+  try {
+    const { base64Image, base64Images, description } = req.body;
+    const incomingImages = base64Images || (base64Image ? [base64Image] : []);
+    if (!incomingImages || incomingImages.length === 0) {
+      return res.status(400).json({ error: '이미지 데이터가 존재하지 않습니다.' });
+    }
+
+    const imageParts = incomingImages.map(imgStr => {
+      let mimeType = 'image/png';
+      let rawBase64 = imgStr;
+      const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
+      if (match) {
+        mimeType = match[1];
+        rawBase64 = match[2];
+      }
+      return { data: rawBase64, mimeType };
+    });
+
+    const systemInstruction = `당신은 대한민국 토질및기초 기술사 자격시험 전문 채점위원이자 튜터입니다.
+사용자가 붙여넣은 공학 그림/그래프/도표를 바탕으로 원본 분석을 수행하십시오.
+반드시 아래 지정된 JSON 형식으로만 응답해야 합니다. 다른 설명 텍스트나 마크다운 코드블록 기호는 절대 포함하지 마십시오.
+
+JSON 포맷 규격:
+{
+  "title": "이 그림/그래프가 무엇을 뜻하는지 가장 명확하고 간결한 핵심 전공 주제명으로 제안(공백 포함 25자 이내)",
+  "analysis": "해당 그림/그래프에 표현된 다양한 구성 요소, 변수 관계, 공학적 의미 및 거동 메커니즘을 상세히 설명하십시오. LaTeX 수식이 들어갈 경우 $수식$ 형태로 표현하십시오. (상세 서술)",
+  "intuitive": "이 복잡한 공학 도표나 그림이 궁극적으로 설명하고자 하는 핵심 본질을 일상생활의 비유나 아주 직관적이고 쉬운 비유적 설명으로 풀어내어 작성하십시오. (최대 2~3문장)"
+}`;
+
+    const userPrompt = description 
+      ? `사용자가 덧붙인 추가 설명:\n${description}\n\n이 설명과 함께 첨부된 공학 그림/그래프들을 면밀히 판독하여 분석 내용을 작성하십시오.`
+      : `첨부된 공학 그림/그래프의 세부 구조와 기호 정의를 면밀히 판독하여 분석 내용을 작성하십시오.`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, imageParts, 'formula');
+    let cleanJsonText = responseText.trim();
+    const startIdx = cleanJsonText.indexOf('{');
+    const endIdx = cleanJsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+    } else if (cleanJsonText.startsWith('```')) {
+      cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    }
+
+    try {
+      const result = parseLlmJson(cleanJsonText);
+      res.json({
+        ok: true,
+        title: result.title || '자동 분석 그림',
+        analysis: result.analysis || '분석 정보를 가져올 수 없습니다.',
+        intuitive: result.intuitive || '직관적 의미를 추출할 수 없습니다.'
+      });
+    } catch (parseErr) {
+      console.error('Gemini image analyze parse error:', parseErr, 'Raw response:', responseText);
+      res.json({
+        ok: true,
+        title: '자동 분석 그림',
+        analysis: responseText,
+        intuitive: '텍스트 파싱 오류로 직관적 의미를 가져오지 못했습니다.'
+      });
+    }
+  } catch (err) {
+    console.error('POST /api/image-standards/analyze error:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// POST /api/image-standards/generate-question
+router.post('/image-standards/generate-question', async (req, res) => {
+  try {
+    const { title, analysis, intuitive } = req.body;
+    
+    const systemInstruction = `당신은 대한민국 토질및기초 기술사 자격시험 전문 채점위원이자 튜터입니다.
+제시된 그림의 주제(title)와 해당 그림의 공학적 분석 내용(analysis)을 면밀히 분석하십시오.
+그림의 분석 내용(analysis)에 기재되어 있는 핵심 공학적 요소, 수식 기호, 변수 관계, 또는 핵심 메커니즘 중 하나를 선택하여 구체적인 주관식 질문을 생성하십시오.
+질문은 반드시 물음표(?)로 끝나는 하나의 문장으로 작성하십시오.
+
+질문 방식 예시:
+- "해당 그림/그래프에서 언급된 X 기호(또는 영역)의 공학적 의의는 무엇인가?"
+- "분석 내용에 따른 Y 상태에서 지반 변위가 변화하는 물리적 이유는 무엇인가?"
+- "위 Z 변수의 변동을 제어하기 위한 구체적인 대책을 설명하시오."`;
+
+    const userPrompt = `그림 주제: ${title}
+그림 분석 내용:
+${analysis}
+
+위 분석 정보를 바탕으로, 해당 분석 내용 중 핵심 공학 요소 하나를 짚어서 짧고 명확한 주관식 질문문 1개를 작성하십시오. (매번 다양하게 출제되도록 무작위 시드 ${Math.random()}을 반영하십시오.)`;
+
+    const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+    res.json({ success: true, question: responseText.trim() });
+  } catch (err) {
+    console.error('POST /api/image-standards/generate-question error:', err);
     res.status(500).json({ error: err.message });
   }
 });
