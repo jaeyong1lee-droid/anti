@@ -154,23 +154,5 @@ export async function runBackup() {
 }
 
 export function startBackupScheduler() {
-  if (!!process.env.VERCEL) {
-    console.log('[Backup] Running on Serverless Vercel. Disabling automatic backup scheduler.');
-    return;
-  }
-
-  console.log('[Backup] Starting 3-day automatic backup scheduler...');
-  
-  // Run initial backup asynchronously after 5 seconds to not block startup
-  setTimeout(() => {
-    console.log('[Backup] Running initial startup database backup...');
-    runBackup();
-  }, 5000);
-
-  // Run every 3 days (3 * 24 * 60 * 60 * 1000 ms)
-  const INTERVAL_3_DAYS = 3 * 24 * 60 * 60 * 1000;
-  setInterval(() => {
-    console.log('[Backup] 3-day timer triggered. Running scheduled backup...');
-    runBackup();
-  }, INTERVAL_3_DAYS);
+  console.log('[Backup] Automatic backup scheduler is disabled as per user instruction. Backups must be run manually.');
 }

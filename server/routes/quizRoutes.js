@@ -1775,9 +1775,9 @@ ${adjustments.map((a, idx) => `
       console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
     }
 
-    // Generate 15 new AI questions in parallel (3 batches of 5)
+    // Generate 5 new AI questions (1 batch of 5)
     let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 3;
+    const TOTAL_BATCHES = 1;
     console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
     if (progressId) {
       progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 예상 문제를 심층 분석 및 생성하는 중...', 90, 1800, 3);
@@ -1918,12 +1918,12 @@ ${ENGINEERING_STANDARDS}
     const finalQuestionPool = Array.from(uniquePoolMap.values());
     console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
 
-    // Select up to 60 questions from the pool with exact type combination:
-    // - 개요: 10개
-    // - 공식: 10개
-    // - 표채우기: 10개
-    // - 단답형: 10개
-    // - 객관식: 20개
+    // Select up to 25 questions from the pool with exact type combination:
+    // - 개요: 4개
+    // - 공식: 4개
+    // - 표채우기: 4개
+    // - 단답형: 4개
+    // - 객관식: 9개
     const poolGaeyo = [];
     const poolGongsik = [];
     const poolTable = [];
@@ -1957,16 +1957,16 @@ ${ENGINEERING_STANDARDS}
       return result;
     };
 
-    selectedQuestions.push(...take(shufGaeyo, 10));
-    selectedQuestions.push(...take(shufGongsik, 10));
-    selectedQuestions.push(...take(shufTable, 10));
-    selectedQuestions.push(...take(shufDandap, 10));
-    selectedQuestions.push(...take(shufMC, 20));
+    selectedQuestions.push(...take(shufGaeyo, 4));
+    selectedQuestions.push(...take(shufGongsik, 4));
+    selectedQuestions.push(...take(shufTable, 4));
+    selectedQuestions.push(...take(shufDandap, 4));
+    selectedQuestions.push(...take(shufMC, 9));
 
-    // If total selected is less than 60, fill from remaining questions in other pools
+    // If total selected is less than 25, fill from remaining questions in other pools
     const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
     const shufRemaining = shuffleArray(remainingPool);
-    const needed = Math.max(0, 60 - selectedQuestions.length);
+    const needed = Math.max(0, 25 - selectedQuestions.length);
     selectedQuestions.push(...take(shufRemaining, needed));
 
     console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
@@ -2036,10 +2036,10 @@ ${ENGINEERING_STANDARDS}
       }));
     }
 
-    // Shuffle and select up to 10 formula questions
+    // Shuffle and select up to 5 formula questions
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
     
-    const selectedFormulas = shuffledFormulas.slice(0, 10).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => {
       if (!f) return null;
       const fTitle = String(f.title || f.question || '');
       const matchedTopic = topics.find(t => {
