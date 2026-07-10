@@ -24145,11 +24145,10 @@ ${itemsStr}
                                             if (e.key === 'Enter') {
                                               const trimmed = editingFormulaText.trim();
                                               if (trimmed) {
-                                                setFormulaQuestions(prev => {
-                                                  const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
-                                                  handleSaveFormulaQuestions(updated, false);
-                                                  return updated;
-                                                });
+                                                const updated = formulaQuestions.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
+                                                setFormulaQuestions(updated);
+                                                latestFormulaQuestionsRef.current = updated;
+                                                handleSaveFormulaQuestions(updated, false);
                                                 setEditingFormulaIdx(null);
                                                 showNotification('공식 제목이 저장되었습니다.', 'success');
                                               }
@@ -24164,11 +24163,10 @@ ${itemsStr}
                                           onClick={() => {
                                             const trimmed = editingFormulaText.trim();
                                             if (trimmed) {
-                                              setFormulaQuestions(prev => {
-                                                const updated = prev.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
-                                                handleSaveFormulaQuestions(updated, false);
-                                                return updated;
-                                              });
+                                              const updated = formulaQuestions.map((item, i) => i === idx ? { ...item, title: trimmed, question: trimmed } : item).map(healFormulaQuestionObject);
+                                              setFormulaQuestions(updated);
+                                              latestFormulaQuestionsRef.current = updated;
+                                              handleSaveFormulaQuestions(updated, false);
                                               setEditingFormulaIdx(null);
                                               showNotification('공식 제목이 저장되었습니다.', 'success');
                                             }
@@ -24373,11 +24371,10 @@ ${itemsStr}
                                             <button
                                               onClick={() => {
                                                 const trimmed = editingTipText.trim();
-                                                setFormulaQuestions(prev => {
-                                                  const updated = prev.map((item, i) => i === idx ? { ...item, memorizationTip: trimmed } : item).map(healFormulaQuestionObject);
-                                                  handleSaveFormulaQuestions(updated, true);
-                                                  return updated;
-                                                });
+                                                const updated = formulaQuestions.map((item, i) => i === idx ? { ...item, memorizationTip: trimmed } : item).map(healFormulaQuestionObject);
+                                                setFormulaQuestions(updated);
+                                                latestFormulaQuestionsRef.current = updated;
+                                                handleSaveFormulaQuestions(updated, true);
                                                 setEditingTipIdx(null);
                                                 showNotification('공식의 직관적 의미가 서버 및 핸드폰과 동기화되었습니다!', 'success');
                                               }}
@@ -24419,6 +24416,11 @@ ${itemsStr}
                                       <div className="text-sm text-slate-200 leading-relaxed text-left w-full py-1 px-0.5">
                                         <LatexRenderer text={q.formula} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={q.title || `Q${idx + 1}`} />
                                       </div>
+                                      {q.structure && (
+                                        <div className="pt-2 border-t border-slate-800/40 text-sm text-slate-300 leading-relaxed text-left w-full">
+                                          <LatexRenderer text={q.structure} katexLoaded={katexLoaded} isMarkdown={true} placeholderIfHeavy={true} popupTitle={(q.title || `Q${idx + 1}`) + " - 기호 정의"} />
+                                        </div>
+                                      )}
                                     </div>
                                   ) : !q.concept && (
                                     <div className="text-xs text-slate-500 italic select-none">아래 입력창에 LaTeX 수식을 입력하면 여기에 실시간으로 렌더링되어 보여집니다.</div>
