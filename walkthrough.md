@@ -266,4 +266,20 @@
   3. **검증 및 프로덕션 배포**:
      - `node --check index.js` 구문 검사를 성공적으로 완료하였고, 변경된 코드베이스를 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 배포 완료했습니다.
 
+---
+
+## 18. 토픽 신규 등록(POST /api/topics) SQL 쿼리 파라미터 개수 불일치 오류 해결 (2026-07-10 3차 패치)
+
+* **배경 & 문제 현상**:
+  - 사용자가 "HTML 코딩 직접 입력" 텍스트박스에 흙의 응력-변형률 곡선 요약 문서를 복사-붙여넣기하여 "오늘 공부 토픽으로 등록" 버튼을 눌렀을 때, 서버에서 `500 Internal Server Error`가 발생하며 등록에 실패하는 현상이 보고되었습니다.
+  - 서버 에러 로그 확인 결과, `POST /api/topics` 라우터 내부에서 `topics` 테이블에 레코드를 삽입하는 SQL 문에 정의된 컬럼의 개수와 플레이스홀더(`?`)의 개수가 불일치하여 발생한 파라미터 매핑 오류였습니다.
+
+* **해결 및 구현 사항**:
+  - **SQL 쿼리 수정 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+    - 기존 쿼리: `INSERT INTO topics (title, keywords, pdf_name, pdf_data, pdf_url, extracted_text, created_at, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)` (컬럼 8개, 플레이스홀더 9개)
+    - 수정된 쿼리: `INSERT INTO topics (title, keywords, pdf_name, pdf_data, pdf_url, extracted_text, created_at, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)` (플레이스홀더를 8개로 수정하여 데이터 배열과 매핑 일치)
+  - **검증 및 프로덕션 배포**:
+    - `node --check index.js` 구문 검사를 통해 오류 없음을 검증하였으며, 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 실시간 배포를 개시했습니다.
+
+
 

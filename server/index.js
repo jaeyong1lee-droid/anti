@@ -1444,7 +1444,7 @@ app.post('/api/topics', upload.single('pdf'), async (req, res) => {
     // Save topic to DB
     const insertTopicSql = `
       INSERT INTO topics (title, keywords, pdf_name, pdf_data, pdf_url, extracted_text, created_at, category)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const topicResult = await dbQuery.run(insertTopicSql, [
       title,
