@@ -320,6 +320,7 @@
     - `/api/session/images` (GET/POST)
     - `/api/session/mixed-completed` (GET/POST)
     - `/api/session/answersheet` (GET/POST)
+    - `/api/session/exam` (GET/POST) — 종합평가 진행 세션 복구 API
     - `/api/options/:key` (GET/POST)
     - `/api/question/option-explanation` (POST)
     - `/api/formula/generate-memorization-tip` (POST)
