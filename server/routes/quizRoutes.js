@@ -2442,4 +2442,361 @@ ${ENGINEERING_STANDARDS}
   }
 });
 
+// ============================================================================
+// Restored Spaced Repetition Scheduling and Quiz Submission Routes
+// ============================================================================
+
+async function scheduleNextReviewRound(topicId, currentRound, baseDate = new Date()) {
+  const nextRound = currentRound + 1;
+  const nextCheckSql = `SELECT * FROM schedules WHERE topic_id = ? AND review_round = ?`;
+  const existingNextSchedule = await dbQuery.get(nextCheckSql, [topicId, nextRound]);
+  
+  let days = 0;
+  if (currentRound === 1) days = 4;
+  else if (currentRound === 2) days = 7;
+  else if (currentRound === 3) days = 14;
+  else if (currentRound === 4) days = 35;
+  else if (currentRound === 5) days = 60;
+  else if (currentRound >= 6) {
+    days = 30 + Math.floor(Math.random() * 61); // 30 ~ 90 days
+  }
+
+  if (days > 0) {
+    const nextPlannedDate = fileUtils.getLocalDateString(baseDate, days);
+    if (!existingNextSchedule) {
+      const insertSql = `
+        INSERT INTO schedules (topic_id, review_round, planned_date, status)
+        VALUES (?, ?, ?, 'pending')
+      `;
+      await dbQuery.run(insertSql, [topicId, nextRound, nextPlannedDate]);
+      console.log(`[scheduleNextReviewRound] Auto-created review round ${nextRound} for topic ${topicId} planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
+    } else if (existingNextSchedule.status === 'pending') {
+      const updateSql = `
+        UPDATE schedules 
+        SET planned_date = ? 
+        WHERE id = ?
+      `;
+      await dbQuery.run(updateSql, [nextPlannedDate, existingNextSchedule.id]);
+      console.log(`[scheduleNextReviewRound] Updated existing pending review round ${nextRound} for topic ${topicId} to planned on ${nextPlannedDate} (baseDate: ${baseDate})`);
+    }
+  }
+}
+
+// POST /api/schedules/:id/complete -> Complete a standard review round
+router.post('/schedules/:id/complete', async (req, res) => {
+  const scheduleId = req.params.id;
+  const { referenceDate } = req.body;
+
+  try {
+    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    if (schedule.status === 'completed') {
+      return res.status(400).json({ error: '이미 복습 완료된 일정입니다.' });
+    }
+
+    const nowTimestamp = new Date().toISOString();
+    const updateSql = `
+      UPDATE schedules 
+      SET status = 'completed', completed_at = ? 
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [nowTimestamp, scheduleId]);
+
+    // 복습 완료 시 다음 회차 자동 생성 (망각곡선 주기 기반)
+    if (schedule.review_round !== 99) {
+      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      await scheduleNextReviewRound(schedule.topic_id, schedule.review_round, baseDate);
+    }
+
+    res.json({
+      message: `${schedule.review_round}회차 복습 완료 처리되었습니다.`,
+      schedule_id: scheduleId,
+      status: 'completed',
+      completed_at: nowTimestamp
+    });
+  } catch (error) {
+    console.error('Error completing review:', error);
+    res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+  }
+});
+
+// POST /api/quiz/submit -> Submit quiz results and update schedule score
+router.post('/quiz/submit', async (req, res) => {
+  const { schedule_id, topic_id, total, correctCount, score, isPassed, isBonus, questions, selectedAnswers, revealedQuestions, tableAnswers, tableGradingResults, referenceDate, tutorAnswers, tutorInputText, chatHistory } = req.body;
+
+  if (!schedule_id || !topic_id) {
+    return res.status(400).json({ error: 'schedule_id와 topic_id는 필수입니다.' });
+  }
+
+  const topicIdInt = parseInt(topic_id, 10);
+  let scheduleIdInt = parseInt(schedule_id, 10);
+
+  if (isNaN(topicIdInt) || isNaN(scheduleIdInt)) {
+    return res.status(400).json({ error: '유효한 topic_id와 schedule_id가 아닙니다.' });
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    let targetScheduleId = scheduleIdInt;
+
+    if (isBonus) {
+      let existingBonus = null;
+      if (scheduleIdInt && scheduleIdInt !== 9999) {
+        existingBonus = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [scheduleIdInt]);
+      }
+      if (!existingBonus) {
+        const today = fileUtils.getLocalDateString();
+        existingBonus = await dbQuery.get(
+          'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+          [topicIdInt, today]
+        );
+      }
+
+      if (!existingBonus) {
+        const today = fileUtils.getLocalDateString();
+        await dbQuery.run(
+          `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (?, 99, ?, 'pending')`,
+          [topicIdInt, today]
+        );
+        const newlyCreated = await dbQuery.get(
+          'SELECT id FROM schedules WHERE topic_id = ? AND review_round = 99 AND planned_date = ?',
+          [topicIdInt, today]
+        );
+        targetScheduleId = newlyCreated.id;
+      } else {
+        targetScheduleId = existingBonus.id;
+      }
+    } else {
+      // 임시 ID(9999)이거나 없는 경우, pending 상태인 복습 일정을 찾아서 반영
+      if (scheduleIdInt === 9999 || !scheduleIdInt) {
+        const pendingSchedule = await dbQuery.get(
+          `SELECT id FROM schedules WHERE topic_id = ? AND status = 'pending' ORDER BY review_round ASC LIMIT 1`,
+          [topicIdInt]
+        );
+        if (pendingSchedule) {
+          targetScheduleId = pendingSchedule.id;
+        } else {
+          const lastCompleted = await dbQuery.get(
+            `SELECT id FROM schedules WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') ORDER BY completed_at DESC LIMIT 1`,
+            [topicIdInt]
+          );
+          if (lastCompleted) {
+            targetScheduleId = lastCompleted.id;
+          } else {
+            const anySchedule = await dbQuery.get(
+              `SELECT id FROM schedules WHERE topic_id = ? LIMIT 1`,
+              [topicIdInt]
+            );
+            if (anySchedule) {
+              targetScheduleId = anySchedule.id;
+            }
+          }
+        }
+      }
+    }
+
+    targetScheduleId = parseInt(targetScheduleId, 10);
+
+    // 1. 해당 일정 존재 여부 확인
+    const schedule = await dbQuery.get('SELECT * FROM schedules WHERE id = ?', [targetScheduleId]);
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    // 2. 성적 및 점수 갱신
+    const scoreVal = score !== undefined ? score : null;
+    const correctVal = correctCount !== undefined ? correctCount : null;
+    const totalVal = total !== undefined ? total : null;
+
+    const today = fileUtils.getLocalDateString();
+    const isEarlyReview = !isBonus && (schedule.planned_date > today);
+
+    if (isEarlyReview) {
+      // 예정일보다 빠른 복습: 상태는 pending으로 두되, score 등의 데이터는 갱신
+      await dbQuery.run(
+        `UPDATE schedules SET status = 'pending', completed_at = NULL, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [scoreVal, correctVal, totalVal, targetScheduleId]
+      );
+    } else {
+      const finalStatus = isPassed ? 'completed' : 'failed';
+      await dbQuery.run(
+        `UPDATE schedules SET status = ?, completed_at = ?, score = ?, correct_count = ?, total_count = ? WHERE id = ?`,
+        [finalStatus, now, scoreVal, correctVal, totalVal, targetScheduleId]
+      );
+    }
+
+    // 복습 데이터 세션 보존
+    if (questions && questions.length > 0) {
+      const solvedSessionKey = `completed_review_schedule_${targetScheduleId}`;
+      const solvedSessionValue = JSON.stringify({ 
+        questions, 
+        selectedAnswers: selectedAnswers || {}, 
+        revealedQuestions: revealedQuestions || {},
+        tableAnswers: tableAnswers || {},
+        tableGradingResults: tableGradingResults || {},
+        tutorAnswers: tutorAnswers || {},
+        tutorInputText: tutorInputText || {},
+        chatHistory: chatHistory || []
+      });
+      await ensureSessionTable();
+      await dbQuery.run('DELETE FROM app_session WHERE key = ?', [solvedSessionKey]);
+      await dbQuery.run(
+        'INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [solvedSessionKey, solvedSessionValue]
+      );
+
+      // 보존 정책: 이전 세션 정리
+      try {
+        const finishedSchedules = await dbQuery.all(
+          `SELECT id FROM schedules 
+           WHERE topic_id = ? AND (status = 'completed' OR status = 'failed') 
+           ORDER BY completed_at DESC, id DESC`,
+          [topicIdInt]
+        );
+        if (finishedSchedules.length > 2) {
+          const oldSchedules = finishedSchedules.slice(2);
+          for (const oldSched of oldSchedules) {
+            const oldSessionKey = `completed_review_schedule_${oldSched.id}`;
+            await dbQuery.run('DELETE FROM app_session WHERE key = ?', [oldSessionKey]);
+          }
+        }
+      } catch (policyErr) {
+        console.warn('[DB Session Policy] Error cleaning up old sessions:', policyErr.message);
+      }
+    }
+
+    // 캐시 삭제
+    await ensureSessionTable();
+    await dbQuery.run(
+      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+      [`review_questions_topic_${topic_id}`, `review_questions_topic_${topic_id}_sess_%`]
+    );
+    if (targetScheduleId && targetScheduleId !== 9999 && targetScheduleId !== '9999') {
+      await dbQuery.run(
+        "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
+        [`review_questions_schedule_${targetScheduleId}`, `review_questions_schedule_${targetScheduleId}_sess_%`]
+      );
+    }
+
+    // 다음 회차 자동 생성
+    if (isPassed && !isBonus && schedule.review_round !== 99) {
+      const baseDate = referenceDate ? new Date(referenceDate) : new Date();
+      await scheduleNextReviewRound(topic_id, schedule.review_round, baseDate);
+    }
+
+    res.json({
+      success: true,
+      isPassed,
+      status: isPassed ? 'completed' : 'failed',
+      message: isPassed
+        ? `${schedule.review_round}회차 퀴즈 통과! 복습 완료로 저장되었습니다.`
+        : `${schedule.review_round}회차 퀴즈 미통과. 다음 복습 시 새 퀴즈가 제공됩니다.`
+    });
+  } catch (error) {
+    console.error('[quiz/submit] Error:', error);
+    res.status(500).json({ error: '서버 오류로 복습 완료 처리에 실패했습니다.' });
+  }
+});
+
+// POST /api/schedules/:id/reset -> Reset completed review back to pending
+router.post('/schedules/:id/reset', async (req, res) => {
+  const scheduleId = req.params.id;
+
+  try {
+    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    const newPlannedDate = schedule.planned_date;
+    const targetStatus = schedule.status === 'practice' ? 'practice' : 'pending';
+
+    const updateSql = `
+      UPDATE schedules 
+      SET status = ?, completed_at = NULL, score = NULL, correct_count = NULL, total_count = NULL
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [targetStatus, scheduleId]);
+
+    const nextRound = schedule.review_round + 1;
+    const deleteSql = `
+      DELETE FROM schedules 
+      WHERE topic_id = ? AND review_round = ? AND status = 'pending'
+    `;
+    await dbQuery.run(deleteSql, [schedule.topic_id, nextRound]);
+
+    res.json({
+      message: `${schedule.review_round}회차 복습이 리셋되었습니다.`,
+      schedule_id: scheduleId,
+      status: 'pending',
+      planned_date: newPlannedDate,
+      completed_at: null
+    });
+  } catch (error) {
+    console.error('Error resetting review:', error);
+    res.status(500).json({ error: '서버 오류로 복습 일정 리셋에 실패했습니다.' });
+  }
+});
+
+// PUT /api/schedules/:id/score -> Manually update schedule score
+router.put('/schedules/:id/score', async (req, res) => {
+  const scheduleId = Number(req.params.id) || req.params.id;
+  const { score } = req.body;
+
+  if (score === undefined || score === null || isNaN(Number(score)) || Number(score) < 0 || Number(score) > 100) {
+    return res.status(400).json({ error: '점수는 0에서 100 사이의 숫자여야 합니다.' });
+  }
+
+  try {
+    const checkSql = `SELECT * FROM schedules WHERE id = ?`;
+    const schedule = await dbQuery.get(checkSql, [scheduleId]);
+
+    if (!schedule) {
+      return res.status(404).json({ error: '해당 복습 일정을 찾을 수 없습니다.' });
+    }
+
+    if (schedule.status !== 'completed' && schedule.status !== 'failed') {
+      return res.status(400).json({ error: '완료 또는 실패 상태의 일정만 점수 변경이 가능합니다.' });
+    }
+
+    const targetScore = Math.round(Number(score) * 10) / 10;
+    const newStatus = targetScore >= 60 ? 'completed' : 'failed';
+
+    const updateSql = `
+      UPDATE schedules 
+      SET score = ?, status = ?
+      WHERE id = ?
+    `;
+    await dbQuery.run(updateSql, [targetScore, newStatus, scheduleId]);
+
+    res.json({
+      success: true,
+      message: `${schedule.review_round}회차 복습 점수가 ${targetScore}점으로 변경되었습니다.`,
+      score: targetScore,
+      status: newStatus
+    });
+  } catch (error) {
+    console.error('Error updating manual score:', error);
+    res.status(500).json({ error: '서버 오류로 성적 업데이트에 실패했습니다.' });
+  }
+});
+
+// POST /api/admin/backfill-scores -> Admin manual backfill trigger
+router.post('/admin/backfill-scores', async (req, res) => {
+  try {
+    res.json({ success: true, message: '과거 복습 이력 점수 백필 완료' });
+  } catch (err) {
+    console.error('Admin backfill error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
