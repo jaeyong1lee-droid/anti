@@ -36,7 +36,7 @@ function shuffleMultipleChoice(q) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
   }
-  const normalize = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+  const normalize = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
   const matchedOption = shuffledOptions.find(opt => normalize(opt) === normalize(originalAnswer)) || originalAnswer;
   return {
     ...q,
@@ -548,7 +548,7 @@ router.post('/topics/:id/ai-questions', async (req, res) => {
             parsed.questions.forEach((q, qIdx) => {
               if (q.options && q.options.length > 0) {
                 const selected = parsed.selectedAnswers?.[qIdx];
-                const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
+                const normalizeAns = (s) => (s || '').replace(/^\d+\.(?!\d)\s*/, '').trim();
                 if (normalizeAns(selected) !== normalizeAns(q.answer)) {
                   if (!isQuestionMismatched(q, topic.title, topic.keywords)) {
                     incorrectQuestions.push(q);

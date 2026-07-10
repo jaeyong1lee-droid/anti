@@ -4185,7 +4185,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const cleanOptionText = (text) => {
   if (typeof text !== 'string') return text;
-  return text.replace(/^(?:\d+\.\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
+  return text.replace(/^(?:\d+\.(?!\d)\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
 };
 
 export default function App() {
