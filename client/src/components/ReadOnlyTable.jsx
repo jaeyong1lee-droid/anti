@@ -122,6 +122,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
     const widths = Array.from(thElements).map(th => th.getBoundingClientRect().width);
     const totalWidth = widths.reduce((a, b) => a + b, 0);
     const percentWidths = widths.map(w => (w / totalWidth) * 100);
+    const firstColStartWidth = thElements[0] ? thElements[0].getBoundingClientRect().width : 120;
     const targetColStartWidth = thElements[idx] ? thElements[idx].getBoundingClientRect().width : 140;
 
     const container = tableRef.current.closest('.table-quiz-container');
@@ -198,7 +199,7 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
       window.addEventListener('mousemove', doResize);
       window.addEventListener('mouseup', stopResize);
     }
-  }, [questionIdx, colCount]);
+  }, [questionIdx]);
 
   return (
     <div 

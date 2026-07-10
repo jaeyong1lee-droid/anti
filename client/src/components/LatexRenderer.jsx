@@ -269,7 +269,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   if (typeof processedText === 'string' && !isHeavy) {
     processedText = processedText.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
     if (!processedText.includes('\n')) {
-      processedText = processedText.replace(/([가-힣a-zA-Z0-9])．\s+/g, '$1．\n\n');
+      processedText = processedText.replace(/([가-힣a-zA-Z0-9])다\.\s+/g, '$1다.\n\n');
       // 번호 항목(2., 3., ...) 뒤에 줄바꿈이 없으면 자동 삽입 (1.은 문장 시작이므로 제외)
       processedText = processedText.replace(/([.,:;)]\s+)(\d+\.\s)/g, '$1\n\n$2');
     }
@@ -287,10 +287,10 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   cleanedText = healFormulas(cleanedText);
   if (typeof cleanedText === 'string') {
     // Clean empty bullet headers that have no content (e.g. '* 메커니즘:')
-    cleanedText = cleanedText.replace(/(?:^|\n)[ \t]*(?:\*|-|■)[ \t]*([^:\n]+:)[ \t]*(?=\n\s*(?:\*|-|■|\s*$))/g, '');
+    cleanedText = cleanedText.replace(/(?:^|\n)[ \t]*(?:\*|-|•)[ \t]*([^:\n]+:)[ \t]*(?=\n\s*(?:\*|-|•)|\s*$)/g, '');
 
     // Collapse empty lines between colon-ended lines and list items
-    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|■|◆))/g, '$1\n$2');
+    cleanedText = cleanedText.replace(/(:[ \t]*)\n\n+(\s*(?:\d+\.|\d+\)|[a-zA-Z가-힣]\)|\*|-|•|[①-⑳]))/g, '$1\n$2');
 
     cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
   }
@@ -438,7 +438,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   const processedLines = rawLines.map(line => {
     if (/[\uAC00-\uD7A3]/.test(line)) {
       return line.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, formula, offset) => {
-        if (/\\(dfrac|frac|sum|int|prod|log|ln|sqrt|begin|end|matrix|array|left|right)/.test(formula)) {
+        if (/\\(?:d?frac|sum|int|prod|log|ln|sqrt|begin|end|matrix|array|left|right)/.test(formula)) {
           return match;
         }
         const before = line.substring(0, offset).trim();
@@ -519,6 +519,12 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     parts.push({ type: 'text', content: afterText });
   }
 
+  // Find the index of the last math-block in parts to only show add button there
+  const mathBlockIndices = parts
+    .map((p, i) => (p.type === 'math-block' ? i : -1))
+    .filter((i) => i !== -1);
+  const lastMathBlockIdx = mathBlockIndices.length > 0 ? mathBlockIndices[mathBlockIndices.length - 1] : -1;
+
   const isInline = className.includes('inline');
 
   if (isInline) {
@@ -579,6 +585,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
               key={idx} 
               className="my-0.5 md:my-1 flex flex-col md:flex-row items-center justify-center gap-4 w-full bg-transparent rounded-none border-0 transition-all duration-300 group shadow-none select-text"
             >
+              {/* KaTeX 공식 */}
               <div 
                 className="formula-scroll-container w-full py-1.5 min-w-0 select-text" 
                 onTouchStart={(e) => { if (!enableAddFormula) e.stopPropagation(); }}
@@ -605,7 +612,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           return (
             <div 
               key={idx}
-              className="leading-relaxed whitespace-pre-line select-text"
+              className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
               dangerouslySetInnerHTML={{ __html: htmlContent }}
             />
           );

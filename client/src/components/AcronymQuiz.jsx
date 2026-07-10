@@ -159,7 +159,9 @@ export const AcronymQuiz = React.memo(function AcronymQuiz({
                               }
                             }}
                             title="클릭 시 이 칸의 답안을 재평가합니다"
-                            className="mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer bg-transparent border-0 text-rose-400"
+                            className={`mt-1 sm:mt-0 sm:ml-2 text-center sm:text-right font-extrabold select-none whitespace-nowrap hover:underline active:scale-95 transition-all text-[11px] sm:text-[13px] cursor-pointer bg-transparent border-0 ${
+                              rowCombGrading.isCorrect ? 'text-emerald-400' : 'text-rose-400'
+                            } ${isCellLoading ? 'animate-pulse' : ''}`}
                             style={{ outline: 'none' }}
                           >
                             {isCellLoading ? (
