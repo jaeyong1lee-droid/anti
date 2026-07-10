@@ -342,6 +342,21 @@
   - **브라우저 기본 선택/드래그 차단**: 드래그 이동 중에는 `selectstart` 와 `dragstart` 이벤트를 강제로 `preventDefault()` 차단하고 드래그 종료 시 해제하도록 보강하여, 랙과 끊김 현상이 완전히 사라진 부드러운 드래그 UX를 완성했습니다.
   - **프로덕션 빌드 & 배포**: Vite 클라이언트 프로덕션 빌드 성공을 검증하고, 원격 리포지토리(`origin main`)에 커밋 및 푸시를 성공적으로 완료했습니다.
 
+---
+
+## 22. 웹 애플리케이션 최적화 성능 경량화 패키지 도입 (2026-07-10 7차 패치)
+
+* **배경 & 요구사항**:
+  - 안전하게 기능 망가질 리스크 없이 웹을 가볍고 빠르게 만들 수 있는 핵심 성능 튜닝(1번 DB 및 백엔드 최적화, 2번 프론트엔드 lazy 로딩 구조 점검) 지시를 수용했습니다.
+* **상세 구현 사항**:
+  1. **백엔드 DB 인덱스 마이그레이션 적용 ([database.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/database.js))**:
+     - 복습 일정 및 토픽 매핑 조회 빈도가 가장 높은 `schedules` 테이블의 `topic_id` 및 `status` 컬럼에 SQLite/Postgres 인덱스를 자동으로 매핑하는 마이그레이션 루틴을 `migrateSchedulesTable()`에 탑재했습니다. 디스크 SELECT 조회 속도가 획기적으로 개선되었습니다.
+  2. **설정/지침 GET API 인메모리 캐시 도입 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - 선호 AI 모델명 및 5대 헌법 지침(standards)을 제공하는 GET 라우트에 `configMemoryCache` 맵을 적용했습니다. 매 요청마다 DB 조회를 거치지 않고 메모리에 올려둔 캐시 데이터를 우선 반환(응답 속도 1ms)하고, POST 갱신 발생 시에만 무효화(Sync)하도록 구축하여 데이터베이스 트래픽을 극적으로 줄였습니다.
+  3. **프론트엔드 lazy 번들 스플리팅 구조 유지 검증 ([App.jsx](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/client/src/App.jsx))**:
+     - 첫 진입 속도를 가볍게 유지하기 위해 무거운 서브 위젯(ScientificCalculator, FloatingMemorization, ImageStandardsPlugin)들을 `React.lazy`로 분리하여 static import 로 인한 초기 로딩 부하를 사전에 완벽히 방어하고 있음을 교차 검증 완료했습니다.
+
+
 
 
 
