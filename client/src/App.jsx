@@ -14373,6 +14373,29 @@ ${itemsStr}
     setRefreshingFormulaIdx(idx);
     showNotification(`[${q.title || `Q${idx + 1}`}] 공식을 AI가 정밀 분석하여 재생성하고 있습니다...`);
 
+    const progressId = `formula_ref_${Date.now()}`;
+    const newRecord = {
+      id: progressId,
+      taskName: 'AI 공식 재분석',
+      topicTitle: q.title || `Q${idx + 1}`,
+      startTime: new Date().toISOString(),
+      endTime: null,
+      status: 'running',
+      modelName: 'gemini-3.5-flash',
+      percent: 30,
+      timeline: [
+        '준비 중...',
+        '1단계: 수식 데이터 및 LaTeX 구문 분석 완료',
+        '2단계: Gemini API 호출하여 공식명, 핵심개념, 기호정의 분석 중...'
+      ],
+      validationLogs: []
+    };
+    setAiHistory(prev => {
+      const updated = [newRecord, ...prev].slice(0, 50);
+      localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+      return updated;
+    });
+
     fetch(`${API_BASE}/api/formula/suggest-title`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14414,6 +14437,29 @@ ${itemsStr}
             handleSaveFormulaQuestions(updated, false);
             return updated;
           });
+
+          setAiHistory(prev => {
+            const updated = prev.map(item => {
+              if (item.id === progressId) {
+                return {
+                  ...item,
+                  status: 'success',
+                  endTime: new Date().toISOString(),
+                  percent: 100,
+                  modelName: data.modelName || item.modelName,
+                  timeline: [
+                    ...item.timeline,
+                    '3단계: AI 추천 제목, 핵심개념, 기호정의 분석 성공',
+                    '4단계: 공식 카드 데이터 갱신 완료!'
+                  ]
+                };
+              }
+              return item;
+            });
+            localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+            return updated;
+          });
+
           showNotification(`[${suggestedTitle}] 공식의 제목, 핵심개념, 기호정의 분석 갱신이 완료되었습니다!`, 'success');
         } else {
           throw new Error('API returned empty title');
@@ -14421,6 +14467,27 @@ ${itemsStr}
       })
       .catch(err => {
         console.warn('공식 리프레쉬 AI 추천 반영 실패:', err);
+
+        setAiHistory(prev => {
+          const updated = prev.map(item => {
+            if (item.id === progressId) {
+              return {
+                ...item,
+                status: 'failure',
+                endTime: new Date().toISOString(),
+                percent: 100,
+                timeline: [
+                  ...item.timeline,
+                  `오류 발생: ${err.message || 'AI 분석 호출 실패'}`
+                ]
+              };
+            }
+            return item;
+          });
+          localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+          return updated;
+        });
+
         showNotification('AI 재분석 호출 중 오류가 발생했습니다.', 'error');
       })
       .finally(() => {
@@ -14451,6 +14518,29 @@ ${itemsStr}
 
     setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: true }));
     showNotification(`[${q.title || `Q${idx + 1}`}] 공식을 사용자 피드백을 반영하여 재조정 중입니다...`);
+
+    const progressId = `formula_adj_${Date.now()}`;
+    const newRecord = {
+      id: progressId,
+      taskName: 'AI 공식 피드백 조정',
+      topicTitle: q.title || `Q${idx + 1}`,
+      startTime: new Date().toISOString(),
+      endTime: null,
+      status: 'running',
+      modelName: 'gemini-3.5-flash',
+      percent: 30,
+      timeline: [
+        '준비 중...',
+        `1단계: 사용자 피드백 반영 분석 ("${feedbackText.length > 30 ? feedbackText.slice(0, 30) + '...' : feedbackText}")`,
+        '2단계: Gemini API 호출하여 의견 반영된 공식 속성 재구성 중...'
+      ],
+      validationLogs: []
+    };
+    setAiHistory(prev => {
+      const updated = [newRecord, ...prev].slice(0, 50);
+      localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+      return updated;
+    });
 
     try {
       const res = await fetch(`${API_BASE}/api/formula/suggest-title`, {
@@ -14497,6 +14587,28 @@ ${itemsStr}
           return updated;
         });
 
+        setAiHistory(prev => {
+          const updated = prev.map(item => {
+            if (item.id === progressId) {
+              return {
+                ...item,
+                status: 'success',
+                endTime: new Date().toISOString(),
+                percent: 100,
+                modelName: data.modelName || item.modelName,
+                timeline: [
+                  ...item.timeline,
+                  '3단계: 사용자 피드백이 반영된 공식 속성 분석 성공',
+                  '4단계: 공식 카드 데이터 피드백 적용 완료!'
+                ]
+              };
+            }
+            return item;
+          });
+          localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+          return updated;
+        });
+
         showNotification(`[${suggestedTitle}] 공식이 사용자 피드백을 반영하여 재조정되었습니다!`, 'success');
         setAdjustingFormulaInputKey(null); // 입력창 닫기
       } else {
@@ -14504,6 +14616,27 @@ ${itemsStr}
       }
     } catch (err) {
       console.warn('공식 피드백 AI 조정 실패:', err);
+
+      setAiHistory(prev => {
+        const updated = prev.map(item => {
+          if (item.id === progressId) {
+            return {
+              ...item,
+              status: 'failure',
+              endTime: new Date().toISOString(),
+              percent: 100,
+              timeline: [
+                ...item.timeline,
+                `오류 발생: ${err.message || 'AI 조정 피드백 반영 실패'}`
+              ]
+            };
+          }
+          return item;
+        });
+        localStorage.setItem('anti_ai_history', JSON.stringify(updated));
+        return updated;
+      });
+
       showNotification('AI 공식 조정 호출 중 오류가 발생했습니다.', 'error');
     } finally {
       setAdjustingFormulaLoading(prev => ({ ...prev, [idx]: false }));

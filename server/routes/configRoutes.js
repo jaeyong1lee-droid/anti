@@ -872,7 +872,8 @@ router.post('/formula/suggest-title', async (req, res) => {
         title: bestLocalMatch.title,
         concept: bestLocalMatch.concept,
         structure: bestLocalMatch.structure,
-        memorizationTip: '' // 클라이언트에서 기존 직관적 의미를 그대로 유지하도록 빈 값 전달
+        memorizationTip: '', // 클라이언트에서 기존 직관적 의미를 그대로 유지하도록 빈 값 전달
+        modelName: 'local-dictionary'
       });
     }
 
@@ -906,7 +907,8 @@ JSON 반환 포맷:
         title: result.title || '자동 분석 공식',
         concept: result.concept || '',
         structure: result.structure || '',
-        memorizationTip: result.memorizationTip || ''
+        memorizationTip: result.memorizationTip || '',
+        modelName: globalPreferredModel || 'gemini-2.5-flash'
       });
     } catch (err) {
       console.error('Formula suggest title LLM error:', err);
@@ -915,7 +917,8 @@ JSON 반환 포맷:
         title: rawText,
         concept: '',
         structure: '',
-        memorizationTip: ''
+        memorizationTip: '',
+        modelName: globalPreferredModel || 'gemini-2.5-flash'
       });
     }
   } catch (err) {
