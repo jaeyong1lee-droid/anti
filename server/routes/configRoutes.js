@@ -64,30 +64,6 @@ router.get('/preferred-model', async (req, res) => {
   res.json({ model: globalPreferredModel });
 });
 
-// GET /api/db-diagnostics -> Check topic 44 data on Vercel
-router.get('/db-diagnostics', async (req, res) => {
-  try {
-    const schedules = await dbQuery.all(
-      'SELECT id, review_round, planned_date, completed_at, status, score FROM schedules WHERE topic_id = 44 ORDER BY review_round'
-    );
-    
-    const sessions = await dbQuery.all(
-      "SELECT key, length(value) as len, updated_at FROM app_session WHERE key LIKE 'completed_review_schedule_%'"
-    );
-    
-    res.json({
-      success: true,
-      schedules,
-      sessions: sessions.filter(s => {
-        const schedId = s.key.replace('completed_review_schedule_', '');
-        return schedules.some(sch => String(sch.id) === String(schedId));
-      })
-    });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
   const { model } = req.body;

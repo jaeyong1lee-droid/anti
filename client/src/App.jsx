@@ -7270,8 +7270,9 @@ export default function App() {
         if (data.data.tutorInputText) setTutorInputText(data.data.tutorInputText);
         if (data.data.chatHistory) setChatHistory(data.data.chatHistory);
       } else {
-        // [Retention Policy] 최근 2회차 초과 복습 회차이므로 상세 풀이 기록 미표출
-        showNotification('최근 2회차 초과 복습 회차이므로 상세 풀이 기록은 보존 정책에 따라 삭제되었습니다.', 'info');
+        // 백엔드에서 내려주는 실제 에러 메시지를 표시하여 사용자의 혼란을 방지합니다.
+        const errorMsg = data.error || '해당 복습의 상세 풀이 기록을 불러올 수 없습니다.';
+        showNotification(errorMsg, 'info');
         setAiQuestions([]);
       }
     } catch (err) {
