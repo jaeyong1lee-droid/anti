@@ -781,9 +781,12 @@ const healCorruptedKatexHtml = (text) => {
 
 const cleanAndSanitizeMathText = (rawText) => {
   if (!rawText || typeof rawText !== 'string') return rawText || '';
-  
   let cleaned = healCorruptedKatexHtml(rawText);
   cleaned = cleanCorruptedFormula(cleaned);
+  cleaned = cleaned.replace(/&amp;#gt;/gi, '>')
+                   .replace(/&amp;#lt;/gi, '<')
+                   .replace(/&#gt;/gi, '>')
+                   .replace(/&#lt;/gi, '<');
 
   // ₩lt, \lt, &\lt 등 기괴하게 깨진 HTML 엔티티 및 이스케이프 부등호 기호를 표준 < 및 > 기호로 정밀 복원
   cleaned = cleaned.replace(/&amp;\\?lt;/gi, '<')

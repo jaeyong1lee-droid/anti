@@ -1,3 +1,5 @@
+import { cleanAndSanitizeMathText } from './renderingHelpers';
+
 function parseRow(rowText) {
   if (!rowText) return [];
   let cells = rowText.split('|').map(cell => cell.trim());
@@ -14,8 +16,10 @@ function renderCellMath(text) {
   if (!text) return '';
   if (typeof text !== 'string') return text;
   
+  const cleanedText = cleanAndSanitizeMathText(text);
+  
   // Replace $$ ... $$ first (block math)
-  let temp = text.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
+  let temp = cleanedText.replace(/\$\$\s*([\s\S]*?)\s*\$\$/g, (match, math) => {
     if (window.katex) {
       try {
         let cleaned = math.trim();
