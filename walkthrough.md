@@ -281,5 +281,30 @@
   - **검증 및 프로덕션 배포**:
     - `node --check index.js` 구문 검사를 통해 오류 없음을 검증하였으며, 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 실시간 배포를 개시했습니다.
 
+---
+
+## 19. 서버 엔트리 index.js 파일의 초대형 리팩토링 및 5대 라우터 모듈화 완료 (2026-07-10 4차 패치)
+
+* **배경 & 목적**:
+  - 기존 `server/index.js` 가 11,000줄을 돌파하며 코드의 결합도가 심각해지고 파일이 너무 무거워 로딩 성능과 유지보수성이 급격히 저하되었습니다.
+  - Express 라우터 설계 원칙에 입각하여 각 관심사(Concerns)를 비즈니스 로직(서비스)과 API 라우터로 완전히 위임하고 격리하여 파일 사이즈를 획기적으로 줄였습니다.
+
+* **상세 구현 사항**:
+  1. **공통 AI 비즈니스 서비스 분리 ([aiService.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/services/aiService.js))**:
+     - `callLLMWithFailover`, `analyzeStandardsBeforeTask`, `getTopicText`, `startBackendProgressTimer`, `stopBackendProgressTimer` 등 핵심 AI 호출 및 상태 트래킹 비즈니스 로직을 이관하여 서비스화했습니다.
+  2. **공통 파일 가공 유틸리티 분리 ([fileUtils.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/utils/fileUtils.js))**:
+     - HTML-to-plaintext 변환, buffer 감지, 날짜 연산, 세로쓰기 병합 등 파일 관련 유틸 함수들을 통합 이관했습니다.
+  3. **관심사 기반 5대 Express 라우터 모듈화 및 매핑**:
+     - [configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js): 선호 모델 및 5대 헌법 지침(standards) 관리 라우트.
+     - [topicRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/topicRoutes.js): 토픽 조회/업로드/교체/삭제 및 대시보드 통계/약점 토픽 연산 라우트.
+     - [quizRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/quizRoutes.js): AI/로컬 퀴즈 세트 생성, 복습 세션 관리 및 Answersheet 보고서 연동 라우트.
+     - [gradingRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/gradingRoutes.js): AI 주관식 채점, 사용자 피드백(upvote/downvote) 및 문항 재생성/조 조정 라우트.
+     - [lockscreenRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/lockscreenRoutes.js): 락스크린 퀴즈 프리제너레이션 풀 관리, 풀이 해제 및 데일리 동기화 라우트.
+  4. **엔트리 파일 경량화 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+     - 기존의 비대했던 11,000줄의 코드를 약 130줄로 축소 및 정제하고, 미들웨어 및 모듈화된 라우터들을 임포트하여 탑재(mount)했습니다.
+  5. **검증 및 프로덕션 배포**:
+     - 포터블 노드 환경 하에서 서버 기동 및 라우터 마운트 무결성 테스트를 무사히 통과하였으며, Git 원격 저장소 `main` 브랜치에 최종 푸시 및 배포 완료했습니다.
+
+
 
 
