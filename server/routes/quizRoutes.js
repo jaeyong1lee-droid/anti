@@ -1416,7 +1416,7 @@ router.post('/schedules/bonus/complete', async (req, res) => {
   }
 });
 
-const LOCAL_FORMULA_DICTIONARY = [
+export const LOCAL_FORMULA_DICTIONARY = [
   {
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
     title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',

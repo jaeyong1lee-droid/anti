@@ -680,6 +680,53 @@ router.post('/formula/suggest-title', async (req, res) => {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
+    let bestLocalMatch = null;
+    let maxMatchCount = 0;
+    const cleanMathContent = mathContent.replace(/\s+/g, '');
+    
+    // LaTeX 명령어(예: \frac, \left, \right)의 내부 텍스트만 추출하고 명령어 단어 자체는 차단
+    const mathTokens = mathContent
+      .replace(/\\[a-zA-Z]+/g, ' ') // 모든 \명령어를 공백으로 지움 (변수만 남김)
+      .replace(/[^a-zA-Z0-9\_]/g, ' ') // 알파벳, 숫자, 언더바만 남김
+      .split(/\s+/)
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    for (const dict of LOCAL_FORMULA_DICTIONARY) {
+      let matchCount = 0;
+      for (const kw of dict.keywords) {
+        const cleanKw = kw.replace(/\\\\/g, '\\');
+        // 만약 키워드가 그리스 문자(\gamma 등)나 LaTeX 기호 형식이면 mathContent에 백슬래시 기호가 포함되었는지 안전 검사
+        if (cleanKw.startsWith('\\')) {
+          if (cleanMathContent.includes(cleanKw)) {
+            matchCount++;
+          }
+        } else {
+          // 키워드가 일반 알파벳(C, D_f 등)이면, 오염된 \frac 등의 단어를 피하기 위해
+          // 위에서 정제한 mathTokens 배열에 정확히 존재하는지 검사!
+          if (mathTokens.includes(cleanKw) || mathTokens.some(tok => tok === cleanKw || tok.startsWith(cleanKw + '_') || tok.endsWith('_' + cleanKw))) {
+            matchCount++;
+          }
+        }
+      }
+      
+      // 매칭 신뢰도 판단 (최소 2개 이상의 핵심 변수 매칭 필요)
+      if (matchCount > maxMatchCount && matchCount >= 2) {
+        maxMatchCount = matchCount;
+        bestLocalMatch = dict;
+      }
+    }
+
+    if (bestLocalMatch) {
+      console.log('[LocalMatch] Found pre-defined dictionary formula:', bestLocalMatch.title);
+      return res.json({
+        title: bestLocalMatch.title,
+        concept: bestLocalMatch.concept,
+        structure: bestLocalMatch.structure,
+        memorizationTip: '' // 클라이언트에서 기존 직관적 의미를 그대로 유지하도록 빈 값 전달
+      });
+    }
+
     const systemInstruction = `당신은 대한민국 토목공학 및 토질및기초 기술사 교육 전문 튜터이자 출제위원입니다.
 제시된 LaTeX 공식 수식과 기존 맥락을 면밀히 분석하여, 다음 4가지 핵심 정보를 반드시 JSON 형식으로만 반환해 주십시오. 다른 설명 텍스트나 마크다운 코드블록 기호는 절대 포함하지 마십시오.
 
