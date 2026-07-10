@@ -294,18 +294,28 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           const displayMode = token.type === 'block-math';
           let htmlContent = '';
           try {
-            htmlContent = renderKatexString(token.content, { displayMode, output: 'html' });
+            htmlContent = renderKatexString(token.content, { displayMode, throwOnError: false });
           } catch (e) {
             console.warn(e);
           }
 
-          return (
-            <div 
-              key={idx}
-              className="py-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed whitespace-pre-wrap select-text block"
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-            />
-          );
+          if (displayMode) {
+            return (
+              <div 
+                key={idx}
+                className="py-1 my-1 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text block text-center formula-scroll-container"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            );
+          } else {
+            return (
+              <span 
+                key={idx}
+                className="px-0.5 text-[14px] sm:text-[16px] text-slate-300 leading-relaxed select-text inline"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            );
+          }
         }
       })}
     </div>
