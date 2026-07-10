@@ -95,6 +95,21 @@ router.post('/preferred-model', async (req, res) => {
   return res.status(400).json({ error: 'Invalid model' });
 });
 
+// POST /api/verify-pin
+router.post('/verify-pin', (req, res) => {
+  try {
+    const { pin } = req.body;
+    const correctPin = process.env.PIN_CODE || '7942';
+    if (pin && pin.toString() === correctPin.toString()) {
+      return res.json({ success: true });
+    }
+    return res.json({ success: false, error: '올바르지 않은 PIN 코드입니다.' });
+  } catch (err) {
+    console.error('Verify pin error:', err);
+    res.status(500).json({ success: false, error: '서버 내부 오류가 발생했습니다.' });
+  }
+});
+
 // GET /api/engineering-standards
 router.get('/engineering-standards', async (req, res) => {
   try {
