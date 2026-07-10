@@ -8492,15 +8492,19 @@ export default function App() {
     answersheetMobileTab
   ]);
 
-  const handlePopupDragStart = (e) => {
+    const handlePopupDragStart = (e) => {
     if (e.target.closest('button, input, textarea')) return;
     
-    // 1. Sync coords synchronously on drag start to prevent async React batch rendering warp (0, 0 warp)
-    if (latestDragPopupCoordsRef.current.x === 0 && latestDragPopupCoordsRef.current.y === 0) {
-      latestDragPopupCoordsRef.current = { x: selectionPopupRef.current.x, y: selectionPopupRef.current.y };
-    } else if (latestDragPopupCoordsRef.current.x !== selectionPopupRef.current.x || latestDragPopupCoordsRef.current.y !== selectionPopupRef.current.y) {
-      // Force sync with state if they diverged
-      latestDragPopupCoordsRef.current = { x: selectionPopupRef.current.x, y: selectionPopupRef.current.y };
+    // 1. Synchronously retrieve physical bounding box coords of popup element to bypass React async render loop latency
+    const popupEl = document.getElementById('drag-ai-popup');
+    let startPopupX = latestDragPopupCoordsRef.current.x;
+    let startPopupY = latestDragPopupCoordsRef.current.y;
+    
+    if (popupEl) {
+      const rect = popupEl.getBoundingClientRect();
+      startPopupX = rect.left;
+      startPopupY = rect.top;
+      latestDragPopupCoordsRef.current = { x: startPopupX, y: startPopupY };
     }
 
     isDraggingPopupRef.current = true;
@@ -8510,8 +8514,6 @@ export default function App() {
     
     const startX = clientX;
     const startY = clientY;
-    const startPopupX = latestDragPopupCoordsRef.current.x;
-    const startPopupY = latestDragPopupCoordsRef.current.y;
 
     // Standard drag state lock
     document.body.style.userSelect = 'none';
