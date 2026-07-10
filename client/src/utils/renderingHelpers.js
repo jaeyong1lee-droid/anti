@@ -380,7 +380,7 @@ export function convertMarkdownToHtml(mdText, isMarkdown = false, highlightBold 
   });
 
   // Protect $ ... $
-  tempText = tempText.replace(/\$([^\$\n<>]+?)\$/g, (match, math) => {
+  tempText = tempText.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (match, math) => {
     const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
     if (!isReal) {
       return match;

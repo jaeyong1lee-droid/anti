@@ -467,7 +467,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         const rendered = renderKatexString(math.trim(), { displayMode: true, throwOnError: false });
         return `<div class="formula-scroll-container py-1.5" style="text-align: center; margin-top: 0.5rem; margin-bottom: 0.5rem; width: 100%;">${rendered}</div>`;
       });
-      htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+      htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
         const isReal = !/[\uAC00-\uD7A3]/.test(math) || /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
         if (!isReal) {
           return m;
@@ -546,7 +546,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
           } else {
             let htmlContent = part.content;
             try {
-              htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+              htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
                 if (/[\uAC00-\uD7A3]/.test(math)) {
                   const isRealFormula = /\\/.test(math) || /_/.test(math) || /\^/.test(math) || /[=+\-\*\/]/.test(math) || /\\cdot/.test(math);
                   if (!isRealFormula) {
@@ -599,7 +599,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
         } else {
           let htmlContent = part.content;
           try {
-            htmlContent = htmlContent.replace(/\$([^\$\n<>]+?)\$/g, (m, math) => {
+            htmlContent = htmlContent.replace(/\$((?:[^\$\n<]|<(?![a-zA-Z/!]))+?)\$/g, (m, math) => {
               if (/[\uAC00-\uD7A3]/.test(math) && !/\\/.test(math) && !/_/.test(math) && !/\^/.test(math) && !/[=+\-\*\/]/.test(math) && !/\\cdot/.test(math)) {
                 return m;
               }
