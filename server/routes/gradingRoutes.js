@@ -414,7 +414,7 @@ ${ENGINEERING_STANDARDS}
 [응답 포맷]:
 ${formatRequirement}`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -513,7 +513,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
 오직 순수 JSON 데이터만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -627,7 +627,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
 오직 JSON 객체만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -736,7 +736,7 @@ ${LATEX_PROMPT_INSTRUCTIONS}
 ${ENGINEERING_STANDARDS}
 오직 JSON 객체만 반환하십시오.`;
 
-      const responseText = await localCallLLM(null, prompt, null, 'question');
+      const responseText = await localCallLLM(null, prompt, null, 'question', { temperature: 1.0 });
       let text = responseText.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
