@@ -680,16 +680,47 @@ router.post('/formula/suggest-title', async (req, res) => {
       return res.status(400).json({ error: '수식 내용이 존재하지 않습니다.' });
     }
 
-    const systemInstruction = "당신은 지반공학 및 토질역학/토목 전공 학술 공식 명칭을 명명하는 작명 비서입니다. 입력받은 LaTeX 수식과 전체적인 튜터 대화 맥락을 기반으로, 해당 수식이 상징하는 가장 적절하고 널리 쓰이는 전공 공식 명칭(예: 'Darcy의 투수계수식', 'Barton의 암반 Q분류식', 'Terzaghi 극한 지지력 공식' 등)을 칼같이 작명해주세요. 기호, 특수문자, 따옴표 등을 포함하지 말고, 다른 쓸데없는 잡설 없이 오직 한 줄의 '15자 내외 공식 명칭'만 반환해 주세요.";
-    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락]:\n${fullText || '(대화 없음)'}`;
+    const systemInstruction = `당신은 대한민국 토목공학 및 토질및기초 기술사 교육 전문 튜터이자 출제위원입니다.
+제시된 LaTeX 공식 수식과 기존 맥락을 면밀히 분석하여, 다음 4가지 핵심 정보를 반드시 JSON 형식으로만 반환해 주십시오. 다른 설명 텍스트나 마크다운 코드블록 기호는 절대 포함하지 마십시오.
 
+JSON 반환 포맷:
+{
+  "title": "공식의 가장 적절하고 널리 쓰이는 표준 전공 명칭 (예: 'Terzaghi 극한 지지력 공식', '모세관 상승고 산정식' 등, 20자 이내)",
+  "concept": "이 공식의 핵심 공학적 정의와 쓰임새를 설명하는 짧은 글 (2문장 이내)",
+  "structure": "이 공식에 사용된 각 기호(변수)들의 정의 리스트. 각 항목은 반드시 마크다운 리스트 형태로 작성하십시오. (예: '- $h_c$: 모관상승고\\n- $T_s$: 표면장력')",
+  "memorizationTip": "이 공식이 내포하는 물리적 거동 메커니즘과 직관적인 공학적 해석/의미를 설명하십시오. 절대로 암기 가사나 유치한 말장난 식의 암기 팁을 적지 말고, 수식의 분모/분자가 가지는 물리적 의미나 물성 관계를 기술사 답안지 수준의 전문적이고 직관적인 문장으로 2~3문장 서술하십시오."
+}`;
+
+    const userPrompt = `[수식]: ${mathContent}\n\n[대화 본문 맥락 및 기존정보]:\n${fullText || '(정보 없음)'}`;
+
+    let responseText = '';
     try {
-      const responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
-      const cleanTitle = responseText.trim().replace(/^["'`\s]+|["'`\s]+$/g, ''); // 앞뒤 따옴표 등 제거
-      res.json({ title: cleanTitle });
+      responseText = await callLLMWithFailover(systemInstruction, userPrompt, null, 'formula');
+      let cleanJsonText = responseText.trim();
+      const startIdx = cleanJsonText.indexOf('{');
+      const endIdx = cleanJsonText.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        cleanJsonText = cleanJsonText.substring(startIdx, endIdx + 1);
+      } else if (cleanJsonText.startsWith('```')) {
+        cleanJsonText = cleanJsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+      }
+
+      const result = parseLlmJson(cleanJsonText);
+      res.json({
+        title: result.title || '자동 분석 공식',
+        concept: result.concept || '',
+        structure: result.structure || '',
+        memorizationTip: result.memorizationTip || ''
+      });
     } catch (err) {
       console.error('Formula suggest title LLM error:', err);
-      res.status(500).json({ error: err.message || 'LLM 호출 오류' });
+      const rawText = responseText ? responseText.substring(0, 50).trim() : '자동 분석 공식';
+      res.json({
+        title: rawText,
+        concept: '',
+        structure: '',
+        memorizationTip: ''
+      });
     }
   } catch (err) {
     console.error('Formula suggest title route error:', err);
