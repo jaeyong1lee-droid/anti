@@ -64,6 +64,51 @@ router.get('/preferred-model', async (req, res) => {
   res.json({ model: globalPreferredModel });
 });
 
+// GET /api/temp-patch -> Database-agnostic update for topic 44 round 2
+router.get('/temp-patch', async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    
+    // 1. Find the schedule for topic 44, round 2
+    const schedule = await dbQuery.get(
+      `SELECT * FROM schedules WHERE topic_id = 44 AND review_round = 2`
+    );
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Production DB has no review round 2 for topic 44!' });
+    }
+    
+    // 2. Perform the update using the actual found schedule ID
+    await dbQuery.run(
+      `UPDATE schedules SET status = 'completed', completed_at = ?, score = 90, correct_count = 9, total_count = 10 WHERE id = ?`,
+      [now, schedule.id]
+    );
+    
+    // 3. Schedule next round (round 3) in 7 days (July 17) if not exists
+    const nextPlannedDate = '2026-07-17';
+    const existingNext = await dbQuery.get('SELECT * FROM schedules WHERE topic_id = 44 AND review_round = 3');
+    let scheduledNext = false;
+    if (!existingNext) {
+      await dbQuery.run(
+        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (44, 3, ?, 'pending')`,
+        [nextPlannedDate]
+      );
+      scheduledNext = true;
+    }
+    
+    res.json({
+      success: true,
+      message: `Successfully patched schedule ID ${schedule.id} (topic 44, round 2) to 90 points.`,
+      schedule_id: schedule.id,
+      scheduledNext,
+      before: schedule,
+      after: await dbQuery.get(`SELECT * FROM schedules WHERE id = ?`, [schedule.id])
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
   const { model } = req.body;
