@@ -1821,7 +1821,8 @@ const LatexRenderer = React.memo(function LatexRenderer({ text, katexLoaded, cla
 
   if (typeof cleanedText === 'string') {
     const isMixedReview = !!window.__isMixedReviewActive;
-    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, isMixedReview);
+    const shouldHideRemarks = isMixedReview || (formulaSource === 'tutor' && !hideTableWrapper);
+    cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, shouldHideRemarks);
     cleanedText = convertMarkdownAcronymsToHtml(cleanedText);
   }
 
