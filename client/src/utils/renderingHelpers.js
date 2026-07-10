@@ -734,7 +734,12 @@ export const healCorruptedKatexHtml = (text) => {
   cleaned = cleaned.replace(errorSpanRegex, (match, errContent) => {
     const titleMatch = match.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
     if (titleMatch && titleMatch[1]) {
-      return cleanAndSplitFormula(titleMatch[1]);
+      let msg = titleMatch[1];
+      const colonIdx = msg.lastIndexOf(':');
+      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
+        msg = msg.substring(colonIdx + 1);
+      }
+      return cleanAndSplitFormula(msg);
     }
     return errContent;
   });
@@ -847,7 +852,12 @@ export const cleanAndSanitizeMathText = (rawText) => {
     }
     const errMatch = htmlBlock.match(/title=["']KaTeX error:\s*([\s\S]*?)["']/i);
     if (errMatch && errMatch[1]) {
-      const formula = errMatch[1].trim().replace(/\\+/g, '\\');
+      let msg = errMatch[1].trim();
+      const colonIdx = msg.lastIndexOf(':');
+      if (colonIdx !== -1 && colonIdx < msg.length - 1) {
+        msg = msg.substring(colonIdx + 1);
+      }
+      const formula = msg.trim().replace(/\\+/g, '\\');
       return ` $${formula}$ `;
     }
     return '';
