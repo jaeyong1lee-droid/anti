@@ -1409,6 +1409,13 @@ router.post('/schedules/bonus/complete', async (req, res) => {
       );
     }
 
+    res.json({ success: true, scheduleId: finalScheduleId });
+  } catch (err) {
+    console.error('POST /api/schedules/bonus/complete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const LOCAL_FORMULA_DICTIONARY = [
   {
     keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
