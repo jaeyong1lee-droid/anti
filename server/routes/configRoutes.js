@@ -953,4 +953,33 @@ ${LATEX_CHAT_PROMPT_INSTRUCTIONS}`;
   }
 });
 
+// GET /api/optimize-db -> Clear database BLOBs to save quota (runs on server-side within AWS region)
+router.get('/optimize-db', async (req, res) => {
+  try {
+    console.log('[Optimize] Connecting to Neon PostgreSQL to optimize table storage...');
+    
+    // 1. Optimize topics table
+    const topicsRes = await dbQuery.run(
+      `UPDATE topics 
+       SET pdf_data = NULL 
+       WHERE pdf_url IS NOT NULL AND pdf_url != '' AND pdf_data IS NOT NULL`
+    );
+
+    // 2. Optimize answersheet_reports table
+    const reportsRes = await dbQuery.run(
+      `UPDATE answersheet_reports 
+       SET pdf_data = NULL 
+       WHERE pdf_url IS NOT NULL AND pdf_url != '' AND pdf_data IS NOT NULL`
+    );
+
+    res.json({
+      success: true,
+      message: `Database optimization completed. Topics updated: ${topicsRes.changes}, Reports updated: ${reportsRes.changes}`
+    });
+  } catch (err) {
+    console.error('Database optimization error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
