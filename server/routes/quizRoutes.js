@@ -148,9 +148,13 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     };
   }
 
-  const subjsShort = questions.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula);
-  const subjsTable = questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
-  const mcs = questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
+  const carryOverShorts = (carryOverQuestions || []).filter(q => (q.type || '').includes('단답형') && q !== qIntro && q !== qFormula);
+  const carryOverTables = (carryOverQuestions || []).filter(q => ((q.type || '').includes('표채우기') || q.subtype === '표채우기') && q !== qIntro && q !== qFormula);
+  const carryOverMcs = (carryOverQuestions || []).filter(q => ((q.type || '').includes('객관식') || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula);
+
+  const subjsShort = [...questions.filter(q => q.type === '주관식 (단답형)' && q !== qIntro && q !== qFormula), ...carryOverShorts];
+  const subjsTable = [...questions.filter(q => (q.type === '주관식 (표채우기)' || q.subtype === '표채우기') && q !== qIntro && q !== qFormula), ...carryOverTables];
+  const mcs = [...questions.filter(q => (q.type === '객관식 (4지선다)' || (q.options && q.options.length > 0)) && q !== qIntro && q !== qFormula), ...carryOverMcs];
 
   let finalSubjsShort = [...subjsShort];
   if (finalSubjsShort.length < 4) {
@@ -228,21 +232,9 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
     const cleanQ = (q.question || '').trim();
     if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
       uniqueMcQuestions.add(cleanQ);
-      finalMcs.push(q);
+      finalMcs.push(shuffleMultipleChoice(q));
     }
   });
-
-  if (finalMcs.length < 5 && carryOverQuestions && carryOverQuestions.length > 0) {
-    const shuffledCarryOvers = carryOverQuestions.map(q => shuffleMultipleChoice(q));
-    shuffledCarryOvers.forEach(q => {
-      if (finalMcs.length >= 5) return;
-      const cleanQ = (q.question || '').trim();
-      if (cleanQ && !uniqueMcQuestions.has(cleanQ)) {
-        uniqueMcQuestions.add(cleanQ);
-        finalMcs.push(q);
-      }
-    });
-  }
 
   if (finalMcs.length < 5) {
     const fallbackMcs = fallbackQs.filter(q => (q.options && q.options.length > 0) && q !== qIntro && q !== qFormula).map(q => shuffleMultipleChoice(q));
