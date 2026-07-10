@@ -14535,8 +14535,12 @@ export default function App() {
     setExamTableGradingResults({});
     setShowAnswersState({});
     setExamShowAnswersState({});
+
+    const progressId = `exam_gen_${Date.now()}`;
+    startProgressPolling(progressId);
+
     try {
-      const res = await fetch(`${API_BASE}/api/exam/all`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/exam/all?progressId=${progressId}`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         const qs = data.questions || [];
@@ -14570,6 +14574,7 @@ export default function App() {
       showNotification('서버 통신 오류: ' + err.message, 'error');
       setShowExam(false);
     } finally {
+      stopProgressPolling('종합평가 완료', 100, true);
       setLoadingExam(false);
     }
   };
@@ -23742,17 +23747,125 @@ ${itemsStr}
                   </div>
                 )}
             {loadingExam && examQuestions.length === 0 ? (
-              <div className="py-32 flex flex-col items-center justify-center gap-4 text-center">
+              <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-md mx-auto">
                 <div className="relative">
-                  <div className="p-6 bg-amber-950/80 text-amber-400 rounded-full animate-bounce-slow">
+                  <div className="p-6 bg-brand-950/80 text-brand-400 rounded-full animate-bounce-slow">
                     <Brain size={40} />
                   </div>
-                  <div className="absolute inset-0 bg-amber-500 rounded-full animate-ping opacity-20"></div>
+                  <div className="absolute inset-0 bg-brand-500 rounded-full animate-ping opacity-20"></div>
                 </div>
-                <h4 className="text-xl font-bold text-white mt-2">Gemini AI가 종합평가 테스트 문제를 생성하는 중...</h4>
-                <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                  구글 API 안정성 확보 및 버퍼 초과(429 Rate Limit) 방지를 위해 실시간 문제 빌드 및 자동 검증을 진행합니다. 잠시만 대기해 주세요.
-                </p>
+                <h4 className="text-xl font-bold text-white">Gemini AI가 종합평가 테스트 문제를 생성하는 중...</h4>
+
+                {/* 3단계 타임라인 가시화 */}
+                <div className="w-full bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-5 text-left shadow-2xl backdrop-blur-md">
+                  <h5 className="text-[14px] sm:text-[15px] font-black text-slate-100 border-b border-slate-800 pb-2.5 flex items-center justify-between">
+                    <span>종합평가 세션 준비 중</span>
+                    <span className="text-xs text-brand-400 font-extrabold animate-pulse">{aiProgressPercent || 0}%</span>
+                  </h5>
+
+                  <div className="space-y-4">
+                    {/* 1단계 */}
+                    {(() => {
+                      const isCompleted = aiProgressPercent > 20 || (!aiProgressMessage.includes('1단계') && aiProgressPercent >= 45);
+                      const isActive = aiProgressMessage.includes('1단계') || aiProgressPercent <= 20;
+                      return (
+                        <div className="flex items-start gap-3 transition-all duration-300">
+                          <div className="mt-0.5">
+                            {isCompleted ? (
+                              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                            ) : isActive ? (
+                              <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">1</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                              1단계 : 문제 구성 분석
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                              {isCompleted ? '데이터베이스 토픽 및 학습 피드백 이력을 분석 완료했습니다.' : isActive ? '서버의 학습 데이터를 읽어 출제 토픽 및 피드백 정보를 분석하고 있습니다...' : '대기 중'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 연결선 1 */}
+                    <div className="ml-2.5 w-0.5 h-3 bg-slate-800" />
+
+                    {/* 2단계 */}
+                    {(() => {
+                      const isCompleted = aiProgressPercent > 50 || (!aiProgressMessage.includes('1단계') && !aiProgressMessage.includes('2단계') && aiProgressPercent >= 60);
+                      const isActive = aiProgressMessage.includes('2단계') || (aiProgressPercent > 20 && aiProgressPercent <= 50);
+                      return (
+                        <div className="flex items-start gap-3 transition-all duration-300">
+                          <div className="mt-0.5">
+                            {isCompleted ? (
+                              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                            ) : isActive ? (
+                              <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">2</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                              2단계 : 출제 가이드 정렬
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                              {isCompleted ? '학습 가이드라인 및 공학적 지침 기준 정렬을 완료했습니다.' : isActive ? '출제 지침 및 변동 이력을 로드하여 모델 매개변수를 조정하는 중입니다...' : '대기 중'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 연결선 2 */}
+                    <div className="ml-2.5 w-0.5 h-3 bg-slate-800" />
+
+                    {/* 3단계 */}
+                    {(() => {
+                      const isCompleted = aiProgressPercent === 100;
+                      const isActive = aiProgressMessage.includes('3단계') || aiProgressPercent > 50;
+                      return (
+                        <div className="flex items-start gap-3 transition-all duration-300">
+                          <div className="mt-0.5">
+                            {isCompleted ? (
+                              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500 flex items-center justify-center text-xs font-black">✓</div>
+                            ) : isActive ? (
+                              <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border-2 border-brand-500 border-t-transparent animate-spin" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] text-slate-500">3</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className={`text-xs font-bold ${isCompleted ? 'text-emerald-400' : isActive ? 'text-brand-300 font-extrabold' : 'text-slate-500'}`}>
+                              3단계 : 종합평가 출제 및 검증
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                              {isCompleted ? '종합평가 예상 문제 출제와 수학 공식 검증이 성공적으로 완료되었습니다!' : isActive ? `Gemini AI 모델이 통합 토픽 소스 문서를 심층 분석하여 총 60문항을 출제하는 중입니다...` : '대기 중'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 하단 통합 프로그레스바 */}
+                  <div className="pt-2">
+                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-brand-500 via-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${aiProgressPercent || 0}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-[10px] text-slate-500 font-medium">
+                      <span>{aiProgressMessage || '준비 중...'}</span>
+                      <span className="font-extrabold text-slate-400">{aiProgressPercent || 0}%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="w-full space-y-5 pb-32">

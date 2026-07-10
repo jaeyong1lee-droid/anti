@@ -1592,11 +1592,16 @@ async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle
 // POST /api/exam/all
 router.post('/exam/all', async (req, res) => {
   const progressId = req.query.progressId || req.body.progressId;
+  let progressTimer = null;
   let standardsAnalysis = '';
   if (progressId) {
+    updateProgress(progressId, 1, '1단계: 데이터 분석 및 평가 지침 로드 중...', 15);
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
   }
   try {
+    if (progressId) {
+      updateProgress(progressId, 2, '2단계: 출제 가이드 정렬 및 소스 텍스트 병합 중...', 40);
+    }
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -1774,6 +1779,9 @@ ${adjustments.map((a, idx) => `
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 3;
     console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
+    if (progressId) {
+      progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 예상 문제를 심층 분석 및 생성하는 중...', 90, 1800, 3);
+    }
 
     const batchPromises = Array.from({ length: TOTAL_BATCHES }).map(async (_, idx) => {
       const randomSeed = Math.floor(Math.random() * 10000);
@@ -1971,7 +1979,7 @@ ${ENGINEERING_STANDARDS}
 
     const cleanedQuestions = selectedQuestions.map(q => {
       let topicId = q.topic_id || null;
-      if (q.topic_title) {
+      if (q.topic_title && typeof q.topic_title === 'string') {
         const cleanedTitle = q.topic_title.toLowerCase().trim();
         if (topicMap[cleanedTitle]) {
           topicId = topicMap[cleanedTitle];
@@ -1980,15 +1988,21 @@ ${ENGINEERING_STANDARDS}
           if (matchedKey) topicId = topicMap[matchedKey];
         }
       }
+      const qText = String(q.question || '');
       if (!topicId && topics.length > 0) {
         // Try to guess from question text
-        const matchedTopic = topics.find(t => q.question.includes(t.title) || (t.keywords && t.keywords.split(',').some(k => q.question.includes(k.trim()))));
+        const matchedTopic = topics.find(t => {
+          const tTitle = t.title || '';
+          const tKeywords = t.keywords || '';
+          return (tTitle && qText.includes(tTitle)) || 
+                 (tKeywords && tKeywords.split(',').some(k => qText.includes(k.trim())));
+        });
         topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
       }
       return {
         type: q.type || "객관식",
         subtype: q.subtype || null,
-        question: cleanQuizQuestion(q.question),
+        question: cleanQuizQuestion(qText),
         tableData: q.tableData || null,
         options: q.options || [],
         answer: q.answer,
@@ -2026,16 +2040,21 @@ ${ENGINEERING_STANDARDS}
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
     
     const selectedFormulas = shuffledFormulas.slice(0, 10).map(f => {
-      const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
+      if (!f) return null;
+      const fTitle = String(f.title || f.question || '');
+      const matchedTopic = topics.find(t => {
+        const tTitle = t.title || '';
+        return fTitle && tTitle && (tTitle.includes(fTitle) || fTitle.includes(tTitle));
+      });
       return {
         type: "주관식",
         subtype: "공식",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-        answer: f.formula,
-        concept: f.concept
+        question: `[필수공식] ${fTitle || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula || '',
+        concept: f.concept || ''
       };
-    });
+    }).filter(Boolean);
 
     const customSubjs = [...selectedFormulas];
 
@@ -2058,12 +2077,22 @@ ${ENGINEERING_STANDARDS}
   } catch (err) {
     console.error('Exam route error:', err);
     res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
+    if (progressId) {
+      updateProgress(progressId, 3, '3단계: 종합평가 예상 문제 출제와 수학 공식 검증 완료!', 100);
+    }
   }
 });
 
 // POST /api/exam/additional
 router.post('/exam/additional', async (req, res) => {
+  const progressId = req.query.progressId || req.body.progressId;
+  let progressTimer = null;
   try {
+    if (progressId) {
+      updateProgress(progressId, 1, '1단계: 추가 시험 문항 구성 분석 중...', 20);
+    }
     const hasAnyAiKey = !!(
       process.env.GEMINI_API_KEY ||
       process.env.GEMINI_API_KEY_SECONDARY ||
@@ -2176,28 +2205,38 @@ router.post('/exam/additional', async (req, res) => {
     const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
 
     const selectedFormula = shuffledFormulas.slice(0, 1).map(f => {
-      const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
+      if (!f) return null;
+      const fTitle = String(f.title || f.question || '');
+      const matchedTopic = topics.find(t => {
+        const tTitle = t.title || '';
+        return fTitle && tTitle && (tTitle.includes(fTitle) || fTitle.includes(tTitle));
+      });
       return {
         type: "주관식",
         subtype: "공식",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
-        answer: f.formula,
-        concept: f.concept
+        question: `[필수공식] ${fTitle || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula || '',
+        concept: f.concept || ''
       };
-    });
+    }).filter(Boolean);
 
     const selectedTheory = shuffledTheories.slice(0, 1).map(t => {
-      const matchedTopic = topics.find(t => t.title && (t.title.includes(t.title) || t.title.includes(t.title)));
+      if (!t) return null;
+      const tTitle = String(t.title || '');
+      const matchedTopic = topics.find(topic => {
+        const topicTitle = topic.title || '';
+        return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
+      });
       return {
         type: "주관식",
         subtype: "서술",
         topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-        answer: t.formula,
-        concept: t.concept
+        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula || '',
+        concept: t.concept || ''
       };
-    });
+    }).filter(Boolean);
 
     const customSubjs = [...selectedFormula, ...selectedTheory];
 
@@ -2209,6 +2248,9 @@ router.post('/exam/additional', async (req, res) => {
     const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
 
     console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    if (progressId) {
+      progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 추가 문제를 출제하고 있습니다...', 90, 1800, 5);
+    }
 
     for (let i = 0; i < TOTAL_BATCHES; i++) {
       const randomSeed = Math.floor(Math.random() * 10000);
@@ -2333,7 +2375,7 @@ ${ENGINEERING_STANDARDS}
 
     const cleanedQuestions = aggregatedAiQuestions.map(q => {
       let topicId = q.topic_id || null;
-      if (q.topic_title) {
+      if (q.topic_title && typeof q.topic_title === 'string') {
         const cleanedTitle = q.topic_title.toLowerCase().trim();
         if (topicMap[cleanedTitle]) {
           topicId = topicMap[cleanedTitle];
@@ -2342,14 +2384,20 @@ ${ENGINEERING_STANDARDS}
           if (matchedKey) topicId = topicMap[matchedKey];
         }
       }
+      const qText = String(q.question || '');
       if (!topicId && topics.length > 0) {
-        const matchedTopic = topics.find(t => q.question.includes(t.title) || (t.keywords && t.keywords.split(',').some(k => q.question.includes(k.trim()))));
+        const matchedTopic = topics.find(t => {
+          const tTitle = t.title || '';
+          const tKeywords = t.keywords || '';
+          return (tTitle && qText.includes(tTitle)) || 
+                 (tKeywords && tKeywords.split(',').some(k => qText.includes(k.trim())));
+        });
         topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
       }
       return {
         type: q.type || "객관식",
         subtype: q.subtype || null,
-        question: cleanQuizQuestion(q.question),
+        question: cleanQuizQuestion(qText),
         tableData: q.tableData || null,
         options: q.options || [],
         answer: q.answer,
@@ -2386,6 +2434,11 @@ ${ENGINEERING_STANDARDS}
   } catch (err) {
     console.error('Exam additional route error:', err);
     res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+  } finally {
+    if (progressTimer) clearInterval(progressTimer);
+    if (progressId) {
+      updateProgress(progressId, 3, '3단계: 추가 문제 출제 및 검증 완료!', 100);
+    }
   }
 });
 
