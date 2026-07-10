@@ -121,6 +121,31 @@ export async function runBackup() {
     fs.writeFileSync(latestPath, JSON.stringify(backupData, null, 2), 'utf8');
     console.log(`[Backup] Updated latest backup reference file: ${latestPath}`);
 
+    // Clean up older backups (keep only the last 7 days)
+    try {
+      const files = fs.readdirSync(backupDir);
+      const now = Date.now();
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      let deleteCount = 0;
+      
+      for (const file of files) {
+        if (file.startsWith('neon_backup_') && file.endsWith('.json')) {
+          const filePath = path.join(backupDir, file);
+          const stats = fs.statSync(filePath);
+          const age = now - stats.mtimeMs;
+          if (age > SEVEN_DAYS_MS) {
+            fs.unlinkSync(filePath);
+            deleteCount++;
+          }
+        }
+      }
+      if (deleteCount > 0) {
+        console.log(`[Backup] Cleaned up ${deleteCount} old backup files older than 7 days.`);
+      }
+    } catch (cleanupErr) {
+      console.error('[Backup] Error cleaning up old backup files:', cleanupErr.message);
+    }
+
   } catch (err) {
     console.error('[Backup] Error during database backup:', err);
   } finally {
