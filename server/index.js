@@ -19,7 +19,7 @@ import { LOCKSCREEN_STANDARDS, lockscreenStandardsList, updateLiveLockscreenStan
 import { extractTextFromCalculationImage, suggestTitleFromCalculation, generateCalculationQuizQuestion } from './plugins/calculationPlugin.js';
 import { generateDailyLockscreenQuestions } from './plugins/lockscreenQuizPlugin.js';
 import { defaultAcronyms, generateAcronymTutorResponse } from './plugins/acronymsPlugin.js';
-import { put, del } from '@vercel/blob';
+import { put, del, list } from '@vercel/blob';
 import { defaultOverviews, generateOverviewTutorResponse } from './plugins/overviewsPlugin.js';
 import { ASCII_DIAGRAM_PROMPT } from './plugins/asciiDiagramPlugin.js';
 
@@ -10012,6 +10012,15 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
     log.push(`Found ${topics.length} topics to migrate.`);
     for (const topic of topics) {
       try {
+        // Atomic claim to prevent concurrent migration by other serverless instances
+        const claim = await dbQuery.run(
+          "UPDATE topics SET pdf_url = 'migrating' WHERE id = ? AND (pdf_url IS NULL OR pdf_url = '')",
+          [topic.id]
+        );
+        if (claim.changes === 0) {
+          continue; // Already claimed or migrated
+        }
+
         const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
         const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
           access: 'private',
@@ -10023,6 +10032,11 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
         );
         log.push(`Successfully migrated topic ID ${topic.id} ("${topic.title}") -> ${blob.url}`);
       } catch (err) {
+        // Revert claim on failure
+        await dbQuery.run(
+          "UPDATE topics SET pdf_url = NULL WHERE id = ? AND pdf_url = 'migrating'",
+          [topic.id]
+        );
         log.push(`Failed to migrate topic ID ${topic.id}: ${err.message}`);
       }
     }
@@ -10038,6 +10052,15 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
     log.push(`Found ${reports.length} answersheets to migrate.`);
     for (const report of reports) {
       try {
+        // Atomic claim to prevent concurrent migration by other serverless instances
+        const claim = await dbQuery.run(
+          "UPDATE answersheet_reports SET pdf_url = 'migrating' WHERE id = ? AND (pdf_url IS NULL OR pdf_url = '')",
+          [report.id]
+        );
+        if (claim.changes === 0) {
+          continue; // Already claimed or migrated
+        }
+
         const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
         const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
           access: 'private',
@@ -10049,6 +10072,11 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
         );
         log.push(`Successfully migrated answersheet ID ${report.id} ("${report.pdf_name}") -> ${blob.url}`);
       } catch (err) {
+        // Revert claim on failure
+        await dbQuery.run(
+          "UPDATE answersheet_reports SET pdf_url = NULL WHERE id = ? AND pdf_url = 'migrating'",
+          [report.id]
+        );
         log.push(`Failed to migrate answersheet ID ${report.id}: ${err.message}`);
       }
     }
@@ -10056,6 +10084,72 @@ app.all('/api/admin/migrate-to-blob', async (req, res) => {
     res.json({ success: true, log });
   } catch (err) {
     console.error('Blob migration API error:', err);
+    res.status(500).json({ error: err.message, log });
+  }
+});
+
+// GET/POST /api/admin/cleanup-orphaned-blobs -> Vercel Blob 중복 및 미참조(오펀) 바이너리 최적화 및 삭제 API
+app.all('/api/admin/cleanup-orphaned-blobs', async (req, res) => {
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
+    return res.status(400).json({ error: 'Vercel Blob 스토리지 연결(OIDC 또는 토큰)이 되어 있지 않습니다.' });
+  }
+
+  const log = [];
+  try {
+    log.push('Starting Vercel Blob cleanup optimization...');
+    
+    // 1. 데이터베이스에 존재하는 모든 유효한 pdf_url 조회
+    const topics = await dbQuery.all("SELECT pdf_url FROM topics WHERE pdf_url IS NOT NULL AND pdf_url != ''");
+    const reports = await dbQuery.all("SELECT pdf_url FROM answersheet_reports WHERE pdf_url IS NOT NULL AND pdf_url != ''");
+
+    const validUrls = new Set([
+      ...topics.map(t => t.pdf_url),
+      ...reports.map(r => r.pdf_url)
+    ]);
+
+    log.push(`Found ${validUrls.size} unique referenced URLs in database.`);
+
+    // 2. Vercel Blob 스토리지 내의 모든 파일(Blob) 리스트업
+    let hasMore = true;
+    let cursor = undefined;
+    const allBlobs = [];
+
+    while (hasMore) {
+      const response = await list({ cursor, limit: 1000 });
+      if (response && response.blobs) {
+        allBlobs.push(...response.blobs);
+      }
+      hasMore = response.hasMore;
+      cursor = response.cursor;
+    }
+
+    log.push(`Found ${allBlobs.length} total blobs in Vercel Blob store.`);
+
+    // 3. 중복 업로드되었거나 DB에서 참조하지 않는 (오펀) 파일 필터링
+    const orphans = allBlobs.filter(b => {
+      // answersheets/ 폴더와 topics/ 폴더 내의 파일들만 클리닝 대상으로 제한
+      const isTargetFolder = b.pathname.startsWith('answersheets/') || b.pathname.startsWith('topics/');
+      return isTargetFolder && !validUrls.has(b.url);
+    });
+
+    log.push(`Found ${orphans.length} orphaned/duplicate blobs to delete.`);
+
+    // 4. 오펀 파일 실시간 삭제
+    let deletedCount = 0;
+    for (const orphan of orphans) {
+      try {
+        await del(orphan.url);
+        log.push(`Deleted: ${orphan.pathname} (${orphan.url})`);
+        deletedCount++;
+      } catch (delErr) {
+        log.push(`Failed to delete ${orphan.pathname}: ${delErr.message}`);
+      }
+    }
+
+    log.push(`Blob optimization finished. Successfully deleted ${deletedCount} duplicate/orphaned file(s).`);
+    res.json({ success: true, deletedCount, log });
+  } catch (err) {
+    console.error('Blob cleanup API error:', err);
     res.status(500).json({ error: err.message, log });
   }
 });
@@ -10736,6 +10830,15 @@ async function migrateBinariesToVercelBlob() {
       console.log(`[Blob Migration] Found ${topics.length} topics to migrate to Vercel Blob.`);
       for (const topic of topics) {
         try {
+          // Atomic claim to prevent concurrent migration by other serverless instances
+          const claim = await dbQuery.run(
+            "UPDATE topics SET pdf_url = 'migrating' WHERE id = ? AND (pdf_url IS NULL OR pdf_url = '')",
+            [topic.id]
+          );
+          if (claim.changes === 0) {
+            continue; // Already claimed or migrated
+          }
+
           console.log(`[Blob Migration] Uploading topic ID ${topic.id} ("${topic.title}")...`);
           const mimeType = topic.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
           const blob = await put(`topics/${Date.now()}_${topic.pdf_name}`, topic.pdf_data, {
@@ -10749,6 +10852,11 @@ async function migrateBinariesToVercelBlob() {
           );
           console.log(`[Blob Migration] Successfully migrated topic ID ${topic.id} to Vercel Blob: ${blob.url}`);
         } catch (err) {
+          // Revert claim on failure
+          await dbQuery.run(
+            "UPDATE topics SET pdf_url = NULL WHERE id = ? AND pdf_url = 'migrating'",
+            [topic.id]
+          );
           console.error(`[Blob Migration] Failed to migrate topic ID ${topic.id}:`, err);
         }
       }
@@ -10767,6 +10875,15 @@ async function migrateBinariesToVercelBlob() {
       console.log(`[Blob Migration] Found ${reports.length} answersheet reports to migrate to Vercel Blob.`);
       for (const report of reports) {
         try {
+          // Atomic claim to prevent concurrent migration by other serverless instances
+          const claim = await dbQuery.run(
+            "UPDATE answersheet_reports SET pdf_url = 'migrating' WHERE id = ? AND (pdf_url IS NULL OR pdf_url = '')",
+            [report.id]
+          );
+          if (claim.changes === 0) {
+            continue; // Already claimed or migrated
+          }
+
           console.log(`[Blob Migration] Uploading answersheet ID ${report.id} ("${report.pdf_name}")...`);
           const mimeType = report.pdf_name.toLowerCase().endsWith('.html') ? 'text/html' : 'application/pdf';
           const blob = await put(`answersheets/${Date.now()}_${report.pdf_name}`, report.pdf_data, {
@@ -10780,6 +10897,11 @@ async function migrateBinariesToVercelBlob() {
           );
           console.log(`[Blob Migration] Successfully migrated answersheet ID ${report.id} to Vercel Blob: ${blob.url}`);
         } catch (err) {
+          // Revert claim on failure
+          await dbQuery.run(
+            "UPDATE answersheet_reports SET pdf_url = NULL WHERE id = ? AND pdf_url = 'migrating'",
+            [report.id]
+          );
           console.error(`[Blob Migration] Failed to migrate answersheet ID ${report.id}:`, err);
         }
       }

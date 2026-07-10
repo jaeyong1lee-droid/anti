@@ -245,3 +245,25 @@
   3. **검증 및 프로덕션 배포**:
      - Vite 빌드를 가동하여 client 컴파일에 문제없음을 확인하였고, 변경된 코드베이스를 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 실시간 프로덕션 배포에 완전히 반영을 완료했습니다.
 
+---
+
+## 17. Vercel Blob 중복 업로드 방지 (Atomic Claim) 및 미참조(Orphaned) 바이너리 정리 API 구현 (2026-07-10 2차 패치)
+
+* **배경 & 문제 현상**:
+  - Vercel 서버리스 호스팅 환경에서는 트래픽 또는 여러 초기 요청에 의해 서버리스 함수 인스턴스가 동시에 여러 개 기동(Cold Start)될 수 있습니다.
+  - 이로 인해 서버 가동 시 백그라운드에서 돌아가는 자동 Vercel Blob 이관 프로세스(`migrateBinariesToVercelBlob`)가 각 인스턴스에서 병렬적으로 실행되었습니다.
+  - 데이터베이스의 한 행(`pdf_data IS NOT NULL` 이고 `pdf_url IS NULL` 상태)을 여러 인스턴스가 동시에 감지 및 중복 업로드하여, Vercel Blob 저장소에 동일한 파일이 다수 생성되고 스토리지 용량을 낭비하는 현상이 발생했습니다.
+
+* **해결 및 구현 사항**:
+  1. **원천적인 동시성 방지 - 원자적 선점(Atomic Claim) 로직 탑재 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+     - Blob 업로드(`put`)를 실제로 호출하기 직전에, `pdf_url` 필드를 `'migrating'`으로 먼저 변경하는 선점 쿼리를 트랜잭션 없이 원자적(`Atomic`)으로 실행하도록 개선했습니다.
+     - `claim.changes === 0` (이미 다른 인스턴스에서 선점하였거나 이관이 완료되어 0행이 업데이트됨)이면 해당 파일을 업로드하지 않고 스킵(skip)합니다.
+     - 만약 업로드 과정에서 오류가 발생한 경우, 오류 캐치 구문(`catch`)에서 즉시 선점했던 `'migrating'` 값을 다시 `NULL`로 원복(Revert)하여 다음 서버 작동 시 안전하게 재시도할 수 있도록 복구 안정성을 설계했습니다.
+  2. **미참조(Orphaned) 중복 파일 클리닝 API 신설 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+     - Vercel Blob 스토리지 내의 중복/오펀 파일들을 일괄 감지 및 삭제할 수 있는 `GET/POST /api/admin/cleanup-orphaned-blobs` API 엔드포인트를 구현했습니다.
+     - 데이터베이스(`topics` 및 `answersheet_reports`)의 유효한 `pdf_url` 데이터셋을 Set으로 메모리에 적재한 뒤, `@vercel/blob` SDK의 `list()` 메소드를 이용하여 스토리지 전체 파일을 조회합니다.
+     - DB에 URL이 등록되지 않은 모든 미참조 파일(오펀 및 중복 업로드된 구버전 잔여 파일)을 필터링하여 `@vercel/blob` SDK의 `del()` API로 안전하고 신속하게 영구 삭제 및 최적화를 수행합니다.
+  3. **검증 및 프로덕션 배포**:
+     - `node --check index.js` 구문 검사를 성공적으로 완료하였고, 변경된 코드베이스를 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 배포 완료했습니다.
+
+
