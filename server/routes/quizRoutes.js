@@ -772,7 +772,19 @@ ${adjustments.map((a, idx) => `
     const systemInstruction = `당신은 대한민국 국가건설기준설계코드(KDS) 및 지반공학 기술사 시험 출제위원입니다.
 JSON 배열 형식으로만 문제를 출력하십시오.`;
 
-    const rawText = await localCallLLM(systemInstruction, prompt, null, 'question', { temperature: 1.0 });
+    const enrichedGenerationPrompt = `${prompt}
+
+[🚨 최우선 절대 지침 준수 선언]:
+아래 제공되는 [📋 문제 출제 기준 절대 지침 (Generation Standards)] 및 [🔬 공학 기준 절대 지침 (Engineering Standards)]은 사용자가 지정한 최우선 헌법적 출제 지침입니다. 그 어떤 내부 출제 방식이나 하드코딩된 알고리즘 규격보다 이 지침들이 1순위로 지켜져야 하며, 상충이 발생할 경우 이 지침들의 세부 내용(예: 비교 대상 가나 구분, 소수점 정확도 등)을 최우선적으로 엄격히 적용하십시오.
+
+[📋 문제 출제 기준 절대 지침 (Generation Standards)]:
+${GENERATION_STANDARDS}
+
+[🔬 공학 기준 절대 지침 (Engineering Standards)]:
+${ENGINEERING_STANDARDS}
+`;
+
+    const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, null, 'question', { temperature: 1.0 });
     let parsedArray = null;
     
     // Parse json array safely
