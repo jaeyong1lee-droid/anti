@@ -64,30 +64,6 @@ router.get('/preferred-model', async (req, res) => {
   res.json({ model: globalPreferredModel });
 });
 
-// GET /api/temp-patch -> Manually complete 44-02 and schedule 44-03
-router.get('/temp-patch', async (req, res) => {
-  try {
-    const now = new Date().toISOString();
-    // 1. Update round 2 of topic 44 (schedule ID 276)
-    await dbQuery.run(
-      `UPDATE schedules SET status = 'completed', completed_at = ?, score = 90, correct_count = 9, total_count = 10 WHERE id = 276`,
-      [now]
-    );
-    // 2. Schedule next round (round 3) in 7 days (July 17)
-    const nextPlannedDate = '2026-07-17';
-    const existingNext = await dbQuery.get('SELECT * FROM schedules WHERE topic_id = 44 AND review_round = 3');
-    if (!existingNext) {
-      await dbQuery.run(
-        `INSERT INTO schedules (topic_id, review_round, planned_date, status) VALUES (44, 3, ?, 'pending')`,
-        [nextPlannedDate]
-      );
-    }
-    res.json({ success: true, message: 'Successfully updated 44-02 to completed with 90 points and scheduled 44-03.' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // POST /api/preferred-model
 router.post('/preferred-model', async (req, res) => {
   const { model } = req.body;
