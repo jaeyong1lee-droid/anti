@@ -789,24 +789,22 @@ const cleanAndSanitizeMathText = (rawText) => {
                    .replace(/&#lt;/gi, '<');
 
   // ₩lt, \lt, &\lt 등 기괴하게 깨진 HTML 엔티티 및 이스케이프 부등호 기호를 표준 < 및 > 기호로 정밀 복원
-  cleaned = cleaned.replace(/&amp;\\?lt;/gi, '<')
-                   .replace(/&amp;\\?gt;/gi, '>')
-                   .replace(/&amp;\\?lt\b/gi, '<')
-                   .replace(/&amp;\\?gt\b/gi, '>')
-                   .replace(/&amp;lt;/gi, '<')
+  // 1. 역슬래시가 포함된 경우 (오작동 위험이 없으므로 세미콜론/경계 없이 공격적으로 매칭)
+  cleaned = cleaned.replace(/&amp;\\gt;?/gi, '>')
+                   .replace(/&amp;\\lt;?/gi, '<')
+                   .replace(/&\\gt;?/gi, '>')
+                   .replace(/&\\lt;?/gi, '<')
+  // 2. 역슬래시가 없는 일반 엔티티 (URL 쿼리 파라미터 &gt=10 등과의 충돌 방지를 위해 단어 경계 \b 및 = 제외 필터링 적용)
                    .replace(/&amp;gt;/gi, '>')
-                   .replace(/&amp;lt\b/gi, '<')
-                   .replace(/&amp;gt\b/gi, '>')
-                   .replace(/&\\?lt;/gi, '<')
-                   .replace(/&\\?gt;/gi, '>')
-                   .replace(/&\\?lt\b/gi, '<')
-                   .replace(/&\\?gt\b/gi, '>')
-                   .replace(/&lt;/gi, '<')
+                   .replace(/&amp;lt;/gi, '<')
+                   .replace(/&amp;gt\b(?!=)/gi, '>')
+                   .replace(/&amp;lt\b(?!=)/gi, '<')
                    .replace(/&gt;/gi, '>')
-                   .replace(/&lt\b/gi, '<')
-                   .replace(/&gt\b/gi, '>')
-                   .replace(/\\lt\b/gi, '<')
-                   .replace(/\\gt\b/gi, '>');
+                   .replace(/&lt;/gi, '<')
+                   .replace(/&gt\b(?!=)/gi, '>')
+                   .replace(/&lt\b(?!=)/gi, '<')
+                   .replace(/\\gt\b/gi, '>')
+                   .replace(/\\lt\b/gi, '<');
 
   cleaned = cleaned.replace(/&amp;lt;/g, '<')
                    .replace(/&amp;gt;/g, '>')
