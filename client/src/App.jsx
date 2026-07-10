@@ -89,9 +89,17 @@ const cleanMemorizationTipText = (tip) => {
   // 2) "연상법:" 텍스트 및 그 뒤의 내용 전부 날림
   clean = clean.replace(/연상법\s*:\s*[\s\S]*?(\n|$)/gi, '');
 
-  // 3) 중복된 암기 팁: 헤더 문구 제거
+  // 3) 중복된 암기 팁/직관적 의미/핵심 개념 헤더 문구 제거
   clean = clean.replace(/💡\s*\*\*암기\s*팁\*\*:\s*/gi, '');
   clean = clean.replace(/💡\s*암기\s*팁\s*:\s*/gi, '');
+  clean = clean.replace(/💡\s*\*\*직관적\s*의미\*\*:\s*/gi, '');
+  clean = clean.replace(/💡\s*직관적\s*의미\s*:\s*/gi, '');
+  clean = clean.replace(/\*\*직관적\s*의미\*\*:\s*/gi, '');
+  clean = clean.replace(/직관적\s*의미\s*:\s*/gi, '');
+  clean = clean.replace(/💡\s*\*\*핵심\s*개념\*\*:\s*/gi, '');
+  clean = clean.replace(/💡\s*핵심\s*개념\s*:\s*/gi, '');
+  clean = clean.replace(/\*\*핵심\s*개념\*\*:\s*/gi, '');
+  clean = clean.replace(/핵심\s*개념\s*:\s*/gi, '');
   
   // 4) 인라인 수식 기호($) 및 그 안의 식들은 LatexRenderer가 이쁘게 수학 폰트로 그리도록 그대로 보존(유지)합니다.
   
