@@ -305,6 +305,29 @@
   5. **검증 및 프로덕션 배포**:
      - 포터블 노드 환경 하에서 서버 기동 및 라우터 마운트 무결성 테스트를 무사히 통과하였으며, Git 원격 저장소 `main` 브랜치에 최종 푸시 및 배포 완료했습니다.
 
+---
+
+## 20. 이관 누락된 보관함 세션 및 옵션 관리 API 복구 (2026-07-10 5차 패치)
+
+* **원인**:
+  - `server/index.js` 를 대대적으로 경량화하는 과정에서, 클라이언트가 사용하는 보관함 세션 API(공식, 비교표, 앞글자, 개요, 그림, 믹스 복습 일자, 답안지) 및 옵션 설정 API(오른쪽 사이드바 폭, 락스크린 활성화 플래그 등), 그리고 텍스트/그림 분석 보조 API들이 누락되어 프론트엔드 기동 시 JSON 대신 404 HTML 문서를 받아 구동이 붕괴되는 현상이 발생했습니다.
+* **해결**:
+  - `server/routes/configRoutes.js` 에 해당 이관 누락된 API 리스트들을 100% 온전하게 복구하여 라우팅에 탑재했습니다:
+    - `/api/session/formula` (GET/POST)
+    - `/api/session/tables` (GET/POST)
+    - `/api/session/acronyms` (GET/POST)
+    - `/api/session/overviews` (GET/POST)
+    - `/api/session/images` (GET/POST)
+    - `/api/session/mixed-completed` (GET/POST)
+    - `/api/session/answersheet` (GET/POST)
+    - `/api/options/:key` (GET/POST)
+    - `/api/question/option-explanation` (POST)
+    - `/api/formula/generate-memorization-tip` (POST)
+    - `/api/image-standards/analyze` (POST)
+    - `/api/image-standards/generate-question` (POST)
+  - 임포트 무결성 및 mock 처리된 `validationPlugin` 검증을 다시 점검하여 로컬 실행 무결성을 확보하고 원격 저장소(`main`)에 반영했습니다.
+
+
 
 
 
