@@ -10097,6 +10097,48 @@ app.all('/api/admin/cleanup-orphaned-blobs', async (req, res) => {
   const log = [];
   try {
     log.push('Starting Vercel Blob cleanup optimization...');
+
+    // 0. app_session 테이블에서 현재 학습 세션에 연동되어 있는 (참조 중인) report ID 수집
+    await ensureSessionTable();
+    const sessionRows = await dbQuery.all(
+      'SELECT value FROM app_session WHERE key = ?',
+      ['answersheet_questions']
+    );
+    const referencedReportIds = new Set();
+    if (sessionRows.length > 0 && sessionRows[0].value) {
+      try {
+        const parsed = JSON.parse(sessionRows[0].value);
+        if (parsed) {
+          const qs = parsed.answersheetQuestions || parsed.questions;
+          if (Array.isArray(qs)) {
+            qs.forEach(q => {
+              if (q.answersheet_report_id) {
+                referencedReportIds.add(Number(q.answersheet_report_id));
+              }
+            });
+          }
+        }
+      } catch (jsonErr) {
+        log.push(`Failed to parse app_session answersheet_questions: ${jsonErr.message}`);
+      }
+    }
+    log.push(`Found ${referencedReportIds.size} referenced report ID(s) in active study session.`);
+
+    // 0-1. answersheet_reports 테이블에서 학습 세션에서 참조하지 않는 (삭제/미사용) 중복 레코드 영구 삭제
+    const allReports = await dbQuery.all("SELECT id, pdf_name, pdf_url FROM answersheet_reports");
+    let dbDeletedCount = 0;
+    for (const r of allReports) {
+      if (!referencedReportIds.has(Number(r.id))) {
+        try {
+          await dbQuery.run("DELETE FROM answersheet_reports WHERE id = ?", [r.id]);
+          log.push(`Database Cleaned: Deleted unused report ID ${r.id} ("${r.pdf_name}") from answersheet_reports.`);
+          dbDeletedCount++;
+        } catch (dbDelErr) {
+          log.push(`Failed to delete unused report ID ${r.id} from database: ${dbDelErr.message}`);
+        }
+      }
+    }
+    log.push(`Database cleanup finished. Deleted ${dbDeletedCount} unused DB record(s).`);
     
     // 1. 데이터베이스에 존재하는 모든 유효한 pdf_url 조회
     const topics = await dbQuery.all("SELECT pdf_url FROM topics WHERE pdf_url IS NOT NULL AND pdf_url != ''");

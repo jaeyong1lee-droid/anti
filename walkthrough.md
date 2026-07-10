@@ -259,10 +259,10 @@
      - Blob 업로드(`put`)를 실제로 호출하기 직전에, `pdf_url` 필드를 `'migrating'`으로 먼저 변경하는 선점 쿼리를 트랜잭션 없이 원자적(`Atomic`)으로 실행하도록 개선했습니다.
      - `claim.changes === 0` (이미 다른 인스턴스에서 선점하였거나 이관이 완료되어 0행이 업데이트됨)이면 해당 파일을 업로드하지 않고 스킵(skip)합니다.
      - 만약 업로드 과정에서 오류가 발생한 경우, 오류 캐치 구문(`catch`)에서 즉시 선점했던 `'migrating'` 값을 다시 `NULL`로 원복(Revert)하여 다음 서버 작동 시 안전하게 재시도할 수 있도록 복구 안정성을 설계했습니다.
-  2. **미참조(Orphaned) 중복 파일 클리닝 API 신설 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+  2. **미참조(Orphaned) 중복 파일 및 DB 레코드 클리닝 API 신설 ([server/index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
      - Vercel Blob 스토리지 내의 중복/오펀 파일들을 일괄 감지 및 삭제할 수 있는 `GET/POST /api/admin/cleanup-orphaned-blobs` API 엔드포인트를 구현했습니다.
-     - 데이터베이스(`topics` 및 `answersheet_reports`)의 유효한 `pdf_url` 데이터셋을 Set으로 메모리에 적재한 뒤, `@vercel/blob` SDK의 `list()` 메소드를 이용하여 스토리지 전체 파일을 조회합니다.
-     - DB에 URL이 등록되지 않은 모든 미참조 파일(오펀 및 중복 업로드된 구버전 잔여 파일)을 필터링하여 `@vercel/blob` SDK의 `del()` API로 안전하고 신속하게 영구 삭제 및 최적화를 수행합니다.
+     - **DB 찌꺼기 레코드 삭제**: 먼저 `app_session` 테이블의 활성 학습 목록(`answersheet_questions`)을 분석하여 현재 학습 중인 활성 `answersheet_report_id` 목록을 추출하고, `answersheet_reports` 테이블에서 이 목록에 포함되지 않는 (삭제된 예전 업로드의 잔재 등) 미사용 중복 레코드를 자동으로 일괄 `DELETE`합니다.
+     - **스토리지 파일 삭제**: 그 후 데이터베이스에 남은 유효한 `pdf_url` 데이터셋과 Vercel Blob 스토리지 내의 모든 파일을 리스트업하여 비교하고, DB에 등록되지 않은 모든 미참조 파일(오펀 및 중복 업로드된 구버전 파일)을 `@vercel/blob` SDK의 `del()` API로 안전하게 삭제 및 최적화합니다.
   3. **검증 및 프로덕션 배포**:
      - `node --check index.js` 구문 검사를 성공적으로 완료하였고, 변경된 코드베이스를 원격 리포지토리(`origin main`)에 커밋 및 푸시하여 배포 완료했습니다.
 
