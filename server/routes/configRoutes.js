@@ -24,22 +24,8 @@ const serverDir = path.resolve(__dirname, '..');
 const router = express.Router();
 
 async function pushStandardToProduction(apiPath, standards) {
-  const isVercel = !!process.env.VERCEL;
-  if (isVercel) return;
-  try {
-    const res = await fetch(`https://anti-ashy.vercel.app/api/${apiPath}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ standards })
-    });
-    if (res.ok) {
-      console.log(`[Push] Successfully pushed ${apiPath} to Vercel production.`);
-    } else {
-      console.warn(`[Push] Failed to push ${apiPath} to Vercel production: HTTP ${res.status}`);
-    }
-  } catch (err) {
-    console.warn(`[Push] Network error pushing ${apiPath} to Vercel production:`, err.message);
-  }
+  // Disabled as per user instruction. No local-to-production sync.
+  return;
 }
 
 async function purgeAllQuizCaches() {
