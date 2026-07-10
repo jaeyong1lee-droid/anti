@@ -326,6 +326,7 @@
     - `/api/formula/generate-memorization-tip` (POST)
     - `/api/image-standards/analyze` (POST)
     - `/api/image-standards/generate-question` (POST)
+    - `/api/chat` (POST) — AI 튜터 챗봇 대화 및 개요/두문자 생성 연동 API
   - 임포트 무결성 및 mock 처리된 `validationPlugin` 검증을 다시 점검하여 로컬 실행 무결성을 확보하고 원격 저장소(`main`)에 반영했습니다.
 
 
