@@ -1111,6 +1111,24 @@ export function healQuizQuestionObject(q) {
 
     // For multiple choice questions, heal mismatched answer field
     if (q.options && Array.isArray(q.options) && q.answer) {
+      // 1. 배율 왜곡(10배/100배 스케일링 오염) 복원 처리
+      const optNums = q.options.map(o => parseFloat(o.replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+      const ansNum = parseFloat(q.answer.replace(/[^0-9.-]/g, ''));
+      if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
+        const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
+        const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
+        if (hasScaledMatch && allLargeOrZero) {
+          console.log(`[HealMC] Detected scaled options. Restoring options from ${JSON.stringify(q.options)} using answer ${q.answer}`);
+          q.options = q.options.map(opt => {
+            const num = parseFloat(opt.replace(/[^0-9.-]/g, ''));
+            if (isNaN(num)) return opt;
+            const restoredVal = (num / 100).toFixed(2);
+            return restoredVal;
+          });
+          console.log(`[HealMC] Restored options: ${JSON.stringify(q.options)}`);
+        }
+      }
+
       const hasExactMatch = q.options.includes(q.answer);
       if (!hasExactMatch) {
         let bestOpt = null;
@@ -1132,8 +1150,9 @@ export function healQuizQuestionObject(q) {
           if (opt.trim().endsWith(answer.trim())) return 800;
           if (opt.trim().startsWith(answer.trim())) return 700;
           
-          if (cAns && cOpt.includes(cAns)) {
-            return 500 - (cOpt.length - cAns.length);
+          if (cAns && cOpt && (cOpt.includes(cAns) || cAns.includes(cOpt))) {
+            const diff = Math.abs(cOpt.length - cAns.length);
+            return 500 - diff;
           }
           return 0;
         };
@@ -1431,28 +1450,7 @@ export function healQuizQuestionObject(q) {
       });
     }
 
-    // [🚨 지반공학 도메인 특화 자가치료 패치 🚨]
-    // 이방성 유선망 작도 퀴즈(또는 침투/유선망 관련 퀴즈)에서 등방성 지반(A)/(C) 칸의 정답이 이방성 관련 내용(예: 좌표 변환, 기하평균, Keq 등)으로 오매핑되어 있는 경우 강제 교정
-    if (q.question && (q.question.includes('이방성') || q.question.includes('유선망')) && q.answers) {
-      const answers = q.answers;
-      Object.keys(answers).forEach(key => {
-        const val = (answers[key] || '').trim();
-        // 등방성 지반 작도 원리 (A) 교정
-        if (key === 'INPUT_1' || key === 'INPUT_2_1') {
-          if (val.includes('좌표') || val.includes('변환') || val.includes('왜곡') || val.includes('이방성')) {
-            answers[key] = '별도 보정 없이 유선망 작도 (기하학적 왜곡 없음, 유선과 등수두선 직교)';
-            console.log(`[Geotechnical Domain Patch] Fixed anisotropic mapping leakage on ${key} -> ${answers[key]}`);
-          }
-        }
-        // 등방성 지반 투수계수 산정 (C) 교정
-        if (key === 'INPUT_3' || key === 'INPUT_3_1') {
-          if (val.includes('이방성') || val.includes('기하평균') || val.includes('ke') || val.includes('K_e') || val.includes('k_e')) {
-            answers[key] = '단일 투수계수 k 직접 적용 (수평과 연직 투수계수가 같음)';
-            console.log(`[Geotechnical Domain Patch] Fixed anisotropic mapping leakage on ${key} -> ${answers[key]}`);
-          }
-        }
-      });
-    }
+    // Legacy geotechnical domain patch has been removed.
   }
   return healDeep(q);
 }
