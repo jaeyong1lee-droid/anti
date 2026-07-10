@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
-import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject } from '../utils/latexUtils.js';
+import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
 import { generateFallbackQuestions } from '../fallback_generator.js';
 import { GENERATION_STANDARDS } from '../plugins/generationStandards.js';
@@ -1409,10 +1409,976 @@ router.post('/schedules/bonus/complete', async (req, res) => {
       );
     }
 
-    res.json({ success: true, scheduleId: finalScheduleId });
+const LOCAL_FORMULA_DICTIONARY = [
+  {
+    keywords: ['C_v', 'm_v', '\\gamma_w', 'u', 'z', 't', '\\partial'],
+    title: '테르자기 1차 압밀방정식(Terzaghi 1D Consolidation, $C_v$)',
+    concept: '외부 점진/순간 하중 재하 시 시간이 경과함에 따라 과잉간극수압이 상하 배수층을 통해 소산되어 나가는 속도를 규정한 1차원 미분방정식',
+    formula: `지배 미분방정식:
+$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$
+
+- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)
+- $u$: 과잉간극수압 (Excess Pore Water Pressure)
+- $t$: 압밀 경과 시간 (Time)
+- $z$: 점토층 내의 배수 거리 방향 깊이
+- $k$: 점토의 투수계수 (Coefficient of Permeability)
+- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)
+- $\\gamma_w$: 물의 단위중량`,
+    structure: `- $C_v$: 압밀계수 ($C_v = \\frac{k}{m_v \\gamma_w}$)\n- $u$: 과잉간극수압 (Excess Pore Water Pressure)\n- $t$: 압밀 경과 시간 (Time)\n- $z$: 점토층 내의 배수 거리 방향 깊이\n- $k$: 점토의 투수계수 (Coefficient of Permeability)\n- $m_v$: 체적압축계수(체적변화계수) (Coefficient of Volume Compressibility)\n- $\\gamma_w$: 물의 단위중량`
+  },
+  {
+    keywords: ['q_{ult}', 'N_c', 'N_q', 'N_{\\gamma}', 'c', 'B', 'D_f'],
+    title: '테르자기 극한지지력(Terzaghi Ultimate Bearing Capacity, $q_{ult}$)',
+    concept: '흙의 전단파괴 형상을 대수나선 등으로 모델화하여 기초 저면 아래 지반이 전단 파괴 없이 지탱할 수 있는 최대 하중 강도 식',
+    formula: `Terzaghi 극한 지지력:
+$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$
+
+- $q_{ult}$: 극한 지지력
+- $c$: 흙의 점착력
+- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)
+- $\\gamma$: 기초 저면 아래 흙의 단위중량
+- $B$: 기초의 폭 (단변 길이)
+- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`,
+    structure: `- $q_{ult}$: 극한 지지력\n- $c$: 흙의 점착력\n- $q$: 기초 저면의 유효상재하중 ($\\gamma D_f$)\n- $\\gamma$: 기초 저면 아래 흙의 단위중량\n- $B$: 기초의 폭 (단변 길이)\n- $N_c, N_q, N_{\\gamma}$: 지반 지지력 계수`
+  },
+  {
+    keywords: ['Q', 'RQD', 'J_n', 'J_r', 'J_a', 'J_w', 'SRF'],
+    title: '바톤 암반 Q분류(Barton Q-system, $Q$)',
+    concept: '암반의 공학적 특성을 6가지 독립된 변수를 통해 정량화하여 터널 1차 지보 설계를 설계하는 지수 공식',
+    formula: `암반 등급 Q지수 식:
+$$Q = \\frac{RQD}{J_n} \\times \\frac{J_r}{J_a} \\times \\frac{J_w}{SRF}$$
+
+- $Q$: 암반 등급 지수
+- $RQD$: 암질지수 (Rock Quality Designation)
+- $J_n$: 절리군 수 (Joint set number)
+- $J_r$: 절리면 거칠기 계수 (Joint roughness number)
+- $J_a$: 절리면 변질 계수 (Joint alteration number)
+- $J_w$: 절리수 보정 계수 (Joint water reduction factor)
+- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`,
+    structure: `- $Q$: 암반 등급 지수\n- $RQD$: 암질지수 (Rock Quality Designation)\n- $J_n$: 절리군 수 (Joint set number)\n- $J_r$: 절리면 거칠기 계수 (Joint roughness number)\n- $J_a$: 절리면 변질 계수 (Joint alteration number)\n- $J_w$: 절리수 보정 계수 (Joint water reduction factor)\n- $SRF$: 응력 감소 계수 (Stress Reduction Factor)`
+  },
+  {
+    keywords: ['H', 'q', 'q_a', '\\tan\\theta'],
+    title: '연약지반 샌드매트 최소두께(Sand Mat Minimum Thickness, $H$)',
+    concept: '표층 개량 및 연약지반 상부에 무거운 주행성 장비(Trafficability)를 얹기 위한 하중 지지 소요 두께식',
+    formula: `샌드매트 최소 두께 식:
+$$H = \\sqrt{\\frac{q - q_a}{\\gamma \\tan \\theta}}$$
+
+- $H$: 샌드매트의 소요 최소 두께
+- $q$: 포설 장비의 접지압
+- $q_a$: 지반의 허용 지지력
+- $\\gamma$: 모래의 단위중량
+- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`,
+    structure: `- $H$: 샌드매트의 소요 최소 두께\n- $q$: 포설 장비의 접지압\n- $q_a$: 지반의 허용 지지력\n- $\\gamma$: 모래의 단위중량\n- $\\theta$: 하중 분산각 (일반적으로 $45^\\circ$ 적용)`
+  },
+  {
+    keywords: ['r', 'R', '\\alpha', 'sin', '45'],
+    title: '슈미트네트 극점반경(Schmidt Net Pole Radius, $r$)',
+    concept: '통계적 밀도 보정을 위해 면적 왜곡을 줄인 슈미트 네트(Schmidt Net) 평면 변환 투영식',
+    formula: `극점 반경 식:
+$$r = \\sqrt{2} R \\sin\\left(45^\\circ - \\frac{\\alpha}{2}\\right)$$
+
+- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리
+- $R$: 투영구(Sphere)의 반경
+- $\\alpha$: 불연속면의 경사각 (Dip angle)`,
+    structure: `- $r$: 투영원 중심으로부터 극점(Pole)까지의 평면 거리\n- $R$: 투영구(Sphere)의 반경\n- $\\alpha$: 불연속면의 경사각 (Dip angle)`
+  },
+  {
+    keywords: ['P', '\\tau_{allow}', 'd', 'L', '\\pi'],
+    title: '락볼트 고착력 계산식(Rockbolt Bond Strength, $P$)',
+    concept: '인발 하중 재하 시 천공홀 배면의 마찰 부착 면적을 기반으로 볼트 탈락에 지탱하는 한계 고착력 식',
+    formula: `락볼트 허용 지지력 식:
+$$P = \\pi d L \\tau_{allow}$$
+
+- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)
+- $d$: 락볼트 천공 구멍의 직경
+- $L$: 그라우팅 정착 길이 (고착 영역)
+- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`,
+    structure: `- $P$: 락볼트의 최대 허용 인발 저항력 (인발 하중)\n- $d$: 락볼트 천공 구멍의 직경\n- $L$: 그라우팅 정착 길이 (고착 영역)\n- $\\tau_{allow}$: 지반과 그라우팅재 간의 허용 부착 전단강도`
+  },
+  {
+    keywords: ['K_a', 'K_p', 'p_a', '\\phi', '\\sin\\phi'],
+    title: '랭킹 주동토압계수(Rankine Active Earth Pressure Coefficient, $K_a$)',
+    concept: '지반이 인장 변형을 일으켜 한계 주동 소성 평형 상태에 도달할 때 가설 옹벽 배면에 수평으로 밀어내는 토압식',
+    formula: `랭킹 주동토압계수 식:
+$$K_a = \\tan^2\\left(45^\\circ - \\frac{\\phi}{2}\\right) = \\frac{1 - \\sin\\phi}{1 + \\sin\\phi}$$
+
+- $K_a$: 주동토압 계수
+- $K_p$: 수동토압 계수
+- $\\phi$: 흙의 내부마찰각
+- $p_a$: 주동토압 강도
+- $c$: 흙의 점착력
+- $\\gamma$: 흙의 단위중량
+- $z$: 검토 단면 깊이`,
+    structure: `- $K_a$: 주동토압 계수\n- $K_p$: 수동토압 계수\n- $\\phi$: 흙의 내부마찰각\n- $p_a$: 주동토압 강도\n- $c$: 흙의 점착력\n- $\\gamma$: 흙의 단위중량\n- $z$: 검토 단면 깊이`
+  },
+  {
+    keywords: ['C', 'D_f', 'q_{net}'],
+    title: '보상기초 보상도(Compensated Foundation Safety Factor, $C$)',
+    concept: '구조물 자중을 굴착한 흙의 총 중량으로 완벽히 치환 상쇄하여 순 침하 하중을 Zero로 수렴시키는 평가 공식',
+    formula: `보상기초 보상도 식:
+$$C = \\frac{\\gamma D_f}{q}$$
+
+- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)
+- $\\gamma$: 굴착하여 배출한 흙의 단위중량
+- $D_f$: 기초의 굴착 깊이
+- $q$: 상부 구조물 총 자중 및 하중 합산값
+- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`,
+    structure: `- $C$: 보상도 ($C = 1.0$ 이면 완전 보상)\n- $\\gamma$: 굴착하여 배출한 흙의 단위중량\n- $D_f$: 기초의 굴착 깊이\n- $q$: 상부 구조물 총 자중 및 하중 합산값\n- $q_{net}$: 지반이 추가로 받는 순하중 ($q_{net} = q - \\gamma D_f$)`
+  },
+  {
+    keywords: ['p_w', '\\gamma_w', 'H'],
+    title: '싱글쉘 터널 설계수압(Single Shell Tunnel Design Water Pressure, $p_w$)',
+    concept: '방수가 완벽히 차단된 비배수 터널 아치 배면에 상부 수위 높이에 비례하여 수직으로 가해지는 정수압식',
+    formula: `설계수압 식:
+$$p_w = \\gamma_w H$$
+
+- $p_w$: 라이닝 배면 작용 설계 수압
+- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)
+- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`,
+    structure: `- $p_w$: 라이닝 배면 작용 설계 수압\n- $\\gamma_w$: 지하수(물)의 단위중량 ($9.81\\,\\text{kN/m}^3$)\n- $H$: 설계 지하수위 면으로부터 터널 아치 정상까지의 수직 거리 (수두 높이)`
+  },
+  {
+    keywords: ['k_h', 'k_{h0}', 'B_H', 'E_0', 'N', '2800'],
+    title: '가설흙막이 수평지반반력계수(Temporary Retaining Wall Horizontal Subgrade Reaction Coefficient, $k_h$)',
+    concept: '벽체 배면의 지반 탄소성 반응을 등가의 선형 탄성 연속 압축 스프링 강성값으로 치환하는 반력 산정식',
+    formula: `수평 지반반력계수 식:
+$$k_h = k_{h0} \\left(\\frac{B_H}{0.3}\\right)^{-3/4}$$
+
+- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)
+- $k_{h0}$: 표준 수평 지반반력계수
+- $B_H$: 가상의 기초 환산폭
+- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)
+- $N$: 표준관입시험 N치`,
+    structure: `- $k_h$: 설계 수평 지반반력계수 (탄성 스프링 상수)\n- $k_{h0}$: 표준 수평 지반반력계수\n- $B_H$: 가상의 기초 환산폭\n- $E_0$: 지반의 탄성계수 ($E_0 = 2800 N$)\n- $N$: 표준관입시험 N치`
+  }
+];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function extractJsonArray(str) {
+  if (!str) return null;
+  const startIdx = str.indexOf('[');
+  const endIdx = str.lastIndexOf(']');
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const jsonSub = str.substring(startIdx, endIdx + 1);
+    try {
+      return parseLlmJson(jsonSub);
+    } catch (e) {
+      console.warn('Failed parsing extracted JSON substring via extractJsonArray.');
+      throw e;
+    }
+  }
+  return null;
+}
+
+async function validateAndHealQuestion(question, callLLMWithFailover, topicTitle = '', topicKeywords = '', fileText = '') {
+  if (question && typeof question === 'object') {
+    if (!question.validationLogs) {
+      question.validationLogs = [];
+    }
+    question.validationLogs.push(`[자가 검증 스킵] 검증 기능 및 validationPlugin 파일이 물리적으로 삭제되어 작동하지 않습니다.`);
+  }
+  return question;
+}
+
+// POST /api/exam/all
+router.post('/exam/all', async (req, res) => {
+  const progressId = req.query.progressId || req.body.progressId;
+  let standardsAnalysis = '';
+  if (progressId) {
+    standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
+  }
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+
+    // Fetch all topics with extracted_text (fallback to pdf_data if empty)
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
+    if (!topics || topics.length === 0) {
+      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+    }
+
+    const topicTextMap = {};
+    // Extract text from each topic in parallel to avoid timeouts
+    const topicTexts = await Promise.all(topics.map(async (topic) => {
+      let fileText = '';
+      if (topic.extracted_text) {
+        fileText = topic.extracted_text;
+      } else if (topic.pdf_data) {
+        const isHtml = topic.pdf_name && (
+          topic.pdf_name.toLowerCase().endsWith('.html') ||
+          topic.pdf_name.toLowerCase().endsWith('.htm') ||
+          fileUtils.isBufferHtml(topic.pdf_data)
+        );
+        try {
+          if (isHtml) {
+            fileText = fileUtils.htmlToPlainText(fileUtils.decodeHtmlBuffer(topic.pdf_data));
+          } else {
+            const parsed = await pdfParse(topic.pdf_data);
+            fileText = parsed.text || '';
+          }
+        } catch (e) {
+          console.warn(`Topic ${topic.id} parse error:`, e.message);
+        }
+        fileText = fileUtils.mergeVerticalText(fileText);
+      }
+      fileText = fileUtils.smartTruncate(fileText, 10000);
+      topicTextMap[topic.id] = fileText;
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+    }));
+
+    const combinedText = topicTexts.join('\n\n---\n\n');
+    const topicTitles = topics.map(t => t.title).join(', ');
+
+    // Fetch all user feedbacks (upvoted / downvoted) to adjust frequency in exam prompt
+    let feedbackPrompt = '';
+    try {
+      const feedbacks = await dbQuery.all(
+        `SELECT t.title, qf.question_text, qf.feedback_type 
+         FROM question_feedback qf 
+         JOIN topics t ON qf.topic_id = t.id`
+      );
+      if (feedbacks.length > 0) {
+        const upvotes = feedbacks.filter(f => f.feedback_type === 'upvote');
+        const downvotes = feedbacks.filter(f => f.feedback_type === 'downvote');
+        
+        feedbackPrompt = `
+[사용자 피드백 지침 - 출제 빈도 조정에 반영 필수]:
+- 아래 질문들과 연관된 주제/개념의 문제를 적극 출제해 주십시오 (출제 빈도 증가 대상):
+${upvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+
+- 아래 질문들과 동일하거나 유사한 문제는 절대 출제하지 말고 출제 빈도를 대폭 낮추거나 다른 문제로 대체해 주십시오 (출제 빈도 감소/제외 대상):
+${downvotes.map((f, idx) => `  * [토픽: ${f.title}] ${f.question_text}`).join('\n')}
+`;
+      }
+    } catch (fbErr) {
+      console.warn('종합평가 피드백 로드 실패 (무시하고 진행):', fbErr);
+    }
+
+    let adjustmentsPrompt = '';
+    try {
+      const adjustments = await dbQuery.all(
+        `SELECT t.title, qa.question_text, qa.adjusted_text, qa.user_feedback 
+         FROM question_adjustments qa 
+         JOIN topics t ON qa.topic_id = t.id 
+         ORDER BY qa.created_at DESC LIMIT 15`
+      );
+      if (adjustments.length > 0) {
+        adjustmentsPrompt = `
+[사용자 이전 문제 조정(피드백) 내역 - 출제 시 반드시 참고하여 반영하십시오]:
+사용자가 이전에 종합평가/복습 시 문제를 다음과 같이 조정 요청하여 반영된 이력이 있습니다. 향후 출제 시 아래 피드백 경향을 분석하여 반영해 주십시오:
+${adjustments.map((a, idx) => `
+조정 이력 ${idx + 1} [토픽: ${a.title}]:
+- 기존 문제: "${a.question_text}"
+- 사용자의 피드백 요구사항: "${a.user_feedback}"
+- 반영된 최종 문제: "${a.adjusted_text}"
+`).join('\n')}
+`;
+      }
+    } catch (adjErr) {
+      console.warn('종합평가 문제 조정 이력 로드 실패:', adjErr);
+    }
+
+    // Collect past questions from app_session
+    let pastQuestionsPool = [];
+    try {
+      await ensureSessionTable();
+      const sessionRows = await dbQuery.all(
+        `SELECT value FROM app_session 
+         WHERE key LIKE 'review_questions_schedule_%' 
+            OR key LIKE 'review_questions_topic_%' 
+            OR key LIKE 'completed_review_schedule_%'`
+      );
+      for (const row of sessionRows) {
+        if (row.value) {
+          try {
+            const parsed = JSON.parse(row.value);
+            const qs = parsed.questions || parsed.examQuestions || (Array.isArray(parsed) ? parsed : []);
+            if (Array.isArray(qs)) {
+              for (const q of qs) {
+                if (q && q.question) {
+                  pastQuestionsPool.push(q);
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+      console.log(`[종합평가] 수집된 기존 복습 문항 수: ${pastQuestionsPool.length}개`);
+    } catch (dbErr) {
+      console.warn('[종합평가] 기존 문항 로드 실패:', dbErr);
+    }
+
+    const uniqueQuestionsMap = new Map();
+    for (const q of pastQuestionsPool) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        uniqueQuestionsMap.set(cleanedText, q);
+      }
+    }
+    const uniquePastQuestions = Array.from(uniqueQuestionsMap.values());
+    console.log(`[종합평가] 중복 제거 후 고유 기존 복습 문항 수: ${uniquePastQuestions.length}개`);
+
+    // Collect local fallback questions for all topics
+    let fallbackQuestionsPool = [];
+    try {
+      for (const t of topics) {
+        let topicText = '';
+        if (t.pdf_data) {
+          try {
+            const isHtml = t.pdf_name && (
+              t.pdf_name.toLowerCase().endsWith('.html') ||
+              t.pdf_name.toLowerCase().endsWith('.htm') ||
+              fileUtils.isBufferHtml(t.pdf_data)
+            );
+            if (isHtml) {
+              topicText = fileUtils.htmlToPlainText(fileUtils.decodeHtmlBuffer(t.pdf_data));
+            } else {
+              const parsed = await pdfParse(t.pdf_data);
+              topicText = parsed.text || '';
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+          topicText = fileUtils.mergeVerticalText(topicText);
+        }
+        const fallbackQs = generateFallbackQuestions(t.title, t.keywords, topicText);
+        if (Array.isArray(fallbackQs)) {
+          fallbackQuestionsPool.push(...fallbackQs);
+        }
+      }
+      console.log(`[종합평가] 로컬 생성 예비 문항 수: ${fallbackQuestionsPool.length}개`);
+    } catch (fallbackErr) {
+      console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
+    }
+
+    // Generate 15 new AI questions in parallel (3 batches of 5)
+    let aggregatedAiQuestions = [];
+    const TOTAL_BATCHES = 3;
+    console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
+
+    const batchPromises = Array.from({ length: TOTAL_BATCHES }).map(async (_, idx) => {
+      const randomSeed = Math.floor(Math.random() * 10000);
+      const batchPrompt = `
+당신은 국가기술자격 기술사 시험 출제위원입니다.
+아래 범위 토픽 소스 자료를 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 문제 **정확히 5개**를 생성하십시오.
+(현재 분할 출제 회차: ${idx + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
+
+🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록]** 및 **[통합 소스 텍스트]**의 각 '<Topic>...</Topic>' 태그에 직접 기술되어 있는 구체적인 개념, 공식, 이론 및 지식의 범위 안에서만 시험 문제를 생성하십시오.
+2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
+3. 제공된 소스 자료 텍스트에 **직접 등장하지 않는 외부의 타 공학/역학 이론이나 일반 상식(예: 지문에 직접 기재되지 않은 동역학, 구조역학, 진동학, 임계감쇠, 단자유도 시스템, 고유진동수, 또는 그 외 외부 임의 주제 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
+4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
+5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
+
+[평가 범위 토픽 목록]: ${topicTitles}
+[통합 소스 텍스트]:
+${combinedText}
+
+${feedbackPrompt}
+
+${adjustmentsPrompt}
+
+[출제 규칙]:
+1. 이번 회차에서는 **정확히 5개의 문제**만 반환하되 다음 유형별로 각각 정확히 1문제씩 골고루 구성하여 비율을 사수하십시오:
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안)
+   - 주관식 (type: "주관식", subtype: "공식"): 1문제 (해당 토픽의 대표적인 공학적 수식 및 물리적 관계식을 제시하고 수식을 구성하는 기호들의 정의를 나열하는 공식 문제)
+   - 주관식 (type: "주관식", subtype: "표채우기"): 1문제 (비교 대상이 없는 단일 토픽은 '상태/단계 비교' 또는 '1행(Single-row) 테이블'로 구성하여 동일 열 내 답안 중복을 철저히 배제하고, 아래 "tableData" 필드에 <table> 태그 대신 표 데이터 객체 구조를 채워넣는 칸채우기 주관식 문제)
+   - 주관식 (type: "주관식", subtype: "단답형"): 1문제 (구체적인 실무 문제점/시나리오를 질문으로 제시하고 핵심 키워드 강조가 들어간 1줄 서술형 모범답안으로 답하는 단답형 문제)
+   - 객관식 (type: "객관식"): 1문제 (4지선다형 객관식 문제)
+2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
+   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
+     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+   
+   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
+   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
+   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
+   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
+3. 오답 보기 구성 주의사항 (매우 중요):
+   - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
+   - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
+- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+
+[환각 방지 철칙 (Anti-Hallucination Constraints)]:
+1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+
+${LATEX_PROMPT_INSTRUCTIONS}
+${GENERATION_STANDARDS}
+${ENGINEERING_STANDARDS}
+4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
+
+[JSON 포맷]:
+[
+  {
+    "type": "주관식",
+    "subtype": "개요",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
+    "question": "질문 내용",
+    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
+    "concept": "핵심 개념 1줄 요약"
+  },
+  {
+    "type": "객관식",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
+    "question": "공학적 현상 분석 질문",
+    "tableData": null,
+    "options": ["보기1", "보기2", "보기3", "보기4"],
+    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
+    "explanation": "이유와 오답 정밀 해설"
+  }
+] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+`;
+      try {
+        console.log(`[종합평가 병렬 생성] #${idx + 1}번째 배치 전송 시작...`);
+        const enrichedPrompt = `[🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:\n${standardsAnalysis}\n\n${batchPrompt}`;
+        const rawText = await callLLMWithFailover(null, enrichedPrompt, null, 'question');
+        let text = rawText.trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        }
+        let parsedList = null;
+        try {
+          parsedList = parseLlmJson(text);
+        } catch {
+          parsedList = extractJsonArray(rawText);
+        }
+        if (parsedList && Array.isArray(parsedList)) {
+          return parsedList;
+        }
+      } catch (err) {
+        console.warn(`[종합평가 병렬 생성 실패] #${idx + 1}번째 배치 에러:`, err.message);
+      }
+      return [];
+    });
+
+    const results = await Promise.all(batchPromises);
+    for (const r of results) {
+      if (r) aggregatedAiQuestions.push(...r);
+    }
+    console.log(`[종합평가 병렬 생성 완료] AI 신규 문항 수: ${aggregatedAiQuestions.length}개`);
+
+    // Merge all pools (AI questions, unique past study questions, fallback questions)
+    const uniquePoolMap = new Map();
+    // Priority 1: Newly generated AI questions
+    for (const q of aggregatedAiQuestions) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        uniquePoolMap.set(cleanedText, q);
+      }
+    }
+    // Priority 2: Past study questions from DB sessions
+    for (const q of uniquePastQuestions) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        if (!uniquePoolMap.has(cleanedText)) {
+          uniquePoolMap.set(cleanedText, q);
+        }
+      }
+    }
+    // Priority 3: Local fallback questions
+    for (const q of fallbackQuestionsPool) {
+      if (q && q.question) {
+        const cleanedText = q.question.replace(/\s+/g, ' ').trim();
+        if (!uniquePoolMap.has(cleanedText)) {
+          uniquePoolMap.set(cleanedText, q);
+        }
+      }
+    }
+
+    const finalQuestionPool = Array.from(uniquePoolMap.values());
+    console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
+
+    // Select up to 60 questions from the pool with exact type combination:
+    // - 개요: 10개
+    // - 공식: 10개
+    // - 표채우기: 10개
+    // - 단답형: 10개
+    // - 객관식: 20개
+    const poolGaeyo = [];
+    const poolGongsik = [];
+    const poolTable = [];
+    const poolDandap = [];
+    const poolMC = [];
+
+    for (const q of finalQuestionPool) {
+      if (q.type === '주관식') {
+        if (q.subtype === '개요') poolGaeyo.push(q);
+        else if (q.subtype === '공식') poolGongsik.push(q);
+        else if (q.subtype === '표채우기') poolTable.push(q);
+        else if (q.subtype === '단답형' || !q.subtype) poolDandap.push(q);
+      } else if (q.type === '객관식') {
+        poolMC.push(q);
+      }
+    }
+
+    console.log(`[종합평가 분류] 개요: ${poolGaeyo.length}, 공식: ${poolGongsik.length}, 표채우기: ${poolTable.length}, 단답형: ${poolDandap.length}, 객관식: ${poolMC.length}`);
+
+    const shuffleArray = (arr) => [...arr].sort(() => 0.5 - Math.random());
+    const shufGaeyo = shuffleArray(poolGaeyo);
+    const shufGongsik = shuffleArray(poolGongsik);
+    const shufTable = shuffleArray(poolTable);
+    const shufDandap = shuffleArray(poolDandap);
+    const shufMC = shuffleArray(poolMC);
+
+    const selectedQuestions = [];
+    const take = (arr, n) => {
+      const result = arr.slice(0, n);
+      arr.splice(0, n);
+      return result;
+    };
+
+    selectedQuestions.push(...take(shufGaeyo, 10));
+    selectedQuestions.push(...take(shufGongsik, 10));
+    selectedQuestions.push(...take(shufTable, 10));
+    selectedQuestions.push(...take(shufDandap, 10));
+    selectedQuestions.push(...take(shufMC, 20));
+
+    // If total selected is less than 60, fill from remaining questions in other pools
+    const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
+    const shufRemaining = shuffleArray(remainingPool);
+    const needed = Math.max(0, 60 - selectedQuestions.length);
+    selectedQuestions.push(...take(shufRemaining, needed));
+
+    console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
+
+    // Clean selected questions & Map topic_title to topic_id
+    const topicMap = {};
+    topics.forEach(t => {
+      topicMap[t.title.toLowerCase().trim()] = t.id;
+    });
+
+    const cleanedQuestions = selectedQuestions.map(q => {
+      let topicId = q.topic_id || null;
+      if (q.topic_title) {
+        const cleanedTitle = q.topic_title.toLowerCase().trim();
+        if (topicMap[cleanedTitle]) {
+          topicId = topicMap[cleanedTitle];
+        } else {
+          const matchedKey = Object.keys(topicMap).find(k => k.includes(cleanedTitle) || cleanedTitle.includes(k));
+          if (matchedKey) topicId = topicMap[matchedKey];
+        }
+      }
+      if (!topicId && topics.length > 0) {
+        // Try to guess from question text
+        const matchedTopic = topics.find(t => q.question.includes(t.title) || (t.keywords && t.keywords.split(',').some(k => q.question.includes(k.trim()))));
+        topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
+      }
+      return {
+        type: q.type || "객관식",
+        subtype: q.subtype || null,
+        question: cleanQuizQuestion(q.question),
+        tableData: q.tableData || null,
+        options: q.options || [],
+        answer: q.answer,
+        explanation: q.explanation || '',
+        concept: q.concept || '',
+        topic_id: topicId
+      };
+    });
+
+    // Retrieve custom formula questions from database
+    let customFormulas = [];
+    try {
+      await ensureSessionTable();
+      const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+      if (formulaRows.length > 0 && formulaRows[0].value) {
+        const parsed = JSON.parse(formulaRows[0].value);
+        if (Array.isArray(parsed.formulaQuestions)) {
+          customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading formula sessions for comprehensive exam:', dbErr);
+    }
+
+    // If database is empty, load defaults so that the user always has them
+    if (customFormulas.length === 0) {
+      customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+        title: d.title,
+        formula: d.formula || d.structure || '',
+        concept: d.concept || ''
+      }));
+    }
+
+    // Shuffle and select up to 10 formula questions
+    const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    
+    const selectedFormulas = shuffledFormulas.slice(0, 10).map(f => {
+      const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
+      return {
+        type: "주관식",
+        subtype: "공식",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula,
+        concept: f.concept
+      };
+    });
+
+    const customSubjs = [...selectedFormulas];
+
+    // Merge local DB core 10 questions + split mined AI questions
+    const finalQuestions = [...customSubjs, ...cleanedQuestions];
+
+    const healedFinalQuestions = finalQuestions.map(q => healQuizQuestionObject(q));
+    const validatedFinalQuestions = await Promise.all(
+      healedFinalQuestions.map(async (q) => {
+        const matchedTopic = topics.find(t => t.id === Number(q.topic_id));
+        const title = matchedTopic ? matchedTopic.title : '';
+        const keywords = matchedTopic ? matchedTopic.keywords : '';
+        const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
+        const res = await validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        return healQuizQuestionObject(res);
+      })
+    );
+    res.json({ questions: validatedFinalQuestions, total: validatedFinalQuestions.length, topicCount: topics.length });
+
   } catch (err) {
-    console.error('POST /api/schedules/bonus/complete error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Exam route error:', err);
+    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
+  }
+});
+
+// POST /api/exam/additional
+router.post('/exam/additional', async (req, res) => {
+  try {
+    const hasAnyAiKey = !!(
+      process.env.GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY_SECONDARY ||
+      process.env.GEMINI_API_KEY_TERTIARY ||
+      process.env.XAI_API_KEY ||
+      process.env.GROK_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    );
+    if (!hasAnyAiKey) return res.status(400).json({ error: '등록된 AI API 키가 존재하지 않습니다.' });
+
+    // Fetch all topics with extracted_text (fallback to pdf_data if empty)
+    const topics = await dbQuery.all(`SELECT id, title, keywords, pdf_name, extracted_text, (CASE WHEN extracted_text IS NULL OR extracted_text = '' THEN pdf_data ELSE NULL END) AS pdf_data FROM topics ORDER BY created_at DESC`);
+    if (!topics || topics.length === 0) {
+      return res.status(400).json({ error: '등록된 토픽이 없습니다. 먼저 학습 자료를 등록해주세요.' });
+    }
+
+    const topicTextMap = {};
+    // Extract text from each topic in parallel to avoid timeouts
+    const topicTexts = await Promise.all(topics.map(async (topic) => {
+      let fileText = '';
+      if (topic.extracted_text) {
+        fileText = topic.extracted_text;
+      } else if (topic.pdf_data) {
+        const isHtml = topic.pdf_name && (
+          topic.pdf_name.toLowerCase().endsWith('.html') ||
+          topic.pdf_name.toLowerCase().endsWith('.htm') ||
+          fileUtils.isBufferHtml(topic.pdf_data)
+        );
+        try {
+          if (isHtml) {
+            fileText = fileUtils.htmlToPlainText(fileUtils.decodeHtmlBuffer(topic.pdf_data));
+          } else {
+            const parsed = await pdfParse(topic.pdf_data);
+            fileText = parsed.text || '';
+          }
+        } catch (e) {
+          console.warn(`Topic ${topic.id} parse error:`, e.message);
+        }
+        fileText = fileUtils.mergeVerticalText(fileText);
+      }
+      fileText = fileUtils.smartTruncate(fileText, 10000);
+      topicTextMap[topic.id] = fileText;
+      return `<Topic id="${topic.id}" title="${topic.title}" keywords="${topic.keywords || '없음'}">\n${fileText || '소스 없음'}\n</Topic>`;
+    }));
+
+    const combinedText = topicTexts.join('\n\n---\n\n');
+    const topicTitles = topics.map(t => t.title).join(', ');
+
+    // Retrieve custom formula questions from database
+    let customFormulas = [];
+    try {
+      await ensureSessionTable();
+      const formulaRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_questions']);
+      if (formulaRows.length > 0 && formulaRows[0].value) {
+        const parsed = JSON.parse(formulaRows[0].value);
+        if (Array.isArray(parsed.formulaQuestions)) {
+          customFormulas = parsed.formulaQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading formula sessions for comprehensive exam refresh:', dbErr);
+    }
+
+    // Load defaults if empty, exactly like /api/exam/all
+    if (customFormulas.length === 0) {
+      customFormulas = LOCAL_FORMULA_DICTIONARY.map(d => ({
+        title: d.title,
+        formula: d.formula || d.structure || '',
+        concept: d.concept || ''
+      }));
+    }
+
+    let customTheories = [];
+    try {
+      await ensureSessionTable();
+      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+      if (theoryRows.length > 0 && theoryRows[0].value) {
+        const parsed = JSON.parse(theoryRows[0].value);
+        if (Array.isArray(parsed.theoryQuestions)) {
+          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading theory sessions for comprehensive exam refresh:', dbErr);
+    }
+
+    if (customTheories.length === 0) {
+      customTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+    }
+
+    // Select 1 formula and 1 theory randomly
+    const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
+
+    const selectedFormula = shuffledFormulas.slice(0, 1).map(f => {
+      const matchedTopic = topics.find(t => f.title && (t.title.includes(f.title) || f.title.includes(t.title)));
+      return {
+        type: "주관식",
+        subtype: "공식",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[필수공식] ${f.title || f.question || '공식'} 공식을 제시하고, 각 기호의 정의를 서술하시오.`,
+        answer: f.formula,
+        concept: f.concept
+      };
+    });
+
+    const selectedTheory = shuffledTheories.slice(0, 1).map(t => {
+      const matchedTopic = topics.find(t => t.title && (t.title.includes(t.title) || t.title.includes(t.title)));
+      return {
+        type: "주관식",
+        subtype: "서술",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[이론유도] ${t.title || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula,
+        concept: t.concept
+      };
+    });
+
+    const customSubjs = [...selectedFormula, ...selectedTheory];
+
+    // Format formulas and theories text for LLM context
+    const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
+    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
+
+    let aggregatedAiQuestions = [];
+    const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
+
+    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+
+    for (let i = 0; i < TOTAL_BATCHES; i++) {
+      const randomSeed = Math.floor(Math.random() * 10000);
+      
+      const batchPrompt = `
+당신은 국가기술자격 기술사 시험 출제위원입니다.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
+(현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
+
+🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 '<Topic>...</Topic>' 태그, **[인용된 필수공식 목록]**에서 직접 다루는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
+2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
+3. 제공된 소스 자료 및 인용된 내용에 **직접 등장하지 않는 외부의 타 공학/역학 분야 이론(예: 텍스트에 언급되지 않은 동역학 구조해석, 진동학, 설계감쇠, 고유진동수 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
+4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
+5. 객관식 모든 보기(options) 및 해설 역시 오직 소스 문서 내용의 문장과 지식들을 변형/결합하여 만들어야 하며, 본문과 아예 무관한 엉뚱한 외부 용어나 가상의 기술적 지식을 보기에 혼합하는 것을 절대 금지합니다.
+
+[평가 범위 토픽 목록 및 본문]:
+${combinedText}
+
+[인용된 필수공식 목록]:
+${formulasText || '인용된 내용 없음'}
+
+[출제 규칙]:
+1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
+   - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외로 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
+   - 객관식 (type: "객관식"): 3문제 (4지선다형)
+2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
+   - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
+     * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
+     * **정량 계산 문제 (30%, 약 1문제)**: 구체적인 조건 수치를 대입하여 최종 값을 계산해내거나 정량 결과를 묻는 수치 계산 문제.
+     * **심화 원리·비교 문제 (30%, 약 1문제)**: 공학적 메커니즘, 장단점, 비교, 실무 시공 유의사항 등 응용 이해형 문제.
+   
+   - **🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]**: 문제 질문(question) 본문 내에 **문제를 해결하는 데 필요한 공학 수식 자체(예: $E_u = 300 s_u$ 등)나 수식의 특정 수치 범위(예: $E_u = (200 \\sim 500)s_u$ 등), 비례 관계 식 등을 절대로 직접 텍스트로 적어 제공하지 마십시오.** 수식이나 경험적 수치 범위를 지문에 미리 주면 학생의 암기 및 연상 능력을 평가할 수 없습니다. 대신 공식의 명칭("비배수 탄성계수 경험식")이나 변수들의 명칭("비배수 전단강도 $s_u$")만을 제시하고, 학생이 스스로 공식과 범위를 떠올려서 해결하도록 하십시오. (단, 해설(explanation)에서는 학생의 학습을 위해 공식을 상세히 명시하고 계산 과정을 설명해야 합니다.)
+   - 특히 **수치 해석법이나 가설 구조물 해석과 같이 정량적 분석이 필요한 토픽의 경우, 제공된 소스 문서 내에 명시적인 수치나 파라미터가 존재한다면 이를 활용하여 정량 계산 문제를 구성하십시오. 단, 문서에 수치나 수식이 없다면 임의로 비현실적인 수치를 가상 부여하지 마십시오.**
+   - 만약 전형적인 비계산형/정성적 토픽(예: 단순 품질 시험 절차, 단순 행정 제도 등)인 경우에만 일반적인 서술형/이해형 객관식 문제로 출제하되, 이 경우에도 가급적 물리적 변수의 영향도를 묻는 등 최대한 정량화에 가깝게 문제의 수준을 높여 출제하십시오.
+   - **⚠️ [비교/특성 표 출제 규칙 - 극도로 중요!]**: 질문에 비교/특성 표가 필요한 경우, 절대 <table> 등 HTML 태그로 표를 직접 작성하지 말고 일반 텍스트로만 질문을 작성한 뒤 아래의 "tableData" 필드에 표 데이터를 객체 구조로 작성하십시오.
+3. 오답 보기 구성 주의사항 (매우 중요):
+   - 오답 보기(options) 구성 시 **절대로 터무니없거나 극단적인 표현, 혹은 비현실적인 공학적 가정(예: '무한대로 상승시킴', '실시간으로 기하급수적으로 증가함', '영원히 변하지 않음', '아예 발생하지 않음', '폭발함' 등)은 절대로 사용하지 마십시오**. 
+   - 실제 전공 서적이나 실무 기술 기준에 부합하는 **고도로 타당성 있고 그럴듯한 오답(plausible engineering distractors)**으로 구성해 주십시오. 모든 보기는 반드시 원본 소스 및 공학적 상식선에 긴밀히 결합되어야 합니다.
+- **🚨 [객관식 정밀성 및 정답 일치 조건 - 극도로 중요!]**: 모든 객관식(4지선다형) 계산 문제나 수치/공학적 판단 문제를 출제할 때, 계산으로 도출된 정확한 정답 수치나 조건이 4개의 보기(options) 중 반드시 정확히 1개로 존재해야 합니다. 절대로 실제 계산 결과와 보기의 수치가 불일치하여, 해설에서 '실제 계산값은 XX이나 보기 중 가장 가까운 YY를 선택합니다'와 같은 어처구니없는 변명을 적는 출제 오류를 범하지 마십시오. 문제를 생성하기 전에 실제 수식을 대입하여 정답을 한 번 더 직접 엄밀하게 계산하고 검증한 후, 그 결과값(토씨 하나 틀리지 않는 정확한 정답)을 보기와 'answer' 필드에 완벽히 일치하도록 기재하십시오.
+    4. 소스 텍스트의 숨겨진 공학적 개념과 실무 기전을 포착하여 고품격 질문을 던지십시오.
+
+[환각 방지 철칙 (Anti-Hallucination Constraints)]:
+1. 제공된 소스 문서 텍스트(<Source_Document>) 내에 명시적 수치, 허용 안전율, 설계기준(KDS/KCS) 조항 번호나 공식이 없는 경우, 임의로 수식을 유도하거나 외부 시방서 수치 한계를 날조(Hallucination)하지 마십시오.
+2. 문서 범위를 벗어나는 역학적 수치나 비물리적 수치(예: 내부마찰각 60도 이상 등)를 창작하여 모순을 발생시키면 안 됩니다. 수치가 부족하다면 정량 계산 문제 출제를 즉시 우회하고 개념 이해형 문제로 대체하십시오.
+
+${LATEX_PROMPT_INSTRUCTIONS}
+${GENERATION_STANDARDS}
+${ENGINEERING_STANDARDS}
+4. 반드시 추가 텍스트 없이 순수 JSON 배열만 반환하십시오.
+
+[JSON 포맷]:
+[
+  {
+    "type": "주관식",
+    "subtype": "개요",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 평사투영법)",
+    "question": "질문 내용",
+    "answer": "3~5줄 내외의 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안",
+    "concept": "핵심 개념 1줄 요약"
+  },
+  {
+    "type": "객관식",
+    "topic_title": "이 문제의 출제 근거가 되는 토픽 목록 내의 정확한 토픽명 (예: 락볼트 인발시험)",
+    "question": "공학적 현상 분석 질문",
+    "tableData": null,
+    "options": ["보기1", "보기2", "보기3", "보기4"],
+    "answer": "정답 보기와 토씨 하나 틀리지 않는 정답 텍스트",
+    "explanation": "이유와 오답 정밀 해설"
+  }
+] (※ 만약 표가 필요한 질문이라면 "tableData": {"headers": ["구분", "지반 X", "지반 Y"], "rows": [["퇴적 환경", "해수", "담수"]]} 처럼 구조화된 표 객체를 작성하고, 그렇지 않은 일반 질문이면 "tableData": null 로 설정하십시오.)
+`;
+      try {
+        console.log(`[종합평가 추가 생성] (${i + 1}/${TOTAL_BATCHES}) 회차 프롬프트 전송 시작...`);
+        const rawText = await callLLMWithFailover(null, batchPrompt, null, 'question');
+        let text = rawText.trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+        }
+
+        let batchQuestions = null;
+        try {
+          batchQuestions = parseLlmJson(text);
+        } catch {
+          batchQuestions = extractJsonArray(rawText);
+        }
+
+        if (batchQuestions && Array.isArray(batchQuestions)) {
+          aggregatedAiQuestions.push(...batchQuestions);
+          console.log(`[종합평가 추가 배치 성공] (${i + 1}/${TOTAL_BATCHES}) 회차 완료. 누적 문항 수: ${aggregatedAiQuestions.length}`);
+        }
+
+        if (i < TOTAL_BATCHES - 1) {
+          await sleep(1200);
+        }
+      } catch (batchError) {
+        console.warn(`[추가 배치 조회 경고] ${i + 1}회차 생성 중 에러 발생:`, batchError.message);
+      }
+    }
+
+    if (aggregatedAiQuestions.length === 0) {
+      aggregatedAiQuestions = [
+        {
+          type: "객관식",
+          question: "점성토 지반의 압밀 시험에서 하중 압력 변화에 따른 공극비($e$)와 대수 유효 압력($\\log \\sigma'$) 곡선(e-log p 곡선) 상의 주요 거동 특성에 대한 설명으로 가장 적절하지 않은 것은?",
+          options: [
+            "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
+            "선행압밀하중($p_c$)은 흙이 과거에 받았던 최대 유효 연직응력이다.",
+            "재압축지수($C_r$)는 팽창 및 재압축 구간의 평균 기울기로, 일반적으로 압축지수의 1/5 ~ 1/10 정도 수준이다.",
+            "과압밀비(OCR)가 1보다 큰 점토는 전단 시험 시 전단 변형에 의한 체적 팽창(Dilatancy) 거동을 보일 수 있다."
+          ],
+          answer: "압축지수($C_c$)는 규정 압축 영역에서의 직선 기울기로 정의되며, 지반의 소성 활성도가 높을수록 감소한다.",
+          explanation: "지반의 소성 활성도가 높고 압축성이 클수록 압축지수($C_c$)는 오히려 증가합니다."
+        }
+      ];
+    }
+
+    const topicMap = {};
+    topics.forEach(t => {
+      topicMap[t.title.toLowerCase().trim()] = t.id;
+    });
+
+    const cleanedQuestions = aggregatedAiQuestions.map(q => {
+      let topicId = q.topic_id || null;
+      if (q.topic_title) {
+        const cleanedTitle = q.topic_title.toLowerCase().trim();
+        if (topicMap[cleanedTitle]) {
+          topicId = topicMap[cleanedTitle];
+        } else {
+          const matchedKey = Object.keys(topicMap).find(k => k.includes(cleanedTitle) || cleanedTitle.includes(k));
+          if (matchedKey) topicId = topicMap[matchedKey];
+        }
+      }
+      if (!topicId && topics.length > 0) {
+        const matchedTopic = topics.find(t => q.question.includes(t.title) || (t.keywords && t.keywords.split(',').some(k => q.question.includes(k.trim()))));
+        topicId = matchedTopic ? matchedTopic.id : topics[Math.floor(Math.random() * topics.length)].id;
+      }
+      return {
+        type: q.type || "객관식",
+        subtype: q.subtype || null,
+        question: cleanQuizQuestion(q.question),
+        tableData: q.tableData || null,
+        options: q.options || [],
+        answer: q.answer,
+        explanation: q.explanation || '',
+        concept: q.concept || '',
+        topic_id: topicId
+      };
+    });
+
+    const healedFinalQuestions = cleanedQuestions.map(q => healQuizQuestionObject(q));
+    
+    // Combine 2 custom questions and 8 AI questions
+    const finalQuestions = [...customSubjs, ...healedFinalQuestions];
+
+    // Fisher-Yates shuffle the final 10 questions to perfectly mix them
+    for (let i = finalQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [finalQuestions[i], finalQuestions[j]] = [finalQuestions[j], finalQuestions[i]];
+    }
+
+    const validatedFinalQuestions = await Promise.all(
+      finalQuestions.map(async (q) => {
+        const matchedTopic = topics.find(t => t.id === Number(q.topic_id));
+        const title = matchedTopic ? matchedTopic.title : '';
+        const keywords = matchedTopic ? matchedTopic.keywords : '';
+        const text = matchedTopic ? (topicTextMap[matchedTopic.id] || '') : '';
+        const res = await validateAndHealQuestion(q, callLLMWithFailover, title, keywords, text);
+        return healQuizQuestionObject(res);
+      })
+    );
+
+    res.json({ questions: validatedFinalQuestions });
+
+  } catch (err) {
+    console.error('Exam additional route error:', err);
+    res.status(500).json({ error: err.message || '서버 오류가 발생했습니다.' });
   }
 });
 
