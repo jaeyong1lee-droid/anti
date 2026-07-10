@@ -499,7 +499,7 @@ export function FloatingMemorization({
                       </div>
 
                       {isExpanded && (
-                        <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[13px]">
+                        <div className="table-quiz-container overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 p-0 select-text animate-fade-in text-[14px] md:text-[16px]">
                           {(() => {
                             const parsed = parseHtmlTable(t.html);
                             return (
@@ -542,11 +542,11 @@ export function FloatingMemorization({
                                                   setLocalActiveEditCell(null);
                                                 }
                                               }}
-                                              className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-xs rounded"
+                                              className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 font-black focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
                                               autoFocus
                                             />
                                           ) : (
-                                            <div className="w-full text-center p-0.5 text-xs text-slate-200 font-black">
+                                            <div className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200 font-black">
                                               <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
                                             </div>
                                           )}
@@ -618,11 +618,11 @@ export function FloatingMemorization({
                                                     setLocalActiveEditCell(null);
                                                   }
                                                 }}
-                                                className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 focus:outline-none p-0.5 text-xs rounded"
+                                                className="w-full text-center bg-slateCustom-950 border border-slate-700 text-slate-200 focus:outline-none p-0.5 text-[14px] md:text-[16px] rounded"
                                                 autoFocus
                                               />
                                             ) : (
-                                              <div className="w-full text-center p-0.5 text-xs text-slate-200">
+                                              <div className="w-full text-center p-0.5 text-[14px] md:text-[16px] text-slate-200">
                                                 <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
                                               </div>
                                             )}
@@ -688,7 +688,7 @@ export function FloatingMemorization({
                   return (ac.title || '').toLowerCase().includes(query) || (ac.content || '').toLowerCase().includes(query);
                 })
                 .map((ac, idx) => {
-                  if (ac.isLoading) {
+                  if (ac.isLoading && !ac.content) {
                     return (
                       <div key={ac.id || idx} className="px-3 py-4 bg-slateCustom-900 border border-slate-800/80 rounded-xl space-y-3 animate-pulse select-none w-full">
                         <div className="flex items-center gap-2 border-b border-slate-800/60 pb-2">
@@ -700,7 +700,7 @@ export function FloatingMemorization({
                           </h4>
                         </div>
                         <div className="flex flex-col items-center justify-center py-4 gap-2">
-                          <RefreshCw className="animate-spin text-emerald-400" size={20} />
+                          <RefreshCw className="animate-spin text-emerald-450" size={20} />
                           <p className="text-[10px] text-slate-400 text-center">
                             AI 튜터가 최적의 앞글자 단어 조합과 마크다운 비교표를 구성하고 있습니다.
                           </p>
@@ -716,7 +716,13 @@ export function FloatingMemorization({
                   const sentenceText = sentenceMatch ? sentenceMatch[1] : '';
 
                   return (
-                    <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800/80 rounded-xl px-3 py-3 md:p-4 space-y-3 w-full">
+                    <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800/80 rounded-xl px-3 py-3 md:p-4 space-y-3 w-full relative overflow-hidden">
+                      {ac.isLoading && (
+                        <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
+                          <RefreshCw className="animate-spin text-emerald-450" size={20} />
+                          <span className="text-[10px] font-bold text-slate-300">AI가 재조합하는 중...</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black bg-emerald-950/80 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
@@ -802,7 +808,7 @@ export function FloatingMemorization({
                           </button>
                         </div>
 
-                        <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl select-text text-[13px]">
+                        <div className="overflow-x-auto w-full border border-slate-800 bg-slate-950/40 rounded-xl select-text text-[14px] md:text-[16px]">
                           <table className="w-full text-left border-collapse table-fixed min-w-[500px]">
                             <colgroup>
                               <col style={{ width: '42px' }} />
@@ -827,7 +833,7 @@ export function FloatingMemorization({
                                         type="text"
                                         value={rowVal.acronym}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'acronym', e.target.value)}
-                                        className="w-full text-center bg-transparent border-0 text-slate-100 font-extrabold focus:outline-none p-0"
+                                        className="w-full text-center bg-transparent border-0 text-slate-100 font-extrabold focus:outline-none p-0 text-[14px] md:text-[16px]"
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
@@ -835,7 +841,7 @@ export function FloatingMemorization({
                                         type="text"
                                         value={rowVal.word}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'word', e.target.value)}
-                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-xs"
+                                        className="w-full bg-transparent border-0 text-slate-200 font-bold focus:outline-none p-0 text-[14px] md:text-[16px]"
                                       />
                                     </td>
                                     <td className="p-1 border-r border-slate-850">
@@ -849,7 +855,7 @@ export function FloatingMemorization({
                                         value={rowVal.description}
                                         onChange={(e) => handleUpdateAcronymRowCell(ac.id, rIdx, 'description', e.target.value)}
                                         rows={1}
-                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-xs resize-none overflow-hidden"
+                                        className="w-full bg-transparent border-0 text-slate-300 focus:outline-none p-0 text-[14px] md:text-[16px] resize-none overflow-hidden"
                                       />
                                     </td>
                                     <td className="p-1 text-center align-middle select-none">
@@ -1024,7 +1030,7 @@ export function FloatingMemorization({
                               type="text"
                               value={localEditingOverviewText}
                               onChange={(e) => setLocalEditingOverviewText(e.target.value)}
-                              className="w-full bg-slateCustom-950 border border-slate-800 text-white rounded px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-rose-500"
+                              className="w-full bg-slateCustom-950 border border-slate-800 text-white rounded px-2.5 py-1 text-[14px] md:text-[16px] font-bold focus:outline-none focus:border-rose-500"
                               placeholder="개요 제목"
                               autoFocus
                             />
@@ -1035,7 +1041,7 @@ export function FloatingMemorization({
                               value={localEditingOverviewContent}
                               onChange={(e) => setLocalEditingOverviewContent(e.target.value)}
                               rows={8}
-                              className="w-full bg-slateCustom-950 border border-slate-800 text-slate-200 text-xs rounded p-2 focus:outline-none focus:border-rose-500 font-mono resize-none"
+                              className="w-full bg-slateCustom-950 border border-slate-800 text-slate-200 text-[14px] md:text-[16px] rounded p-2 focus:outline-none focus:border-rose-500 font-mono resize-none"
                               placeholder="개요 마크다운 내용을 입력하세요..."
                             />
                           </div>
@@ -1066,7 +1072,7 @@ export function FloatingMemorization({
                       )}
 
                       {isExpanded && !isEditing && (
-                        <div className="text-slate-355 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
+                        <div className="text-slate-355 text-[14px] md:text-[16px] leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
                           <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
                         </div>
                       )}

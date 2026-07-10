@@ -23083,7 +23083,7 @@ ${itemsStr}
                                 {isExpanded && (
                                   <div className="table-quiz-container overflow-x-auto rounded-xl border border-white/20 bg-slate-950/40 p-0 select-text animate-fade-in relative min-h-[150px]">
                                     {tableRegeneratingIds[t.id] && (
-                                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
+                                      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
                                         <RefreshCw className="animate-spin text-emerald-450" size={28} />
                                         <span className="text-xs font-bold text-slate-300">AI가 표를 재작성하는 중...</span>
                                       </div>
@@ -23091,7 +23091,7 @@ ${itemsStr}
                                     {(() => {
                                       const parsed = parseHtmlTable(t.html);
                                       return (
-                                        <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] sm:text-[15px] min-w-full">
+                                        <table className="table-quiz-table w-full table-auto text-center border-collapse text-[14px] md:text-[16px] min-w-full">
                                           <thead>
                                             <tr className="bg-slate-900/80 text-slate-355 border-b border-white/20">
                                               {parsed.headers.map((h, hIdx) => {
@@ -23172,7 +23172,7 @@ ${itemsStr}
                                                             setActiveEditCell(null);
                                                           }
                                                         }}
-                                                        className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-black p-0 text-[14px] md:text-sm resize-none block align-middle overflow-hidden"
+                                                        className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-black p-0 text-[14px] md:text-[16px] resize-none block align-middle overflow-hidden"
                                                         rows={1}
                                                         ref={(el) => {
                                                           if (el) {
@@ -23186,7 +23186,7 @@ ${itemsStr}
                                                       />
                                                     ) : (
                                                       <div className="inline-flex items-center justify-center gap-1.5 flex-wrap">
-                                                         <span className="text-[14px] md:text-sm text-slate-200 font-black select-text">
+                                                         <span className="text-[14px] md:text-[16px] text-slate-200 font-black select-text">
                                                            <LatexRenderer text={h} katexLoaded={katexLoaded} className="inline" />
                                                          </span>
                                                          <div className="flex items-center gap-1 select-none shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -23284,7 +23284,7 @@ ${itemsStr}
                                                               setActiveEditCell(null);
                                                             }
                                                           }}
-                                                          className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-semibold p-0 text-[14px] md:text-sm resize-none block align-middle overflow-hidden"
+                                                          className="w-full text-center bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 text-slate-200 font-semibold p-0 text-[14px] md:text-[16px] resize-none block align-middle overflow-hidden"
                                                           rows={1}
                                                           ref={(el) => {
                                                             if (el) {
@@ -23297,7 +23297,7 @@ ${itemsStr}
                                                           }}
                                                         />
                                                       ) : (
-                                                        <div className="w-full text-center p-1 text-[14px] md:text-sm text-slate-200 font-semibold select-text">
+                                                        <div className="w-full text-center p-1 text-[14px] md:text-[16px] text-slate-200 font-semibold select-text">
                                                           <LatexRenderer text={cell} katexLoaded={katexLoaded} className="inline" />
                                                         </div>
                                                       )}
@@ -23398,9 +23398,9 @@ ${itemsStr}
                                    (ac.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                           })
                           .map((ac, idx) => {
-                            if (ac.isLoading) {
+                            if (ac.isLoading && !ac.content) {
                               return (
-                                <div key={ac.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 animate-pulse select-none w-full">
+                                <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 animate-pulse select-none w-full">
                                   <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
                                     <span className="text-[11px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
                                       AI
@@ -23421,7 +23421,13 @@ ${itemsStr}
                             const isExpanded = !!expandedAcronymIds[ac.id];
                             const isEditing = editingAcronymId === ac.id;
                             return (
-                              <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+                              <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 relative overflow-hidden">
+                                {ac.isLoading && (
+                                  <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
+                                    <RefreshCw className="animate-spin text-emerald-400" size={28} />
+                                    <span className="text-xs font-bold text-slate-300">AI가 앞글자를 재조합하는 중...</span>
+                                  </div>
+                                )}
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
@@ -23653,11 +23659,11 @@ ${itemsStr}
                                                             }
                                                           }}
                                                           rows={1}
-                                                          className="w-full bg-slateCustom-950 border border-slate-700 focus:outline-none focus:ring-0 text-slate-200 font-medium text-[14px] resize-none overflow-hidden block py-1.5 px-2 rounded-lg"
+                                                          className="w-full bg-slateCustom-950 border border-slate-700 focus:outline-none focus:ring-0 text-slate-200 font-medium text-[14px] md:text-[16px] resize-none overflow-hidden block py-1.5 px-2 rounded-lg"
                                                           placeholder="암기단어 : 설명"
                                                         />
                                                       ) : (
-                                                        <div className="w-full py-1.5 px-2 text-slate-200 font-medium text-[14px] text-left hover:bg-slate-800/40 rounded transition-colors">
+                                                        <div className="w-full py-1.5 px-2 text-slate-200 font-medium text-[14px] md:text-[16px] text-left hover:bg-slate-800/40 rounded transition-colors">
                                                           {combinedValue ? (
                                                             <LatexRenderer text={combinedValue} katexLoaded={katexLoaded} isMarkdown={true} />
                                                           ) : (
@@ -23806,7 +23812,7 @@ ${itemsStr}
                                      (ov.content || '').toLowerCase().includes(formulaSearchQuery.toLowerCase());
                             })
                           .map((ov, idx) => {
-                            if (ov.isLoading) {
+                            if (ov.isLoading && !ov.content) {
                               return (
                                 <div key={ov.id || idx} className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 animate-pulse select-none w-full">
                                   <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
@@ -23833,8 +23839,14 @@ ${itemsStr}
                                 id={`overview-card-${ov.id}`}
                                 key={ov.id || idx}
                                 style={{ scrollMarginTop: '75px' }}
-                                className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden"
+                                className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden relative"
                               >
+                                {ov.isLoading && (
+                                  <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
+                                    <RefreshCw className="animate-spin text-rose-450" size={28} />
+                                    <span className="text-xs font-bold text-slate-300">AI가 개요를 재생성하는 중...</span>
+                                  </div>
+                                )}
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">
@@ -23962,7 +23974,7 @@ ${itemsStr}
                                       <div className="space-y-4 animate-fade-in w-full">
                                         {/* 1. 개요 */}
                                         {parsed.definition && (
-                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left py-1.5 px-0.5">
+                                          <div className="text-slate-200 text-[14px] md:text-[16px] leading-relaxed text-left py-1.5 px-0.5">
                                             <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
                                             <div className="font-bold text-white leading-relaxed">
                                               <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -23977,7 +23989,7 @@ ${itemsStr}
                                             <div className="flex flex-col gap-1 w-full">
                                               {steps.map((step, sIdx) => (
                                                 <React.Fragment key={sIdx}>
-                                                  <div className="text-slate-250 text-xs sm:text-sm font-semibold leading-relaxed py-1 px-0.5">
+                                                  <div className="text-slate-250 text-[14px] md:text-[16px] font-semibold leading-relaxed py-1 px-0.5">
                                                     <div className="flex gap-2.5 items-start">
                                                       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
                                                         {sIdx + 1}
@@ -24004,10 +24016,10 @@ ${itemsStr}
                                           if (mdTable && mdTable.tableData && mdTable.tableData.headers) {
                                             const { headers, rows } = mdTable.tableData;
                                             return (
-                                              <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5 w-full">
+                                              <div className="text-slate-200 text-[14px] md:text-[16px] leading-relaxed text-left animate-fade-in py-1.5 px-0.5 w-full">
                                                 <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                                                 <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin">
-                                                  <table className="w-[calc(100%+64px)] md:w-full text-center border-collapse text-[12px] sm:text-[14px] min-w-[calc(100%+64px)] md:min-w-full">
+                                                  <table className="w-[calc(100%+64px)] md:w-full text-center border-collapse text-[14px] md:text-[16px] min-w-[calc(100%+64px)] md:min-w-full">
                                                     <thead>
                                                       <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
                                                         {headers.map((h, hIdx) => {
@@ -24201,7 +24213,7 @@ ${itemsStr}
                                             );
                                           }
                                           return (
-                                            <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
+                                            <div className="text-slate-200 text-[14px] md:text-[16px] leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                               <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
                                               <div className="text-slate-250 leading-relaxed font-normal">
                                                 <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
@@ -24212,7 +24224,7 @@ ${itemsStr}
 
                                         {/* 공학적 의미/한계성 */}
                                         {parsed.significance && (
-                                          <div className="text-slate-200 text-xs sm:text-sm leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
+                                          <div className="text-slate-200 text-[14px] md:text-[16px] leading-relaxed text-left animate-fade-in py-1.5 px-0.5">
                                             <span className="text-[10px] text-rose-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚠️ 공학적 의미 및 한계성</span>
                                             <div className="text-slate-250 leading-relaxed font-semibold">
                                               <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -24222,7 +24234,7 @@ ${itemsStr}
 
                                         {/* 3. 직관적 의미 */}
                                         {parsed.intuitive && (
-                                          <div className="text-slate-355 text-xs sm:text-sm font-medium leading-relaxed text-left py-1.5 px-0.5">
+                                          <div className="text-slate-355 text-[14px] md:text-[16px] font-medium leading-relaxed text-left py-1.5 px-0.5">
                                             <span className="text-[10px] text-violet-400 font-extrabold block mb-1.5 uppercase tracking-wider select-none">💡 직관적 본질 (비유)</span>
                                             <div className="text-slate-300 leading-relaxed">
                                               <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
@@ -24235,7 +24247,7 @@ ${itemsStr}
 
                                   // Fallback for old overview text content
                                   return (
-                                    <div className="text-slate-300 text-xs md:text-sm leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
+                                    <div className="text-slate-300 text-[14px] md:text-[16px] leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
                                       <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
                                     </div>
                                   );
