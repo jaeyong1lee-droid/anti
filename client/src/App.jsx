@@ -23082,12 +23082,7 @@ ${itemsStr}
 
                                 {isExpanded && (
                                   <div className="table-quiz-container overflow-x-auto rounded-xl border border-white/20 bg-slate-950/40 p-0 select-text animate-fade-in relative min-h-[150px]">
-                                    {tableRegeneratingIds[t.id] && (
-                                      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
-                                        <RefreshCw className="animate-spin text-emerald-450" size={28} />
-                                        <span className="text-xs font-bold text-slate-300">AI가 표를 재작성하는 중...</span>
-                                      </div>
-                                    )}
+
                                     {(() => {
                                       const parsed = parseHtmlTable(t.html);
                                       return (
@@ -23422,12 +23417,7 @@ ${itemsStr}
                             const isEditing = editingAcronymId === ac.id;
                             return (
                               <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 relative overflow-hidden">
-                                {ac.isLoading && (
-                                  <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
-                                    <RefreshCw className="animate-spin text-emerald-400" size={28} />
-                                    <span className="text-xs font-bold text-slate-300">AI가 앞글자를 재조합하는 중...</span>
-                                  </div>
-                                )}
+
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-emerald-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20 shrink-0 select-none">
@@ -23841,12 +23831,7 @@ ${itemsStr}
                                 style={{ scrollMarginTop: '75px' }}
                                 className="px-2.5 py-4 sm:p-5 md:p-6 space-y-4 transition-all duration-200 w-full max-w-full overflow-hidden relative"
                               >
-                                {ov.isLoading && (
-                                  <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
-                                    <RefreshCw className="animate-spin text-rose-450" size={28} />
-                                    <span className="text-xs font-bold text-slate-300">AI가 개요를 재생성하는 중...</span>
-                                  </div>
-                                )}
+
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                                   <div className="flex items-start gap-2.5 md:flex-1 min-w-0">
                                     <span className="text-[11px] font-black bg-rose-950/80 text-rose-400 px-2.5 py-1 rounded-lg border border-rose-500/20 shrink-0 select-none">

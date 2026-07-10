@@ -717,12 +717,6 @@ export function FloatingMemorization({
 
                   return (
                     <div key={ac.id || idx} className="bg-slateCustom-900 border border-slate-800/80 rounded-xl px-3 py-3 md:p-4 space-y-3 w-full relative overflow-hidden">
-                      {ac.isLoading && (
-                        <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-20">
-                          <RefreshCw className="animate-spin text-emerald-450" size={20} />
-                          <span className="text-[10px] font-bold text-slate-300">AI가 재조합하는 중...</span>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black bg-emerald-950/80 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
