@@ -8495,6 +8495,14 @@ export default function App() {
   const handlePopupDragStart = (e) => {
     if (e.target.closest('button, input, textarea')) return;
     
+    // 1. Sync coords synchronously on drag start to prevent async React batch rendering warp (0, 0 warp)
+    if (latestDragPopupCoordsRef.current.x === 0 && latestDragPopupCoordsRef.current.y === 0) {
+      latestDragPopupCoordsRef.current = { x: selectionPopupRef.current.x, y: selectionPopupRef.current.y };
+    } else if (latestDragPopupCoordsRef.current.x !== selectionPopupRef.current.x || latestDragPopupCoordsRef.current.y !== selectionPopupRef.current.y) {
+      // Force sync with state if they diverged
+      latestDragPopupCoordsRef.current = { x: selectionPopupRef.current.x, y: selectionPopupRef.current.y };
+    }
+
     isDraggingPopupRef.current = true;
     
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -8508,6 +8516,13 @@ export default function App() {
     // Standard drag state lock
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
+
+    // Prevent text selection and native ghost drag outline behavior
+    const preventDefaultAction = (event) => {
+      event.preventDefault();
+    };
+    window.addEventListener('selectstart', preventDefaultAction);
+    window.addEventListener('dragstart', preventDefaultAction);
 
     // Temporarily disable pointer-events on all iframes to prevent event interception
     const iframes = document.querySelectorAll('iframe');
@@ -8540,9 +8555,12 @@ export default function App() {
     const handleDragEnd = () => {
       if (dragPopupRafId) cancelAnimationFrame(dragPopupRafId);
 
-      // Restore iframe pointer-events and text selection
+      // Restore iframe pointer-events, text selection and drag block listeners
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      window.removeEventListener('selectstart', preventDefaultAction);
+      window.removeEventListener('dragstart', preventDefaultAction);
+      
       const iframes = document.querySelectorAll('iframe');
       iframes.forEach(iframe => {
         iframe.style.pointerEvents = 'auto';
