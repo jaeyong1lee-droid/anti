@@ -2,6 +2,11 @@
 // Markdown, KaTeX LaTeX, and HTML Iframe Rendering Helper Utilities
 // ============================================================================
 
+export const formatGradingReason = (reason) => {
+  if (!reason) return '';
+  return reason.replace(/(\b\d+(?:\.\d+)?)(?=\s*(?:점\s*)?감점)/g, '10점 만점 기준 $1');
+};
+
 export const buildHtmlDocument = (text, isPopup = false) => {
   let cleanedText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   

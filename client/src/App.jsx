@@ -22,7 +22,8 @@ import {
   getSelectionTextWithLatex,
   isSameConditionValue,
   areCellsEqual,
-  getTableScoreColorTheme
+  getTableScoreColorTheme,
+  formatGradingReason
 } from './utils/renderingHelpers';
 import { 
   Brain, 
