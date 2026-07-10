@@ -9846,20 +9846,6 @@ export default function App() {
     const correctMC = correctCount;
     const scoreMC = totalMC > 0 ? Math.min(100, Math.max(0, Math.round(totalScoreObtained * 10) / 10)) : 100;
 
-    // 서버의 복습 세션 캐싱 문제 초기화 (완료되었으므로 캐시 삭제)
-    if (selectedTopic.id) {
-      const deleteUrl = sId 
-        ? `${API_BASE}/api/session/review/topic/${selectedTopic.id}?scheduleId=${sId}`
-        : `${API_BASE}/api/session/review/topic/${selectedTopic.id}`;
-      fetch(deleteUrl, { method: 'DELETE' })
-        .catch(e => console.warn('복습 완료 시 세션 리셋 실패:', e));
-      
-      const progressKey = selectedTopic.schedule_id 
-        ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
-        : `anti_review_progress_${selectedTopic.id}`;
-      localStorage.removeItem(progressKey); // 복습 완료 시 로컬 진행률 초기화
-    }
-
     try {
       // 퀴즈 결과 및 채점된 점수를 서버로 전송 (영구 보존 및 약점 극복 조건 탈출)
       const res = await fetch(`${API_BASE}/api/quiz/submit`, {
@@ -9897,6 +9883,12 @@ export default function App() {
           showNotification(`[${selectedTopic.title}] ${sRound}회차 복습 완료 및 성적이 ${scoreMC}점으로 업데이트되었습니다!`, 'success');
         }
         
+        // 복습 완료 시 로컬 진행률 초기화
+        const progressKey = selectedTopic.schedule_id 
+          ? `anti_review_progress_sched_${selectedTopic.schedule_id}`
+          : `anti_review_progress_${selectedTopic.id}`;
+        localStorage.removeItem(progressKey);
+
         // 목록 갱신
         fetchTodayReviews(referenceDate);
         fetchAllTopics();
