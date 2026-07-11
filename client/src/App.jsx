@@ -1377,6 +1377,20 @@ const cleanOptionText = (text) => {
   return text.replace(/^(?:\d+\.(?!\d)\s*|\d+\)\s*|[①-④]\.?\s*)/g, '').trim();
 };
 
+const safeFetchJson = async (url, options) => {
+  const res = await fetch(url, options);
+  let data = {};
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    data = await res.json();
+  } else {
+    const errText = await res.text();
+    throw new Error(errText || `서버 오류가 발생했습니다. (상태 코드: ${res.status})`);
+  }
+  if (!res.ok) throw new Error(data.error || '요청 처리에 실패했습니다.');
+  return data;
+};
+
 export default function App() {
   const buildTimeMs = typeof __BUILD_TIME_MS__ !== 'undefined' ? __BUILD_TIME_MS__ : Date.now();
   const buildTimeStr = typeof __BUILD_TIME_STR__ !== 'undefined' ? __BUILD_TIME_STR__ : 'local_dev';
@@ -10330,7 +10344,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const data = await safeFetchJson(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -10341,8 +10355,6 @@ export default function App() {
           progressId
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       setRealTimeChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
@@ -11338,7 +11350,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const data = await safeFetchJson(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -11349,8 +11361,6 @@ export default function App() {
           progressId
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       setChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {
@@ -11615,7 +11625,7 @@ export default function App() {
 4. 친절하고 전문적인 AI 공학 튜터의 톤앤매너로 출제해주세요.`;
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const data = await safeFetchJson(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -11625,8 +11635,6 @@ export default function App() {
           progressId
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '문제 출제 실패');
       
       stopProgressPolling('문제가 성공적으로 출제되었습니다!', 100);
       setChatHistory(prev => {
@@ -14783,7 +14791,7 @@ ${itemsStr}
 4. 친절하고 전문적인 AI 공학 튜터의 톤앤매너로 출제해주세요.`;
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const data = await safeFetchJson(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -14793,8 +14801,6 @@ ${itemsStr}
           progressId
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '문제 출제 실패');
       
       stopProgressPolling('공식 문제 생성이 완료되었습니다!', 100);
       const newHistory = [{ role: 'model', text: data.text }];
@@ -14848,7 +14854,7 @@ ${itemsStr}
     startProgressPolling(progressId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const data = await safeFetchJson(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -14862,8 +14868,6 @@ ${itemsStr}
           progressId
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '답변 생성 실패');
       stopProgressPolling('답변 생성이 완료되었습니다!', 100);
       saveFormulaChatHistory(prev => [...prev, { role: 'model', text: data.text }]);
     } catch (err) {

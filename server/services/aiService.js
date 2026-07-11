@@ -178,10 +178,16 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
   }
 
   let attemptedAny = false;
+  const failedKeys = new Set();
 
   for (let idx = 0; idx < executionList.length; idx++) {
     const task = executionList[idx];
     const key = task.key;
+
+    if (failedKeys.has(key)) {
+      continue;
+    }
+
     const maskedKey = `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
     const modelName = task.model;
     const isGroq = task.type === 'groq';
@@ -329,7 +335,16 @@ export async function callLLMWithFailover(systemInstruction, userPrompt, image =
         keyErrors.push(`${task.label} (${modelName}): ${err.message?.substring(0, 120)}`);
 
         const isQuota = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
-        if (isQuota) {
+        const isAuthError = err.message?.includes('API_KEY_INVALID') || err.message?.includes('invalid') || err.message?.includes('not found') || err.status === 400 || err.status === 403;
+
+        if (isQuota || isAuthError) {
+          failedKeys.add(key);
+          console.log(`[키 장애 감지] ${task.label}에 문제(Quota/Auth)가 있어 해당 키의 다른 모델 시도를 생략하고 다음 키로 즉시 페일오버합니다.`);
+          break;
+        }
+
+        const isQuotaCheck = err.status === 429 || err.message?.includes('429') || err.message?.includes('Quota') || err.message?.includes('quota') || err.message?.includes('rate');
+        if (isQuotaCheck) {
           const isVercel = !!process.env.VERCEL;
           if (isVercel) {
             console.log('[Vercel 환경] 429 감지. 타임아웃 방지를 위해 즉시 다른 키/모델로 페일오버를 시도합니다.');
