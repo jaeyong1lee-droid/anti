@@ -2143,9 +2143,9 @@ ${adjustments.map((a, idx) => `
       console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
     }
 
-    // Generate 5 new AI questions (1 batch of 5)
+    // Generate 20 new AI questions (4 batches of 5)
     let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 1;
+    const TOTAL_BATCHES = 4;
     console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
     if (progressId) {
       progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 예상 문제를 심층 분석 및 생성하는 중...', 90, 1800, 3);
@@ -2325,16 +2325,16 @@ ${ENGINEERING_STANDARDS}
       return result;
     };
 
-    selectedQuestions.push(...take(shufGaeyo, 2));
-    selectedQuestions.push(...take(shufGongsik, 2));
-    selectedQuestions.push(...take(shufTable, 2));
-    selectedQuestions.push(...take(shufDandap, 2));
-    selectedQuestions.push(...take(shufMC, 5));
+    selectedQuestions.push(...take(shufGaeyo, 5));
+    selectedQuestions.push(...take(shufGongsik, 5));
+    selectedQuestions.push(...take(shufTable, 5));
+    selectedQuestions.push(...take(shufDandap, 5));
+    selectedQuestions.push(...take(shufMC, 15));
 
-    // If total selected is less than 13, fill from remaining questions in other pools
+    // If total selected is less than 35, fill from remaining questions in other pools
     const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
     const shufRemaining = shuffleArray(remainingPool);
-    const needed = Math.max(0, 13 - selectedQuestions.length);
+    const needed = Math.max(0, 35 - selectedQuestions.length);
     selectedQuestions.push(...take(shufRemaining, needed));
 
     console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
