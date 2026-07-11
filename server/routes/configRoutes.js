@@ -501,15 +501,40 @@ router.get('/session/images', async (req, res) => {
       const parsed = JSON.parse(rows[0].value);
       const formulaImages = parsed.formulaImages || [];
 
+      // Check if migration is needed (has raw base64 data)
       const needsMigration = formulaImages.some(item => 
         (item.base64Images || []).some(imgStr => imgStr && imgStr.startsWith('data:image/'))
       );
+
+      // Helper to map Vercel Blob URLs to our proxy URLs
+      const mapToProxy = (items) => {
+        return items.map(item => {
+          const base64List = item.base64Images || (item.base64Image ? [item.base64Image] : []);
+          const mappedUrls = base64List.map(url => {
+            if (url && url.includes('blob.vercel-storage.com') && !url.includes('/images/proxy')) {
+              return `/api/session/images/proxy?url=${encodeURIComponent(url)}`;
+            }
+            return url;
+          });
+          return {
+            ...item,
+            base64Images: mappedUrls,
+            base64Image: mappedUrls[0] || null
+          };
+        });
+      };
 
       if (needsMigration && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
         console.log('[Self-Healing] Migrating formula base64 images to Vercel Blob URLs...');
         const processedImages = await Promise.all(formulaImages.map(async (item) => {
           const base64List = item.base64Images || (item.base64Image ? [item.base64Image] : []);
           const uploadedUrls = await Promise.all(base64List.map(async (imgStr, idx) => {
+            if (imgStr && imgStr.startsWith('/api/session/images/proxy')) {
+              const queryStr = imgStr.split('proxy?')[1];
+              const urlParams = new URLSearchParams(queryStr);
+              return urlParams.get('url') || imgStr;
+            }
+
             if (imgStr && imgStr.startsWith('data:image/')) {
               const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
               if (match) {
@@ -540,9 +565,9 @@ router.get('/session/images', async (req, res) => {
         const migratedValue = JSON.stringify({ formulaImages: processedImages });
         await saveSessionValue('formula_images', migratedValue);
         console.log('[Self-Healing] Formula images successfully migrated and database updated!');
-        res.json({ data: { formulaImages: processedImages } });
+        res.json({ data: { formulaImages: mapToProxy(processedImages) } });
       } else {
-        res.json({ data: parsed });
+        res.json({ data: { formulaImages: mapToProxy(formulaImages) } });
       }
     } else {
       res.json({ data: { formulaImages: [] } });
@@ -550,6 +575,40 @@ router.get('/session/images', async (req, res) => {
   } catch (err) {
     console.error('GET /api/session/images error:', err);
     res.json({ data: { formulaImages: [] } });
+  }
+});
+
+// GET /api/session/images/proxy
+router.get('/session/images/proxy', async (req, res) => {
+  try {
+    const imageUrl = req.query.url;
+    if (!imageUrl) {
+      return res.status(400).send('Missing url parameter');
+    }
+
+    const headers = {};
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+    } else if (process.env.VERCEL_OIDC_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.VERCEL_OIDC_TOKEN}`;
+    }
+
+    const response = await fetch(imageUrl, { headers });
+    if (!response.ok) {
+      console.error(`Failed to proxy image ${imageUrl}: ${response.status} ${response.statusText}`);
+      return res.status(response.status).send('Failed to fetch image');
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.send(buffer);
+  } catch (err) {
+    console.error('Proxy image error:', err);
+    res.status(500).send('Internal server error');
   }
 });
 
@@ -562,6 +621,13 @@ router.post('/session/images', async (req, res) => {
     const processedImages = await Promise.all((formulaImages || []).map(async (item) => {
       const base64List = item.base64Images || (item.base64Image ? [item.base64Image] : []);
       const uploadedUrls = await Promise.all(base64List.map(async (imgStr, idx) => {
+        // Decode proxy URL to canonical Vercel Blob URL if it exists
+        if (imgStr && imgStr.startsWith('/api/session/images/proxy')) {
+          const queryStr = imgStr.split('proxy?')[1];
+          const urlParams = new URLSearchParams(queryStr);
+          return urlParams.get('url') || imgStr;
+        }
+
         if (imgStr && imgStr.startsWith('data:image/')) {
           const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
           if (match) {
@@ -1009,15 +1075,32 @@ router.post('/image-standards/analyze', async (req, res) => {
     }
 
     const imageParts = await Promise.all(incomingImages.map(async (imgStr) => {
-      if (imgStr && (imgStr.startsWith('http://') || imgStr.startsWith('https://'))) {
+      let targetUrl = imgStr;
+      
+      // Decode proxy URL to canonical Vercel Blob URL if it exists
+      if (imgStr && imgStr.startsWith('/api/session/images/proxy')) {
+        const queryStr = imgStr.split('proxy?')[1];
+        const urlParams = new URLSearchParams(queryStr);
+        targetUrl = urlParams.get('url') || imgStr;
+      }
+
+      if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
         try {
-          const resp = await fetch(imgStr);
+          const headers = {};
+          if (targetUrl.includes('blob.vercel-storage.com')) {
+            if (process.env.BLOB_READ_WRITE_TOKEN) {
+              headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+            } else if (process.env.VERCEL_OIDC_TOKEN) {
+              headers['Authorization'] = `Bearer ${process.env.VERCEL_OIDC_TOKEN}`;
+            }
+          }
+          const resp = await fetch(targetUrl, { headers });
           const arrayBuffer = await resp.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
           const mimeType = resp.headers.get('content-type') || 'image/png';
           return { data: buffer.toString('base64'), mimeType };
         } catch (fetchErr) {
-          console.error(`Failed to fetch image from URL: ${imgStr}`, fetchErr);
+          console.error(`Failed to fetch image from URL: ${targetUrl}`, fetchErr);
         }
       }
       let mimeType = 'image/png';
