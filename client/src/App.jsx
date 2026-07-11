@@ -18390,7 +18390,7 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, isRevd)}`}>
                                 <div className="space-y-1">
@@ -21799,7 +21799,7 @@ ${itemsStr}
                                 </div>
                               )}
                             </div>
-                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기' && q.type !== '주관식 (서술)' && q.subtype !== '서술') ? (
+                          ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') ? (
                             <div className="space-y-3 w-full animate-fade-in">
                               <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getSubjectiveContainerClasses(idx, !!examRevealed[idx])}`}>
                                 <div className="space-y-1">
