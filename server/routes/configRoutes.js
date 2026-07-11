@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
+import { put } from '@vercel/blob';
 import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -498,7 +499,51 @@ router.get('/session/images', async (req, res) => {
     const rows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['formula_images']);
     if (rows.length > 0 && rows[0].value) {
       const parsed = JSON.parse(rows[0].value);
-      res.json({ data: parsed });
+      const formulaImages = parsed.formulaImages || [];
+
+      const needsMigration = formulaImages.some(item => 
+        (item.base64Images || []).some(imgStr => imgStr && imgStr.startsWith('data:image/'))
+      );
+
+      if (needsMigration && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
+        console.log('[Self-Healing] Migrating formula base64 images to Vercel Blob URLs...');
+        const processedImages = await Promise.all(formulaImages.map(async (item) => {
+          const base64List = item.base64Images || (item.base64Image ? [item.base64Image] : []);
+          const uploadedUrls = await Promise.all(base64List.map(async (imgStr, idx) => {
+            if (imgStr && imgStr.startsWith('data:image/')) {
+              const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
+              if (match) {
+                const mimeType = match[1];
+                const base64Data = match[2];
+                const buffer = Buffer.from(base64Data, 'base64');
+                const extension = mimeType.split('/')[1] || 'png';
+                const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
+                try {
+                  const blob = await put(fileName, buffer, { access: 'public' });
+                  return blob.url;
+                } catch (uploadErr) {
+                  console.error(`[Self-Healing] Upload failed: ${uploadErr.message}`);
+                  return imgStr;
+                }
+              }
+            }
+            return imgStr;
+          }));
+
+          return {
+            ...item,
+            base64Images: uploadedUrls,
+            base64Image: uploadedUrls[0] || null
+          };
+        }));
+
+        const migratedValue = JSON.stringify({ formulaImages: processedImages });
+        await saveSessionValue('formula_images', migratedValue);
+        console.log('[Self-Healing] Formula images successfully migrated and database updated!');
+        res.json({ data: { formulaImages: processedImages } });
+      } else {
+        res.json({ data: parsed });
+      }
     } else {
       res.json({ data: { formulaImages: [] } });
     }
@@ -513,7 +558,34 @@ router.post('/session/images', async (req, res) => {
   try {
     await ensureSessionTable();
     const { formulaImages } = req.body;
-    const value = JSON.stringify({ formulaImages });
+
+    const processedImages = await Promise.all((formulaImages || []).map(async (item) => {
+      const base64List = item.base64Images || (item.base64Image ? [item.base64Image] : []);
+      const uploadedUrls = await Promise.all(base64List.map(async (imgStr, idx) => {
+        if (imgStr && imgStr.startsWith('data:image/')) {
+          const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
+          if (match) {
+            const mimeType = match[1];
+            const base64Data = match[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+            const extension = mimeType.split('/')[1] || 'png';
+            const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
+            console.log(`Uploading formula image to Vercel Blob: ${fileName}`);
+            const blob = await put(fileName, buffer, { access: 'public' });
+            return blob.url;
+          }
+        }
+        return imgStr;
+      }));
+
+      return {
+        ...item,
+        base64Images: uploadedUrls,
+        base64Image: uploadedUrls[0] || null
+      };
+    }));
+
+    const value = JSON.stringify({ formulaImages: processedImages });
     await saveSessionValue('formula_images', value);
     res.json({ ok: true });
   } catch (err) {
@@ -936,16 +1008,27 @@ router.post('/image-standards/analyze', async (req, res) => {
       return res.status(400).json({ error: '이미지 데이터가 존재하지 않습니다.' });
     }
 
-    const imageParts = incomingImages.map(imgStr => {
+    const imageParts = await Promise.all(incomingImages.map(async (imgStr) => {
+      if (imgStr && (imgStr.startsWith('http://') || imgStr.startsWith('https://'))) {
+        try {
+          const resp = await fetch(imgStr);
+          const arrayBuffer = await resp.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const mimeType = resp.headers.get('content-type') || 'image/png';
+          return { data: buffer.toString('base64'), mimeType };
+        } catch (fetchErr) {
+          console.error(`Failed to fetch image from URL: ${imgStr}`, fetchErr);
+        }
+      }
       let mimeType = 'image/png';
       let rawBase64 = imgStr;
-      const match = imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/);
+      const match = imgStr ? imgStr.match(/^data:(image\/[^;]+);base64,(.+)$/) : null;
       if (match) {
         mimeType = match[1];
         rawBase64 = match[2];
       }
       return { data: rawBase64, mimeType };
-    });
+    }));
 
     const systemInstruction = `당신은 대한민국 토질및기초 기술사 자격시험 전문 채점위원이자 튜터입니다.
 사용자가 붙여넣은 공학 그림/그래프/도표를 바탕으로 원본 분석을 수행하십시오.
