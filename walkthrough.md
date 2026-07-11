@@ -413,6 +413,9 @@
      - **해결**:
        - 서버 기동 시 및 지침 GET API 호출 시, 로컬 파일 시스템 상의 지침 소스 파일 수정 시각(`fs.statSync(filePath).mtime`)과 데이터베이스 캐시의 최종 업데이트 시각(`updated_at`)을 비교하는 `checkIsFileNewer` 함수를 도입하였습니다.
        - 파일 수정 시각이 데이터베이스 캐시보다 최신일 때(개발자가 직접 파일을 수정한 경우)는 파일을 절차적 기준(Source of Truth)으로 삼아, 파일에서 삭제된 지침은 데이터베이스 캐시에서도 온전히 소멸하고 추가된 내용은 DB에 즉시 적재하도록 완벽히 정비했습니다.
-  7. **통합 컴파일 및 빌드 검증**:
+  7. **지침 GET API 내 catch 블록의 닫는 중괄호 누락 구문 오류(SyntaxError) 수정 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - **원인**: 이전 `multi_replace_file_content`로 `configRoutes.js` 내의 `checkIsFileNewer` 함수 연동 코드를 치환할 때, `catch (dbErr) { ... }` 블록의 닫는 중괄호(`}`) 기호가 네 군데의 GET 라우트에서 전부 소실되는 치명적인 결함이 발생했습니다. 이로 인해 `SyntaxError: Unexpected token 'catch'`와 함께 Express 백엔드 서버가 로딩 시점에 완전히 크래시하여 모든 API 요청에 500 응답이 반환되고 기기 연결이 끊어지는 장애가 발생했습니다.
+     - **해결**: 네 군데의 GET 라우트(`engineering-standards`, `grading-standards`, `generation-standards`, `lockscreen-standards`) 내의 catch 블록 끝에 누락된 닫는 중괄호(`}`)를 정상적으로 보완 및 삽입하여 구문 크래시를 원천 해결했습니다.
+  8. **통합 컴파일 및 빌드 검증**:
      - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
 

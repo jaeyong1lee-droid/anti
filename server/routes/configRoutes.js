@@ -227,6 +227,7 @@ router.get('/engineering-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read engineering standards from database:', dbErr.message);
+    }
     const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
     const merged = mergeStandards(standardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
@@ -284,6 +285,7 @@ router.get('/grading-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read grading standards from database:', dbErr.message);
+    }
     const fileIsNewer = await checkIsFileNewer('gradingStandardsList.js', 'grading_standards');
     const merged = mergeStandards(gradingStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
@@ -387,6 +389,7 @@ router.get('/generation-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read generation standards from database:', dbErr.message);
+    }
     const fileIsNewer = await checkIsFileNewer('generationStandards.js', 'generation_standards');
     const merged = mergeStandards(generationStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
@@ -444,6 +447,7 @@ router.get('/lockscreen-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read lockscreen standards from database:', dbErr.message);
+    }
     const fileIsNewer = await checkIsFileNewer('lockscreenStandards.js', 'lockscreen_standards');
     const merged = mergeStandards(lockscreenStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
