@@ -1922,12 +1922,12 @@ ${ENGINEERING_STANDARDS}
     const finalQuestionPool = Array.from(uniquePoolMap.values());
     console.log(`[종합평가 풀 구축 완료] 전체 후보 풀 문항 수: ${finalQuestionPool.length}개`);
 
-    // Select up to 25 questions from the pool with exact type combination:
-    // - 개요: 4개
-    // - 공식: 4개
-    // - 표채우기: 4개
-    // - 단답형: 4개
-    // - 객관식: 9개
+    // Select up to 13 questions from the pool with exact type combination:
+    // - 개요: 2개
+    // - 공식: 2개
+    // - 표채우기: 2개
+    // - 단답형: 2개
+    // - 객관식: 5개
     const poolGaeyo = [];
     const poolGongsik = [];
     const poolTable = [];
@@ -1961,16 +1961,16 @@ ${ENGINEERING_STANDARDS}
       return result;
     };
 
-    selectedQuestions.push(...take(shufGaeyo, 4));
-    selectedQuestions.push(...take(shufGongsik, 4));
-    selectedQuestions.push(...take(shufTable, 4));
-    selectedQuestions.push(...take(shufDandap, 4));
-    selectedQuestions.push(...take(shufMC, 9));
+    selectedQuestions.push(...take(shufGaeyo, 2));
+    selectedQuestions.push(...take(shufGongsik, 2));
+    selectedQuestions.push(...take(shufTable, 2));
+    selectedQuestions.push(...take(shufDandap, 2));
+    selectedQuestions.push(...take(shufMC, 5));
 
-    // If total selected is less than 25, fill from remaining questions in other pools
+    // If total selected is less than 13, fill from remaining questions in other pools
     const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
     const shufRemaining = shuffleArray(remainingPool);
-    const needed = Math.max(0, 25 - selectedQuestions.length);
+    const needed = Math.max(0, 13 - selectedQuestions.length);
     selectedQuestions.push(...take(shufRemaining, needed));
 
     console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
@@ -2198,19 +2198,21 @@ router.post('/exam/additional', async (req, res) => {
     const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
+    const TOTAL_BATCHES = 3; // 3 batches (4 + 4 + 5) = 13 AI questions
 
-    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 4문제씩 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
+    console.log(`[종합평가 추가 생성 가동] TPM 초과 방지를 위해 총 ${TOTAL_BATCHES}회 연속 분할 요청을 시작합니다.`);
     if (progressId) {
       progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 추가 문제를 출제하고 있습니다...', 90, 1800, 5);
     }
 
     for (let i = 0; i < TOTAL_BATCHES; i++) {
       const randomSeed = Math.floor(Math.random() * 10000);
+      const countToGenerate = i === 2 ? 5 : 4;
+      const mcCount = i === 2 ? 4 : 3;
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 ${countToGenerate}개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
@@ -2227,9 +2229,9 @@ ${combinedText}
 ${formulasText || '인용된 내용 없음'}
 
 [출제 규칙]:
-1. 이번 회차에서는 **정확히 4개의 문제**만 반환하되 다음 비율을 사수할 것:
+1. 이번 회차에서는 **정확히 ${countToGenerate}개의 문제**만 반환하되 다음 비율을 사수할 것:
    - 주관식 (type: "주관식", subtype: "개요"): 1문제 (정의 및 특징을 3~5줄 내외로 깊이 있고 전문적인 서술형 개요 및 개념 설명 모범답안 (\\n 구분))
-   - 객관식 (type: "객관식"): 3문제 (4지선다형)
+   - 객관식 (type: "객관식"): ${mcCount}문제 (4지선다형)
 2. 객관식 문제의 유형 및 구성 비율 지침 (극도로 중요):
    - 출제되는 객관식 문항들은 반드시 아래 비율을 준수하여 구성하십시오:
      * **기본 기초 개념 문제 (40%, 약 2문제)**: 토픽의 기본 정의, 핵심 개념, 기초 원리를 직접적으로 묻는 기초 수준 문제. (예: "○○○의 정의로 가장 옳은 것은?", "○○○의 특징이 아닌 것은?"). 기사 수준의 핵심 개념 확인 문제로 출제.
