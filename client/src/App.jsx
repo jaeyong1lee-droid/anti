@@ -7108,6 +7108,20 @@ export default function App() {
         // 목록 갱신
         fetchTodayReviews(referenceDate);
         fetchAllTopics();
+
+        const updatedActiveInfo = {
+          topicId: selectedTopic.id,
+          title: selectedTopic.title,
+          keywords: selectedTopic.keywords || '',
+          pdfName: selectedTopic.pdf_name || '',
+          mode: 'completed',
+          scheduleId: sId || 9999,
+          reviewRound: sRound,
+          isReadOnly: true,
+          category: selectedTopic.category
+        };
+        localStorage.setItem('anti_last_active_review', JSON.stringify(updatedActiveInfo));
+        setLastActiveReview(updatedActiveInfo);
       } else {
         // 백엔드 점수 업데이트 실패 시에도 약점보완 강제완료 처리 지원 (UX 복원용)
         if (selectedTopic.isPractice) {
@@ -7643,6 +7657,19 @@ export default function App() {
     }
     topicId = cleanTopicId;
     scheduleId = cleanScheduleId;
+
+    if (scheduleId) {
+      const topicObj = allTopics.find(t => String(t.id) === String(topicId));
+      if (topicObj && topicObj.schedules) {
+        const targetSched = topicObj.schedules.find(s => String(s.id) === String(scheduleId));
+        if (targetSched && (targetSched.status === 'completed' || targetSched.status === 'failed')) {
+          console.log(`[handleOpenAIQuestions] Schedule ${scheduleId} is already ${targetSched.status}. Redirecting to completed view.`);
+          handleOpenCompletedReview(scheduleId, topicId, title, reviewRound || targetSched.review_round, keywords, pdfName);
+          return;
+        }
+      }
+    }
+
     // 1) 동시 호출 방지 락 체킹
     if (loadingTopicLockRef.current) {
       console.log('[handleOpenAIQuestions] Denied: Concurrency lock active.');
