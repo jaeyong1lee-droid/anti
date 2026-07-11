@@ -773,6 +773,32 @@ ${adjustments.map((a, idx) => `
     const coreSubject = getCoreSubjectFromTitle(topic.title);
     const topicInstructionsPrompt = await getFormattedTopicInstructions(topicId);
 
+    let activeGenerationStandards = GENERATION_STANDARDS;
+    let activeEngineeringStandards = ENGINEERING_STANDARDS;
+    try {
+      const genRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
+      if (genRow && genRow.value) {
+        const list = JSON.parse(genRow.value);
+        if (Array.isArray(list)) {
+          activeGenerationStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load generation standards dynamically:', e);
+    }
+    
+    try {
+      const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
+      if (engRow && engRow.value) {
+        const list = JSON.parse(engRow.value);
+        if (Array.isArray(list)) {
+          activeEngineeringStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load engineering standards dynamically:', e);
+    }
+
     const prompt = (topic.category === '계산') ? `
 [문제 생성 태스크 시작]:
 아래 제공되는 정보를 분석하여 총 정확히 4개의 계산 예상문제를 생성해 주십시오.
@@ -801,10 +827,10 @@ JSON 배열 형식으로만 문제를 출력하십시오.`;
 아래 제공되는 [📋 문제 출제 기준 절대 지침 (Generation Standards)] 및 [🔬 공학 기준 절대 지침 (Engineering Standards)]은 사용자가 지정한 최우선 헌법적 출제 지침입니다. 그 어떤 내부 출제 방식이나 하드코딩된 알고리즘 규격보다 이 지침들이 1순위로 지켜져야 하며, 상충이 발생할 경우 이 지침들의 세부 내용(예: 비교 대상 가나 구분, 소수점 정확도 등)을 최우선적으로 엄격히 적용하십시오.
 
 [📋 문제 출제 기준 절대 지침 (Generation Standards)]:
-${GENERATION_STANDARDS}
+${activeGenerationStandards}
 
 [🔬 공학 기준 절대 지침 (Engineering Standards)]:
-${ENGINEERING_STANDARDS}
+${activeEngineeringStandards}
 `;
 
     // Batch prompts for standard topics (non-calculation) to ensure high-quality technical questions
@@ -813,21 +839,21 @@ ${ENGINEERING_STANDARDS}
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
 [🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-\${standardsAnalysis}
+${standardsAnalysis}
 
 [🚨 문제 생성 절대 준수 지침]:
-\${GENERATION_STANDARDS}
+${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
-\${ENGINEERING_STANDARDS}
+${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
 위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 6개**의 예상문제(주관식 개요 1개, 주관식 공식 1개, 주관식 단답형 4개)를 생성해 주십시오.
 
-[토픽 제목]: \${topic.title}
-[핵심 키워드]: \${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: \${fileText || '제공되지 않음'}
+[토픽 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [🚨 토픽 범위 엄격 제한 및 출제 범위 확충 — 최우선 준수사항]:
 - **맹목적으로 [첨부파일 본문 텍스트]의 지엽적인 자구에만 국한하여 문제를 출제하지 마십시오.** 
@@ -850,8 +876,8 @@ ${ENGINEERING_STANDARDS}
 - "type" 값: 반드시 "주관식 (공식)"
 - "question": 토픽을 대표하는 가장 핵심적인 공식의 공식명칭 자체나 핵심 질문 문구만 간결하게 작성.
 - "concept": 공식에 대한 1줄짜리 매우 컴팩트한 요약 설명.
-- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\\\frac{P - 2C \\\\sin\\\\varphi}{\\\\gamma \\\\tan\\\\varphi + \\\\frac{2S}{D}}$")
-- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\\n- $P$: 지반압")
+- "formula": 오직 대표 LaTeX 공식 1개만 순수하게 작성. 문자열이나 설명 기호는 절대 넣지 마십시오. (예: "$t = \\frac{P - 2C \\sin\\varphi}{\\gamma \\tan\\varphi + \\frac{2S}{D}}$")
+- "structure": 위 formula에서 사용된 각 기호의 정의를 장황하지 않게 줄바꿈(\n)으로 최소한의 명사형 위주로 간단히 작성. (예: "- $t$: 숏크리트 두께\n- $P$: 지반압")
 
 [주관식 (단답형) 문제들]:
 - 개수: 반드시 정확히 4문제를 출제하십시오.
@@ -862,8 +888,8 @@ ${ENGINEERING_STANDARDS}
   * 정답("answer"): 모범 답안은 단순히 한 단어 키워드가 아니라, 구체적인 공학적 거동 메커니즘과 설계/시공 시 인과관계 대책이 논리적으로 상세히 포함된 서술형(최소 50자에서 최대 120자 내외)으로 명료하게 작성하십시오. 모든 정답의 어미는 반드시 "~다", "~입니다" 등의 평서문을 배제하고, 기술사 시험 답안지 형식인 명사형 종결어미(예: ~함, ~감소, ~방지, ~유도, ~소산, ~확보 등)로 끝나야 합니다. 또한, 이 정답 문장 내에서 채점에 중요도가 가장 높은 필수 공학 키워드들은 반드시 역슬래시 없이 일반 마크다운 강조 기호인 **키워드** 형태로 감싸서 작성해 주십시오. (예: **이중층 두께**, **전단강도 저하** 등)
   * "explanation": 왜 이 답안이 올바른 공학적 대책/이론인지 상세히 설명하십시오.
 
-\${topicInstructionsPrompt}
-\${LATEX_PROMPT_INSTRUCTIONS}
+${topicInstructionsPrompt}
+${LATEX_PROMPT_INSTRUCTIONS}
 
 [응답 JSON 포맷]:
 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
@@ -914,21 +940,21 @@ ${ENGINEERING_STANDARDS}
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
 [🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-\${standardsAnalysis}
+${standardsAnalysis}
 
 [🚨 문제 생성 절대 준수 지침]:
-\${GENERATION_STANDARDS}
+${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
-\${ENGINEERING_STANDARDS}
+${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
 위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트]를 심층 분석하여, 총 **정확히 2개**의 예상문제(주관식 표채우기 2개)를 생성해 주십시오.
 
-[토픽 제목]: \${topic.title}
-[핵심 키워드]: \${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: \${fileText || '제공되지 않음'}
+[토픽 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [출제 요구사항]:
 반드시 총 2개의 주관식 (표채우기) 문제를 다음과 같이 구성하여 출제하십시오:
@@ -941,8 +967,8 @@ ${ENGINEERING_STANDARDS}
   - 🚨 **[모범 답안-구분항목 범주 일치 원칙 - 극도로 중요!]**: 각 INPUT의 모범 답안은 반드시 **해당 행의 구분 항목(행 제목)이 요구하는 답변 범주**에 정확히 부합하는 내용이어야 합니다. 예를 들어 구분 항목이 '실무 활용처 및 적용 사례'이면 모범 답안도 '어디에 쓰이는지(활용처)'를 기술해야 하고, '시공 시 유의사항 및 한계'이면 '주의해야 할 점(유의사항)'을 기술해야 합니다. 구분 항목이 묻는 범주와 전혀 다른 범주의 답(예: 유의점을 물었는데 활용처를 답안으로 작성)은 **출제 오류**이므로 절대 발생시키지 마십시오.
   - "explanation": 표 전체 내용 및 각 빈칸에 대한 공학적 상세 해설.
 
-\${topicInstructionsPrompt}
-\${LATEX_PROMPT_INSTRUCTIONS}
+${topicInstructionsPrompt}
+${LATEX_PROMPT_INSTRUCTIONS}
 
 [응답 JSON 포맷]:
 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
@@ -987,25 +1013,25 @@ ${ENGINEERING_STANDARDS}
 당신은 대한민국 국가기술자격 기술사(Professional Engineer) 시험 출제위원으로서 문제를 출제하기 전, 아래 명시된 **문제생성 절대 지침들**과 **공학적 이론 기준**을 헌법의 제1조 철칙으로 삼아 이를 먼저 완벽하게 숙지하고 절대적으로 복종하여 문제를 설계 및 출제해야 합니다. 지침을 위반하여 출제된 문제는 시스템 검증 단계에서 즉시 폐기됩니다.
 
 [🚨 0단계 AI가 사전 분석한 절대 지침 준수 주의사항]:
-\${standardsAnalysis}
+${standardsAnalysis}
 
 [🚨 문제 생성 절대 준수 지침]:
-\${GENERATION_STANDARDS}
+${activeGenerationStandards}
 
 [🚨 지반공학 표준 이론 및 계산 기준]:
-\${ENGINEERING_STANDARDS}
+${activeEngineeringStandards}
 
 ---------------------------------------------------------
 [문제 생성 태스크 시작]:
 위의 절대 지침과 기준 법규를 완전히 숙지한 상태에서, 아래 제공되는 [토픽 제목], [핵심 키워드], [첨부파일 본문 텍스트], [이전 회차 오답 정보], [사용자 피드백 지침] 그리고 [사용자 문제 조정 내역]을 심층 분석하여, 총 **정확히 5개**의 예상문제(객관식 4지선다 5개)를 생성해 주십시오.
-\${specialInstructions}
-\${weaknessPrompt}
-\${feedbackPrompt}
-\${adjustmentsPrompt}
+${specialInstructions}
+${weaknessPrompt}
+${feedbackPrompt}
+${adjustmentsPrompt}
 
-[토픽 제목]: \${topic.title}
-[핵심 키워드]: \${topic.keywords || '제공되지 않음'}
-[첨부파일 본문 텍스트]: \${fileText || '제공되지 않음'}
+[토픽 제목]: ${topic.title}
+[핵심 키워드]: ${topic.keywords || '제공되지 않음'}
+[첨부파일 본문 텍스트]: ${fileText || '제공되지 않음'}
 
 [🚨 시험 결과 및 실험 데이터 수치 제시 원칙 — 매우 중요]:
 - 만약 문제가 특정 심도별 시험 결과나 실험 데이터 수치를 해석/분석하여 답안을 채우거나 계산/추론해야 하는 문제인 경우, 분석의 대상이 되는 원본 시험 결과 데이터 테이블을 질문(question) 텍스트 본문 안에 마크다운 표 형태로 반드시 함께 기입하여 보여주십시오.
@@ -1022,8 +1048,8 @@ ${ENGINEERING_STANDARDS}
 - 🚨 [공식 및 공식 수치 범위 노출 절대 금지 규칙 - 극도로 중요!]: 문제 질문(question) 본문 내에 문제를 해결하는 데 필요한 공학 수식 자체나 수식의 특정 수치 범위를 **절대로 직접 텍스트로 적어 제공하지 마십시오.**
 - 🚨 [유사/중복 질문 출제 절대 금지 - 매우 중요!]: 하나의 공식이나 거동 특성에서 파생되는 변수만 바꾼 형태의 유사한 비례/반비례 질문은 **절대로 중복하여 출제하지 마십시오.**
 
-\${topicInstructionsPrompt}
-\${LATEX_PROMPT_INSTRUCTIONS}
+${topicInstructionsPrompt}
+${LATEX_PROMPT_INSTRUCTIONS}
 
 [응답 JSON 포맷]:
 반드시 아래 지정된 JSON 배열 포맷으로만 정확히 반환하십시오. 마크다운의 \`\`\`json 코드 블록이나 추가적인 텍스트 설명은 배제하고 순수한 JSON 데이터만 제공해 주십시오.
@@ -1038,7 +1064,8 @@ ${ENGINEERING_STANDARDS}
 ]
 `;
 
-    let parsedArray = null;
+    
+let parsedArray = null;
 
     if (topic.category === '계산') {
       const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, null, 'question', { temperature: 1.0 });

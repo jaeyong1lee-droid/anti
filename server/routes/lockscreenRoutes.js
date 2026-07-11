@@ -141,12 +141,25 @@ async function replenishLockscreenPool(req) {
     const combinedRecent = [...new Set([...currentPoolTexts, ...recentQuestions])];
 
     const callLLM = getCallLLM(req);
+    let activeLockscreenStandards = LOCKSCREEN_STANDARDS;
+    try {
+      const lockRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+      if (lockRow && lockRow.value) {
+        const list = JSON.parse(lockRow.value);
+        if (Array.isArray(list)) {
+          activeLockscreenStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load lockscreen standards dynamically:', e);
+    }
+
     const generatedQuestions = await generateDailyLockscreenQuestions(
       formulaCandidates,
       finalTopicCandidates,
       callLLM,
       needCount,
-      LOCKSCREEN_STANDARDS,
+      activeLockscreenStandards,
       combinedRecent
     );
 
@@ -313,12 +326,25 @@ router.get('/sync', async (req, res) => {
     const combinedRecent = [...new Set([...currentPoolTexts, ...recentQuestions])];
 
     const callLLM = getCallLLM(req);
+    let activeLockscreenStandards = LOCKSCREEN_STANDARDS;
+    try {
+      const lockRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+      if (lockRow && lockRow.value) {
+        const list = JSON.parse(lockRow.value);
+        if (Array.isArray(list)) {
+          activeLockscreenStandards = list.map((std, idx) => `${idx + 1}. **${std.title}**:\n   - ${std.content}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load lockscreen standards dynamically:', e);
+    }
+
     const generatedQuestions = await generateDailyLockscreenQuestions(
       formulaCandidates,
       finalTopicCandidates,
       callLLM,
       count,
-      LOCKSCREEN_STANDARDS,
+      activeLockscreenStandards,
       combinedRecent
     );
 

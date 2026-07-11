@@ -104,11 +104,72 @@ if (fs.existsSync(clientBuildPath)) {
   console.log('[Static Serving] Production build folder not found. Local server started in API mode.');
 }
 
+import { updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
+import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
+import { updateLiveGenerationStandards } from './plugins/generationStandards.js';
+import { updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
+
+async function initializeAllStandards() {
+  try {
+    const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
+    if (engRow && engRow.value) {
+      const list = JSON.parse(engRow.value);
+      if (Array.isArray(list)) {
+        updateLiveEngineeringStandards(list);
+        console.log('[Startup Sync] Loaded engineering standards from database.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Startup Sync] Failed to load engineering standards:', err.message);
+  }
+
+  try {
+    const gradRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
+    if (gradRow && gradRow.value) {
+      const list = JSON.parse(gradRow.value);
+      if (Array.isArray(list)) {
+        updateLiveGradingStandards(list);
+        console.log('[Startup Sync] Loaded grading standards from database.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Startup Sync] Failed to load grading standards:', err.message);
+  }
+
+  try {
+    const genRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
+    if (genRow && genRow.value) {
+      const list = JSON.parse(genRow.value);
+      if (Array.isArray(list)) {
+        updateLiveGenerationStandards(list);
+        console.log('[Startup Sync] Loaded generation standards from database.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Startup Sync] Failed to load generation standards:', err.message);
+  }
+
+  try {
+    const lockRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
+    if (lockRow && lockRow.value) {
+      const list = JSON.parse(lockRow.value);
+      if (Array.isArray(list)) {
+        updateLiveLockscreenStandards(list);
+        console.log('[Startup Sync] Loaded lockscreen standards from database.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Startup Sync] Failed to load lockscreen standards:', err.message);
+  }
+}
+
 // Database and Server Startup
 async function startServer() {
   try {
     console.log('[Startup] Initializing SQLite/PostgreSQL Database connection...');
     await initDatabase();
+    console.log('[Startup] Syncing saved standards from database...');
+    await initializeAllStandards();
     console.log('[Startup] Loading saved preferred model configuration...');
     await loadPreferredModel();
     
