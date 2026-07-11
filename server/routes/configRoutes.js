@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dbQuery } from '../database.js';
-import { put } from '@vercel/blob';
+import { put, get } from '@vercel/blob';
 import { saveSessionValue, globalPreferredModel, updatePreferredModel, callLLMWithFailover, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
 import { updateLiveEngineeringStandards, standardsList, ENGINEERING_STANDARDS } from '../plugins/engineeringStandards.js';
 import { updateLiveGradingStandards, gradingStandardsList } from '../plugins/gradingPlugin.js';
@@ -491,6 +491,18 @@ router.post('/session/overviews', async (req, res) => {
   }
 });
 
+// Helper to get formatted filename for Vercel Blob
+const getFormulaBlobFileName = (item, idx, extension) => {
+  const cleanTitle = (item.title || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9가-힣]/g, '_') // Replace spaces/special chars with underscores
+    .replace(/_+/g, '_') // Replace multiple underscores
+    .substring(0, 30); // Limit to 30 chars
+  
+  const idPart = item.id || Date.now();
+  return `formulas/${idPart}_${cleanTitle || 'image'}_${idx}.${extension}`;
+};
+
 // GET /api/session/images
 router.get('/session/images', async (req, res) => {
   try {
@@ -542,7 +554,7 @@ router.get('/session/images', async (req, res) => {
                 const base64Data = match[2];
                 const buffer = Buffer.from(base64Data, 'base64');
                 const extension = mimeType.split('/')[1] || 'png';
-                const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
+                const fileName = getFormulaBlobFileName(item, idx, extension);
                 try {
                   const blob = await put(fileName, buffer, { access: 'private' });
                   return blob.url;
@@ -635,7 +647,7 @@ router.post('/session/images', async (req, res) => {
             const base64Data = match[2];
             const buffer = Buffer.from(base64Data, 'base64');
             const extension = mimeType.split('/')[1] || 'png';
-            const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
+            const fileName = getFormulaBlobFileName(item, idx, extension);
             console.log(`Uploading formula image to Vercel Blob: ${fileName}`);
             const blob = await put(fileName, buffer, { access: 'private' });
             return blob.url;
