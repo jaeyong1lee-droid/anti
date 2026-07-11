@@ -171,33 +171,64 @@ function assembleFinalQuestions(questions, topic, carryOverQuestions, fileText) 
       uniqueShort.push(q);
     }
   });
-  finalSubjsShort = uniqueShort.slice(0, 4);
 
-  if (finalSubjsShort.length < 4 && qIntro) {
-    finalSubjsShort.push({
-      type: "주관식 (단답형)",
-      question: `[${topic.title}]의 가장 핵심적인 공학적 정의(개요)와 기본적인 작동 원리를 서술하시오.`,
-      answer: qIntro.concept || `${topic.title}의 핵심 개념`,
-      explanation: `${topic.title}에 관한 핵심 정의 및 개요 서술형 평가입니다.`
-    });
-  }
+  // Separate field problem questions from other short subjectives to place them in correct slots
+  const fieldKeywords = ["하자", "대책", "문제점", "시나리오", "현장", "문제 상황", "대처", "countermeasure", "solution", "scenario"];
+  const fieldQs = [];
+  const conceptQs = [];
 
-  const defaultShortQuestions = [
-    `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
-    `${topic.title} 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.`,
-    `${topic.title} 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.`,
-    `${topic.title}의 장단점을 타 유사 공법과 비교하여 설명하시오.`
-  ];
-  let defaultQIdx = 0;
-  while (finalSubjsShort.length < 4) {
-    finalSubjsShort.push({
+  uniqueShort.forEach(q => {
+    const qText = q.question || '';
+    const isField = fieldKeywords.some(kw => qText.includes(kw));
+    if (isField) {
+      fieldQs.push(q);
+    } else {
+      conceptQs.push(q);
+    }
+  });
+
+  const finalShorts4 = [];
+  const defaultConceptQs = [
+    {
       type: "주관식 (단답형)",
-      question: defaultShortQuestions[defaultQIdx % defaultShortQuestions.length],
-      answer: "핵심 메커니즘 및 공학적 대책",
+      question: `${topic.title} 공법/개념의 핵심적인 공학적 의미 및 메커니즘을 설명하시오.`,
+      answer: "핵심 메커니즘 및 공학적 의미 확보",
       explanation: `${topic.title}의 세부 공학적 개념과 현장 실무적인 작동 원리입니다.`
-    });
-    defaultQIdx++;
+    },
+    {
+      type: "주관식 (단답형)",
+      question: `${topic.title} 설계 시 안전율 확보 및 하중 작용 조건에 따른 검토 사항을 서술하시오.`,
+      answer: "하중 조건 검토 및 허용 안전율 충족",
+      explanation: `${topic.title}의 설계 기준 및 규격 검토 사항입니다.`
+    },
+    {
+      type: "주관식 (단답형)",
+      question: `${topic.title}의 장단점을 타 유사 공법과 비교하여 설명하시오.`,
+      answer: "타 유사 공법과의 거동 및 시공성 비교 분석",
+      explanation: `${topic.title}의 공법적 장단점 및 타당성 비교 분석입니다.`
+    }
+  ];
+
+  for (let i = 0; i < 3; i++) {
+    if (conceptQs[i]) {
+      finalShorts4.push(conceptQs[i]);
+    } else {
+      finalShorts4.push(defaultConceptQs[i]);
+    }
   }
+
+  if (fieldQs[0]) {
+    finalShorts4.push(fieldQs[0]);
+  } else {
+    finalShorts4.push({
+      type: "주관식 (단답형)",
+      question: `${topic.title} 적용 시 현장에서 발생할 수 있는 주요 시공 하자 원인과 그 대책을 서술하시오.`,
+      answer: "현장 시공 하자 원인 식별 및 대책 수립",
+      explanation: `${topic.title} 적용 시 현장의 위험 요인 및 예방 대책입니다.`
+    });
+  }
+
+  finalSubjsShort = finalShorts4;
 
   let finalSubjsTable = [...subjsTable].slice(0, 2);
   if (finalSubjsTable.length < 2) {
