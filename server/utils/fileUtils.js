@@ -280,10 +280,17 @@ export function mergeVerticalText(text) {
 
 export function getLocalDateString(baseDate = new Date(), daysToAdd = 0) {
   const date = new Date(baseDate);
-  date.setDate(date.getDate() + daysToAdd);
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
+  // Convert UTC time to KST time (UTC+9)
+  const kstTime = date.getTime() + 9 * 60 * 60 * 1000;
+  const kstDate = new Date(kstTime);
+  
+  if (daysToAdd !== 0) {
+    kstDate.setUTCDate(kstDate.getUTCDate() + daysToAdd);
+  }
+  
+  const yyyy = kstDate.getUTCFullYear();
+  const mm = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(kstDate.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
