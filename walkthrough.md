@@ -444,3 +444,24 @@
      - 클라이언트 학습 이력 내에서 서버 응답 타임라인 메시지를 파싱하여 엔진 모델명을 추출하는 구문 분석 조건절의 `'gemini-2.5-flash'` 매칭 규칙을 `'gemini-3.0-flash'`에 정상 연동되도록 동기화했습니다.
   4. **깃 원격 저장소 실시간 반영 및 배포**:
      - 수정 사항을 로컬 스테이징하고 커밋한 후 원격 저장소(`main` 브랜치)에 최종 반영하여 Vercel 프로덕션 서버에 즉시 적용 완료했습니다.
+
+---
+
+## 27. Gemini API 모델 우선순위 재조정 및 고정 (5대 모델 지정)
+
+* **배경 & 목적**:
+  - 사용자 요청에 맞추어 Gemini 모델들의 호출 우선순위를 최적화하고, 호출 대상을 지정한 5대 모델로 명확하게 제한하여 페일오버 안정성을 확보했습니다.
+
+* **상세 구현 사항**:
+  1. **Gemini 모델 우선순위 재설정 ([aiService.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/services/aiService.js))**:
+     - `geminiFallbacks` 백업 모델 목록을 아래와 같이 우선순위를 고정하고, 이 5개 모델만 사용하도록 제한했습니다.
+       1. `gemini-3.1-flash-lite` (globalPreferredModel 연계)
+       2. `gemini-3.5-flash`
+       3. `gemini-3.0-flash`
+       4. `gemini-2.5-flash`
+       5. `gemini-2.5-flash-lite`
+  2. **클라이언트 모델 렌더링 파서 보완 ([App.jsx](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/client/src/App.jsx))**:
+     - 타임라인 분석 시 `gemini-2.5-flash` 및 `gemini-2.5-flash-lite`가 출력될 때 모델명이 정확하게 매핑 및 분류되도록 프론트엔드 엔진 추론 분기 조건을 재연동 및 복구했습니다.
+  3. **깃 원격 저장소 반영 및 배포**:
+     - 수정 내용을 배포 커밋 및 푸시 처리하여 Vercel 배포에 적용했습니다.
+
