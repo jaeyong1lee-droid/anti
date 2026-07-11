@@ -1391,6 +1391,58 @@ const safeFetchJson = async (url, options) => {
   return data;
 };
 
+const compressImageFile = (file, maxDimension = 1000, quality = 0.7) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const image = new Image();
+      image.onload = () => {
+        let width = image.width;
+        let height = image.height;
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64Data = dataUrl.split(',')[1];
+        resolve({
+          name: file.name ? (file.name.replace(/\.[^/.]+$/, "") + ".jpg") : "image.jpg",
+          mimeType: 'image/jpeg',
+          data: base64Data
+        });
+      };
+      image.onerror = () => {
+        const base64Data = readerEvent.target.result.split(',')[1];
+        resolve({
+          name: file.name || "image.png",
+          mimeType: file.type || "image/png",
+          data: base64Data
+        });
+      };
+      image.src = readerEvent.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function App() {
   const buildTimeMs = typeof __BUILD_TIME_MS__ !== 'undefined' ? __BUILD_TIME_MS__ : Date.now();
   const buildTimeStr = typeof __BUILD_TIME_STR__ !== 'undefined' ? __BUILD_TIME_STR__ : 'local_dev';
@@ -2162,21 +2214,9 @@ export default function App() {
     setTableGradingResults(updatedGrading);
     
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-      await fetch(`${API_BASE}/api/session/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: selectedTopic.id,
-          scheduleId: selectedTopic.schedule_id,
-          sessionId: reviewSessionId,
-          questions: aiQuestions,
-          selectedAnswers,
-          revealedQuestions: { ...revealedQuestions, [qIdx]: true },
-          tableAnswers: tableAnswersRef.current,
-          tableGradingResults: updatedGrading,
-          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-        })
-      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      lastSyncStateRef.current.revealedQuestions = { ...revealedQuestions, [qIdx]: true };
+      lastSyncStateRef.current.tableGradingResults = updatedGrading;
+      saveActiveSessionDebounced();
     }
     
     return results;
@@ -3050,42 +3090,14 @@ export default function App() {
       
       activeSetGradingResults(nextGrading);
 
-      // Save state immediately to DB/session to guarantee persistence
+      // DB 저장 (디바운스 적용)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-        await fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: selectedTopic.id,
-            scheduleId: selectedTopic.schedule_id,
-            sessionId: reviewSessionId,
-            questions: aiQuestions,
-            selectedAnswers,
-            revealedQuestions,
-            tableAnswers: tableAnswersRef.current,
-            tableGradingResults: nextGrading,
-            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-          })
-        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+        lastSyncStateRef.current.tableGradingResults = nextGrading;
+        saveActiveSessionDebounced();
       }
 
       if (showExam && examQuestions.length > 0 && !loadingExam) {
-        await fetch(`${API_BASE}/api/session/exam`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            examQuestions,
-            examRevealed,
-            examAnswers,
-            examTopic,
-            tableAnswers: examTableAnswersRef.current,
-            tableGradingResults: nextGrading,
-            tutorAnswers,
-            tutorInputText,
-            chatHistory,
-            savedExamScroll: examBodyRef.current?.scrollTop || 0
-          })
-        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+        saveActiveSessionDebounced();
       }
 
       stopProgressPolling('채점 완료!', 100);
@@ -3176,38 +3188,14 @@ export default function App() {
     stopProgressPolling();
     activeSetGradingResults(nextGrading);
     
+    // DB 저장 (디바운스 적용)
     if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-      await fetch(`${API_BASE}/api/session/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicId: selectedTopic.id,
-          scheduleId: selectedTopic.schedule_id,
-          sessionId: reviewSessionId,
-          questions: aiQuestions,
-          selectedAnswers,
-          revealedQuestions,
-          tableAnswers: activeAnswers,
-          tableGradingResults: nextGrading,
-          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-        })
-      }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+      lastSyncStateRef.current.tableGradingResults = nextGrading;
+      saveActiveSessionDebounced();
     }
     
     if (showExam && examQuestions.length > 0 && !loadingExam) {
-      await fetch(`${API_BASE}/api/session/exam`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          examQuestions,
-          examRevealed,
-          examAnswers,
-          examTopic,
-          examTableGradingResults: nextGrading,
-          tutorAnswers,
-          chatHistory
-        })
-      }).catch(e => console.warn('시험 세션 동기화 실패:', e));
+      saveActiveSessionDebounced();
     }
     
     setCellGradingLoading(prev => ({ ...prev, [acronymKey]: false, [combKey]: false }));
@@ -3287,42 +3275,14 @@ export default function App() {
     try {
       activeSetGradingResults(nextGrading);
 
-      // Save state immediately to DB/session to guarantee persistence
+      // DB 저장 (디바운스 적용)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-        await fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: selectedTopic.id,
-            scheduleId: selectedTopic.schedule_id,
-            sessionId: reviewSessionId,
-            questions: aiQuestions,
-            selectedAnswers,
-            revealedQuestions,
-            tableAnswers: activeAnswers,
-            tableGradingResults: nextGrading,
-            savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-          })
-        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+        lastSyncStateRef.current.tableGradingResults = nextGrading;
+        saveActiveSessionDebounced();
       }
 
       if (showExam && examQuestions.length > 0 && !loadingExam) {
-        await fetch(`${API_BASE}/api/session/exam`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            examQuestions,
-            examRevealed,
-            examAnswers,
-            examTopic,
-            tableAnswers: activeAnswers,
-            tableGradingResults: nextGrading,
-            tutorAnswers,
-            tutorInputText,
-            chatHistory,
-            savedExamScroll: examBodyRef.current?.scrollTop || 0
-          })
-        }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+        saveActiveSessionDebounced();
       }
 
       stopProgressPolling('재채점 완료!', 100);
@@ -3521,54 +3481,14 @@ export default function App() {
           [`${qIdx}_INPUT`]: newResult
         };
 
-        // 즉시 DB 저장하여 지속성 보장
+        // DB 저장 (디바운스 적용)
         if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-          fetch(`${API_BASE}/api/session/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              topicId: selectedTopic.id,
-              scheduleId: selectedTopic.schedule_id,
-              sessionId: reviewSessionId,
-              questions: aiQuestions,
-              selectedAnswers,
-              revealedQuestions,
-              tableAnswers: tableAnswersRef.current,
-              tableGradingResults: nextResults,
-              tutorAnswers,
-              tutorInputText,
-              chatHistory,
-              savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-            })
-          })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                lastSyncStateRef.current = {
-                  selectedAnswers,
-                  revealedQuestions,
-                  tableGradingResults: nextResults,
-                  chatHistory
-                };
-              }
-            })
-            .catch(e => console.warn('복습 세션 동기화 실패:', e));
+          lastSyncStateRef.current.tableGradingResults = nextResults;
+          saveActiveSessionDebounced();
         }
 
         if (showExam && examQuestions.length > 0 && !loadingExam) {
-          fetch(`${API_BASE}/api/session/exam`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              examQuestions,
-              examRevealed,
-              examAnswers,
-              examTopic,
-              tableAnswers: examTableAnswersRef.current,
-              tableGradingResults: nextResults,
-              savedExamScroll: examBodyRef.current?.scrollTop || 0
-            })
-          }).catch(e => console.warn('시험 세션 동기화 실패:', e));
+          saveActiveSessionDebounced();
         }
 
         return nextResults;
@@ -5876,7 +5796,7 @@ export default function App() {
         chatHistory
       };
 
-      const delay = hasImmediateChange ? 0 : 1000;
+      const delay = 2500;
 
       const delayDebounceFn = setTimeout(() => {
         console.log(`[Auto-Sync] Sending POST request to server... key fields: topicId=${selectedTopic.id}, scheduleId=${selectedTopic.schedule_id}`);
@@ -5938,7 +5858,7 @@ export default function App() {
             savedExamScroll: examBodyRef.current?.scrollTop || 0
           })
         }).catch(e => console.warn('종합평가 세션 자동 동기화 실패:', e));
-      }, 1000); // 1.0-second debounce to prevent spamming server on rapid clicks
+      }, 2500); // 2.5-second debounce to prevent spamming server on rapid clicks
 
       return () => clearTimeout(delayDebounceFn);
     }
@@ -6069,6 +5989,16 @@ export default function App() {
 
   // ── Debounced Auto-Save to Server (Idea 1) & Visibility Sync (Idea 2) ──
   const autoSaveTimeoutRef = useRef(null);
+
+  const saveActiveSessionDebounced = () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      console.log('[Auto-Save] Running debounced save...');
+      forceSaveActiveSessions().catch(err => console.warn('Debounced save failed:', err));
+    }, 2500);
+  };
 
   const refreshActiveReviewSession = async () => {
     if (!selectedTopic || !selectedTopic.id) return;
@@ -8354,17 +8284,8 @@ export default function App() {
       const copy = { ...prev };
       delete copy[idx];
       if (!selectedTopic?.isReadOnly) {
-        fetch(`${API_BASE}/api/session/review`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topicId: selectedTopic?.id,
-            scheduleId: selectedTopic?.schedule_id,
-            sessionId: reviewSessionId,
-            questions: aiQuestions,
-            isResetAction: true
-          })
-        }).catch(e => console.warn('복습 세션 동기화 실패:', e));
+        lastSyncStateRef.current.selectedAnswers = copy;
+        saveActiveSessionDebounced();
       }
       return copy;
     });
@@ -8465,17 +8386,7 @@ export default function App() {
     setExamAnswers(prev => {
       const copy = { ...prev };
       delete copy[idx];
-      fetch(`${API_BASE}/api/session/exam`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          examQuestions, 
-          examRevealed, 
-          examAnswers: copy, 
-          examTopic,
-          savedExamScroll: examBodyRef.current?.scrollTop || 0 
-        })
-      }).catch(e => console.warn('종합평가 세션 동기화 실패:', e));
+      saveActiveSessionDebounced();
       return copy;
     });
     setExamOptionExplanations(prev => {
@@ -10097,7 +10008,7 @@ export default function App() {
     });
   };
 
-  const handleFormulaImageAttachment = (e) => {
+  const handleFormulaImageAttachment = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -10106,39 +10017,27 @@ export default function App() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result.split(',')[1];
-      setFormulaAttachedImage({
-        name: file.name,
-        mimeType: file.type,
-        data: base64Data
-      });
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      setFormulaAttachedImage(compressed);
+    }
   };
 
   const handleClearFormulaAttachedImage = () => {
     setFormulaAttachedImage(null);
   };
 
-  const handleFormulaPasteImage = (e) => {
+  const handleFormulaPasteImage = async (e) => {
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
-            setFormulaAttachedImage({
-              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type,
-              data: base64Data
-            });
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setFormulaAttachedImage(compressed);
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10153,17 +10052,14 @@ export default function App() {
           const file = item.getAsFile();
           if (!file) continue;
 
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
+          const compressed = await compressImageFile(file);
+          if (compressed) {
             setFormulaAttachedImage({
-              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type || 'image/png',
-              data: base64Data
+              ...compressed,
+              name: compressed.name || `clipboard-image-${Date.now().toString().slice(-4)}.jpg`
             });
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10172,7 +10068,7 @@ export default function App() {
   };
 
   // ── Gemini Sidebar Image Attachment Handlers ───────────────────────
-  const handleImageAttachment = (e) => {
+  const handleImageAttachment = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -10181,40 +10077,28 @@ export default function App() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result.split(',')[1];
-      setAttachedImage({
-        name: file.name,
-        mimeType: file.type,
-        data: base64Data
-      });
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      setAttachedImage(compressed);
+    }
   };
 
   const handleClearAttachedImage = () => {
     setAttachedImage(null);
   };
 
-  const handlePasteImage = (e) => {
+  const handlePasteImage = async (e) => {
     // 1. clipboardData.files 우선 검사 (모던 브라우저 및 OS 캡처 비트맵 파일 직접 맵핑 대응)
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
-            setAttachedImage({
-              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type,
-              data: base64Data
-            });
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setAttachedImage(compressed);
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10230,17 +10114,14 @@ export default function App() {
           const file = item.getAsFile();
           if (!file) continue;
 
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
+          const compressed = await compressImageFile(file);
+          if (compressed) {
             setAttachedImage({
-              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type || 'image/png',
-              data: base64Data
+              ...compressed,
+              name: compressed.name || `clipboard-image-${Date.now().toString().slice(-4)}.jpg`
             });
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10249,7 +10130,7 @@ export default function App() {
   };
 
   // ── Real-Time Global AI Tutor Event Handlers ───────────────────────
-  const handleRealTimeImageAttachment = (e) => {
+  const handleRealTimeImageAttachment = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -10258,39 +10139,27 @@ export default function App() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Data = reader.result.split(',')[1];
-      setRealTimeAttachedImage({
-        name: file.name,
-        mimeType: file.type,
-        data: base64Data
-      });
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImageFile(file);
+    if (compressed) {
+      setRealTimeAttachedImage(compressed);
+    }
   };
 
   const handleClearRealTimeAttachedImage = () => {
     setRealTimeAttachedImage(null);
   };
 
-  const handleRealTimePasteImage = (e) => {
+  const handleRealTimePasteImage = async (e) => {
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
-            setRealTimeAttachedImage({
-              name: file.name || `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type,
-              data: base64Data
-            });
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setRealTimeAttachedImage(compressed);
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10305,17 +10174,14 @@ export default function App() {
           const file = item.getAsFile();
           if (!file) continue;
 
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
+          const compressed = await compressImageFile(file);
+          if (compressed) {
             setRealTimeAttachedImage({
-              name: `clipboard-image-${Date.now().toString().slice(-4)}.png`,
-              mimeType: file.type || 'image/png',
-              data: base64Data
+              ...compressed,
+              name: compressed.name || `clipboard-image-${Date.now().toString().slice(-4)}.jpg`
             });
             showNotification('클립보드 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           e.preventDefault();
           return;
         }
@@ -10327,24 +10193,18 @@ export default function App() {
     e.preventDefault();
   };
 
-  const handleRealTimeDrop = (e) => {
+  const handleRealTimeDrop = async (e) => {
     e.preventDefault();
     const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Data = reader.result.split(',')[1];
-            setRealTimeAttachedImage({
-              name: file.name,
-              mimeType: file.type,
-              data: base64Data
-            });
+          const compressed = await compressImageFile(file);
+          if (compressed) {
+            setRealTimeAttachedImage(compressed);
             showNotification('드롭한 이미지가 첨부되었습니다!');
-          };
-          reader.readAsDataURL(file);
+          }
           return;
         }
       }
@@ -18066,36 +17926,10 @@ ${itemsStr}
                                     const nextAnswers = { ...selectedAnswers, [idx]: opt };
                                     setSelectedAnswers(nextAnswers);
 
-                                    // 즉시 서버 세션 동기화 (Force Sync)
+                                    // 서버 세션 동기화 (디바운스 적용)
                                     if (selectedTopic && selectedTopic.id && !selectedTopic.isReadOnly) {
-                                      fetch(`${API_BASE}/api/session/review`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                          topicId: selectedTopic.id,
-                                          scheduleId: selectedTopic.schedule_id,
-                                          sessionId: reviewSessionId,
-                                          questions: aiQuestions,
-                                          selectedAnswers: nextAnswers,
-                                          revealedQuestions,
-                                          tableAnswers: tableAnswersRef.current,
-                                          tableGradingResults,
-                                          tutorAnswers,
-                                          tutorInputText,
-                                          chatHistory,
-                                          savedQuizScroll: quizBodyRef.current?.scrollTop || 0
-                                        })
-                                      })
-                                        .then(res => res.json())
-                                        .then(data => {
-                                          if (data.success) {
-                                            updateSyncTime(new Date());
-                                            updateNeonSyncTime(new Date());
-                                            // 동기화 레프 업데이트하여 useEffect 이중 호출 방지
-                                            lastSyncStateRef.current.selectedAnswers = nextAnswers;
-                                          }
-                                        })
-                                        .catch(e => console.warn('[MC click] 복습 세션 동기화 실패:', e));
+                                      lastSyncStateRef.current.selectedAnswers = nextAnswers;
+                                      saveActiveSessionDebounced();
                                     }
 
                                     const normalizeAns = (s) => (s || '').replace(/^\d+\.\s*/, '').trim();
