@@ -601,14 +601,18 @@ router.get('/session/images/proxy', async (req, res) => {
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
     const blob = await get(imageUrl, { token, access: 'private' });
 
-    const arrayBuffer = await new Response(blob.body).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
     const contentType = blob.contentType || 'image/png';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
 
-    res.send(buffer);
+    if (blob.body && typeof blob.body.pipe === 'function') {
+      blob.body.pipe(res);
+    } else if (blob.body) {
+      const arrayBuffer = await new Response(blob.body).arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } else {
+      res.status(404).send('Not found');
+    }
   } catch (err) {
     console.error('Proxy image error:', err);
     res.status(500).send('Internal server error');
