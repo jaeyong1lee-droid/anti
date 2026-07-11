@@ -109,58 +109,77 @@ import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
 import { updateLiveGenerationStandards } from './plugins/generationStandards.js';
 import { updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
 
+import { saveSessionValue } from './services/aiService.js';
+
+function mergeStandards(fileList, dbList, fileIsNewer = false) {
+  if (fileIsNewer) {
+    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
+    return fileList.map(fileItem => {
+      const dbItem = dbMap.get(fileItem.id);
+      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
+        return { ...fileItem, updatedAt: new Date().toISOString() };
+      }
+      return dbItem;
+    });
+  } else {
+    const fileMap = new Map(fileList.map(item => [item.id, item]));
+    const merged = [];
+    for (const dbItem of dbList || []) {
+      merged.push(dbItem);
+    }
+    const dbIds = new Set((dbList || []).map(item => item.id));
+    for (const fileItem of fileList) {
+      if (!dbIds.has(fileItem.id)) {
+        merged.push({ ...fileItem, updatedAt: new Date().toISOString() });
+      }
+    }
+    return merged;
+  }
+}
+
+async function checkIsFileNewer(fileName, dbKey) {
+  try {
+    const filePath = path.resolve(__dirname, 'plugins', fileName);
+    if (!fs.existsSync(filePath)) return false;
+    const fileMtime = fs.statSync(filePath).mtime.getTime();
+
+    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
+    if (!row || !row.updated_at) return true;
+    const dbUpdatedAt = new Date(row.updated_at).getTime();
+
+    return fileMtime > (dbUpdatedAt + 1000);
+  } catch (err) {
+    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
+    return false;
+  }
+}
+
 async function initializeAllStandards() {
-  try {
-    const engRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'engineering_standards'");
-    if (engRow && engRow.value) {
-      const list = JSON.parse(engRow.value);
-      if (Array.isArray(list)) {
-        updateLiveEngineeringStandards(list);
-        console.log('[Startup Sync] Loaded engineering standards from database.');
+  const syncStandard = async (fileName, dbKey, fileList, updateFn) => {
+    try {
+      let dbList = [];
+      const row = await dbQuery.get("SELECT value FROM app_session WHERE key = ?", [dbKey]);
+      if (row && row.value) {
+        dbList = JSON.parse(row.value);
       }
-    }
-  } catch (err) {
-    console.warn('[Startup Sync] Failed to load engineering standards:', err.message);
-  }
 
-  try {
-    const gradRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'grading_standards'");
-    if (gradRow && gradRow.value) {
-      const list = JSON.parse(gradRow.value);
-      if (Array.isArray(list)) {
-        updateLiveGradingStandards(list);
-        console.log('[Startup Sync] Loaded grading standards from database.');
-      }
-    }
-  } catch (err) {
-    console.warn('[Startup Sync] Failed to load grading standards:', err.message);
-  }
+      const fileIsNewer = await checkIsFileNewer(fileName, dbKey);
+      const merged = mergeStandards(fileList, dbList, fileIsNewer);
 
-  try {
-    const genRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'generation_standards'");
-    if (genRow && genRow.value) {
-      const list = JSON.parse(genRow.value);
-      if (Array.isArray(list)) {
-        updateLiveGenerationStandards(list);
-        console.log('[Startup Sync] Loaded generation standards from database.');
+      if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
+        await saveSessionValue(dbKey, JSON.stringify(merged));
+        console.log(`[Startup Sync] Automatically synced ${dbKey} to database.`);
       }
+      updateFn(merged);
+    } catch (err) {
+      console.warn(`[Startup Sync] Failed to load/sync ${dbKey}:`, err.message);
     }
-  } catch (err) {
-    console.warn('[Startup Sync] Failed to load generation standards:', err.message);
-  }
+  };
 
-  try {
-    const lockRow = await dbQuery.get("SELECT value FROM app_session WHERE key = 'lockscreen_standards'");
-    if (lockRow && lockRow.value) {
-      const list = JSON.parse(lockRow.value);
-      if (Array.isArray(list)) {
-        updateLiveLockscreenStandards(list);
-        console.log('[Startup Sync] Loaded lockscreen standards from database.');
-      }
-    }
-  } catch (err) {
-    console.warn('[Startup Sync] Failed to load lockscreen standards:', err.message);
-  }
+  await syncStandard('engineeringStandards.js', 'engineering_standards', standardsList, updateLiveEngineeringStandards);
+  await syncStandard('gradingStandardsList.js', 'grading_standards', gradingStandardsList, updateLiveGradingStandards);
+  await syncStandard('generationStandards.js', 'generation_standards', generationStandardsList, updateLiveGenerationStandards);
+  await syncStandard('lockscreenStandards.js', 'lockscreen_standards', lockscreenStandardsList, updateLiveLockscreenStandards);
 }
 
 // Database and Server Startup

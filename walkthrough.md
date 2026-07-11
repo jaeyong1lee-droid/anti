@@ -408,6 +408,11 @@
      - 기존에 코어재료와 필터재료의 주요 역학적 목적 및 지반공학적 요구조건의 정답 매핑이 뒤바뀌어 입력되어 오답 처리되던 학습 세션(`review_questions_topic_56`)의 DB 데이터를 정밀 추적하여, `INPUT_1` 및 `INPUT_4` 의 정답 매핑과 사용자의 이미 Graded된 채점 점수(0점 -> 10점 만점 처리) 및 피드백 텍스트까지 완벽하게 원복 및 교정 완료했습니다.
   5. **표 채우기 생성 예시 내 글자 수 제약 문구 제거 ([quizRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/quizRoutes.js))**:
      - AI 문제 생성 프롬프트 예시 내에서 행 제목(1열 헤더)에 강제 가이드라인으로 남아 있던 `(15~45자)` 표시 문구를 모두 제거하여 출제 유연성을 향상했습니다.
-  6. **통합 컴파일 및 빌드 검증**:
+  6. **서버 기동 및 지침 GET API의 파일 수정 시간(mtime) 기반 동기화 구현 ([index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js), [configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - **원인**: 이전 병합 로직은 데이터베이스 캐시에 지침 데이터가 있고 파일에는 삭제된 지침이 존재할 때, 데이터베이스 캐시에 남아있는 지침을 "사용자정의 지침"으로 오인해 지속적으로 병합하여 다시 파일로 써내려가는(Resurrection) 결함이 있었습니다. 또한, 서버 기동 시(`index.js` 내 `initializeAllStandards`) 데이터베이스 캐시 내용을 무조건적으로 메모리에 오버라이트하여 파일의 신규 수정 사항을 덮어써 버렸습니다.
+     - **해결**:
+       - 서버 기동 시 및 지침 GET API 호출 시, 로컬 파일 시스템 상의 지침 소스 파일 수정 시각(`fs.statSync(filePath).mtime`)과 데이터베이스 캐시의 최종 업데이트 시각(`updated_at`)을 비교하는 `checkIsFileNewer` 함수를 도입하였습니다.
+       - 파일 수정 시각이 데이터베이스 캐시보다 최신일 때(개발자가 직접 파일을 수정한 경우)는 파일을 절차적 기준(Source of Truth)으로 삼아, 파일에서 삭제된 지침은 데이터베이스 캐시에서도 온전히 소멸하고 추가된 내용은 DB에 즉시 적재하도록 완벽히 정비했습니다.
+  7. **통합 컴파일 및 빌드 검증**:
      - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
 

@@ -50,35 +50,48 @@ function stampUpdatedStandards(newList, oldList) {
 
 const isVercel = !!process.env.VERCEL;
 
-function mergeStandards(fileList, dbList) {
-  const merged = [];
-  const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-  
-  for (const fileItem of fileList) {
-    const dbItem = dbMap.get(fileItem.id);
-    if (!dbItem) {
-      merged.push(fileItem);
-    } else if (fileItem.content === dbItem.content && fileItem.title === dbItem.title) {
-      merged.push(fileItem);
-    } else {
-      const fileTime = new Date(fileItem.updatedAt || 0).getTime();
-      const dbTime = new Date(dbItem.updatedAt || 0).getTime();
-      if (dbTime > fileTime) {
-        merged.push(dbItem);
-      } else {
-        merged.push(fileItem);
+function mergeStandards(fileList, dbList, fileIsNewer = false) {
+  if (fileIsNewer) {
+    const dbMap = new Map((dbList || []).map(item => [item.id, item]));
+    return fileList.map(fileItem => {
+      const dbItem = dbMap.get(fileItem.id);
+      if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
+        return { ...fileItem, updatedAt: new Date().toISOString() };
       }
-    }
-  }
-  
-  const fileIds = new Set(fileList.map(item => item.id));
-  for (const dbItem of dbList || []) {
-    if (!fileIds.has(dbItem.id)) {
+      return dbItem;
+    });
+  } else {
+    const fileMap = new Map(fileList.map(item => [item.id, item]));
+    const merged = [];
+    for (const dbItem of dbList || []) {
       merged.push(dbItem);
     }
+    const dbIds = new Set((dbList || []).map(item => item.id));
+    for (const fileItem of fileList) {
+      if (!dbIds.has(fileItem.id)) {
+        merged.push({ ...fileItem, updatedAt: new Date().toISOString() });
+      }
+    }
+    return merged;
   }
-  
-  return merged;
+}
+
+async function checkIsFileNewer(fileName, dbKey) {
+  if (isVercel) return false;
+  try {
+    const filePath = path.join(serverDir, 'plugins', fileName);
+    if (!fs.existsSync(filePath)) return false;
+    const fileMtime = fs.statSync(filePath).mtime.getTime();
+
+    const row = await dbQuery.get("SELECT updated_at FROM app_session WHERE key = ?", [dbKey]);
+    if (!row || !row.updated_at) return true;
+    const dbUpdatedAt = new Date(row.updated_at).getTime();
+
+    return fileMtime > (dbUpdatedAt + 1000);
+  } catch (err) {
+    console.error(`Failed to check file mtime for ${fileName}:`, err.message);
+    return false;
+  }
 }
 
 async function writeStandardToFile(fileName, list) {
@@ -214,9 +227,8 @@ router.get('/engineering-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read engineering standards from database:', dbErr.message);
-    }
-
-    const merged = mergeStandards(standardsList, dbList);
+    const fileIsNewer = await checkIsFileNewer('engineeringStandards.js', 'engineering_standards');
+    const merged = mergeStandards(standardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('engineering_standards', JSON.stringify(merged));
@@ -272,9 +284,8 @@ router.get('/grading-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read grading standards from database:', dbErr.message);
-    }
-
-    const merged = mergeStandards(gradingStandardsList, dbList);
+    const fileIsNewer = await checkIsFileNewer('gradingStandardsList.js', 'grading_standards');
+    const merged = mergeStandards(gradingStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('grading_standards', JSON.stringify(merged));
@@ -376,9 +387,8 @@ router.get('/generation-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read generation standards from database:', dbErr.message);
-    }
-
-    const merged = mergeStandards(generationStandardsList, dbList);
+    const fileIsNewer = await checkIsFileNewer('generationStandards.js', 'generation_standards');
+    const merged = mergeStandards(generationStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('generation_standards', JSON.stringify(merged));
@@ -434,9 +444,8 @@ router.get('/lockscreen-standards', async (req, res) => {
       }
     } catch (dbErr) {
       console.error('Failed to read lockscreen standards from database:', dbErr.message);
-    }
-
-    const merged = mergeStandards(lockscreenStandardsList, dbList);
+    const fileIsNewer = await checkIsFileNewer('lockscreenStandards.js', 'lockscreen_standards');
+    const merged = mergeStandards(lockscreenStandardsList, dbList, fileIsNewer);
     if (JSON.stringify(merged) !== JSON.stringify(dbList)) {
       try {
         await saveSessionValue('lockscreen_standards', JSON.stringify(merged));
