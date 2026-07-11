@@ -601,6 +601,10 @@ router.get('/session/images/proxy', async (req, res) => {
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
     const blob = await get(imageUrl, { token, access: 'private' });
 
+    console.log('[Proxy Debug] blob object keys:', Object.keys(blob || {}));
+    console.log('[Proxy Debug] blob body type:', typeof blob?.body);
+    console.log('[Proxy Debug] blob size:', blob?.size);
+
     const contentType = blob.contentType || 'image/png';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
