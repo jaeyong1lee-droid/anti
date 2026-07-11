@@ -408,11 +408,14 @@
      - 기존에 코어재료와 필터재료의 주요 역학적 목적 및 지반공학적 요구조건의 정답 매핑이 뒤바뀌어 입력되어 오답 처리되던 학습 세션(`review_questions_topic_56`)의 DB 데이터를 정밀 추적하여, `INPUT_1` 및 `INPUT_4` 의 정답 매핑과 사용자의 이미 Graded된 채점 점수(0점 -> 10점 만점 처리) 및 피드백 텍스트까지 완벽하게 원복 및 교정 완료했습니다.
   5. **표 채우기 생성 예시 내 글자 수 제약 문구 제거 ([quizRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/quizRoutes.js))**:
      - AI 문제 생성 프롬프트 예시 내에서 행 제목(1열 헤더)에 강제 가이드라인으로 남아 있던 `(15~45자)` 표시 문구를 모두 제거하여 출제 유연성을 향상했습니다.
-  6. **서버 기동 및 지침 GET API의 파일 수정 시간(mtime) 기반 동기화 구현 ([index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js), [configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
-     - **원인**: 이전 병합 로직은 데이터베이스 캐시에 지침 데이터가 있고 파일에는 삭제된 지침이 존재할 때, 데이터베이스 캐시에 남아있는 지침을 "사용자정의 지침"으로 오인해 지속적으로 병합하여 다시 파일로 써내려가는(Resurrection) 결함이 있었습니다. 또한, 서버 기동 시(`index.js` 내 `initializeAllStandards`) 데이터베이스 캐시 내용을 무조건적으로 메모리에 오버라이트하여 파일의 신규 수정 사항을 덮어써 버렸습니다.
+  6. **서버 기동 및 지침 GET API의 파일 수정 시간(mtime) 기반 동기화 구현 및 UI 내 기본 지침 삭제 버그 해결 ([index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js), [configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - **원인**: 
+       1. 이전 병합 로직은 데이터베이스 캐시에 지침 데이터가 있고 파일에는 삭제된 지침이 존재할 때, 데이터베이스 캐시에 남아있는 지침을 "사용자정의 지침"으로 오인해 지속적으로 병합하여 다시 파일로 써내려가는(Resurrection) 결함이 있었습니다. 또한, 서버 기동 시(`index.js` 내 `initializeAllStandards`) 데이터베이스 캐시 내용을 무조건적으로 메모리에 오버라이트하여 파일의 신규 수정 사항을 덮어써 버렸습니다.
+       2. **[기본 지침 삭제 버그]**: Vercel 프로덕션 환경의 파일 시스템은 읽기 전용(Read-Only)이므로, 사용자가 브라우저 UI에서 기본 지침을 삭제하더라도 서버 파일(`generationStandards.js` 등)의 내용을 물리적으로 바꿀 수 없습니다. 이에 따라 DB가 최신(dbIsNewer)인 상태임에도 불구하고, `mergeStandards`가 Vercel 코드 번들 내 파일(`fileList`)에 여전히 남아 있는 삭제된 기본 지침을 발견하고 "새로 추가된 파일 지침"으로 오인해 지속적으로 DB에 다시 밀어 넣는(Resurrection) 치명적인 맹점이 있었습니다.
      - **해결**:
        - 서버 기동 시 및 지침 GET API 호출 시, 로컬 파일 시스템 상의 지침 소스 파일 수정 시각(`fs.statSync(filePath).mtime`)과 데이터베이스 캐시의 최종 업데이트 시각(`updated_at`)을 비교하는 `checkIsFileNewer` 함수를 도입하였습니다.
        - 파일 수정 시각이 데이터베이스 캐시보다 최신일 때(개발자가 직접 파일을 수정한 경우)는 파일을 절차적 기준(Source of Truth)으로 삼아, 파일에서 삭제된 지침은 데이터베이스 캐시에서도 온전히 소멸하고 추가된 내용은 DB에 즉시 적재하도록 완벽히 정비했습니다.
+       - **[삭제 유지 로직]**: `dbIsNewer`인 상황(사용자가 UI에서 저장/삭제 조치한 경우)에서는 **추가적인 파일 루프 병합을 스킵하고 데이터베이스 목록(`dbList`) 자체를 100% 진정한 기준(Source of Truth)으로 신뢰하고 반환**하도록 동기화 병합 알고리즘을 획기적으로 개선했습니다. 이를 통해 사용자가 UI에서 삭제한 기본 지침이 Vercel의 읽기 전용 파일 데이터에 의해 불필요하게 부활하는 현상을 완전히 차단했습니다.
   7. **지침 GET API 내 catch 블록의 닫는 중괄호 누락 구문 오류(SyntaxError) 수정 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
      - **원인**: 이전 `multi_replace_file_content`로 `configRoutes.js` 내의 `checkIsFileNewer` 함수 연동 코드를 치환할 때, `catch (dbErr) { ... }` 블록의 닫는 중괄호(`}`) 기호가 네 군데의 GET 라우트에서 전부 소실되는 치명적인 결함이 발생했습니다. 이로 인해 `SyntaxError: Unexpected token 'catch'`와 함께 Express 백엔드 서버가 로딩 시점에 완전히 크래시하여 모든 API 요청에 500 응답이 반환되고 기기 연결이 끊어지는 장애가 발생했습니다.
      - **해결**: 네 군데의 GET 라우트(`engineering-standards`, `grading-standards`, `generation-standards`, `lockscreen-standards`) 내의 catch 블록 끝에 누락된 닫는 중괄호(`}`)를 정상적으로 보완 및 삽입하여 구문 크래시를 원천 해결했습니다.

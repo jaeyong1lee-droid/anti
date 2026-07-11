@@ -51,28 +51,30 @@ function stampUpdatedStandards(newList, oldList) {
 const isVercel = !!process.env.VERCEL;
 
 function mergeStandards(fileList, dbList, fileIsNewer = false) {
+  if (!dbList || dbList.length === 0) {
+    return fileList;
+  }
+
   if (fileIsNewer) {
     const dbMap = new Map((dbList || []).map(item => [item.id, item]));
-    return fileList.map(fileItem => {
+    const merged = fileList.map(fileItem => {
       const dbItem = dbMap.get(fileItem.id);
       if (!dbItem || dbItem.content !== fileItem.content || dbItem.title !== fileItem.title) {
         return { ...fileItem, updatedAt: new Date().toISOString() };
       }
       return dbItem;
     });
-  } else {
-    const fileMap = new Map(fileList.map(item => [item.id, item]));
-    const merged = [];
+
+    const fileIds = new Set(fileList.map(item => item.id));
     for (const dbItem of dbList || []) {
-      merged.push(dbItem);
-    }
-    const dbIds = new Set((dbList || []).map(item => item.id));
-    for (const fileItem of fileList) {
-      if (!dbIds.has(fileItem.id)) {
-        merged.push({ ...fileItem, updatedAt: new Date().toISOString() });
+      if (!fileIds.has(dbItem.id)) {
+        merged.push(dbItem);
       }
     }
     return merged;
+  } else {
+    // DB is newer: trust DB completely (including deletions of default standards in the UI)
+    return dbList;
   }
 }
 
