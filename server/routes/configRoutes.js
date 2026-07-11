@@ -601,20 +601,18 @@ router.get('/session/images/proxy', async (req, res) => {
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
     const blob = await get(imageUrl, { token, access: 'private' });
 
-    console.log('[Proxy Debug] blob object keys:', Object.keys(blob || {}));
-    console.log('[Proxy Debug] blob body type:', typeof blob?.body);
-    console.log('[Proxy Debug] blob size:', blob?.size);
-
-    const contentType = blob.contentType || 'image/png';
+    const contentType = (blob.headers && blob.headers['content-type']) || 'image/png';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
 
-    if (blob.body && typeof blob.body.pipe === 'function') {
-      blob.body.pipe(res);
-    } else if (blob.body) {
-      const arrayBuffer = await new Response(blob.body).arrayBuffer();
+    const stream = blob.stream || blob.body;
+    if (stream && typeof stream.pipe === 'function') {
+      stream.pipe(res);
+    } else if (stream) {
+      const arrayBuffer = await new Response(stream).arrayBuffer();
       res.send(Buffer.from(arrayBuffer));
     } else {
+      console.error(`[Proxy Error] No stream found for image ${imageUrl}`, Object.keys(blob || {}));
       res.status(404).send('Not found');
     }
   } catch (err) {
