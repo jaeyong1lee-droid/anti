@@ -1411,12 +1411,14 @@ export function healQuizQuestionObject(q) {
         }
         const replacement = alphabet.join(', ');
 
-        const multiPattern = /\([A-Z]\)(?:\s*(?:,|\s+및|\s+또는|와|과)\s*\([A-Z]\))+/g;
+        const multiPattern = /\([A-Z]\)(?:\s*(?:,|\s+및|\s+또는|와|과|~|-|부터|에서)\s*\([A-Z]\))+/g;
         if (multiPattern.test(q.question)) {
+          multiPattern.lastIndex = 0;
           q.question = q.question.replace(multiPattern, replacement);
         } else if (numInputs > 1) {
           const singlePattern = /\([A-Z]\)/g;
           if (singlePattern.test(q.question)) {
+            singlePattern.lastIndex = 0;
             q.question = q.question.replace(singlePattern, replacement);
           }
         }
