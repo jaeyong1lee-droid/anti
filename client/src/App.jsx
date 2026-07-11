@@ -18407,7 +18407,8 @@ ${itemsStr}
                                           tableAnswersRef.current[`${idx}_INPUT`] = val;
                                         }}
                                         onKeyDown={async (e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                          const isMultiline = q.subtype === '서술' || q.subtype === '공식' || q.type === '주관식 (서술)' || q.type === '주관식 (공식)';
+                                          if (e.key === 'Enter' && !e.shiftKey && !isMultiline) {
                                             e.preventDefault();
                                             if (!gradingLoading[idx]) {
                                               await gradeSubjectiveQuestion(idx, q);
@@ -18415,8 +18416,13 @@ ${itemsStr}
                                             }
                                           }
                                         }}
-                                        rows={1}
-                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
+                                        rows={q.subtype === '서술' || q.subtype === '공식' || q.type === '주관식 (서술)' || q.type === '주관식 (공식)' ? 4 : 1}
+                                        placeholder={
+                                          q.type === '주관식 (개요)' || q.subtype === '개요' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" :
+                                          q.type === '주관식 (공식)' || q.subtype === '공식' ? "공식을 제시하고 각 기호의 정의를 입력하세요" :
+                                          q.type === '주관식 (서술)' || q.subtype === '서술' ? "이론 유도 과정 및 핵심 공학적 전제조건을 서술하세요" :
+                                          "답안을 입력하세요 (한글 10~15자 내외)"
+                                        }
                                         className={`subjective-quiz-textarea w-full bg-slate-900 border focus:border-slate-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, isRevd)}`}
                                       />
                                     {idx !== 1 && tableGradingResults[`${idx}_INPUT`]?.score !== undefined && (() => {
@@ -21815,7 +21821,8 @@ ${itemsStr}
                                           examTableAnswersRef.current[`${idx}_INPUT`] = val;
                                         }}
                                         onKeyDown={async (e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                          const isMultiline = q.subtype === '서술' || q.subtype === '공식' || q.type === '주관식 (서술)' || q.type === '주관식 (공식)';
+                                          if (e.key === 'Enter' && !e.shiftKey && !isMultiline) {
                                             e.preventDefault();
                                             if (!gradingLoading[idx]) {
                                               await gradeSubjectiveQuestion(idx, q);
@@ -21823,8 +21830,13 @@ ${itemsStr}
                                             }
                                           }
                                         }}
-                                        rows={1}
-                                        placeholder={q.type === '주관식 (개요)' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" : "답안을 입력하세요 (한글 10~15자 내외)"}
+                                        rows={q.subtype === '서술' || q.subtype === '공식' || q.type === '주관식 (서술)' || q.type === '주관식 (공식)' ? 4 : 1}
+                                        placeholder={
+                                          q.type === '주관식 (개요)' || q.subtype === '개요' ? "핵심 키워드들을 쉼표(,)로 구분하여 입력하세요 (예: 키워드1, 키워드2, 키워드3)" :
+                                          q.type === '주관식 (공식)' || q.subtype === '공식' ? "공식을 제시하고 각 기호의 정의를 입력하세요" :
+                                          q.type === '주관식 (서술)' || q.subtype === '서술' ? "이론 유도 과정 및 핵심 공학적 전제조건을 서술하세요" :
+                                          "답안을 입력하세요 (한글 10~15자 내외)"
+                                        }
                                         className={`w-full bg-slate-900 border focus:border-amber-500 rounded-xl pl-3 pr-[60px] py-2 text-[14px] sm:text-[16px] focus:outline-none transition-all resize-none overflow-hidden ${getSubjectiveColorClasses(idx, !!examRevealed[idx])}`}
                                       />
                                     {examTableGradingResults[`${idx}_INPUT`]?.score !== undefined && (() => {

@@ -2042,10 +2042,46 @@ ${ENGINEERING_STANDARDS}
       }));
     }
 
-    // Shuffle and select up to 5 formula questions
+    // Retrieve custom theory questions from database
+    let customTheories = [];
+    try {
+      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+      if (theoryRows.length > 0 && theoryRows[0].value) {
+        const parsed = JSON.parse(theoryRows[0].value);
+        if (Array.isArray(parsed.theoryQuestions)) {
+          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading theory sessions for comprehensive exam:', dbErr);
+    }
+
+    // Load defaults if empty
+    if (customTheories.length === 0) {
+      customTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+    }
+
+    // Shuffle and select up to 3 formula questions and 2 theory questions
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
     
-    const selectedFormulas = shuffledFormulas.slice(0, 5).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, 3).map(f => {
       if (!f) return null;
       const fTitle = String(f.title || f.question || '');
       const matchedTopic = topics.find(t => {
@@ -2062,7 +2098,24 @@ ${ENGINEERING_STANDARDS}
       };
     }).filter(Boolean);
 
-    const customSubjs = [...selectedFormulas];
+    const selectedTheories = shuffledTheories.slice(0, 2).map(t => {
+      if (!t) return null;
+      const tTitle = String(t.title || '');
+      const matchedTopic = topics.find(topic => {
+        const topicTitle = topic.title || '';
+        return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
+      });
+      return {
+        type: "주관식",
+        subtype: "서술",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula || '',
+        concept: t.concept || ''
+      };
+    }).filter(Boolean);
+
+    const customSubjs = [...selectedFormulas, ...selectedTheories];
 
     // Merge local DB core 10 questions + split mined AI questions
     const finalQuestions = [...customSubjs, ...cleanedQuestions];
@@ -2172,12 +2225,46 @@ router.post('/exam/additional', async (req, res) => {
       }));
     }
 
+    // Retrieve custom theory questions from database
+    let customTheories = [];
+    try {
+      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
+      if (theoryRows.length > 0 && theoryRows[0].value) {
+        const parsed = JSON.parse(theoryRows[0].value);
+        if (Array.isArray(parsed.theoryQuestions)) {
+          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Error reading theory sessions for comprehensive exam refresh:', dbErr);
+    }
 
+    // Load defaults if empty
+    if (customTheories.length === 0) {
+      customTheories = [
+        {
+          title: "Terzaghi 1차원 압밀 지배방정식 유도",
+          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
+          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
+        },
+        {
+          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
+          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
+          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
+        },
+        {
+          title: "Rankine 주동토압 공식의 이론적 유도",
+          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
+          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
+        }
+      ];
+    }
 
-    // Select 2 formulas randomly
+    // Select 1 formula and 1 theory randomly
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
+    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
 
-    const selectedFormulas = shuffledFormulas.slice(0, 2).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, 1).map(f => {
       if (!f) return null;
       const fTitle = String(f.title || f.question || '');
       const matchedTopic = topics.find(t => {
@@ -2194,10 +2281,28 @@ router.post('/exam/additional', async (req, res) => {
       };
     }).filter(Boolean);
 
-    const customSubjs = [...selectedFormulas];
+    const selectedTheories = shuffledTheories.slice(0, 1).map(t => {
+      if (!t) return null;
+      const tTitle = String(t.title || '');
+      const matchedTopic = topics.find(topic => {
+        const topicTitle = topic.title || '';
+        return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
+      });
+      return {
+        type: "주관식",
+        subtype: "서술",
+        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
+        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
+        answer: t.formula || '',
+        concept: t.concept || ''
+      };
+    }).filter(Boolean);
 
-    // Format formulas text for LLM context
+    const customSubjs = [...selectedFormulas, ...selectedTheories];
+
+    // Format formulas and theories text for LLM context
     const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
+    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 3; // 3 batches (4 + 4 + 5) = 13 AI questions
@@ -2214,11 +2319,11 @@ router.post('/exam/additional', async (req, res) => {
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 ${countToGenerate}개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 ${countToGenerate}개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
-1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 '<Topic>...</Topic>' 태그, **[인용된 필수공식 목록]**에서 직접 다루는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
+1. 반드시 아래 제공된 **[평가 범위 토픽 목록 및 본문]**의 '<Topic>...</Topic>' 태그, **[인용된 필수공식 목록]**, **[인용된 이론유도 목록]**에서 직접 다루는 구체적인 개념, 공식 및 물리적 기전의 범위 안에서만 시험 문제를 생성하십시오.
 2. 각 문제를 출제할 때 해당 문제의 출처가 되는 단 하나의 토픽의 범위로 한정하여 문제를 구성하십시오. 절대 특정 토픽에 관한 문제를 낼 때 다른 토픽에 적힌 단어, 수치, 공학적 조건이나 공식들을 혼합(Cross-contamination)하여 보기(options)나 지문을 만드는 '문맥 교차 오염'을 저지르지 마십시오. 각 문제는 소스 상의 독립된 개별 토픽 내용에 완전히 부합해야 합니다.
 3. 제공된 소스 자료 및 인용된 내용에 **직접 등장하지 않는 외부의 타 공학/역학 분야 이론(예: 텍스트에 언급되지 않은 동역학 구조해석, 진동학, 설계감쇠, 고유진동수 등)은 절대로 지문에 주입하거나 날조하여 문제를 만들지 마십시오.**
 4. 오직 제공된 소스 본문 텍스트 내에 **단어 및 수식으로 명시되어 있는 범위 내로만 출제 범위를 100% 철저히 한정**하십시오. 소스에 없는 타분야 내용을 엮거나 상상하여 문제를 구성할 경우 심각한 출제 오류로 간주됩니다.
@@ -2229,6 +2334,9 @@ ${combinedText}
 
 [인용된 필수공식 목록]:
 ${formulasText || '인용된 내용 없음'}
+
+[인용된 이론유도 목록]:
+${theoriesText || '인용된 내용 없음'}
 
 [출제 규칙]:
 1. 이번 회차에서는 **정확히 ${countToGenerate}개의 문제**만 반환하되 다음 비율을 사수할 것:
