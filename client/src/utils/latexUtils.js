@@ -1115,16 +1115,37 @@ export function healQuizQuestionObject(q) {
 
     // For multiple choice questions, heal mismatched answer field
     if (q.options && Array.isArray(q.options) && q.answer) {
+      // 0. index형태 답안 ("1번", "①" 등) 보정 처리
+      let matchedIndex = -1;
+      const cleanAns = String(q.answer).trim().toLowerCase();
+      if (cleanAns === '1번' || cleanAns === '①' || cleanAns === '보기1' || cleanAns === '보기 1' || cleanAns === '1') {
+        matchedIndex = 0;
+      } else if (cleanAns === '2번' || cleanAns === '②' || cleanAns === '보기2' || cleanAns === '보기 2' || cleanAns === '2') {
+        matchedIndex = 1;
+      } else if (cleanAns === '3번' || cleanAns === '③' || cleanAns === '보기3' || cleanAns === '보기 3' || cleanAns === '3') {
+        matchedIndex = 2;
+      } else if (cleanAns === '4번' || cleanAns === '④' || cleanAns === '보기4' || cleanAns === '보기 4' || cleanAns === '4') {
+        matchedIndex = 3;
+      }
+      
+      if (matchedIndex !== -1 && q.options.length > matchedIndex) {
+        const exactMatchIndex = q.options.indexOf(q.answer);
+        if (exactMatchIndex === -1) {
+          console.log(`[HealMC] Mapping index-based answer "${q.answer}" to option[${matchedIndex}]: "${q.options[matchedIndex]}"`);
+          q.answer = q.options[matchedIndex];
+        }
+      }
+
       // 1. 배율 왜곡(10배/100배 스케일링 오염) 복원 처리
-      const optNums = q.options.map(o => parseFloat(o.replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
-      const ansNum = parseFloat(q.answer.replace(/[^0-9.-]/g, ''));
+      const optNums = q.options.map(o => parseFloat(String(o || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+      const ansNum = parseFloat(String(q.answer || '').replace(/[^0-9.-]/g, ''));
       if (optNums.length === q.options.length && !isNaN(ansNum) && ansNum > 0 && ansNum < 1) {
         const hasScaledMatch = optNums.some(n => Math.abs(n - ansNum * 100) < 1e-5 || Math.abs(n - ansNum * 10) < 1e-5);
         const allLargeOrZero = optNums.every(n => n === 0 || n >= 1);
         if (hasScaledMatch && allLargeOrZero) {
           console.log(`[HealMC] Detected scaled options. Restoring options from ${JSON.stringify(q.options)} using answer ${q.answer}`);
           q.options = q.options.map(opt => {
-            const num = parseFloat(opt.replace(/[^0-9.-]/g, ''));
+            const num = parseFloat(String(opt || '').replace(/[^0-9.-]/g, ''));
             if (isNaN(num)) return opt;
             const restoredVal = (num / 100).toFixed(2);
             return restoredVal;
@@ -1139,20 +1160,22 @@ export function healQuizQuestionObject(q) {
         let maxScore = -1;
         
         const getOptionMatchScore = (opt, answer) => {
-          const clean = (s) => (s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+          const clean = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
           const cOpt = clean(opt);
           const cAns = clean(answer);
           
           if (cOpt === cAns) return 1000;
           
-          if (opt.includes('=')) {
-            const parts = opt.split('=');
+          const sOpt = String(opt || '');
+          const sAns = String(answer || '');
+          if (sOpt.includes('=')) {
+            const parts = sOpt.split('=');
             const rhs = parts[parts.length - 1];
             if (clean(rhs) === cAns) return 900;
           }
           
-          if (opt.trim().endsWith(answer.trim())) return 800;
-          if (opt.trim().startsWith(answer.trim())) return 700;
+          if (sOpt.trim().endsWith(sAns.trim())) return 800;
+          if (sOpt.trim().startsWith(sAns.trim())) return 700;
           
           if (cAns && cOpt && (cOpt.includes(cAns) || cAns.includes(cOpt))) {
             const diff = Math.abs(cOpt.length - cAns.length);
