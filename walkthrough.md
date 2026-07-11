@@ -390,3 +390,22 @@
   4. **빌드 검증 및 깃 배포**:
      - Vite 프로덕션 빌드 통과 및 node 문법 검사 무결성을 확인하고 원격 리포지토리(`origin main`)로 커밋 및 푸시 처리를 마무리했습니다.
 
+---
+
+## 25. 설정/지침 실시간 상호 동기화(File-DB Sync) 구현 및 표채우기(Table Quiz) 생성 템플릿/세션 데이터 정밀 복구 완료 (2026-07-11 3차 패치)
+
+* **상세 구현 사항**:
+  1. **설정/지침 API의 파일-DB 실시간 양방향 동기화 및 덮어쓰기 구현 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - **문제**: 기존에는 설정/지침(엔지니어링, 채점, 문제생성, 락스크린 지침)을 안티(UI)에서 수정하면 데이터베이스(`app_session` 캐시)에만 저장되고 로컬 파일 시스템의 소스 파일(예: `generationStandards.js`)에는 쓰여지지 않아 형상 관리가 되지 않았으며, 반대로 개발자가 로컬 소스 파일을 편집하면 데이터베이스 캐시에 가로막혀 브라우저에 바로 노출되지 않고 누락되는 비동화 문제가 있었습니다.
+     - **해결**:
+       - `configRoutes.js` 내에 파일과 DB 캐시 목록을 똑똑하게 병합 및 실시간 비교하는 `mergeStandards` 헬퍼 함수를 추가했습니다. `updatedAt`이 가장 최신이거나 파일 편집이 발생했을 때(내용이 다르지만 타임스탬프가 같을 때) 파일을 우선시해 데이터베이스 캐시를 자동 동기화합니다.
+       - UI에서 저장(`POST`)을 클릭했을 때 DB 캐시 업데이트와 더불어 로컬 개발 환경(Vercel 프로덕션이 아닐 때)인 경우 해당 지침 소스 파일들(`engineeringStandards.js`, `generationStandards.js`, `lockscreenStandards.js`, `gradingStandardsList.js`)에 실시간으로 JSON 배열 및 템플릿 코드를 물리적으로 덮어쓰도록(Write-Back) 구축하여 완벽히 일치시켰습니다.
+  2. **주관식 채점 지침 모듈화 및 이관 ([gradingPlugin.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/plugins/gradingPlugin.js), [gradingStandardsList.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/plugins/gradingStandardsList.js))**:
+     - 주관식 채점 알고리즘 코드 파일인 `gradingPlugin.js` 내부에 거대하게 정의되어 있던 static `gradingStandardsList` 배열 데이터를 별도의 독립 파일인 `gradingStandardsList.js`로 깔끔하게 모듈화 분리하고 import 구조로 개편하여, 채점 로직 코드에 영향 없이 안전하게 지침 내용만 덮어쓸 수 있도록 보장했습니다.
+  3. **표 채우기(Table Quiz) 문항 생성 지침 고도화 ([generationStandards.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/plugins/generationStandards.js))**:
+     - AI가 표 채우기 문항을 출제할 때 `question` 질문 필드에 마크다운 표 등을 직접 재작성하여 표의 빈칸 입력란(`[INPUT_1]`)과 정답(`answers`) 매핑이 서로 어긋나거나 꼬이는(swapping) 오매핑 현상을 방지하기 위해, **"🚨 [표 채우기 지문 내 표 재작성 금지 및 100% 매핑 일치 철칙 - 극도로 중요!]"** (7번 서브 지침)를 새롭게 신설하고 데이터베이스에 최종 동기화 완료했습니다.
+  4. **필댐 축조재료 코어/필터 비교 표채우기 퀴즈 세션 데이터 100% 복구 ([heal_filter_quiz_session.mjs](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/scratch/heal_filter_quiz_session.mjs))**:
+     - 기존에 코어재료와 필터재료의 주요 역학적 목적 및 지반공학적 요구조건의 정답 매핑이 뒤바뀌어 입력되어 오답 처리되던 학습 세션(`review_questions_topic_56`)의 DB 데이터를 정밀 추적하여, `INPUT_1` 및 `INPUT_4` 의 정답 매핑과 사용자의 이미 Graded된 채점 점수(0점 -> 10점 만점 처리) 및 피드백 텍스트까지 완벽하게 원복 및 교정 완료했습니다.
+  5. **통합 컴파일 및 빌드 검증**:
+     - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
+
