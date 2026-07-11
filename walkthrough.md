@@ -416,6 +416,9 @@
   7. **지침 GET API 내 catch 블록의 닫는 중괄호 누락 구문 오류(SyntaxError) 수정 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
      - **원인**: 이전 `multi_replace_file_content`로 `configRoutes.js` 내의 `checkIsFileNewer` 함수 연동 코드를 치환할 때, `catch (dbErr) { ... }` 블록의 닫는 중괄호(`}`) 기호가 네 군데의 GET 라우트에서 전부 소실되는 치명적인 결함이 발생했습니다. 이로 인해 `SyntaxError: Unexpected token 'catch'`와 함께 Express 백엔드 서버가 로딩 시점에 완전히 크래시하여 모든 API 요청에 500 응답이 반환되고 기기 연결이 끊어지는 장애가 발생했습니다.
      - **해결**: 네 군데의 GET 라우트(`engineering-standards`, `grading-standards`, `generation-standards`, `lockscreen-standards`) 내의 catch 블록 끝에 누락된 닫는 중괄호(`}`)를 정상적으로 보완 및 삽입하여 구문 크래시를 원천 해결했습니다.
-  8. **통합 컴파일 및 빌드 검증**:
+  8. **서버 기동 시 지침 목록 변수 미정의 참조 오류(ReferenceError) 해결 ([index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
+     - **원인**: `index.js` 내의 `initializeAllStandards`에 파일 수정 시간 기반 동기화 로직을 탑재하면서, 정작 지침들의 원본 배열 객체인 `standardsList`, `gradingStandardsList`, `generationStandardsList`, `lockscreenStandardsList` 파일 임포트 선언이 누락되어 있었습니다. 이로 인해 Node.js 구동 과정에서 `ReferenceError: gradingStandardsList is not defined`가 발생하여 백엔드 기능이 가동 직후 비정상 종료되는(500 에러 및 FUNCTION_INVOCATION_FAILED) 문제가 있었습니다.
+     - **해결**: `index.js` 상단에 각 지침 목록을 내포하고 있는 플러그인 소스 파일들로부터 해당 배열 데이터 임포트 문을 온전히 보강 및 연동하여 시동 크래시를 근본 차단했습니다.
+  9. **통합 컴파일 및 빌드 검증**:
      - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
 

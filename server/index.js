@@ -104,10 +104,11 @@ if (fs.existsSync(clientBuildPath)) {
   console.log('[Static Serving] Production build folder not found. Local server started in API mode.');
 }
 
-import { updateLiveEngineeringStandards } from './plugins/engineeringStandards.js';
+import { updateLiveEngineeringStandards, standardsList } from './plugins/engineeringStandards.js';
 import { updateLiveGradingStandards } from './plugins/gradingPlugin.js';
-import { updateLiveGenerationStandards } from './plugins/generationStandards.js';
-import { updateLiveLockscreenStandards } from './plugins/lockscreenStandards.js';
+import { gradingStandardsList } from './plugins/gradingStandardsList.js';
+import { updateLiveGenerationStandards, generationStandardsList } from './plugins/generationStandards.js';
+import { updateLiveLockscreenStandards, lockscreenStandardsList } from './plugins/lockscreenStandards.js';
 
 import { saveSessionValue } from './services/aiService.js';
 
