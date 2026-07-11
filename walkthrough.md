@@ -428,3 +428,19 @@
   10. **통합 컴파일 및 빌드 검증**:
      - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
 
+---
+
+## 26. Gemini API 모델 업그레이드 (Gemini 2.5 Flash -> Gemini 3.0 Flash 전환 완료)
+
+* **배경 & 목적**:
+  - 기존 429 과부하 상황 및 실패율 극복을 위한 failover 백업 목록에 정의되어 있던 구형 모델 `gemini-2.5-flash` 및 `gemini-2.5-flash-lite` 대신, 최신형 고성능 경량 모델인 **`gemini-3.0-flash`** 및 **`gemini-3.0-flash-lite`**를 사용하도록 시스템을 업그레이드하였습니다.
+
+* **상세 구현 사항**:
+  1. **백엔드 Failover 모델 배열 업데이트 ([aiService.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/services/aiService.js))**:
+     - `callLLMWithFailover` 호출 시 순회하는 `geminiFallbacks` 백업 모델 풀 리스트에서 기존 `'gemini-2.5-flash'` 및 `'gemini-2.5-flash-lite'`를 각각 `'gemini-3.0-flash'`, `'gemini-3.0-flash-lite'`로 교체하여 에러 대응 안정성을 높였습니다.
+  2. **수식 분석 라우트 디폴트 모델 변경 ([configRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/configRoutes.js))**:
+     - 공식 자동 분석 라우트 내에서 선호 모델 미등록 시 폴백용 디폴트 값으로 지정되어 있던 `'gemini-2.5-flash'`를 `'gemini-3.0-flash'`로 안전하게 전환했습니다.
+  3. **프론트엔드 엔진 모델 파서 정렬 ([App.jsx](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/client/src/App.jsx))**:
+     - 클라이언트 학습 이력 내에서 서버 응답 타임라인 메시지를 파싱하여 엔진 모델명을 추출하는 구문 분석 조건절의 `'gemini-2.5-flash'` 매칭 규칙을 `'gemini-3.0-flash'`에 정상 연동되도록 동기화했습니다.
+  4. **깃 원격 저장소 실시간 반영 및 배포**:
+     - 수정 사항을 로컬 스테이징하고 커밋한 후 원격 저장소(`main` 브랜치)에 최종 반영하여 Vercel 프로덕션 서버에 즉시 적용 완료했습니다.
