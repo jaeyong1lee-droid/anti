@@ -2170,45 +2170,12 @@ router.post('/exam/additional', async (req, res) => {
       }));
     }
 
-    let customTheories = [];
-    try {
-      await ensureSessionTable();
-      const theoryRows = await dbQuery.all('SELECT value FROM app_session WHERE key = ?', ['theory_questions']);
-      if (theoryRows.length > 0 && theoryRows[0].value) {
-        const parsed = JSON.parse(theoryRows[0].value);
-        if (Array.isArray(parsed.theoryQuestions)) {
-          customTheories = parsed.theoryQuestions.filter(q => q && !q.isNewEmptyCard && (q.title || q.formula));
-        }
-      }
-    } catch (dbErr) {
-      console.warn('Error reading theory sessions for comprehensive exam refresh:', dbErr);
-    }
 
-    if (customTheories.length === 0) {
-      customTheories = [
-        {
-          title: "Terzaghi 1차원 압밀 지배방정식 유도",
-          concept: "점토층 내 과잉간극수압의 소산 및 침하 시간적 추이를 물리적으로 정밀 묘사하는 지배방정식",
-          formula: "지배 미분방정식:\n$$\\frac{\\partial u}{\\partial t} = C_v \\frac{\\partial^2 u}{\\partial z^2}$$\n\n[주요 유도 가정]:\n1. 흙입자와 물은 압축성이 없음(비압축성)\n2. 흙 속 물의 흐름은 Darcy 법칙을 따름 ($v = k i$)\n3. 압밀은 1차원으로만 진행되며 흙의 공극비 변화는 유효응력 증가에 선형 비례함 ($a_v$ 일정)"
-        },
-        {
-          title: "Terzaghi 얕은기초 극한지지력 공식의 유도",
-          concept: "기초 저면 아래 지반의 전단 전파 거동(일반 전단 파괴)을 극한 상태 한계 평형으로 수치화한 지지력 공식",
-          formula: "Terzaghi 극한 지지력:\n$$q_{ult} = c N_c + q N_q + 0.5 \\gamma B N_{\\gamma}$$\n\n[유도 메커니즘]:\n- 지반 파괴 영역을 3개 zone(Zone I: 탄성 쐐기, Zone II: 대수나선 방사형 전단 영역, Zone III: Rankine 수동 수평 지반 영역)으로 분할하여 상부 하중 벡터와 전단 저항 한계선 결합"
-        },
-        {
-          title: "Rankine 주동토압 공식의 이론적 유도",
-          concept: "지반이 가설 벽체 배면 방향으로 팽창 변형을 일으켜 한계 인장 소성 상태에 도달할 때의 수평 응력",
-          formula: "주동토압 강도 식:\n$$p_a = \\gamma z K_a - 2 c \\sqrt{K_a}$$\n\n[주요 유도 공식]:\n- Mohr-Coulomb 파괴 포락선과 Mohr 응력원의 접점 기하학적 분석을 통하여 $K_a = \\tan^2(45^\\circ - \\phi/2)$ 수식 도출"
-        }
-      ];
-    }
 
-    // Select 1 formula and 1 theory randomly
+    // Select 2 formulas randomly
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
-    const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
 
-    const selectedFormula = shuffledFormulas.slice(0, 1).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, 2).map(f => {
       if (!f) return null;
       const fTitle = String(f.title || f.question || '');
       const matchedTopic = topics.find(t => {
@@ -2225,28 +2192,10 @@ router.post('/exam/additional', async (req, res) => {
       };
     }).filter(Boolean);
 
-    const selectedTheory = shuffledTheories.slice(0, 1).map(t => {
-      if (!t) return null;
-      const tTitle = String(t.title || '');
-      const matchedTopic = topics.find(topic => {
-        const topicTitle = topic.title || '';
-        return tTitle && topicTitle && (topicTitle.includes(tTitle) || tTitle.includes(topicTitle));
-      });
-      return {
-        type: "주관식",
-        subtype: "서술",
-        topic_id: matchedTopic ? matchedTopic.id : (topics[0] ? topics[0].id : null),
-        question: `[이론유도] ${tTitle || '이론유도'}의 이론 유도 과정 및 핵심 공학적 전제조건을 기술하시오.`,
-        answer: t.formula || '',
-        concept: t.concept || ''
-      };
-    }).filter(Boolean);
+    const customSubjs = [...selectedFormulas];
 
-    const customSubjs = [...selectedFormula, ...selectedTheory];
-
-    // Format formulas and theories text for LLM context
+    // Format formulas text for LLM context
     const formulasText = customFormulas.map((f, idx) => `[필수공식 ${idx+1}] 제목: ${f.title}\n공식 및 설명:\n${f.formula}\n개념: ${f.concept}`).join('\n\n');
-    const theoriesText = customTheories.map((t, idx) => `[이론유도 ${idx+1}] 제목: ${t.title}\n개념: ${t.concept}\n내용/수식:\n${t.formula}`).join('\n\n');
 
     let aggregatedAiQuestions = [];
     const TOTAL_BATCHES = 2; // 2 batches * 4 AI questions = 8 AI questions
@@ -2261,7 +2210,7 @@ router.post('/exam/additional', async (req, res) => {
       
       const batchPrompt = `
 당신은 국가기술자격 기술사 시험 출제위원입니다.
-아래 제공된 [평가 범위 토픽 소스], [필수공식 목록], [이론유도 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
+아래 제공된 [평가 범위 토픽 소스], [필수공식 목록]에 해당하는 공식과 공학적 지식 내용만을 참고하여, 다른 문제들과 절대 중복되지 않는 고난도 종합평가 추가 문제 **정확히 4개**를 생성하십시오.
 (현재 분할 출제 회차: ${i + 1} / ${TOTAL_BATCHES}, 랜덤 시드: ${randomSeed})
 
 🚨 [출제 출처 한정 및 문맥 격리 규칙 (Topic Isolation) - 극도로 중요!]:
