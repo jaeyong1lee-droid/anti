@@ -422,6 +422,9 @@
   8. **서버 기동 시 지침 목록 변수 미정의 참조 오류(ReferenceError) 해결 ([index.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/index.js))**:
      - **원인**: `index.js` 내의 `initializeAllStandards`에 파일 수정 시간 기반 동기화 로직을 탑재하면서, 정작 지침들의 원본 배열 객체인 `standardsList`, `gradingStandardsList`, `generationStandardsList`, `lockscreenStandardsList` 파일 임포트 선언이 누락되어 있었습니다. 이로 인해 Node.js 구동 과정에서 `ReferenceError: gradingStandardsList is not defined`가 발생하여 백엔드 기능이 가동 직후 비정상 종료되는(500 에러 및 FUNCTION_INVOCATION_FAILED) 문제가 있었습니다.
      - **해결**: `index.js` 상단에 각 지침 목록을 내포하고 있는 플러그인 소스 파일들로부터 해당 배열 데이터 임포트 문을 온전히 보강 및 연동하여 시동 크래시를 근본 차단했습니다.
-  9. **통합 컴파일 및 빌드 검증**:
+  9. **표 채우기 1열 행 구분 항목의 최소/최대 글자수 제약 가이드라인 전면 제거 ([quizRoutes.js](file:///c:/Users/airfo/OneDrive/바탕 화면/안티/server/routes/quizRoutes.js))**:
+     - **원인**: 이전 릴리즈에서 지문 내의 `(15~45자)` 문구는 제거했으나, 백엔드 문제 출제용 원본 프롬프트 템플릿(`quizRoutes.js` 내 `[구분 항목(행 제목) 명확화 및 행동 유도 원칙]`) 내부에 `글자수는 반드시 최소 15자에서 최대 45자 이내로 구체적이고 길게 작성하십시오`라는 AI 유도 프롬프트 지시사항이 그대로 남아 있었습니다. 이로 인해 AI가 표를 채울 때 맨 왼쪽 1열의 구분 명칭(행 헤더)을 직관적인 단어 대신 설명형 문장으로 매우 길게 작성하여 표의 레이아웃을 망가뜨리는 문제를 야기했습니다.
+     - **해결**: 프롬프트 내 글자 수 제약 및 불필요하게 설명문 형태로 길게 쓰도록 유도하는 지시와 예시들을 전면 소거하고, 사용자가 채워야 할 지식 범주를 지시하는 "단순하고 직관적인 단어 또는 명사형 어구"로 작성하도록 프롬프트를 깔끔하게 변경했습니다.
+  10. **통합 컴파일 및 빌드 검증**:
      - 서버 구문 분석(`node --check`) 및 Vite 클라이언트 프로덕션 컴파일(`npm run build`)을 100% 성공 확인 후 원격 리포지토리(`origin main`) 배포 완료했습니다.
 
