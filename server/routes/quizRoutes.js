@@ -1967,6 +1967,20 @@ router.post('/exam/all', async (req, res) => {
     standardsAnalysis = await analyzeStandardsBeforeTask(progressId, '종합평가 시험 출제', GENERATION_STANDARDS, 'generation');
   }
   try {
+    let count = parseInt(req.query.count || req.body.count || 40, 10);
+    if (isNaN(count) || count <= 0) count = 40;
+
+    const customFormulasLimit = Math.min(3, Math.floor(count * 0.08));
+    const customTheoriesLimit = Math.min(2, Math.floor(count * 0.05));
+    const customSubjsCount = customFormulasLimit + customTheoriesLimit;
+    const poolTarget = Math.max(1, count - customSubjsCount);
+
+    const countGaeyo = Math.round(poolTarget * 0.15);
+    const countGongsik = Math.round(poolTarget * 0.15);
+    const countTable = Math.round(poolTarget * 0.15);
+    const countDandap = Math.round(poolTarget * 0.15);
+    const countMC = Math.max(1, poolTarget - (countGaeyo + countGongsik + countTable + countDandap));
+
     if (progressId) {
       updateProgress(progressId, 2, '2단계: 출제 가이드 정렬 및 소스 텍스트 병합 중...', 40);
     }
@@ -2143,9 +2157,9 @@ ${adjustments.map((a, idx) => `
       console.warn('[종합평가] 로컬 예비 문항 생성 실패:', fallbackErr);
     }
 
-    // Generate 20 new AI questions (4 batches of 5)
+    // Generate new AI questions dynamically based on count (4 batches of 5 max)
     let aggregatedAiQuestions = [];
-    const TOTAL_BATCHES = 4;
+    const TOTAL_BATCHES = Math.min(4, Math.max(1, Math.ceil(count / 10)));
     console.log(`[종합평가 병렬 생성 가동] TPM 초과 방지를 위해 5문제씩 총 ${TOTAL_BATCHES}회 병렬 요청을 시작합니다.`);
     if (progressId) {
       progressTimer = startBackendProgressTimer(progressId, 3, '3단계: AI 엔진이 예상 문제를 심층 분석 및 생성하는 중...', 90, 1800, 3);
@@ -2325,16 +2339,16 @@ ${ENGINEERING_STANDARDS}
       return result;
     };
 
-    selectedQuestions.push(...take(shufGaeyo, 5));
-    selectedQuestions.push(...take(shufGongsik, 5));
-    selectedQuestions.push(...take(shufTable, 5));
-    selectedQuestions.push(...take(shufDandap, 5));
-    selectedQuestions.push(...take(shufMC, 15));
+    selectedQuestions.push(...take(shufGaeyo, countGaeyo));
+    selectedQuestions.push(...take(shufGongsik, countGongsik));
+    selectedQuestions.push(...take(shufTable, countTable));
+    selectedQuestions.push(...take(shufDandap, countDandap));
+    selectedQuestions.push(...take(shufMC, countMC));
 
-    // If total selected is less than 35, fill from remaining questions in other pools
+    // If total selected is less than poolTarget, fill from remaining questions in other pools
     const remainingPool = [...shufGaeyo, ...shufGongsik, ...shufTable, ...shufDandap, ...shufMC];
     const shufRemaining = shuffleArray(remainingPool);
-    const needed = Math.max(0, 35 - selectedQuestions.length);
+    const needed = Math.max(0, poolTarget - selectedQuestions.length);
     selectedQuestions.push(...take(shufRemaining, needed));
 
     console.log(`[종합평가 선택 완료] 최종 선택 문항 수: ${selectedQuestions.length}개`);
@@ -2439,11 +2453,11 @@ ${ENGINEERING_STANDARDS}
       ];
     }
 
-    // Shuffle and select up to 3 formula questions and 2 theory questions
+    // Shuffle and select formula questions and theory questions based on limits
     const shuffledFormulas = [...customFormulas].sort(() => 0.5 - Math.random());
     const shuffledTheories = [...customTheories].sort(() => 0.5 - Math.random());
     
-    const selectedFormulas = shuffledFormulas.slice(0, 3).map(f => {
+    const selectedFormulas = shuffledFormulas.slice(0, customFormulasLimit).map(f => {
       if (!f) return null;
       const fTitle = String(f.title || f.question || '');
       const matchedTopic = topics.find(t => {
@@ -2460,7 +2474,7 @@ ${ENGINEERING_STANDARDS}
       };
     }).filter(Boolean);
 
-    const selectedTheories = shuffledTheories.slice(0, 2).map(t => {
+    const selectedTheories = shuffledTheories.slice(0, customTheoriesLimit).map(t => {
       if (!t) return null;
       const tTitle = String(t.title || '');
       const matchedTopic = topics.find(topic => {

@@ -11721,6 +11721,17 @@ export default function App() {
     }
 
     // 2) No server session and no local memory → Create new questions
+    const countInput = window.prompt("새로운 종합평가 시험을 구성합니다.\n출제할 문제 수를 입력해 주세요. (기본값: 40)", "40");
+    if (countInput === null) {
+      setLoadingExam(false);
+      setShowExam(false);
+      return;
+    }
+    let count = parseInt(countInput, 10);
+    if (isNaN(count) || count <= 0) {
+      count = 40;
+    }
+
     setExamTopic({ title: '전체 토픽 통합 종합평가' });
     setExamQuestions([]);
     setExamRevealed({});
@@ -11735,7 +11746,7 @@ export default function App() {
     startProgressPolling(progressId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/exam/all?progressId=${progressId}`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/exam/all?progressId=${progressId}&count=${count}`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         const qs = data.questions || [];
