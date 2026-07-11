@@ -823,9 +823,48 @@ ${ENGINEERING_STANDARDS}
       throw new Error('AI output is not a valid JSON array.');
     }
 
+    const normalizedParsedArray = (parsedArray || []).map(q => {
+      const type = String(q.type || '').trim();
+      const subtype = String(q.subtype || '').trim();
+      
+      let newType = type;
+      let newSubtype = subtype;
+      
+      if (type === '주관식') {
+        if (subtype === '개요') { newType = '주관식 (개요)'; }
+        else if (subtype === '공식') { newType = '주관식 (공식)'; }
+        else if (subtype === '표채우기') { newType = '주관식 (표채우기)'; newSubtype = '표채우기'; }
+        else if (subtype === '단답형') { newType = '주관식 (단답형)'; }
+        else if (subtype === '서술') { newType = '주관식 (서술)'; newSubtype = '서술'; }
+      } else if (type === '개요') {
+        newType = '주관식 (개요)';
+        newSubtype = '개요';
+      } else if (type === '공식') {
+        newType = '주관식 (공식)';
+        newSubtype = '공식';
+      } else if (type === '표채우기') {
+        newType = '주관식 (표채우기)';
+        newSubtype = '표채우기';
+      } else if (type === '단답형') {
+        newType = '주관식 (단답형)';
+        newSubtype = '단답형';
+      } else if (type === '서술') {
+        newType = '주관식 (서술)';
+        newSubtype = '서술';
+      } else if (type === '객관식' || type === '객관식 (4지선다)') {
+        newType = '객관식 (4지선다)';
+      }
+      
+      return {
+        ...q,
+        type: newType,
+        subtype: newSubtype
+      };
+    });
+
     const finalQuestions = topic.category === '계산'
-      ? assembleFinalCalculationQuestions(parsedArray, topic)
-      : assembleFinalQuestions(parsedArray, topic, carryOverQuestions, fileText);
+      ? assembleFinalCalculationQuestions(normalizedParsedArray, topic)
+      : assembleFinalQuestions(normalizedParsedArray, topic, carryOverQuestions, fileText);
 
     const cleanedQuestions = finalQuestions.map(q => healQuizQuestionObject({
       ...q,
