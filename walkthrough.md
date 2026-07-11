@@ -362,9 +362,9 @@
 ## 23. 문제 출제 지침(generationStandards) 데이터베이스 캐시 동기화 및 빌드 검증 (2026-07-11 패치)
 
 * **상세 구현 사항**:
-  1. **데이터베이스 캐시 수동 동기화**:
-     - 이전 커밋에서 `server/plugins/generationStandards.js` 파일 내의 `generationStandardsList`에 추가/수정된 **"주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화"** 지침(표채우기 문항 예외 및 짧은 관계식 제한)이 데이터베이스(`app_session` 테이블) 내 기존 캐시로 인해 덮어씌워져 프로덕션에 실제 적용되지 않고 있던 불일치 현상을 감지했습니다.
-     - `server/check_db_standards.mjs` 검증 스크립트를 portable Node 환경 하에서 구동하여 stale 캐시 데이터를 데이터베이스에서 정상적으로 식별 및 완전히 삭제(`DELETE`) 처리했습니다. 이를 통해 시스템이 즉시 업데이트된 최신 `generationStandards.js` 파일 정의를 읽어가도록 복구했습니다.
+  1. **데이터베이스 캐시 수동 동기화 (SQLite 및 PostgreSQL 일괄 정비)**:
+     - 이전 커밋에서 `server/plugins/generationStandards.js` 파일 내의 `generationStandardsList`에 추가/수정된 **"주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화"** 지침(표채우기 문항 예외 및 짧은 관계식 제한)이 로컬 서버와 클라우드 서버의 데이터베이스(`app_session` 테이블) 내 기존 캐시로 인해 덮어씌워져 실제 적용되지 않고 있던 현상을 발견했습니다.
+     - 로컬의 SQLite(`spaced_repetition.db`) 및 클라우드의 Neon PostgreSQL DB 모두를 점검하여, 구형 지침 데이터 캐시(`generation_standards`, `lockscreen_standards`, `grading_standards`, `engineering_standards`)를 완전히 삭제(`DELETE`) 처리했습니다. 이를 통해 로컬/클라우드 어느 환경에서든 지침 조회 시 최신 코드가 실시간 반영되도록 복구 완료했습니다.
   2. **프론트엔드 빌드 무결성 점검**:
      - `$env:PATH` 환경 변수 내 portable Node 실행 파일 경로를 동적 선언하여 Vite 프로덕션 빌드(`npm run build`)를 완벽하게 수행했습니다. 컴파일 경고나 오류 없이 100% 정상 번들링됨을 확인했습니다.
   3. **백엔드 정적 코드 검증**:
