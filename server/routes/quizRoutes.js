@@ -778,12 +778,14 @@ ${ENGINEERING_STANDARDS}
 
     const rawText = await localCallLLM(systemInstruction, enrichedGenerationPrompt, null, 'question', { temperature: 1.0 });
     let parsedArray = null;
-    
-    // Parse json array safely
-    const startIdx = rawText.indexOf('[');
-    const endIdx = rawText.lastIndexOf(']');
-    if (startIdx !== -1 && endIdx !== -1) {
-      parsedArray = JSON.parse(rawText.substring(startIdx, endIdx + 1));
+    let text = rawText.trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    }
+    try {
+      parsedArray = parseLlmJson(text);
+    } catch {
+      parsedArray = extractJsonArray(rawText);
     }
 
     if (!Array.isArray(parsedArray) || parsedArray.length === 0) {
