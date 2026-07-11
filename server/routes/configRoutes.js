@@ -519,7 +519,7 @@ router.get('/session/images', async (req, res) => {
                 const extension = mimeType.split('/')[1] || 'png';
                 const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
                 try {
-                  const blob = await put(fileName, buffer, { access: 'public' });
+                  const blob = await put(fileName, buffer, { access: 'private' });
                   return blob.url;
                 } catch (uploadErr) {
                   console.error(`[Self-Healing] Upload failed: ${uploadErr.message}`);
@@ -571,7 +571,7 @@ router.post('/session/images', async (req, res) => {
             const extension = mimeType.split('/')[1] || 'png';
             const fileName = `formulas/${item.id || Date.now()}_${idx}.${extension}`;
             console.log(`Uploading formula image to Vercel Blob: ${fileName}`);
-            const blob = await put(fileName, buffer, { access: 'public' });
+            const blob = await put(fileName, buffer, { access: 'private' });
             return blob.url;
           }
         }
