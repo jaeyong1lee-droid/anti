@@ -598,25 +598,16 @@ router.get('/session/images/proxy', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
-    const headers = {};
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-    } else if (process.env.VERCEL_OIDC_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.VERCEL_OIDC_TOKEN}`;
-    }
+    const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
+    const blob = await get(imageUrl, { token });
 
-    const response = await fetch(imageUrl, { headers });
-    if (!response.ok) {
-      console.error(`Failed to proxy image ${imageUrl}: ${response.status} ${response.statusText}`);
-      return res.status(response.status).send('Failed to fetch image');
-    }
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const contentType = response.headers.get('content-type') || 'image/png';
+    const contentType = blob.contentType || 'image/png';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
 
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
     res.send(buffer);
   } catch (err) {
     console.error('Proxy image error:', err);
