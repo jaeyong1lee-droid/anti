@@ -599,7 +599,7 @@ router.get('/session/images/proxy', async (req, res) => {
     }
 
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
-    const blob = await get(imageUrl, { token });
+    const blob = await get(imageUrl, { token, access: 'private' });
 
     const arrayBuffer = await blob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
