@@ -1216,7 +1216,7 @@ JSON 반환 포맷:
         concept: result.concept || '',
         structure: result.structure || '',
         memorizationTip: result.memorizationTip || '',
-        modelName: globalPreferredModel || 'gemini-2.5-flash'
+        modelName: globalPreferredModel || 'gemini-3.0-flash'
       });
     } catch (err) {
       console.error('Formula suggest title LLM error:', err);
@@ -1226,7 +1226,7 @@ JSON 반환 포맷:
         concept: '',
         structure: '',
         memorizationTip: '',
-        modelName: globalPreferredModel || 'gemini-2.5-flash'
+        modelName: globalPreferredModel || 'gemini-3.0-flash'
       });
     }
   } catch (err) {

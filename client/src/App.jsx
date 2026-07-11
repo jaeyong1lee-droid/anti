@@ -2761,8 +2761,8 @@ export default function App() {
                     modelName = 'gemini-3.5-flash';
                   } else if (data.message.toLowerCase().includes('gemini-3.1-flash-lite')) {
                     modelName = 'gemini-3.1-flash-lite';
-                  } else if (data.message.toLowerCase().includes('gemini-2.5-flash')) {
-                    modelName = 'gemini-2.5-flash';
+                  } else if (data.message.toLowerCase().includes('gemini-3.0-flash')) {
+                    modelName = 'gemini-3.0-flash';
                   }
 
                   return {
