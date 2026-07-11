@@ -296,6 +296,7 @@ export const LatexRenderer = React.memo(function LatexRenderer({
   }
 
   if (typeof cleanedText === 'string') {
+    cleanedText = preprocessMarkdownTables(cleanedText);
     const isMixedReview = !!window.__isMixedReviewActive;
     const shouldHideRemarks = isMixedReview || (formulaSource === 'tutor' && !hideTableWrapper);
     cleanedText = convertMarkdownTablesToHtml(cleanedText, hideTableWrapper, shouldHideRemarks);
@@ -621,3 +622,90 @@ export const LatexRenderer = React.memo(function LatexRenderer({
     </div>
   );
 });
+
+function preprocessMarkdownTables(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  const lines = text.split('\n');
+  const resultLines = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Check if table start
+    if (trimmed.startsWith('|') && i + 1 < lines.length) {
+      const nextLine = lines[i + 1].trim();
+      const isNextSeparator = nextLine.startsWith('|') && 
+                              nextLine.includes('-') && 
+                              /^[|:\s\-]+$/.test(nextLine);
+
+      if (isNextSeparator) {
+        // We found a table!
+        // First, count the number of pipes in the header or separator to determine columns.
+        const headerPipes = (line.match(/\|/g) || []).length;
+        const separatorPipes = (nextLine.match(/\|/g) || []).length;
+        const targetPipes = Math.max(headerPipes, separatorPipes);
+
+        resultLines.push(line);       // Push header
+        resultLines.push(nextLine);   // Push separator
+        i += 2;
+
+        let accumulatedRowText = '';
+        let currentPipesCount = 0;
+
+        while (i < lines.length) {
+          const curLine = lines[i];
+          const curTrimmed = curLine.trim();
+
+          // If we encounter a completely empty line or a line starting with a heading/divider that is clearly not part of the table
+          if (curTrimmed === '' && currentPipesCount === 0) {
+            break;
+          }
+          if (curTrimmed.startsWith('---') || curTrimmed.startsWith('###') || curTrimmed.startsWith('1.') || curTrimmed.startsWith('2.') || curTrimmed.startsWith('3.')) {
+            break;
+          }
+
+          // Count pipes in this line
+          const linePipes = (curLine.match(/\|/g) || []).length;
+          
+          if (accumulatedRowText === '') {
+            accumulatedRowText = curLine;
+          } else {
+            // If the accumulated text doesn't end with '|' and this line doesn't start with '|',
+            // we should join them with a <br> tag.
+            const prevTrimmed = accumulatedRowText.trim();
+            if (prevTrimmed.endsWith('|') || curTrimmed.startsWith('|')) {
+              accumulatedRowText += ' ' + curLine;
+            } else {
+              accumulatedRowText += '<br>' + curLine;
+            }
+          }
+          currentPipesCount += linePipes;
+
+          // If we have accumulated the target number of pipes (or more), this row is complete
+          if (currentPipesCount >= targetPipes) {
+            resultLines.push(accumulatedRowText);
+            accumulatedRowText = '';
+            currentPipesCount = 0;
+          }
+
+          i++;
+        }
+
+        // Push any remaining accumulated row text if the table ended abruptly
+        if (accumulatedRowText.trim() !== '') {
+          resultLines.push(accumulatedRowText);
+        }
+
+        continue;
+      }
+    }
+
+    resultLines.push(line);
+    i++;
+  }
+
+  return resultLines.join('\n');
+}
