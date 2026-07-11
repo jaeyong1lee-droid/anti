@@ -357,10 +357,15 @@
      - 첫 진입 속도를 가볍게 유지하기 위해 무거운 서브 위젯(ScientificCalculator, FloatingMemorization, ImageStandardsPlugin)들을 `React.lazy`로 분리하여 static import 로 인한 초기 로딩 부하를 사전에 완벽히 방어하고 있음을 교차 검증 완료했습니다.
 
 
+---
 
+## 23. 문제 출제 지침(generationStandards) 데이터베이스 캐시 동기화 및 빌드 검증 (2026-07-11 패치)
 
-
-
-
-
-
+* **상세 구현 사항**:
+  1. **데이터베이스 캐시 수동 동기화**:
+     - 이전 커밋에서 `server/plugins/generationStandards.js` 파일 내의 `generationStandardsList`에 추가/수정된 **"주관식 정답의 장문 메커니즘 및 명사형 종결어미 의무화"** 지침(표채우기 문항 예외 및 짧은 관계식 제한)이 데이터베이스(`app_session` 테이블) 내 기존 캐시로 인해 덮어씌워져 프로덕션에 실제 적용되지 않고 있던 불일치 현상을 감지했습니다.
+     - `server/check_db_standards.mjs` 검증 스크립트를 portable Node 환경 하에서 구동하여 stale 캐시 데이터를 데이터베이스에서 정상적으로 식별 및 완전히 삭제(`DELETE`) 처리했습니다. 이를 통해 시스템이 즉시 업데이트된 최신 `generationStandards.js` 파일 정의를 읽어가도록 복구했습니다.
+  2. **프론트엔드 빌드 무결성 점검**:
+     - `$env:PATH` 환경 변수 내 portable Node 실행 파일 경로를 동적 선언하여 Vite 프로덕션 빌드(`npm run build`)를 완벽하게 수행했습니다. 컴파일 경고나 오류 없이 100% 정상 번들링됨을 확인했습니다.
+  3. **백엔드 정적 코드 검증**:
+     - `server/index.js` 구문 검사를 수행해 에러가 없음을 확인하였으며, 최종 검증이 완료된 코드가 원격 리포지토리(`origin main`)와 완전히 동기화되어 있음을 확인했습니다.
