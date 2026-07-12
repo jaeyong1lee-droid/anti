@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
+import { PopoutWindow } from './PopoutWindow';
 
 function computeParenthesisPairs(str) {
   if (!str) return {};
@@ -2257,23 +2258,17 @@ export function FloatingCalculator({ isVisible, onClose }) {
     document.removeEventListener('touchend', handleTouchEnd);
   };
 
-  return (
-    <div
-      ref={dragRef}
-      style={{
-        position: 'fixed',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        zIndex: 9999,
-        touchAction: 'none',
-        display: isVisible ? 'flex' : 'none'
-      }}
-      className="w-[90vw] md:w-[660px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
-    >
+  if (!isVisible) return null;
+
+  const isMobile = window.innerWidth < 768;
+  const usePopout = !isMobile;
+
+  const content = (
+    <div className="w-full h-full flex flex-col overflow-hidden bg-slate-900 text-slate-100">
       <div 
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        className="drag-handle flex items-center justify-between px-3.5 py-2.5 bg-lime-200 border-b border-lime-300 cursor-move select-none"
+        onMouseDown={usePopout ? undefined : handleMouseDown}
+        onTouchStart={usePopout ? undefined : handleTouchStart}
+        className={`drag-handle flex items-center justify-between px-3.5 py-2.5 bg-lime-200 border-b border-lime-300 select-none ${usePopout ? '' : 'cursor-move'}`}
       >
         <div className="flex items-center gap-2">
           <span className="text-[10px] bg-slate-950 text-slate-100 font-black px-1.5 py-0.5 rounded border border-slate-900/30">CASIO</span>
@@ -2286,9 +2281,38 @@ export function FloatingCalculator({ isVisible, onClose }) {
           <X size={14} />
         </button>
       </div>
-      <div className="p-2 overflow-y-auto max-h-[70vh] custom-vertical-scrollbar bg-slate-950/20">
+      <div className="p-2 overflow-y-auto flex-1 custom-vertical-scrollbar bg-slate-950/20">
         <ScientificCalculator />
       </div>
+    </div>
+  );
+
+  if (usePopout) {
+    return (
+      <PopoutWindow
+        title="공학용 계산기"
+        onClose={onClose}
+        initWidth={680}
+        initHeight={620}
+      >
+        {content}
+      </PopoutWindow>
+    );
+  }
+
+  return (
+    <div
+      ref={dragRef}
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        zIndex: 9999,
+        touchAction: 'none'
+      }}
+      className="w-[90vw] md:w-[660px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden backdrop-blur-md transition-shadow duration-300 hover:shadow-rose-500/10 hover:border-rose-500/20"
+    >
+      {content}
     </div>
   );
 }
