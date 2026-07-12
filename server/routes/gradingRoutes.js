@@ -232,7 +232,7 @@ router.post('/question/regenerate', async (req, res) => {
   try {
     if ((topicId && String(topicId).startsWith('mixed_')) || currentQuestion?.mixedType) {
       const mixedType = currentQuestion?.mixedType || (currentQuestion?.acronym ? 'acronym' : 'table');
-      if (mixedType === 'image') {
+      if (mixedType === 'image' || mixedType === 'overview') {
         if (progressTimer) {
           clearInterval(progressTimer);
           stopBackendProgressTimer(progressId, 100, '성공적으로 재출제했습니다!', true);
