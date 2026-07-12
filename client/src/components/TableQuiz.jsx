@@ -43,6 +43,26 @@ export const TableQuiz = React.memo(function TableQuiz({
     floatedSizeRef.current = floatedSize;
   }, [floatedSize]);
 
+  const [floatedPos, setFloatedPos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('anti_floated_table_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    const w = floatedSize.width || 500;
+    const initialX = window.innerWidth - w - 24;
+    return { x: initialX > 0 ? initialX : 24, y: 80 };
+  });
+
+  const floatedPosRef = useRef(floatedPos);
+  useEffect(() => {
+    floatedPosRef.current = floatedPos;
+  }, [floatedPos]);
+
   const { headers, rows } = q.tableData;
   const inputIds = Object.keys(q.answers || {});
 
@@ -622,6 +642,64 @@ export const TableQuiz = React.memo(function TableQuiz({
     }
   }, []);
 
+  const startFloatedMove = useCallback((e) => {
+    if (e.target.closest('button, svg, path, input, textarea, td, th')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const startXPos = floatedPosRef.current.x;
+    const startYPos = floatedPosRef.current.y;
+    const startX = clientX;
+    const startY = clientY;
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    const handleMove = (moveEvent) => {
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+
+      const currentSize = floatedSizeRef.current;
+      const newX = Math.max(0, Math.min(window.innerWidth - currentSize.width, startXPos + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - currentSize.height, startYPos + dy));
+
+      setFloatedPos({ x: newX, y: newY });
+    };
+
+    const handleMoveEnd = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+
+      try {
+        localStorage.setItem('anti_floated_table_pos', JSON.stringify(floatedPosRef.current));
+      } catch (err) {}
+
+      if (isTouch) {
+        window.removeEventListener('touchmove', handleMove);
+        window.removeEventListener('touchend', handleMoveEnd);
+      } else {
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleMoveEnd);
+      }
+    };
+
+    if (isTouch) {
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleMoveEnd);
+    } else {
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleMoveEnd);
+    }
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -692,12 +770,14 @@ export const TableQuiz = React.memo(function TableQuiz({
     <>
       <div 
         className={isMainFloated 
-          ? "fixed top-20 right-6 z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
+          ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
           : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
         }
         style={isMainFloated ? {
           width: `${floatedSize.width}px`,
           height: `${floatedSize.height}px`,
+          left: `${floatedPos.x}px`,
+          top: `${floatedPos.y}px`,
           maxWidth: '90vw',
           maxHeight: '90vh'
         } : mobileColWidths.reduce((acc, w, i) => {
@@ -718,7 +798,11 @@ export const TableQuiz = React.memo(function TableQuiz({
           </div>
         )}
         {isMainFloated && (
-          <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none">
+          <div 
+            onMouseDown={startFloatedMove}
+            onTouchStart={startFloatedMove}
+            className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+          >
             <div className="flex items-center gap-2">
               <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
                 📌
@@ -988,12 +1072,14 @@ export const TableQuiz = React.memo(function TableQuiz({
       <div className={isCompFloated ? "" : "mt-2"}>
         <div 
           className={isCompFloated
-            ? "fixed top-20 right-6 z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
+            ? "fixed z-[9991] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl p-3 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md floated-table-quiz"
             : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
           }
           style={isCompFloated ? {
             width: `${floatedSize.width}px`,
             height: `${floatedSize.height}px`,
+            left: `${floatedPos.x}px`,
+            top: `${floatedPos.y}px`,
             maxWidth: '90vw',
             maxHeight: '90vh'
           } : undefined}
@@ -1011,7 +1097,11 @@ export const TableQuiz = React.memo(function TableQuiz({
             </div>
           )}
           {isCompFloated && (
-            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none">
+            <div 
+              onMouseDown={startFloatedMove}
+              onTouchStart={startFloatedMove}
+              className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 select-none cursor-grab active:cursor-grabbing"
+            >
               <div className="flex items-center gap-2">
                 <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
                   ⚖️
