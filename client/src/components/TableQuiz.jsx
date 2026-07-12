@@ -589,7 +589,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     }
   }, [colCount]);
 
-  const startFloatedResize = useCallback((e) => {
+  const startFloatedResizeLeft = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -599,6 +599,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     
     const startWidth = floatedSizeRef.current.width;
     const startHeight = floatedSizeRef.current.height;
+    const startLeft = floatedPosRef.current.x;
     
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'sw-resize';
@@ -611,6 +612,62 @@ export const TableQuiz = React.memo(function TableQuiz({
       const dy = currentY - startY;
       
       const newWidth = Math.max(300, Math.min(window.innerWidth - 40, startWidth - dx));
+      const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + dy));
+      const newLeft = Math.max(0, startLeft + (newWidth - startWidth));
+      
+      setFloatedSize({ width: newWidth, height: newHeight });
+      setFloatedPos(prev => ({ ...prev, x: newLeft }));
+    };
+    
+    const stopResize = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      
+      try {
+        localStorage.setItem('anti_floated_table_size', JSON.stringify(floatedSizeRef.current));
+        localStorage.setItem('anti_floated_table_pos', JSON.stringify(floatedPosRef.current));
+      } catch (err) {}
+      
+      if (isTouch) {
+        window.removeEventListener('touchmove', doResize);
+        window.removeEventListener('touchend', stopResize);
+      } else {
+        window.removeEventListener('mousemove', doResize);
+        window.removeEventListener('mouseup', stopResize);
+      }
+    };
+    
+    if (isTouch) {
+      window.addEventListener('touchmove', doResize, { passive: false });
+      window.addEventListener('touchend', stopResize);
+    } else {
+      window.addEventListener('mousemove', doResize);
+      window.addEventListener('mouseup', stopResize);
+    }
+  }, []);
+
+  const startFloatedResizeRight = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isTouch = e.type === 'touchstart';
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startY = isTouch ? e.touches[0].clientY : e.clientY;
+    
+    const startWidth = floatedSizeRef.current.width;
+    const startHeight = floatedSizeRef.current.height;
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'se-resize';
+    
+    const doResize = (moveEvent) => {
+      const currentX = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentY = (moveEvent.touches && moveEvent.touches.length > 0) ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+      
+      const newWidth = Math.max(300, Math.min(window.innerWidth - 40, startWidth + dx));
       const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + dy));
       
       setFloatedSize({ width: newWidth, height: newHeight });
@@ -824,16 +881,30 @@ export const TableQuiz = React.memo(function TableQuiz({
         }, {})}
       >
         {isMainFloated && (
-          <div 
-            className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
-            onMouseDown={startFloatedResize}
-            onTouchStart={startFloatedResize}
-            title="마우스 드래그로 표 크기를 조절합니다"
-          >
-            <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-              <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
-            </svg>
-          </div>
+          <>
+            {/* Bottom Left Resize */}
+            <div 
+              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeLeft}
+              onTouchStart={startFloatedResizeLeft}
+              title="드래그하여 좌측으로 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+            {/* Bottom Right Resize */}
+            <div 
+              className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
+              onMouseDown={startFloatedResizeRight}
+              onTouchStart={startFloatedResizeRight}
+              title="드래그하여 우측으로 크기를 조절합니다"
+            >
+              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+            </div>
+          </>
         )}
         {isMainFloated && (
           <div 
@@ -1120,16 +1191,30 @@ export const TableQuiz = React.memo(function TableQuiz({
           } : undefined}
         >
           {isCompFloated && (
-            <div 
-              className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
-              onMouseDown={startFloatedResize}
-              onTouchStart={startFloatedResize}
-              title="마우스 드래그로 표 크기를 조절합니다"
-            >
-              <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
-                <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
-              </svg>
-            </div>
+            <>
+              {/* Bottom Left Resize */}
+              <div 
+                className="absolute left-0 bottom-0 w-4.5 h-4.5 cursor-sw-resize z-50 flex items-end justify-start p-1 select-none active:scale-95"
+                onMouseDown={startFloatedResizeLeft}
+                onTouchStart={startFloatedResizeLeft}
+                title="드래그하여 좌측으로 크기를 조절합니다"
+              >
+                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                  <path d="M1 9 L9 1 M1 6 L6 1 M1 3 L3 1" strokeWidth="1" strokeLinecap="round" />
+                </svg>
+              </div>
+              {/* Bottom Right Resize */}
+              <div 
+                className="absolute right-0 bottom-0 w-4.5 h-4.5 cursor-se-resize z-50 flex items-end justify-end p-1 select-none active:scale-95"
+                onMouseDown={startFloatedResizeRight}
+                onTouchStart={startFloatedResizeRight}
+                title="드래그하여 우측으로 크기를 조절합니다"
+              >
+                <svg className="w-2.5 h-2.5 text-slate-500 hover:text-slate-300" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+                  <path d="M9 9 L1 1 M9 6 L6 9 M9 3 L3 9" strokeWidth="1" strokeLinecap="round" />
+                </svg>
+              </div>
+            </>
           )}
           {isCompFloated && (
             <div 
