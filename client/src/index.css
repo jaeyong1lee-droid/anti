@@ -1008,6 +1008,44 @@ div[class*="overflow-y-auto"] {
   color: #94a3b8 !important; /* slate-400 for category labels */
 }
 
+/* 📱 Mobile Portrait Table Quiz overrides and 2-column styling */
+@media (max-width: 767px) {
+  /* Enforce a completely solid background on mobile so that text scrolling behind the sticky column is invisible */
+  .markdown-table-container th:first-child,
+  .markdown-table-container td:first-child,
+  .markdown-table th:first-child,
+  .markdown-table td:first-child {
+    background-color: #0b1329 !important; /* solid background override */
+  }
+
+  /* 2-column table adjustments on mobile: prevent horizontal scrolling, wrap text naturally */
+  .markdown-table-2col {
+    table-layout: auto !important;
+    width: 100% !important;
+  }
+  .markdown-table-2col th:first-child,
+  .markdown-table-2col td:first-child {
+    position: static !important; /* disable sticky since table fits 100% width and doesn't scroll */
+    width: 32% !important;
+    min-width: 32% !important;
+    max-width: 32% !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    background-color: rgba(15, 23, 42, 0.75) !important;
+    box-shadow: none !important;
+  }
+  .markdown-table-2col th:not(:first-child),
+  .markdown-table-2col td:not(:first-child) {
+    width: 68% !important;
+    min-width: 68% !important;
+    max-width: 68% !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-align: left !important;
+    padding: 8px 10px !important;
+  }
+}
+
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */
 .table-quiz-table td,
 .table-quiz-input,
