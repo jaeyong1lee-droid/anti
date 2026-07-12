@@ -67,6 +67,129 @@ const rebuildTableHtml = (headers, rows) => {
   return html;
 };
 
+const parseMarkdownTable = (questionText) => {
+  if (!questionText) return null;
+  const lines = questionText.split('\n');
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line !== '|') {
+      if (startIdx === -1) {
+        startIdx = i;
+      }
+      endIdx = i;
+    } else {
+      if (startIdx !== -1) {
+        break;
+      }
+    }
+  }
+
+  const parseRowCells = (rowText) => {
+    let cells = rowText.split('|').map(c => c.trim());
+    while (cells.length > 0 && cells[0] === '') cells.shift();
+    while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop();
+    return cells;
+  };
+
+  if (startIdx !== -1 && endIdx !== -1 && (endIdx - startIdx) >= 2) {
+    const headers = parseRowCells(lines[startIdx]);
+    
+    const separatorLine = lines[startIdx + 1];
+    if (separatorLine.includes('---')) {
+      const rows = [];
+      for (let i = startIdx + 2; i <= endIdx; i++) {
+        const rowCells = parseRowCells(lines[i]);
+        rows.push(rowCells);
+      }
+      
+      const originalTableText = lines.slice(startIdx, endIdx + 1).join('\n');
+      return {
+        tableData: { headers, rows },
+        originalTableText
+      };
+    }
+  }
+  return null;
+};
+
+const parseOverviewContent = (content) => {
+  const result = { definition: '', mechanism: '', comparison: '', significance: '', intuitive: '' };
+  if (!content) return result;
+
+  let healedContent = content;
+  if (typeof healedContent === 'string') {
+    healedContent = healedContent.replace(/\|\s*(개요\(\d+~\d+자\)|개요|메커니즘|비교표|비교|장단점|의미|한계성|직관적의미|직관적)\s*\|/gi, '\n| $1 |');
+    healedContent = healedContent.replace(/\|[ \t]*\|/g, '\n|');
+  }
+
+  const lines = healedContent.split('\n');
+  let currentKey = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === '|') continue;
+    
+    if ((trimmed.includes(':---') || (trimmed.startsWith('|') && trimmed.includes('구분') && trimmed.includes('내용'))) && !currentKey) {
+      continue;
+    }
+
+    const sectionMatch = trimmed.match(/^\|\s*([^|]+)\s*\|?\s*([\s\S]*)$/);
+    
+    const rawKeyCandidate = sectionMatch ? sectionMatch[1].trim() : '';
+    const isTopLevelKey = 
+      rawKeyCandidate === '개요' || 
+      rawKeyCandidate.startsWith('개요(') || 
+      rawKeyCandidate === '메커니즘' || 
+      rawKeyCandidate === '비교표' || 
+      rawKeyCandidate === '비교' || 
+      rawKeyCandidate === '장단점' || 
+      rawKeyCandidate === '공학적 의미/한계성' || 
+      rawKeyCandidate === '공학적 의미 및 한계성' || 
+      rawKeyCandidate === '의미/한계성' || 
+      rawKeyCandidate === '직관적의미' || 
+      rawKeyCandidate === '직관적';
+
+    if (sectionMatch && isTopLevelKey) {
+      const rawKey = sectionMatch[1].trim();
+      let rawVal = sectionMatch[2].trim();
+      
+      if (rawVal.endsWith('|')) {
+        rawVal = rawVal.slice(0, -1).trim();
+      }
+
+      if (rawKey.includes('개요')) {
+        currentKey = 'definition';
+      } else if (rawKey.includes('메커니즘')) {
+        currentKey = 'mechanism';
+      } else if (rawKey.includes('직관적')) {
+        currentKey = 'intuitive';
+      } else if (rawKey.includes('비교') || rawKey.includes('비교표') || rawKey.includes('장단점')) {
+        currentKey = 'comparison';
+      } else if (rawKey.includes('의미') || rawKey.includes('한계성')) {
+        currentKey = 'significance';
+      }
+
+      result[currentKey] = rawVal;
+    } else {
+      if (currentKey) {
+        result[currentKey] += '\n' + trimmed;
+      }
+    }
+  }
+
+  for (const k in result) {
+    result[k] = result[k].replace(/<br\s*\/?>/gi, '\n').trim();
+    if (result[k].endsWith('|') && !result[k].includes('\n')) {
+      result[k] = result[k].slice(0, -1).trim();
+    }
+  }
+
+  return result;
+};
+
 export function FloatingMemorization({
   isVisible,
   onClose,
@@ -1106,11 +1229,142 @@ export function FloatingMemorization({
                         </div>
                       )}
 
-                      {isExpanded && !isEditing && (
-                        <div className="text-slate-355 text-[14px] md:text-[16px] leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
-                          <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
-                        </div>
-                      )}
+                      {isExpanded && !isEditing && (() => {
+                        const parsed = parseOverviewContent(ov.content);
+                        const hasParsedData = parsed.definition || parsed.mechanism || parsed.comparison || parsed.significance || parsed.intuitive;
+                        
+                        if (hasParsedData) {
+                          const steps = parsed.mechanism
+                            ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean)
+                            : [];
+                          return (
+                            <div className="text-slate-355 text-[14px] md:text-[16px] leading-relaxed select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left space-y-4">
+                              {/* 1. 개요 */}
+                              {parsed.definition && (
+                                <div className="text-slate-200 py-1 px-0.5">
+                                  <span className="text-[10px] text-slate-400 font-black block mb-1.5 uppercase tracking-wider select-none">📖 학술적 정의</span>
+                                  <div className="font-bold text-white leading-relaxed">
+                                    <LatexRenderer text={parsed.definition} katexLoaded={katexLoaded} isMarkdown={true} />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 2. 메커니즘 */}
+                              {steps.length > 0 && (
+                                <div className="space-y-2">
+                                  <span className="text-[10px] text-rose-455 font-black block mb-1.5 uppercase tracking-wider select-none">⚙️ 공학적 작동 메커니즘</span>
+                                  <div className="flex flex-col gap-1 w-full">
+                                    {steps.map((step, sIdx) => (
+                                      <React.Fragment key={sIdx}>
+                                        <div className="text-slate-250 font-semibold leading-relaxed py-1 px-0.5">
+                                          <div className="flex gap-2.5 items-start">
+                                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black border border-rose-500/20 shrink-0 mt-0.5 select-none">
+                                              {sIdx + 1}
+                                            </span>
+                                            <div className="flex-1 text-slate-200 leading-relaxed">
+                                              <LatexRenderer text={step} katexLoaded={katexLoaded} isMarkdown={true} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {sIdx < steps.length - 1 && (
+                                          <div className="flex justify-center my-1 select-none">
+                                            <span className="text-rose-500/40 text-[11px] font-black">↓</span>
+                                          </div>
+                                        )}
+                                      </React.Fragment>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 3. 비교표 / 장단점 */}
+                              {parsed.comparison && (() => {
+                                const mdTable = parseMarkdownTable(parsed.comparison);
+                                if (mdTable && mdTable.tableData && mdTable.tableData.headers) {
+                                  const { headers, rows } = mdTable.tableData;
+                                  return (
+                                    <div className="text-slate-200 py-1.5 px-0.5 w-full">
+                                      <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                                      <div className="w-full my-2 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden overflow-x-auto scrollbar-thin">
+                                        <table className="w-full text-center border-collapse text-[14px] md:text-[16px] min-w-full">
+                                          <thead>
+                                            <tr className="bg-slate-900/80 text-slate-355 border-b border-slate-800">
+                                              {headers.map((h, hIdx) => (
+                                                <th 
+                                                  key={hIdx} 
+                                                  className="p-2 sm:p-2.5 font-extrabold border-r border-slate-800 last:border-r-0 whitespace-normal break-words min-w-[90px]"
+                                                >
+                                                  <LatexRenderer text={h} katexLoaded={katexLoaded} />
+                                                </th>
+                                              ))}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {rows.map((row, rIdx) => (
+                                              <tr key={rIdx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-900/20 group">
+                                                {row.map((cell, cIdx) => {
+                                                  const isHeader = cIdx === 0;
+                                                  if (isHeader) {
+                                                    return (
+                                                      <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 font-extrabold text-slate-300 select-text whitespace-normal break-words align-middle text-left bg-slate-950/20">
+                                                        <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                      </td>
+                                                    );
+                                                  }
+                                                  return (
+                                                    <td key={cIdx} className="p-2 sm:p-2.5 border-r border-slate-800 last:border-r-0 text-slate-200 select-text whitespace-normal break-words align-middle text-center">
+                                                      <LatexRenderer text={cell} katexLoaded={katexLoaded} />
+                                                    </td>
+                                                  );
+                                                })}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="text-slate-200 py-1.5 px-0.5">
+                                    <span className="text-[10px] text-emerald-400 font-black block mb-1.5 uppercase tracking-wider select-none">⚖️ 비교표 / 장단점</span>
+                                    <div className="text-slate-250 leading-relaxed font-normal">
+                                      <LatexRenderer text={parsed.comparison} katexLoaded={katexLoaded} isMarkdown={true} hideTableWrapper={true} />
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* 4. 공학적 의미/한계성 */}
+                              {parsed.significance && (
+                                <div className="text-slate-200 py-1 px-0.5">
+                                  <span className="text-[10px] text-amber-400 font-black block mb-1.5 uppercase tracking-wider select-none">💡 공학적 의미 및 한계성</span>
+                                  <div className="text-slate-200 leading-relaxed font-semibold">
+                                    <LatexRenderer text={parsed.significance} katexLoaded={katexLoaded} isMarkdown={true} />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 5. 직관적 의미 */}
+                              {parsed.intuitive && (
+                                <div className="text-slate-200 py-1 px-0.5">
+                                  <span className="text-[10px] text-indigo-400 font-black block mb-1.5 uppercase tracking-wider select-none">🧠 직관적 의미</span>
+                                  <div className="text-slate-200 leading-relaxed font-semibold">
+                                    <LatexRenderer text={parsed.intuitive} katexLoaded={katexLoaded} isMarkdown={true} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Fallback
+                        return (
+                          <div className="text-slate-355 text-[14px] md:text-[16px] leading-relaxed whitespace-pre-wrap select-text border border-slate-800 bg-slate-950/40 p-4 rounded-xl animate-fade-in markdown-body text-left">
+                            <LatexRenderer text={ov.content} isMarkdown={true} formulaSource="tutor" hideTableWrapper={true} />
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
