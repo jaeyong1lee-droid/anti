@@ -1054,27 +1054,41 @@ div[class*="overflow-y-auto"] {
     touch-action: pan-y !important; /* Force only vertical touch pan, absolute block on horizontal viewport wiggle */
   }
 
-  /* Disable horizontal scroll on tables completely on mobile portrait to enforce a strict static 100% viewport width without scrollbars */
+  /* Enable horizontal scroll on tables with scroll chaining protection (overscroll-behavior-x: contain) to prevent page wiggle */
   .table-quiz-container,
   .overflow-x-auto,
   .overflow-auto {
-    overflow-x: hidden !important;
-    max-width: 100vw !important;
-    touch-action: pan-y !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    touch-action: pan-x pan-y !important;
+    overscroll-behavior-x: contain !important;
   }
 
   .table-quiz-container *,
   .overflow-x-auto *,
   .overflow-auto * {
-    touch-action: pan-y !important;
+    touch-action: pan-x pan-y !important;
   }
 
-  /* Hide all scrollbars globally on mobile portrait */
+  /* Hide all scrollbars globally on mobile portrait EXCEPT for table containers */
   ::-webkit-scrollbar {
     display: none !important;
   }
   * {
     scrollbar-width: none !important;
+  }
+
+  .table-quiz-container::-webkit-scrollbar,
+  .overflow-x-auto::-webkit-scrollbar,
+  .overflow-auto::-webkit-scrollbar {
+    display: block !important;
+    height: 4px !important;
+  }
+  .table-quiz-container::-webkit-scrollbar-thumb,
+  .overflow-x-auto::-webkit-scrollbar-thumb,
+  .overflow-auto::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4) !important;
+    border-radius: 2px !important;
   }
 
   /* Wrap and block horizontal scroll on AI tutor responses to prevent layout wiggle, letting inner tables/formulas scroll independently */

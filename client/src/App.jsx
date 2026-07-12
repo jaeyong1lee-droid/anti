@@ -1504,7 +1504,24 @@ export default function App() {
 
       // If the movement is primarily horizontal, prevent default browser swipe/elastic drag
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (e.cancelable) {
+        // Exception: allow horizontal scrolling ONLY inside table containers that have overflow
+        let target = e.target;
+        let isTableScrollable = false;
+        while (target && target !== document.body) {
+          if (target.classList) {
+            const isTableWrapper = target.classList.contains('table-quiz-container') || 
+                                   target.classList.contains('overflow-x-auto') || 
+                                   target.classList.contains('overflow-auto') ||
+                                   target.tagName?.toLowerCase() === 'table';
+            if (isTableWrapper && target.scrollWidth > target.clientWidth) {
+              isTableScrollable = true;
+              break;
+            }
+          }
+          target = target.parentElement;
+        }
+
+        if (!isTableScrollable && e.cancelable) {
           e.preventDefault();
         }
       }
