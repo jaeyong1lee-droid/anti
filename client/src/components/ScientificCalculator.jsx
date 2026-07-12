@@ -2811,7 +2811,7 @@ export function ScientificCalculator() {
             <span>Alphabet ({isQuickInsertUpper ? 'A-Z' : 'a-z'}) & Custom Presets</span>
             <span className="text-[8px] font-normal text-slate-600">(빈 버튼 더블클릭 시 편집 가능)</span>
           </div>
-          <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+          <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
             {['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'].map(char => {
               const displayChar = isQuickInsertUpper ? char.toUpperCase() : char;
               return (
@@ -2819,7 +2819,7 @@ export function ScientificCalculator() {
                   key={char}
                   type="button"
                   onClick={() => insertAtCursor(displayChar)}
-                  className="py-1 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
+                  className="py-0.5 bg-slate-950/60 hover:bg-slate-800 text-slate-300 hover:text-white rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer"
                 >
                   {displayChar}
                 </button>
@@ -2831,7 +2831,7 @@ export function ScientificCalculator() {
                 key={`custom-alp-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('alphabet', idx, val)}
-                className={`py-1 rounded border text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
+                className={`py-0.5 rounded border text-[10px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
@@ -2840,7 +2840,7 @@ export function ScientificCalculator() {
               >
                 {val ? (
                   isLatexString(val) ? (
-                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[11px]">
+                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[9px]">
                       <LatexRenderer text={val.startsWith('$') ? val : `$${val}$`} />
                     </div>
                   ) : (
@@ -2857,7 +2857,7 @@ export function ScientificCalculator() {
         {/* Greek letter buttons */}
         <div className="mb-3">
           <div className="text-[10px] font-bold text-slate-500 mb-1">Greek Symbols</div>
-          <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
+          <div className="grid grid-cols-6 sm:grid-cols-10 gap-1">
             {[
               { label: 'α (alpha)', char: 'α' },
               { label: 'β (beta)', char: 'β' },
@@ -2893,7 +2893,7 @@ export function ScientificCalculator() {
                 type="button"
                 onClick={() => insertAtCursor(item.char)}
                 title={item.label}
-                className="py-1 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[14px] font-bold transition-all active:scale-90 cursor-pointer"
+                className="py-0.5 bg-slate-950/60 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded border border-slate-800 text-[11px] font-bold transition-all active:scale-90 cursor-pointer"
               >
                 {item.display || item.char}
               </button>
@@ -2907,7 +2907,7 @@ export function ScientificCalculator() {
             <span>토질 및 기초 공학 공식 기호 & 커스텀 기호</span>
             <span className="text-[8px] font-normal text-slate-600">(빈 버튼 더블클릭 시 편집 가능)</span>
           </div>
-          <div className="grid grid-cols-5 sm:grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-5 sm:grid-cols-7 gap-1">
             {[
               { label: 'γ_sat (포화단위중량)', char: 'γ_sat' },
               { label: 'γ_w (물의 단위중량)', char: 'γ_w' },
@@ -2919,7 +2919,7 @@ export function ScientificCalculator() {
                 type="button"
                 onClick={() => insertAtCursor(item.char)}
                 title={item.label}
-                className="py-1.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center"
+                className="py-0.5 bg-slate-950/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 rounded border border-slate-800 text-[10px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center"
               >
                 {renderSubscriptText(item.char)}
               </button>
@@ -2930,7 +2930,7 @@ export function ScientificCalculator() {
                 key={`custom-grk-${idx}`}
                 type="button"
                 onClick={() => handleCustomButtonClick('greek', idx, val)}
-                className={`py-1.5 rounded border text-[13px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
+                className={`py-0.5 rounded border text-[10px] font-bold transition-all active:scale-90 cursor-pointer flex items-center justify-center ${
                   val 
                     ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-amber-900/50' 
                     : 'bg-slate-950/30 hover:bg-slate-900 text-slate-600 border-slate-900 border-dashed'
@@ -2939,7 +2939,7 @@ export function ScientificCalculator() {
               >
                 {val ? (
                   isLatexString(val) ? (
-                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[11px]">
+                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[9px]">
                       <LatexRenderer text={val.startsWith('$') ? val : `$${val}$`} />
                     </div>
                   ) : (
