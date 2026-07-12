@@ -68,6 +68,122 @@ export const TableQuiz = React.memo(function TableQuiz({
     id => tableGradingResults && tableGradingResults[`${questionIdx}_${id}`] !== undefined
   ));
 
+  const renderStepFeedback = (targetInputs, title) => {
+    if (targetInputs.length === 0) return null;
+    
+    return (
+      <div className="mt-4 p-4 rounded-xl border border-slate-800 bg-slate-900/10 text-left space-y-3 w-full animate-in fade-in slide-in-from-top-2 duration-200">
+        <span className="font-extrabold text-amber-400 text-[14px] sm:text-[16px]">{title}:</span>
+        <div className="divide-y divide-slate-800/80 mt-1">
+          {targetInputs.map((inputId) => {
+            const value = tableAnswers[`${questionIdx}_${inputId}`] || '';
+            const correctAnswer = q.answers?.[inputId] || '';
+            const gradingResult = tableGradingResults?.[`${questionIdx}_${inputId}`];
+            
+            const inputIdx = inputIds.indexOf(inputId);
+            const inputLetter = String.fromCharCode(65 + (inputIdx !== -1 ? inputIdx : 0));
+            
+            const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, '');
+            const isCorrect = gradingResult 
+              ? gradingResult.isCorrect 
+              : (normalize(value) === normalize(correctAnswer));
+            const theme = getTableScoreColorTheme(gradingResult, isCorrect, value);
+            
+            const cellObtained = gradingResult && gradingResult.score !== undefined
+              ? (gradingResult.score / 10) * (weight / inputIds.length)
+              : 0;
+            const displayScore = Math.round(cellObtained * 10) / 10;
+            
+            let rowHeader = '';
+            let colHeader = '';
+            if (q.tableData && q.tableData.rows && q.tableData.headers) {
+              q.tableData.rows.forEach((row) => {
+                row.forEach((cell, colIdx) => {
+                  if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+                    rowHeader = row[0] || '';
+                    colHeader = q.tableData.headers[colIdx] || '';
+                  }
+                });
+              });
+            }
+            if (!rowHeader && q.comparisonTableData && q.comparisonTableData.rows && q.comparisonTableData.headers) {
+              q.comparisonTableData.rows.forEach((row) => {
+                row.forEach((cell, colIdx) => {
+                  if (typeof cell === 'string' && cell.includes(`[${inputId}]`)) {
+                    rowHeader = row[0] || '';
+                    colHeader = q.comparisonTableData.headers[colIdx] || '';
+                  }
+                });
+              });
+            }
+            
+            const formatReason = (text) => {
+              if (!text) return '';
+              let formatted = text.replace(/^[-\s·*]+/, '');
+              if (formatted.startsWith('score:')) {
+                const idx = formatted.indexOf('\n');
+                if (idx !== -1) {
+                  formatted = formatted.substring(idx + 1).trim();
+                }
+              }
+              return formatted;
+            };
+
+            return (
+              <div key={inputId} className="py-3 first:pt-1 last:pb-1 text-[13px] sm:text-[14px] space-y-1.5 w-full text-left">
+                {(rowHeader || colHeader) && (
+                  <div className="text-[12px] sm:text-[13px] text-slate-400 flex items-center flex-wrap gap-1.5 font-medium mb-1 bg-slate-900/30 px-2 py-0.5 rounded border border-slate-800/40 w-fit">
+                    <span className="text-slate-100 font-bold bg-slate-800/60 px-1 py-0.5 rounded mr-1">({inputLetter})</span>
+                    {rowHeader && (
+                      <span className="text-slate-300 font-semibold">
+                        <LatexRenderer text={rowHeader} katexLoaded={katexLoaded} className="inline" />
+                      </span>
+                    )}
+                    {rowHeader && colHeader && <span className="text-slate-500">/</span>}
+                    {colHeader && (
+                      <span className="text-slate-300 font-semibold">
+                        <LatexRenderer text={colHeader} katexLoaded={katexLoaded} className="inline" />
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex justify-between items-center font-extrabold border-b border-slate-800/40 pb-1 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {!(rowHeader || colHeader) && <span className={theme.text}>({inputLetter})</span>}
+                    <span className={`font-bold ${theme.text}`}>내 답변:</span>
+                    <span className={`font-semibold ${theme.text}`}>{value || '(미입력)'}</span>
+                  </div>
+                  {gradingResult && gradingResult.score !== undefined && (
+                    <span className={theme.text}>{displayScore}점</span>
+                  )}
+                </div>
+                {gradingResult?.reason && (
+                  <div>
+                    <span className={`mr-1.5 font-bold ${theme.text}`}>피드백:</span>
+                    <span className={`font-normal leading-relaxed inline ${theme.text}`}>
+                      <LatexRenderer text={formatReason(gradingResult.reason)} katexLoaded={katexLoaded} isMarkdown={true} highlightBold={true} className="inline" />
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-100 mr-1.5 font-bold">정답:</span>
+                  <div className="text-slate-100 font-semibold mt-1">
+                    <LatexRenderer 
+                      text={gradingResult?.suggestedModelAnswer || correctAnswer} 
+                      katexLoaded={katexLoaded} 
+                      isMarkdown={true} 
+                      highlightBold={true}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const containerRef = useRef(null);
   const [floatedSize, setFloatedSize] = useState(() => {
     try {
@@ -1614,64 +1730,76 @@ export const TableQuiz = React.memo(function TableQuiz({
       {mainTableTitle}
       {mainTablePlaceholder}
       {mainTable}
-
-      {isOverviewReview && !isFirstTableGraded && (
-        <div className="mt-3.5 mb-5 select-none flex justify-center w-full">
-          <button
-            type="button"
-            onClick={async () => {
-              if (onGradeOverviewStep) {
-                await onGradeOverviewStep(1, firstTableInputs);
-              }
-            }}
-            disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
-            className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-              gradingLoading ? 'opacity-50 pointer-events-none' : ''
-            }`}
-          >
-            {gradingLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                AI 채점 진행 중...
-              </span>
-            ) : '제출하고 채점하기 (1단계: 개요) →'}
-          </button>
-        </div>
-      )}
-
-      {compTableTitle}
-      {compTablePlaceholder}
-      {compTable}
-
-      {isOverviewReview && isFirstTableGraded && !isSecondTableGraded && (
-        <div className="mt-3.5 mb-2 select-none flex justify-center w-full">
-          <button
-            type="button"
-            onClick={async () => {
-              if (onGradeOverviewStep) {
-                await onGradeOverviewStep(2, secondTableInputs);
-              }
-            }}
-            disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
-            className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
-              gradingLoading ? 'opacity-50 pointer-events-none' : ''
-            }`}
-          >
-            {gradingLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                AI 채점 진행 중...
-              </span>
-            ) : '제출하고 채점하기 (2단계: 비교표) →'}
-          </button>
-        </div>
-      )}
+ 
+       {isOverviewReview && !isFirstTableGraded && (
+         <div className="mt-3.5 mb-5 select-none flex justify-center w-full">
+           <button
+             type="button"
+             onClick={async () => {
+               if (onGradeOverviewStep) {
+                 await onGradeOverviewStep(1, firstTableInputs);
+               }
+             }}
+             disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
+             className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+               gradingLoading ? 'opacity-50 pointer-events-none' : ''
+             }`}
+           >
+             {gradingLoading ? (
+               <span className="flex items-center gap-2">
+                 <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg>
+                 AI 채점 진행 중...
+               </span>
+             ) : '제출하고 채점하기 (1단계: 개요) →'}
+           </button>
+         </div>
+       )}
+ 
+       {isOverviewReview && isFirstTableGraded && (
+         <div className="my-4 w-full">
+           {renderStepFeedback(firstTableInputs, "📋 [1단계: 개요] 채점 피드백")}
+         </div>
+       )}
+ 
+       {compTableTitle}
+       {compTablePlaceholder}
+       {compTable}
+ 
+       {isOverviewReview && isFirstTableGraded && !isSecondTableGraded && (
+         <div className="mt-3.5 mb-2 select-none flex justify-center w-full">
+           <button
+             type="button"
+             onClick={async () => {
+               if (onGradeOverviewStep) {
+                 await onGradeOverviewStep(2, secondTableInputs);
+               }
+             }}
+             disabled={gradingLoading || (cellGradingLoading && Object.keys(cellGradingLoading).some(k => k.startsWith(`${questionIdx}_`) && cellGradingLoading[k]))}
+             className={`w-full py-3 bg-slate-600 hover:bg-slate-500 text-white border border-slate-500/50 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-md shadow-slate-600/10 font-black ${
+               gradingLoading ? 'opacity-50 pointer-events-none' : ''
+             }`}
+           >
+             {gradingLoading ? (
+               <span className="flex items-center gap-2">
+                 <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2050/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg>
+                 AI 채점 진행 중...
+               </span>
+             ) : '제출하고 채점하기 (2단계: 비교표) →'}
+           </button>
+         </div>
+       )}
+ 
+       {isOverviewReview && isSecondTableGraded && (
+         <div className="my-4 w-full">
+           {renderStepFeedback(secondTableInputs, "⚖️ [2단계: 비교표] 채점 피드백")}
+         </div>
+       )}
     </div>
   );
 });
