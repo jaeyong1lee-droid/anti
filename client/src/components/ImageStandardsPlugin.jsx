@@ -386,17 +386,7 @@ export function ImageTabList({ formulaImages, setFormulaImages, handleSaveFormul
                       >
                         {img.title}
                       </span>
-                      <span 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(img.id);
-                          showNotification('이미지 ID가 클립보드에 복사되었습니다: ' + img.id, 'success');
-                        }}
-                        className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
-                        title="클릭하여 ID 복사"
-                      >
-                        ID: {img.id}
-                      </span>
+
                     </div>
                   )}
                 </div>

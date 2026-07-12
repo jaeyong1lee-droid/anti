@@ -666,17 +666,7 @@ export function FloatingMemorization({
                               >
                                 {t.title}
                               </h4>
-                              <span 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(t.id);
-                                  showNotification('테이블 ID가 클립보드에 복사되었습니다: ' + t.id, 'success');
-                                }}
-                                className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
-                                title="클릭하여 ID 복사"
-                              >
-                                ID: {t.id}
-                              </span>
+
                             </div>
                           )}
                         </div>
@@ -965,17 +955,7 @@ export function FloatingMemorization({
                               >
                                 {ac.title}
                               </h4>
-                              <span 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(ac.id);
-                                  showNotification('두문자 ID가 클립보드에 복사되었습니다: ' + ac.id, 'success');
-                                }}
-                                className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
-                                title="클릭하여 ID 복사"
-                              >
-                                ID: {ac.id}
-                              </span>
+
                             </div>
                           )}
                         </div>
@@ -1228,17 +1208,7 @@ export function FloatingMemorization({
                             >
                               {ov.title}
                             </h4>
-                            <span 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(ov.id);
-                                showNotification('개요/공식 ID가 클립보드에 복사되었습니다: ' + ov.id, 'success');
-                              }}
-                              className="text-[9px] font-black bg-slate-900/90 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 px-1.5 py-0.5 rounded cursor-pointer transition-all active:scale-95 select-none"
-                              title="클릭하여 ID 복사"
-                            >
-                              ID: {ov.id}
-                            </span>
+
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
