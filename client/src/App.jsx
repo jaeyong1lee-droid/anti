@@ -20558,6 +20558,13 @@ ${itemsStr}
                 <span>3. 칸채우기 (비교 표채우기)</span>
                 <span className="text-[10px] text-emerald-400/80">선택</span>
               </button>
+              <button
+                onClick={() => executeRegenerateQuestion('refresh')}
+                className="w-full py-3 px-4 rounded-xl border border-sky-500/30 bg-sky-950/40 hover:bg-sky-900 text-sky-300 hover:text-white text-xs font-black transition-all active:scale-[0.98] cursor-pointer flex items-center justify-between shadow-md"
+              >
+                <span>4. 변환 (그 자체 문제 새로고침)</span>
+                <span className="text-[10px] text-sky-400/80">선택</span>
+              </button>
             </div>
 
             {/* 푸터 */}
