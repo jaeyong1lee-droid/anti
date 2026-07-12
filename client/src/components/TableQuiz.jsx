@@ -27,7 +27,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
   }
 
-  const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+  const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
 
   const getTableInputIds = () => {
     const firstTableInputs = [];
@@ -1386,7 +1386,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     );
   })();
 
-  const compTablePlaceholder = isCompFloated ? (
+  const compTablePlaceholder = (isCompFloated && q.comparisonTableData) ? (
     <div className="w-full my-3 p-4 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/5 text-center flex flex-col items-center justify-center gap-1.5 min-h-[100px] select-none">
       <span className="text-lg">⚖️</span>
       <p className="text-xs font-semibold text-sky-400">비교표가 우측 상단에 고정되어 있습니다.</p>
@@ -1399,7 +1399,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     </div>
   ) : null;
 
-  const compTableTitle = !isCompFloated ? (
+  const compTableTitle = (!isCompFloated && q.comparisonTableData) ? (
     <div className="flex justify-between items-center w-full mt-4 mb-1">
       <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
         ⚖️ 비교표 / 장단점 채우기

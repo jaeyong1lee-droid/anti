@@ -1986,7 +1986,7 @@ export default function App() {
     const inputIds = Object.keys(q.answers || {});
     if (inputIds.length === 0) return null;
 
-    const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+    const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
     let filteredInputIds = inputIds;
     if (isOverviewReview) {
       const secondTableInputs = [];
@@ -18702,7 +18702,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!isRevd ? (
-                                !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && (
+                                !((q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && q.comparisonTableData) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -18717,7 +18717,7 @@ ${itemsStr}
                                   </button>
                                 )
                               ) : (() => {
-                                const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+                                const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
                                 if (isOverviewReview) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
@@ -22141,7 +22141,7 @@ ${itemsStr}
                                 );
                               })()}
                               {!examRevealed[idx] ? (
-                                !(q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && (
+                                !((q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && q.comparisonTableData) && (
                                   <button
                                     onClick={async () => {
                                       if (gradingLoading[idx]) return;
@@ -22156,7 +22156,7 @@ ${itemsStr}
                                   </button>
                                 )
                               ) : (() => {
-                                const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+                                const isOverviewReview = (q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요") && !!q.comparisonTableData;
                                 if (isOverviewReview) {
                                   return (
                                     <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
