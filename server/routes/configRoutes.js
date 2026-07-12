@@ -759,12 +759,67 @@ router.get('/session/images/proxy', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
+    // 1. Try standard direct fetch first (works for public blobs or if accessible)
+    try {
+      const resp = await fetch(imageUrl);
+      if (resp.ok) {
+        const contentType = resp.headers.get('content-type') || 'image/png';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+        const arrayBuffer = await resp.arrayBuffer();
+        return res.send(Buffer.from(arrayBuffer));
+      }
+    } catch (fetchErr) {
+      console.warn('[Proxy Warning] Direct fetch failed, trying token:', fetchErr.message);
+    }
+
+    // 2. Try fetch with BLOB_READ_WRITE_TOKEN
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const resp = await fetch(imageUrl, {
+          headers: {
+            'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+          }
+        });
+        if (resp.ok) {
+          const contentType = resp.headers.get('content-type') || 'image/png';
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000');
+          const arrayBuffer = await resp.arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        }
+      } catch (tokenErr) {
+        console.warn('[Proxy Warning] Fetch with BLOB_READ_WRITE_TOKEN failed:', tokenErr.message);
+      }
+    }
+
+    // 3. Try fetch with VERCEL_OIDC_TOKEN
+    if (process.env.VERCEL_OIDC_TOKEN) {
+      try {
+        const resp = await fetch(imageUrl, {
+          headers: {
+            'Authorization': `Bearer ${process.env.VERCEL_OIDC_TOKEN}`
+          }
+        });
+        if (resp.ok) {
+          const contentType = resp.headers.get('content-type') || 'image/png';
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000');
+          const arrayBuffer = await resp.arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        }
+      } catch (oidcErr) {
+        console.warn('[Proxy Warning] Fetch with VERCEL_OIDC_TOKEN failed:', oidcErr.message);
+      }
+    }
+
+    // 4. Fallback to @vercel/blob SDK get method as a last resort
+    console.log('[Proxy] Falling back to @vercel/blob SDK get method');
     const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
     const blob = await get(imageUrl, { token, access: 'private' });
-
-    const contentType = (blob.headers && blob.headers['content-type']) || 'image/png';
+    const contentType = (blob.headers && typeof blob.headers.get === 'function' ? blob.headers.get('content-type') : null) || 'image/png';
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
 
     const stream = blob.stream || blob.body;
     if (stream && typeof stream.pipe === 'function') {
@@ -773,7 +828,6 @@ router.get('/session/images/proxy', async (req, res) => {
       const arrayBuffer = await new Response(stream).arrayBuffer();
       res.send(Buffer.from(arrayBuffer));
     } else {
-      console.error(`[Proxy Error] No stream found for image ${imageUrl}`, Object.keys(blob || {}));
       res.status(404).send('Not found');
     }
   } catch (err) {
