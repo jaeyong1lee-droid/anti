@@ -339,8 +339,25 @@ router.post('/question/regenerate', async (req, res) => {
           healedQuestion.type = '주관식 (표채우기)';
           healedQuestion.subtype = '표채우기';
 
-          // Extract original definition, mechanism, and comparison table text from explanation
-          const parsed = parseOverviewContentServer(healedQuestion.explanation || '');
+          // Retrieve raw content from formula_overviews session store in database to ensure clean markdown pipes
+          const ovSession = await dbQuery.get("SELECT value FROM app_session WHERE key = 'formula_overviews'");
+          let originalContent = healedQuestion.explanation || '';
+          if (ovSession && ovSession.value) {
+            try {
+              const parsedSession = JSON.parse(ovSession.value);
+              const overviewsList = parsedSession.formulaOverviews || [];
+              const cleanTitle = healedQuestion.question.replace(/^\[.*?\]\s*/, '').trim();
+              const matchedOv = overviewsList.find(ov => ov.id === healedQuestion.originalId || ov.title === cleanTitle);
+              if (matchedOv && matchedOv.content) {
+                originalContent = matchedOv.content;
+              }
+            } catch (err) {
+              console.error('Error parsing formula_overviews session:', err);
+            }
+          }
+
+          // Extract original definition, mechanism, and comparison table text from parsed content
+          const parsed = parseOverviewContentServer(originalContent);
           const answers = {};
           const rows = [];
           
