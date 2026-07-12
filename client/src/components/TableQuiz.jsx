@@ -613,7 +613,7 @@ export const TableQuiz = React.memo(function TableQuiz({
       
       const newWidth = Math.max(300, Math.min(window.innerWidth - 40, startWidth - dx));
       const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight + dy));
-      const newLeft = Math.max(0, startLeft + (newWidth - startWidth));
+      const newLeft = Math.max(0, startLeft - (newWidth - startWidth));
       
       setFloatedSize({ width: newWidth, height: newHeight });
       setFloatedPos(prev => ({ ...prev, x: newLeft }));
