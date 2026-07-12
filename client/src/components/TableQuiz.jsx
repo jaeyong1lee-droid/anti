@@ -653,7 +653,7 @@ export const TableQuiz = React.memo(function TableQuiz({
     <style>{`
       .floated-table-quiz,
       .floated-table-quiz * {
-        font-size: 14px !important;
+        font-size: 13px !important;
       }
     `}</style>
   ) : null;
