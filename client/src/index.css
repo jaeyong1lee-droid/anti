@@ -994,13 +994,18 @@ div[class*="overflow-y-auto"] {
   }
 }
 .markdown-table th {
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: rgba(15, 23, 42, 0.85) !important;
   font-weight: 700 !important;
-  color: #cbd5e1;
+  color: #38bdf8 !important; /* sky-400 for clear column header distinction */
 }
 .markdown-table td {
   color: #cbd5e1;
   font-weight: 400 !important; /* Normal weight, no bold styling */
+}
+.markdown-table td:first-child {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  font-weight: 600 !important; /* Slightly bolder for row header distinction */
+  color: #94a3b8 !important; /* slate-400 for category labels */
 }
 
 /* Strict compliance for quiz font sizes: PC 16px, Mobile 14px. No bold styling for input/answer cells */
