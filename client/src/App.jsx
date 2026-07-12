@@ -18416,6 +18416,9 @@ ${itemsStr}
                                     }}
                                   gradeSingleAcronymCell={gradeSingleAcronymCell}
                                     cellGradingLoading={cellGradingLoading}
+                                    floatedTableId={floatedTableId}
+                                    setFloatedTableId={setFloatedTableId}
+                                    isExam={false}
                                   />
                                 );
                               })()}
