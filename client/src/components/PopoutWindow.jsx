@@ -48,7 +48,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     try {
       // Open as empty window directly
       newWindow = window.open(
-        'about:blank',
+        '',
         storageKey || '_blank',
         features
       );
