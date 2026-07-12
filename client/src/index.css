@@ -1054,14 +1054,16 @@ div[class*="overflow-y-auto"] {
     touch-action: pan-y !important; /* Force only vertical touch pan, absolute block on horizontal viewport wiggle */
   }
 
-  /* Enable horizontal scroll on tables with scroll chaining protection (overscroll-behavior-x: contain) to prevent page wiggle */
+  /* 모바일 세로: 표 터치 드래그 가로 이동 차단 - 하단 스크롤바만 가로 이동 허용
+     touch-action: pan-y  → 터치로 가로 드래그 불가 (세로 스크롤만)
+     overflow-x: auto     → 스크롤바는 유지 (브라우저 UI 스크롤바는 touch-action을 우회) */
   .table-quiz-container,
   .overflow-x-auto,
   .overflow-auto,
   .markdown-table-container {
     overflow-x: auto;
     max-width: 100% !important;
-    touch-action: pan-x pan-y;
+    touch-action: pan-y !important;
     overscroll-behavior-x: contain !important;
   }
 
@@ -1069,7 +1071,7 @@ div[class*="overflow-y-auto"] {
   .overflow-x-auto *,
   .overflow-auto *,
   .markdown-table-container * {
-    touch-action: pan-x pan-y;
+    touch-action: pan-y !important;
   }
 
   /* Hide all scrollbars globally on mobile portrait EXCEPT for table containers */
@@ -1085,14 +1087,21 @@ div[class*="overflow-y-auto"] {
   .overflow-auto::-webkit-scrollbar,
   .markdown-table-container::-webkit-scrollbar {
     display: block !important;
-    height: 4px !important;
+    height: 8px !important;
   }
   .table-quiz-container::-webkit-scrollbar-thumb,
   .overflow-x-auto::-webkit-scrollbar-thumb,
   .overflow-auto::-webkit-scrollbar-thumb,
   .markdown-table-container::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.4) !important;
-    border-radius: 2px !important;
+    background: rgba(148, 163, 184, 0.6) !important;
+    border-radius: 4px !important;
+  }
+  .table-quiz-container::-webkit-scrollbar-track,
+  .overflow-x-auto::-webkit-scrollbar-track,
+  .overflow-auto::-webkit-scrollbar-track,
+  .markdown-table-container::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-radius: 4px !important;
   }
 
   /* Wrap and block horizontal scroll on AI tutor responses to prevent layout wiggle, letting inner tables/formulas scroll independently */

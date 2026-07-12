@@ -4959,9 +4959,9 @@ export default function App() {
     }
   }, [isPinVerified, isDesktop, isLockscreenQuizEnabled]);
 
-  // [iOS 수평 드래그 차단] React onTouchMove는 iOS Safari에서 passive 처리되어 preventDefault가 무시됨.
-  // document에 native non-passive touchmove 리스너를 달아 모바일 세로 모드에서 수평 드래그를 차단한다.
-  // 단, .markdown-table-container / .overflow-x-auto / .table-quiz-container 안에서의 수평 드래그는 허용.
+  // [모바일 세로 수평 드래그 전체 차단]
+  // CSS touch-action: pan-y로 1차 차단, document native non-passive 리스너로 2차 차단.
+  // Galaxy(Android Chrome) 환경에서 CSS가 우회되는 경우를 대비.
   useEffect(() => {
     let _startX = 0;
     let _startY = 0;
@@ -4976,32 +4976,14 @@ export default function App() {
     const _onTouchMove = (e) => {
       // 세로 모드 좁은 화면에서만 동작
       if (window.innerWidth > 767) return;
-      if (!e.cancelable) return;
 
       const deltaX = Math.abs(e.touches[0].clientX - _startX);
       const deltaY = Math.abs(e.touches[0].clientY - _startY);
 
-      // 수평 스와이프가 수직보다 강할 때
+      // 수평 스와이프가 수직보다 강할 때: 무조건 차단 (표 포함)
+      // 표 가로 이동은 하단 스크롤바로만 허용
       if (deltaX > deltaY && deltaX > 5) {
-        // 터치 타겟이 가로 스크롤 가능한 컨테이너 안인지 확인
-        let el = e.target;
-        let insideHScroll = false;
-        while (el && el !== document.body) {
-          if (el.classList && (
-            el.classList.contains('markdown-table-container') ||
-            el.classList.contains('overflow-x-auto') ||
-            el.classList.contains('overflow-auto') ||
-            el.classList.contains('table-quiz-container') ||
-            el.classList.contains('landscape-overflow-x-auto')
-          )) {
-            insideHScroll = true;
-            break;
-          }
-          el = el.parentElement;
-        }
-        if (!insideHScroll) {
-          e.preventDefault(); // 페이지/오버레이 수평 이동 차단
-        }
+        e.preventDefault();
       }
     };
 
