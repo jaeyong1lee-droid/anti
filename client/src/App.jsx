@@ -2210,11 +2210,12 @@ export default function App() {
     stopProgressPolling();
     setGradingLoading(prev => ({ ...prev, [qIdx]: false }));
     
-    const updatedGrading = { ...tableGradingResults, ...results };
+    const updatedGrading = { ...tableGradingResultsRef.current, ...results };
     setTableGradingResults(updatedGrading);
+    tableGradingResultsRef.current = updatedGrading;
     
     if (selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
-      lastSyncStateRef.current.revealedQuestions = { ...revealedQuestions, [qIdx]: true };
+      lastSyncStateRef.current.revealedQuestions = { ...revealedQuestionsRef.current, [qIdx]: true };
       lastSyncStateRef.current.tableGradingResults = updatedGrading;
       saveActiveSessionDebounced();
     }
@@ -3018,7 +3019,7 @@ export default function App() {
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
     
-    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const currentGrading = showExam ? examTableGradingResultsRef.current : tableGradingResultsRef.current;
     const nextGrading = { ...currentGrading };
     
     const progressId = 'grade_' + Math.random().toString(36).substring(2, 9);
@@ -3089,6 +3090,11 @@ export default function App() {
       await Promise.all(promises);
       
       activeSetGradingResults(nextGrading);
+      if (showExam) {
+        examTableGradingResultsRef.current = nextGrading;
+      } else {
+        tableGradingResultsRef.current = nextGrading;
+      }
 
       // DB 저장 (디바운스 적용)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
@@ -3119,7 +3125,7 @@ export default function App() {
     
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
-    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const currentGrading = showExam ? examTableGradingResultsRef.current : tableGradingResultsRef.current;
     const nextGrading = { ...currentGrading };
     
     const userLetter = (activeAnswers[acronymKey] || '').trim();
@@ -3187,6 +3193,11 @@ export default function App() {
     
     stopProgressPolling();
     activeSetGradingResults(nextGrading);
+    if (showExam) {
+      examTableGradingResultsRef.current = nextGrading;
+    } else {
+      tableGradingResultsRef.current = nextGrading;
+    }
     
     // DB 저장 (디바운스 적용)
     if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
@@ -3207,7 +3218,7 @@ export default function App() {
 
     const activeAnswers = showExam ? examTableAnswersRef.current : tableAnswersRef.current;
     const activeSetGradingResults = showExam ? setExamTableGradingResults : setTableGradingResults;
-    const currentGrading = showExam ? examTableGradingResults : tableGradingResults;
+    const currentGrading = showExam ? examTableGradingResultsRef.current : tableGradingResultsRef.current;
     const nextGrading = { ...currentGrading };
 
     const progressId = 'grade_cell_' + Math.random().toString(36).substring(2, 9);
@@ -3274,6 +3285,11 @@ export default function App() {
 
     try {
       activeSetGradingResults(nextGrading);
+      if (showExam) {
+        examTableGradingResultsRef.current = nextGrading;
+      } else {
+        tableGradingResultsRef.current = nextGrading;
+      }
 
       // DB 저장 (디바운스 적용)
       if (!showExam && selectedTopic && selectedTopic.id && aiQuestions.length > 0 && !selectedTopic.isReadOnly) {
@@ -3786,6 +3802,37 @@ export default function App() {
   const [tutorInputText, setTutorInputText] = useState({});
   const [tutorAnswers, setTutorAnswers] = useState({});
   const [tutorCollapsed, setTutorCollapsed] = useState({});
+
+  // ── State-tracking Refs to prevent React stale closures in debounced syncs ──
+  const selectedAnswersRef = useRef({});
+  selectedAnswersRef.current = selectedAnswers;
+
+  const revealedQuestionsRef = useRef({});
+  revealedQuestionsRef.current = revealedQuestions;
+
+  const tableGradingResultsRef = useRef({});
+  tableGradingResultsRef.current = tableGradingResults;
+
+  const chatHistoryRef = useRef([]);
+  chatHistoryRef.current = chatHistory;
+
+  const tutorAnswersRef = useRef({});
+  tutorAnswersRef.current = tutorAnswers;
+
+  const tutorInputTextRef = useRef({});
+  tutorInputTextRef.current = tutorInputText;
+
+  const examQuestionsRef = useRef([]);
+  examQuestionsRef.current = examQuestions;
+
+  const examRevealedRef = useRef({});
+  examRevealedRef.current = examRevealed;
+
+  const examAnswersRef = useRef({});
+  examAnswersRef.current = examAnswers;
+
+  const examTableGradingResultsRef = useRef({});
+  examTableGradingResultsRef.current = examTableGradingResults;
 
   // Formula mode states
   const [showFormulaExam, setShowFormulaExam] = useState(() => localStorage.getItem('anti_show_formula_exam') === 'true');
@@ -5890,9 +5937,12 @@ export default function App() {
         console.warn('[forceSaveActiveSessions] DOM scrape failed:', err);
       }
 
-      const finalChatHistory = (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistory;
-      const finalTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswers;
-      const finalTutorInputText = (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputText;
+      const finalSelectedAnswers = (overrideData && overrideData.selectedAnswers !== undefined) ? overrideData.selectedAnswers : selectedAnswersRef.current;
+      const finalRevealedQuestions = (overrideData && overrideData.revealedQuestions !== undefined) ? overrideData.revealedQuestions : revealedQuestionsRef.current;
+      const finalTableGradingResults = (overrideData && overrideData.tableGradingResults !== undefined) ? overrideData.tableGradingResults : tableGradingResultsRef.current;
+      const finalChatHistory = (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistoryRef.current;
+      const finalTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswersRef.current;
+      const finalTutorInputText = (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputTextRef.current;
 
       // Local storage saving disabled per user instructions
 
@@ -5904,10 +5954,10 @@ export default function App() {
           scheduleId: selectedTopic.schedule_id,
           sessionId: activeSid,
           questions: aiQuestions,
-          selectedAnswers,
-          revealedQuestions,
+          selectedAnswers: finalSelectedAnswers,
+          revealedQuestions: finalRevealedQuestions,
           tableAnswers: latestTableAnswers,
-          tableGradingResults,
+          tableGradingResults: finalTableGradingResults,
           tutorAnswers: finalTutorAnswers,
           tutorInputText: finalTutorInputText,
           chatHistory: finalChatHistory,
@@ -5929,19 +5979,27 @@ export default function App() {
       console.log('[forceSaveActiveSessions] Immediately saving active exam session');
       // Exam local storage saving disabled per user instructions
 
+      const finalExamQuestions = (overrideData && overrideData.examQuestions !== undefined) ? overrideData.examQuestions : examQuestionsRef.current;
+      const finalExamRevealed = (overrideData && overrideData.examRevealed !== undefined) ? overrideData.examRevealed : examRevealedRef.current;
+      const finalExamAnswers = (overrideData && overrideData.examAnswers !== undefined) ? overrideData.examAnswers : examAnswersRef.current;
+      const finalExamTableGradingResults = (overrideData && overrideData.examTableGradingResults !== undefined) ? overrideData.examTableGradingResults : examTableGradingResultsRef.current;
+      const finalExamTutorAnswers = (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswersRef.current;
+      const finalExamTutorInputText = (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputTextRef.current;
+      const finalExamChatHistory = (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistoryRef.current;
+
       const fetchOpts = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          examQuestions,
-          examRevealed,
-          examAnswers,
+          examQuestions: finalExamQuestions,
+          examRevealed: finalExamRevealed,
+          examAnswers: finalExamAnswers,
           examTopic,
-          tableAnswers: examTableAnswers,
-          tableGradingResults: examTableGradingResults,
-          tutorAnswers: (overrideData && overrideData.tutorAnswers !== undefined) ? overrideData.tutorAnswers : tutorAnswers,
-          tutorInputText: (overrideData && overrideData.tutorInputText !== undefined) ? overrideData.tutorInputText : tutorInputText,
-          chatHistory: (overrideData && overrideData.chatHistory !== undefined) ? overrideData.chatHistory : chatHistory,
+          tableAnswers: examTableAnswersRef.current,
+          tableGradingResults: finalExamTableGradingResults,
+          tutorAnswers: finalExamTutorAnswers,
+          tutorInputText: finalExamTutorInputText,
+          chatHistory: finalExamChatHistory,
           savedExamScroll: examBodyRef.current?.scrollTop || 0
         })
       };
