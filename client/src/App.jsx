@@ -27056,48 +27056,23 @@ ${itemsStr}
         </div>
       )}
 
-      {/* Answer Popup Modal */}
+      {/* Answer Popup Modal (Popout Window) */}
       {activeAnswerPopupData && (
-        <div
-          id="answer-popup-modal"
-          style={{
-            position: 'fixed',
-            left: 'var(--answer-popup-x)',
-            top: 'var(--answer-popup-y)',
-            width: 'min(768px, calc(100vw - 32px))',
-            maxHeight: '75vh',
-            zIndex: 9999,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-          className="bg-slate-900/95 border border-white/20 rounded-3xl shadow-2xl overflow-hidden glassmorphism select-text animate-fade-in"
+        <PopoutWindow
+          title={
+            activeAnswerPopupData.type === 'overview' ? '📖 개요 답안 - ' + activeAnswerPopupData.title :
+            activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안 - ' + activeAnswerPopupData.title :
+            activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안 - ' + activeAnswerPopupData.title :
+            '🔬 공식 답안 - ' + activeAnswerPopupData.title
+          }
+          onClose={() => setActiveAnswerPopupData(null)}
+          initWidth={768}
+          initHeight={600}
+          storageKey={"anti_popout_answer_" + activeAnswerPopupData.type}
         >
-            {/* Modal Header */}
-            <div
-              onMouseDown={handleAnswerPopupMoveStart}
-              onTouchStart={handleAnswerPopupMoveStart}
-              className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-955/40 cursor-grab active:cursor-grabbing select-none"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/20 text-indigo-400">
-                  {activeAnswerPopupData.type === 'overview' ? '📖 개요 답안' :
-                   activeAnswerPopupData.type === 'table' ? '⚖️ 비교표 답안' :
-                   activeAnswerPopupData.type === 'acronym' ? '💡 두문자 답안' : '🔬 공식 답안'}
-                </span>
-                <h2 className="text-base font-extrabold text-white truncate max-w-[200px] sm:max-w-md">
-                  {activeAnswerPopupData.title}
-                </h2>
-              </div>
-              <button
-                onClick={() => setActiveAnswerPopupData(null)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
+          <div className="w-full h-full flex flex-col overflow-hidden text-slate-100 p-4">
             {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
               {activeAnswerPopupData.type === 'overview' && (() => {
                 const parsed = parseOverviewContent(activeAnswerPopupData.content.content);
                 const steps = parsed.mechanism ? parsed.mechanism.split(/\s*->\s*/).filter(Boolean) : [];
@@ -27270,7 +27245,7 @@ ${itemsStr}
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-955/40 flex justify-end select-none">
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end select-none">
               <button
                 onClick={() => setActiveAnswerPopupData(null)}
                 className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
@@ -27278,7 +27253,8 @@ ${itemsStr}
                 닫기
               </button>
             </div>
-        </div>
+          </div>
+        </PopoutWindow>
       )}
 
       {/* Custom Overview Prompt Modal */}
