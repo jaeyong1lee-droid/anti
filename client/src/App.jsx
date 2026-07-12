@@ -3002,6 +3002,7 @@ export default function App() {
   }, []);
 
   const [tableGradingResults, setTableGradingResults] = useState({});
+  const [floatedTableId, setFloatedTableId] = useState(null);
 
   const [examTableAnswers, _setExamTableAnswers] = useState({});
   const examTableAnswersRef = useRef({});
@@ -4367,6 +4368,19 @@ export default function App() {
       if (tabletNavTimerRef.current) clearTimeout(tabletNavTimerRef.current);
     }
   }, [selectedTopic, showExam, showFormulaExam, showTheoryExam, isTabletScreen]);
+
+  // 탭 변경, 문제 종료, 페이지 이동 시 플로팅된 표 닫기
+  useEffect(() => {
+    setFloatedTableId(null);
+  }, [
+    selectedTopic?.id,
+    showExam,
+    showFormulaExam,
+    showTheoryExam,
+    viewMode,
+    reviewMobileTab,
+    examMobileTab
+  ]);
 
   // Sync tabletNavHidden when screen size changes
   useEffect(() => {
@@ -18431,6 +18445,9 @@ ${itemsStr}
                                     }}
                                     gradeSingleTableCell={gradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
+                                    floatedTableId={floatedTableId}
+                                    setFloatedTableId={setFloatedTableId}
+                                    isExam={false}
                                   />
                                 );
                               })()}
@@ -21847,6 +21864,9 @@ ${itemsStr}
                                     }}
                                     gradeSingleTableCell={gradeSingleTableCell}
                                     cellGradingLoading={cellGradingLoading}
+                                    floatedTableId={floatedTableId}
+                                    setFloatedTableId={setFloatedTableId}
+                                    isExam={true}
                                   />
                                 );
                               })()}

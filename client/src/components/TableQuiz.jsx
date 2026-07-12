@@ -15,7 +15,10 @@ export const TableQuiz = React.memo(function TableQuiz({
   weight = 10, 
   onSubmit, 
   gradeSingleTableCell, 
-  cellGradingLoading 
+  cellGradingLoading,
+  floatedTableId = null,
+  setFloatedTableId = () => {},
+  isExam = false
 }) {
   if (!q.tableData || !q.tableData.headers || !q.tableData.rows) {
     return <div className="text-red-400 text-xs py-2">오류: 표 데이터가 올바르지 않습니다.</div>;
@@ -548,16 +551,76 @@ export const TableQuiz = React.memo(function TableQuiz({
     }
   }, [colCount]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (floatedTableId) {
+          setFloatedTableId(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [floatedTableId, setFloatedTableId]);
+
+  const mainTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_main`;
+  const isMainFloated = floatedTableId === mainTableUniqueId;
+
+  const compTableUniqueId = `${isExam ? 'exam' : 'review'}_${questionIdx}_comp`;
+  const isCompFloated = floatedTableId === compTableUniqueId;
+
   const mainTable = (
-    <div 
-      className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+    <>
+      {isMainFloated && (
+        <div 
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9990]" 
+          onClick={() => setFloatedTableId(null)} 
+        />
+      )}
+      <div 
+        className={isMainFloated 
+          ? "fixed inset-4 md:inset-10 z-[9991] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+        }
       style={mobileColWidths.reduce((acc, w, i) => {
         acc[`--col-width-${i}`] = w;
         return acc;
       }, {})}
     >
-      <table 
-        ref={tableRef} 
+        {isMainFloated && (
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 select-none">
+            <div className="flex items-center gap-2">
+              <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
+                📌 표 고정 화면 (Main Table)
+              </span>
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                (입력 및 채점 상태가 실시간 동기화됩니다)
+              </span>
+            </div>
+            <button 
+              onClick={() => setFloatedTableId(null)}
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all border border-slate-750 active:scale-95"
+            >
+              고정 해제 (ESC)
+            </button>
+          </div>
+        )}
+        
+        {!isMainFloated && (
+          <div className="flex justify-end p-2 border-b border-slate-900/60 bg-slate-900/10">
+            <button
+              onClick={() => setFloatedTableId(mainTableUniqueId)}
+              className="px-2.5 py-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 select-none"
+              title="표를 화면에 고정하여 편리하게 문제를 풉니다"
+            >
+              <span>📌</span> 화면 고정
+            </button>
+          </div>
+        )}
+
+        <div className={isMainFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+          <table 
+            ref={tableRef} 
         className={`table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] ${
           colCount === 2 ? 'min-w-[320px] sm:min-w-[600px]' : 'min-w-[480px] sm:min-w-[700px]'
         }`}
@@ -764,16 +827,64 @@ export const TableQuiz = React.memo(function TableQuiz({
           })}
         </tbody>
       </table>
-    </div>
+        </div>
+      </div>
+    </>
   );
 
   const compTable = q.comparisonTableData ? (
-    <div className="mt-4 space-y-2">
-      <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
-        ⚖️ 비교표 / 장단점 채우기
-      </div>
-      <div className="table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40">
-        <table 
+    <>
+      {isCompFloated && (
+        <div 
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9990]" 
+          onClick={() => setFloatedTableId(null)} 
+        />
+      )}
+      <div className={isCompFloated ? "" : "mt-4 space-y-2"}>
+        {!isCompFloated && (
+          <div className="text-xs sm:text-sm font-extrabold text-slate-400 select-none text-left">
+            ⚖️ 비교표 / 장단점 채우기
+          </div>
+        )}
+        <div 
+          className={isCompFloated
+            ? "fixed inset-4 md:inset-10 z-[9991] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            : "table-quiz-container w-full my-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40"
+          }
+        >
+          {isCompFloated && (
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 select-none">
+              <div className="flex items-center gap-2">
+                <span className="text-sky-400 font-extrabold text-sm sm:text-base flex items-center gap-1.5">
+                  📌 비교표 고정 화면 (Comparison Table)
+                </span>
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  (입력 및 채점 상태가 실시간 동기화됩니다)
+                </span>
+              </div>
+              <button 
+                onClick={() => setFloatedTableId(null)}
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-755 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-all border border-slate-755 active:scale-95"
+              >
+                고정 해제 (ESC)
+              </button>
+            </div>
+          )}
+
+          {!isCompFloated && (
+            <div className="flex justify-end p-2 border-b border-slate-900/60 bg-slate-900/10">
+              <button
+                onClick={() => setFloatedTableId(compTableUniqueId)}
+                className="px-2.5 py-1 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 select-none"
+                title="비교표를 화면에 고정하여 편리하게 문제를 풉니다"
+              >
+                <span>📌</span> 화면 고정
+              </button>
+            </div>
+          )}
+
+          <div className={isCompFloated ? "flex-1 overflow-auto w-full" : "w-full"}>
+            <table 
           ref={compTableRef}
           className="table-quiz-table w-full table-fixed text-center border-collapse text-[14px] sm:text-[16px] min-w-full"
           style={isMobileView ? {
@@ -959,8 +1070,10 @@ export const TableQuiz = React.memo(function TableQuiz({
             })}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   ) : null;
 
   return (
