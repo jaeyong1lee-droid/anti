@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { PopoutWindow } from './PopoutWindow';
+import { LatexRenderer } from './LatexRenderer';
 
 function computeParenthesisPairs(str) {
   if (!str) return {};
@@ -280,6 +281,11 @@ const renderSubscriptText = (text) => {
       <sub className="text-[0.75em] align-baseline relative bottom-[-0.12em] font-normal leading-none ml-[0.5px] scale-[0.9]">{sub}</sub>
     </span>
   );
+};
+
+const isLatexString = (str) => {
+  if (!str) return false;
+  return str.includes('\\') || str.includes('$');
 };
 
 const convertToLatex = (str) => {
@@ -2832,7 +2838,17 @@ export function ScientificCalculator() {
                 }`}
                 title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
               >
-                {val ? renderSubscriptText(val) : '+'}
+                {val ? (
+                  isLatexString(val) ? (
+                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[11px]">
+                      <LatexRenderer text={val.startsWith('$') ? val : `$${val}$`} />
+                    </div>
+                  ) : (
+                    renderSubscriptText(val)
+                  )
+                ) : (
+                  '+'
+                )}
               </button>
             ))}
           </div>
@@ -2921,7 +2937,17 @@ export function ScientificCalculator() {
                 }`}
                 title={val ? `클릭: 입력 | 더블클릭: 편집` : `더블클릭하여 등록`}
               >
-                {val ? renderSubscriptText(val) : '+'}
+                {val ? (
+                  isLatexString(val) ? (
+                    <div className="w-full max-w-full overflow-x-auto scrollbar-none flex items-center justify-center px-1 text-[11px]">
+                      <LatexRenderer text={val.startsWith('$') ? val : `$${val}$`} />
+                    </div>
+                  ) : (
+                    renderSubscriptText(val)
+                  )
+                ) : (
+                  '+'
+                )}
               </button>
             ))}
           </div>
