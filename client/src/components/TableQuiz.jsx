@@ -227,13 +227,24 @@ export const TableQuiz = React.memo(function TableQuiz({
         const deltaPercent = (deltaX / totalWidth) * 100;
         setCompColWidths(prev => {
           const next = [...prev];
-          const sum = percentWidths[idx] + percentWidths[idx + 1];
-          const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
-          const actualLeft = Math.min(sum - 10, newLeftWidth);
-          const actualRight = sum - actualLeft;
-
-          next[idx] = actualLeft;
-          next[idx + 1] = actualRight;
+          if (idx === 0) {
+            const newFirstWidth = Math.max(10, Math.min(80, percentWidths[0] + deltaPercent));
+            next[0] = newFirstWidth;
+            const remaining = 100 - newFirstWidth;
+            const eachWidth = remaining / (compColCount - 1);
+            for (let i = 1; i < compColCount; i++) {
+              next[i] = eachWidth;
+            }
+          } else {
+            const newVal = percentWidths[idx] + deltaPercent;
+            const maxNewVal = (100 - 10) / (compColCount - 1);
+            const minNewVal = (100 - 80) / (compColCount - 1);
+            const actualVal = Math.max(minNewVal, Math.min(maxNewVal, newVal));
+            for (let i = 1; i < compColCount; i++) {
+              next[i] = actualVal;
+            }
+            next[0] = 100 - actualVal * (compColCount - 1);
+          }
           
           try {
             localStorage.setItem(`anti_desktop_col_widths_comp_${compColCount}`, JSON.stringify(next));
@@ -551,13 +562,24 @@ export const TableQuiz = React.memo(function TableQuiz({
         const deltaPercent = (deltaX / totalWidth) * 100;
         setColWidths(prev => {
           const next = [...prev];
-          const sum = percentWidths[idx] + percentWidths[idx + 1];
-          const newLeftWidth = Math.max(10, percentWidths[idx] + deltaPercent);
-          const actualLeft = Math.min(sum - 10, newLeftWidth);
-          const actualRight = sum - actualLeft;
-
-          next[idx] = actualLeft;
-          next[idx + 1] = actualRight;
+          if (idx === 0) {
+            const newFirstWidth = Math.max(10, Math.min(80, percentWidths[0] + deltaPercent));
+            next[0] = newFirstWidth;
+            const remaining = 100 - newFirstWidth;
+            const eachWidth = remaining / (colCount - 1);
+            for (let i = 1; i < colCount; i++) {
+              next[i] = eachWidth;
+            }
+          } else {
+            const newVal = percentWidths[idx] + deltaPercent;
+            const maxNewVal = (100 - 10) / (colCount - 1);
+            const minNewVal = (100 - 80) / (colCount - 1);
+            const actualVal = Math.max(minNewVal, Math.min(maxNewVal, newVal));
+            for (let i = 1; i < colCount; i++) {
+              next[i] = actualVal;
+            }
+            next[0] = 100 - actualVal * (colCount - 1);
+          }
           
           try {
             localStorage.setItem(`anti_desktop_col_widths_main_${colCount}`, JSON.stringify(next));
