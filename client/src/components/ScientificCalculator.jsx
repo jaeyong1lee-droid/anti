@@ -282,6 +282,238 @@ const renderSubscriptText = (text) => {
   );
 };
 
+const convertToLatex = (str) => {
+  if (!str) return '';
+  let result = str;
+
+  // 1. Translate functions
+  // Replace frac(num, den) with \frac{num}{den} recursively
+  while (result.includes('frac(')) {
+    const startIdx = result.indexOf('frac(');
+    let openCount = 0;
+    let commaIdx = -1;
+    let closeIdx = -1;
+    for (let j = startIdx + 4; j < result.length; j++) {
+      if (result[j] === '(') openCount++;
+      else if (result[j] === ')') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdx = j;
+          break;
+        }
+      } else if (result[j] === ',' && openCount === 1) {
+        commaIdx = j;
+      }
+    }
+    if (commaIdx !== -1 && closeIdx !== -1) {
+      const num = result.substring(startIdx + 5, commaIdx);
+      const den = result.substring(commaIdx + 1, closeIdx);
+      result = result.substring(0, startIdx) + `\\frac{${num}}{${den}}` + result.substring(closeIdx + 1);
+    } else {
+      break;
+    }
+  }
+
+  // Replace sqrt(val) with \sqrt{val}
+  while (result.includes('sqrt(')) {
+    const startIdx = result.indexOf('sqrt(');
+    let openCount = 0;
+    let closeIdx = -1;
+    for (let j = startIdx + 4; j < result.length; j++) {
+      if (result[j] === '(') openCount++;
+      else if (result[j] === ')') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdx = j;
+          break;
+        }
+      }
+    }
+    if (closeIdx !== -1) {
+      const val = result.substring(startIdx + 5, closeIdx);
+      result = result.substring(0, startIdx) + `\\sqrt{${val}}` + result.substring(closeIdx + 1);
+    } else {
+      break;
+    }
+  }
+
+  // Replace ^(val) with ^{val}
+  while (result.includes('^(')) {
+    const startIdx = result.indexOf('^(');
+    let openCount = 0;
+    let closeIdx = -1;
+    for (let j = startIdx + 1; j < result.length; j++) {
+      if (result[j] === '(') openCount++;
+      else if (result[j] === ')') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdx = j;
+          break;
+        }
+      }
+    }
+    if (closeIdx !== -1) {
+      const val = result.substring(startIdx + 2, closeIdx);
+      result = result.substring(0, startIdx) + `^{${val}}` + result.substring(closeIdx + 1);
+    } else {
+      break;
+    }
+  }
+
+  // Replace _(val) with _{val}
+  while (result.includes('_(')) {
+    const startIdx = result.indexOf('_(');
+    let openCount = 0;
+    let closeIdx = -1;
+    for (let j = startIdx + 1; j < result.length; j++) {
+      if (result[j] === '(') openCount++;
+      else if (result[j] === ')') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdx = j;
+          break;
+        }
+      }
+    }
+    if (closeIdx !== -1) {
+      const val = result.substring(startIdx + 2, closeIdx);
+      result = result.substring(0, startIdx) + `_{${val}}` + result.substring(closeIdx + 1);
+    } else {
+      break;
+    }
+  }
+
+  // 2. Translate subscripts without parentheses: _word -> _{word}
+  result = result.replace(/_([a-zA-Z\u0370-\u03ff0-9]+)/g, '_{$1}');
+
+  // 3. Greek symbols mapping
+  const latexGreekMap = {
+    'α': '\\alpha', 'β': '\\beta', 'γ': '\\gamma', 'δ': '\\delta',
+    'ε': '\\epsilon', 'ζ': '\\zeta', 'η': '\\eta', 'θ': '\\theta',
+    'ι': '\\iota', 'κ': '\\kappa', 'λ': '\\lambda', 'μ': '\\mu',
+    'ν': '\\nu', 'ξ': '\\xi', 'π': '\\pi', 'ρ': '\\rho',
+    'σ': '\\sigma', 'τ': '\\tau', 'υ': '\\upsilon', 'φ': '\\phi',
+    'χ': '\\chi', 'ψ': '\\psi', 'ω': '\\omega',
+    'Δ': '\\Delta', 'Σ': '\\Sigma', 'Φ': '\\Phi', 'Ω': '\\Omega'
+  };
+
+  for (const sym of Object.keys(latexGreekMap)) {
+    result = result.replaceAll(sym, latexGreekMap[sym]);
+  }
+
+  // 4. Operators
+  result = result.replaceAll('×', '\\times');
+  result = result.replaceAll('÷', '\\div');
+
+  // Wrap in $ for LatexRenderer to render
+  return `$${result}$`;
+};
+
+const convertFromLatex = (str) => {
+  if (!str) return '';
+  let result = str.trim();
+
+  // Strip leading/trailing $ or $$
+  if (result.startsWith('$$') && result.endsWith('$$')) {
+    result = result.substring(2, result.length - 2).trim();
+  } else if (result.startsWith('$') && result.endsWith('$')) {
+    result = result.substring(1, result.length - 1).trim();
+  }
+
+  // Reverse Greek symbols
+  const latexGreekMap = {
+    '\\alpha': 'α', '\\beta': 'β', '\\gamma': 'γ', '\\delta': 'δ',
+    '\\epsilon': 'ε', '\\zeta': 'ζ', '\\eta': 'η', '\\theta': 'θ',
+    '\\iota': 'ι', '\\kappa': 'κ', '\\lambda': 'λ', '\\mu': 'μ',
+    '\\nu': 'ν', '\\xi': 'ξ', '\\pi': 'π', '\\rho': 'ρ',
+    '\\sigma': 'σ', '\\tau': 'τ', '\\upsilon': 'υ', '\\phi': 'φ',
+    '\\chi': 'χ', '\\psi': 'ψ', '\\omega': 'ω',
+    '\\Delta': 'Δ', '\\Sigma': 'Σ', '\\Phi': 'Φ', '\\Omega': 'Ω'
+  };
+
+  for (const key of Object.keys(latexGreekMap)) {
+    result = result.replaceAll(key, latexGreekMap[key]);
+  }
+
+  // Reverse \frac{num}{den} to frac(num,den)
+  while (result.includes('\\frac{')) {
+    const startIdx = result.indexOf('\\frac{');
+    let openCount = 0;
+    let closeIdxNum = -1;
+    let openIdxDen = -1;
+    let closeIdxDen = -1;
+    
+    for (let j = startIdx + 5; j < result.length; j++) {
+      if (result[j] === '{') openCount++;
+      else if (result[j] === '}') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdxNum = j;
+          break;
+        }
+      }
+    }
+    
+    if (closeIdxNum !== -1 && result[closeIdxNum + 1] === '{') {
+      openIdxDen = closeIdxNum + 1;
+      openCount = 0;
+      for (let j = openIdxDen; j < result.length; j++) {
+        if (result[j] === '{') openCount++;
+        else if (result[j] === '}') {
+          openCount--;
+          if (openCount === 0) {
+            closeIdxDen = j;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (closeIdxNum !== -1 && closeIdxDen !== -1) {
+      const num = result.substring(startIdx + 6, closeIdxNum);
+      const den = result.substring(openIdxDen + 1, closeIdxDen);
+      result = result.substring(0, startIdx) + `frac(${num},${den})` + result.substring(closeIdxDen + 1);
+    } else {
+      break;
+    }
+  }
+
+  // Reverse \sqrt{val} to sqrt(val)
+  while (result.includes('\\sqrt{')) {
+    const startIdx = result.indexOf('\\sqrt{');
+    let openCount = 0;
+    let closeIdx = -1;
+    for (let j = startIdx + 5; j < result.length; j++) {
+      if (result[j] === '{') openCount++;
+      else if (result[j] === '}') {
+        openCount--;
+        if (openCount === 0) {
+          closeIdx = j;
+          break;
+        }
+      }
+    }
+    if (closeIdx !== -1) {
+      const val = result.substring(startIdx + 6, closeIdx);
+      result = result.substring(0, startIdx) + `sqrt(${val})` + result.substring(closeIdx + 1);
+    } else {
+      break;
+    }
+  }
+
+  // Reverse ^{val} to ^(val)
+  result = result.replace(/\^{([^}]+)}/g, '^($1)');
+
+  // Reverse _{val} to _(val) (or just _val if it's alphanumeric/greek)
+  result = result.replace(/_{([^}]+)}/g, '_$1');
+
+  // Reverse operators
+  result = result.replaceAll('\\times', '×');
+  result = result.replaceAll('\\div', '÷');
+
+  return result;
+};
+
 export function ScientificCalculator() {
   const [calcInput, setCalcInput] = useState(() => localStorage.getItem('anti_calc_input') || '');
   const [calcResult, setCalcResult] = useState(() => localStorage.getItem('anti_calc_result') || '');
@@ -468,6 +700,9 @@ export function ScientificCalculator() {
       return;
     }
 
+    // Convert formula to proper LaTeX representation wrapped in $...$
+    const latexFormula = convertToLatex(calcInput);
+
     const childDoc = inputRef.current ? inputRef.current.ownerDocument : document;
     const childWindow = childDoc.defaultView || window;
 
@@ -506,7 +741,7 @@ export function ScientificCalculator() {
     };
 
     if (childWindow.navigator && childWindow.navigator.clipboard && typeof childWindow.navigator.clipboard.writeText === 'function') {
-      childWindow.navigator.clipboard.writeText(calcInput)
+      childWindow.navigator.clipboard.writeText(latexFormula)
         .then(() => {
           setStatusMessage('Copied!');
           // Clear message after 1.5 seconds
@@ -516,11 +751,37 @@ export function ScientificCalculator() {
         })
         .catch((err) => {
           console.warn('Child clipboard API failed, using fallback:', err);
-          fallbackCopy(calcInput);
+          fallbackCopy(latexFormula);
         });
     } else {
-      fallbackCopy(calcInput);
+      fallbackCopy(latexFormula);
     }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const childDoc = inputRef.current ? inputRef.current.ownerDocument : document;
+    const childWindow = childDoc.defaultView || window;
+    
+    const pastedText = (e.clipboardData || childWindow.clipboardData).getData('text');
+    if (!pastedText) return;
+
+    const cleanedText = convertFromLatex(pastedText);
+    
+    const start = inputRef.current.selectionStart;
+    const end = inputRef.current.selectionEnd;
+    const before = calcInput.substring(0, start);
+    const after = calcInput.substring(end);
+    const newText = before + cleanedText + after;
+    setCalcInput(newText);
+    
+    setTimeout(() => {
+      setCursorPosition(start + cleanedText.length);
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(start + cleanedText.length, start + cleanedText.length);
+      }
+    }, 10);
   };
 
   // Handle custom button single/double click
@@ -2422,6 +2683,7 @@ export function ScientificCalculator() {
           onClick={(e) => {
             setCursorPosition(e.target.selectionStart);
           }}
+          onPaste={handlePaste}
           className="absolute opacity-0 pointer-events-none w-0 h-0"
         />
       </div>
