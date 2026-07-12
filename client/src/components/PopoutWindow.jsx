@@ -21,6 +21,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
   }, [title]);
 
   useEffect(() => {
+    let isParentUnloading = false;
     // 1. Load saved window bounds from localStorage if available
     let savedPos = null;
     if (storageKey) {
@@ -69,6 +70,14 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       }
     };
     window.addEventListener(`focus-popout-${storageKey || 'window'}`, handleFocusRequest);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
+        e.preventDefault();
+        window.location.reload();
+      }
+    };
+    newWindow.addEventListener('keydown', handleKeyDown);
 
     const setupContainer = () => {
       try {
@@ -138,7 +147,16 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
     setupContainer();
 
     const handleUnload = () => {
-      if (onCloseRef.current) onCloseRef.current();
+      if (isParentUnloading) return;
+      setTimeout(() => {
+        if (!newWindow || newWindow.closed) {
+          if (onCloseRef.current) onCloseRef.current();
+        } else {
+          // If the window is still open after unload, it was refreshed or navigated.
+          // Reload the parent window to keep them synchronized.
+          window.location.reload();
+        }
+      }, 150);
     };
     newWindow.addEventListener('beforeunload', handleUnload);
 
@@ -176,7 +194,6 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       }
     }, 200);
 
-    let isParentUnloading = false;
     const handleParentUnload = () => {
       isParentUnloading = true;
     };
@@ -186,6 +203,10 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       if (closeCheckInterval) clearInterval(closeCheckInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
       window.removeEventListener(`focus-popout-${storageKey || 'window'}`, handleFocusRequest);
+      
+      if (newWindow) {
+        newWindow.removeEventListener('keydown', handleKeyDown);
+      }
       
       // Only close the child window if the parent is NOT reloading/unloading (e.g. normal React unmount)
       if (newWindow && !newWindow.closed && !isParentUnloading) {
