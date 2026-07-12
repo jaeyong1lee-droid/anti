@@ -11360,7 +11360,6 @@ export default function App() {
       setChatInput('');
     }
     setAttachedImage(null);
-    setAttachedImagePreview(null);
     
     // 공식이 첨부되어 있다면 프롬프트 상단에 메타 정보로 추가하고 즉시 비웁니다.
     let apiMessage = userMessage;
