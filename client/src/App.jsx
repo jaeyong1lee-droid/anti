@@ -1126,7 +1126,7 @@ const compressImageFile = (file, maxDimension = 1000, quality = 0.7) => {
     }
     const reader = new FileReader();
     reader.onload = (readerEvent) => {
-      const image = new Image();
+      const image = new window.Image();
       image.onload = () => {
         let width = image.width;
         let height = image.height;
