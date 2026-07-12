@@ -2339,6 +2339,15 @@ export default function App() {
   const [showFloatingCalculator, setShowFloatingCalculator] = useState(() => {
     return localStorage.getItem('anti_show_floating_calculator') === 'true';
   });
+
+  const toggleOrFocusCalculator = () => {
+    if (showFloatingCalculator) {
+      window.dispatchEvent(new CustomEvent('focus-popout-anti_popout_calculator'));
+    } else {
+      setShowFloatingCalculator(true);
+    }
+  };
+
   const [showFloatingMemorization, setShowFloatingMemorization] = useState(() => {
     return localStorage.getItem('anti_show_floating_memorization') === 'true';
   });
@@ -18915,7 +18924,7 @@ ${itemsStr}
                       )}
                     </div>
                     <button
-                      onClick={() => setShowFloatingCalculator(prev => !prev)}
+                      onClick={toggleOrFocusCalculator}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
@@ -22291,7 +22300,7 @@ ${itemsStr}
                       <span>두</span>
                     </button>
                     <button
-                      onClick={() => setShowFloatingCalculator(prev => !prev)}
+                      onClick={toggleOrFocusCalculator}
                       className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer active:scale-95 shadow-md hidden md:flex items-center justify-center ${
                         showFloatingCalculator 
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
@@ -22767,7 +22776,7 @@ ${itemsStr}
                   )}
                 </div>
                 <button
-                  onClick={() => setShowFloatingCalculator(prev => !prev)}
+                  onClick={toggleOrFocusCalculator}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
                     showFloatingCalculator 
                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
@@ -25453,7 +25462,7 @@ ${itemsStr}
                   <span>두</span>
                 </button>
                 <button
-                  onClick={() => setShowFloatingCalculator(prev => !prev)}
+                  onClick={toggleOrFocusCalculator}
                   className={`px-3 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer active:scale-95 hidden md:flex items-center justify-center ${
                     showFloatingCalculator 
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 

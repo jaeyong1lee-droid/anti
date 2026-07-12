@@ -91,6 +91,13 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
 
     windowRef.current = newWindow;
 
+    const handleFocusRequest = () => {
+      if (newWindow && !newWindow.closed) {
+        newWindow.focus();
+      }
+    };
+    window.addEventListener(`focus-popout-${storageKey || 'window'}`, handleFocusRequest);
+
     const setupContainer = () => {
       try {
         const doc = newWindow.document;
@@ -239,6 +246,7 @@ export const PopoutWindow = ({ title, onClose, children, initWidth = 720, initHe
       if (checkInterval) clearInterval(checkInterval);
       if (closeCheckInterval) clearInterval(closeCheckInterval);
       window.removeEventListener('beforeunload', handleParentUnload);
+      window.removeEventListener(`focus-popout-${storageKey || 'window'}`, handleFocusRequest);
       
       // Only close the child window if the parent is NOT reloading/unloading (e.g. normal React unmount)
       if (newWindow && !newWindow.closed && !isParentUnloading) {
