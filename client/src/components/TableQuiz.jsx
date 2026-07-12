@@ -564,6 +564,8 @@ export const TableQuiz = React.memo(function TableQuiz({
     if (isTouch && container) {
       container.scrollLeft = startScrollLeft;
       container.style.overflowX = 'hidden';
+      container.style.touchAction = 'none';
+      document.body.style.touchAction = 'none';
     }
 
     const doResize = (ev) => {
@@ -632,6 +634,8 @@ export const TableQuiz = React.memo(function TableQuiz({
       if (ev) ev.stopPropagation();
       if (isTouch && container) {
         container.style.overflowX = '';
+        container.style.touchAction = '';
+        document.body.style.touchAction = '';
       }
       if (isTouch) {
         window.removeEventListener('touchmove', doResize);

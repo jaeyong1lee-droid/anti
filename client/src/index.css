@@ -1060,14 +1060,14 @@ div[class*="overflow-y-auto"] {
   .overflow-auto {
     overflow-x: auto;
     max-width: 100% !important;
-    touch-action: pan-x pan-y !important;
+    touch-action: pan-x pan-y;
     overscroll-behavior-x: contain !important;
   }
 
   .table-quiz-container *,
   .overflow-x-auto *,
   .overflow-auto * {
-    touch-action: pan-x pan-y !important;
+    touch-action: pan-x pan-y;
   }
 
   /* Hide all scrollbars globally on mobile portrait EXCEPT for table containers */
