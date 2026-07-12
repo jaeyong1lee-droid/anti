@@ -1480,6 +1480,64 @@ export default function App() {
     latestAnswerPopupPosRef.current = answerPopupPos;
   }, [answerPopupPos]);
 
+  // Global horizontal scroll/swipe drag locking on mobile portrait view
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      // Check if it is mobile portrait view
+      const isMobilePortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+      if (!isMobilePortrait) return;
+
+      if (!e.touches || e.touches.length === 0) return;
+
+      const deltaX = e.touches[0].clientX - touchStartX;
+      const deltaY = e.touches[0].clientY - touchStartY;
+
+      // If the movement is primarily horizontal, prevent default browser swipe/elastic drag
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Exception: allow horizontal scrolling inside scrollable containers (like tables or code blocks)
+        let target = e.target;
+        let isScrollable = false;
+        while (target && target !== document.body) {
+          if (target.classList) {
+            const hasScrollClass = target.classList.contains('table-quiz-container') || 
+                                   target.classList.contains('overflow-x-auto') || 
+                                   target.classList.contains('overflow-auto') ||
+                                   target.tagName?.toLowerCase() === 'table' ||
+                                   target.tagName?.toLowerCase() === 'td' ||
+                                   target.tagName?.toLowerCase() === 'th';
+            if (hasScrollClass && target.scrollWidth > target.clientWidth) {
+              isScrollable = true;
+              break;
+            }
+          }
+          target = target.parentElement;
+        }
+
+        if (!isScrollable && e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   useEffect(() => {
     const handleWidthChange = (e) => {
       const width = e.detail?.width;

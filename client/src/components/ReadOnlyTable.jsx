@@ -148,17 +148,19 @@ export const ReadOnlyTable = React.memo(function ReadOnlyTable({
         
         setMobileColWidths(prev => {
           const next = [...prev];
-          next[idx] = `${newWidth}px`;
-          
           if (idx === 0) {
+            next[0] = `${newWidth}px`;
             const storageKey = `mobileFirstColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}`;
             localStorage.setItem(storageKey, `${newWidth}px`);
             window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
               detail: { questionIdx, width: `${newWidth}px` }
             }));
           } else {
-            const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${idx}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
+            for (let i = 1; i < colCount; i++) {
+              next[i] = `${newWidth}px`;
+              const storageKey = `mobileColWidth_${questionIdx !== null && questionIdx !== undefined ? questionIdx : 'default'}_${i}`;
+              localStorage.setItem(storageKey, `${newWidth}px`);
+            }
           }
           return next;
         });

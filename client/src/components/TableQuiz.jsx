@@ -553,17 +553,19 @@ export const TableQuiz = React.memo(function TableQuiz({
         
         setMobileColWidths(prev => {
           const next = [...prev];
-          next[idx] = `${newWidth}px`;
-          
           if (idx === 0) {
+            next[0] = `${newWidth}px`;
             const storageKey = `anti_mobile_first_col_width_${colCount}`;
             localStorage.setItem(storageKey, `${newWidth}px`);
             window.dispatchEvent(new CustomEvent('firstColWidthChanged', {
               detail: { colCount, width: `${newWidth}px` }
             }));
           } else {
-            const storageKey = `anti_mobile_col_width_${colCount}_${idx}`;
-            localStorage.setItem(storageKey, `${newWidth}px`);
+            for (let i = 1; i < colCount; i++) {
+              next[i] = `${newWidth}px`;
+              const storageKey = `anti_mobile_col_width_${colCount}_${i}`;
+              localStorage.setItem(storageKey, `${newWidth}px`);
+            }
           }
           return next;
         });
