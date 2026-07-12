@@ -284,7 +284,9 @@ export function FloatingMemorization({
       let targetTab = 'table';
       
       // Decide targetTab based on type and content
-      if (qType.includes('앞글자') || qType.includes('acronym') || qSubtype.includes('앞글자') || qText.includes('두문자') || qText.includes('앞글자')) {
+      if (qText.includes('개요') || qType.includes('개요') || qSubtype.includes('개요') || qTitle.includes('개요')) {
+        targetTab = 'overview';
+      } else if (qType.includes('앞글자') || qType.includes('acronym') || qSubtype.includes('앞글자') || qText.includes('두문자') || qText.includes('앞글자')) {
         targetTab = 'acronym';
       } else if (qType.includes('그림') || qType.includes('image') || qSubtype.includes('그림') || qText.includes('그림') || qText.includes('그래프')) {
         targetTab = 'image';
