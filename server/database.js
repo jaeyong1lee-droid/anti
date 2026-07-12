@@ -299,6 +299,25 @@ export async function initDatabase() {
         `);
         console.log('Cloud PostgreSQL database tables initialized successfully.');
         await migrateSchedulesTable();
+
+        // One-time cleanup: free redundant BYTEA storage for rows that already have a Vercel Blob URL.
+        // The serve logic correctly falls back to pdf_url when pdf_data is NULL.
+        try {
+          const topicsResult = await pgPool.query(
+            `UPDATE topics SET pdf_data = NULL WHERE pdf_url IS NOT NULL AND pdf_data IS NOT NULL`
+          );
+          if (topicsResult.rowCount > 0) {
+            console.log(`[DB Cleanup] Freed BYTEA for ${topicsResult.rowCount} topics with pdf_url (pdf_data set to NULL).`);
+          }
+          const asResult = await pgPool.query(
+            `UPDATE answersheet_reports SET pdf_data = NULL WHERE pdf_url IS NOT NULL AND pdf_data IS NOT NULL`
+          );
+          if (asResult.rowCount > 0) {
+            console.log(`[DB Cleanup] Freed BYTEA for ${asResult.rowCount} answersheet_reports with pdf_url.`);
+          }
+        } catch (cleanupErr) {
+          console.warn('[DB Cleanup] pdf_data BYTEA cleanup failed (non-critical):', cleanupErr.message);
+        }
       } catch (pgInitError) {
         if (isVercel) {
           throw pgInitError; // Keep failing on Vercel as SQLite is disabled there

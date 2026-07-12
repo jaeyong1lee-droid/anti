@@ -831,6 +831,16 @@ ${ENGINEERING_STANDARDS}
              VALUES (?, ?, ?, ?)`,
             [finalTopicId, currentQuestion?.question.trim(), parsedQuestion.question.trim(), userFeedback.trim()]
           );
+          // Prune: keep only the 20 most recent adjustment records per topic to prevent unbounded growth
+          try {
+            await dbQuery.run(
+              `DELETE FROM question_adjustments
+               WHERE topic_id = ? AND id NOT IN (
+                 SELECT id FROM question_adjustments WHERE topic_id = ? ORDER BY id DESC LIMIT 20
+               )`,
+              [finalTopicId, finalTopicId]
+            );
+          } catch (pruneErr) {}
         } catch (e) {}
       }
 
@@ -945,6 +955,16 @@ ${ENGINEERING_STANDARDS}
              VALUES (?, ?, ?, ?)`,
             [finalTopicId, currentQuestion?.question.trim(), parsedQuestion.question.trim(), userFeedback.trim()]
           );
+          // Prune: keep only the 20 most recent adjustment records per topic to prevent unbounded growth
+          try {
+            await dbQuery.run(
+              `DELETE FROM question_adjustments
+               WHERE topic_id = ? AND id NOT IN (
+                 SELECT id FROM question_adjustments WHERE topic_id = ? ORDER BY id DESC LIMIT 20
+               )`,
+              [finalTopicId, finalTopicId]
+            );
+          } catch (pruneErr) {}
         } catch (dbErr) {}
       }
 

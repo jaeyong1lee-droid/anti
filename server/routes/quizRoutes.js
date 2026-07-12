@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { dbQuery } from '../database.js';
+import { dbQuery, isPostgres } from '../database.js';
 import { callLLMWithFailover, analyzeStandardsBeforeTask, saveSessionValue, getTopicText, startBackendProgressTimer, updateProgress } from '../services/aiService.js';
 import { healLatexFormulas, healQuizQuestionObject, healAnswersheetQuestionObject, parseLlmJson, LATEX_PROMPT_INSTRUCTIONS, LATEX_CHAT_PROMPT_INSTRUCTIONS } from '../utils/latexUtils.js';
 import * as fileUtils from '../utils/fileUtils.js';
@@ -17,6 +17,27 @@ const __dirname = path.dirname(__filename);
 const serverDir = path.resolve(__dirname, '..');
 
 const router = express.Router();
+
+// Auto-cleanup stale review session keys on server startup (runs once, non-blocking)
+// Deletes review_questions_* keys that haven't been updated in over 60 days
+;(async () => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 8000)); // wait for DB to be ready
+    const cutoff = isPostgres
+      ? `NOW() - INTERVAL '60 days'`
+      : `datetime('now', '-60 days')`;
+    const result = await dbQuery.run(
+      `DELETE FROM app_session
+       WHERE (key LIKE 'review_questions_topic_%' OR key LIKE 'review_questions_schedule_%')
+       AND updated_at < ${cutoff}`
+    );
+    if (result.changes > 0) {
+      console.log(`[Session Cleanup] Deleted ${result.changes} stale review session keys (>60 days old).`);
+    }
+  } catch (e) {
+    // Non-critical: silently ignore startup cleanup errors
+  }
+})();
 
 function cleanQuizQuestion(q) {
   if (!q) return q;
@@ -1188,26 +1209,44 @@ router.get('/session/review', async (req, res) => {
       const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
       let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
       if (row && row.value) {
-        return res.json({ success: true, data: JSON.parse(row.value) });
+        let data = JSON.parse(row.value);
+        // Merge questions from separate _q key when using new split-storage format
+        if (data && !Array.isArray(data) && (!data.questions || data.questions.length === 0)) {
+          const qRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [`${key}_q`]);
+          if (qRow && qRow.value) data.questions = JSON.parse(qRow.value);
+        }
+        return res.json({ success: true, data });
       }
       return res.json({ success: true, data: null });
     }
 
     const key = `review_questions_topic_${targetTopicId}`;
     let row = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
+    let actualKey = key;
 
     if (!row) {
       const topicPattern = `review_questions_topic_${targetTopicId}_sess_%`;
+      // Exclude _q (questions-only) keys so we only fetch state rows
       const topicSessionRow = await dbQuery.get(
-        'SELECT key, value FROM app_session WHERE key LIKE ? ORDER BY updated_at DESC LIMIT 1',
-        [topicPattern]
+        'SELECT key, value FROM app_session WHERE key LIKE ? AND key NOT LIKE ? ORDER BY updated_at DESC LIMIT 1',
+        [topicPattern, '%_q']
       );
-      if (topicSessionRow) row = topicSessionRow;
+      if (topicSessionRow) {
+        row = topicSessionRow;
+        actualKey = topicSessionRow.key;
+      }
     }
 
     if (row && row.value) {
       let data = JSON.parse(row.value);
       if (data) {
+        // Merge questions from separate _q key when using new split-storage format
+        if (!Array.isArray(data) && (!data.questions || data.questions.length === 0)) {
+          const questionsKey = `${actualKey}_q`;
+          const qRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [questionsKey]);
+          if (qRow && qRow.value) data.questions = JSON.parse(qRow.value);
+        }
+        // Backward compat: very old format stored just a bare questions array
         if (Array.isArray(data)) {
           data = {
             sessionId: 'legacy_default',
@@ -1253,17 +1292,23 @@ router.post('/session/review', async (req, res) => {
     if (targetTopicId && targetTopicId.startsWith('mixed_')) {
       const sId = sessionId || 'legacy_default';
       const key = `review_questions_topic_${targetTopicId}_sess_${sId}`;
-      
-      // Merge with existing session to avoid overwriting questions/chatHistory when not sent
+      const questionsKey = `${key}_q`;
+
+      // Merge with existing state for missing fields
       let existingData = {};
       try {
         const existingRow = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
         if (existingRow && existingRow.value) existingData = JSON.parse(existingRow.value);
       } catch (e) {}
 
+      // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
+      if (questions && Array.isArray(questions) && questions.length > 0) {
+        await saveSessionValue(questionsKey, JSON.stringify(questions));
+      }
+
+      // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
       const value = JSON.stringify({
         sessionId: sessionId || existingData.sessionId || '',
-        questions: questions || existingData.questions || [],
         selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData.selectedAnswers || {}),
         revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData.revealedQuestions || {}),
         tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData.tableAnswers || {}),
@@ -1273,26 +1318,29 @@ router.post('/session/review', async (req, res) => {
         chatHistory: chatHistory !== undefined ? chatHistory : (existingData.chatHistory || []),
         savedQuizScroll: savedQuizScroll !== undefined ? savedQuizScroll : (existingData.savedQuizScroll || 0)
       });
-      await dbQuery.run(
-        `INSERT INTO app_session (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`,
-        [key, value]
-      );
+      await saveSessionValue(key, value);
       return res.json({ success: true, message: 'Mixed session stored.' });
     }
 
     const key = `review_questions_topic_${targetTopicId}`;
-    
-    // Merge with existing session to preserve questions/chatHistory when not sent
+    const questionsKey = `${key}_q`;
+
+    // Merge with existing state for missing fields
     let existingData2 = {};
     try {
       const existingRow2 = await dbQuery.get('SELECT value FROM app_session WHERE key = ?', [key]);
       if (existingRow2 && existingRow2.value) existingData2 = JSON.parse(existingRow2.value);
     } catch (e) {}
 
+    // Save questions separately — saveSessionValue skips write if unchanged (same-value optimization)
+    // This is the key optimization: questions (~40-100KB) are only written when they actually change
+    if (questions && Array.isArray(questions) && questions.length > 0) {
+      await saveSessionValue(questionsKey, JSON.stringify(questions));
+    }
+
+    // Save lightweight state object (no questions array — reduces autosave payload by ~80%)
     const value = JSON.stringify({
       sessionId: sessionId || existingData2.sessionId || '',
-      questions: questions || existingData2.questions || [],
       selectedAnswers: selectedAnswers !== undefined ? selectedAnswers : (existingData2.selectedAnswers || {}),
       revealedQuestions: revealedQuestions !== undefined ? revealedQuestions : (existingData2.revealedQuestions || {}),
       tableAnswers: tableAnswers !== undefined ? tableAnswers : (existingData2.tableAnswers || {}),
@@ -1327,8 +1375,12 @@ router.delete('/session/review/topic/:id', async (req, res) => {
     }
 
     await dbQuery.run(
-      "DELETE FROM app_session WHERE key = ? OR key LIKE ?",
-      [`review_questions_topic_${targetTopicId}`, `review_questions_topic_${targetTopicId}_sess_%`]
+      "DELETE FROM app_session WHERE key = ? OR key = ? OR key LIKE ?",
+      [
+        `review_questions_topic_${targetTopicId}`,
+        `review_questions_topic_${targetTopicId}_q`,   // split-storage questions key
+        `review_questions_topic_${targetTopicId}_sess_%` // session variants (also catches _sess_*_q)
+      ]
     );
 
     const schedules = await dbQuery.all('SELECT id FROM schedules WHERE topic_id = ?', [targetTopicId]);
