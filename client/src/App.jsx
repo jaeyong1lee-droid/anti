@@ -18695,24 +18695,34 @@ ${itemsStr}
                                     {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                   </button>
                                 )
-                              ) : (
-                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
-                                  {/* 테이블 주관식 개별 피드백 */}
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
-                                    <span>{getTableBannerStatusText(idx, q)}</span>
-                                  </div>
-                                  {q.explanation && (
-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
-                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
-                                      </div>
+                              ) : (() => {
+                                const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+                                if (isOverviewReview) {
+                                  return (
+                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
+                                      {renderCardTutorChat(rKey, q)}
                                     </div>
-                                  )}
-                                  {renderDetailedTableFeedback(idx, q, W)}
-                                  {renderCardTutorChat(rKey, q)}
-                                </div>
-                              )}
+                                  );
+                                }
+                                return (
+                                  <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, isRevd)}`}>
+                                    {/* 테이블 주관식 개별 피드백 */}
+                                    <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                      <span>{getTableBannerStatusText(idx, q)}</span>
+                                    </div>
+                                    {q.explanation && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                        <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {renderDetailedTableFeedback(idx, q, W)}
+                                    {renderCardTutorChat(rKey, q)}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') ? (
                             <div className="space-y-3 w-full animate-fade-in">
@@ -22124,24 +22134,34 @@ ${itemsStr}
                                     {gradingLoading[idx] ? 'AI 채점 진행 중...' : '제출하고 채점하기 →'}
                                   </button>
                                 )
-                              ) : (
-                                <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
-                                  {/* 테이블 주관식 개별 피드백 */}
-                                  <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
-                                    <span>{getTableBannerStatusText(idx, q)}</span>
-                                  </div>
-                                  {q.explanation && (
-                                    <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
-                                      <span className="font-extrabold text-amber-400">📝 해설:</span>
-                                      <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
-                                        <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
-                                      </div>
+                              ) : (() => {
+                                const isOverviewReview = q.question.startsWith("[개요 복습]") || q.mixedType === "overview" || q.subtype === "개요";
+                                if (isOverviewReview) {
+                                  return (
+                                    <div className="mt-2.5 pt-2.5 border-t border-slate-800/40 text-left">
+                                      {renderCardTutorChat(eKey, q)}
                                     </div>
-                                  )}
-                                  {renderDetailedTableFeedback(idx, q, W)}
-                                  {renderCardTutorChat(eKey, q)}
-                                </div>
-                              )}
+                                  );
+                                }
+                                return (
+                                  <div className={`p-0 sm:p-4 rounded-none sm:rounded-xl border-0 sm:border space-y-3 text-left transition-all ${getTableContainerClasses(idx, q, !!examRevealed[idx])}`}>
+                                    {/* 테이블 주관식 개별 피드백 */}
+                                    <div className={`text-[14px] sm:text-[16px] font-black flex justify-between items-center ${getTableBannerTitleClasses(idx, q)}`}>
+                                      <span>{getTableBannerStatusText(idx, q)}</span>
+                                    </div>
+                                    {q.explanation && (
+                                      <div className="mt-2 pt-2 border-t border-current/10 text-[14px] sm:text-[16px] select-text">
+                                        <span className="font-extrabold text-amber-400">📝 해설:</span>
+                                        <div className="mt-1 text-[14px] sm:text-[16px] text-slate-200 leading-relaxed">
+                                          <LatexRenderer text={q.explanation} katexLoaded={katexLoaded} isMarkdown={true} enableAddFormula={true} />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {renderDetailedTableFeedback(idx, q, W)}
+                                    {renderCardTutorChat(eKey, q)}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ) : (q.type !== '주관식 (표채우기)' && q.subtype !== '표채우기') ? (
                             <div className="space-y-3 w-full animate-fade-in">
