@@ -15331,7 +15331,7 @@ ${itemsStr}
   }
 
   return (
-    <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start">
+    <div className="min-h-screen bg-slateCustom-950 pb-16 flex flex-col justify-start w-full max-w-full overflow-x-hidden">
 
       {/* ===== 대기 중인 잠금퀴즈 목록 팝업 (PC 전용) ===== */}
       {isLockscreenPoolModalOpen && (
@@ -17713,7 +17713,7 @@ ${itemsStr}
                     }
                   }
                 }}
-                className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto"
+                className="flex-1 w-full overflow-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 landscape-quiz-body scroll-smooth relative scrollbar-none-mobile overflow-y-auto overflow-x-hidden"
               >
 
                 {/* Pull to Refresh Indicator */}
@@ -21208,7 +21208,7 @@ ${itemsStr}
                     }
                   }
                 }}
-                className="flex-1 w-full overflow-y-auto px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
+                className="flex-1 w-full overflow-y-auto overflow-x-hidden px-0 py-3 sm:p-6 md:pl-6 md:pr-1 scroll-smooth relative landscape-quiz-body scrollbar-none-mobile"
               >
 
                 {/* Pull to Refresh Indicator */}
